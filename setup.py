@@ -20,7 +20,7 @@ setup(
     license='Apache License, Version 2.0',
     description='AstraPy is a Pythonic SDK for DataStax Astra',
     url='https://github.com/datastax/astrapy',
-    download_url='https://github.com/user/reponame/archive/v_01.tar.gz',
+    download_url='https://github.com/datastax/astrapy/archive/refs/tags/v0.0.1.tar.gz',
     keywords=['DataStax Astra', 'Stargate'],
     install_requires=[
         'requests',
