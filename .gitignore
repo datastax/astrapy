@@ -18,6 +18,8 @@ tests/screenshots
 .scratch.py
 .pytest_cache
 .vscode
+manifest
+dist
 
 # premade .gitignore from GitHub
 

@@ -12,15 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from distutils.core import setup
+from setuptools import setup
+from os import path
+this_directory = path.abspath(path.dirname(__file__))
+with open(path.join(this_directory, 'README'), encoding='utf-8') as f:
+    long_description = f.read()
+
 setup(
     name='astrapy',
     packages=['astrapy'],
-    version='0.0.1',
-    license='Apache License, Version 2.0',
+    version='0.0.2',
+    license='Apache license 2.0',
     description='AstraPy is a Pythonic SDK for DataStax Astra',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
+    author='DataStax',
+    author_email='oss@datastax.com',
     url='https://github.com/datastax/astrapy',
-    download_url='https://github.com/datastax/astrapy/archive/refs/tags/v0.0.1.tar.gz',
+    download_url='https://github.com/datastax/astrapy/archive/refs/tags/v0.0.2.tar.gz',
     keywords=['DataStax Astra', 'Stargate'],
     install_requires=[
         'requests',
@@ -29,7 +38,7 @@ setup(
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'Topic :: Software Development :: Build Tools',
-        'License :: Apache License, Version 2.0',
+        'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
