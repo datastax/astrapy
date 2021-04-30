@@ -1,0 +1,82 @@
+.logs
+.idea
+.DS_Store
+.project
+.pydevproject
+.settings
+.env
+node_modules
+venv
+dump.rdb
+.tmp
+npm-debug.log
+.ssh
+.csscomb.json
+tests/screenshots
+.bash_history
+.ipynb_checkpoints
+.scratch.py
+.pytest_cache
+.vscode
+
+# premade .gitignore from GitHub
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+build/
+!frontend/vendor/**/build
+develop-eggs/
+downloads/
+!pd_pfe/static/downloads
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*,cover
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Browser test output
+junitresults.*

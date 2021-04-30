@@ -1,0 +1,62 @@
+# Copyright DataStax, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Tests
+on:
+  pull_request:
+    branches:
+      - master
+  schedule:
+    - cron: "0 0 * * *"
+jobs:
+  tests:
+    env:
+      ASTRA_DB_KEYSPACE: ${{ secrets.ASTRA_DB_KEYSPACE }}
+      ASTRA_DB_ID: ${{ secrets.ASTRA_DB_ID }}
+      ASTRA_DB_REGION: ${{ secrets.ASTRA_DB_REGION }}
+      ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
+      STARGATE_BASE_URL: ${{ secrets.STARGATE_BASE_URL }}
+      STARGATE_AUTH_URL: ${{ secrets.STARGATE_AUTH_URL }}
+      STARGATE_USERNAME: ${{ secrets.STARGATE_USERNAME }}
+      STARGATE_PASSWORD: ${{ secrets.STARGATE_PASSWORD }}
+    runs-on: ubuntu-latest
+    services:
+      stargate:
+        image: stargateio/stargate-dse-68:v1.0.22
+        env:
+          CLUSTER_NAME: stargate
+          CLUSTER_VERSION: 6.8
+          DEVELOPER_MODE: true
+          DSE: 1
+        ports:
+          - 8080:8080
+          - 8081:8081
+          - 8082:8082
+          - 9042:9042
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: wait for stargate
+        run: |
+          sleep 1m
+      - name: Test with PyTest
+        run: |
+          pytest tests/
