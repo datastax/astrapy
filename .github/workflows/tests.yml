@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       stargate:
-        image: stargateio/stargate-dse-68:v1.0.22
+        image: stargateio/stargate-dse-68:v1.0.26
         env:
           CLUSTER_NAME: stargate
           CLUSTER_VERSION: 6.8
