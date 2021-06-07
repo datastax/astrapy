@@ -13,14 +13,19 @@
 # limitations under the License.
 
 from astrapy.rest import http_methods
+import copy
 
+DEFAULT_HOST = "https://api.astra.datastax.com"
 PATH_PREFIX = "/v2"
 
 
 class AstraOps():
 
     def __init__(self, client=None):
-        self.client = client
+        self.client = copy.deepcopy(client)
+        self.client.base_url = DEFAULT_HOST
+        self.client.auth_header = "Authorization"
+        self.client.astra_application_token = f"Bearer {self.client.astra_application_token}"
 
     def get_databases(self):
         return self.client.request(method=http_methods.GET,
