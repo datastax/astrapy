@@ -39,11 +39,12 @@ class AstraClient():
         self.astra_database_region = astra_database_region
         self.astra_application_token = astra_application_token
         self.base_url = f"https://{astra_database_id}-{astra_database_region}.apps.astra.datastax.com"
+        self.auth_header = "X-Cassandra-Token"
 
     def request(self, method=http_methods.GET, path=None, json_data=None, url_params=None):
         r = requests.request(method=method, url=f"{self.base_url}{path}",
                              params=url_params, json=json_data, timeout=DEFAULT_TIMEOUT,
-                             headers={"X-Cassandra-Token": self.astra_application_token})
+                             headers={self.auth_header: self.astra_application_token})
         try:
             return r.json()
         except:
