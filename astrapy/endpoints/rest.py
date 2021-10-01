@@ -33,26 +33,26 @@ class AstraRest():
                                    path=f"{PATH_PREFIX}/{keyspace}/{table}",
                                    url_params=request_params)
 
-    def add_row(self, keyspace="", table="", row=""):
+    def add_row(self, keyspace="", table="", row=None):
         return self.client.request(method=http_methods.POST,
                                    path=f"{PATH_PREFIX}/{keyspace}/{table}",
-                                   json_options=row)
+                                   json_data=row)
 
-    def get_row(self, keyspace="", table="", key_path="", options=None):
+    def get_rows(self, keyspace="", table="", key_path="", options=None):
         return self.client.request(method=http_methods.GET,
                                    path=f"{PATH_PREFIX}/{keyspace}/{table}/{key_path}",
                                    json_data=options)
 
-    def replace_row(self, keyspace="", table="", key_path="", row=""):
+    def replace_rows(self, keyspace="", table="", key_path="", row=""):
         return self.client.request(method=http_methods.PUT,
                                    path=f"{PATH_PREFIX}/{keyspace}/{table}/{key_path}",
                                    json_data=row)
 
-    def update_row(self, keyspace="", table="", key_path="", row=""):
+    def update_rows(self, keyspace="", table="", key_path="", row=""):
         return self.client.request(method=http_methods.PATCH,
                                    path=f"{PATH_PREFIX}/{keyspace}/{table}/{key_path}",
                                    json_data=row)
 
-    def delete_row(self, keyspace="", table="", key_path=""):
+    def delete_rows(self, keyspace="", table="", key_path=""):
         return self.client.request(method=http_methods.DELETE,
                                    path=f"{PATH_PREFIX}/{keyspace}/{table}/{key_path}")

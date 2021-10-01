@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.rest import AstraClient, http_methods
+from astrapy.rest import http_methods
+from astrapy.rest import create_client as create_astra_client
 import logging
 import json
 
@@ -43,6 +44,24 @@ class AstraCollection():
                                          path=f"{self.base_path}/{path}",
                                          json_data=document)
 
+    def upgrade(self):
+        return self.astra_client.request(method=http_methods.POST,
+                                         path=f"{self.base_path}/upgrade")
+
+    def get_schema(self):
+        return self.astra_client.request(method=http_methods.GET,
+                                         path=f"{self.base_path}/json-schema")
+
+    def create_schema(self, schema=None):
+        return self.astra_client.request(method=http_methods.PUT,
+                                         path=f"{self.base_path}/json-schema",
+                                         json_data=schema)
+
+    def update_schema(self, schema=None):
+        return self.astra_client.request(method=http_methods.PUT,
+                                         path=f"{self.base_path}/json-schema",
+                                         json_data=schema)
+
     def get(self, path=None):
         return self._get(path=path)
 
@@ -59,7 +78,10 @@ class AstraCollection():
         request_params.update(options)
         response = self._get(path=None, options=request_params)
         if response is not None:
-            return response[list(response.keys())[0]]
+            keys = list(response.keys())
+            if(len(keys) == 0):
+                return None
+            return response[keys[0]]
         return None
 
     def create(self, path=None, document=None):
@@ -81,16 +103,53 @@ class AstraCollection():
         return self.astra_client.request(method=http_methods.DELETE,
                                          path=f"{self.base_path}/{path}")
 
+    def batch(self, documents=None, id_path=""):
+        if id_path == "":
+            id_path = "documentId"
+        return self.astra_client.request(method=http_methods.POST,
+                                         path=f"{self.base_path}/batch",
+                                         json_data=documents,
+                                         url_params={"id-path": id_path})
+
+    def push(self, path=None, value=None):
+        json_data = {"operation": "$push", "value": value}
+        res = self.astra_client.request(method=http_methods.POST,
+                                        path=f"{self.base_path}/{path}/function",
+                                        json_data=json_data)
+        return res.get("data")
+
+    def pop(self, path=None):
+        json_data = {"operation": "$pop"}
+        res = self.astra_client.request(method=http_methods.POST,
+                                        path=f"{self.base_path}/{path}/function",
+                                        json_data=json_data)
+        return res.get("data")
+
 
 class AstraNamespace():
     def __init__(self, astra_client=None, namespace_name=None):
         self.astra_client = astra_client
         self.namespace_name = namespace_name
+        self.base_path = f"{DEFAULT_BASE_PATH}/{namespace_name}"
 
     def collection(self, collection_name):
         return AstraCollection(astra_client=self.astra_client,
                                namespace_name=self.namespace_name,
                                collection_name=collection_name)
+
+    def get_collections(self):
+        res = self.astra_client.request(method=http_methods.GET,
+                                        path=f"{self.base_path}/collections")
+        return res.get("data")
+
+    def create_collection(self, name=""):
+        return self.astra_client.request(method=http_methods.POST,
+                                         path=f"{self.base_path}/collections",
+                                         json_data={"name": name})
+
+    def delete_collection(self, name=""):
+        return self.astra_client.request(method=http_methods.DELETE,
+                                         path=f"{self.base_path}/collections/{name}")
 
 
 class AstraDocumentClient():
@@ -104,8 +163,10 @@ class AstraDocumentClient():
 def create_client(astra_database_id=None,
                   astra_database_region=None,
                   astra_application_token=None,
+                  base_url=None,
                   debug=False):
-    astra_client = AstraClient(astra_database_id=astra_database_id,
-                               astra_database_region=astra_database_region,
-                               astra_application_token=astra_application_token)
+    astra_client = create_astra_client(astra_database_id=astra_database_id,
+                                       astra_database_region=astra_database_region,
+                                       astra_application_token=astra_application_token,
+                                       base_url=base_url)
     return AstraDocumentClient(astra_client=astra_client)
