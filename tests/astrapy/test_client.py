@@ -117,10 +117,12 @@ def test_get_databases(astra_client):
     assert databases[0]["id"] == database["id"]
 
 # # TODO: when deleting a keyspace is available, round out the test
-# @pytest.mark.it('should create and delete a keyspace')
-# def test_get_databases(astra_client):
-#     databases = astra_client.ops.get_databases(options={"include": "active"})
-#     database = astra_client.ops.get_database(databases[0].id)
+# @pytest.mark.it('should create a keyspace')
+# def test_create_keyspace(astra_client):
+#     res = astra_client.ops.create_keyspace(
+#         database=ASTRA_DB_ID, keyspace="new_keyspace")
+#     print(res)
+#     assert res is not None
 
 # # TODO: find a way to terminate pending databases
 # @pytest.mark.it('should create and delete a database')
