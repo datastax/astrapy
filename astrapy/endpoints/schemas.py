@@ -23,12 +23,14 @@ class AstraSchemas():
         self.client = client
 
     def get_keyspaces(self):
-        return self.client.request(method=http_methods.GET,
-                                   path=f"{PATH_PREFIX}/keyspaces")
+        res = self.client.request(method=http_methods.GET,
+                                  path=f"{PATH_PREFIX}/keyspaces")
+        return res.get("data", [])
 
     def get_keyspace(self, keyspace=""):
-        return self.client.request(method=http_methods.GET,
-                                   path=f"{PATH_PREFIX}/keyspaces/{keyspace}")
+        res = self.client.request(method=http_methods.GET,
+                                  path=f"{PATH_PREFIX}/keyspaces/{keyspace}")
+        return res.get("data")
 
     def create_table(self, keyspace="", table_definition=None):
         return self.client.request(method=http_methods.POST,
@@ -36,16 +38,18 @@ class AstraSchemas():
                                    json_data=table_definition)
 
     def get_tables(self, keyspace=""):
-        return self.client.request(method=http_methods.GET,
-                                   path=f"{PATH_PREFIX}/keyspaces/{keyspace}/tables")
+        res = self.client.request(method=http_methods.GET,
+                                  path=f"{PATH_PREFIX}/keyspaces/{keyspace}/tables")
+        return res.get("data")
 
     def get_table(self, keyspace="", table=""):
-        return self.client.request(method=http_methods.GET,
-                                   path=f"{PATH_PREFIX}/keyspaces/{keyspace}/tables/{table}")
+        res = self.client.request(method=http_methods.GET,
+                                  path=f"{PATH_PREFIX}/keyspaces/{keyspace}/tables/{table}")
+        return res.get("data")
 
-    def update_table(self, keyspace="", table="", table_definition=None):
+    def update_table(self, keyspace="", table_definition=None):
         return self.client.request(method=http_methods.PUT,
-                                   path=f"{PATH_PREFIX}/keyspaces/{keyspace}/tables/{table}",
+                                   path=f"{PATH_PREFIX}/keyspaces/{keyspace}/tables/{table_definition['name']}",
                                    json_data=table_definition)
 
     def delete_table(self, keyspace="", table=""):
@@ -54,16 +58,18 @@ class AstraSchemas():
 
     def create_column(self, keyspace="", table="", column_definition=None):
         return self.client.request(method=http_methods.POST,
-                                   path=f"{PATH_PREFIX}/keyspaces/{keyspace}/tables/{table}",
+                                   path=f"{PATH_PREFIX}/keyspaces/{keyspace}/tables/{table}/columns",
                                    json_data=column_definition)
 
     def get_columns(self, keyspace="", table=""):
-        return self.client.request(method=http_methods.GET,
-                                   path=f"{PATH_PREFIX}/keyspaces/{keyspace}/tables/{table}/columns")
+        res = self.client.request(method=http_methods.GET,
+                                  path=f"{PATH_PREFIX}/keyspaces/{keyspace}/tables/{table}/columns")
+        return res.get("data")
 
     def get_column(self, keyspace="", table="", column=""):
-        return self.client.request(method=http_methods.GET,
-                                   path=f"{PATH_PREFIX}/keyspaces/{keyspace}/tables/{table}/columns/{column}")
+        res = self.client.request(method=http_methods.GET,
+                                  path=f"{PATH_PREFIX}/keyspaces/{keyspace}/tables/{table}/columns/{column}")
+        return res.get("data")
 
     def update_column(self, keyspace="", table="", column="", column_definition=None):
         return self.client.request(method=http_methods.PUT,
@@ -86,3 +92,27 @@ class AstraSchemas():
     def delete_index(self, keyspace="", table="", index=""):
         return self.client.request(method=http_methods.DELETE,
                                    path=f"{PATH_PREFIX}/keyspaces/{keyspace}/tables/{table}/indexes/{index}")
+
+    def get_types(self, keyspace=""):
+        res = self.client.request(method=http_methods.GET,
+                                  path=f"{PATH_PREFIX}/keyspaces/{keyspace}/types")
+        return res.get("data")
+
+    def get_type(self, keyspace="", udt=""):
+        res = self.client.request(method=http_methods.GET,
+                                  path=f"{PATH_PREFIX}/keyspaces/{keyspace}/types/{udt}")
+        return res.get("data")
+
+    def create_type(self, keyspace="", udt_definition=None):
+        return self.client.request(method=http_methods.POST,
+                                   path=f"{PATH_PREFIX}/keyspaces/{keyspace}/types",
+                                   json_data=udt_definition)
+
+    def update_type(self, keyspace="", udt_definition=None):
+        return self.client.request(method=http_methods.PUT,
+                                   path=f"{PATH_PREFIX}/keyspaces/{keyspace}/types",
+                                   json_data=udt_definition)
+
+    def delete_type(self, keyspace="", udt=""):
+        return self.client.request(method=http_methods.DELETE,
+                                   path=f"{PATH_PREFIX}/keyspaces/{keyspace}/types/{udt}")

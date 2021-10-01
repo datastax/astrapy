@@ -16,6 +16,7 @@ from astrapy.collections import create_client
 from astrapy.endpoints.rest import AstraRest
 from astrapy.endpoints.schemas import AstraSchemas
 from astrapy.endpoints.ops import AstraOps
+from astrapy.endpoints.graphql import AstraGraphQL
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,11 +29,13 @@ class AstraClient():
         self.rest = AstraRest(self._rest_client)
         self.ops = AstraOps(self._rest_client)
         self.schemas = AstraSchemas(self._rest_client)
+        self.gql = AstraGraphQL(self._rest_client)
 
 
 def create_astra_client(astra_database_id=None,
                         astra_database_region=None,
                         astra_application_token=None,
+                        base_url=None,
                         debug=False):
     astra_collections_client = create_client(astra_database_id=astra_database_id,
                                              astra_database_region=astra_database_region,

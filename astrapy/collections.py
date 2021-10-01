@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.rest import AstraClient, http_methods
+from astrapy.rest import http_methods
+from astrapy.rest import create_client as create_astra_client
 import logging
 import json
 
@@ -59,7 +60,10 @@ class AstraCollection():
         request_params.update(options)
         response = self._get(path=None, options=request_params)
         if response is not None:
-            return response[list(response.keys())[0]]
+            keys = list(response.keys())
+            if(len(keys) == 0):
+                return None
+            return response[keys[0]]
         return None
 
     def create(self, path=None, document=None):
@@ -104,8 +108,10 @@ class AstraDocumentClient():
 def create_client(astra_database_id=None,
                   astra_database_region=None,
                   astra_application_token=None,
+                  base_url=None,
                   debug=False):
-    astra_client = AstraClient(astra_database_id=astra_database_id,
-                               astra_database_region=astra_database_region,
-                               astra_application_token=astra_application_token)
+    astra_client = create_astra_client(astra_database_id=astra_database_id,
+                                       astra_database_region=astra_database_region,
+                                       astra_application_token=astra_application_token,
+                                       base_url=base_url)
     return AstraDocumentClient(astra_client=astra_client)

@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.rest import http_methods
+from astrapy.rest import http_methods, DEFAULT_TIMEOUT
 import copy
+import requests
 
 DEFAULT_HOST = "https://api.astra.datastax.com"
 PATH_PREFIX = "/v2"
@@ -27,14 +28,30 @@ class AstraOps():
         self.client.auth_header = "Authorization"
         self.client.astra_application_token = f"Bearer {self.client.astra_application_token}"
 
-    def get_databases(self):
+    def get_databases(self, options=None):
+        options = {} if options is None else options
         return self.client.request(method=http_methods.GET,
-                                   path=f"{PATH_PREFIX}/databases")
+                                   path=f"{PATH_PREFIX}/databases",
+                                   url_params=options)
 
     def create_database(self, database_definition=None):
-        return self.client.request(method=http_methods.POST,
-                                   path=f"{PATH_PREFIX}/databases",
-                                   json_data=database_definition)
+        r = requests.request(method=http_methods.POST,
+                             url=f"{self.client.base_url}{PATH_PREFIX}/databases",
+                             json=database_definition,
+                             timeout=DEFAULT_TIMEOUT,
+                             headers={self.client.auth_header: self.client.astra_application_token})
+        if(r.status_code == 201):
+            return {"id": r.headers["Location"]}
+        return None
+
+    def terminate_database(self, database=""):
+        r = requests.request(method=http_methods.POST,
+                             url=f"{self.client.base_url}{PATH_PREFIX}/databases/{database}/terminate",
+                             timeout=DEFAULT_TIMEOUT,
+                             headers={self.client.auth_header: self.client.astra_application_token})
+        if(r.status_code == 202):
+            return database
+        return None
 
     def get_database(self, database=""):
         return self.client.request(method=http_methods.GET,
@@ -43,10 +60,6 @@ class AstraOps():
     def create_keyspace(self, database="", keyspace=""):
         return self.client.request(method=http_methods.POST,
                                    path=f"{PATH_PREFIX}/databases/{database}/keyspaces/{keyspace}")
-
-    def terminate_database(self, database=""):
-        return self.client.request(method=http_methods.POST,
-                                   path=f"{PATH_PREFIX}/databases/{database}/terminate")
 
     def park_database(self, database=""):
         return self.client.request(method=http_methods.POST,
@@ -66,9 +79,84 @@ class AstraOps():
                                    path=f"{PATH_PREFIX}/databases/{database}/resetPassword",
                                    json_data=options)
 
-    def get_available_regions(self):
+    def get_secure_bundle(self, database=""):
+        return self.client.request(method=http_methods.POST,
+                                   path=f"{PATH_PREFIX}/databases/{database}/secureBundleURL")
+
+    def get_datacenters(self, database=""):
+        return self.client.request(method=http_methods.GET,
+                                   path=f"{PATH_PREFIX}/databases/{database}/datacenters")
+
+    def create_datacenter(self, database="", options=None):
+        return self.client.request(method=http_methods.POST,
+                                   path=f"{PATH_PREFIX}/databases/{database}/datacenters",
+                                   json_data=options)
+
+    def terminate_datacenter(self, database="", datacenter=""):
+        return self.client.request(method=http_methods.POST,
+                                   path=f"{PATH_PREFIX}/databases/{database}/datacenters/{datacenter}/terminate")
+
+    def get_access_list(self,  database=""):
+        return self.client.request(method=http_methods.GET,
+                                   path=f"{PATH_PREFIX}/databases/{database}/access-list")
+
+    def replace_access_list(self,  database="", access_list=None):
+        return self.client.request(method=http_methods.PUT,
+                                   path=f"{PATH_PREFIX}/databases/{database}/access-list",
+                                   json_data=access_list)
+
+    def update_access_list(self,  database="", access_list=None):
+        return self.client.request(method=http_methods.PATCH,
+                                   path=f"{PATH_PREFIX}/databases/{database}/access-list",
+                                   json_data=access_list)
+
+    def add_access_list_address(self,  database="", address=None):
+        return self.client.request(method=http_methods.POST,
+                                   path=f"{PATH_PREFIX}/databases/{database}/access-list",
+                                   json_data=address)
+
+    def delete_access_list(self,  database=""):
+        return self.client.request(method=http_methods.DELETE,
+                                   path=f"{PATH_PREFIX}/databases/{database}/access-list")
+
+    def get_private_link(self,  database=""):
+        return self.client.request(method=http_methods.GET,
+                                   path=f"{PATH_PREFIX}/organizations/clusters/{database}/private-link")
+
+    def get_datacenter_private_link(self,  database="", datacenter=""):
+        return self.client.request(method=http_methods.GET,
+                                   path=f"{PATH_PREFIX}/organizations/clusters/{database}/datacenters/{datacenter}/private-link")
+
+    def create_datacenter_private_link(self,  database="", datacenter="", private_link=None):
+        return self.client.request(method=http_methods.POST,
+                                   path=f"{PATH_PREFIX}/organizations/clusters/{database}/datacenters/{datacenter}/private-link",
+                                   json_data=private_link)
+
+    def create_datacenter_endpoint(self,  database="", datacenter="", endpoint=None):
+        return self.client.request(method=http_methods.POST,
+                                   path=f"{PATH_PREFIX}/organizations/clusters/{database}/datacenters/{datacenter}/endpoint",
+                                   json_data=endpoint)
+
+    def update_datacenter_endpoint(self,  database="", datacenter="", endpoint=None):
+        return self.client.request(method=http_methods.PUT,
+                                   path=f"{PATH_PREFIX}/organizations/clusters/{database}/datacenters/{datacenter}/endpoints/{endpoint['id']}",
+                                   json_data=endpoint)
+
+    def get_datacenter_endpoint(self,  database="", datacenter="", endpoint=""):
+        return self.client.request(method=http_methods.GET,
+                                   path=f"{PATH_PREFIX}/organizations/clusters/{database}/datacenters/{datacenter}/endpoints/{endpoint}")
+
+    def delete_datacenter_endpoint(self,  database="", datacenter="", endpoint=""):
+        return self.client.request(method=http_methods.DELETE,
+                                   path=f"{PATH_PREFIX}/organizations/clusters/{database}/datacenters/{datacenter}/endpoints/{endpoint}")
+
+    def get_available_classic_regions(self):
         return self.client.request(method=http_methods.GET,
                                    path=f"{PATH_PREFIX}/availableRegions")
+
+    def get_available_regions(self):
+        return self.client.request(method=http_methods.GET,
+                                   path=f"{PATH_PREFIX}/regions/serverless")
 
     def get_roles(self):
         return self.client.request(method=http_methods.GET,
@@ -124,9 +212,47 @@ class AstraOps():
                                    json_data=roles)
 
     def delete_token(self, token=""):
-        return self.client.request(method=http_methods.POST,
+        return self.client.request(method=http_methods.DELETE,
                                    path=f"{PATH_PREFIX}/clientIdSecret/{token}")
 
     def get_organization(self):
         return self.client.request(method=http_methods.GET,
                                    path=f"{PATH_PREFIX}/currentOrg")
+
+    def get_access_lists(self):
+        return self.client.request(method=http_methods.GET,
+                                   path=f"{PATH_PREFIX}/access-lists")
+
+    def get_access_list_template(self):
+        return self.client.request(method=http_methods.GET,
+                                   path=f"{PATH_PREFIX}/access-list/template")
+
+    def validate_access_list(self):
+        return self.client.request(method=http_methods.POST,
+                                   path=f"{PATH_PREFIX}/access-list/validate")
+
+    def get_private_links(self):
+        return self.client.request(method=http_methods.GET,
+                                   path=f"{PATH_PREFIX}/organizations/private-link")
+
+    def get_streaming_providers(self):
+        return self.client.request(method=http_methods.GET,
+                                   path=f"{PATH_PREFIX}/streaming/providers")
+
+    def get_streaming_tenants(self):
+        return self.client.request(method=http_methods.GET,
+                                   path=f"{PATH_PREFIX}/streaming/tenants")
+
+    def create_streaming_tenant(self, tenant=None):
+        return self.client.request(method=http_methods.POST,
+                                   path=f"{PATH_PREFIX}/streaming/tenants",
+                                   json_data=tenant)
+
+    def delete_streaming_tenant(self, tenant="", cluster=""):
+        return self.client.request(method=http_methods.DELETE,
+                                   path=f"{PATH_PREFIX}/streaming/tenants/{tenant}/clusters/{cluster}",
+                                   json_data=tenant)
+
+    def get_streaming_tenant(self, tenant=""):
+        return self.client.request(method=http_methods.GET,
+                                   path=f"{PATH_PREFIX}/streaming/tenants/{tenant}/limits")

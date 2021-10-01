@@ -152,3 +152,8 @@ def test_find_one_document(test_collection):
         "first_name": {"$eq": f"Cliff-{user_id}"},
     })
     assert document["first_name"] == f"Cliff-{user_id}"
+    document = test_collection.find_one(query={
+        "first_name": {"$eq": f"Cliff-Not-There"},
+    })
+    assert document is None
+
