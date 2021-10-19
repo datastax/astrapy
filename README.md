@@ -17,7 +17,7 @@ pip install astrapy
 
 Setup your Astra client
 ```python
-from astrapy.client import create_astra_client
+from astrapy.client import create_client
 
 astra_client = create_client(astra_database_id=ASTRA_DB_ID,
                              astra_database_region=ASTRA_DB_REGION,
