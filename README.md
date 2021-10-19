@@ -19,9 +19,9 @@ Setup your Astra client
 ```python
 from astrapy.client import create_astra_client
 
-astra_client = create_client(astra_database_id=ASTRA_DB_ID,
-                             astra_database_region=ASTRA_DB_REGION,
-                             astra_application_token=ASTRA_DB_APPLICATION_TOKEN)
+astra_client = create_astra_client(astra_database_id=ASTRA_DB_ID,
+                                   astra_database_region=ASTRA_DB_REGION,
+                                   astra_application_token=ASTRA_DB_APPLICATION_TOKEN)
 ```
 
 Take a look at the [client tests](https://github.com/datastax/astrapy/blob/master/tests/astrapy/test_client.py) and the [collection tests](https://github.com/datastax/astrapy/blob/master/tests/astrapy/test_collections.py) for specific endpoint examples.
