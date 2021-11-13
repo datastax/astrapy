@@ -20,7 +20,10 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='astrapy',
-    packages=['astrapy'],
+    packages=[
+        'astrapy',
+        'astrapy/endpoints',
+    ],
     version='0.2.1',
     license='Apache license 2.0',
     description='AstraPy is a Pythonic SDK for DataStax Astra',
