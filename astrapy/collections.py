@@ -70,7 +70,12 @@ class AstraCollection():
         request_params = {"where": json.dumps(
             query), "page-size": DEFAULT_PAGE_SIZE}
         request_params.update(options)
-        return self._get(path=None, options=request_params)
+        response = self.astra_client.request(method=http_methods.GET,
+                                             path=self.base_path,
+                                             url_params=request_params)
+        if isinstance(response, dict):
+            return response
+        return None
 
     def find_one(self, query=None, options=None):
         options = {} if options is None else options

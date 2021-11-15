@@ -228,9 +228,9 @@ def test_find_documents(test_collection):
     documents = test_collection.find(query={
         "first_name": {"$eq": f"Cliff-{user_id}"},
     })
-    assert len(documents.keys()) == 2
-    assert documents[user_id]["last_name"] == "Wicklow"
-    assert documents[user_id_2]["last_name"] == "Danger"
+    assert len(documents["data"].keys()) == 2
+    assert documents["data"][user_id]["last_name"] == "Wicklow"
+    assert documents["data"][user_id_2]["last_name"] == "Danger"
 
 
 @pytest.mark.it('should find a single document')
