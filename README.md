@@ -84,12 +84,14 @@ You can use the Collections client to work with the Astra Document API. [API Ref
 ```python
 # astra_client created above
 # create multiple documents using the collections API
-my_collection = astra_client.namespace(ASTRA_DB_KEYSPACE).collection(COLLECTION_NAME)
+my_collection = astra_client.collections.namespace(ASTRA_DB_KEYSPACE).collection(COLLECTION_NAME)
 my_collection.batch(documents=[
     {
+        "documentId": "1",
         "first_name": "Dang",
         "last_name": "Son",
     }, {
+        "documentId": "2",
         "first_name": "Yep",
         "last_name": "Boss",
     }])
