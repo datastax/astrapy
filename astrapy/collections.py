@@ -29,6 +29,8 @@ class AstraCollection():
         self.namespace_name = namespace_name
         self.collection_name = collection_name
         self.base_path = f"{DEFAULT_BASE_PATH}/{namespace_name}/collections/{collection_name}"
+        if astra_client.auth_base_url is not None:
+            self.base_path = f"/v2/namespaces/{namespace_name}/collections/{collection_name}"
 
     def _get(self, path=None, options=None):
         full_path = f"{self.base_path}/{path}" if path else self.base_path
