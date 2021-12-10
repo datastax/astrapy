@@ -169,9 +169,16 @@ def create_client(astra_database_id=None,
                   astra_database_region=None,
                   astra_application_token=None,
                   base_url=None,
+                  auth_base_url=None,
+                  username=None,
+                  password=None,
                   debug=False):
     astra_client = create_astra_client(astra_database_id=astra_database_id,
                                        astra_database_region=astra_database_region,
                                        astra_application_token=astra_application_token,
-                                       base_url=base_url)
+                                       base_url=base_url,
+                                       auth_base_url=auth_base_url,
+                                       username=username,
+                                       password=password,
+                                       debug=debug)
     return AstraDocumentClient(astra_client=astra_client)
