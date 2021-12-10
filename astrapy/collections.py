@@ -29,6 +29,8 @@ class AstraCollection():
         self.namespace_name = namespace_name
         self.collection_name = collection_name
         self.base_path = f"{DEFAULT_BASE_PATH}/{namespace_name}/collections/{collection_name}"
+        if astra_client.auth_base_url is not None:
+            self.base_path = f"/v2/namespaces/{namespace_name}/collections/{collection_name}"
 
     def _get(self, path=None, options=None):
         full_path = f"{self.base_path}/{path}" if path else self.base_path
@@ -169,9 +171,16 @@ def create_client(astra_database_id=None,
                   astra_database_region=None,
                   astra_application_token=None,
                   base_url=None,
+                  auth_base_url=None,
+                  username=None,
+                  password=None,
                   debug=False):
     astra_client = create_astra_client(astra_database_id=astra_database_id,
                                        astra_database_region=astra_database_region,
                                        astra_application_token=astra_application_token,
-                                       base_url=base_url)
+                                       base_url=base_url,
+                                       auth_base_url=auth_base_url,
+                                       username=username,
+                                       password=password,
+                                       debug=debug)
     return AstraDocumentClient(astra_client=astra_client)

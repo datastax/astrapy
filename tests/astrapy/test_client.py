@@ -31,12 +31,25 @@ ASTRA_DB_APPLICATION_TOKEN = os.environ.get('ASTRA_DB_APPLICATION_TOKEN')
 ASTRA_DB_KEYSPACE = os.environ.get('ASTRA_DB_KEYSPACE')
 TABLE_NAME = fake.bothify(text="users_????")
 
+STARGATE_BASE_URL = os.environ.get('STARGATE_BASE_URL')
+STARGATE_AUTH_URL = os.environ.get('STARGATE_AUTH_URL')
+STARGATE_USERNAME = os.environ.get('STARGATE_USERNAME')
+STARGATE_PASSWORD = os.environ.get('STARGATE_PASSWORD')
+
 
 @pytest.fixture
 def astra_client():
     return create_astra_client(astra_database_id=ASTRA_DB_ID,
                                astra_database_region=ASTRA_DB_REGION,
                                astra_application_token=ASTRA_DB_APPLICATION_TOKEN)
+
+
+@pytest.fixture
+def stargate_client():
+    return create_astra_client(base_url=STARGATE_BASE_URL,
+                               auth_base_url=STARGATE_AUTH_URL,
+                               username=STARGATE_USERNAME,
+                               password=STARGATE_PASSWORD)
 
 
 @pytest.fixture
@@ -102,6 +115,11 @@ def udt_definition():
 @pytest.mark.it('should initialize an AstraDB REST Client')
 def test_connect(astra_client):
     assert type(astra_client) is AstraClient
+
+
+@pytest.mark.it('should initialize a Stargate REST Client')
+def test_stargate_connect(stargate_client):
+    assert type(stargate_client) is AstraClient
 
 
 @pytest.mark.it('should get databases')
