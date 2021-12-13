@@ -138,7 +138,7 @@ astra_client._rest_client.request(
 from astrapy.client import create_astra_client
 
 stargate_client = create_astra_client(base_url=http://localhost:8082,
-                                      base_auth_url=http://localhost:8081/v1/auth,
+                                      auth_base_url=http://localhost:8081/v1/auth,
                                       username=****,
                                       password=****)
 ```
