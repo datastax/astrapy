@@ -60,6 +60,8 @@ def test_connect(test_collection):
 def test_create_collection(test_namespace):
     res = test_namespace.create_collection(name="pytest_collection")
     assert res is None
+    res2 = test_namespace.create_collection(name="test_schema")
+    assert res2 is None
 
 
 @pytest.mark.it('should get all collections')
@@ -91,7 +93,7 @@ def test_create_schema(test_namespace):
             }
         }
     }
-    test_collection = test_namespace.collection(TEST_COLLECTION_NAME)
+    test_collection = test_namespace.collection("test_schema")
     res = test_collection.create_schema(schema=schema)
     assert res["schema"] is not None
 
@@ -110,7 +112,7 @@ def test_update_schema(test_namespace):
             }
         }
     }
-    test_collection = test_namespace.collection(TEST_COLLECTION_NAME)
+    test_collection = test_namespace.collection("test_schema")
     res = test_collection.update_schema(schema=schema)
     assert res["schema"] is not None
 
@@ -119,6 +121,8 @@ def test_update_schema(test_namespace):
 def test_delete_collection(test_namespace):
     res = test_namespace.delete_collection(name="pytest_collection")
     assert res is None
+    res2 = test_namespace.delete_collection(name="test_schema")
+    assert res2 is None
 
 
 @pytest.mark.it('should create a document')
