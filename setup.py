@@ -35,9 +35,9 @@ setup(
     download_url='https://github.com/datastax/astrapy/archive/refs/tags/v0.3.2.tar.gz',
     keywords=['DataStax Astra', 'Stargate'],
     install_requires=[
-        "requests>=2.26,<3",
+        "requests>=2.27,<3",
         "requests_toolbelt>=0.9.1,<1",
-        'gql>=3.0.0b0',
+        'gql>=3.0.0',
     ],
     classifiers=[
         'Development Status :: 3 - Alpha',

@@ -19,6 +19,9 @@ a proposal for your work first, to be sure that we can use it.
 
 ## <a name="submit"></a> Contribution Guidelines
 
+### <a name="cla"></a> Contribution License Agreement
+To protect the community, all contributors are required to [sign the DataStax Contribution License Agreement](https://cla.datastax.com/). The process is completely electronic and should only take a few minutes.
+
 ### <a name="submit-issue"></a> Submitting an Issue
 Before you submit an issue, search the archive, maybe your question was already answered.
 
