@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.10.11, pytest-7.4.0, pluggy-1.2.0
+rootdir: /Users/kirstenhunter/src/astrapynew
+configfile: pytest.ini
+plugins: Faker-19.6.1, anyio-3.6.2
+collected 21 items
+
+tests/astrapy/test_collections.py::test_create_collection PASSED         [  4%]
+tests/astrapy/test_collections.py::test_get_collections PASSED           [  9%]
+tests/astrapy/test_collections.py::test_create_document_cliff PASSED     [ 14%]
+tests/astrapy/test_collections.py::test_create_document PASSED           [ 19%]
+tests/astrapy/test_collections.py::test_find_document PASSED             [ 23%]
+tests/astrapy/test_collections.py::test_insert_many PASSED               [ 28%]
+tests/astrapy/test_collections.py::test_create_documents PASSED          [ 33%]
+tests/astrapy/test_collections.py::test_create_subdocument PASSED        [ 38%]
+tests/astrapy/test_collections.py::test_create_document_without_id PASSED [ 42%]
+tests/astrapy/test_collections.py::test_update_document PASSED           [ 47%]
+tests/astrapy/test_collections.py::test_replace_document PASSED          [ 52%]
+tests/astrapy/test_collections.py::test_delete_subdocument PASSED        [ 57%]
+tests/astrapy/test_collections.py::test_delete_document PASSED           [ 61%]
+tests/astrapy/test_collections.py::test_find_documents_vector PASSED     [ 66%]
+tests/astrapy/test_collections.py::test_find_documents_vector_proj PASSED [ 71%]
+tests/astrapy/test_collections.py::test_find_one_and_update_vector PASSED [ 76%]
+tests/astrapy/test_collections.py::test_find_one_and_replace_vector PASSED [ 80%]
+tests/astrapy/test_collections.py::test_find_documents PASSED            [ 85%]
+tests/astrapy/test_collections.py::test_find_one_document PASSED         [ 90%]
+tests/astrapy/test_collections.py::test_functions PASSED                 [ 95%]
+tests/astrapy/test_collections.py::test_delete_collection PASSED         [100%]
+
+============================= 21 passed in 34.76s ==============================

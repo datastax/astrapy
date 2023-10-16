@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapyjson.client import http_methods, DEFAULT_TIMEOUT
+from astrapy.base import http_methods, DEFAULT_TIMEOUT
 import copy
 import requests
 
@@ -43,6 +43,7 @@ class AstraOps:
             timeout=DEFAULT_TIMEOUT,
             headers={self.client.auth_header: self.client.astra_application_token},
         )
+        print(r.text)
         if r.status_code == 201:
             return {"id": r.headers["Location"]}
         return None
@@ -54,6 +55,7 @@ class AstraOps:
             timeout=DEFAULT_TIMEOUT,
             headers={self.client.auth_header: self.client.astra_application_token},
         )
+        print(r.status_code)
         if r.status_code == 202:
             return database
         return None
