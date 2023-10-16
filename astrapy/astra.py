@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapyjson.config.base import AstraClient
+from astrapy.base import AstraClient
 import logging
 import json
 
