@@ -71,7 +71,7 @@ class AstraOps:
 
     def get_database(self, database="", options=None):
         return self.ops_request(
-            method=http_methods.GET, path=f"databases/{database}", options=options
+            method=http_methods.GET, path=f"{PATH_PREFIX}/databases/{database}", options=options
         )
 
     def create_keyspace(self, database="", keyspace=""):
