@@ -26,51 +26,55 @@ REQUESTED_WITH = "AstraPy"
 class AstraClient:
     def __init__(
         self,
-        base_url=None,
+        db_id,
+        token,
+        db_region=None,
         debug=False,
-        astra_database_id=None,
-        astra_database_region=None,
-        astra_application_token=None,
     ):
-        # Check the base url
-        # TODO: Abstract away the URL into some global config
-        if base_url is None:
-            base_url = f"https://{astra_database_id}-{astra_database_region}.apps.astra.datastax.com"
-        
         # Base Parameters
-        self.base_url = base_url
         self.debug = debug
 
         # Astra Parameters
-        self.astra_database_id = astra_database_id
-        self.astra_database_region = astra_database_region
-        self.astra_application_token = astra_application_token
+        self.db_id = db_id
+        self.token = token
+
+        # Handle the region parameter
+        if not db_region:
+            db_region = AstraOps(token=token).get_database(self.db_id)["info"]["region"]
+        self.db_region = db_region
+
+        # Set the Base URL for the API calls
+        self.base_url = f"https://{self.db_id}-{self.db_region}.apps.astra.datastax.com"
 
         # Start with some uninitialized functionality
         self.astra_ops = None
+        self.astra_vector_database = None
 
-
-    def request(
-            self, 
-            *args, 
-            **kwargs
-        ):
+    def request(self, *args, **kwargs):
         result = make_request(
-            *args, **kwargs, 
-            base_url=self.base_url, 
+            *args,
+            **kwargs,
+            base_url=self.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
-            token=self.astra_application_token
+            token=self.token,
         )
 
         return result
 
-        
-    def ops(
-        self
-    ):
+    def ops(self):
         # Initialize AstraOps if not already done
         if not self.astra_ops:
-            self.astra_ops = AstraOps(token=self.astra_application_token)
+            self.astra_ops = AstraOps(token=self.token)
 
         # Return the call
         return self.astra_ops
+
+    def vector_database(self):
+        # Initialize AstraOps if not already done
+        if not self.astra_vector_database:
+            from astrapy.vector import AstraVectorClient
+
+            self.astra_vector_database = AstraVectorClient(self)
+
+        # Return the call
+        return self.astra_vector_database

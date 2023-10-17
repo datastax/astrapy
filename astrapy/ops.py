@@ -47,10 +47,10 @@ class AstraOps:
     def create_database(self, database_definition=None):
         r = requests.request(
             method=http_methods.POST,
-            url=f"{self.client.base_url}{PATH_PREFIX}/databases",
+            url=f"{self.base_url}{PATH_PREFIX}/databases",
             json=database_definition,
             timeout=DEFAULT_TIMEOUT,
-            headers={self.client.auth_header: self.client.astra_application_token},
+            headers={"Authorization": self.token},
         )
         print(r.text)
         if r.status_code == 201:
@@ -60,9 +60,9 @@ class AstraOps:
     def terminate_database(self, database=""):
         r = requests.request(
             method=http_methods.POST,
-            url=f"{self.client.base_url}{PATH_PREFIX}/databases/{database}/terminate",
+            url=f"{self.base_url}{PATH_PREFIX}/databases/{database}/terminate",
             timeout=DEFAULT_TIMEOUT,
-            headers={self.client.auth_header: self.client.astra_application_token},
+            headers={"Authorization": self.token},
         )
         print(r.status_code)
         if r.status_code == 202:
@@ -71,7 +71,9 @@ class AstraOps:
 
     def get_database(self, database="", options=None):
         return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/databases/{database}", options=options
+            method=http_methods.GET,
+            path=f"{PATH_PREFIX}/databases/{database}",
+            options=options,
         )
 
     def create_keyspace(self, database="", keyspace=""):

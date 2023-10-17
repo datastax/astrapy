@@ -15,15 +15,14 @@ class http_methods:
 
 
 def make_request(
-    base_url, auth_header, token,
-    method=http_methods.POST, path=None, 
-    json_data=None, url_params=None
+    base_url,
+    auth_header,
+    token,
+    method=http_methods.POST,
+    path=None,
+    json_data=None,
+    url_params=None,
 ):
-    print("#### Debugging ####")
-    print({auth_header: token})
-    print(f"{base_url}{path}")
-    print("#### Debugging ####")
-
     r = requests.request(
         method=method,
         url=f"{base_url}{path}",

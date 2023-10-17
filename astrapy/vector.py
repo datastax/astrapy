@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from astrapy.base import AstraClient
+from astrapy.ops import AstraOps
 from astrapy.utils import http_methods
 
 import logging
@@ -24,11 +25,11 @@ DEFAULT_BASE_PATH = "/api/json/v1"
 
 
 class AstraVectorCollection:
-    def __init__(self, astra_client=None, namespace_name=None, collection_name=None):
+    def __init__(self, astra_client=None, namespace=None, collection=None):
         self.astra_client = astra_client
-        self.namespace_name = namespace_name
-        self.collection_name = collection_name
-        self.base_path = f"{DEFAULT_BASE_PATH}/{namespace_name}/{collection_name}"
+        self.namespace = namespace
+        self.collection = collection
+        self.base_path = f"{DEFAULT_BASE_PATH}/{namespace}/{collection}"
 
     def _get(self, path=None, options=None):
         full_path = f"{self.base_path}/{path}" if path else self.base_path
@@ -180,17 +181,34 @@ class AstraVectorCollection:
         )
 
 
-class AstraVectorNamespace:
-    def __init__(self, astra_client=None, namespace_name=None):
-        self.astra_client = astra_client
-        self.namespace_name = namespace_name
-        self.base_path = f"{DEFAULT_BASE_PATH}/{namespace_name}"
+class AstraVectorClient:
+    def __init__(
+        self,
+        astra_client=None,
+        db_id=None,
+        token=None,
+        db_region=None,
+        namespace="default_namespace",
+    ):
+        if astra_client is not None:
+            self.astra_client = astra_client
+            token = self.astra_client.token
+        else:
+            if db_id is None or token is None:
+                raise AssertionError("Must provide db_id and token")
 
-    def collection(self, collection_name):
+            self.astra_client = AstraClient(
+                db_id=db_id, token=token, db_region=db_region
+            )
+
+        self.namespace = namespace
+        self.base_path = f"{DEFAULT_BASE_PATH}/{namespace}"
+
+    def collection(self, collection):
         return AstraVectorCollection(
             astra_client=self.astra_client,
-            namespace_name=self.namespace_name,
-            collection_name=collection_name,
+            namespace=self.namespace,
+            collection=collection,
         )
 
     def get_collections(self):
@@ -199,11 +217,13 @@ class AstraVectorNamespace:
             path=f"{self.base_path}",
             json_data={"findCollections": {}},
         )
+
         return res
 
     def create_vector_collection(self, size, name="", options=None, function="cosine"):
         if options is None:
             options = {"vector": {"size": size, "function": function}}
+
         json_query = {"createCollection": {"name": name, "options": options}}
 
         response = self.astra_client.request(
@@ -220,30 +240,3 @@ class AstraVectorNamespace:
             path=f"{self.base_path}",
             json_data={"deleteCollection": {"name": name}},
         )
-
-
-class AstraVectorClient:
-    def __init__(self, astra_client=None):
-        self.astra_client = astra_client
-
-    def namespace(self, namespace_name):
-        return AstraVectorNamespace(
-            astra_client=self.astra_client, namespace_name=namespace_name
-        )
-
-
-def create_client(
-    astra_database_id=None,
-    astra_database_region=None,
-    astra_application_token=None,
-    base_url=None,
-    debug=False,
-):
-    astra_client = AstraClient(
-        astra_database_id=astra_database_id,
-        astra_database_region=astra_database_region,
-        astra_application_token=astra_application_token,
-        base_url=base_url,
-        debug=debug,
-    )
-    return AstraVectorClient(astra_client=astra_client)

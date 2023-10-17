@@ -43,25 +43,25 @@ def devops_client():
     return AstraOps(token=ASTRA_DB_APPLICATION_TOKEN)
 
 
-@pytest.mark.it("should initialize an AstraDB Ops Client")
+@pytest.mark.describe("should initialize an AstraDB Ops Client")
 def test_client_type(devops_client):
     assert type(devops_client) is AstraOps
 
 
-@pytest.mark.it("should get all databases")
+@pytest.mark.describe("should get all databases")
 def test_list_databases(devops_client):
     response = devops_client.get_databases()
     assert type(response) is list
 
 
-@pytest.mark.it("should create a database")
+@pytest.mark.describe("should create a database")
 def test_create_database(devops_client):
     database_definition = {
-        "name": "vector_search",
+        "name": "vector_test_create",
         "tier": "serverless",
         "cloudProvider": "GCP",
-        "keyspace": "vector_search",
-        "region": "us-east1",
+        "keyspace": os.getenv("ASTRA_DB_KEYSPACE", "default_namespace"),
+        "region": os.getenv("ASTRA_DB_REGION", "us-east1"),
         "capacityUnits": 1,
         "user": "token",
         "password": os.environ.get("ASTRA_DB_APPLICATION_TOKEN"),
@@ -79,9 +79,9 @@ def test_create_database(devops_client):
     assert response is None
 
 
-@pytest.mark.it("should create a keyspace")
+@pytest.mark.describe("should create a keyspace")
 def test_create_keyspace(devops_client):
     response = devops_client.create_keyspace(
-        keyspace="vector_search_2", database=os.environ["ASTRA_DB_ID"]
+        keyspace="test_namespace", database=os.environ["ASTRA_DB_ID"]
     )
     print("RESPONSE", response)

@@ -23,6 +23,9 @@ from astrapy.ops import AstraOps
 import pytest
 import logging
 import os
+import sys
+
+sys.path.append("../../../")
 
 from faker import Faker
 
@@ -46,9 +49,9 @@ http_client.HTTPConnection.debuglevel = 1
 @pytest.fixture
 def astra_client():
     return AstraClient(
-        astra_database_id=ASTRA_DB_ID,
-        astra_database_region=ASTRA_DB_REGION,
-        astra_application_token=ASTRA_DB_APPLICATION_TOKEN,
+        db_id=ASTRA_DB_ID,
+        db_region=ASTRA_DB_REGION,
+        token=ASTRA_DB_APPLICATION_TOKEN,
     )
 
 
@@ -63,44 +66,31 @@ def jsonapi_client(astra_client):
 
 
 @pytest.fixture
-def test_collection():
-    astra_client = AstraClient(
-        astra_database_id=ASTRA_DB_ID,
-        astra_database_region=ASTRA_DB_REGION,
-        astra_application_token=ASTRA_DB_APPLICATION_TOKEN,
-    )
+def test_namespace(astra_client):
     vector_client = AstraVectorClient(astra_client=astra_client)
-    test_collection = vector_client.namespace(ASTRA_DB_KEYSPACE).collection(
-        TEST_COLLECTION_NAME
-    )
-    return test_collection
+
+    return vector_client
 
 
 @pytest.fixture
-def test_namespace():
-    astra_client = AstraClient(
-        astra_database_id=ASTRA_DB_ID,
-        astra_database_region=ASTRA_DB_REGION,
-        astra_application_token=ASTRA_DB_APPLICATION_TOKEN,
-    )
-    vector_client = AstraVectorClient(astra_client=astra_client)
-
-    return vector_client.namespace(ASTRA_DB_KEYSPACE)
+def test_collection(test_namespace):
+    test_collection = test_namespace.collection(TEST_COLLECTION_NAME)
+    return test_collection
 
 
-@pytest.mark.webtest("should create a vector collection")
+@pytest.mark.describe("should create a vector collection")
 def test_create_collection(test_namespace):
     res = test_namespace.create_vector_collection(name=TEST_COLLECTION_NAME, size=5)
     assert res is not None
 
 
-@pytest.mark.webtest("should get all collections")
+@pytest.mark.describe("should get all collections")
 def test_get_collections(test_namespace):
     res = test_namespace.get_collections()
     assert res["status"]["collections"] is not None
 
 
-@pytest.mark.webtest("should create a document")
+@pytest.mark.describe("should create a document")
 def test_create_document(test_collection):
     json_query = {
         "_id": "4",
@@ -113,7 +103,7 @@ def test_create_document(test_collection):
     assert res is not None
 
 
-@pytest.mark.webtest("create many documents")
+@pytest.mark.describe("create many documents")
 def test_create_documents(test_collection):
     json_query = [
         {
@@ -140,10 +130,7 @@ def test_create_documents(test_collection):
     assert res is not None
 
 
-
-
-
-@pytest.mark.skip("Delete a collection")
+@pytest.mark.describe("Delete a collection")
 def test_delete_collection(test_namespace):
     returnval = test_namespace.delete_collection(name=TEST_COLLECTION_NAME)
     assert returnval is not None

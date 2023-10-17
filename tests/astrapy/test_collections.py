@@ -51,18 +51,18 @@ def cliff_uuid():
 @pytest.fixture
 def astra_client():
     return AstraClient(
-        astra_database_id=ASTRA_DB_ID,
-        astra_database_region=ASTRA_DB_REGION,
-        astra_application_token=ASTRA_DB_APPLICATION_TOKEN,
+        db_id=ASTRA_DB_ID,
+        db_region=ASTRA_DB_REGION,
+        token=ASTRA_DB_APPLICATION_TOKEN,
     )
 
 
 @pytest.fixture
 def test_collection():
     astra_client = AstraClient(
-        astra_database_id=ASTRA_DB_ID,
-        astra_database_region=ASTRA_DB_REGION,
-        astra_application_token=ASTRA_DB_APPLICATION_TOKEN,
+        db_id=ASTRA_DB_ID,
+        db_region=ASTRA_DB_REGION,
+        token=ASTRA_DB_APPLICATION_TOKEN,
     )
     collections_client = AstraCollectionClient(astra_client=astra_client)
     test_collection = collections_client.namespace(ASTRA_DB_KEYSPACE).collection(
@@ -74,9 +74,9 @@ def test_collection():
 @pytest.fixture
 def test_namespace():
     astra_client = AstraClient(
-        astra_database_id=ASTRA_DB_ID,
-        astra_database_region=ASTRA_DB_REGION,
-        astra_application_token=ASTRA_DB_APPLICATION_TOKEN,
+        db_id=ASTRA_DB_ID,
+        db_region=ASTRA_DB_REGION,
+        token=ASTRA_DB_APPLICATION_TOKEN,
     )
     collections_client = AstraCollectionClient(astra_client=astra_client)
 
