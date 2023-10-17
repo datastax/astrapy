@@ -55,10 +55,14 @@ class AstraClient:
             *args, 
             **kwargs
         ):
-        make_request(*args, **kwargs, 
-                     base_url=self.base_url, 
-                     auth_header=DEFAULT_AUTH_HEADER,
-                     token=self.astra_application_token)
+        result = make_request(
+            *args, **kwargs, 
+            base_url=self.base_url, 
+            auth_header=DEFAULT_AUTH_HEADER,
+            token=self.astra_application_token
+        )
+
+        return result
 
         
     def ops(
