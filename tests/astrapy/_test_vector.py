@@ -15,14 +15,15 @@
 # This assumes that you have already created a database and a keyspace
 # of "vector"
 
-from typing import List
-from astrapy.base import AstraClient, http_methods
+from astrapy.base import AstraClient
 from astrapy.serverless import AstraJsonClient
 from astrapy.vector import AstraVectorClient
 from astrapy.ops import AstraOps
+
 import pytest
 import logging
 import os
+
 from faker import Faker
 
 from dotenv import load_dotenv
@@ -52,8 +53,8 @@ def astra_client():
 
 
 @pytest.fixture
-def devops_client(astra_client):
-    return AstraOps(client=astra_client)
+def devops_client():
+    return AstraOps(token=ASTRA_DB_APPLICATION_TOKEN)
 
 
 @pytest.fixture

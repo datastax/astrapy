@@ -13,22 +13,14 @@
 # limitations under the License.
 
 import logging
-import requests
+from astrapy.defaults import DEFAULT_AUTH_HEADER
+
+from astrapy.ops import AstraOps
+from astrapy.utils import make_request
 
 logger = logging.getLogger(__name__)
 
 REQUESTED_WITH = "AstraPy"
-DEFAULT_AUTH_PATH = "/api/rest/v1/auth"
-DEFAULT_TIMEOUT = 30000
-DEFAULT_AUTH_HEADER = "X-Cassandra-Token"
-
-
-class http_methods:
-    GET = "GET"
-    POST = "POST"
-    PUT = "PUT"
-    PATCH = "PATCH"
-    DELETE = "DELETE"
 
 
 class AstraClient:
@@ -40,30 +32,41 @@ class AstraClient:
         astra_database_region=None,
         astra_application_token=None,
     ):
+        # Check the base url
+        # TODO: Abstract away the URL into some global config
+        if base_url is None:
+            base_url = f"https://{astra_database_id}-{astra_database_region}.apps.astra.datastax.com"
+        
+        # Base Parameters
         self.base_url = base_url
         self.debug = debug
-        self.auth_header = DEFAULT_AUTH_HEADER
+
+        # Astra Parameters
         self.astra_database_id = astra_database_id
         self.astra_database_region = astra_database_region
         self.astra_application_token = astra_application_token
 
-        if base_url is None:
-            base_url = f"https://{astra_database_id}-{astra_database_region}.apps.astra.datastax.com"
-            self.base_url = base_url
-        return None
+        # Start with some uninitialized functionality
+        self.astra_ops = None
+
 
     def request(
-        self, method=http_methods.POST, path=None, json_data=None, url_params=None
+            self, 
+            *args, 
+            **kwargs
+        ):
+        make_request(*args, **kwargs, 
+                     base_url=self.base_url, 
+                     auth_header=DEFAULT_AUTH_HEADER,
+                     token=self.astra_application_token)
+
+        
+    def ops(
+        self
     ):
-        r = requests.request(
-            method=method,
-            url=f"{self.base_url}{path}",
-            params=url_params,
-            json=json_data,
-            timeout=DEFAULT_TIMEOUT,
-            headers={self.auth_header: self.astra_application_token},
-        )
-        try:
-            return r.json()
-        except:
-            return None
+        # Initialize AstraOps if not already done
+        if not self.astra_ops:
+            self.astra_ops = AstraOps(token=self.astra_application_token)
+
+        # Return the call
+        return self.astra_ops

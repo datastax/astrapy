@@ -14,11 +14,10 @@
 
 from astrapy.base import AstraClient
 from astrapy.ops import AstraOps
-import uuid
+
 import pytest
 import logging
 import os
-import json
 from faker import Faker
 import http.client as http_client
 
@@ -41,14 +40,7 @@ ASTRA_TEMP_DB = ""
 
 @pytest.fixture
 def devops_client():
-    astra_client = AstraClient(
-        astra_database_id=ASTRA_DB_ID,
-        astra_database_region=ASTRA_DB_REGION,
-        astra_application_token=ASTRA_DB_APPLICATION_TOKEN,
-    )
-    devops_client = AstraOps(astra_client)
-
-    return devops_client
+    return AstraOps(token=ASTRA_DB_APPLICATION_TOKEN)
 
 
 @pytest.mark.it("should initialize an AstraDB Ops Client")
