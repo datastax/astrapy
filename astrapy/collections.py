@@ -136,7 +136,7 @@ class AstraCollection:
         )
         return response
 
-    def insert_one(self, path=None, document=None):
+    def insert_one(self, document):
         json_query = {"insertOne": {"document": document}}
         response = self.astra_client.request(
             method=http_methods.POST, path=self.base_path, json_data=json_query
@@ -172,7 +172,7 @@ class AstraCollection:
             method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
         )
 
-    def insert_many(self, documents=None, id_path=""):
+    def insert_many(self, documents):
         return self.astra_client.request(
             method=http_methods.POST,
             path=f"{self.base_path}",

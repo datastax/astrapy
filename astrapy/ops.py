@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import requests
-
-from astrapy.defaults import DEFAULT_TIMEOUT
 from astrapy.utils import make_request, http_methods
 
 DEFAULT_HOST = "https://api.astra.datastax.com"
@@ -24,9 +21,10 @@ PATH_PREFIX = "/v2"
 class AstraOps:
     def __init__(self, token):
         self.token = "Bearer " + token
-        self.base_url = f"{DEFAULT_HOST}"
+        self.base_url = f"{DEFAULT_HOST}{PATH_PREFIX}"
 
-    def ops_request(self, method, path, options=None, json_data=None):
+    def _ops_request(self, method, path, options=None, json_data=None,
+                     return_type="json"):
         options = {} if options is None else options
 
         return make_request(
@@ -37,316 +35,317 @@ class AstraOps:
             json_data=json_data,
             url_params=options,
             path=path,
+            return_type=return_type
         )
 
     def get_databases(self, options=None):
-        return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/databases", options=options
+        return self._ops_request(
+            method=http_methods.GET, path="/databases", options=options
         )
 
     def create_database(self, database_definition=None):
-        r = requests.request(
+        r = self._ops_request(
             method=http_methods.POST,
-            url=f"{self.base_url}{PATH_PREFIX}/databases",
-            json=database_definition,
-            timeout=DEFAULT_TIMEOUT,
-            headers={"Authorization": self.token},
+            path="/databases",
+            json_data=database_definition,
+            return_type="response"
         )
-        print(r.text)
+
         if r.status_code == 201:
             return {"id": r.headers["Location"]}
+
         return None
 
     def terminate_database(self, database=""):
-        r = requests.request(
+        r = self._ops_request(
             method=http_methods.POST,
-            url=f"{self.base_url}{PATH_PREFIX}/databases/{database}/terminate",
-            timeout=DEFAULT_TIMEOUT,
-            headers={"Authorization": self.token},
+            path=f"/databases/{database}/terminate",
+            return_type="response"
         )
-        print(r.status_code)
+
         if r.status_code == 202:
             return database
+
         return None
 
     def get_database(self, database="", options=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.GET,
-            path=f"{PATH_PREFIX}/databases/{database}",
+            path=f"/databases/{database}",
             options=options,
         )
 
     def create_keyspace(self, database="", keyspace=""):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.POST,
-            path=f"{PATH_PREFIX}/databases/{database}/keyspaces/{keyspace}",
+            path=f"/databases/{database}/keyspaces/{keyspace}",
         )
 
     def park_database(self, database=""):
-        return self.ops_request(
-            method=http_methods.POST, path=f"{PATH_PREFIX}/databases/{database}/park"
+        return self._ops_request(
+            method=http_methods.POST, path=f"/databases/{database}/park"
         )
 
     def unpark_database(self, database=""):
-        return self.ops_request(
-            method=http_methods.POST, path=f"{PATH_PREFIX}/databases/{database}/unpark"
+        return self._ops_request(
+            method=http_methods.POST, path=f"/databases/{database}/unpark"
         )
 
     def resize_database(self, database="", options=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.POST,
-            path=f"{PATH_PREFIX}/databases/{database}/resize",
+            path=f"/databases/{database}/resize",
             json_data=options,
         )
 
     def reset_database_password(self, database="", options=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.POST,
-            path=f"{PATH_PREFIX}/databases/{database}/resetPassword",
+            path=f"/databases/{database}/resetPassword",
             json_data=options,
         )
 
     def get_secure_bundle(self, database=""):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.POST,
-            path=f"{PATH_PREFIX}/databases/{database}/secureBundleURL",
+            path=f"/databases/{database}/secureBundleURL",
         )
 
     def get_datacenters(self, database=""):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.GET,
-            path=f"{PATH_PREFIX}/databases/{database}/datacenters",
+            path=f"/databases/{database}/datacenters",
         )
 
     def create_datacenter(self, database="", options=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.POST,
-            path=f"{PATH_PREFIX}/databases/{database}/datacenters",
+            path=f"/databases/{database}/datacenters",
             json_data=options,
         )
 
     def terminate_datacenter(self, database="", datacenter=""):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.POST,
-            path=f"{PATH_PREFIX}/databases/{database}/datacenters/{datacenter}/terminate",
+            path=f"/databases/{database}/datacenters/{datacenter}/terminate",
         )
 
     def get_access_list(self, database=""):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.GET,
-            path=f"{PATH_PREFIX}/databases/{database}/access-list",
+            path=f"/databases/{database}/access-list",
         )
 
     def replace_access_list(self, database="", access_list=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.PUT,
-            path=f"{PATH_PREFIX}/databases/{database}/access-list",
+            path=f"/databases/{database}/access-list",
             json_data=access_list,
         )
 
     def update_access_list(self, database="", access_list=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.PATCH,
-            path=f"{PATH_PREFIX}/databases/{database}/access-list",
+            path=f"/databases/{database}/access-list",
             json_data=access_list,
         )
 
     def add_access_list_address(self, database="", address=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.POST,
-            path=f"{PATH_PREFIX}/databases/{database}/access-list",
+            path=f"/databases/{database}/access-list",
             json_data=address,
         )
 
     def delete_access_list(self, database=""):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.DELETE,
-            path=f"{PATH_PREFIX}/databases/{database}/access-list",
+            path=f"/databases/{database}/access-list",
         )
 
     def get_private_link(self, database=""):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.GET,
-            path=f"{PATH_PREFIX}/organizations/clusters/{database}/private-link",
+            path=f"/organizations/clusters/{database}/private-link",
         )
 
     def get_datacenter_private_link(self, database="", datacenter=""):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.GET,
-            path=f"{PATH_PREFIX}/organizations/clusters/{database}/datacenters/{datacenter}/private-link",
+            path=f"/organizations/clusters/{database}/datacenters/{datacenter}/private-link",
         )
 
     def create_datacenter_private_link(
         self, database="", datacenter="", private_link=None
     ):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.POST,
-            path=f"{PATH_PREFIX}/organizations/clusters/{database}/datacenters/{datacenter}/private-link",
+            path=f"/organizations/clusters/{database}/datacenters/{datacenter}/private-link",
             json_data=private_link,
         )
 
     def create_datacenter_endpoint(self, database="", datacenter="", endpoint=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.POST,
-            path=f"{PATH_PREFIX}/organizations/clusters/{database}/datacenters/{datacenter}/endpoint",
+            path=f"/organizations/clusters/{database}/datacenters/{datacenter}/endpoint",
             json_data=endpoint,
         )
 
     def update_datacenter_endpoint(self, database="", datacenter="", endpoint=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.PUT,
-            path=f"{PATH_PREFIX}/organizations/clusters/{database}/datacenters/{datacenter}/endpoints/{endpoint['id']}",
+            path=f"/organizations/clusters/{database}/datacenters/{datacenter}/endpoints/{endpoint['id']}",
             json_data=endpoint,
         )
 
     def get_datacenter_endpoint(self, database="", datacenter="", endpoint=""):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.GET,
-            path=f"{PATH_PREFIX}/organizations/clusters/{database}/datacenters/{datacenter}/endpoints/{endpoint}",
+            path=f"/organizations/clusters/{database}/datacenters/{datacenter}/endpoints/{endpoint}",
         )
 
     def delete_datacenter_endpoint(self, database="", datacenter="", endpoint=""):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.DELETE,
-            path=f"{PATH_PREFIX}/organizations/clusters/{database}/datacenters/{datacenter}/endpoints/{endpoint}",
+            path=f"/organizations/clusters/{database}/datacenters/{datacenter}/endpoints/{endpoint}",
         )
 
     def get_available_classic_regions(self):
-        return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/availableRegions"
+        return self._ops_request(
+            method=http_methods.GET, path=f"/availableRegions"
         )
 
     def get_available_regions(self):
-        return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/regions/serverless"
+        return self._ops_request(
+            method=http_methods.GET, path=f"/regions/serverless"
         )
 
     def get_roles(self):
-        return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/organizations/roles"
+        return self._ops_request(
+            method=http_methods.GET, path=f"/organizations/roles"
         )
 
     def create_role(self, role_definition=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.POST,
-            path=f"{PATH_PREFIX}/organizations/roles",
+            path=f"/organizations/roles",
             json_data=role_definition,
         )
 
     def get_role(self, role=""):
-        return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/organizations/roles/{role}"
+        return self._ops_request(
+            method=http_methods.GET, path=f"/organizations/roles/{role}"
         )
 
     def update_role(self, role="", role_definition=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.PUT,
-            path=f"{PATH_PREFIX}/organizations/roles/{role}",
+            path=f"/organizations/roles/{role}",
             json_data=role_definition,
         )
 
     def delete_role(self, role=""):
-        return self.ops_request(
-            method=http_methods.DELETE, path=f"{PATH_PREFIX}/organizations/roles/{role}"
+        return self._ops_request(
+            method=http_methods.DELETE, path=f"/organizations/roles/{role}"
         )
 
     def invite_user(self, user_definition=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.PUT,
-            path=f"{PATH_PREFIX}/organizations/users",
+            path=f"/organizations/users",
             json_data=user_definition,
         )
 
     def get_users(self):
-        return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/organizations/users"
+        return self._ops_request(
+            method=http_methods.GET, path=f"/organizations/users"
         )
 
     def get_user(self, user=""):
-        return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/organizations/users/{user}"
+        return self._ops_request(
+            method=http_methods.GET, path=f"/organizations/users/{user}"
         )
 
     def remove_user(self, user=""):
-        return self.ops_request(
-            method=http_methods.DELETE, path=f"{PATH_PREFIX}/organizations/users/{user}"
+        return self._ops_request(
+            method=http_methods.DELETE, path=f"/organizations/users/{user}"
         )
 
     def update_user_roles(self, user="", roles=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.PUT,
-            path=f"{PATH_PREFIX}/organizations/users/{user}/roles",
+            path=f"/organizations/users/{user}/roles",
             json_data=roles,
         )
 
     def get_clients(self):
-        return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/clientIdSecrets"
+        return self._ops_request(
+            method=http_methods.GET, path=f"/clientIdSecrets"
         )
 
     def create_token(self, roles=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.POST,
-            path=f"{PATH_PREFIX}/clientIdSecrets",
+            path=f"/clientIdSecrets",
             json_data=roles,
         )
 
     def delete_token(self, token=""):
-        return self.ops_request(
-            method=http_methods.DELETE, path=f"{PATH_PREFIX}/clientIdSecret/{token}"
+        return self._ops_request(
+            method=http_methods.DELETE, path=f"/clientIdSecret/{token}"
         )
 
     def get_organization(self):
-        return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/currentOrg"
+        return self._ops_request(
+            method=http_methods.GET, path=f"/currentOrg"
         )
 
     def get_access_lists(self):
-        return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/access-lists"
+        return self._ops_request(
+            method=http_methods.GET, path=f"/access-lists"
         )
 
     def get_access_list_template(self):
-        return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/access-list/template"
+        return self._ops_request(
+            method=http_methods.GET, path=f"/access-list/template"
         )
 
     def validate_access_list(self):
-        return self.ops_request(
-            method=http_methods.POST, path=f"{PATH_PREFIX}/access-list/validate"
+        return self._ops_request(
+            method=http_methods.POST, path=f"/access-list/validate"
         )
 
     def get_private_links(self):
-        return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/organizations/private-link"
+        return self._ops_request(
+            method=http_methods.GET, path=f"/organizations/private-link"
         )
 
     def get_streaming_providers(self):
-        return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/streaming/providers"
+        return self._ops_request(
+            method=http_methods.GET, path=f"/streaming/providers"
         )
 
     def get_streaming_tenants(self):
-        return self.ops_request(
-            method=http_methods.GET, path=f"{PATH_PREFIX}/streaming/tenants"
+        return self._ops_request(
+            method=http_methods.GET, path=f"/streaming/tenants"
         )
 
     def create_streaming_tenant(self, tenant=None):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.POST,
-            path=f"{PATH_PREFIX}/streaming/tenants",
+            path=f"/streaming/tenants",
             json_data=tenant,
         )
 
     def delete_streaming_tenant(self, tenant="", cluster=""):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.DELETE,
-            path=f"{PATH_PREFIX}/streaming/tenants/{tenant}/clusters/{cluster}",
+            path=f"/streaming/tenants/{tenant}/clusters/{cluster}",
             json_data=tenant,
         )
 
     def get_streaming_tenant(self, tenant=""):
-        return self.ops_request(
+        return self._ops_request(
             method=http_methods.GET,
-            path=f"{PATH_PREFIX}/streaming/tenants/{tenant}/limits",
+            path=f"/streaming/tenants/{tenant}/limits",
         )

@@ -22,6 +22,7 @@ def make_request(
     path=None,
     json_data=None,
     url_params=None,
+    return_type="json"
 ):
     r = requests.request(
         method=method,
@@ -31,9 +32,13 @@ def make_request(
         timeout=DEFAULT_TIMEOUT,
         headers={auth_header: token},
     )
+
     try:
-        return r.json()
+        if return_type == "json":
+            return r.json()
+        else:
+            return r
     except Exception as e:
-        logger.error(e)
+        logger.info(e)
 
         return None

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from astrapy.base import AstraClient
-from astrapy.ops import AstraOps
 from astrapy.utils import http_methods
 
 import logging
@@ -173,7 +172,7 @@ class AstraVectorCollection:
             method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
         )
 
-    def insert_many(self, documents=None):
+    def insert_many(self, documents):
         return self.astra_client.request(
             method=http_methods.POST,
             path=f"{self.base_path}",
