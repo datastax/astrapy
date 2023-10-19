@@ -18,7 +18,7 @@ DEFAULT_HOST = "https://api.astra.datastax.com"
 PATH_PREFIX = "/v2"
 
 
-class AstraOps:
+class AstraDbOps:
     def __init__(self, token):
         self.token = "Bearer " + token
         self.base_url = f"{DEFAULT_HOST}{PATH_PREFIX}"

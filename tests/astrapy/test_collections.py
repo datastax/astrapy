@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.collections import AstraCollectionClient
-from astrapy.base import AstraClient
+from astrapy.collections import AstraDbCollection, AstraDb
+from astrapy.base import AstraDbClient
 import uuid
 import pytest
 import logging
 import os
 from faker import Faker
-import http
 import json
-import http.client as http_client
 
 logger = logging.getLogger(__name__)
 fake = Faker()
@@ -50,49 +48,44 @@ def cliff_uuid():
 
 @pytest.fixture
 def astra_client():
-    return AstraClient(
+    return AstraDbClient(
         db_id=ASTRA_DB_ID,
-        db_region=ASTRA_DB_REGION,
         token=ASTRA_DB_APPLICATION_TOKEN,
     )
 
 
 @pytest.fixture
 def test_collection():
-    astra_client = AstraClient(
+    astra_db_collection = AstraDbCollection(
+        collection=TEST_COLLECTION_NAME,
         db_id=ASTRA_DB_ID,
-        db_region=ASTRA_DB_REGION,
-        token=ASTRA_DB_APPLICATION_TOKEN,
+        token=ASTRA_DB_APPLICATION_TOKEN
     )
-    collections_client = AstraCollectionClient(astra_client=astra_client)
-    test_collection = collections_client.namespace(ASTRA_DB_KEYSPACE).collection(
-        TEST_COLLECTION_NAME
-    )
-    return test_collection
+
+    return astra_db_collection
 
 
 @pytest.fixture
-def test_namespace():
-    astra_client = AstraClient(
+def test_db():
+    astra_db = AstraDb(
         db_id=ASTRA_DB_ID,
-        db_region=ASTRA_DB_REGION,
         token=ASTRA_DB_APPLICATION_TOKEN,
+        namespace=ASTRA_DB_KEYSPACE
     )
-    collections_client = AstraCollectionClient(astra_client=astra_client)
 
-    return collections_client.namespace(ASTRA_DB_KEYSPACE)
+    return astra_db
 
 
 @pytest.mark.describe("should create a vector collection")
-def test_create_collection(test_namespace):
-    res = test_namespace.create_collection(name=TEST_COLLECTION_NAME, size=5)
+def test_create_collection(test_db):
+    res = test_db.create_collection(name=TEST_COLLECTION_NAME, size=5)
     print("CREATE", res)
     assert res is not None
 
 
 @pytest.mark.describe("should get all collections")
-def test_get_collections(test_namespace):
-    res = test_namespace.get_collections()
+def test_get_collections(test_db):
+    res = test_db.get_collections()
     print("GET ALL", res)
     assert res["status"]["collections"] is not None
 
@@ -104,7 +97,8 @@ def test_create_document_cliff(test_collection, cliff_uuid):
         "first_name": "Cliff",
         "last_name": "Wicklow",
     }
-    response = test_collection.insert_one(document=json_query)
+
+    test_collection.insert_one(document=json_query)
 
     document = test_collection.find_one(filter={"_id": cliff_uuid})
 
@@ -121,6 +115,7 @@ def test_create_document(test_collection):
     }
 
     res = test_collection.insert_one(document=json_query)
+
     assert res is not None
 
 
@@ -397,8 +392,8 @@ def test_functions(test_collection):
 
 
 @pytest.mark.describe("should delete a collection")
-def test_delete_collection(test_namespace):
-    res = test_namespace.delete_collection(name="test_collection")
+def test_delete_collection(test_db):
+    res = test_db.delete_collection(name="test_collection")
     assert res is not None
-    res2 = test_namespace.delete_collection(name="test_collection")
+    res2 = test_db.delete_collection(name="test_collection")
     assert res2 is not None
