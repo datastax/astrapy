@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from astrapy.collections import AstraDbCollection, AstraDb
-from astrapy.base import AstraDbClient
 import uuid
 import pytest
 import logging
@@ -44,14 +43,6 @@ cliffu = str(uuid.uuid4())
 @pytest.fixture
 def cliff_uuid():
     return cliffu
-
-
-@pytest.fixture
-def astra_client():
-    return AstraDbClient(
-        db_id=ASTRA_DB_ID,
-        token=ASTRA_DB_APPLICATION_TOKEN,
-    )
 
 
 @pytest.fixture

@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.base import AstraDbClient
-from astrapy.utils import http_methods
+from astrapy.defaults import DEFAULT_AUTH_HEADER
+from astrapy.ops import AstraDbOps
+from astrapy.utils import make_request, http_methods
 
 import logging
 
@@ -41,14 +42,24 @@ class AstraDbCollection:
             self.astra_db = AstraDb(
                 db_id=db_id, token=token, db_region=db_region
             )
-        self.astra_db_client = self.astra_db.astra_db_client
-        self.namespace = self.astra_db.namespace
         self.collection = collection
         self.base_path = f"{self.astra_db.base_path}/{collection}"
 
+
+    def _request(self, *args, **kwargs):
+        result = make_request(
+            *args,
+            **kwargs,
+            base_url=self.astra_db.base_url,
+            auth_header=DEFAULT_AUTH_HEADER,
+            token=self.astra_db.token,
+        )
+
+        return result
+
     def _get(self, path=None, options=None):
         full_path = f"{self.base_path}/{path}" if path else self.base_path
-        response = self.astra_db_client.request(
+        response = self._request(
             method=http_methods.GET, path=full_path, url_params=options
         )
         if isinstance(response, dict):
@@ -56,7 +67,7 @@ class AstraDbCollection:
         return None
 
     def _post(self, path=None, document=None):
-        return self.astra_db_client.request(
+        return self._request(
             method=http_methods.POST, path=f"{self.base_path}", json_data=document
         )
 
@@ -73,7 +84,7 @@ class AstraDbCollection:
             }
         }
         print(json_query)
-        response = self.astra_db_client.request(
+        response = self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data=json_query,
@@ -84,7 +95,7 @@ class AstraDbCollection:
         json_query = {
             "findOneAndUpdate": {"filter": filter, "update": update, "options": options}
         }
-        response = self.astra_db_client.request(
+        response = self._request(
             method=http_methods.POST,
             path=self.base_path,
             json_data=json_query,
@@ -95,7 +106,7 @@ class AstraDbCollection:
         json_query = {
             "findOneAndUpdate": {"filter": filter, "update": update, "options": options}
         }
-        response = self.astra_db_client.request(
+        response = self._request(
             method=http_methods.POST,
             path=self.base_path,
             json_data=json_query,
@@ -113,7 +124,7 @@ class AstraDbCollection:
                 "sort": sort,
             }
         }
-        response = self.astra_db_client.request(
+        response = self._request(
             method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
         )
         return response
@@ -128,7 +139,7 @@ class AstraDbCollection:
             }
         }
 
-        response = self.astra_db_client.request(
+        response = self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data=json_query,
@@ -144,7 +155,7 @@ class AstraDbCollection:
                 "sort": sort,
             }
         }
-        response = self.astra_db_client.request(
+        response = self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data=json_query,
@@ -153,14 +164,14 @@ class AstraDbCollection:
 
     def insert_one(self, document):
         json_query = {"insertOne": {"document": document}}
-        response = self.astra_db_client.request(
+        response = self._request(
             method=http_methods.POST, path=self.base_path, json_data=json_query
         )
         return response
 
     def update_one(self, filter, update):
         json_query = {"updateOne": {"filter": filter, "update": update}}
-        return self.astra_db_client.request(
+        return self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data=json_query,
@@ -170,7 +181,7 @@ class AstraDbCollection:
         return self._put(path=path, document=document)
 
     def delete(self, id):
-        return self.astra_db_client.request(
+        return self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data={"deleteOne": {"filter": {"_id": id}}},
@@ -183,12 +194,12 @@ class AstraDbCollection:
                 "update": {"$unset": {subdoc: ""}},
             }
         }
-        return self.astra_db_client.request(
+        return self._request(
             method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
         )
 
     def insert_many(self, documents):
-        return self.astra_db_client.request(
+        return self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data={"insertMany": {"documents": documents}},
@@ -198,38 +209,53 @@ class AstraDbCollection:
 class AstraDb:
     def __init__(
         self,
-        astra_db_client=None,
         db_id=None,
         token=None,
         db_region=None,
         namespace="default_namespace",
     ):
-        if astra_db_client is not None:
-            self.astra_db_client = astra_db_client
-            token = self.astra_db_client.token
-        else:
-            if db_id is None or token is None:
-                raise AssertionError("Must provide db_id and token")
+        if db_id is None or token is None:
+            raise AssertionError("Must provide db_id and token")
+        
+        # Store the initial parameters
+        self.db_id = db_id
+        self.token = token
+        
+        # Handle the region parameter
+        if not db_region:
+            db_region = AstraDbOps(token=token).get_database(db_id)["info"]["region"]
+        self.db_region = db_region
 
-            self.astra_db_client = AstraDbClient(
-                db_id=db_id, token=token, db_region=db_region
-            )
-
-        self.namespace = namespace
+        # Set the Base URL for the API calls
+        self.base_url = f"https://{db_id}-{db_region}.apps.astra.datastax.com"
         self.base_path = f"{DEFAULT_BASE_PATH}/{namespace}"
 
+        # Set the namespace parameter
+        self.namespace = namespace
 
-    def collection(self, collection_name):
+
+    def _request(self, *args, **kwargs):
+        result = make_request(
+            *args,
+            **kwargs,
+            base_url=self.base_url,
+            auth_header=DEFAULT_AUTH_HEADER,
+            token=self.token,
+        )
+
+        return result
+
+
+    def collection(self, collection):
         return AstraDbCollection(
-            astra_client=self.astra_db_client,
-            namespace_name=self.namespace_name,
-            collection_name=collection_name,
+            collection=collection,
+            astra_db=self
         )
 
     def get_collections(self):
-        res = self.astra_db_client.request(
+        res = self._request(
             method=http_methods.POST,
-            path=f"{self.base_path}",
+            path=self.base_path,
             json_data={"findCollections": {}},
         )
         return res
@@ -243,14 +269,14 @@ class AstraDb:
             jsondata = {"name": name, "options": options}
         else:
             jsondata = {"name": name}
-        return self.astra_db_client.request(
+        return self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data={"createCollection": jsondata},
         )
 
     def delete_collection(self, name=""):
-        return self.astra_db_client.request(
+        return self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data={"deleteCollection": {"name": name}},

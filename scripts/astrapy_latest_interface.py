@@ -3,7 +3,6 @@ import sys
 
 from dotenv import load_dotenv
 
-from astrapy.base import AstraDbClient
 from astrapy.collections import AstraDb, AstraDbCollection
 from astrapy.ops import AstraDbOps
 
@@ -34,22 +33,18 @@ create_result = astra_ops.create_database(database_definition=database_definitio
 # Grab the new information from the database
 db_id = create_result["id"]
 
-# Initialize our AstraClient
-astra_client = AstraDbClient(db_id=db_id, token=token)
-
-# Possible Initializations
-astra_client_vectordb1 = astra_client.vector_database()
-astra_client_vectordb2 = AstraDb(db_id=db_id, token=token)
+# Initialize our vector db
+astra_db = AstraDb(db_id=db_id, token=token)
 
 # Possible Operations
-astra_client_vectordb1.create_collection(name="collection_test", size=5)
-astra_client_vectordb1.delete_collection(name="collection_test")
-astra_client_vectordb2.create_collection(name="collection_test", size=5)
+astra_db.create_collection(name="collection_test_delete", size=5)
+astra_db.delete_collection(name="collection_test_delete")
+astra_db.create_collection(name="collection_test", size=5)
 
 # Collections
 astra_db_collection = AstraDbCollection(
     collection="collection_test",
-    astra_db=astra_client_vectordb1
+    astra_db=astra_db
 )
 # Or...
 astra_db_collection = AstraDbCollection(
