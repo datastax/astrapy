@@ -3,7 +3,7 @@ import sys
 
 from dotenv import load_dotenv
 
-from astrapy.collections import AstraDB, AstraDBCollection
+from astrapy.db import AstraDB, AstraDBCollection
 from astrapy.ops import AstraDBOps
 
 sys.path.append("../")
