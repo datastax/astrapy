@@ -33,15 +33,15 @@ class AstraDBCollection:
             token=None,
             db_region=None
         ):
-        if astra_db is not None:
-            self.astra_db = astra_db
-        else:
+        if astra_db is None:
             if db_id is None or token is None:
                 raise AssertionError("Must provide db_id and token")
 
-            self.astra_db = AstraDB(
+            astra_db = AstraDB(
                 db_id=db_id, token=token, db_region=db_region
             )
+
+        self.astra_db = astra_db
         self.collection = collection
         self.base_path = f"{self.astra_db.base_path}/{collection}"
 

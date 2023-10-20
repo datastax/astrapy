@@ -39,6 +39,6 @@ def make_request(
         else:
             return r
     except Exception as e:
-        logger.info(e)
+        logger.warning(e)
 
         return None
