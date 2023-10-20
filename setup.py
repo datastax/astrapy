@@ -25,7 +25,7 @@ setup(
         "astrapy",
         "astrapy/endpoints",
     ],
-    version="0.5.0dev3",
+    version="0.5.0dev4",
     license="Apache license 2.0",
     description="AstraPy is a Pythonic SDK for DataStax Astra",
     long_description=long_description,
