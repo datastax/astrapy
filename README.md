@@ -31,31 +31,45 @@ ASTRA_DB_ID=<db_id>
 Load the variables in and then create the client. This collections client can make non-vector and vector calls, depending on the call configuration.
 
 ```python
-from astrapy.collections import AstraCollectionClient
-from astrapy.base import AstraClient
+import os
 
 from dotenv import load_dotenv
+from astrapy.db import AstraDB, AstraDBCollection
 
 load_dotenv()
 
-ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID")
-ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION")
-ASTRA_DB_APPLICATION_TOKEN = os.environ.get("ASTRA_DB_APPLICATION_TOKEN")
-ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE")
-TEST_COLLECTION_NAME = "test_collection"
+# Grab the new information from the database
+db_id = os.getenv("ASTRA_DB_ID")
+token = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
 
-astra_client = AstraClient(
-        astra_database_id=ASTRA_DB_ID,
-        astra_database_region=ASTRA_DB_REGION,
-        astra_application_token=ASTRA_DB_APPLICATION_TOKEN,
-    )
+# Initialize our vector db
+astra_db = AstraDB(db_id=db_id, token=token)
 
-vector_client = AstraVectorClient(astra_client=astra_client)
-test_namespace = vector_client.namespace(ASTRA_DB_KEYSPACE)
-test_collection = vector_client.namespace(ASTRA_DB_KEYSPACE).collection(TEST_COLLECTION_NAME)
+# Create a new collection
+astra_db.create_collection(name="collection_test", size=5)
+
+# Collections
+astra_db_collection = AstraDBCollection(
+    collection="collection_test",
+    astra_db=astra_db
+)
+
+# Insert some data into the collection
+astra_db_collection.insert_one(
+    {
+        "_id": "1",
+        "name": "Coded Cleats Copy",
+        "description": "ChatGPT integrated sneakers that talk to you",
+        "$vector": [0.25, 0.25, 0.25, 0.25, 0.25],
+    }
+)
+
+# Find the inserted data!
+astra_db_collection.find_one({"name" : "Coded Cleats Copy"})
 ```
 
-####Getting started
+#### More Information
+
 Check out the [notebook](https://colab.research.google.com/github/synedra/astra_vector_examples/blob/main/notebook/vector.ipynb#scrollTo=f04a1806) which has examples for finding and inserting information into the database, including vector commands.
 
 Take a look at the [vector tests](https://github.com/datastax/astrapy/blob/master/tests/astrapy/test_collections.py) and the [collection tests](https://github.com/datastax/astrapy/blob/master/tests/astrapy/test_collections.py) for specific endpoint examples.
