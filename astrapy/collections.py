@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from astrapy.defaults import DEFAULT_AUTH_HEADER
-from astrapy.ops import AstraDbOps
+from astrapy.ops import AstraDBOps
 from astrapy.utils import make_request, http_methods
 
 import logging
@@ -24,7 +24,7 @@ DEFAULT_PAGE_SIZE = 20
 DEFAULT_BASE_PATH = "/api/json/v1"
 
 
-class AstraDbCollection:
+class AstraDBCollection:
     def __init__(
             self,
             collection,
@@ -39,7 +39,7 @@ class AstraDbCollection:
             if db_id is None or token is None:
                 raise AssertionError("Must provide db_id and token")
 
-            self.astra_db = AstraDb(
+            self.astra_db = AstraDB(
                 db_id=db_id, token=token, db_region=db_region
             )
         self.collection = collection
@@ -206,13 +206,13 @@ class AstraDbCollection:
         )
 
 
-class AstraDb:
+class AstraDB:
     def __init__(
         self,
         db_id=None,
         token=None,
         db_region=None,
-        namespace="default_namespace",
+        namespace="default_keyspace",
     ):
         if db_id is None or token is None:
             raise AssertionError("Must provide db_id and token")
@@ -223,7 +223,7 @@ class AstraDb:
         
         # Handle the region parameter
         if not db_region:
-            db_region = AstraDbOps(token=token).get_database(db_id)["info"]["region"]
+            db_region = AstraDBOps(token=token).get_database(db_id)["info"]["region"]
         self.db_region = db_region
 
         # Set the Base URL for the API calls
@@ -247,7 +247,7 @@ class AstraDb:
 
 
     def collection(self, collection):
-        return AstraDbCollection(
+        return AstraDBCollection(
             collection=collection,
             astra_db=self
         )
