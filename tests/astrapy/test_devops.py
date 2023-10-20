@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.ops import AstraDbOps
+from astrapy.ops import AstraDBOps
 
 import pytest
 import logging
@@ -39,12 +39,12 @@ ASTRA_TEMP_DB = ""
 
 @pytest.fixture
 def devops_client():
-    return AstraDbOps(token=ASTRA_DB_APPLICATION_TOKEN)
+    return AstraDBOps(token=ASTRA_DB_APPLICATION_TOKEN)
 
 
 @pytest.mark.describe("should initialize an AstraDB Ops Client")
 def test_client_type(devops_client):
-    assert type(devops_client) is AstraDbOps
+    assert type(devops_client) is AstraDBOps
 
 
 @pytest.mark.describe("should get all databases")

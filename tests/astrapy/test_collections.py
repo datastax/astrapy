@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.collections import AstraDbCollection, AstraDb
+from astrapy.collections import AstraDBCollection, AstraDB
 import uuid
 import pytest
 import logging
@@ -47,7 +47,7 @@ def cliff_uuid():
 
 @pytest.fixture
 def test_collection():
-    astra_db_collection = AstraDbCollection(
+    astra_db_collection = AstraDBCollection(
         collection=TEST_COLLECTION_NAME,
         db_id=ASTRA_DB_ID,
         token=ASTRA_DB_APPLICATION_TOKEN
@@ -58,7 +58,7 @@ def test_collection():
 
 @pytest.fixture
 def test_db():
-    astra_db = AstraDb(
+    astra_db = AstraDB(
         db_id=ASTRA_DB_ID,
         token=ASTRA_DB_APPLICATION_TOKEN,
         namespace=ASTRA_DB_KEYSPACE
