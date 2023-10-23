@@ -31,14 +31,15 @@ class AstraDBCollection:
             astra_db=None,
             db_id=None,
             token=None,
-            db_region=None
+            db_region=None,
+            namespace=None,
         ):
         if astra_db is None:
             if db_id is None or token is None:
                 raise AssertionError("Must provide db_id and token")
 
             astra_db = AstraDB(
-                db_id=db_id, token=token, db_region=db_region
+                db_id=db_id, token=token, db_region=db_region, namespace=namespace
             )
 
         self.astra_db = astra_db
@@ -217,7 +218,7 @@ class AstraDB:
             raise AssertionError("Must provide db_id and token")
         
         if namespace is None:
-            logger.info("ASTRA_DB_KEYSPACE is not set. Defaulting to '{DEFAULT_KEYSPACE_NAME}'")
+            logger.info(f"ASTRA_DB_KEYSPACE is not set. Defaulting to '{DEFAULT_KEYSPACE_NAME}'")
             namespace = DEFAULT_KEYSPACE_NAME
         
         # Store the initial parameters
