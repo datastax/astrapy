@@ -48,7 +48,7 @@ def cliff_uuid():
 @pytest.fixture
 def test_collection():
     astra_db_collection = AstraDBCollection(
-        collection=TEST_COLLECTION_NAME,
+        collection_name=TEST_COLLECTION_NAME,
         db_id=ASTRA_DB_ID,
         token=ASTRA_DB_APPLICATION_TOKEN
     )
@@ -69,7 +69,7 @@ def test_db():
 
 @pytest.mark.describe("should create a vector collection")
 def test_create_collection(test_db):
-    res = test_db.create_collection(name=TEST_COLLECTION_NAME, size=5)
+    res = test_db.create_collection(collection_name=TEST_COLLECTION_NAME, size=5)
     print("CREATE", res)
     assert res is not None
 
@@ -384,7 +384,7 @@ def test_functions(test_collection):
 
 @pytest.mark.describe("should delete a collection")
 def test_delete_collection(test_db):
-    res = test_db.delete_collection(name="test_collection")
+    res = test_db.delete_collection(collection_name="test_collection")
     assert res is not None
-    res2 = test_db.delete_collection(name="test_collection")
+    res2 = test_db.delete_collection(collection_name="test_collection")
     assert res2 is not None

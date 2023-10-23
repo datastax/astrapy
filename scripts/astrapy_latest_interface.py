@@ -37,18 +37,18 @@ db_id = create_result["id"]
 astra_db = AstraDB(db_id=db_id, token=token)
 
 # Possible Operations
-astra_db.create_collection(name="collection_test_delete", size=5)
-astra_db.delete_collection(name="collection_test_delete")
-astra_db.create_collection(name="collection_test", size=5)
+astra_db.create_collection(collection_name="collection_test_delete", size=5)
+astra_db.delete_collection(collection_name="collection_test_delete")
+astra_db.create_collection(collection_name="collection_test", size=5)
 
 # Collections
 astra_db_collection = AstraDBCollection(
-    collection="collection_test",
+    collection_name="collection_test",
     astra_db=astra_db
 )
 # Or...
 astra_db_collection = AstraDBCollection(
-    collection="collection_test",
+    collection_name="collection_test",
     db_id=db_id,
     token=token
 )
