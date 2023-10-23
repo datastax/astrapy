@@ -52,7 +52,7 @@ def test_collection():
         collection_name=TEST_COLLECTION_NAME,
         db_id=ASTRA_DB_ID,
         token=ASTRA_DB_APPLICATION_TOKEN,
-        namespace=ASTRA_DB_KEYSPACE
+        namespace=ASTRA_DB_KEYSPACE,
     )
 
     return astra_db_collection
@@ -61,9 +61,7 @@ def test_collection():
 @pytest.fixture
 def test_db():
     astra_db = AstraDB(
-        db_id=ASTRA_DB_ID,
-        token=ASTRA_DB_APPLICATION_TOKEN,
-        namespace=ASTRA_DB_KEYSPACE
+        db_id=ASTRA_DB_ID, token=ASTRA_DB_APPLICATION_TOKEN, namespace=ASTRA_DB_KEYSPACE
     )
 
     return astra_db

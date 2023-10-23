@@ -23,8 +23,9 @@ class AstraDBOps:
         self.token = "Bearer " + token
         self.base_url = f"{DEFAULT_HOST}{PATH_PREFIX}"
 
-    def _ops_request(self, method, path, options=None, json_data=None,
-                     return_type="json"):
+    def _ops_request(
+        self, method, path, options=None, json_data=None, return_type="json"
+    ):
         options = {} if options is None else options
 
         return make_request(
@@ -35,7 +36,7 @@ class AstraDBOps:
             json_data=json_data,
             url_params=options,
             path=path,
-            return_type=return_type
+            return_type=return_type,
         )
 
     def get_databases(self, options=None):
@@ -48,7 +49,7 @@ class AstraDBOps:
             method=http_methods.POST,
             path="/databases",
             json_data=database_definition,
-            return_type="response"
+            return_type="response",
         )
 
         if r.status_code == 201:
@@ -60,7 +61,7 @@ class AstraDBOps:
         r = self._ops_request(
             method=http_methods.POST,
             path=f"/databases/{database}/terminate",
-            return_type="response"
+            return_type="response",
         )
 
         if r.status_code == 202:
@@ -211,19 +212,13 @@ class AstraDBOps:
         )
 
     def get_available_classic_regions(self):
-        return self._ops_request(
-            method=http_methods.GET, path=f"/availableRegions"
-        )
+        return self._ops_request(method=http_methods.GET, path=f"/availableRegions")
 
     def get_available_regions(self):
-        return self._ops_request(
-            method=http_methods.GET, path=f"/regions/serverless"
-        )
+        return self._ops_request(method=http_methods.GET, path=f"/regions/serverless")
 
     def get_roles(self):
-        return self._ops_request(
-            method=http_methods.GET, path=f"/organizations/roles"
-        )
+        return self._ops_request(method=http_methods.GET, path=f"/organizations/roles")
 
     def create_role(self, role_definition=None):
         return self._ops_request(
@@ -257,9 +252,7 @@ class AstraDBOps:
         )
 
     def get_users(self):
-        return self._ops_request(
-            method=http_methods.GET, path=f"/organizations/users"
-        )
+        return self._ops_request(method=http_methods.GET, path=f"/organizations/users")
 
     def get_user(self, user=""):
         return self._ops_request(
@@ -279,9 +272,7 @@ class AstraDBOps:
         )
 
     def get_clients(self):
-        return self._ops_request(
-            method=http_methods.GET, path=f"/clientIdSecrets"
-        )
+        return self._ops_request(method=http_methods.GET, path=f"/clientIdSecrets")
 
     def create_token(self, roles=None):
         return self._ops_request(
@@ -296,19 +287,13 @@ class AstraDBOps:
         )
 
     def get_organization(self):
-        return self._ops_request(
-            method=http_methods.GET, path=f"/currentOrg"
-        )
+        return self._ops_request(method=http_methods.GET, path=f"/currentOrg")
 
     def get_access_lists(self):
-        return self._ops_request(
-            method=http_methods.GET, path=f"/access-lists"
-        )
+        return self._ops_request(method=http_methods.GET, path=f"/access-lists")
 
     def get_access_list_template(self):
-        return self._ops_request(
-            method=http_methods.GET, path=f"/access-list/template"
-        )
+        return self._ops_request(method=http_methods.GET, path=f"/access-list/template")
 
     def validate_access_list(self):
         return self._ops_request(
@@ -321,14 +306,10 @@ class AstraDBOps:
         )
 
     def get_streaming_providers(self):
-        return self._ops_request(
-            method=http_methods.GET, path=f"/streaming/providers"
-        )
+        return self._ops_request(method=http_methods.GET, path=f"/streaming/providers")
 
     def get_streaming_tenants(self):
-        return self._ops_request(
-            method=http_methods.GET, path=f"/streaming/tenants"
-        )
+        return self._ops_request(method=http_methods.GET, path=f"/streaming/tenants")
 
     def create_streaming_tenant(self, tenant=None):
         return self._ops_request(

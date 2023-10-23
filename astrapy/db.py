@@ -26,14 +26,14 @@ DEFAULT_BASE_PATH = "/api/json/v1"
 
 class AstraDBCollection:
     def __init__(
-            self,
-            collection_name,
-            astra_db=None,
-            db_id=None,
-            token=None,
-            db_region=None,
-            namespace=None,
-        ):
+        self,
+        collection_name,
+        astra_db=None,
+        db_id=None,
+        token=None,
+        db_region=None,
+        namespace=None,
+    ):
         if astra_db is None:
             if db_id is None or token is None:
                 raise AssertionError("Must provide db_id and token")
@@ -45,7 +45,6 @@ class AstraDBCollection:
         self.astra_db = astra_db
         self.collection_name = collection_name
         self.base_path = f"{self.astra_db.base_path}/{collection_name}"
-
 
     def _request(self, *args, **kwargs):
         result = make_request(
@@ -81,7 +80,7 @@ class AstraDBCollection:
             filter=filter,
             projection=projection,
             options=options,
-            sort=sort
+            sort=sort,
         )
 
         response = self._request(
@@ -94,10 +93,7 @@ class AstraDBCollection:
 
     def pop(self, filter, update, options):
         json_query = make_payload(
-            top_level="findOneAndUpdate",
-            filter=filter,
-            update=update,
-            options=options
+            top_level="findOneAndUpdate", filter=filter, update=update, options=options
         )
 
         response = self._request(
@@ -110,10 +106,7 @@ class AstraDBCollection:
 
     def push(self, filter, update, options):
         json_query = make_payload(
-            top_level="findOneAndUpdate",
-            filter=filter,
-            update=update,
-            options=options
+            top_level="findOneAndUpdate", filter=filter, update=update, options=options
         )
 
         response = self._request(
@@ -132,7 +125,7 @@ class AstraDBCollection:
             filter=filter,
             replacement=replacement,
             options=options,
-            sort=sort
+            sort=sort,
         )
 
         response = self._request(
@@ -147,7 +140,7 @@ class AstraDBCollection:
             filter=filter,
             update=update,
             options=options,
-            sort=sort
+            sort=sort,
         )
 
         response = self._request(
@@ -164,7 +157,7 @@ class AstraDBCollection:
             filter=filter,
             projection=projection,
             options=options,
-            sort=sort
+            sort=sort,
         )
 
         response = self._request(
@@ -176,22 +169,16 @@ class AstraDBCollection:
         return response
 
     def insert_one(self, document):
-        json_query = make_payload(
-            top_level="insertOne",
-            document=document
-        )
+        json_query = make_payload(top_level="insertOne", document=document)
 
         response = self._request(
             method=http_methods.POST, path=self.base_path, json_data=json_query
         )
-        
+
         return response
-    
+
     def insert_many(self, documents):
-        json_query = make_payload(
-            top_level="insertMany",
-            documents=documents
-        )
+        json_query = make_payload(top_level="insertMany", documents=documents)
 
         return self._request(
             method=http_methods.POST,
@@ -200,11 +187,7 @@ class AstraDBCollection:
         )
 
     def update_one(self, filter, update):
-        json_query = make_payload(
-            top_level="updateOne",
-            filter=filter,
-            update=update
-        )
+        json_query = make_payload(top_level="updateOne", filter=filter, update=update)
 
         return self._request(
             method=http_methods.POST,
@@ -245,15 +228,17 @@ class AstraDB:
     ):
         if db_id is None or token is None:
             raise AssertionError("Must provide db_id and token")
-        
+
         if namespace is None:
-            logger.info(f"ASTRA_DB_KEYSPACE is not set. Defaulting to '{DEFAULT_KEYSPACE_NAME}'")
+            logger.info(
+                f"ASTRA_DB_KEYSPACE is not set. Defaulting to '{DEFAULT_KEYSPACE_NAME}'"
+            )
             namespace = DEFAULT_KEYSPACE_NAME
-        
+
         # Store the initial parameters
         self.db_id = db_id
         self.token = token
-        
+
         # Handle the region parameter
         if not db_region:
             db_region = AstraDBOps(token=token).get_database(db_id)["info"]["region"]
@@ -266,7 +251,6 @@ class AstraDB:
         # Set the namespace parameter
         self.namespace = namespace
 
-
     def _request(self, *args, **kwargs):
         result = make_request(
             *args,
@@ -278,12 +262,8 @@ class AstraDB:
 
         return result
 
-
     def collection(self, collection_name):
-        return AstraDBCollection(
-            collection_name=collection_name,
-            astra_db=self
-        )
+        return AstraDBCollection(collection_name=collection_name, astra_db=self)
 
     def get_collections(self):
         res = self._request(

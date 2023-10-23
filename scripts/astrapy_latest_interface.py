@@ -43,14 +43,11 @@ astra_db.create_collection(collection_name="collection_test", size=5)
 
 # Collections
 astra_db_collection = AstraDBCollection(
-    collection_name="collection_test",
-    astra_db=astra_db
+    collection_name="collection_test", astra_db=astra_db
 )
 # Or...
 astra_db_collection = AstraDBCollection(
-    collection_name="collection_test",
-    db_id=db_id,
-    token=token
+    collection_name="collection_test", db_id=db_id, token=token
 )
 
 astra_db_collection.insert_one(
@@ -62,5 +59,5 @@ astra_db_collection.insert_one(
     }
 )
 
-astra_db_collection.find_one({"name" : "potato"})
-astra_db_collection.find_one({"name" : "Coded Cleats Copy"})
+astra_db_collection.find_one({"name": "potato"})
+astra_db_collection.find_one({"name": "Coded Cleats Copy"})

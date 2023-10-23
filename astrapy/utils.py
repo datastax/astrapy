@@ -22,7 +22,7 @@ def make_request(
     path=None,
     json_data=None,
     url_params=None,
-    return_type="json"
+    return_type="json",
 ):
     r = requests.request(
         method=method,
@@ -43,17 +43,13 @@ def make_request(
 
         return None
 
-def make_payload(
-    top_level,
-    **kwargs
-):
+
+def make_payload(top_level, **kwargs):
     params = {}
     for key, value in kwargs.items():
         params[key] = value
 
-    json_query = {
-        top_level: {}
-    }
+    json_query = {top_level: {}}
 
     # Adding keys only if they're provided
     for key, value in params.items():
