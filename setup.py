@@ -25,7 +25,7 @@ setup(
         "astrapy",
         "astrapy/endpoints",
     ],
-    version="0.5.0dev4",
+    version="0.5.0dev5",
     license="Apache license 2.0",
     description="AstraPy is a Pythonic SDK for DataStax Astra",
     long_description=long_description,
@@ -35,9 +35,13 @@ setup(
     url="https://github.com/datastax/astrapy",
     keywords=["DataStax Astra", "Stargate"],
     install_requires=[
-        "requests>=2.27,<3",
-        "requests_toolbelt>=0.9.1,<1",
-        "gql>=3.0.0",
+        'faker~=19.11.0',
+        'pytest~=7.4.2',
+        'pytest-cov~=4.1.0',
+        'pytest-testdox~=3.1.0',
+        'requests~=2.31.0',
+        'requests-toolbelt~=1.0.0',
+        'python-dotenv~=1.0.0'
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
