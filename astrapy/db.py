@@ -14,7 +14,7 @@
 
 from astrapy.defaults import DEFAULT_AUTH_HEADER, DEFAULT_KEYSPACE_NAME
 from astrapy.ops import AstraDBOps
-from astrapy.utils import make_request, http_methods
+from astrapy.utils import make_payload, make_request, http_methods
 
 import logging
 
@@ -75,102 +75,137 @@ class AstraDBCollection:
     def get(self, path=None):
         return self._get(path=path)
 
-    def find(self, filter={}, projection={}, sort={}, options={}):
-        json_query = {
-            "find": {
-                "filter": filter,
-                "projection": projection,
-                "options": options,
-                "sort": sort,
-            }
-        }
+    def find(self, filter=None, projection=None, sort=None, options=None):
+        json_query = make_payload(
+            top_level="find",
+            filter=filter,
+            projection=projection,
+            options=options,
+            sort=sort
+        )
+
         response = self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data=json_query,
         )
+
         return response
 
     def pop(self, filter, update, options):
-        json_query = {
-            "findOneAndUpdate": {"filter": filter, "update": update, "options": options}
-        }
+        json_query = make_payload(
+            top_level="findOneAndUpdate",
+            filter=filter,
+            update=update,
+            options=options
+        )
+
         response = self._request(
             method=http_methods.POST,
             path=self.base_path,
             json_data=json_query,
         )
+
         return response
 
     def push(self, filter, update, options):
-        json_query = {
-            "findOneAndUpdate": {"filter": filter, "update": update, "options": options}
-        }
+        json_query = make_payload(
+            top_level="findOneAndUpdate",
+            filter=filter,
+            update=update,
+            options=options
+        )
+
         response = self._request(
             method=http_methods.POST,
             path=self.base_path,
             json_data=json_query,
         )
+
         return response
 
     def find_one_and_replace(
         self, sort=None, filter=None, replacement=None, options=None
     ):
-        json_query = {
-            "findOneAndReplace": {
-                "filter": filter,
-                "replacement": replacement,
-                "options": options,
-                "sort": sort,
-            }
-        }
+        json_query = make_payload(
+            top_level="findOneAndReplace",
+            filter=filter,
+            replacement=replacement,
+            options=options,
+            sort=sort
+        )
+
         response = self._request(
             method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
         )
+
         return response
 
     def find_one_and_update(self, sort=None, update=None, filter=None, options=None):
-        json_query = {
-            "findOneAndUpdate": {
-                "filter": filter,
-                "update": update,
-                "options": options,
-                "sort": sort,
-            }
-        }
+        json_query = make_payload(
+            top_level="findOneAndUpdate",
+            filter=filter,
+            update=update,
+            options=options,
+            sort=sort
+        )
 
         response = self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data=json_query,
         )
+
         return response
 
     def find_one(self, filter={}, projection={}, sort={}, options={}):
-        json_query = {
-            "findOne": {
-                "filter": filter,
-                "projection": projection,
-                "options": options,
-                "sort": sort,
-            }
-        }
+        json_query = make_payload(
+            top_level="findOne",
+            filter=filter,
+            projection=projection,
+            options=options,
+            sort=sort
+        )
+
         response = self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data=json_query,
         )
+
         return response
 
     def insert_one(self, document):
-        json_query = {"insertOne": {"document": document}}
+        json_query = make_payload(
+            top_level="insertOne",
+            document=document
+        )
+
         response = self._request(
             method=http_methods.POST, path=self.base_path, json_data=json_query
         )
+        
         return response
+    
+    def insert_many(self, documents):
+        json_query = make_payload(
+            top_level="insertMany",
+            documents=documents
+        )
+
+        return self._request(
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data=json_query,
+        )
 
     def update_one(self, filter, update):
-        json_query = {"updateOne": {"filter": filter, "update": update}}
+        json_query = make_payload(
+            top_level="updateOne",
+            filter=filter,
+            update=update
+        )
+
         return self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
@@ -194,15 +229,9 @@ class AstraDBCollection:
                 "update": {"$unset": {subdoc: ""}},
             }
         }
+
         return self._request(
             method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
-        )
-
-    def insert_many(self, documents):
-        return self._request(
-            method=http_methods.POST,
-            path=f"{self.base_path}",
-            json_data={"insertMany": {"documents": documents}},
         )
 
 

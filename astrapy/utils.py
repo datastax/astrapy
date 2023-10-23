@@ -42,3 +42,22 @@ def make_request(
         logger.warning(e)
 
         return None
+
+def make_payload(
+    top_level,
+    **kwargs
+):
+    params = {}
+    for key, value in kwargs.items():
+        params[key] = value
+
+    json_query = {
+        top_level: {}
+    }
+
+    # Adding keys only if they're provided
+    for key, value in params.items():
+        if value is not None:
+            json_query[top_level][key] = value
+
+    return json_query
