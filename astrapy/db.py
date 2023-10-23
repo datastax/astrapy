@@ -13,8 +13,7 @@
 # limitations under the License.
 
 from astrapy.defaults import DEFAULT_AUTH_HEADER, DEFAULT_KEYSPACE_NAME
-from astrapy.ops import AstraDBOps
-from astrapy.utils import make_payload, make_request, http_methods
+from astrapy.utils import make_payload, make_request, http_methods, parse_endpoint_url
 
 import logging
 
@@ -29,17 +28,16 @@ class AstraDBCollection:
         self,
         collection_name,
         astra_db=None,
-        db_id=None,
-        token=None,
-        db_region=None,
+        api_key=None,
+        api_endpoint=None,
         namespace=None,
     ):
         if astra_db is None:
-            if db_id is None or token is None:
-                raise AssertionError("Must provide db_id and token")
+            if api_key is None or api_endpoint is None:
+                raise AssertionError("Must provide api_key and api_endpoint")
 
             astra_db = AstraDB(
-                db_id=db_id, token=token, db_region=db_region, namespace=namespace
+                api_key=api_key, api_endpoint=api_endpoint, namespace=namespace
             )
 
         self.astra_db = astra_db
@@ -52,7 +50,7 @@ class AstraDBCollection:
             **kwargs,
             base_url=self.astra_db.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
-            token=self.astra_db.token,
+            api_key=self.astra_db.api_key,
         )
 
     def _get(self, path=None, options=None):
@@ -231,13 +229,12 @@ class AstraDBCollection:
 class AstraDB:
     def __init__(
         self,
-        db_id=None,
-        token=None,
-        db_region=None,
+        api_key=None,
+        api_endpoint=None,
         namespace=None,
     ):
-        if db_id is None or token is None:
-            raise AssertionError("Must provide db_id and token")
+        if api_key is None or api_endpoint is None:
+            raise AssertionError("Must provide api_key and api_endpoint")
 
         if namespace is None:
             logger.info(
@@ -246,16 +243,17 @@ class AstraDB:
             namespace = DEFAULT_KEYSPACE_NAME
 
         # Store the initial parameters
-        self.db_id = db_id
-        self.token = token
-
-        # Handle the region parameter
-        if not db_region:
-            db_region = AstraDBOps(token=token).get_database(db_id)["info"]["region"]
-        self.db_region = db_region
+        self.api_key = api_key
+        (
+            self.database_id,
+            self.database_region,
+            self.database_domain,
+        ) = parse_endpoint_url(api_endpoint)
 
         # Set the Base URL for the API calls
-        self.base_url = f"https://{db_id}-{db_region}.apps.astra.datastax.com"
+        self.base_url = (
+            f"https://{self.database_id}-{self.database_region}.{self.database_domain}"
+        )
         self.base_path = f"{DEFAULT_BASE_PATH}/{namespace}"
 
         # Set the namespace parameter
@@ -267,7 +265,7 @@ class AstraDB:
             **kwargs,
             base_url=self.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
-            token=self.token,
+            api_key=self.api_key,
         )
 
         return result

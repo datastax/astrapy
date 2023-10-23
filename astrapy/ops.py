@@ -23,8 +23,8 @@ PATH_PREFIX = "/v2"
 
 
 class AstraDBOps:
-    def __init__(self, token):
-        self.token = "Bearer " + token
+    def __init__(self, api_key):
+        self.api_key = "Bearer " + api_key
         self.base_url = f"{DEFAULT_HOST}{PATH_PREFIX}"
 
     def _ops_request(self, method, path, options=None, json_data=None):
@@ -34,7 +34,7 @@ class AstraDBOps:
             base_url=self.base_url,
             method=method,
             auth_header="Authorization",
-            token=self.token,
+            api_key=self.api_key,
             json_data=json_data,
             url_params=options,
             path=path,
