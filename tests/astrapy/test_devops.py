@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from astrapy.ops import AstraDBOps
+from astrapy.defaults import DEFAULT_KEYSPACE_NAME
 
 import pytest
 import logging
@@ -59,7 +60,7 @@ def test_create_database(devops_client):
         "name": "vector_test_create",
         "tier": "serverless",
         "cloudProvider": "GCP",
-        "keyspace": os.getenv("ASTRA_DB_KEYSPACE", "default_namespace"),
+        "keyspace": os.getenv("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME),
         "region": os.getenv("ASTRA_DB_REGION", "us-east1"),
         "capacityUnits": 1,
         "user": "token",
