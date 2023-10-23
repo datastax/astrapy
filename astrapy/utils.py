@@ -22,26 +22,22 @@ def make_request(
     path=None,
     json_data=None,
     url_params=None,
-    return_type="json",
 ):
-    r = requests.request(
-        method=method,
-        url=f"{base_url}{path}",
-        params=url_params,
-        json=json_data,
-        timeout=DEFAULT_TIMEOUT,
-        headers={auth_header: token},
-    )
-
     try:
-        if return_type == "json":
-            return r.json()
-        else:
-            return r
+        r = requests.request(
+            method=method,
+            url=f"{base_url}{path}",
+            params=url_params,
+            json=json_data,
+            timeout=DEFAULT_TIMEOUT,
+            headers={auth_header: token},
+        )
+
+        return r
     except Exception as e:
         logger.warning(e)
 
-        return None
+        return {"error": "An unknown error occurred", "details": str(e)}
 
 
 def make_payload(top_level, **kwargs):

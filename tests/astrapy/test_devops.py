@@ -47,7 +47,7 @@ def test_client_type(devops_client):
 
 
 @pytest.mark.describe("should get all databases")
-def test_list_databases(devops_client):
+def test_get_databases(devops_client):
     response = devops_client.get_databases()
     assert type(response) is list
 
@@ -68,7 +68,6 @@ def test_create_database(devops_client):
     response = devops_client.create_database(database_definition=database_definition)
     assert response["id"] is not None
     ASTRA_TEMP_DB = response["id"]
-    print("ASTRA TEMP ID1", ASTRA_TEMP_DB)
 
     check_db = devops_client.get_database(database=ASTRA_TEMP_DB)
     assert check_db is not None
@@ -82,4 +81,5 @@ def test_create_keyspace(devops_client):
     response = devops_client.create_keyspace(
         keyspace="test_namespace", database=os.environ["ASTRA_DB_ID"]
     )
-    print("RESPONSE", response)
+
+    assert response is not None
