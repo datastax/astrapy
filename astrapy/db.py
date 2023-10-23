@@ -47,15 +47,20 @@ class AstraDBCollection:
         self.base_path = f"{self.astra_db.base_path}/{collection_name}"
 
     def _request(self, *args, **kwargs):
-        result = make_request(
-            *args,
-            **kwargs,
-            base_url=self.astra_db.base_url,
-            auth_header=DEFAULT_AUTH_HEADER,
-            token=self.astra_db.token,
-        )
+        try:
+            result = make_request(
+                *args,
+                **kwargs,
+                base_url=self.astra_db.base_url,
+                auth_header=DEFAULT_AUTH_HEADER,
+                token=self.astra_db.token,
+            )
 
-        return result
+            return result
+        except Exception as e:
+            logger.error(e)
+
+            return {"error": "An unknown error occurred", "details": str(e)}
 
     def _get(self, path=None, options=None):
         full_path = f"{self.base_path}/{path}" if path else self.base_path

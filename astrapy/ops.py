@@ -14,6 +14,10 @@
 
 from astrapy.utils import make_request, http_methods
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 DEFAULT_HOST = "https://api.astra.datastax.com"
 PATH_PREFIX = "/v2"
 
@@ -28,16 +32,23 @@ class AstraDBOps:
     ):
         options = {} if options is None else options
 
-        return make_request(
-            base_url=self.base_url,
-            method=method,
-            auth_header="Authorization",
-            token=self.token,
-            json_data=json_data,
-            url_params=options,
-            path=path,
-            return_type=return_type,
-        )
+        try:
+            result = make_request(
+                base_url=self.base_url,
+                method=method,
+                auth_header="Authorization",
+                token=self.token,
+                json_data=json_data,
+                url_params=options,
+                path=path,
+                return_type=return_type,
+            )
+
+            return result
+        except Exception as e:
+            logger.error(e)
+
+            return {"error": "An unknown error occurred", "details": str(e)}
 
     def get_databases(self, options=None):
         return self._ops_request(
