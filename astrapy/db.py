@@ -27,7 +27,7 @@ DEFAULT_BASE_PATH = "/api/json/v1"
 class AstraDBCollection:
     def __init__(
             self,
-            collection,
+            collection_name,
             astra_db=None,
             db_id=None,
             token=None,
@@ -42,8 +42,8 @@ class AstraDBCollection:
             )
 
         self.astra_db = astra_db
-        self.collection = collection
-        self.base_path = f"{self.astra_db.base_path}/{collection}"
+        self.collection_name = collection_name
+        self.base_path = f"{self.astra_db.base_path}/{collection_name}"
 
 
     def _request(self, *args, **kwargs):
@@ -83,7 +83,6 @@ class AstraDBCollection:
                 "sort": sort,
             }
         }
-        print(json_query)
         response = self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
@@ -246,9 +245,9 @@ class AstraDB:
         return result
 
 
-    def collection(self, collection):
+    def collection(self, collection_name):
         return AstraDBCollection(
-            collection=collection,
+            collection_name=collection_name,
             astra_db=self
         )
 
@@ -260,24 +259,24 @@ class AstraDB:
         )
         return res
 
-    def create_collection(self, size=None, options={}, function="", name=""):
+    def create_collection(self, size=None, options={}, function="", collection_name=""):
         if size and not options:
             options = {"vector": {"size": size}}
             if function:
                 options["vector"]["function"] = function
         if options:
-            jsondata = {"name": name, "options": options}
+            jsondata = {"name": collection_name, "options": options}
         else:
-            jsondata = {"name": name}
+            jsondata = {"name": collection_name}
         return self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data={"createCollection": jsondata},
         )
 
-    def delete_collection(self, name=""):
+    def delete_collection(self, collection_name=""):
         return self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
-            json_data={"deleteCollection": {"name": name}},
+            json_data={"deleteCollection": {"name": collection_name}},
         )
