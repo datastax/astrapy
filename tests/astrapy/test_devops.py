@@ -13,28 +13,27 @@
 # limitations under the License.
 
 from astrapy.ops import AstraDBOps
+from astrapy.defaults import DEFAULT_KEYSPACE_NAME, DEFAULT_REGION
 
 import pytest
 import logging
 import os
 from faker import Faker
-import http.client as http_client
 
 logger = logging.getLogger(__name__)
 fake = Faker()
-import dotenv
 
-dotenv.load_dotenv()
 
-http_client.HTTPConnection.debuglevel = 1
+from dotenv import load_dotenv
 
+load_dotenv()
+
+
+# Parameter for the ops testing
 ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID")
-ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION")
+ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION", DEFAULT_REGION)
 ASTRA_DB_APPLICATION_TOKEN = os.environ.get("ASTRA_DB_APPLICATION_TOKEN")
-ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE")
-ASTRA_CLIENT_ID = os.environ.get("ASTRA_CLIENT_ID")
-ASTRA_CLIENT_SECRET = os.environ.get("ASTRA_CLIENT_SECRET")
-ASTRA_TEMP_DB = ""
+ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
 
 
 @pytest.fixture
@@ -59,11 +58,11 @@ def test_create_database(devops_client):
         "name": "vector_test_create",
         "tier": "serverless",
         "cloudProvider": "GCP",
-        "keyspace": os.getenv("ASTRA_DB_KEYSPACE", "default_namespace"),
-        "region": os.getenv("ASTRA_DB_REGION", "us-east1"),
+        "keyspace": ASTRA_DB_KEYSPACE,
+        "region": ASTRA_DB_REGION,
         "capacityUnits": 1,
         "user": "token",
-        "password": os.environ.get("ASTRA_DB_APPLICATION_TOKEN"),
+        "password": ASTRA_DB_APPLICATION_TOKEN,
         "dbType": "vector",
     }
     response = devops_client.create_database(database_definition=database_definition)
