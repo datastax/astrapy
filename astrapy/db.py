@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.defaults import DEFAULT_AUTH_HEADER, DEFAULT_KEYSPACE_NAME
+from astrapy.defaults import (
+    DEFAULT_AUTH_HEADER,
+    DEFAULT_KEYSPACE_NAME,
+    DEFAULT_BASE_PATH,
+)
 from astrapy.utils import make_payload, make_request, http_methods, parse_endpoint_url
 
 import logging
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_PAGE_SIZE = 20
-DEFAULT_BASE_PATH = "/api/json/v1"
 
 
 class AstraDBCollection:
@@ -224,6 +225,24 @@ class AstraDBCollection:
         ).json()
 
         return response
+
+    def upsert(self, document):
+        # Attempt to insert the given document
+        result = self.insert_one(document)
+
+        # Check if we hit an error
+        if (
+            "errors" in result
+            and "errorCode" in result["errors"][0]
+            and result["errors"][0]["errorCode"] == "DOCUMENT_ALREADY_EXISTS"
+        ):
+            # Now we attempt to update
+            result = self.find_one_and_replace(
+                filter={"_id": document["_id"]},
+                replacement=document,
+            )
+
+        return result
 
 
 class AstraDB:
