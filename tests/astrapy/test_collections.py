@@ -35,7 +35,7 @@ ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID")
 ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION", DEFAULT_REGION)
 ASTRA_DB_APPLICATION_TOKEN = os.environ.get("ASTRA_DB_APPLICATION_TOKEN")
 ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
-
+ASTRA_DB_BASE_URL = os.environ.get("ASTRA_DB_BASE_URL", "apps.astra.datastax.com")
 
 TEST_COLLECTION_NAME = "test_collection"
 cliffu = str(uuid.uuid4())
@@ -50,8 +50,8 @@ def cliff_uuid():
 def test_collection():
     astra_db_collection = AstraDBCollection(
         collection_name=TEST_COLLECTION_NAME,
-        db_id=ASTRA_DB_ID,
-        token=ASTRA_DB_APPLICATION_TOKEN,
+        api_key=ASTRA_DB_APPLICATION_TOKEN,
+        api_endpoint=f"https://{ASTRA_DB_ID}-{ASTRA_DB_REGION}.{ASTRA_DB_BASE_URL}",
         namespace=ASTRA_DB_KEYSPACE,
     )
 
@@ -61,7 +61,9 @@ def test_collection():
 @pytest.fixture
 def test_db():
     astra_db = AstraDB(
-        db_id=ASTRA_DB_ID, token=ASTRA_DB_APPLICATION_TOKEN, namespace=ASTRA_DB_KEYSPACE
+        api_key=ASTRA_DB_APPLICATION_TOKEN,
+        api_endpoint=f"https://{ASTRA_DB_ID}-{ASTRA_DB_REGION}.{ASTRA_DB_BASE_URL}",
+        namespace=ASTRA_DB_KEYSPACE,
     )
 
     return astra_db

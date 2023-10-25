@@ -34,11 +34,12 @@ ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID")
 ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION", DEFAULT_REGION)
 ASTRA_DB_APPLICATION_TOKEN = os.environ.get("ASTRA_DB_APPLICATION_TOKEN")
 ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
+ASTRA_DB_BASE_URL = os.environ.get("ASTRA_DB_BASE_URL", "apps.astra.datastax.com")
 
 
 @pytest.fixture
 def devops_client():
-    return AstraDBOps(token=ASTRA_DB_APPLICATION_TOKEN)
+    return AstraDBOps(api_key=ASTRA_DB_APPLICATION_TOKEN)
 
 
 @pytest.mark.describe("should initialize an AstraDB Ops Client")

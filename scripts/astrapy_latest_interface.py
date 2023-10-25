@@ -11,8 +11,8 @@ sys.path.append("../")
 load_dotenv()
 
 # First, we work with devops
-token = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
-astra_ops = AstraDBOps(token)
+api_key = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
+astra_ops = AstraDBOps(api_key)
 
 # Define a database to create
 database_definition = {
@@ -22,8 +22,8 @@ database_definition = {
     "keyspace": os.getenv("ASTRA_DB_KEYSPACE", "default_keyspace"),
     "region": os.getenv("ASTRA_DB_REGION", None),
     "capacityUnits": 1,
-    "user": "token",
-    "password": token,
+    "user": "example",
+    "password": api_key,
     "dbType": "vector",
 }
 
@@ -31,10 +31,15 @@ database_definition = {
 create_result = astra_ops.create_database(database_definition=database_definition)
 
 # Grab the new information from the database
-db_id = create_result["id"]
+database_id = create_result["id"]
+database_region = astra_ops.get_database()[0]["info"]["region"]
+database_base_url = "apps.astra.datastax.com"
+
+# Build the endpoint URL:
+api_endpoint = f"https://{database_id}-{database_region}.{database_base_url}"
 
 # Initialize our vector db
-astra_db = AstraDB(db_id=db_id, token=token)
+astra_db = AstraDB(api_key=api_key, api_endpoint=api_endpoint)
 
 # Possible Operations
 astra_db.create_collection(collection_name="collection_test_delete", size=5)
@@ -47,7 +52,7 @@ astra_db_collection = AstraDBCollection(
 )
 # Or...
 astra_db_collection = AstraDBCollection(
-    collection_name="collection_test", db_id=db_id, token=token
+    collection_name="collection_test", api_key=api_key, api_endpoint=api_endpoint
 )
 
 astra_db_collection.insert_one(
