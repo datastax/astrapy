@@ -16,6 +16,7 @@ from astrapy.defaults import DEFAULT_AUTH_HEADER, DEFAULT_KEYSPACE_NAME
 from astrapy.utils import make_payload, make_request, http_methods, parse_endpoint_url
 
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -45,32 +46,41 @@ class AstraDBCollection:
         self.base_path = f"{self.astra_db.base_path}/{collection_name}"
 
     def _request(self, *args, **kwargs):
-        return make_request(
+        response = make_request(
             *args,
             **kwargs,
             base_url=self.astra_db.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
             api_key=self.astra_db.api_key,
         )
-
+        responsebody = response.json()
+        
+        if "errors" in responsebody:
+            print (json.dumps(responsebody["errors"]))
+            raise ValueError(json.dumps(responsebody["errors"]))
+        else:
+            print("NO STATUS")
+            return responsebody
+            
     def _get(self, path=None, options=None):
         full_path = f"{self.base_path}/{path}" if path else self.base_path
         response = self._request(
             method=http_methods.GET, path=full_path, url_params=options
-        ).json()
+        )
         if isinstance(response, dict):
             return response
         return None
 
     def _post(self, path=None, document=None):
-        return self._request(
+        response = self._request(
             method=http_methods.POST, path=f"{self.base_path}", json_data=document
-        ).json()
+        )
+        return response
 
     def get(self, path=None):
         return self._get(path=path)
 
-    def find(self, filter=None, projection=None, sort=None, options=None):
+    def find(self, filter=None, projection=None, sort={}, options=None):
         json_query = make_payload(
             top_level="find",
             filter=filter,
@@ -79,11 +89,9 @@ class AstraDBCollection:
             sort=sort,
         )
 
-        response = self._request(
-            method=http_methods.POST,
-            path=f"{self.base_path}",
-            json_data=json_query,
-        ).json()
+        response = self._post(
+            document=json_query,
+        )
 
         return response
 
@@ -96,7 +104,7 @@ class AstraDBCollection:
             method=http_methods.POST,
             path=self.base_path,
             json_data=json_query,
-        ).json()
+        )
 
         return response
 
@@ -109,12 +117,12 @@ class AstraDBCollection:
             method=http_methods.POST,
             path=self.base_path,
             json_data=json_query,
-        ).json()
+        )
 
         return response
 
     def find_one_and_replace(
-        self, sort=None, filter=None, replacement=None, options=None
+        self, sort={}, filter=None, replacement=None, options=None
     ):
         json_query = make_payload(
             top_level="findOneAndReplace",
@@ -126,11 +134,11 @@ class AstraDBCollection:
 
         response = self._request(
             method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
-        ).json()
+        )
 
         return response
 
-    def find_one_and_update(self, sort=None, update=None, filter=None, options=None):
+    def find_one_and_update(self, sort={}, update=None, filter=None, options=None):
         json_query = make_payload(
             top_level="findOneAndUpdate",
             filter=filter,
@@ -143,7 +151,7 @@ class AstraDBCollection:
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data=json_query,
-        ).json()
+        )
 
         return response
 
@@ -156,11 +164,9 @@ class AstraDBCollection:
             sort=sort,
         )
 
-        response = self._request(
-            method=http_methods.POST,
-            path=f"{self.base_path}",
-            json_data=json_query,
-        ).json()
+        response = self._post(
+            document=json_query,
+        )
 
         return response
 
@@ -169,7 +175,7 @@ class AstraDBCollection:
 
         response = self._request(
             method=http_methods.POST, path=self.base_path, json_data=json_query
-        ).json()
+        )
 
         return response
 
@@ -180,7 +186,7 @@ class AstraDBCollection:
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data=json_query,
-        ).json()
+        )
 
         return response
 
@@ -191,7 +197,7 @@ class AstraDBCollection:
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data=json_query,
-        ).json()
+        )
 
         return response
 
@@ -207,7 +213,7 @@ class AstraDBCollection:
 
         response = self._request(
             method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
-        ).json()
+        )
 
         return response
 
@@ -221,7 +227,7 @@ class AstraDBCollection:
 
         response = self._request(
             method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
-        ).json()
+        )
 
         return response
 
@@ -260,13 +266,22 @@ class AstraDB:
         self.namespace = namespace
 
     def _request(self, *args, **kwargs):
-        result = make_request(
+        response = make_request(
             *args,
             **kwargs,
             base_url=self.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
             api_key=self.api_key,
         )
+
+        responsebody = response.json()
+        
+        if "errors" in responsebody:
+            print (json.dumps(responsebody["errors"]))
+            raise ValueError(json.dumps(responsebody["errors"]))
+        else:
+            return responsebody
+            
 
         return result
 
@@ -278,7 +293,7 @@ class AstraDB:
             method=http_methods.POST,
             path=self.base_path,
             json_data={"findCollections": {}},
-        ).json()
+        )
 
         return response
 
@@ -296,7 +311,7 @@ class AstraDB:
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data={"createCollection": jsondata},
-        ).json()
+        )
 
         return response
 
@@ -305,6 +320,6 @@ class AstraDB:
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data={"deleteCollection": {"name": collection_name}},
-        ).json()
+        )
 
         return response
