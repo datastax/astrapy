@@ -10,6 +10,10 @@ on:
 
 jobs:
   test:
+    env:
+      ASTRA_DB_ID: ${{ secrets.ASTRA_DB_ID }}
+      ASTRA_DB_REGION: ${{ secrets.ASTRA_DB_REGION }}
+      ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
     runs-on: ubuntu-latest
 
     steps:
