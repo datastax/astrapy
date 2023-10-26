@@ -50,7 +50,7 @@ def cliff_uuid():
 def test_collection():
     astra_db_collection = AstraDBCollection(
         collection_name=TEST_COLLECTION_NAME,
-        api_key=ASTRA_DB_APPLICATION_TOKEN,
+        token=ASTRA_DB_APPLICATION_TOKEN,
         api_endpoint=f"https://{ASTRA_DB_ID}-{ASTRA_DB_REGION}.{ASTRA_DB_BASE_URL}",
         namespace=ASTRA_DB_KEYSPACE,
     )
@@ -61,7 +61,7 @@ def test_collection():
 @pytest.fixture
 def test_db():
     astra_db = AstraDB(
-        api_key=ASTRA_DB_APPLICATION_TOKEN,
+        token=ASTRA_DB_APPLICATION_TOKEN,
         api_endpoint=f"https://{ASTRA_DB_ID}-{ASTRA_DB_REGION}.{ASTRA_DB_BASE_URL}",
         namespace=ASTRA_DB_KEYSPACE,
     )
@@ -278,6 +278,7 @@ def test_find_documents_vector(test_collection):
 
     document = test_collection.find(sort=sort, options=options)
     assert document is not None
+
 
 @pytest.mark.describe("Find documents using vector search with error")
 def test_find_documents_vector_error(test_collection):
