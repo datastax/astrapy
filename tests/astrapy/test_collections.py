@@ -150,11 +150,18 @@ def test_insert_many(test_collection):
             "last_name": "Fuff",
         },
     ]
-    res = test_collection.insert_many(documents=documents2)
+    res = test_collection.insert_many(
+        documents=documents2,
+        partial_failures_allowed=True,
+    )
     print(res)
     assert set(res["status"]["insertedIds"]) == set()
 
-    res = test_collection.insert_many(documents=documents2, options={"ordered": False})
+    res = test_collection.insert_many(
+        documents=documents2,
+        options={"ordered": False},
+        partial_failures_allowed=True,
+    )
     print(res)
     assert set(res["status"]["insertedIds"]) == {id_3}
 
