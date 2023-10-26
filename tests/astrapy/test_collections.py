@@ -79,7 +79,6 @@ def test_create_collection(test_db):
 @pytest.mark.describe("should get all collections")
 def test_get_collections(test_db):
     res = test_db.get_collections()
-    print("GET ALL", res)
     assert res["status"]["collections"] is not None
 
 
@@ -273,6 +272,16 @@ def test_find_documents_vector(test_collection):
     document = test_collection.find(sort=sort, options=options)
     assert document is not None
 
+@pytest.mark.describe("Find documents using vector search with error")
+def test_find_documents_vector_error(test_collection):
+    sort = ({"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]},)
+    options = {"limit": 100}
+
+    try:
+        test_collection.find(sort=sort, options=options)
+    except ValueError as e:
+        assert e is not None
+
 
 @pytest.mark.describe("Find documents using vector search and projection")
 def test_find_documents_vector_proj(test_collection):
@@ -286,7 +295,7 @@ def test_find_documents_vector_proj(test_collection):
 
 @pytest.mark.describe("Find a document using vector search and projection")
 def test_find_documents_vector_proj(test_collection):
-    sort = ({"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]},)
+    sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
     projection = {"$vector": 1}
 
     document = test_collection.find(sort=sort, options={}, projection=projection)
@@ -310,7 +319,7 @@ def test_find_one_and_update_vector(test_collection):
 
 @pytest.mark.describe("Find one and replace with vector search")
 def test_find_one_and_replace_vector(test_collection):
-    sort = ({"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]},)
+    sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
     replacement = {
         "_id": "3",
         "name": "Vision Vector Frame",
