@@ -13,19 +13,19 @@
 # limitations under the License.
 
 from astrapy.utils import make_request, http_methods
+from astrapy.defaults import DEFAULT_DEV_OPS_PATH_PREFIX, DEFAULT_DEV_OPS_URL
 
 import logging
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_HOST = "https://api.astra.datastax.com"
-PATH_PREFIX = "/v2"
-
 
 class AstraDBOps:
-    def __init__(self, api_key):
+    def __init__(self, api_key, dev_ops_url=None):
+        dev_ops_url = dev_ops_url or DEFAULT_DEV_OPS_URL
+
         self.api_key = "Bearer " + api_key
-        self.base_url = f"{DEFAULT_HOST}{PATH_PREFIX}"
+        self.base_url = f"https://{dev_ops_url}{DEFAULT_DEV_OPS_PATH_PREFIX}"
 
     def _ops_request(self, method, path, options=None, json_data=None):
         options = {} if options is None else options
