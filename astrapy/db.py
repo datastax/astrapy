@@ -87,6 +87,30 @@ class AstraDBCollection:
 
         return response
 
+    @staticmethod
+    def paginate(*, method, options, **kwargs):
+        response0 = method(options=options, **kwargs)
+        next_page_state = response0["data"]["nextPageState"]
+        options0 = options
+        for document in response0["data"]["documents"]:
+            yield document
+        while next_page_state is not None:
+            options1 = {**options0, **{"pagingState": next_page_state}}
+            response1 = method(options=options1, **kwargs)
+            for document in response1["data"]["documents"]:
+                yield document
+            next_page_state = response1["data"]["nextPageState"]
+
+
+    def paginated_find(self, filter=None, projection=None, sort=None, options=None):
+        return self.paginate(
+            method=self.find,
+            filter=filter,
+            projection=projection,
+            sort=sort,
+            options=options,
+        )
+
     def pop(self, filter, update, options):
         json_query = make_payload(
             top_level="findOneAndUpdate", filter=filter, update=update, options=options

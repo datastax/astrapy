@@ -103,4 +103,25 @@ Take a look at the [vector tests](https://github.com/datastax/astrapy/blob/maste
 
 #### Using the Ops Client
 
-You can use the Ops client to work the with Astra DevOps API. Check the [devops tests](https://github.com/datastax/astrapy/blob/master/tests/astrapy/test_devops.py)
+You can use the Ops client to work with the Astra DevOps API. Check the [devops tests](https://github.com/datastax/astrapy/blob/master/tests/astrapy/test_devops.py)
+
+### For Developers
+
+#### Testing
+
+Ensure you provide all required environment variables:
+
+```
+export ASTRA_DB_ID="..."
+export ASTRA_DB_REGION="..."
+export ASTRA_DB_APPLICATION_TOKEN="..."
+export ASTRA_DB_KEYSPACE="..."
+export ASTRA_CLIENT_ID="..."
+export ASTRA_CLIENT_SECRET="..."
+```
+
+then you can run:
+
+```
+PYTHONPATH=. pytest
+```
