@@ -45,7 +45,7 @@ class AstraDBCollection:
         self.collection_name = collection_name
         self.base_path = f"{self.astra_db.base_path}/{collection_name}"
 
-    def _request(self, *args, **kwargs):
+    def _request(self, *args, skip_error_check=False, **kwargs):
         response = make_request(
             *args,
             **kwargs,
@@ -55,11 +55,9 @@ class AstraDBCollection:
         )
         responsebody = response.json()
         
-        if "errors" in responsebody:
-            print (json.dumps(responsebody["errors"]))
+        if not skip_error_check and "errors" in responsebody:
             raise ValueError(json.dumps(responsebody["errors"]))
         else:
-            print("NO STATUS")
             return responsebody
             
     def _get(self, path=None, options=None):
@@ -203,13 +201,14 @@ class AstraDBCollection:
 
         return response
 
-    def insert_many(self, documents, options=None):
+    def insert_many(self, documents, options=None, partial_failures_allowed=False):
         json_query = make_payload(top_level="insertMany", documents=documents, options=options)
 
         response = self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data=json_query,
+            skip_error_check=partial_failures_allowed,
         )
 
         return response
@@ -288,8 +287,8 @@ class AstraDB:
 
         # Set the namespace parameter
         self.namespace = namespace
-
-    def _request(self, *args, **kwargs):
+    
+    def _request(self, *args, skip_error_check=False, **kwargs):
         response = make_request(
             *args,
             **kwargs,
@@ -300,8 +299,7 @@ class AstraDB:
 
         responsebody = response.json()
         
-        if "errors" in responsebody:
-            print (json.dumps(responsebody["errors"]))
+        if not skip_error_check and "errors" in responsebody:
             raise ValueError(json.dumps(responsebody["errors"]))
         else:
             return responsebody
