@@ -123,6 +123,7 @@ def test_find_document(test_collection):
 def test_insert_many(test_collection):
     id_1 = fake.bothify(text="????????")
     id_2 = fake.bothify(text="????????")
+    id_3 = fake.bothify(text="????????")
     documents = [
         {
             "_id": id_1,
@@ -137,6 +138,26 @@ def test_insert_many(test_collection):
     ]
     res = test_collection.insert_many(documents=documents)
     assert res is not None
+
+    documents2 = [
+        {
+            "_id": id_2,
+            "first_name": "Yep",
+            "last_name": "Boss",
+        },
+        {
+            "_id": id_3,
+            "first_name": "Miv",
+            "last_name": "Fuff",
+        },
+    ]
+    res = test_collection.insert_many(documents=documents2)
+    print(res)
+    assert set(res["status"]["insertedIds"]) == set()
+
+    res = test_collection.insert_many(documents=documents2, options={"ordered": False})
+    print(res)
+    assert set(res["status"]["insertedIds"]) == {id_3}
 
     document = test_collection.find(filter={"first_name": "Yep"})
     assert document is not None

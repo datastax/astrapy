@@ -173,8 +173,8 @@ class AstraDBCollection:
 
         return response
 
-    def insert_many(self, documents):
-        json_query = make_payload(top_level="insertMany", documents=documents)
+    def insert_many(self, documents, options=None):
+        json_query = make_payload(top_level="insertMany", documents=documents, options=options)
 
         response = self._request(
             method=http_methods.POST,
