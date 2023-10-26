@@ -287,7 +287,7 @@ class AstraDB:
 
         # Set the namespace parameter
         self.namespace = namespace
-    
+
     def _request(self, *args, skip_error_check=False, **kwargs):
         response = make_request(
             *args,
