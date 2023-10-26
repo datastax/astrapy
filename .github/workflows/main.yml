@@ -1,19 +1,32 @@
-- name: Run pytest
-  # You may pin to the exact commit or the version.
-  # uses: pavelzw/pytest-action@c9e5b9c8d93290ff47dcf6a28c6b19ca0b42e487
-  uses: pavelzw/pytest-action@v2.1.0
-  with:
-    # Print a GitHub job summary
-    job-summary: # optional, default is true
-    # Verbose output
-    verbose: # optional, default is true
-    # Use emojis in the output
-    emoji: # optional, default is true
-    # Custom arguments to pass to pytest
-    custom-arguments: # optional, default is 
-    # Custom command to replace the `pytest` call. Can be a custom executable or something like `poetry run pytest` or `micromamba run -n myenv pytest`.
-    custom-pytest: PYTHONPATH=. pytest # optional, default is pytest
-    # Title of the report
-    report-title: # optional, default is Test Report
-    # Add 'Click to expand' to the report
-    click-to-expand: # optional, default is true
+name: Run Pytest
+
+on:
+  push:
+    branches:
+      - astra-vector
+  pull_request:
+    branches:
+      - astra-vector
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.11
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+        pip install -r requirements.txt
+
+    - name: Run pytest
+      run: |
+        PYTHONPATH=. pytest -s
