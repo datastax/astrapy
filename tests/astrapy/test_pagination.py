@@ -38,18 +38,15 @@ ASTRA_DB_BASE_URL = os.environ.get("ASTRA_DB_BASE_URL", "apps.astra.datastax.com
 
 TEST_COLLECTION_NAME = "test_collection"
 INSERT_BATCH_SIZE = 20  # max 20, fixed by API constraints
-N = 200 # must be EVEN
+N = 200  # must be EVEN
 FIND_LIMIT = 183  # Keep this > 20 and <= N to actually put pagination to test
 
 T = TypeVar("T")
 
 
 def mk_vector(i, N):
-    angle = 2*math.pi * i / N
-    return [
-        math.cos(angle),
-        math.sin(angle)
-    ]
+    angle = 2 * math.pi * i / N
+    return [math.cos(angle), math.sin(angle)]
 
 
 def _batch_iterable(iterable: Iterable[T], batch_size: int) -> Iterable[Iterable[T]]:
@@ -66,24 +63,23 @@ def _batch_iterable(iterable: Iterable[T], batch_size: int) -> Iterable[Iterable
 @pytest.fixture(scope="module")
 def test_collection():
     astra_db = AstraDB(
-        api_key=ASTRA_DB_APPLICATION_TOKEN,
+        token=ASTRA_DB_APPLICATION_TOKEN,
         api_endpoint=f"https://{ASTRA_DB_ID}-{ASTRA_DB_REGION}.{ASTRA_DB_BASE_URL}",
         namespace=ASTRA_DB_KEYSPACE,
     )
     res = astra_db.create_collection(collection_name=TEST_COLLECTION_NAME, size=2)
     astra_db_collection = AstraDBCollection(
         collection_name=TEST_COLLECTION_NAME,
-        api_key=ASTRA_DB_APPLICATION_TOKEN,
+        token=ASTRA_DB_APPLICATION_TOKEN,
         api_endpoint=f"https://{ASTRA_DB_ID}-{ASTRA_DB_REGION}.{ASTRA_DB_BASE_URL}",
         namespace=ASTRA_DB_KEYSPACE,
     )
     if int(os.getenv("TEST_PAGINATION_SKIP_INSERTION", "0")) == 0:
         inserted_ids = set()
         for i_batch in _batch_iterable(range(N), INSERT_BATCH_SIZE):
-            batch_ids = astra_db_collection.insert_many(documents=[
-                {"_id": str(i), "$vector": mk_vector(i, N)}
-                for i in i_batch
-            ])["status"]["insertedIds"]
+            batch_ids = astra_db_collection.insert_many(
+                documents=[{"_id": str(i), "$vector": mk_vector(i, N)} for i in i_batch]
+            )["status"]["insertedIds"]
             inserted_ids = inserted_ids | set(batch_ids)
         assert inserted_ids == {str(i) for i in range(N)}
     yield astra_db_collection
@@ -91,7 +87,9 @@ def test_collection():
         res = astra_db.delete_collection(collection_name=TEST_COLLECTION_NAME)
 
 
-@pytest.mark.describe("should retrieve the required amount of documents, all different, through pagination")
+@pytest.mark.describe(
+    "should retrieve the required amount of documents, all different, through pagination"
+)
 def test_find_paginated(test_collection):
     options = {"limit": FIND_LIMIT}
     projection = {"$vector": 0}

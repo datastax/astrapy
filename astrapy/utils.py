@@ -18,7 +18,7 @@ class http_methods:
 def make_request(
     base_url,
     auth_header,
-    api_key,
+    token,
     method=http_methods.POST,
     path=None,
     json_data=None,
@@ -31,7 +31,7 @@ def make_request(
             params=url_params,
             json=json_data,
             timeout=DEFAULT_TIMEOUT,
-            headers={auth_header: api_key},
+            headers={auth_header: token},
         )
 
         return r

@@ -30,16 +30,16 @@ class AstraDBCollection:
         self,
         collection_name,
         astra_db=None,
-        api_key=None,
+        token=None,
         api_endpoint=None,
         namespace=None,
     ):
         if astra_db is None:
-            if api_key is None or api_endpoint is None:
-                raise AssertionError("Must provide api_key and api_endpoint")
+            if token is None or api_endpoint is None:
+                raise AssertionError("Must provide token and api_endpoint")
 
             astra_db = AstraDB(
-                api_key=api_key, api_endpoint=api_endpoint, namespace=namespace
+                token=token, api_endpoint=api_endpoint, namespace=namespace
             )
 
         self.astra_db = astra_db
@@ -52,15 +52,15 @@ class AstraDBCollection:
             **kwargs,
             base_url=self.astra_db.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
-            api_key=self.astra_db.api_key,
+            token=self.astra_db.token,
         )
         responsebody = response.json()
-        
+
         if not skip_error_check and "errors" in responsebody:
             raise ValueError(json.dumps(responsebody["errors"]))
         else:
             return responsebody
-            
+
     def _get(self, path=None, options=None):
         full_path = f"{self.base_path}/{path}" if path else self.base_path
         response = self._request(
@@ -107,7 +107,6 @@ class AstraDBCollection:
             for document in response1["data"]["documents"]:
                 yield document
             next_page_state = response1["data"]["nextPageState"]
-
 
     def paginated_find(self, filter=None, projection=None, sort=None, options=None):
         return self.paginate(
@@ -203,7 +202,9 @@ class AstraDBCollection:
         return response
 
     def insert_many(self, documents, options=None, partial_failures_allowed=False):
-        json_query = make_payload(top_level="insertMany", documents=documents, options=options)
+        json_query = make_payload(
+            top_level="insertMany", documents=documents, options=options
+        )
 
         response = self._request(
             method=http_methods.POST,
@@ -286,12 +287,12 @@ class AstraDBCollection:
 class AstraDB:
     def __init__(
         self,
-        api_key=None,
+        token=None,
         api_endpoint=None,
         namespace=None,
     ):
-        if api_key is None or api_endpoint is None:
-            raise AssertionError("Must provide api_key and api_endpoint")
+        if token is None or api_endpoint is None:
+            raise AssertionError("Must provide token and api_endpoint")
 
         if namespace is None:
             logger.info(
@@ -300,7 +301,7 @@ class AstraDB:
             namespace = DEFAULT_KEYSPACE_NAME
 
         # Store the initial parameters
-        self.api_key = api_key
+        self.token = token
         (
             self.database_id,
             self.database_region,
@@ -322,16 +323,15 @@ class AstraDB:
             **kwargs,
             base_url=self.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
-            api_key=self.api_key,
+            token=self.token,
         )
 
         responsebody = response.json()
-        
+
         if not skip_error_check and "errors" in responsebody:
             raise ValueError(json.dumps(responsebody["errors"]))
         else:
             return responsebody
-            
 
         return result
 
