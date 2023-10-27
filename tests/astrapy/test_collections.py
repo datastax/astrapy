@@ -392,6 +392,43 @@ def test_find_one_document(test_collection):
     assert document["data"]["document"] == None
 
 
+@pytest.mark.describe("upsert a document")
+def test_upsert_document(test_collection, cliff_uuid):
+    new_uuid = str(uuid.uuid4())
+
+    test_collection.upsert(
+        {
+            "_id": new_uuid,
+            "addresses": {
+                "work": {
+                    "city": "Seattle",
+                    "state": "WA",
+                }
+            },
+        }
+    )
+
+    document = test_collection.find_one(filter={"_id": new_uuid})
+
+    # Check the document exists and that the city field is Seattle
+    assert document is not None
+    assert document["data"]["document"]["addresses"]["work"]["city"] == "Seattle"
+    assert "country" not in document["data"]["document"]["addresses"]["work"]
+
+    test_collection.upsert(
+        {
+            "_id": cliff_uuid,
+            "addresses": {"work": {"city": "Everett", "state": "WA", "country": "USA"}},
+        }
+    )
+
+    document = test_collection.find_one(filter={"_id": cliff_uuid})
+
+    assert document is not None
+    assert document["data"]["document"]["addresses"]["work"]["city"] == "Everett"
+    assert "country" in document["data"]["document"]["addresses"]["work"]
+
+
 @pytest.mark.describe("should use document functions")
 def test_functions(test_collection):
     user_id = str(uuid.uuid4())

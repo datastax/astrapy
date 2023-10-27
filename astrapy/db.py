@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.defaults import DEFAULT_AUTH_HEADER, DEFAULT_KEYSPACE_NAME
+from astrapy.defaults import (
+    DEFAULT_AUTH_HEADER,
+    DEFAULT_KEYSPACE_NAME,
+    DEFAULT_BASE_PATH,
+)
 from astrapy.utils import make_payload, make_request, http_methods, parse_endpoint_url
 
 import logging
 import json
 
 logger = logging.getLogger(__name__)
-
-DEFAULT_PAGE_SIZE = 20
-DEFAULT_BASE_PATH = "/api/json/v1"
 
 
 class AstraDBCollection:
@@ -253,6 +254,33 @@ class AstraDBCollection:
         )
 
         return response
+
+    def upsert(self, document):
+        """
+        Emulate an upsert operation for a single document,
+        whereby a document is inserted if its _id is new, or completely
+        replaces and existing one if that _id is already saved in the collection.
+        Returns: the _id of the inserted document.
+        """
+        # Attempt to insert the given document
+        result = self.insert_one(document)
+
+        # Check if we hit an error
+        if (
+            "errors" in result
+            and "errorCode" in result["errors"][0]
+            and result["errors"][0]["errorCode"] == "DOCUMENT_ALREADY_EXISTS"
+        ):
+            # Now we attempt to update
+            result = self.find_one_and_replace(
+                filter={"_id": document["_id"]},
+                replacement=document,
+            )
+            upserted_id = result["data"]["document"]["_id"]
+        else:
+            upserted_id = result["status"]["insertedIds"][0]
+
+        return upserted_id
 
 
 class AstraDB:
