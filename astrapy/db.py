@@ -227,6 +227,12 @@ class AstraDBCollection:
         return response
 
     def upsert(self, document):
+        """
+        Emulate an upsert operation for a single document,
+        whereby a document is inserted if its _id is new, or completely
+        replaces and existing one if that _id is already saved in the collection.
+        Returns: the _id of the inserted document.
+        """
         # Attempt to insert the given document
         result = self.insert_one(document)
 
@@ -241,8 +247,11 @@ class AstraDBCollection:
                 filter={"_id": document["_id"]},
                 replacement=document,
             )
+            upserted_id = result["data"]["document"]["_id"]
+        else:
+            upserted_id = result["status"]["insertedIds"][0]
 
-        return result
+        return upserted_id
 
 
 class AstraDB:
