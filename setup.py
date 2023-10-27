@@ -14,42 +14,46 @@
 
 from setuptools import setup
 from os import path
+
 this_directory = path.abspath(path.dirname(__file__))
-with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+with open(path.join(this_directory, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
-    name='astrapy',
+    name="astrapy",
     packages=[
-        'astrapy',
-        'astrapy/endpoints',
+        "astrapy",
+        "astrapy/endpoints",
     ],
-    version='0.3.3',
-    license='Apache license 2.0',
-    description='AstraPy is a Pythonic SDK for DataStax Astra',
+    version="0.5.0",
+    license="Apache license 2.0",
+    description="AstraPy is a Pythonic SDK for DataStax Astra",
     long_description=long_description,
-    long_description_content_type='text/markdown',
-    author='DataStax',
-    author_email='oss@datastax.com',
-    url='https://github.com/datastax/astrapy',
-    download_url='https://github.com/datastax/astrapy/archive/refs/tags/v0.3.3.tar.gz',
-    keywords=['DataStax Astra', 'Stargate'],
+    long_description_content_type="text/markdown",
+    author="Kirsten Hunter",
+    author_email="kirsten.hunter@datastax.com",
+    url="https://github.com/datastax/astrapy",
+    keywords=["DataStax Astra", "Stargate"],
     install_requires=[
-        "requests>=2.27,<3",
-        "requests_toolbelt>=0.9.1,<1",
-        'gql>=3.0.0',
+        "faker~=19.11.0",
+        "pytest~=7.4.2",
+        "pytest-cov~=4.1.0",
+        "pytest-testdox~=3.1.0",
+        "requests~=2.31.0",
+        "requests-toolbelt~=1.0.0",
+        "python-dotenv~=1.0.0",
     ],
     classifiers=[
-        'Development Status :: 3 - Alpha',
-        'Intended Audience :: Developers',
-        'Topic :: Software Development :: Build Tools',
-        'License :: OSI Approved :: Apache Software License',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
+        "Topic :: Software Development :: Build Tools",
+        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
     ],
 )

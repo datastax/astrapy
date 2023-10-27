@@ -12,268 +12,456 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.collections import create_client, AstraCollection
+from astrapy.db import AstraDBCollection, AstraDB
+from astrapy.defaults import DEFAULT_KEYSPACE_NAME, DEFAULT_REGION
+
 import uuid
 import pytest
 import logging
 import os
 from faker import Faker
+import json
 
 logger = logging.getLogger(__name__)
 fake = Faker()
 
-ASTRA_DB_ID = os.environ.get('ASTRA_DB_ID')
-ASTRA_DB_REGION = os.environ.get('ASTRA_DB_REGION')
-ASTRA_DB_APPLICATION_TOKEN = os.environ.get('ASTRA_DB_APPLICATION_TOKEN')
-ASTRA_DB_KEYSPACE = os.environ.get('ASTRA_DB_KEYSPACE')
 
-TEST_COLLECTION_NAME = "test"
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
-@pytest.fixture
-def test_collection():
-    astra_client = create_client(astra_database_id=ASTRA_DB_ID,
-                                 astra_database_region=ASTRA_DB_REGION,
-                                 astra_application_token=ASTRA_DB_APPLICATION_TOKEN)
-    return astra_client.namespace(ASTRA_DB_KEYSPACE).collection(TEST_COLLECTION_NAME)
+ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID")
+ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION", DEFAULT_REGION)
+ASTRA_DB_APPLICATION_TOKEN = os.environ.get("ASTRA_DB_APPLICATION_TOKEN")
+ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
+ASTRA_DB_BASE_URL = os.environ.get("ASTRA_DB_BASE_URL", "apps.astra.datastax.com")
+
+TEST_COLLECTION_NAME = "test_collection"
+cliffu = str(uuid.uuid4())
 
 
 @pytest.fixture
 def cliff_uuid():
-    return str(uuid.uuid4())
+    return cliffu
 
 
 @pytest.fixture
-def test_namespace():
-    astra_client = create_client(astra_database_id=ASTRA_DB_ID,
-                                 astra_database_region=ASTRA_DB_REGION,
-                                 astra_application_token=ASTRA_DB_APPLICATION_TOKEN)
-    return astra_client.namespace(ASTRA_DB_KEYSPACE)
+def test_collection():
+    astra_db_collection = AstraDBCollection(
+        collection_name=TEST_COLLECTION_NAME,
+        token=ASTRA_DB_APPLICATION_TOKEN,
+        api_endpoint=f"https://{ASTRA_DB_ID}-{ASTRA_DB_REGION}.{ASTRA_DB_BASE_URL}",
+        namespace=ASTRA_DB_KEYSPACE,
+    )
+
+    return astra_db_collection
 
 
-@pytest.mark.it('should initialize an AstraDB Collections Client')
-def test_connect(test_collection):
-    assert type(test_collection) is AstraCollection
+@pytest.fixture
+def test_db():
+    astra_db = AstraDB(
+        token=ASTRA_DB_APPLICATION_TOKEN,
+        api_endpoint=f"https://{ASTRA_DB_ID}-{ASTRA_DB_REGION}.{ASTRA_DB_BASE_URL}",
+        namespace=ASTRA_DB_KEYSPACE,
+    )
+
+    return astra_db
 
 
-@pytest.mark.it('should create a collection')
-def test_create_collection(test_namespace):
-    res = test_namespace.create_collection(name="pytest_collection")
-    assert res is None
-    res2 = test_namespace.create_collection(name="test_schema")
-    assert res2 is None
+@pytest.mark.describe("should create a vector collection")
+def test_create_collection(test_db):
+    res = test_db.create_collection(collection_name=TEST_COLLECTION_NAME, size=5)
+    print("CREATE", res)
+    assert res is not None
 
 
-@pytest.mark.it('should get all collections')
-def test_get_collections(test_namespace):
-    res = test_namespace.get_collections()
-    assert type(res) is list
+@pytest.mark.describe("should get all collections")
+def test_get_collections(test_db):
+    res = test_db.get_collections()
+    assert res["status"]["collections"] is not None
 
 
-@pytest.mark.it('should create a collection with schema')
-def test_create_schema(test_namespace):
-    schema = {
-        "$id": "https://example.com/person.schema.json",
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "title": "Person",
-        "type": "object",
-        "properties": {
-            "firstName": {
-                "type": "string",
-                "description": "The persons first name."
-            },
-            "lastName": {
-                "type": "string",
-                "description": "The persons last name."
-            },
-            "age": {
-                "description": "Age in years which must be equal to or greater than zero.",
-                "type": "integer",
-                "minimum": 0
-            }
-        }
-    }
-    test_collection = test_namespace.collection("test_schema")
-    res = test_collection.create_schema(schema=schema)
-    assert res["schema"] is not None
-
-
-@pytest.mark.it('should update a collection with schema')
-def test_update_schema(test_namespace):
-    schema = {
-        "$id": "https://example.com/person.schema.json",
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "title": "Person",
-        "type": "object",
-        "properties": {
-            "firstName": {
-                "type": "string",
-                "description": "The persons first name."
-            }
-        }
-    }
-    test_collection = test_namespace.collection("test_schema")
-    res = test_collection.update_schema(schema=schema)
-    assert res["schema"] is not None
-
-
-@pytest.mark.it('should delete a collection')
-def test_delete_collection(test_namespace):
-    res = test_namespace.delete_collection(name="pytest_collection")
-    assert res is None
-    res2 = test_namespace.delete_collection(name="test_schema")
-    assert res2 is None
-
-
-@pytest.mark.it('should create a document')
-def test_create_document(test_collection, cliff_uuid):
-    test_collection.create(path=cliff_uuid, document={
+@pytest.mark.describe("should create a document")
+def test_create_document_cliff(test_collection, cliff_uuid):
+    json_query = {
+        "_id": cliff_uuid,
         "first_name": "Cliff",
         "last_name": "Wicklow",
-    })
-    document = test_collection.get(path=cliff_uuid)
-    assert document["first_name"] == "Cliff"
+    }
+
+    test_collection.insert_one(document=json_query)
+
+    document = test_collection.find_one(filter={"_id": cliff_uuid})
+
+    assert document is not None
 
 
-@pytest.mark.it('should create multiple documents')
-def test_batch(test_collection):
+@pytest.mark.describe("should create a vector document")
+def test_create_document(test_collection):
+    json_query = {
+        "_id": "4",
+        "name": "Coded Cleats Copy",
+        "description": "ChatGPT integrated sneakers that talk to you",
+        "$vector": [0.25, 0.25, 0.25, 0.25, 0.25],
+    }
+
+    res = test_collection.insert_one(document=json_query)
+
+    assert res is not None
+
+
+@pytest.mark.describe("Find one document")
+def test_find_document(test_collection):
+    document = test_collection.find_one(filter={"_id": "4"})
+    print("DOC", document)
+    assert document is not None
+
+
+@pytest.mark.describe("should create multiple documents: nonvector")
+def test_insert_many(test_collection):
     id_1 = fake.bothify(text="????????")
     id_2 = fake.bothify(text="????????")
-    documents = [{
-        "_id": id_1,
-        "first_name": "Dang",
-        "last_name": "Son",
-    }, {
-        "_id": id_2,
-        "first_name": "Yep",
-        "last_name": "Boss",
-    }]
-    res = test_collection.batch(documents=documents, id_path="_id")
-    assert res["documentIds"] is not None
+    id_3 = fake.bothify(text="????????")
+    documents = [
+        {
+            "_id": id_1,
+            "first_name": "Dang",
+            "last_name": "Son",
+        },
+        {
+            "_id": id_2,
+            "first_name": "Yep",
+            "last_name": "Boss",
+        },
+    ]
+    res = test_collection.insert_many(documents=documents)
+    assert res is not None
 
-    document_1 = test_collection.get(path=id_1)
-    assert document_1["first_name"] == "Dang"
+    documents2 = [
+        {
+            "_id": id_2,
+            "first_name": "Yep",
+            "last_name": "Boss",
+        },
+        {
+            "_id": id_3,
+            "first_name": "Miv",
+            "last_name": "Fuff",
+        },
+    ]
+    res = test_collection.insert_many(
+        documents=documents2,
+        partial_failures_allowed=True,
+    )
+    print(res)
+    assert set(res["status"]["insertedIds"]) == set()
 
-    document_2 = test_collection.get(path=id_2)
-    assert document_2["first_name"] == "Yep"
+    res = test_collection.insert_many(
+        documents=documents2,
+        options={"ordered": False},
+        partial_failures_allowed=True,
+    )
+    print(res)
+    assert set(res["status"]["insertedIds"]) == {id_3}
+
+    document = test_collection.find(filter={"first_name": "Yep"})
+    assert document is not None
 
 
-@pytest.mark.it('should create a subdocument')
+@pytest.mark.describe("create many vector documents")
+def test_create_documents(test_collection):
+    json_query = [
+        {
+            "_id": "1",
+            "name": "Coded Cleats",
+            "description": "ChatGPT integrated sneakers that talk to you",
+            "$vector": [0.1, 0.15, 0.3, 0.12, 0.05],
+        },
+        {
+            "_id": "2",
+            "name": "Logic Layers",
+            "description": "An AI quilt to help you sleep forever",
+            "$vector": [0.45, 0.09, 0.01, 0.2, 0.11],
+        },
+        {
+            "_id": "3",
+            "name": "Vision Vector Frame",
+            "description": "Vision Vector Frame - A deep learning display that controls your mood",
+            "$vector": [0.1, 0.05, 0.08, 0.3, 0.6],
+        },
+    ]
+
+    res = test_collection.insert_many(documents=json_query)
+    assert res is not None
+
+
+@pytest.mark.describe("should create a subdocument")
 def test_create_subdocument(test_collection, cliff_uuid):
-    test_collection.create(path=f"{cliff_uuid}/addresses", document={
-        "home": {
-            "city": "New York",
-            "state": "NY",
-        }
-    })
-    document = test_collection.get(path=f"{cliff_uuid}/addresses")
-    assert document["home"]["state"] == "NY"
+    document = test_collection.update_one(
+        filter={"_id": cliff_uuid},
+        update={"$set": {"addresses.city": "New York", "addresses.state": "NY"}},
+    )
+    print("SUBSUB", document)
+
+    document = test_collection.find_one(filter={"_id": cliff_uuid})
+    print("SUBDOC", document)
+    assert document["data"]["document"]["addresses"] is not None
 
 
-@pytest.mark.it('should create a document without an ID')
+@pytest.mark.describe("should create a document without an ID")
 def test_create_document_without_id(test_collection):
-    response = test_collection.create(document={
-        "first_name": "New",
-        "last_name": "Guy",
-    })
-    document = test_collection.get(path=response["documentId"])
-    assert document["first_name"] == "New"
-
-
-@pytest.mark.it('should udpate a document')
-def test_update_document(test_collection, cliff_uuid):
-    test_collection.update(path=cliff_uuid, document={
-        "first_name": "Dang",
-    })
-    document = test_collection.get(path=cliff_uuid)
-    assert document["first_name"] == "Dang"
-
-
-@pytest.mark.it('replace a subdocument')
-def test_replace_subdocument(test_collection, cliff_uuid):
-    test_collection.replace(path=f"{cliff_uuid}/addresses", document={
-        "work": {
-            "city": "New York",
-            "state": "NY",
+    response = test_collection.insert_one(
+        document={
+            "first_name": "New",
+            "last_name": "Guy",
         }
-    })
-    document = test_collection.get(path=f"{cliff_uuid}/addresses/work")
-    assert document["state"] == "NY"
-    document_2 = test_collection.get(path=f"{cliff_uuid}/addresses/home")
-    assert document_2 is None
+    )
+    assert response is not None
+    document = test_collection.find_one(filter={"first_name": "New"})
+    assert document["data"]["document"]["last_name"] == "Guy"
 
 
-@pytest.mark.it('should delete a subdocument')
+@pytest.mark.describe("should update a document")
+def test_update_document(test_collection, cliff_uuid):
+    test_collection.update_one(
+        filter={"_id": cliff_uuid},
+        update={"$set": {"first_name": "Dang"}},
+    )
+    document = test_collection.find_one(filter={"_id": cliff_uuid})
+    assert document["data"]["document"]["_id"] == cliff_uuid
+
+
+@pytest.mark.describe("replace a non-vector document")
+def test_replace_document(test_collection, cliff_uuid):
+    test_collection.find_one_and_replace(
+        filter={"_id": cliff_uuid},
+        replacement={
+            "_id": cliff_uuid,
+            "addresses": {
+                "work": {
+                    "city": "New York",
+                    "state": "NY",
+                }
+            },
+        },
+    )
+    document = test_collection.find_one(filter={"_id": cliff_uuid})
+    print(document)
+
+    assert document is not None
+    document_2 = test_collection.find_one(
+        filter={"_id": cliff_uuid}, projection={"addresses.work.city": 1}
+    )
+
+    print("HOME", json.dumps(document_2, indent=4))
+
+
+@pytest.mark.describe("should delete a subdocument")
 def test_delete_subdocument(test_collection, cliff_uuid):
-    test_collection.delete(path=f"{cliff_uuid}/addresses")
-    document = test_collection.get(path=f"{cliff_uuid}/addresses")
-    assert document is None
+    response = test_collection.delete_subdocument(id=cliff_uuid, subdoc="addresses")
+    document = test_collection.find(filter={"_id": cliff_uuid})
+    assert response is not None
 
 
-@pytest.mark.it('should delete a document')
+@pytest.mark.describe("should delete a document")
 def test_delete_document(test_collection, cliff_uuid):
-    test_collection.delete(path=cliff_uuid)
-    document = test_collection.get(path=cliff_uuid)
-    assert document is None
+    response = test_collection.delete(id=cliff_uuid)
+
+    assert response is not None
 
 
-@pytest.mark.it('should find documents')
+@pytest.mark.describe("Find documents using vector search")
+def test_find_documents_vector(test_collection):
+    sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
+    options = {"limit": 100}
+
+    document = test_collection.find(sort=sort, options=options)
+    assert document is not None
+
+
+@pytest.mark.describe("Find documents using vector search with error")
+def test_find_documents_vector_error(test_collection):
+    sort = ({"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]},)
+    options = {"limit": 100}
+
+    try:
+        test_collection.find(sort=sort, options=options)
+    except ValueError as e:
+        assert e is not None
+
+
+@pytest.mark.describe("Find documents using vector search and projection")
+def test_find_documents_vector_proj(test_collection):
+    sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
+    options = {"limit": 100}
+    projection = {"$vector": 1, "$similarity": 1}
+
+    document = test_collection.find(sort=sort, options=options, projection=projection)
+    assert document is not None
+
+
+@pytest.mark.describe("Find a document using vector search and projection")
+def test_find_documents_vector_proj(test_collection):
+    sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
+    projection = {"$vector": 1}
+
+    document = test_collection.find(sort=sort, options={}, projection=projection)
+    assert document is not None
+
+
+@pytest.mark.describe("Find one and update with vector search")
+def test_find_one_and_update_vector(test_collection):
+    sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
+    update = {"$set": {"status": "active"}}
+    options = {"returnDocument": "after"}
+
+    result = test_collection.find_one_and_update(
+        sort=sort, update=update, options=options
+    )
+    print(result)
+    document = test_collection.find_one(filter={"status": "active"})
+    print(document)
+    assert document["data"]["document"] is not None
+
+
+@pytest.mark.describe("Find one and replace with vector search")
+def test_find_one_and_replace_vector(test_collection):
+    sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
+    replacement = {
+        "_id": "3",
+        "name": "Vision Vector Frame",
+        "description": "Vision Vector Frame - A deep learning display that controls your mood",
+        "$vector": [0.1, 0.05, 0.08, 0.3, 0.6],
+        "status": "inactive",
+    }
+    options = {"returnDocument": "after"}
+
+    test_collection.find_one_and_replace(
+        sort=sort, replacement=replacement, options=options
+    )
+    document = test_collection.find_one(filter={"name": "Vision Vector Frame"})
+    assert document["data"]["document"] is not None
+
+
+@pytest.mark.describe("should find documents, non-vector")
 def test_find_documents(test_collection):
     user_id = str(uuid.uuid4())
-    test_collection.create(path=user_id, document={
-        "first_name": f"Cliff-{user_id}",
-        "last_name": "Wicklow",
-    })
+    test_collection.insert_one(
+        document={
+            "_id": user_id,
+            "first_name": f"Cliff-{user_id}",
+            "last_name": "Wicklow",
+        },
+    )
     user_id_2 = str(uuid.uuid4())
-    test_collection.create(path=user_id_2, document={
-        "first_name": f"Cliff-{user_id}",
-        "last_name": "Danger",
-    })
-    documents = test_collection.find(query={
-        "first_name": {"$eq": f"Cliff-{user_id}"},
-    })
-    assert len(documents["data"].keys()) == 2
-    assert documents["data"][user_id]["last_name"] == "Wicklow"
-    assert documents["data"][user_id_2]["last_name"] == "Danger"
+    test_collection.insert_one(
+        document={
+            "_id": user_id_2,
+            "first_name": f"Cliff-{user_id}",
+            "last_name": "Danger",
+        },
+    )
+    document = test_collection.find(filter={"first_name": f"Cliff-{user_id}"})
+    assert document is not None
 
 
-@pytest.mark.it('should find a single document')
+@pytest.mark.describe("should find a single document, non-vector")
 def test_find_one_document(test_collection):
     user_id = str(uuid.uuid4())
-    test_collection.create(path=user_id, document={
-        "first_name": f"Cliff-{user_id}",
-        "last_name": "Wicklow",
-    })
+    test_collection.insert_one(
+        document={
+            "_id": user_id,
+            "first_name": f"Cliff-{user_id}",
+            "last_name": "Wicklow",
+        },
+    )
     user_id_2 = str(uuid.uuid4())
-    test_collection.create(path=user_id_2, document={
-        "first_name": f"Cliff-{user_id}",
-        "last_name": "Danger",
-    })
-    document = test_collection.find_one(query={
-        "first_name": {"$eq": f"Cliff-{user_id}"},
-    })
-    assert document["first_name"] == f"Cliff-{user_id}"
-    document = test_collection.find_one(query={
-        "first_name": {"$eq": f"Cliff-Not-There"},
-    })
-    assert document is None
+    test_collection.insert_one(
+        document={
+            "_id": user_id_2,
+            "first_name": f"Cliff-{user_id}",
+            "last_name": "Danger",
+        },
+    )
+    document = test_collection.find_one(filter={"first_name": f"Cliff-{user_id}"})
+    print("DOCUMENT", document)
+
+    assert document["data"]["document"] is not None
+
+    document = test_collection.find_one(filter={"first_name": f"Cliff-Not-There"})
+    assert document["data"]["document"] == None
 
 
-@pytest.mark.it('should use document functions')
+@pytest.mark.describe("upsert a document")
+def test_upsert_document(test_collection, cliff_uuid):
+    new_uuid = str(uuid.uuid4())
+
+    test_collection.upsert(
+        {
+            "_id": new_uuid,
+            "addresses": {
+                "work": {
+                    "city": "Seattle",
+                    "state": "WA",
+                }
+            },
+        }
+    )
+
+    document = test_collection.find_one(filter={"_id": new_uuid})
+
+    # Check the document exists and that the city field is Seattle
+    assert document is not None
+    assert document["data"]["document"]["addresses"]["work"]["city"] == "Seattle"
+    assert "country" not in document["data"]["document"]["addresses"]["work"]
+
+    test_collection.upsert(
+        {
+            "_id": cliff_uuid,
+            "addresses": {"work": {"city": "Everett", "state": "WA", "country": "USA"}},
+        }
+    )
+
+    document = test_collection.find_one(filter={"_id": cliff_uuid})
+
+    assert document is not None
+    assert document["data"]["document"]["addresses"]["work"]["city"] == "Everett"
+    assert "country" in document["data"]["document"]["addresses"]["work"]
+
+
+@pytest.mark.describe("should use document functions")
 def test_functions(test_collection):
     user_id = str(uuid.uuid4())
-    test_collection.create(path=user_id, document={
-        "first_name": f"Cliff-{user_id}",
-        "last_name": "Wicklow",
-        "roles": ["admin", "user"]
-    })
+    test_collection.insert_one(
+        document={
+            "_id": user_id,
+            "first_name": f"Cliff-{user_id}",
+            "last_name": "Wicklow",
+            "roles": ["admin", "user"],
+        },
+    )
+    update = {"$pop": {"roles": 1}}
+    options = {"returnDocument": "after"}
 
-    pop_res = test_collection.pop(path=f"{user_id}/roles")
-    assert pop_res == "user"
+    pop_res = test_collection.pop(
+        filter={"_id": user_id}, update=update, options=options
+    )
 
-    doc_1 = test_collection.get(path=user_id)
-    assert len(doc_1["roles"]) == 1
+    doc_1 = test_collection.find_one(filter={"_id": user_id})
+    assert doc_1["data"]["document"]["_id"] == user_id
 
-    test_collection.push(path=f"{user_id}/roles", value="users")
-    doc_2 = test_collection.get(path=user_id)
-    assert len(doc_2["roles"]) == 2
+    update = {"$push": {"roles": "users"}}
+    options = {"returnDocument": "after"}
+
+    test_collection.push(filter={"_id": user_id}, update=update, options=options)
+    doc_2 = test_collection.find_one(filter={"_id": user_id})
+    assert doc_2["data"]["document"]["_id"] == user_id
+
+
+@pytest.mark.describe("should delete a collection")
+def test_delete_collection(test_db):
+    res = test_db.delete_collection(collection_name="test_collection")
+    assert res is not None
+    res2 = test_db.delete_collection(collection_name="test_collection")
+    assert res2 is not None
