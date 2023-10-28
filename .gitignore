@@ -82,3 +82,4 @@ target/
 
 # Browser test output
 junitresults.*
+myvenv
