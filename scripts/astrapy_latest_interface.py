@@ -12,7 +12,7 @@ load_dotenv()
 
 # First, we work with devops
 token = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
-astra_ops = AstraDBOps(token)
+astra_ops = AstraDBOps(token=token)
 
 # Define a database to create
 database_definition = {
@@ -31,6 +31,7 @@ database_definition = {
 create_result = astra_ops.create_database(database_definition=database_definition)
 
 # Grab the new information from the database
+# NOTE: Your database will take some time to initialize!
 database_id = create_result["id"]
 database_region = astra_ops.get_database()[0]["info"]["region"]
 database_base_url = "apps.astra.datastax.com"
@@ -64,5 +65,5 @@ astra_db_collection.insert_one(
     }
 )
 
-astra_db_collection.find_one({"name": "potato"})
+astra_db_collection.find_one({"name": "potato"})  # Not found
 astra_db_collection.find_one({"name": "Coded Cleats Copy"})
