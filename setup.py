@@ -15,6 +15,8 @@
 from setuptools import setup
 from os import path
 
+from astrapy import __version__
+
 this_directory = path.abspath(path.dirname(__file__))
 with open(path.join(this_directory, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
@@ -25,7 +27,7 @@ setup(
         "astrapy",
         "astrapy/endpoints",
     ],
-    version="0.5.0",
+    version=__version__,
     license="Apache license 2.0",
     description="AstraPy is a Pythonic SDK for DataStax Astra",
     long_description=long_description,

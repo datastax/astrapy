@@ -2,6 +2,7 @@ import requests
 import logging
 import re
 
+from astrapy import __version__
 from astrapy.defaults import DEFAULT_TIMEOUT
 
 logger = logging.getLogger(__name__)
@@ -13,6 +14,9 @@ class http_methods:
     PUT = "PUT"
     PATCH = "PATCH"
     DELETE = "DELETE"
+
+
+package_name = __name__.split(".")[0]
 
 
 def make_request(
@@ -31,7 +35,7 @@ def make_request(
             params=url_params,
             json=json_data,
             timeout=DEFAULT_TIMEOUT,
-            headers={auth_header: token},
+            headers={auth_header: token, "User-Agent": f"{package_name}/{__version__}"},
         )
 
         return r
