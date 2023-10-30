@@ -75,7 +75,7 @@ def cliff_data(cliff_uuid):
 
 @pytest.fixture(scope="module")
 def collection(db, cliff_data):
-    db.create_collection(collection_name=TEST_FIXTURE_COLLECTION_NAME, size=5)
+    db.create_collection(collection_name=TEST_FIXTURE_COLLECTION_NAME, dimension=5)
 
     collection = db.collection(collection_name=TEST_FIXTURE_COLLECTION_NAME)
     collection.insert_one(document=cliff_data)
@@ -87,7 +87,7 @@ def collection(db, cliff_data):
 
 @pytest.mark.describe("should create a vector collection")
 def test_create_collection(db):
-    res = db.create_collection(collection_name=TEST_COLLECTION_NAME, size=5)
+    res = db.create_collection(collection_name=TEST_COLLECTION_NAME, dimension=5)
     print("CREATE", res)
     assert res is not None
 

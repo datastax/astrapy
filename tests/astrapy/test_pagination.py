@@ -67,7 +67,7 @@ def test_collection():
         api_endpoint=f"https://{ASTRA_DB_ID}-{ASTRA_DB_REGION}.{ASTRA_DB_BASE_URL}",
         namespace=ASTRA_DB_KEYSPACE,
     )
-    res = astra_db.create_collection(collection_name=TEST_COLLECTION_NAME, size=2)
+    res = astra_db.create_collection(collection_name=TEST_COLLECTION_NAME, dimension=2)
     astra_db_collection = AstraDBCollection(
         collection_name=TEST_COLLECTION_NAME,
         token=ASTRA_DB_APPLICATION_TOKEN,
