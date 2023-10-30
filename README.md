@@ -1,17 +1,17 @@
-## AstraPy
+# AstraPy
 
 AstraPy is a Pythonic SDK for [DataStax Astra](https://astra.datastax.com) and [Stargate](https://stargate.io/)
 
-### Resources
+## Resources
 
 - [DataStax Astra](https://astra.datastax.com)
 - [Stargate](https://stargate.io/)
 
-### Getting Started
+## Getting Started
 
 Install AstraPy
 
-```shell
+```bash
 pip install astrapy
 ```
 
@@ -100,23 +100,23 @@ astra_db_collection.find_one({"name": "potato"})  # Not found
 astra_db_collection.find_one({"name": "Coded Cleats Copy"})
 ```
 
-#### More Information
+### More Information
 
 Check out the [notebook](https://colab.research.google.com/github/synedra/astra_vector_examples/blob/main/notebook/vector.ipynb#scrollTo=f04a1806) which has examples for finding and inserting information into the database, including vector commands.
 
 Take a look at the [astra db tests](https://github.com/datastax/astrapy/blob/master/tests/astrapy/test_db.py) for specific endpoint examples.
 
-#### Using the Ops Client
+### Using the Ops Client
 
 You can use the Ops client to work with the Astra DevOps API. Check the [devops tests](https://github.com/datastax/astrapy/blob/master/tests/astrapy/test_ops.py)
 
-### For Developers
+## For Developers
 
-#### Testing
+### Testing
 
 Ensure you provide all required environment variables:
 
-```
+```bash
 export ASTRA_DB_ID="..."
 export ASTRA_DB_REGION="..."
 export ASTRA_DB_APPLICATION_TOKEN="..."
@@ -127,6 +127,6 @@ export ASTRA_CLIENT_SECRET="..."
 
 then you can run:
 
-```
+```bash
 PYTHONPATH=. pytest
 ```
