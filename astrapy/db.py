@@ -347,9 +347,11 @@ class AstraDB:
 
         return response
 
-    def create_collection(self, size=None, options={}, function="", collection_name=""):
-        if size and not options:
-            options = {"vector": {"size": size}}
+    def create_collection(
+        self, dimension=None, options={}, function="", collection_name=""
+    ):
+        if dimension and not options:
+            options = {"vector": {"dimension": dimension}}
             if function:
                 options["vector"]["function"] = function
         if options:

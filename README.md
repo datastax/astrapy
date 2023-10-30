@@ -74,9 +74,9 @@ api_endpoint = f"https://{database_id}-{database_region}.{database_base_url}"
 astra_db = AstraDB(token=token, api_endpoint=api_endpoint)
 
 # Possible Operations
-astra_db.create_collection(collection_name="collection_test_delete", size=5)
+astra_db.create_collection(collection_name="collection_test_delete", dimension=5)
 astra_db.delete_collection(collection_name="collection_test_delete")
-astra_db.create_collection(collection_name="collection_test", size=5)
+astra_db.create_collection(collection_name="collection_test", dimension=5)
 
 # Collections
 astra_db_collection = AstraDBCollection(
