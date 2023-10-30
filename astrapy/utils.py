@@ -42,24 +42,19 @@ def make_request(
     json_data=None,
     url_params=None,
 ):
-    try:
-        r = requests.request(
-            method=method,
-            url=f"{base_url}{path}",
-            params=url_params,
-            json=json_data,
-            timeout=DEFAULT_TIMEOUT,
-            headers={auth_header: token, "User-Agent": f"{package_name}/{__version__}"},
-        )
+    r = requests.request(
+        method=method,
+        url=f"{base_url}{path}",
+        params=url_params,
+        json=json_data,
+        timeout=DEFAULT_TIMEOUT,
+        headers={auth_header: token, "User-Agent": f"{package_name}/{__version__}"},
+    )
 
-        if logger.isEnabledFor(logging.DEBUG):
-            log_request_response(r, json_data)
+    if logger.isEnabledFor(logging.DEBUG):
+        log_request_response(r, json_data)
 
-        return r
-    except Exception as e:
-        logger.warning(e)
-
-        return {"error": "An unknown error occurred", "details": str(e)}
+    return r
 
 
 def make_payload(top_level, **kwargs):
