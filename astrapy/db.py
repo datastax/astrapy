@@ -357,12 +357,22 @@ class AstraDB:
             options["vector"] = {}
 
         # Now check the remaining parameters - dimension
-        if dimension and "dimension" not in options["vector"]:
-            options["vector"]["dimension"] = dimension
+        if dimension:
+            if "dimension" not in options["vector"]:
+                options["vector"]["dimension"] = dimension
+            else:
+                raise ValueError(
+                    "dimension parameter provided both in options and as function parameter."
+                )
 
         # Check the metric parameter
-        if metric and "metric" not in options["vector"]:
-            options["vector"]["metric"] = metric
+        if metric:
+            if "metric" not in options["vector"]:
+                options["vector"]["metric"] = metric
+            else:
+                raise ValueError(
+                    "metric parameter provided both in options as function parameter."
+                )
 
         # Build the final json payload
         jsondata = {"name": collection_name, "options": options}
