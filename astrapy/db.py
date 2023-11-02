@@ -348,17 +348,36 @@ class AstraDB:
         return response
 
     def create_collection(
-        self, dimension=None, options={}, function="", collection_name=""
+        self, options=None, dimension=None, metric="", collection_name=""
     ):
-        if dimension and not options:
-            options = {"vector": {"dimension": dimension}}
-            if function:
-                options["vector"]["function"] = function
-        if options:
-            jsondata = {"name": collection_name, "options": options}
-        else:
-            jsondata = {"name": collection_name}
+        # Initialize options if not passed
+        if not options:
+            options = {"vector": {}}
+        elif "vector" not in options:
+            options["vector"] = {}
 
+        # Now check the remaining parameters - dimension
+        if dimension:
+            if "dimension" not in options["vector"]:
+                options["vector"]["dimension"] = dimension
+            else:
+                raise ValueError(
+                    "dimension parameter provided both in options and as function parameter."
+                )
+
+        # Check the metric parameter
+        if metric:
+            if "metric" not in options["vector"]:
+                options["vector"]["metric"] = metric
+            else:
+                raise ValueError(
+                    "metric parameter provided both in options as function parameter."
+                )
+
+        # Build the final json payload
+        jsondata = {"name": collection_name, "options": options}
+
+        # Make the request to the endpoitn
         response = self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
