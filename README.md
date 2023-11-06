@@ -8,13 +8,13 @@ AstraPy is a Pythonic SDK for [DataStax Astra](https://astra.datastax.com)
 
 ## Getting Started
 
-Install AstraPy
+### Install AstraPy
 
 ```bash
 pip install astrapy
 ```
 
-Setup your Astra client
+### Setup your Astra client
 
 Create a .env file with the appropriate values, or use the 'astra' cli to do the same.
 
@@ -43,7 +43,7 @@ api_endpoint = os.getenv("ASTRA_DB_API_ENDPOINT")
 astra_db = AstraDB(token=token, api_endpoint=api_endpoint)
 ```
 
-## Creating a collection
+## Create a collection
 
 Create a vector collection with dimension of 5
 If you were using OpenAI here you would use 1376 as the value
