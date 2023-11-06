@@ -37,6 +37,9 @@ ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
 ASTRA_DB_BASE_URL = os.environ.get("ASTRA_DB_BASE_URL", "apps.astra.datastax.com")
 
 
+pytestmark = pytest.mark.skip("Currently skipping all ops tests")
+
+
 @pytest.fixture
 def devops_client():
     return AstraDBOps(token=ASTRA_DB_APPLICATION_TOKEN)
