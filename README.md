@@ -20,55 +20,25 @@ Setup your Astra client
 Create a .env file with the appropriate values, or use the 'astra' cli to do the same.
 
 ```bash
-ASTRA_DB_KEYSPACE="<keyspace>"
 ASTRA_DB_APPLICATION_TOKEN="<AstraCS:...>"
-ASTRA_DB_REGION="<region>"
-ASTRA_DB_ID=<db_id>
+ASTRA_DB_API_ENDPOINT="<https://...>"
 ```
 
 Load the variables in and then create the client. This collections client can make non-vector and vector calls, depending on the call configuration.
 
 ```python
 import os
-import sys
 
 from dotenv import load_dotenv
 
 from astrapy.db import AstraDB, AstraDBCollection
 from astrapy.ops import AstraDBOps
 
-sys.path.append("../")
-
 load_dotenv()
 
-# First, we work with devops
+# Grab the Astra token and api endpoint from the environment
 token = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
-astra_ops = AstraDBOps(token=token)
-
-# Define a database to create
-database_definition = {
-    "name": "vector_test",
-    "tier": "serverless",
-    "cloudProvider": "GCP",
-    "keyspace": os.getenv("ASTRA_DB_KEYSPACE", "default_keyspace"),
-    "region": os.getenv("ASTRA_DB_REGION", None),
-    "capacityUnits": 1,
-    "user": "example",
-    "password": token,
-    "dbType": "vector",
-}
-
-# Create the database
-create_result = astra_ops.create_database(database_definition=database_definition)
-
-# Grab the new information from the database
-# NOTE: Your database will take some time to initialize!
-database_id = create_result["id"]
-database_region = astra_ops.get_database()[0]["info"]["region"]
-database_base_url = "apps.astra.datastax.com"
-
-# Build the endpoint URL:
-api_endpoint = f"https://{database_id}-{database_region}.{database_base_url}"
+api_endpoint = os.getenv("ASTRA_DB_API_ENDPOINT")
 
 # Initialize our vector db
 astra_db = AstraDB(token=token, api_endpoint=api_endpoint)
@@ -118,11 +88,8 @@ Ensure you provide all required environment variables:
 
 ```bash
 export ASTRA_DB_ID="..."
-export ASTRA_DB_REGION="..."
 export ASTRA_DB_APPLICATION_TOKEN="..."
-export ASTRA_DB_KEYSPACE="..."
-export ASTRA_CLIENT_ID="..."
-export ASTRA_CLIENT_SECRET="..."
+export ASTRA_DB_API_ENDPOINT="..."
 ```
 
 then you can run:
