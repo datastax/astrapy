@@ -33,6 +33,7 @@ class AstraDBCollection:
         token=None,
         api_endpoint=None,
         namespace=None,
+        auth_header=DEFAULT_AUTH_HEADER,
     ):
         if astra_db is None:
             if token is None or api_endpoint is None:
@@ -45,13 +46,14 @@ class AstraDBCollection:
         self.astra_db = astra_db
         self.collection_name = collection_name
         self.base_path = f"{self.astra_db.base_path}/{collection_name}"
+        self.auth_header = auth_header
 
     def _request(self, *args, skip_error_check=False, **kwargs):
         response = make_request(
             *args,
             **kwargs,
             base_url=self.astra_db.base_url,
-            auth_header=DEFAULT_AUTH_HEADER,
+            auth_header=self.auth_header,
             token=self.astra_db.token,
         )
         responsebody = response.json()
@@ -290,6 +292,7 @@ class AstraDB:
         token=None,
         api_endpoint=None,
         namespace=None,
+        auth_header=DEFAULT_AUTH_HEADER,
     ):
         if token is None or api_endpoint is None:
             raise AssertionError("Must provide token and api_endpoint")
@@ -317,12 +320,15 @@ class AstraDB:
         # Set the namespace parameter
         self.namespace = namespace
 
+        # Set the default name of the auth header
+        self.auth_header = auth_header
+
     def _request(self, *args, skip_error_check=False, **kwargs):
         response = make_request(
             *args,
             **kwargs,
             base_url=self.base_url,
-            auth_header=DEFAULT_AUTH_HEADER,
+            auth_header=self.auth_header,
             token=self.token,
         )
 
@@ -332,8 +338,6 @@ class AstraDB:
             raise ValueError(json.dumps(responsebody["errors"]))
         else:
             return responsebody
-
-        return result
 
     def collection(self, collection_name):
         return AstraDBCollection(collection_name=collection_name, astra_db=self)

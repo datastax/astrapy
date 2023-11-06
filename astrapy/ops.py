@@ -21,11 +21,12 @@ logger = logging.getLogger(__name__)
 
 
 class AstraDBOps:
-    def __init__(self, token, dev_ops_url=None):
+    def __init__(self, token, dev_ops_url=None, auth_header="Authorization"):
         dev_ops_url = dev_ops_url or DEFAULT_DEV_OPS_URL
 
         self.token = "Bearer " + token
         self.base_url = f"https://{dev_ops_url}{DEFAULT_DEV_OPS_PATH_PREFIX}"
+        self.auth_header = auth_header
 
     def _ops_request(self, method, path, options=None, json_data=None):
         options = {} if options is None else options
@@ -33,7 +34,7 @@ class AstraDBOps:
         return make_request(
             base_url=self.base_url,
             method=method,
-            auth_header="Authorization",
+            auth_header=self.auth_header,
             token=self.token,
             json_data=json_data,
             url_params=options,
