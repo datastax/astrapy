@@ -3,17 +3,14 @@
 AstraPy is a Pythonic SDK for [DataStax Astra](https://astra.datastax.com)
 
 [**Part I - Getting Started**](#part-i-getting-started)
-
 - [1.1 Install AstraPy](#11---install-astrapy)
 - [1.2 Setup your Astra client](#12---setup-your-astra-client)
 
 [**Part II - Collections**](#part-ii-collections)
-
 - [2.1 Create and delete vector collections](#21---create-and-delete-vector-collections)
 - [2.2 Create collection object](#21---create-collection-object)
 
 [**Part III - Inserting Documents**](#part-iii-inserting-documents)
-
 - [3.1 - Inserting a document](#31---inserting-a-document)
 - [3.2 - Inserting multiple documents](#32---inserting-multiple-documents)
 - [3.3 - Inserting multiple documents](#34---creating-a-subdocument)
@@ -21,19 +18,16 @@ AstraPy is a Pythonic SDK for [DataStax Astra](https://astra.datastax.com)
 - [3.5 - Create a document without an ID](#35---create-a-document-without-an-id)
 
 [**Part IV - Updating Documents**](#part-iv-updating-documents)
-
 - [4.1 - Update a Document](#41---update-a-document)
 - [4.2 - Replace a Non-vector-document](#42---replace-a-non-vector-document)
 
 [**Part V - Finding Documents**](#part-v-finding-documents)
-
 - [5.1 - Find documents using vector search](#51---find-documents-using-vector-search)
 - [5.2 - Find documents using vector search and projection](#52---find-documents-using-vector-search-and-projection)
 - [5.3 - Find one and update with vector search](#53---find-one-and-update-with-vector-search)
 - [5.4 Find one and replace with vector search](#54---Find-one-and-replace-with-vector-search)
 
-[\*\*Part VI - Deleting Documents](#part-vi-deleting-documents)
-
+[**Part VI - Deleting Documents**](#part-vi-deleting-documents)
 - [6.1 Delete a Subdocument](#61---delete-a-subdocument)
 - [6.2 Delete a Document](#61---delete-a-document)
 
