@@ -2,19 +2,44 @@
 
 AstraPy is a Pythonic SDK for [DataStax Astra](https://astra.datastax.com)
 
-## Resources
+[**Part I - Getting Started**](#part-i---getting-started)
+- [1.1 Install AstraPy](#11-install-astrapy)
+- [1.2 Setup your Astra client](#12-setup-your-astra-client)
 
-- [DataStax Astra](https://astra.datastax.com)
+[**Part II - Collections**](#part-ii---collections)
+- [2.1 Create and delete vector collections](#21-create-and-delete-vector-collections)
+- [2.2 Create collection object](#22-create-collection-object)
 
-## Getting Started
+[**Part III - Inserting Documents**](#part-iii---inserting-documents)
+- [3.1 - Inserting a document](#31-inserting-a-document)
+- [3.2 - Inserting multiple documents](#32-inserting-multiple-documents)
+- [3.3 - Inserting multiple documents](#33-inserting-multiple-vector-documents)
+- [3.4 - Creating a subdocument](#34-creating-a-subdocument)
+- [3.5 - Create a document without an ID](#35-create-a-document-without-an-id)
 
-### Install AstraPy
+[**Part IV - Updating Documents**](#part-iv---updating-documents)
+- [4.1 - Update a Document](#41-update-a-document)
+- [4.2 - Replace a Non-vector-document](#42-replace-a-non-vector-document)
+
+[**Part V - Finding Documents**](#part-v---finding-documents)
+- [5.1 - Find documents using vector search](#51-find-documents-using-vector-search)
+- [5.2 - Find documents using vector search and projection](#52-find-documents-using-vector-search-and-projection)
+- [5.3 - Find one and update with vector search](#53-find-one-and-update-with-vector-search)
+- [5.4 Find one and replace with vector search](#54-find-one-and-replace-with-vector-search)
+
+[**Part VI - Deleting Documents**](#part-vi---deleting-documents)
+- [6.1 Delete a Subdocument](#61-delete-a-subdocument)
+- [6.2 Delete a Document](#61---delete-a-document)
+
+## Part I - Getting Started
+
+### 1.1 Install AstraPy
 
 ```bash
 pip install astrapy
 ```
 
-### Setup your Astra client
+### 1.2 Setup your Astra client
 
 Create a .env file with the appropriate values, or use the 'astra' cli to do the same.
 
@@ -43,7 +68,9 @@ api_endpoint = os.getenv("ASTRA_DB_API_ENDPOINT")
 astra_db = AstraDB(token=token, api_endpoint=api_endpoint)
 ```
 
-## Create a collection
+## Part II - Collections
+
+### 2.1 Create and Delete Vector Collections
 
 Create a vector collection with dimension of 5
 If you were using OpenAI here you would use 1376 as the value
@@ -63,7 +90,7 @@ At this point you have a collection named "collection_test" to do the following 
 
 In the next section, you will be creating the object for your collection
 
-## Create collection object
+### 2.2 Create collection object
 
 ```python
 # Collections
@@ -76,7 +103,9 @@ collection = AstraDBCollection(
 )
 ```
 
-## Inserting a document into your collection (vector)
+## Part III - Inserting Documents
+
+### 3.1 Inserting a document
 
 Here is an example of inserting a vector object into your vector store (collection), followed by running a find command to retrieve the document. The first find command fails because that object does not exist. The second find command should succeed.
 
@@ -94,7 +123,7 @@ collection.find_one({"name": "potato"})  # Not found
 collection.find_one({"name": "Coded Cleats Copy"})
 ```
 
-## Inserting multiple documents into your collection (non-vector)
+### 3.2 Inserting multiple documents
 
 Here is an example of inserting a number of documents into your collection. Note that the json object is 'documents' here, not 'document' as it is in insert_one.
 
@@ -139,7 +168,7 @@ response = collection.insert_many(
 )
 ```
 
-## Insert many (vector)
+### 3.3 Inserting multiple vector documents
 
 The following code inserts vector objects into the collection in your vector store.
 
@@ -168,7 +197,7 @@ json_query = [
 res = collection.insert_many(documents=json_query)
 ```
 
-## Create a subdocument
+### 3.4 Creating a subdocument
 
 The following code uses update to create or update a sub-document under one of your existing documents.
 
@@ -181,7 +210,7 @@ document = collection.update_one(
 document = collection.find_one(filter={"_id": "id_1"})
 ```
 
-## Create a document without an ID
+### 3.5 Create a document without an ID
 
 ```python
 response = collection.insert_one(
@@ -194,7 +223,9 @@ response = collection.insert_one(
 document = collection.find_one(filter={"first_name": "New"})
 ```
 
-## Update a document
+## Part IV - Updating Documents
+
+### 4.1 Update a document
 
 ```python
 collection.update_one(
@@ -205,7 +236,7 @@ collection.update_one(
 document = collection.find_one(filter={"_id": "id_1"})
 ```
 
-## Replace a non-vector document
+### 4.2 Replace a non-vector document
 
 ```python
 collection.find_one_and_replace(
@@ -226,20 +257,9 @@ document_2 = collection.find_one(
     )
 ```
 
-## Delete a subdocument
+## Part V - Finding Documents
 
-```python
-response = collection.delete_subdocument(id="id_1", subdoc="addresses")
-document = collection.find(filter={"_id": "id_1"})
-```
-
-## Delete a document
-
-```python
-response = collection.delete(id="id_1")
-```
-
-## Find documents using vector search
+### 5.1 Find documents using vector search
 
 ```python
 sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
@@ -248,7 +268,7 @@ options = {"limit": 100}
 document = collection.find(sort=sort, options=options)
 ```
 
-## Find documents using vector search and projection"
+### 5.2 Find documents using vector search and projection"
 
 ```python
 sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
@@ -258,9 +278,7 @@ projection = {"$vector": 1, "$similarity": 1}
 document = collection.find(sort=sort, options=options, projection=projection)
 ```
 
-## Find one and update with vector search
-
-@pytest.mark.describe("Find one and update with vector search")
+### 5.3 Find one and update with vector search
 
 ```python
 sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
@@ -272,7 +290,7 @@ result = collection.find_one_and_update(sort=sort, update=update, options=option
 document = collection.find_one(filter={"status": "active"})
 ```
 
-## Find one and replace with vector search
+### 5.4 Find one and replace with vector search
 
 ```python
 sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
@@ -287,6 +305,21 @@ options = {"returnDocument": "after"}
 
 collection.find_one_and_replace(sort=sort, replacement=replacement, options=options)
 document = collection.find_one(filter={"name": "Vision Vector Frame"})
+```
+
+## Part VI - Deleting Documents
+
+### 6.1 Delete a Subdocument
+
+```python
+response = collection.delete_subdocument(id="id_1", subdoc="addresses")
+document = collection.find(filter={"_id": "id_1"})
+```
+
+## Delete a document
+
+```python
+response = collection.delete(id="id_1")
 ```
 
 ### More Information
