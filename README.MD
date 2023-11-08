@@ -10,7 +10,7 @@ AstraPy is a Pythonic SDK for [DataStax Astra](https://astra.datastax.com)
 [**Part II - Collections**](#part-ii---collections)
 
 - [2.1 Create and delete vector collections](#21-create-and-delete-vector-collections)
-- [2.2 Create collection object](#22-connect-to-existing-collection)
+- [2.2 Connect to existing collection](#22-connect-to-existing-collection)
 
 [**Part III - Inserting Documents**](#part-iii---inserting-documents)
 
