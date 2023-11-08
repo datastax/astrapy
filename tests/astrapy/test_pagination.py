@@ -67,13 +67,11 @@ def test_collection():
         api_endpoint=f"https://{ASTRA_DB_ID}-{ASTRA_DB_REGION}.{ASTRA_DB_BASE_URL}",
         namespace=ASTRA_DB_KEYSPACE,
     )
-    res = astra_db.create_collection(collection_name=TEST_COLLECTION_NAME, dimension=2)
-    astra_db_collection = AstraDBCollection(
-        collection_name=TEST_COLLECTION_NAME,
-        token=ASTRA_DB_APPLICATION_TOKEN,
-        api_endpoint=f"https://{ASTRA_DB_ID}-{ASTRA_DB_REGION}.{ASTRA_DB_BASE_URL}",
-        namespace=ASTRA_DB_KEYSPACE,
+
+    astra_db_collection = astra_db.create_collection(
+        collection_name=TEST_COLLECTION_NAME, dimension=2
     )
+
     if int(os.getenv("TEST_PAGINATION_SKIP_INSERTION", "0")) == 0:
         inserted_ids = set()
         for i_batch in _batch_iterable(range(N), INSERT_BATCH_SIZE):

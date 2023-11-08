@@ -25,7 +25,6 @@ setup(
     name="astrapy",
     packages=[
         "astrapy",
-        "astrapy/endpoints",
     ],
     version=__version__,
     license="Apache license 2.0",

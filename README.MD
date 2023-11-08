@@ -3,14 +3,17 @@
 AstraPy is a Pythonic SDK for [DataStax Astra](https://astra.datastax.com)
 
 [**Part I - Getting Started**](#part-i---getting-started)
+
 - [1.1 Install AstraPy](#11-install-astrapy)
 - [1.2 Setup your Astra client](#12-setup-your-astra-client)
 
 [**Part II - Collections**](#part-ii---collections)
+
 - [2.1 Create and delete vector collections](#21-create-and-delete-vector-collections)
-- [2.2 Create collection object](#22-create-collection-object)
+- [2.2 Create collection object](#22-connect-to-existing-collection)
 
 [**Part III - Inserting Documents**](#part-iii---inserting-documents)
+
 - [3.1 - Inserting a document](#31-inserting-a-document)
 - [3.2 - Inserting multiple documents](#32-inserting-multiple-documents)
 - [3.3 - Inserting multiple documents](#33-inserting-multiple-vector-documents)
@@ -18,18 +21,21 @@ AstraPy is a Pythonic SDK for [DataStax Astra](https://astra.datastax.com)
 - [3.5 - Create a document without an ID](#35-create-a-document-without-an-id)
 
 [**Part IV - Updating Documents**](#part-iv---updating-documents)
+
 - [4.1 - Update a Document](#41-update-a-document)
 - [4.2 - Replace a Non-vector-document](#42-replace-a-non-vector-document)
 
 [**Part V - Finding Documents**](#part-v---finding-documents)
+
 - [5.1 - Find documents using vector search](#51-find-documents-using-vector-search)
 - [5.2 - Find documents using vector search and projection](#52-find-documents-using-vector-search-and-projection)
 - [5.3 - Find one and update with vector search](#53-find-one-and-update-with-vector-search)
 - [5.4 Find one and replace with vector search](#54-find-one-and-replace-with-vector-search)
 
 [**Part VI - Deleting Documents**](#part-vi---deleting-documents)
+
 - [6.1 Delete a Subdocument](#61-delete-a-subdocument)
-- [6.2 Delete a Document](#61---delete-a-document)
+- [6.2 Delete a Document](#62-delete-a-document)
 
 ## Part I - Getting Started
 
@@ -76,8 +82,6 @@ Create a vector collection with dimension of 5
 If you were using OpenAI here you would use 1376 as the value
 
 ```python
-astra_db.create_collection(collection_name="collection_test", dimension=5)
-
 # Create a collection and then delete it
 astra_db.create_collection(collection_name="collection_test_delete", dimension=5)
 astra_db.delete_collection(collection_name="collection_test_delete")
@@ -90,14 +94,20 @@ At this point you have a collection named "collection_test" to do the following 
 
 In the next section, you will be creating the object for your collection
 
-### 2.2 Create collection object
+### 2.2 Connect to existing collection
 
 ```python
-# Collections
+# The return of create_collection() will return the collection
+collection = astra_db.create_collection(
+    collection_name="collection_test", dimension=5
+)
+
+# Or you can connect to an existing connection directly
 collection = AstraDBCollection(
     collection_name="collection_test", astra_db=astra_db
 )
-# Or...
+
+# You don't even need the astra_db object
 collection = AstraDBCollection(
     collection_name="collection_test", token=token, api_endpoint=api_endpoint
 )
@@ -309,14 +319,14 @@ document = collection.find_one(filter={"name": "Vision Vector Frame"})
 
 ## Part VI - Deleting Documents
 
-### 6.1 Delete a Subdocument
+### 6.1 Delete a subdocument
 
 ```python
 response = collection.delete_subdocument(id="id_1", subdoc="addresses")
 document = collection.find(filter={"_id": "id_1"})
 ```
 
-## Delete a document
+## 6.2 Delete a document
 
 ```python
 response = collection.delete(id="id_1")
