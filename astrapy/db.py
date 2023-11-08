@@ -378,13 +378,14 @@ class AstraDB:
         jsondata = {"name": collection_name, "options": options}
 
         # Make the request to the endpoitn
-        response = self._request(
+        self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data={"createCollection": jsondata},
         )
 
-        return response
+        # Get the instance object as the return of the call
+        return AstraDBCollection(astra_db=self, collection_name=collection_name)
 
     def delete_collection(self, collection_name=""):
         response = self._request(

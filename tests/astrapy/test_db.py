@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.db import AstraDB
+from astrapy.db import AstraDB, AstraDBCollection
 from astrapy.defaults import DEFAULT_KEYSPACE_NAME, DEFAULT_REGION
 
 import uuid
@@ -75,9 +75,9 @@ def cliff_data(cliff_uuid):
 
 @pytest.fixture(scope="module")
 def collection(db, cliff_data):
-    db.create_collection(collection_name=TEST_FIXTURE_COLLECTION_NAME, dimension=5)
-
-    collection = db.collection(collection_name=TEST_FIXTURE_COLLECTION_NAME)
+    collection = db.create_collection(
+        collection_name=TEST_FIXTURE_COLLECTION_NAME, dimension=5
+    )
     collection.insert_one(document=cliff_data)
 
     yield collection
@@ -89,7 +89,7 @@ def collection(db, cliff_data):
 def test_create_collection(db):
     res = db.create_collection(collection_name=TEST_COLLECTION_NAME, dimension=5)
     print("CREATE", res)
-    assert res is not None
+    assert isinstance(res, AstraDBCollection)
 
 
 @pytest.mark.describe("should get all collections")
