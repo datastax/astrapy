@@ -47,12 +47,15 @@ pip install astrapy
 
 ### 1.2 Setup your Astra client
 
-Create a .env file with the appropriate values, or use the 'astra' cli to do the same.
+Create a `.env` file with the appropriate values:
 
 ```bash
 ASTRA_DB_APPLICATION_TOKEN="<AstraCS:...>"
 ASTRA_DB_API_ENDPOINT="<https://...>"
 ```
+
+> If you have [Astra CLI](https://docs.datastax.com/en/astra-cli/docs/0.2/installation.html) installed, you can create the `.env` file with
+> `astra db create-dotenv DATABASE_NAME`.
 
 Load the variables in and then create the client. This collections client can make non-vector and vector calls, depending on the call configuration.
 
