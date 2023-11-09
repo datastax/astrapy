@@ -272,33 +272,38 @@ document_2 = collection.find_one(
 
 ## Part V - Finding Documents
 
+The below examples show our high-level interfaces for finding documents. Note that corresponding low-level functionality exists, i.e., the high-level interface `vector_find` is a wrapper around the `find` function, as available in the JSON API.
+
 ### 5.1 Find documents using vector search
 
 ```python
-sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
-options = {"limit": 100}
-
-document = collection.find(sort=sort, options=options)
+documents = collection.vector_find(
+    [0.15, 0.1, 0.1, 0.35, 0.55],
+    limit=100,
+)
 ```
 
 ### 5.2 Find documents using vector search and projection"
 
 ```python
-sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
-options = {"limit": 100}
-projection = {"$vector": 1, "$similarity": 1}
-
-document = collection.find(sort=sort, options=options, projection=projection)
+documents = collection.vector_find(
+    [0.15, 0.1, 0.1, 0.35, 0.55],
+    limit=100,
+    fields=["$vector"],
+)
 ```
 
 ### 5.3 Find one and update with vector search
 
 ```python
-sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
 update = {"$set": {"status": "active"}}
-options = {"returnDocument": "after"}
 
-result = collection.find_one_and_update(sort=sort, update=update, options=options)
+document = collection.find_one(filter={"status": "active"})
+
+collection.vector_find_one_and_update(
+    [0.15, 0.1, 0.1, 0.35, 0.55],
+    update=update,
+)
 
 document = collection.find_one(filter={"status": "active"})
 ```
@@ -306,17 +311,19 @@ document = collection.find_one(filter={"status": "active"})
 ### 5.4 Find one and replace with vector search
 
 ```python
-sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
 replacement = {
-    "_id": vv_uuid,
+    "_id": "1",
     "name": "Vision Vector Frame",
     "description": "Vision Vector Frame - A deep learning display that controls your mood",
     "$vector": [0.1, 0.05, 0.08, 0.3, 0.6],
     "status": "inactive",
 }
-options = {"returnDocument": "after"}
 
-collection.find_one_and_replace(sort=sort, replacement=replacement, options=options)
+collection.vector_find_one_and_replace(
+    [0.15, 0.1, 0.1, 0.35, 0.55],
+    replacement=replacement,
+)
+
 document = collection.find_one(filter={"name": "Vision Vector Frame"})
 ```
 
