@@ -37,8 +37,8 @@ setup(
     keywords=["DataStax Astra", "Stargate"],
     python_requires=">=3.6",
     install_requires=[
-        "faker~=19.11.0",
-        "pytest~=7.4.2",
+        "faker~=19.13.0",
+        "pytest~=7.4.3",
         "pytest-cov~=4.1.0",
         "pytest-testdox~=3.1.0",
         "requests~=2.31.0",
