@@ -121,6 +121,16 @@ def test_find_document(collection, cliff_uuid):
     assert document is not None
 
 
+@pytest.mark.describe("Vector find one document")
+def test_vector_find_document(collection):
+    documents = collection.vector_find_one(
+        [0.15, 0.1, 0.1, 0.35, 0.55],
+    )
+
+    assert documents is not None
+    assert len(documents) > 0
+
+
 @pytest.mark.describe("should create multiple documents: nonvector")
 def test_insert_many(collection):
     id_1 = fake.bothify(text="????????")
@@ -296,14 +306,16 @@ def test_vector_find_documents_vector(collection):
     documents = collection.vector_find(
         [0.15, 0.1, 0.1, 0.35, 0.55],
         3,
-        fields=["_id"],
+        fields=["_id", "$vector"],
         include_similarity=False,
     )
 
     assert documents is not None
     assert len(documents) > 0
     assert "_id" in documents[0]
-    assert "similarity" not in documents[0]
+    assert "$vector" in documents[0]
+    assert "name" not in documents[0]
+    assert "$similarity" not in documents[0]
 
 
 @pytest.mark.describe("Find documents using vector search with error")
@@ -349,6 +361,23 @@ def test_find_one_and_update_vector(collection):
     assert document["data"]["document"] is not None
 
 
+@pytest.mark.describe("Vector find documents using vector search")
+def test_vector_find_one_and_update_vector(collection):
+    update = {"$set": {"status": "active"}}
+
+    collection.vector_find_one_and_update(
+        vector=[0.15, 0.1, 0.1, 0.35, 0.55],
+        update=update,
+    )
+
+    document = collection.vector_find_one(
+        vector=[0.15, 0.1, 0.1, 0.35, 0.55],
+        filter={"status": "active"},
+    )
+
+    assert document is not None
+
+
 @pytest.mark.describe("Find one and replace with vector search")
 def test_find_one_and_replace_vector(collection, vv_uuid):
     sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
@@ -364,6 +393,29 @@ def test_find_one_and_replace_vector(collection, vv_uuid):
     collection.find_one_and_replace(sort=sort, replacement=replacement, options=options)
     document = collection.find_one(filter={"name": "Vision Vector Frame"})
     assert document["data"]["document"] is not None
+
+
+@pytest.mark.describe("Vector find documents using vector search")
+def test_vector_find_one_and_replace_vector(collection, vv_uuid):
+    replacement = {
+        "_id": vv_uuid,
+        "name": "Vision Vector Frame 2",
+        "description": "Vision Vector Frame - A deep learning display that controls your mood",
+        "$vector": [0.1, 0.05, 0.08, 0.3, 0.6],
+        "status": "inactive",
+    }
+
+    collection.vector_find_one_and_replace(
+        vector=[0.15, 0.1, 0.1, 0.35, 0.55],
+        replacement=replacement,
+    )
+
+    document = collection.vector_find_one(
+        vector=[0.15, 0.1, 0.1, 0.35, 0.55],
+        filter={"name": "Vision Vector Frame 2"},
+    )
+
+    assert document is not None
 
 
 @pytest.mark.describe("should find documents, non-vector")

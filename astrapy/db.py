@@ -76,14 +76,10 @@ class AstraDBCollection:
         )
         return response
 
-    def _pre_process_find(self, vector, limit, fields=None, include_vector=True):
+    def _pre_process_find(self, vector, fields=None):
         # Must pass a vector
         if not vector:
             return ValueError("Must pass a vector")
-
-        # Must pass a limit
-        if not limit:
-            return ValueError("Must pass a limit")
 
         # Build the new vector parameter
         sort = {"$vector": vector}
@@ -91,27 +87,29 @@ class AstraDBCollection:
         # Build the new fields parameter
         projection = {f: 1 for f in fields} if fields else {}
 
-        # TODO: Do we always return the vector?
+        # TODO: Do we always return the similarity?
         projection["$similarity"] = 1
-        if include_vector:
-            projection["$vector"] = 1
 
-        return sort, limit, projection
+        return sort, projection
 
     def _post_process_find(
-        self, raw_find_result, include_similarity=True, include_vector=True
+        self,
+        raw_find_result,
+        include_similarity=True,
+        _key="documents",
     ):
-        # Update both similarity and vector fields
-        final_result = []
-        for document in raw_find_result["data"]["documents"]:
-            # Pop the always returned similarity score
-            similarity = document.pop("$similarity")
-            if include_similarity:
-                document["similarity"] = similarity
+        # If we only have a single result, treat it as a list
+        if type(raw_find_result["data"][_key]) == dict:
+            raw_find_result["data"][_key] = [raw_find_result["data"][_key]]
 
-            # Rename the vector column
-            if include_vector:
-                document["vector"] = document.pop("$vector")
+        # Process list of documents
+        final_result = []
+        for document in raw_find_result["data"][_key]:
+            # Pop the returned similarity score
+            if "$similarity" in document:
+                similarity = document.pop("$similarity")
+                if include_similarity:
+                    document["$similarity"] = similarity
 
             final_result.append(document)
 
@@ -142,14 +140,15 @@ class AstraDBCollection:
         filter=None,
         fields=None,
         include_similarity=True,
-        include_vector=True,
     ):
+        # Must pass a limit
+        if not limit:
+            return ValueError("Must pass a limit")
+
         # Pre-process the included arguments
-        sort, limit, projection = self._pre_process_find(
+        sort, projection = self._pre_process_find(
             vector,
-            limit,
             fields=fields,
-            include_vector=include_vector,
         )
 
         # Call the underlying find() method to search
@@ -164,7 +163,6 @@ class AstraDBCollection:
         find_result = self._post_process_find(
             raw_find_result,
             include_similarity=include_similarity,
-            include_vector=include_vector,
         )
 
         return find_result
@@ -235,6 +233,35 @@ class AstraDBCollection:
 
         return response
 
+    def vector_find_one_and_replace(
+        self,
+        vector,
+        replacement=None,
+        filter=None,
+        fields=None,
+    ):
+        # Pre-process the included arguments
+        sort, _ = self._pre_process_find(
+            vector,
+            fields=fields,
+        )
+
+        # Call the underlying find() method to search
+        raw_find_result = self.find_one_and_replace(
+            replacement=replacement,
+            filter=filter,
+            sort=sort,
+        )
+
+        # Post-process the return
+        find_result = self._post_process_find(
+            raw_find_result,
+            include_similarity=False,
+            _key="document",
+        )
+
+        return find_result
+
     def find_one_and_update(self, sort={}, update=None, filter=None, options=None):
         json_query = make_payload(
             top_level="findOneAndUpdate",
@@ -252,6 +279,35 @@ class AstraDBCollection:
 
         return response
 
+    def vector_find_one_and_update(
+        self,
+        vector,
+        update=None,
+        filter=None,
+        fields=None,
+    ):
+        # Pre-process the included arguments
+        sort, _ = self._pre_process_find(
+            vector,
+            fields=fields,
+        )
+
+        # Call the underlying find() method to search
+        raw_find_result = self.find_one_and_update(
+            update=update,
+            filter=filter,
+            sort=sort,
+        )
+
+        # Post-process the return
+        find_result = self._post_process_find(
+            raw_find_result,
+            include_similarity=False,
+            _key="document",
+        )
+
+        return find_result
+
     def find_one(self, filter={}, projection={}, sort={}, options={}):
         json_query = make_payload(
             top_level="findOne",
@@ -266,6 +322,35 @@ class AstraDBCollection:
         )
 
         return response
+
+    def vector_find_one(
+        self,
+        vector,
+        filter=None,
+        fields=None,
+        include_similarity=True,
+    ):
+        # Pre-process the included arguments
+        sort, projection = self._pre_process_find(
+            vector,
+            fields=fields,
+        )
+
+        # Call the underlying find() method to search
+        raw_find_result = self.find_one(
+            filter=filter,
+            projection=projection,
+            sort=sort,
+        )
+
+        # Post-process the return
+        find_result = self._post_process_find(
+            raw_find_result,
+            include_similarity=include_similarity,
+            _key="document",
+        )
+
+        return find_result
 
     def insert_one(self, document):
         json_query = make_payload(top_level="insertOne", document=document)
