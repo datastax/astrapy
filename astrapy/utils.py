@@ -1,15 +1,13 @@
-import httpx
+import requests
 import logging
 import re
 
 from astrapy import __version__
 from astrapy.defaults import DEFAULT_TIMEOUT
 
+
 logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG) # Apply if wishing to debug requests
-
-# Get an httpx client that is explicitly set to use http2
-client = httpx.Client(http2=True)
 
 
 class http_methods:
@@ -45,7 +43,7 @@ def make_request(
     json_data=None,
     url_params=None,
 ):
-    r = client.request(
+    r = requests.request(
         method=method,
         url=f"{base_url}{path}",
         params=url_params,
