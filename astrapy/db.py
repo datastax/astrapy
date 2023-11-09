@@ -76,6 +76,47 @@ class AstraDBCollection:
         )
         return response
 
+    def _pre_process_find(self, vector, limit, fields=None, include_vector=True):
+        # Must pass a vector
+        if not vector:
+            return ValueError("Must pass a vector")
+
+        # Must pass a limit
+        if not limit:
+            return ValueError("Must pass a limit")
+
+        # Build the new vector parameter
+        sort = {"$vector": vector}
+
+        # Build the new fields parameter
+        projection = {f: 1 for f in fields} if fields else {}
+
+        # TODO: Do we always return the vector?
+        projection["$similarity"] = 1
+        if include_vector:
+            projection["$vector"] = 1
+
+        return sort, limit, projection
+
+    def _post_process_find(
+        self, raw_find_result, include_similarity=True, include_vector=True
+    ):
+        # Update both similarity and vector fields
+        final_result = []
+        for document in raw_find_result["data"]["documents"]:
+            # Pop the always returned similarity score
+            similarity = document.pop("$similarity")
+            if include_similarity:
+                document["similarity"] = similarity
+
+            # Rename the vector column
+            if include_vector:
+                document["vector"] = document.pop("$vector")
+
+            final_result.append(document)
+
+        return final_result
+
     def get(self, path=None):
         return self._get(path=path)
 
@@ -103,24 +144,13 @@ class AstraDBCollection:
         include_similarity=True,
         include_vector=True,
     ):
-        # Must pass a vector
-        if not vector:
-            return ValueError("Must pass a vector")
-
-        # Must pass a limit
-        if not vector:
-            return ValueError("Must pass a limit")
-
-        # Build the new vector parameter
-        sort = {"$vector": vector}
-
-        # Build the new fields parameter
-        projection = {f: 1 for f in fields} if fields else {}
-
-        # TODO: Do we always return the vector?
-        projection["$similarity"] = 1
-        if include_vector:
-            projection["$vector"] = 1
+        # Pre-process the included arguments
+        sort, limit, projection = self._pre_process_find(
+            vector,
+            limit,
+            fields=fields,
+            include_vector=include_vector,
+        )
 
         # Call the underlying find() method to search
         raw_find_result = self.find(
@@ -130,21 +160,14 @@ class AstraDBCollection:
             options={"limit": limit},
         )
 
-        # Update both similarity and vector fields
-        final_result = []
-        for document in raw_find_result["data"]["documents"]:
-            # Pop the always returned similarity score
-            similarity = document.pop("$similarity")
-            if include_similarity:
-                document["similarity"] = similarity
+        # Post-process the return
+        find_result = self._post_process_find(
+            raw_find_result,
+            include_similarity=include_similarity,
+            include_vector=include_vector,
+        )
 
-            # Rename the vector column
-            if include_vector:
-                document["vector"] = document.pop("$vector")
-
-            final_result.append(document)
-
-        return final_result
+        return find_result
 
     @staticmethod
     def paginate(*, method, options, **kwargs):
