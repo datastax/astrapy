@@ -136,6 +136,7 @@ class AstraDBCollection:
     def vector_find(
         self,
         vector,
+        *,
         limit,
         filter=None,
         fields=None,
@@ -236,6 +237,7 @@ class AstraDBCollection:
     def vector_find_one_and_replace(
         self,
         vector,
+        *,
         replacement=None,
         filter=None,
         fields=None,
@@ -282,6 +284,7 @@ class AstraDBCollection:
     def vector_find_one_and_update(
         self,
         vector,
+        *,
         update=None,
         filter=None,
         fields=None,
@@ -326,6 +329,7 @@ class AstraDBCollection:
     def vector_find_one(
         self,
         vector,
+        *,
         filter=None,
         fields=None,
         include_similarity=True,
@@ -506,7 +510,7 @@ class AstraDB:
         return response
 
     def create_collection(
-        self, collection_name, options=None, dimension=None, metric=""
+        self, collection_name, *, options=None, dimension=None, metric=""
     ):
         # Make sure we provide a collection name
         if not collection_name:

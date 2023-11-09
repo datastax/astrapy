@@ -35,14 +35,14 @@ astra_db_collection.insert_one(
 )
 
 # Perform a few vector find operations
-astra_db_collection.vector_find(vector=[0.1, 0.1, 0.2, 0.5, 1], limit=3)
+astra_db_collection.vector_find([0.1, 0.1, 0.2, 0.5, 1], limit=3)
 
 astra_db_collection.vector_find(
-    vector=[0.1, 0.1, 0.2, 0.5, 1], limit=3, filter={"name": "Coded Cleats Copy"}
+    [0.1, 0.1, 0.2, 0.5, 1], limit=3, filter={"name": "Coded Cleats Copy"}
 )
 
 astra_db_collection.vector_find(
-    vector=[0.1, 0.1, 0.2, 0.5, 1],
+    [0.1, 0.1, 0.2, 0.5, 1],
     limit=3,
     fields=["_id", "name"],
     include_similarity=False,

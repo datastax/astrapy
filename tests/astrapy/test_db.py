@@ -305,7 +305,7 @@ def test_vector_find_documents_vector(collection):
 
     documents = collection.vector_find(
         [0.15, 0.1, 0.1, 0.35, 0.55],
-        3,
+        limit=3,
         fields=["_id", "$vector"],
         include_similarity=False,
     )
