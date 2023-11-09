@@ -94,6 +94,58 @@ class AstraDBCollection:
 
         return response
 
+    def vector_find(
+        self,
+        vector,
+        limit,
+        filter=None,
+        fields=None,
+        include_similarity=True,
+        include_vector=True,
+    ):
+        # Must pass a vector
+        if not vector:
+            return ValueError("Must pass a vector")
+
+        # Must pass a limit
+        if not vector:
+            return ValueError("Must pass a limit")
+
+        # Build the new vector parameter
+        sort = {"$vector": vector}
+
+        # Build the new fields parameter
+        projection = {f: 1 for f in fields} if fields else {}
+
+        # TODO: Do we always return the vector?
+        projection["$similarity"] = 1
+        if include_vector:
+            projection["$vector"] = 1
+
+        # Call the underlying find() method to search
+        raw_find_result = self.find(
+            filter=filter,
+            projection=projection,
+            sort=sort,
+            options={"limit": limit},
+        )
+
+        # Update both similarity and vector fields
+        final_result = []
+        for document in raw_find_result["data"]["documents"]:
+            # Pop the always returned similarity score
+            similarity = document.pop("$similarity")
+            if include_similarity:
+                document["similarity"] = similarity
+
+            # Rename the vector column
+            if include_vector:
+                document["vector"] = document.pop("$vector")
+
+            final_result.append(document)
+
+        return final_result
+
     @staticmethod
     def paginate(*, method, options, **kwargs):
         response0 = method(options=options, **kwargs)
@@ -333,8 +385,6 @@ class AstraDB:
         else:
             return responsebody
 
-        return result
-
     def collection(self, collection_name):
         return AstraDBCollection(collection_name=collection_name, astra_db=self)
 
@@ -348,8 +398,12 @@ class AstraDB:
         return response
 
     def create_collection(
-        self, options=None, dimension=None, metric="", collection_name=""
+        self, collection_name, options=None, dimension=None, metric=""
     ):
+        # Make sure we provide a collection name
+        if not collection_name:
+            raise ValueError("Must provide a collection name")
+
         # Initialize options if not passed
         if not options:
             options = {"vector": {}}
@@ -387,7 +441,11 @@ class AstraDB:
         # Get the instance object as the return of the call
         return AstraDBCollection(astra_db=self, collection_name=collection_name)
 
-    def delete_collection(self, collection_name=""):
+    def delete_collection(self, collection_name):
+        # Make sure we provide a collection name
+        if not collection_name:
+            raise ValueError("Must provide a collection name")
+
         response = self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",

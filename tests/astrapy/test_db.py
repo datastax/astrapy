@@ -287,6 +287,25 @@ def test_find_documents_vector(collection):
     assert document is not None
 
 
+@pytest.mark.describe("Vector find documents using vector search")
+def test_vector_find_documents_vector(collection):
+    documents = collection.vector_find(vector=[0.15, 0.1, 0.1, 0.35, 0.55], limit=3)
+
+    assert documents is not None
+
+    documents = collection.vector_find(
+        [0.15, 0.1, 0.1, 0.35, 0.55],
+        3,
+        fields=["_id"],
+        include_similarity=False,
+    )
+
+    assert documents is not None
+    assert len(documents) > 0
+    assert "_id" in documents[0]
+    assert "similarity" not in documents[0]
+
+
 @pytest.mark.describe("Find documents using vector search with error")
 def test_find_documents_vector_error(collection):
     sort = ({"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]},)
