@@ -343,7 +343,7 @@ class AstraDBCollection:
         include_similarity=True,
     ):
         # Edge case for field selection
-        if "$similarity" in fields:
+        if fields and "$similarity" in fields:
             raise ValueError("Please use the `include_similarity` parameter")
 
         # Pre-process the included arguments
