@@ -245,8 +245,8 @@ class AstraDBCollection:
     def vector_find_one_and_replace(
         self,
         vector,
+        replacement,
         *,
-        replacement=None,
         filter=None,
         fields=None,
     ):
@@ -292,8 +292,8 @@ class AstraDBCollection:
     def vector_find_one_and_update(
         self,
         vector,
+        update,
         *,
-        update=None,
         filter=None,
         fields=None,
     ):
