@@ -18,7 +18,7 @@ from os import path
 from astrapy import __version__
 
 this_directory = path.abspath(path.dirname(__file__))
-with open(path.join(this_directory, "README.md"), encoding="utf-8") as f:
+with open(path.join(this_directory, "README.MD"), encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
