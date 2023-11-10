@@ -18,10 +18,11 @@ api_endpoint = os.getenv("ASTRA_DB_API_ENDPOINT")
 # Initialize our vector db
 astra_db = AstraDB(token=token, api_endpoint=api_endpoint)
 
+# In case we already have the collection, let's clear it out
+astra_db.delete_collection("collection_test")
+
 # Create a new test collection for example
-astra_db_collection = astra_db.create_collection(
-    collection_name="collection_test", dimension=5
-)
+astra_db_collection = astra_db.create_collection("collection_test", dimension=5)
 
 # Insert a document into the test collection
 astra_db_collection.insert_one(
@@ -33,6 +34,16 @@ astra_db_collection.insert_one(
     }
 )
 
-# Perform a couple find operations
-astra_db_collection.find_one({"name": "potato"})  # Not found
-astra_db_collection.find_one({"name": "Coded Cleats Copy"})
+# Perform a few vector find operations
+astra_db_collection.vector_find([0.1, 0.1, 0.2, 0.5, 1], limit=3)
+
+astra_db_collection.vector_find(
+    [0.1, 0.1, 0.2, 0.5, 1], limit=3, filter={"name": "Coded Cleats Copy"}
+)
+
+astra_db_collection.vector_find(
+    [0.1, 0.1, 0.2, 0.5, 1],
+    limit=3,
+    fields=["_id", "name"],
+    include_similarity=False,
+)

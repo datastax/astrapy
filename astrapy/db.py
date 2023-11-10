@@ -76,6 +76,59 @@ class AstraDBCollection:
         )
         return response
 
+    def _pre_process_find(self, vector, fields=None):
+        # Must pass a vector
+        if not vector:
+            return ValueError("Must pass a vector")
+
+        # Edge case for field selection
+        if fields and "$similarity" in fields:
+            raise ValueError("Please use the `include_similarity` parameter")
+
+        # Build the new vector parameter
+        sort = {"$vector": vector}
+
+        # Build the new fields parameter
+        # Note: do not leave projection={}, make it None
+        # (or it will devour $similarity away in the API response)
+        if fields is not None and len(fields) > 0:
+            projection = {f: 1 for f in fields}
+        else:
+            projection = None
+
+        return sort, projection
+
+    def _finalize_find_return(self, itm, include_similarity=True):
+        # Pop the returned similarity score
+        if "$similarity" in itm:
+            similarity = itm.pop("$similarity")
+            if include_similarity:
+                itm["$similarity"] = similarity
+
+        return itm
+
+    def _post_process_find(
+        self,
+        raw_find_result,
+        include_similarity=True,
+        _key="documents",
+    ):
+        if isinstance(raw_find_result["data"][_key], list):
+            final_result = [
+                self._finalize_find_return(
+                    itm,
+                    include_similarity=include_similarity,
+                )
+                for itm in raw_find_result["data"][_key]
+            ]
+        else:
+            final_result = self._finalize_find_return(
+                raw_find_result["data"][_key],
+                include_similarity=include_similarity,
+            )
+
+        return final_result
+
     def get(self, path=None):
         return self._get(path=path)
 
@@ -93,6 +146,44 @@ class AstraDBCollection:
         )
 
         return response
+
+    def vector_find(
+        self,
+        vector,
+        *,
+        limit,
+        filter=None,
+        fields=None,
+        include_similarity=True,
+    ):
+        # Must pass a limit
+        if not limit:
+            return ValueError("Must pass a limit")
+
+        # Pre-process the included arguments
+        sort, projection = self._pre_process_find(
+            vector,
+            fields=fields,
+        )
+
+        # Call the underlying find() method to search
+        raw_find_result = self.find(
+            filter=filter,
+            projection=projection,
+            sort=sort,
+            options={
+                "limit": limit,
+                "includeSimilarity": include_similarity,
+            },
+        )
+
+        # Post-process the return
+        find_result = self._post_process_find(
+            raw_find_result,
+            include_similarity=include_similarity,
+        )
+
+        return find_result
 
     @staticmethod
     def paginate(*, method, options, **kwargs):
@@ -160,6 +251,36 @@ class AstraDBCollection:
 
         return response
 
+    def vector_find_one_and_replace(
+        self,
+        vector,
+        replacement,
+        *,
+        filter=None,
+        fields=None,
+    ):
+        # Pre-process the included arguments
+        sort, _ = self._pre_process_find(
+            vector,
+            fields=fields,
+        )
+
+        # Call the underlying find() method to search
+        raw_find_result = self.find_one_and_replace(
+            replacement=replacement,
+            filter=filter,
+            sort=sort,
+        )
+
+        # Post-process the return
+        find_result = self._post_process_find(
+            raw_find_result,
+            include_similarity=False,
+            _key="document",
+        )
+
+        return find_result
+
     def find_one_and_update(self, sort={}, update=None, filter=None, options=None):
         json_query = make_payload(
             top_level="findOneAndUpdate",
@@ -177,6 +298,36 @@ class AstraDBCollection:
 
         return response
 
+    def vector_find_one_and_update(
+        self,
+        vector,
+        update,
+        *,
+        filter=None,
+        fields=None,
+    ):
+        # Pre-process the included arguments
+        sort, _ = self._pre_process_find(
+            vector,
+            fields=fields,
+        )
+
+        # Call the underlying find() method to search
+        raw_find_result = self.find_one_and_update(
+            update=update,
+            filter=filter,
+            sort=sort,
+        )
+
+        # Post-process the return
+        find_result = self._post_process_find(
+            raw_find_result,
+            include_similarity=False,
+            _key="document",
+        )
+
+        return find_result
+
     def find_one(self, filter={}, projection={}, sort={}, options={}):
         json_query = make_payload(
             top_level="findOne",
@@ -191,6 +342,37 @@ class AstraDBCollection:
         )
 
         return response
+
+    def vector_find_one(
+        self,
+        vector,
+        *,
+        filter=None,
+        fields=None,
+        include_similarity=True,
+    ):
+        # Pre-process the included arguments
+        sort, projection = self._pre_process_find(
+            vector,
+            fields=fields,
+        )
+
+        # Call the underlying find() method to search
+        raw_find_result = self.find_one(
+            filter=filter,
+            projection=projection,
+            sort=sort,
+            options={"includeSimilarity": include_similarity},
+        )
+
+        # Post-process the return
+        find_result = self._post_process_find(
+            raw_find_result,
+            include_similarity=include_similarity,
+            _key="document",
+        )
+
+        return find_result
 
     def insert_one(self, document):
         json_query = make_payload(top_level="insertOne", document=document)
@@ -333,8 +515,6 @@ class AstraDB:
         else:
             return responsebody
 
-        return result
-
     def collection(self, collection_name):
         return AstraDBCollection(collection_name=collection_name, astra_db=self)
 
@@ -348,8 +528,12 @@ class AstraDB:
         return response
 
     def create_collection(
-        self, options=None, dimension=None, metric="", collection_name=""
+        self, collection_name, *, options=None, dimension=None, metric=""
     ):
+        # Make sure we provide a collection name
+        if not collection_name:
+            raise ValueError("Must provide a collection name")
+
         # Initialize options if not passed
         if not options:
             options = {"vector": {}}
@@ -387,7 +571,11 @@ class AstraDB:
         # Get the instance object as the return of the call
         return AstraDBCollection(astra_db=self, collection_name=collection_name)
 
-    def delete_collection(self, collection_name=""):
+    def delete_collection(self, collection_name):
+        # Make sure we provide a collection name
+        if not collection_name:
+            raise ValueError("Must provide a collection name")
+
         response = self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
