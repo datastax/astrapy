@@ -22,11 +22,11 @@ import os
 from faker import Faker
 import json
 
+from dotenv import load_dotenv
+
 logger = logging.getLogger(__name__)
 fake = Faker()
 
-
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -40,6 +40,7 @@ ASTRA_DB_BASE_URL = os.environ.get("ASTRA_DB_BASE_URL", "apps.astra.datastax.com
 TEST_COLLECTION_NAME = "test_collection"
 TEST_FIXTURE_COLLECTION_NAME = "test_fixture_collection"
 TEST_FIXTURE_PROJECTION_COLLECTION_NAME = "test_projection_collection"
+
 
 @pytest.fixture(scope="module")
 def cliff_uuid():
@@ -364,7 +365,7 @@ def test_find_documents_vector_error(collection):
 
 
 @pytest.mark.describe("Find documents using vector search and projection")
-def test_find_documents_vector_proj(collection):
+def test_find_documents_vector_proj_limit_sim(collection):
     sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
     options = {"limit": 100}
     projection = {"$vector": 1, "$similarity": 1}
@@ -374,7 +375,7 @@ def test_find_documents_vector_proj(collection):
 
 
 @pytest.mark.describe("Find a document using vector search and projection")
-def test_find_documents_vector_proj(collection):
+def test_find_documents_vector_proj_nolimit(collection):
     sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
     projection = {"$vector": 1}
 
@@ -497,8 +498,9 @@ def test_find_one_document(collection):
 
     assert document["data"]["document"] is not None
 
-    document = collection.find_one(filter={"first_name": f"Cliff-Not-There"})
-    assert document["data"]["document"] == None
+    document = collection.find_one(filter={"first_name": "Cliff-Not-There"})
+    assert document["data"]["document"] is None
+
 
 @pytest.mark.describe("obey projection in find")
 def test_find_projection(projection_collection):
@@ -521,11 +523,10 @@ def test_find_projection(projection_collection):
         {"$vector", "_id", "text"},
     ]
     for proj, exp_fields in zip(projs, exp_fieldsets):
-        docs = projection_collection.find(
-            sort=sort, options=options, projection=proj
-        )
-        fields = set(docs['data']['documents'][0].keys())
+        docs = projection_collection.find(sort=sort, options=options, projection=proj)
+        fields = set(docs["data"]["documents"][0].keys())
         assert fields == exp_fields
+
 
 @pytest.mark.describe("obey projection in vector_find")
 def test_vector_find_projection(projection_collection):
@@ -554,10 +555,11 @@ def test_vector_find_projection(projection_collection):
                 include_similarity=include_similarity,
             )
             if include_similarity:
-                exp_fields = exp_fields0 | {'$similarity'}
+                exp_fields = exp_fields0 | {"$similarity"}
             else:
                 exp_fields = exp_fields0
             assert set(vdocs[0].keys()) == exp_fields
+
 
 @pytest.mark.describe("upsert a document")
 def test_upsert_document(collection, cliff_uuid):
@@ -610,7 +612,7 @@ def test_functions(collection):
     update = {"$pop": {"roles": 1}}
     options = {"returnDocument": "after"}
 
-    pop_res = collection.pop(filter={"_id": user_id}, update=update, options=options)
+    _ = collection.pop(filter={"_id": user_id}, update=update, options=options)
 
     doc_1 = collection.find_one(filter={"_id": user_id})
     assert doc_1["data"]["document"]["_id"] == user_id

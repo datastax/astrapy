@@ -173,7 +173,7 @@ class AstraDBCollection:
             sort=sort,
             options={
                 "limit": limit,
-                "includeSimilarity" : include_similarity,
+                "includeSimilarity": include_similarity,
             },
         )
 
@@ -362,7 +362,7 @@ class AstraDBCollection:
             filter=filter,
             projection=projection,
             sort=sort,
-            options={"includeSimilarity" : include_similarity},
+            options={"includeSimilarity": include_similarity},
         )
 
         # Post-process the return
