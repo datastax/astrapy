@@ -89,10 +89,12 @@ class AstraDBCollection:
         sort = {"$vector": vector}
 
         # Build the new fields parameter
-        projection = {f: 1 for f in fields} if fields else {}
-
-        # TODO: Do we always return the similarity?
-        projection["$similarity"] = 1
+        # Note: do not leave projection={}, make it None
+        # (or it will devour $similarity away in the API response)
+        if fields is not None and len(fields) > 0:
+            projection = {f: 1 for f in fields}
+        else:
+            projection = None
 
         return sort, projection
 
@@ -169,7 +171,10 @@ class AstraDBCollection:
             filter=filter,
             projection=projection,
             sort=sort,
-            options={"limit": limit},
+            options={
+                "limit": limit,
+                "includeSimilarity" : include_similarity,
+            },
         )
 
         # Post-process the return
@@ -357,6 +362,7 @@ class AstraDBCollection:
             filter=filter,
             projection=projection,
             sort=sort,
+            options={"includeSimilarity" : include_similarity},
         )
 
         # Post-process the return

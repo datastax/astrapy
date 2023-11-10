@@ -39,7 +39,7 @@ ASTRA_DB_BASE_URL = os.environ.get("ASTRA_DB_BASE_URL", "apps.astra.datastax.com
 
 TEST_COLLECTION_NAME = "test_collection"
 TEST_FIXTURE_COLLECTION_NAME = "test_fixture_collection"
-
+TEST_FIXTURE_PROJECTION_COLLECTION_NAME = "test_projection_collection"
 
 @pytest.fixture(scope="module")
 def cliff_uuid():
@@ -83,6 +83,40 @@ def collection(db, cliff_data):
     yield collection
 
     db.delete_collection(collection_name=TEST_FIXTURE_COLLECTION_NAME)
+
+
+@pytest.fixture(scope="module")
+def projection_collection(db):
+    collection = db.create_collection(
+        collection_name=TEST_FIXTURE_PROJECTION_COLLECTION_NAME, dimension=5
+    )
+
+    collection.insert_many(
+        [
+            {
+                "_id": "1",
+                "text": "Sample entry number <1>",
+                "otherfield": {"subfield": "x1y"},
+                "$vector": [0.1, 0.15, 0.3, 0.12, 0.05],
+            },
+            {
+                "_id": "2",
+                "text": "Sample entry number <2>",
+                "otherfield": {"subfield": "x2y"},
+                "$vector": [0.45, 0.09, 0.01, 0.2, 0.11],
+            },
+            {
+                "_id": "3",
+                "text": "Sample entry number <3>",
+                "otherfield": {"subfield": "x3y"},
+                "$vector": [0.1, 0.05, 0.08, 0.3, 0.6],
+            },
+        ],
+    )
+
+    yield collection
+
+    db.delete_collection(collection_name=TEST_FIXTURE_PROJECTION_COLLECTION_NAME)
 
 
 @pytest.mark.describe("should create a vector collection")
@@ -466,6 +500,64 @@ def test_find_one_document(collection):
     document = collection.find_one(filter={"first_name": f"Cliff-Not-There"})
     assert document["data"]["document"] == None
 
+@pytest.mark.describe("obey projection in find")
+def test_find_projection(projection_collection):
+    query = [0.15, 0.1, 0.1, 0.35, 0.55]
+    sort = {"$vector": query}
+    options = {"limit": 1}
+
+    projs = [
+        None,
+        {},
+        {"text": 1},
+        {"$vector": 1},
+        {"text": 1, "$vector": 1},
+    ]
+    exp_fieldsets = [
+        {"$vector", "_id", "otherfield", "text"},
+        {"$vector", "_id", "otherfield", "text"},
+        {"_id", "text"},
+        {"$vector", "_id"},
+        {"$vector", "_id", "text"},
+    ]
+    for proj, exp_fields in zip(projs, exp_fieldsets):
+        docs = projection_collection.find(
+            sort=sort, options=options, projection=proj
+        )
+        fields = set(docs['data']['documents'][0].keys())
+        assert fields == exp_fields
+
+@pytest.mark.describe("obey projection in vector_find")
+def test_vector_find_projection(projection_collection):
+    query = [0.15, 0.1, 0.1, 0.35, 0.55]
+
+    req_fieldlists = [
+        None,
+        set(),
+        {"text"},
+        {"$vector"},
+        {"text", "$vector"},
+    ]
+    exp_fieldsets = [
+        {"$vector", "_id", "otherfield", "text"},
+        {"$vector", "_id", "otherfield", "text"},
+        {"_id", "text"},
+        {"$vector", "_id"},
+        {"$vector", "_id", "text"},
+    ]
+    for include_similarity in [True, False]:
+        for req_fields, exp_fields0 in zip(req_fieldlists, exp_fieldsets):
+            vdocs = projection_collection.vector_find(
+                query,
+                limit=1,
+                fields=req_fields,
+                include_similarity=include_similarity,
+            )
+            if include_similarity:
+                exp_fields = exp_fields0 | {'$similarity'}
+            else:
+                exp_fields = exp_fields0
+            assert set(vdocs[0].keys()) == exp_fields
 
 @pytest.mark.describe("upsert a document")
 def test_upsert_document(collection, cliff_uuid):
