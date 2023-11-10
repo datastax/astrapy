@@ -92,26 +92,34 @@ class AstraDBCollection:
 
         return sort, projection
 
+    def _finalize_find_return(self, itm, include_similarity=True):
+        # Pop the returned similarity score
+        if "$similarity" in itm:
+            similarity = itm.pop("$similarity")
+            if include_similarity:
+                itm["$similarity"] = similarity
+
+        return itm
+
     def _post_process_find(
         self,
         raw_find_result,
         include_similarity=True,
         _key="documents",
     ):
-        # If we only have a single result, treat it as a list
-        if type(raw_find_result["data"][_key]) == dict:
-            raw_find_result["data"][_key] = [raw_find_result["data"][_key]]
-
-        # Process list of documents
-        final_result = []
-        for document in raw_find_result["data"][_key]:
-            # Pop the returned similarity score
-            if "$similarity" in document:
-                similarity = document.pop("$similarity")
-                if include_similarity:
-                    document["$similarity"] = similarity
-
-            final_result.append(document)
+        if isinstance(raw_find_result["data"][_key], list):
+            final_result = [
+                self._finalize_find_return(
+                    itm,
+                    include_similarity=include_similarity,
+                )
+                for itm in raw_find_result["data"][_key]
+            ]
+        else:
+            final_result = self._finalize_find_return(
+                raw_find_result["data"][_key],
+                include_similarity=include_similarity,
+            )
 
         return final_result
 
