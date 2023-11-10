@@ -342,6 +342,10 @@ class AstraDBCollection:
         fields=None,
         include_similarity=True,
     ):
+        # Edge case for field selection
+        if "$similarity" in fields:
+            raise ValueError("Please use the `include_similarity` parameter")
+
         # Pre-process the included arguments
         sort, projection = self._pre_process_find(
             vector,
