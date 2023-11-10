@@ -81,6 +81,10 @@ class AstraDBCollection:
         if not vector:
             return ValueError("Must pass a vector")
 
+        # Edge case for field selection
+        if fields and "$similarity" in fields:
+            raise ValueError("Please use the `include_similarity` parameter")
+
         # Build the new vector parameter
         sort = {"$vector": vector}
 
@@ -342,10 +346,6 @@ class AstraDBCollection:
         fields=None,
         include_similarity=True,
     ):
-        # Edge case for field selection
-        if fields and "$similarity" in fields:
-            raise ValueError("Please use the `include_similarity` parameter")
-
         # Pre-process the included arguments
         sort, projection = self._pre_process_find(
             vector,
