@@ -55,6 +55,9 @@ class AstraDBCollection:
         self.collection_name = collection_name
         self.base_path = f"{self.astra_db.base_path}/{collection_name}"
 
+    def __repr__(self):
+        return f'Astra DB Collection[name="{self.collection_name}", endpoint="{self.astra_db.base_url}"]'
+
     def _request(self, *args, skip_error_check=False, **kwargs):
         response = make_request(
             *args,
@@ -690,6 +693,9 @@ class AstraDB:
 
         # Set the namespace parameter
         self.namespace = namespace
+
+    def __repr__(self):
+        return f'Astra DB[endpoint="{self.base_url}"]'
 
     def _request(self, *args, skip_error_check=False, **kwargs):
         response = make_request(
