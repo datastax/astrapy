@@ -14,13 +14,15 @@
 
 from astrapy.defaults import (
     DEFAULT_AUTH_HEADER,
+    DEFAULT_JSON_API_PATH,
+    DEFAULT_JSON_API_VERSION,
     DEFAULT_KEYSPACE_NAME,
-    DEFAULT_BASE_PATH,
 )
-from astrapy.utils import make_payload, make_request, http_methods, parse_endpoint_url
+from astrapy.utils import make_payload, make_request, http_methods
 
 import logging
 import json
+import posixpath
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,7 @@ class AstraDBCollection:
 
         self.astra_db = astra_db
         self.collection_name = collection_name
-        self.base_path = f"{self.astra_db.base_path}/{collection_name}"
+        self.base_path = f"{self.astra_db.base_path}/{self.collection_name}"
 
     def _request(self, *args, skip_error_check=False, **kwargs):
         response = make_request(
@@ -471,6 +473,8 @@ class AstraDB:
         self,
         token=None,
         api_endpoint=None,
+        api_version=None,
+        api_path=None,
         namespace=None,
     ):
         if token is None or api_endpoint is None:
@@ -482,22 +486,21 @@ class AstraDB:
             )
             namespace = DEFAULT_KEYSPACE_NAME
 
-        # Store the initial parameters
+        # Store the API token
         self.token = token
-        (
-            self.database_id,
-            self.database_region,
-            self.database_domain,
-        ) = parse_endpoint_url(api_endpoint)
+
+        # Set the API version and path from the call
+        self.api_version = api_version or DEFAULT_JSON_API_VERSION
+        self.api_path = (api_path or DEFAULT_JSON_API_PATH).rstrip("/")
+
+        # Set the namespace
+        self.namespace = namespace
 
         # Set the Base URL for the API calls
-        self.base_url = (
-            f"https://{self.database_id}-{self.database_region}.{self.database_domain}"
+        self.base_url = api_endpoint.rstrip("/")
+        self.base_path = posixpath.join(
+            self.base_url, self.api_path, self.api_version, self.namespace
         )
-        self.base_path = f"{DEFAULT_BASE_PATH}/{namespace}"
-
-        # Set the namespace parameter
-        self.namespace = namespace
 
     def _request(self, *args, skip_error_check=False, **kwargs):
         response = make_request(

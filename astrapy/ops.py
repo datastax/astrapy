@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from astrapy.utils import make_request, http_methods
-from astrapy.defaults import DEFAULT_DEV_OPS_PATH_PREFIX, DEFAULT_DEV_OPS_URL
+from astrapy.defaults import DEFAULT_DEV_OPS_API_VERSION, DEFAULT_DEV_OPS_URL
 
 import logging
 
@@ -21,11 +21,12 @@ logger = logging.getLogger(__name__)
 
 
 class AstraDBOps:
-    def __init__(self, token, dev_ops_url=None):
+    def __init__(self, token, dev_ops_url=None, dev_ops_api_version=None):
         dev_ops_url = dev_ops_url or DEFAULT_DEV_OPS_URL
+        dev_ops_api_version = dev_ops_api_version or DEFAULT_DEV_OPS_API_VERSION
 
         self.token = "Bearer " + token
-        self.base_url = f"https://{dev_ops_url}{DEFAULT_DEV_OPS_PATH_PREFIX}"
+        self.base_url = f"https://{dev_ops_url}/{dev_ops_api_version}"
 
     def _ops_request(self, method, path, options=None, json_data=None):
         options = {} if options is None else options

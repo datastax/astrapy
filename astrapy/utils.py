@@ -1,6 +1,5 @@
 import requests
 import logging
-import re
 
 from astrapy import __version__
 from astrapy.defaults import DEFAULT_TIMEOUT
@@ -71,18 +70,3 @@ def make_payload(top_level, **kwargs):
             json_query[top_level][key] = value
 
     return json_query
-
-
-def parse_endpoint_url(url):
-    # Regular expression pattern to match the given URL format
-    pattern = r"https://(?P<db_id>[a-fA-F0-9\-]{36})-(?P<db_region>[a-zA-Z0-9\-]+)\.(?P<db_hostname>[a-zA-Z0-9\-\.]+\.com)"
-
-    match = re.match(pattern, url)
-    if match:
-        return (
-            match.group("db_id"),
-            match.group("db_region"),
-            match.group("db_hostname"),
-        )
-    else:
-        raise ValueError("Invalid URL format")

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from astrapy.db import AstraDB, AstraDBCollection
-from astrapy.defaults import DEFAULT_KEYSPACE_NAME, DEFAULT_REGION
+from astrapy.defaults import DEFAULT_KEYSPACE_NAME
 
 import uuid
 import pytest
@@ -31,11 +31,9 @@ fake = Faker()
 load_dotenv()
 
 
-ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID")
-ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION", DEFAULT_REGION)
 ASTRA_DB_APPLICATION_TOKEN = os.environ.get("ASTRA_DB_APPLICATION_TOKEN")
+ASTRA_DB_API_ENDPOINT = os.environ.get("ASTRA_DB_API_ENDPOINT")
 ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
-ASTRA_DB_BASE_URL = os.environ.get("ASTRA_DB_BASE_URL", "apps.astra.datastax.com")
 
 TEST_COLLECTION_NAME = "test_collection"
 TEST_FIXTURE_COLLECTION_NAME = "test_fixture_collection"
@@ -56,7 +54,7 @@ def vv_uuid():
 def db():
     astra_db = AstraDB(
         token=ASTRA_DB_APPLICATION_TOKEN,
-        api_endpoint=f"https://{ASTRA_DB_ID}-{ASTRA_DB_REGION}.{ASTRA_DB_BASE_URL}",
+        api_endpoint=ASTRA_DB_API_ENDPOINT,
         namespace=ASTRA_DB_KEYSPACE,
     )
 
