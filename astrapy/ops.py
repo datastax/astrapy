@@ -16,7 +16,6 @@ from astrapy.utils import make_request, http_methods
 from astrapy.defaults import DEFAULT_DEV_OPS_API_VERSION, DEFAULT_DEV_OPS_URL
 
 import logging
-import posixpath
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +28,7 @@ class AstraDBOps:
         ).strip("/")
 
         self.token = "Bearer " + token
-        self.base_url = posixpath.join("https://", dev_ops_url, dev_ops_api_version)
+        self.base_url = f"https://{dev_ops_url}/{dev_ops_api_version}"
 
     def _ops_request(self, method, path, options=None, json_data=None):
         options = {} if options is None else options

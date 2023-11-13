@@ -22,7 +22,6 @@ from astrapy.utils import make_payload, make_request, http_methods
 
 import logging
 import json
-import posixpath
 
 logger = logging.getLogger(__name__)
 
@@ -499,10 +498,8 @@ class AstraDB:
         # Set the namespace
         self.namespace = namespace
 
-        # Finally, construct the full
-        self.base_path = posixpath.join(
-            "/", self.api_path, self.api_version, self.namespace
-        )
+        # Finally, construct the full base path
+        self.base_path = f"/{self.api_path}/{self.api_version}/{self.namespace}"
 
     def _request(self, *args, skip_error_check=False, **kwargs):
         response = make_request(
