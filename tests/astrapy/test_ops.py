@@ -18,6 +18,8 @@ from astrapy.defaults import DEFAULT_KEYSPACE_NAME, DEFAULT_REGION
 import pytest
 import logging
 import os
+import uuid
+
 from faker import Faker
 
 logger = logging.getLogger(__name__)
@@ -30,11 +32,10 @@ load_dotenv()
 
 
 # Parameter for the ops testing
-ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID")
-ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION", DEFAULT_REGION)
 ASTRA_DB_APPLICATION_TOKEN = os.environ.get("ASTRA_DB_APPLICATION_TOKEN")
+ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID")
 ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
-ASTRA_DB_BASE_URL = os.environ.get("ASTRA_DB_BASE_URL", "apps.astra.datastax.com")
+ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION", DEFAULT_REGION)
 
 
 pytestmark = pytest.mark.skip("Currently skipping all ops tests")
@@ -83,7 +84,7 @@ def test_create_database(devops_client):
 @pytest.mark.describe("should create a keyspace")
 def test_create_keyspace(devops_client):
     response = devops_client.create_keyspace(
-        keyspace="test_namespace", database=os.environ["ASTRA_DB_ID"]
+        keyspace="test_namespace", database=str(uuid.uuid4())
     )
 
     assert response is not None
