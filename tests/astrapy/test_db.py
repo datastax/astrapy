@@ -118,6 +118,46 @@ def projection_collection(db):
     db.delete_collection(collection_name=TEST_FIXTURE_PROJECTION_COLLECTION_NAME)
 
 
+@pytest.mark.describe("should confirm path handling in constructor")
+def test_path_handling():
+    astra_db_1 = AstraDB(
+        token=ASTRA_DB_APPLICATION_TOKEN,
+        api_endpoint=ASTRA_DB_API_ENDPOINT,
+        namespace=ASTRA_DB_KEYSPACE,
+    )
+
+    url_1 = astra_db_1.base_path
+
+    astra_db_2 = AstraDB(
+        token=ASTRA_DB_APPLICATION_TOKEN,
+        api_endpoint=ASTRA_DB_API_ENDPOINT,
+        namespace=ASTRA_DB_KEYSPACE,
+        api_version="v1",
+    )
+
+    url_2 = astra_db_2.base_path
+
+    astra_db_3 = AstraDB(
+        token=ASTRA_DB_APPLICATION_TOKEN,
+        api_endpoint=ASTRA_DB_API_ENDPOINT,
+        namespace=ASTRA_DB_KEYSPACE,
+        api_version="/v1",
+    )
+
+    url_3 = astra_db_3.base_path
+
+    astra_db_4 = AstraDB(
+        token=ASTRA_DB_APPLICATION_TOKEN,
+        api_endpoint=ASTRA_DB_API_ENDPOINT,
+        namespace=ASTRA_DB_KEYSPACE,
+        api_version="/v1/",
+    )
+
+    url_4 = astra_db_4.base_path
+
+    assert url_1 == url_2 == url_3 == url_4
+
+
 @pytest.mark.describe("should create a vector collection")
 def test_create_collection(db):
     res = db.create_collection(collection_name=TEST_COLLECTION_NAME, dimension=5)

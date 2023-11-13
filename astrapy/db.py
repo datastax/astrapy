@@ -473,8 +473,8 @@ class AstraDB:
         self,
         token=None,
         api_endpoint=None,
-        api_version=None,
         api_path=None,
+        api_version=None,
         namespace=None,
     ):
         if token is None or api_endpoint is None:
@@ -489,17 +489,19 @@ class AstraDB:
         # Store the API token
         self.token = token
 
+        # Set the Base URL for the API calls
+        self.base_url = api_endpoint.strip("/")
+
         # Set the API version and path from the call
-        self.api_version = api_version or DEFAULT_JSON_API_VERSION
-        self.api_path = (api_path or DEFAULT_JSON_API_PATH).rstrip("/")
+        self.api_path = (api_path or DEFAULT_JSON_API_PATH).strip("/")
+        self.api_version = (api_version or DEFAULT_JSON_API_VERSION).strip("/")
 
         # Set the namespace
         self.namespace = namespace
 
-        # Set the Base URL for the API calls
-        self.base_url = api_endpoint.rstrip("/")
+        # Finally, construct the full
         self.base_path = posixpath.join(
-            self.base_url, self.api_path, self.api_version, self.namespace
+            "/", self.api_path, self.api_version, self.namespace
         )
 
     def _request(self, *args, skip_error_check=False, **kwargs):
