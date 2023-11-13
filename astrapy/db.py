@@ -35,6 +35,15 @@ class AstraDBCollection:
         api_endpoint=None,
         namespace=None,
     ):
+        """
+        Initialize an AstraDBCollection instance.
+        Args:
+            collection_name (str): The name of the collection.
+            astra_db (AstraDB, optional): An instance of Astra DB.
+            token (str, optional): Authentication token for Astra DB.
+            api_endpoint (str, optional): API endpoint URL.
+            namespace (str, optional): Namespace for the database.
+        """
         if astra_db is None:
             if token is None or api_endpoint is None:
                 raise AssertionError("Must provide token and api_endpoint")
@@ -46,6 +55,9 @@ class AstraDBCollection:
         self.astra_db = astra_db
         self.collection_name = collection_name
         self.base_path = f"{self.astra_db.base_path}/{self.collection_name}"
+
+    def __repr__(self):
+        return f'Astra DB Collection[name="{self.collection_name}", endpoint="{self.astra_db.base_url}"]'
 
     def _request(self, *args, skip_error_check=False, **kwargs):
         response = make_request(
@@ -131,9 +143,26 @@ class AstraDBCollection:
         return final_result
 
     def get(self, path=None):
+        """
+        Retrieve a document from the collection by its path.
+        Args:
+            path (str, optional): The path of the document to retrieve.
+        Returns:
+            dict: The retrieved document.
+        """
         return self._get(path=path)
 
     def find(self, filter=None, projection=None, sort={}, options=None):
+        """
+        Find documents in the collection that match the given filter.
+        Args:
+            filter (dict, optional): Criteria to filter documents.
+            projection (dict, optional): Specifies the fields to return.
+            sort (dict, optional): Specifies the order in which to return matching documents.
+            options (dict, optional): Additional options for the query.
+        Returns:
+            dict: The query response containing matched documents.
+        """
         json_query = make_payload(
             top_level="find",
             filter=filter,
@@ -157,6 +186,17 @@ class AstraDBCollection:
         fields=None,
         include_similarity=True,
     ):
+        """
+        Perform a vector-based search in the collection.
+        Args:
+            vector (list): The vector to search with.
+            limit (int): The maximum number of documents to return.
+            filter (dict, optional): Criteria to filter documents.
+            fields (list, optional): Specifies the fields to return.
+            include_similarity (bool, optional): Whether to include similarity score in the result.
+        Returns:
+            list: A list of documents matching the vector search criteria.
+        """
         # Must pass a limit
         if not limit:
             return ValueError("Must pass a limit")
@@ -188,6 +228,15 @@ class AstraDBCollection:
 
     @staticmethod
     def paginate(*, method, options, **kwargs):
+        """
+        Generate paginated results for a given database query method.
+        Args:
+            method (function): The database query method to paginate.
+            options (dict): Options for the database query.
+            kwargs: Additional arguments to pass to the database query method.
+        Yields:
+            dict: The next document in the paginated result set.
+        """
         response0 = method(options=options, **kwargs)
         next_page_state = response0["data"]["nextPageState"]
         options0 = options
@@ -201,6 +250,16 @@ class AstraDBCollection:
             next_page_state = response1["data"]["nextPageState"]
 
     def paginated_find(self, filter=None, projection=None, sort=None, options=None):
+        """
+        Perform a paginated search in the collection.
+        Args:
+            filter (dict, optional): Criteria to filter documents.
+            projection (dict, optional): Specifies the fields to return.
+            sort (dict, optional): Specifies the order in which to return matching documents.
+            options (dict, optional): Additional options for the query.
+        Returns:
+            generator: A generator yielding documents in the paginated result set.
+        """
         return self.paginate(
             method=self.find,
             filter=filter,
@@ -210,6 +269,15 @@ class AstraDBCollection:
         )
 
     def pop(self, filter, update, options):
+        """
+        Update a document in the collection and return the original document.
+        Args:
+            filter (dict): Criteria to identify the document to update.
+            update (dict): The update to apply to the document.
+            options (dict): Additional options for the update operation.
+        Returns:
+            dict: The original document before the update.
+        """
         json_query = make_payload(
             top_level="findOneAndUpdate", filter=filter, update=update, options=options
         )
@@ -223,6 +291,15 @@ class AstraDBCollection:
         return response
 
     def push(self, filter, update, options):
+        """
+        Add an item to an array field of a document in the collection.
+        Args:
+            filter (dict): Criteria to identify the document to update.
+            update (dict): The update to apply to the document.
+            options (dict): Additional options for the update operation.
+        Returns:
+            dict: The result of the update operation.
+        """
         json_query = make_payload(
             top_level="findOneAndUpdate", filter=filter, update=update, options=options
         )
@@ -238,6 +315,16 @@ class AstraDBCollection:
     def find_one_and_replace(
         self, sort={}, filter=None, replacement=None, options=None
     ):
+        """
+        Find a single document and replace it.
+        Args:
+            sort (dict, optional): Specifies the order in which to find the document.
+            filter (dict, optional): Criteria to filter documents.
+            replacement (dict): The new document to replace the existing one.
+            options (dict, optional): Additional options for the operation.
+        Returns:
+            dict: The result of the find and replace operation.
+        """
         json_query = make_payload(
             top_level="findOneAndReplace",
             filter=filter,
@@ -260,6 +347,16 @@ class AstraDBCollection:
         filter=None,
         fields=None,
     ):
+        """
+        Perform a vector-based search and replace the first matched document.
+        Args:
+            vector (dict): The vector to search with.
+            replacement (dict): The new document to replace the existing one.
+            filter (dict, optional): Criteria to filter documents.
+            fields (list, optional): Specifies the fields to return in the result.
+        Returns:
+            dict: The result of the vector find and replace operation.
+        """
         # Pre-process the included arguments
         sort, _ = self._pre_process_find(
             vector,
@@ -283,6 +380,16 @@ class AstraDBCollection:
         return find_result
 
     def find_one_and_update(self, sort={}, update=None, filter=None, options=None):
+        """
+        Find a single document and update it.
+        Args:
+            sort (dict, optional): Specifies the order in which to find the document.
+            update (dict, optional): The update to apply to the document.
+            filter (dict, optional): Criteria to filter documents.
+            options (dict, optional): Additional options for the operation.
+        Returns:
+            dict: The result of the find and update operation.
+        """
         json_query = make_payload(
             top_level="findOneAndUpdate",
             filter=filter,
@@ -307,6 +414,16 @@ class AstraDBCollection:
         filter=None,
         fields=None,
     ):
+        """
+        Perform a vector-based search and update the first matched document.
+        Args:
+            vector (list): The vector to search with.
+            update (dict): The update to apply to the matched document.
+            filter (dict, optional): Criteria to filter documents before applying the vector search.
+            fields (list, optional): Specifies the fields to return in the updated document.
+        Returns:
+            dict: The result of the vector-based find and update operation.
+        """
         # Pre-process the included arguments
         sort, _ = self._pre_process_find(
             vector,
@@ -330,6 +447,16 @@ class AstraDBCollection:
         return find_result
 
     def find_one(self, filter={}, projection={}, sort={}, options={}):
+        """
+        Find a single document in the collection.
+        Args:
+            filter (dict, optional): Criteria to filter documents.
+            projection (dict, optional): Specifies the fields to return.
+            sort (dict, optional): Specifies the order in which to return the document.
+            options (dict, optional): Additional options for the query.
+        Returns:
+            dict: The found document or None if no matching document is found.
+        """
         json_query = make_payload(
             top_level="findOne",
             filter=filter,
@@ -352,6 +479,16 @@ class AstraDBCollection:
         fields=None,
         include_similarity=True,
     ):
+        """
+        Perform a vector-based search to find a single document in the collection.
+        Args:
+            vector (list): The vector to search with.
+            filter (dict, optional): Additional criteria to filter documents.
+            fields (list, optional): Specifies the fields to return in the result.
+            include_similarity (bool, optional): Whether to include similarity score in the result.
+        Returns:
+            dict: The found document or None if no matching document is found.
+        """
         # Pre-process the included arguments
         sort, projection = self._pre_process_find(
             vector,
@@ -376,6 +513,13 @@ class AstraDBCollection:
         return find_result
 
     def insert_one(self, document):
+        """
+        Insert a single document into the collection.
+        Args:
+            document (dict): The document to insert.
+        Returns:
+            dict: The response from the database after the insert operation.
+        """
         json_query = make_payload(top_level="insertOne", document=document)
 
         response = self._request(
@@ -385,6 +529,15 @@ class AstraDBCollection:
         return response
 
     def insert_many(self, documents, options=None, partial_failures_allowed=False):
+        """
+        Insert multiple documents into the collection.
+        Args:
+            documents (list): A list of documents to insert.
+            options (dict, optional): Additional options for the insert operation.
+            partial_failures_allowed (bool, optional): Whether to allow partial failures in the batch.
+        Returns:
+            dict: The response from the database after the insert operation.
+        """
         json_query = make_payload(
             top_level="insertMany", documents=documents, options=options
         )
@@ -399,6 +552,14 @@ class AstraDBCollection:
         return response
 
     def update_one(self, filter, update):
+        """
+        Update a single document in the collection.
+        Args:
+            filter (dict): Criteria to identify the document to update.
+            update (dict): The update to apply to the document.
+        Returns:
+            dict: The response from the database after the update operation.
+        """
         json_query = make_payload(top_level="updateOne", filter=filter, update=update)
 
         response = self._request(
@@ -410,9 +571,24 @@ class AstraDBCollection:
         return response
 
     def replace(self, path, document):
+        """
+        Replace a document in the collection.
+        Args:
+            path (str): The path to the document to replace.
+            document (dict): The new document to replace the existing one.
+        Returns:
+            dict: The response from the database after the replace operation.
+        """
         return self._put(path=path, document=document)
 
     def delete(self, id):
+        """
+        Delete a single document from the collection based on its ID.
+        Args:
+            id (str): The ID of the document to delete.
+        Returns:
+            dict: The response from the database after the delete operation.
+        """
         json_query = {
             "deleteOne": {
                 "filter": {"_id": id},
@@ -426,6 +602,14 @@ class AstraDBCollection:
         return response
 
     def delete_subdocument(self, id, subdoc):
+        """
+        Delete a subdocument or field from a document in the collection.
+        Args:
+            id (str): The ID of the document containing the subdocument.
+            subdoc (str): The key of the subdocument or field to remove.
+        Returns:
+            dict: The response from the database after the update operation.
+        """
         json_query = {
             "findOneAndUpdate": {
                 "filter": {"_id": id},
@@ -441,10 +625,14 @@ class AstraDBCollection:
 
     def upsert(self, document):
         """
-        Emulate an upsert operation for a single document,
-        whereby a document is inserted if its _id is new, or completely
-        replaces and existing one if that _id is already saved in the collection.
-        Returns: the _id of the inserted document.
+        Emulate an upsert operation for a single document in the collection.
+        This method attempts to insert the document. If a document with the same _id exists, it updates the existing document.
+
+        Args:
+            document (dict): The document to insert or update.
+
+        Returns:
+            str: The _id of the inserted or updated document.
         """
         # Attempt to insert the given document
         result = self.insert_one(document)
@@ -476,6 +664,13 @@ class AstraDB:
         api_version=None,
         namespace=None,
     ):
+        """
+        Initialize an Astra DB instance.
+        Args:
+            token (str, optional): Authentication token for Astra DB.
+            api_endpoint (str, optional): API endpoint URL.
+            namespace (str, optional): Namespace for the database.
+        """
         if token is None or api_endpoint is None:
             raise AssertionError("Must provide token and api_endpoint")
 
@@ -501,6 +696,9 @@ class AstraDB:
         # Finally, construct the full base path
         self.base_path = f"/{self.api_path}/{self.api_version}/{self.namespace}"
 
+    def __repr__(self):
+        return f'Astra DB[endpoint="{self.base_url}"]'
+
     def _request(self, *args, skip_error_check=False, **kwargs):
         response = make_request(
             *args,
@@ -518,9 +716,21 @@ class AstraDB:
             return responsebody
 
     def collection(self, collection_name):
+        """
+        Retrieve a collection from the database.
+        Args:
+            collection_name (str): The name of the collection to retrieve.
+        Returns:
+            AstraDBCollection: The collection object.
+        """
         return AstraDBCollection(collection_name=collection_name, astra_db=self)
 
     def get_collections(self):
+        """
+        Retrieve a list of collections from the database.
+        Returns:
+            dict: A list of collections in the database.
+        """
         response = self._request(
             method=http_methods.POST,
             path=self.base_path,
@@ -532,6 +742,16 @@ class AstraDB:
     def create_collection(
         self, collection_name, *, options=None, dimension=None, metric=""
     ):
+        """
+        Create a new collection in the database.
+        Args:
+            collection_name (str): The name of the collection to create.
+            options (dict, optional): Options for the collection.
+            dimension (int, optional): Dimension for vector search.
+            metric (str, optional): Metric type for vector search.
+        Returns:
+            AstraDBCollection: The created collection object.
+        """
         # Make sure we provide a collection name
         if not collection_name:
             raise ValueError("Must provide a collection name")
@@ -574,6 +794,13 @@ class AstraDB:
         return AstraDBCollection(astra_db=self, collection_name=collection_name)
 
     def delete_collection(self, collection_name):
+        """
+        Delete a collection from the database.
+        Args:
+            collection_name (str): The name of the collection to delete.
+        Returns:
+            dict: The response from the database.
+        """
         # Make sure we provide a collection name
         if not collection_name:
             raise ValueError("Must provide a collection name")
