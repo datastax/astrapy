@@ -22,11 +22,15 @@ from astrapy.utils import make_payload, make_request, http_methods
 
 import logging
 import json
+import httpx
 
 logger = logging.getLogger(__name__)
 
 
 class AstraDBCollection:
+    # Initialize the shared httpx client as a class attribute
+    client = httpx.Client()
+
     def __init__(
         self,
         collection_name,
@@ -44,6 +48,7 @@ class AstraDBCollection:
             api_endpoint (str, optional): API endpoint URL.
             namespace (str, optional): Namespace for the database.
         """
+        # Check for presence of the Astra DB object
         if astra_db is None:
             if token is None or api_endpoint is None:
                 raise AssertionError("Must provide token and api_endpoint")
@@ -52,6 +57,7 @@ class AstraDBCollection:
                 token=token, api_endpoint=api_endpoint, namespace=namespace
             )
 
+        # Set the remaining instance attributes
         self.astra_db = astra_db
         self.collection_name = collection_name
         self.base_path = f"{self.astra_db.base_path}/{self.collection_name}"
@@ -63,6 +69,7 @@ class AstraDBCollection:
         response = make_request(
             *args,
             **kwargs,
+            client=self.client,
             base_url=self.astra_db.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
             token=self.astra_db.token,
@@ -656,6 +663,9 @@ class AstraDBCollection:
 
 
 class AstraDB:
+    # Initialize the shared httpx client as a class attribute
+    client = httpx.Client()
+
     def __init__(
         self,
         token=None,
@@ -703,6 +713,7 @@ class AstraDB:
         response = make_request(
             *args,
             **kwargs,
+            client=self.client,
             base_url=self.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
             token=self.token,

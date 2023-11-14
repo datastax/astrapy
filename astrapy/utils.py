@@ -1,4 +1,3 @@
-import requests
 import logging
 
 from astrapy import __version__
@@ -41,6 +40,7 @@ def log_request_response(r, json_data):
 
 
 def make_request(
+    client,
     base_url,
     auth_header,
     token,
@@ -53,6 +53,7 @@ def make_request(
     Make an HTTP request to a specified URL.
 
     Args:
+        client (httpx): The httpx client for the request.
         base_url (str): The base URL for the request.
         auth_header (str): The authentication header key.
         token (str): The token used for authentication.
@@ -64,7 +65,7 @@ def make_request(
     Returns:
         requests.Response: The response from the HTTP request.
     """
-    r = requests.request(
+    r = client.request(
         method=method,
         url=f"{base_url}{path}",
         params=url_params,

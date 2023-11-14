@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.db import AstraDB, AstraDBCollection
-from astrapy.defaults import DEFAULT_KEYSPACE_NAME
-
 import uuid
 import pytest
 import logging
 import os
-from faker import Faker
 import json
 
+from faker import Faker
 from dotenv import load_dotenv
+
+from astrapy.db import AstraDB, AstraDBCollection
+from astrapy.defaults import DEFAULT_KEYSPACE_NAME
+
 
 logger = logging.getLogger(__name__)
 fake = Faker()
@@ -74,6 +75,7 @@ def cliff_data(cliff_uuid):
 
 @pytest.fixture(scope="module")
 def collection(db, cliff_data):
+    db.delete_collection(collection_name=TEST_FIXTURE_COLLECTION_NAME)
     collection = db.create_collection(
         collection_name=TEST_FIXTURE_COLLECTION_NAME, dimension=5
     )
