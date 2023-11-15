@@ -43,7 +43,6 @@ setup(
         "pytest-testdox~=3.1.0",
         "requests~=2.31.0",
         "requests-toolbelt~=1.0.0",
-        "python-dotenv~=1.0.0",
         "pre-commit~=3.5.0",
         "cassio~=0.1.3",
     ],
