@@ -635,24 +635,18 @@ class AstraDBCollection:
             str: The _id of the inserted or updated document.
         """
         # Attempt to insert the given document
-        result = self.insert_one(document)
+        try:
+            self.insert_one(document)
+        except Exception as e:
+            logger.debug(e)
 
-        # Check if we hit an error
-        if (
-            "errors" in result
-            and "errorCode" in result["errors"][0]
-            and result["errors"][0]["errorCode"] == "DOCUMENT_ALREADY_EXISTS"
-        ):
             # Now we attempt to update
-            result = self.find_one_and_replace(
+            self.find_one_and_replace(
                 filter={"_id": document["_id"]},
                 replacement=document,
             )
-            upserted_id = result["data"]["document"]["_id"]
-        else:
-            upserted_id = result["status"]["insertedIds"][0]
 
-        return upserted_id
+        return document["_id"]
 
 
 class AstraDB:
