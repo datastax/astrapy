@@ -616,7 +616,7 @@ def test_vector_find_projection(projection_collection):
 
 
 @pytest.mark.describe("upsert a document")
-def test_upsert_document(collection, cliff_uuid):
+def test_upsert_document(collection):
     new_uuid = str(uuid.uuid4())
 
     collection.upsert(
@@ -640,12 +640,12 @@ def test_upsert_document(collection, cliff_uuid):
 
     collection.upsert(
         {
-            "_id": cliff_uuid,
+            "_id": new_uuid,
             "addresses": {"work": {"city": "Everett", "state": "WA", "country": "USA"}},
         }
     )
 
-    document = collection.find_one(filter={"_id": cliff_uuid})
+    document = collection.find_one(filter={"_id": new_uuid})
 
     assert document is not None
     assert document["data"]["document"]["addresses"]["work"]["city"] == "Everett"

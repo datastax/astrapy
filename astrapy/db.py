@@ -525,18 +525,22 @@ class AstraDBCollection:
 
         return find_result
 
-    def insert_one(self, document):
+    def insert_one(self, document, failures_allowed=False):
         """
         Insert a single document into the collection.
         Args:
             document (dict): The document to insert.
+            failures_allowed (bool): Whether to allow failures in the insert operation.
         Returns:
             dict: The response from the database after the insert operation.
         """
         json_query = make_payload(top_level="insertOne", document=document)
 
         response = self._request(
-            method=http_methods.POST, path=self.base_path, json_data=json_query
+            method=http_methods.POST,
+            path=self.base_path,
+            json_data=json_query,
+            skip_error_check=failures_allowed,
         )
 
         return response
@@ -663,6 +667,7 @@ class AstraDBCollection:
     def upsert(self, document):
         """
         Emulate an upsert operation for a single document in the collection.
+
         This method attempts to insert the document. If a document with the same _id exists, it updates the existing document.
 
         Args:
@@ -671,10 +676,10 @@ class AstraDBCollection:
         Returns:
             str: The _id of the inserted or updated document.
         """
-        # Attempt to insert the given document
-        result = self.insert_one(document)
+        # Build the payload for the insert attempt
+        result = self.insert_one(document, failures_allowed=True)
 
-        # Check if we hit an error
+        # If the call failed, then we replace the existing doc
         if (
             "errors" in result
             and "errorCode" in result["errors"][0]
