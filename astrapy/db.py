@@ -630,13 +630,14 @@ class AstraDBCollection:
     def upsert(self, document):
         """
         Emulate an upsert operation for a single document in the collection.
+
         This method attempts to insert the document. If a document with the same _id exists, it updates the existing document.
 
         Args:
             document (dict): The document to insert or update.
 
         Returns:
-            str: The _id of the inserted or updated document.
+            dict: The response from the database after the update operation. If the document_id does not exist, the response will contain the id of the newly inserted document. If the document_id already exists, the response will contain the data of the updated document.
         """
         # Build the payload for the insert attempt
         result = self.insert_one(document, failures_allowed=True)
