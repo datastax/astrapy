@@ -16,11 +16,16 @@ from astrapy.utils import make_request, http_methods
 from astrapy.defaults import DEFAULT_DEV_OPS_API_VERSION, DEFAULT_DEV_OPS_URL
 
 import logging
+import httpx
+
 
 logger = logging.getLogger(__name__)
 
 
 class AstraDBOps:
+    # Initialize the shared httpx client as a class attribute
+    client = httpx.Client()
+
     def __init__(self, token, dev_ops_url=None, dev_ops_api_version=None):
         dev_ops_url = (dev_ops_url or DEFAULT_DEV_OPS_URL).strip("/")
         dev_ops_api_version = (
@@ -34,6 +39,7 @@ class AstraDBOps:
         options = {} if options is None else options
 
         return make_request(
+            client=self.client,
             base_url=self.base_url,
             method=method,
             auth_header="Authorization",
@@ -465,7 +471,7 @@ class AstraDBOps:
             dict: A list of available classic regions.
         """
         return self._ops_request(
-            method=http_methods.GET, path=f"/availableRegions"
+            method=http_methods.GET, path="/availableRegions"
         ).json()
 
     def get_available_regions(self):
@@ -476,7 +482,7 @@ class AstraDBOps:
             dict: A list of available regions for serverless deployment.
         """
         return self._ops_request(
-            method=http_methods.GET, path=f"/regions/serverless"
+            method=http_methods.GET, path="/regions/serverless"
         ).json()
 
     def get_roles(self):
@@ -487,7 +493,7 @@ class AstraDBOps:
             dict: A list of roles within the organization.
         """
         return self._ops_request(
-            method=http_methods.GET, path=f"/organizations/roles"
+            method=http_methods.GET, path="/organizations/roles"
         ).json()
 
     def create_role(self, role_definition=None):
@@ -502,7 +508,7 @@ class AstraDBOps:
         """
         return self._ops_request(
             method=http_methods.POST,
-            path=f"/organizations/roles",
+            path="/organizations/roles",
             json_data=role_definition,
         ).json()
 
@@ -563,7 +569,7 @@ class AstraDBOps:
         """
         return self._ops_request(
             method=http_methods.PUT,
-            path=f"/organizations/users",
+            path="/organizations/users",
             json_data=user_definition,
         ).json()
 
@@ -575,7 +581,7 @@ class AstraDBOps:
             dict: A list of users within the organization.
         """
         return self._ops_request(
-            method=http_methods.GET, path=f"/organizations/users"
+            method=http_methods.GET, path="/organizations/users"
         ).json()
 
     def get_user(self, user=""):
@@ -631,7 +637,7 @@ class AstraDBOps:
             dict: A list of client IDs and their associated secrets.
         """
         return self._ops_request(
-            method=http_methods.GET, path=f"/clientIdSecrets"
+            method=http_methods.GET, path="/clientIdSecrets"
         ).json()
 
     def create_token(self, roles=None):
@@ -646,7 +652,7 @@ class AstraDBOps:
         """
         return self._ops_request(
             method=http_methods.POST,
-            path=f"/clientIdSecrets",
+            path="/clientIdSecrets",
             json_data=roles,
         ).json()
 
@@ -671,7 +677,7 @@ class AstraDBOps:
         Returns:
             dict: The details of the organization.
         """
-        return self._ops_request(method=http_methods.GET, path=f"/currentOrg").json()
+        return self._ops_request(method=http_methods.GET, path="/currentOrg").json()
 
     def get_access_lists(self):
         """
@@ -680,7 +686,7 @@ class AstraDBOps:
         Returns:
             dict: A list of access lists.
         """
-        return self._ops_request(method=http_methods.GET, path=f"/access-lists").json()
+        return self._ops_request(method=http_methods.GET, path="/access-lists").json()
 
     def get_access_list_template(self):
         """
@@ -690,7 +696,7 @@ class AstraDBOps:
             dict: An access list template.
         """
         return self._ops_request(
-            method=http_methods.GET, path=f"/access-list/template"
+            method=http_methods.GET, path="/access-list/template"
         ).json()
 
     def validate_access_list(self):
@@ -701,7 +707,7 @@ class AstraDBOps:
             dict: The validation result of the access list configuration.
         """
         return self._ops_request(
-            method=http_methods.POST, path=f"/access-list/validate"
+            method=http_methods.POST, path="/access-list/validate"
         ).json()
 
     def get_private_links(self):
@@ -712,7 +718,7 @@ class AstraDBOps:
             dict: A list of private link connections.
         """
         return self._ops_request(
-            method=http_methods.GET, path=f"/organizations/private-link"
+            method=http_methods.GET, path="/organizations/private-link"
         ).json()
 
     def get_streaming_providers(self):
@@ -723,7 +729,7 @@ class AstraDBOps:
             dict: A list of available streaming service providers.
         """
         return self._ops_request(
-            method=http_methods.GET, path=f"/streaming/providers"
+            method=http_methods.GET, path="/streaming/providers"
         ).json()
 
     def get_streaming_tenants(self):
@@ -734,7 +740,7 @@ class AstraDBOps:
             dict: A list of streaming tenants and their details.
         """
         return self._ops_request(
-            method=http_methods.GET, path=f"/streaming/tenants"
+            method=http_methods.GET, path="/streaming/tenants"
         ).json()
 
     def create_streaming_tenant(self, tenant=None):
@@ -749,7 +755,7 @@ class AstraDBOps:
         """
         return self._ops_request(
             method=http_methods.POST,
-            path=f"/streaming/tenants",
+            path="/streaming/tenants",
             json_data=tenant,
         ).json()
 

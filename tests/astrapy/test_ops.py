@@ -20,13 +20,12 @@ import logging
 import os
 import uuid
 
+from dotenv import load_dotenv
 from faker import Faker
 
 logger = logging.getLogger(__name__)
 fake = Faker()
 
-
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -54,7 +53,7 @@ def test_client_type(devops_client):
 @pytest.mark.describe("should get all databases")
 def test_get_databases(devops_client):
     response = devops_client.get_databases()
-    assert type(response) is list
+    assert isinstance(response, list)
 
 
 @pytest.mark.describe("should create a database")
@@ -71,6 +70,8 @@ def test_create_database(devops_client):
         "dbType": "vector",
     }
     response = devops_client.create_database(database_definition=database_definition)
+    assert response is not None
+    assert "id" in response
     assert response["id"] is not None
     ASTRA_TEMP_DB = response["id"]
 
