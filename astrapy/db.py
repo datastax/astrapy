@@ -268,18 +268,21 @@ class AstraDBCollection:
             options=options,
         )
 
-    def pop(self, filter, update, options):
+    def pop(self, filter, pop, options):
         """
-        Update a document in the collection and return the original document.
+        Pop the last data in the tags array
         Args:
             filter (dict): Criteria to identify the document to update.
-            update (dict): The update to apply to the document.
+            pop (dict): The pop to apply to the tags.
             options (dict): Additional options for the update operation.
         Returns:
             dict: The original document before the update.
         """
         json_query = make_payload(
-            top_level="findOneAndUpdate", filter=filter, update=update, options=options
+            top_level="findOneAndUpdate",
+            filter=filter,
+            update={"$pop": pop},
+            options=options,
         )
 
         response = self._request(
@@ -290,18 +293,21 @@ class AstraDBCollection:
 
         return response
 
-    def push(self, filter, update, options):
+    def push(self, filter, push, options):
         """
-        Add an item to an array field of a document in the collection.
+        Push new data to the tags array
         Args:
             filter (dict): Criteria to identify the document to update.
-            update (dict): The update to apply to the document.
+            push (dict): The push to apply to the tags.
             options (dict): Additional options for the update operation.
         Returns:
             dict: The result of the update operation.
         """
         json_query = make_payload(
-            top_level="findOneAndUpdate", filter=filter, update=update, options=options
+            top_level="findOneAndUpdate",
+            filter=filter,
+            update={"$push": push},
+            options=options,
         )
 
         response = self._request(
