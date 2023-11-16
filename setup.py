@@ -21,6 +21,14 @@ this_directory = path.abspath(path.dirname(__file__))
 with open(path.join(this_directory, "README.MD"), encoding="utf-8") as f:
     long_description = f.read()
 
+install_requires = [
+    req_line.strip()
+    for req_line in open("requirements.txt").readlines()
+    if req_line.strip() != ""
+    if req_line.strip()[0] != "#"
+    if "-e ." not in req_line
+]
+
 setup(
     name="astrapy",
     packages=[
@@ -36,15 +44,7 @@ setup(
     url="https://github.com/datastax/astrapy",
     keywords=["DataStax", "Astra"],
     python_requires=">=3.7",
-    install_requires=[
-        "faker~=20.0.0",
-        "pytest~=7.4.3",
-        "pytest-cov~=4.1.0",
-        "pytest-testdox~=3.1.0",
-        "httpx[http2]~=0.25.1",
-        "pre-commit~=3.5.0",
-        "cassio~=0.1.3",
-    ],
+    install_requires=install_requires,
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
