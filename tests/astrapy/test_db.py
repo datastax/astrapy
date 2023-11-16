@@ -38,6 +38,7 @@ ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
 TEST_COLLECTION_NAME = "test_collection"
 TEST_FIXTURE_COLLECTION_NAME = "test_fixture_collection"
 TEST_FIXTURE_PROJECTION_COLLECTION_NAME = "test_projection_collection"
+TEST_NONVECTOR_COLLECTION_NAME = "test_nonvector_collection"
 
 
 @pytest.fixture(scope="module")
@@ -163,6 +164,28 @@ def test_create_collection(db):
     res = db.create_collection(collection_name=TEST_COLLECTION_NAME, dimension=5)
     print("CREATE", res)
     assert isinstance(res, AstraDBCollection)
+
+
+@pytest.mark.describe("should create and use a non-vector collection")
+def test_nonvector_collection(db):
+    col = db.create_collection(TEST_NONVECTOR_COLLECTION_NAME)
+    col.insert_one({"_id": "first", "name": "a"})
+    col.insert_many(
+        [
+            {"_id": "second", "name": "b", "room": 7},
+            {"name": "c", "room": 7},
+            {"_id": "last", "type": "unnamed", "room": 7},
+        ]
+    )
+    docs = col.find(filter={"room": 7}, projection={"name": 1})
+    ids = [doc["_id"] for doc in docs["data"]["documents"]]
+    assert len(ids) == 3
+    assert "second" in ids
+    assert "first" not in ids
+    auto_id = [id for id in ids if id not in {"second", "last"}][0]
+    col.delete(auto_id)
+    assert col.find_one(filter={"name": "c"})["data"]["document"] is None
+    db.delete_collection(TEST_NONVECTOR_COLLECTION_NAME)
 
 
 @pytest.mark.describe("should get all collections")
