@@ -11,8 +11,9 @@
 
 ### Changed
 
-- **Beta Version Designation**: Bumped the setup.y development version designation from Alpha to Beta
+- **Beta Version Designation**: Bumped the setup.py development version designation from Alpha to Beta
 - **Endpoint URL Parameters**: Updated the handling of endpoint URL parameters to ensure future compatibility and robustness.
+- **Development Requirements**: Split the requirements into a user and developer version
 
 ### Fixed
 
