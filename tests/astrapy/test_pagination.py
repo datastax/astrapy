@@ -18,7 +18,7 @@ import logging
 from typing import Iterable, TypeVar
 
 from astrapy.db import AstraDB
-from astrapy.defaults import DEFAULT_KEYSPACE_NAME, DEFAULT_REGION
+from astrapy.defaults import DEFAULT_KEYSPACE_NAME
 
 from dotenv import load_dotenv
 import pytest
@@ -80,7 +80,7 @@ def test_collection():
         assert inserted_ids == {str(i) for i in range(N)}
     yield astra_db_collection
     if int(os.getenv("TEST_PAGINATION_SKIP_DELETE_COLLECTION", "0")) == 0:
-        res = astra_db.delete_collection(collection_name=TEST_COLLECTION_NAME)
+        _ = astra_db.delete_collection(collection_name=TEST_COLLECTION_NAME)
 
 
 @pytest.mark.describe(
