@@ -786,7 +786,7 @@ class AstraDB:
         return response
 
     def create_collection(
-        self, collection_name, *, options=None, dimension=None, metric=""
+        self, collection_name, *, options=None, dimension=None, metric=None
     ):
         """
         Create a new collection in the database.
@@ -794,40 +794,45 @@ class AstraDB:
             collection_name (str): The name of the collection to create.
             options (dict, optional): Options for the collection.
             dimension (int, optional): Dimension for vector search.
-            metric (str, optional): Metric type for vector search.
+            metric (str, optional): Metric choice for vector search.
         Returns:
             AstraDBCollection: The created collection object.
         """
-        # Make sure we provide a collection name
         if not collection_name:
             raise ValueError("Must provide a collection name")
-
-        # Initialize options if not passed
-        if not options:
-            options = {"vector": {}}
-        elif "vector" not in options:
-            options["vector"] = {}
-
-        # Now check the remaining parameters - dimension
-        if dimension:
+        # options from named params
+        vector_options = {
+            k: v
+            for k, v in {
+                "dimension": dimension,
+                "metric": metric,
+            }.items()
+            if v is not None
+        }
+        # overlap/merge with stuff in options.vector
+        dup_params = set((options or {}).get("vector", {}).keys()) & set(
+            vector_options.keys()
+        )
+        if dup_params:
+            dups = ", ".join(sorted(dup_params))
+            raise ValueError(
+                f"Parameter(s) {dups} passed both to the method and in the options"
+            )
+        if vector_options:
+            options = options or {}
+            options["vector"] = {
+                **options.get("vector", {}),
+                **vector_options,
+            }
             if "dimension" not in options["vector"]:
-                options["vector"]["dimension"] = dimension
-            else:
-                raise ValueError(
-                    "dimension parameter provided both in options and as function parameter."
-                )
-
-        # Check the metric parameter
-        if metric:
-            if "metric" not in options["vector"]:
-                options["vector"]["metric"] = metric
-            else:
-                raise ValueError(
-                    "metric parameter provided both in options as function parameter."
-                )
+                raise ValueError("Must pass dimension for vector collections")
 
         # Build the final json payload
-        jsondata = {"name": collection_name, "options": options}
+        jsondata = {
+            k: v
+            for k, v in {"name": collection_name, "options": options}.items()
+            if v is not None
+        }
 
         # Make the request to the endpoitn
         self._request(
