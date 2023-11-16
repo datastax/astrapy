@@ -595,6 +595,10 @@ class AstraDBCollection:
         return self._put(path=path, document=document)
 
     def delete(self, id):
+        # TODO: Deprecate this method
+        return self.delete_one(id)
+
+    def delete_one(self, id):
         """
         Delete a single document from the collection based on its ID.
         Args:
@@ -604,6 +608,26 @@ class AstraDBCollection:
         """
         json_query = {
             "deleteOne": {
+                "filter": {"_id": id},
+            }
+        }
+
+        response = self._request(
+            method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
+        )
+
+        return response
+
+    def delete_many(self, id):
+        """
+        Delete many documents from the collection based on a filter condition
+        Args:
+            filter (dict): Criteria to identify the documents to delete.
+        Returns:
+            dict: The response from the database after the delete operation.
+        """
+        json_query = {
+            "deleteMany": {
                 "filter": {"_id": id},
             }
         }
