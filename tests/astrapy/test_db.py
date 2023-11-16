@@ -647,18 +647,18 @@ def test_functions(collection):
             "roles": ["admin", "user"],
         },
     )
-    update = {"$pop": {"roles": 1}}
+    pop = {"roles": 1}
     options = {"returnDocument": "after"}
 
-    _ = collection.pop(filter={"_id": user_id}, update=update, options=options)
+    _ = collection.pop(filter={"_id": user_id}, pop=pop, options=options)
 
     doc_1 = collection.find_one(filter={"_id": user_id})
     assert doc_1["data"]["document"]["_id"] == user_id
 
-    update = {"$push": {"roles": "users"}}
+    push = {"roles": "users"}
     options = {"returnDocument": "after"}
 
-    collection.push(filter={"_id": user_id}, update=update, options=options)
+    collection.push(filter={"_id": user_id}, push=push, options=options)
     doc_2 = collection.find_one(filter={"_id": user_id})
     assert doc_2["data"]["document"]["_id"] == user_id
 
