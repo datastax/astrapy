@@ -618,7 +618,7 @@ class AstraDBCollection:
 
         return response
 
-    def delete_many(self, id):
+    def delete_many(self, filter):
         """
         Delete many documents from the collection based on a filter condition
         Args:
@@ -628,7 +628,7 @@ class AstraDBCollection:
         """
         json_query = {
             "deleteMany": {
-                "filter": {"_id": id},
+                "filter": filter,
             }
         }
 
