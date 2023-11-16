@@ -367,5 +367,5 @@ export ASTRA_DB_API_ENDPOINT="..."
 then you can run:
 
 ```bash
-PYTHONPATH=. pytest
+pytest
 ```
