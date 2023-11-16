@@ -42,12 +42,11 @@ setup(
         "pytest-cov~=4.1.0",
         "pytest-testdox~=3.1.0",
         "httpx[http2]~=0.25.1",
-        "python-dotenv~=1.0.0",
         "pre-commit~=3.5.0",
         "cassio~=0.1.3",
     ],
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Topic :: Software Development :: Build Tools",
         "License :: OSI Approved :: Apache Software License",
