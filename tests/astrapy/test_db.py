@@ -98,18 +98,21 @@ def projection_collection(db):
                 "_id": "1",
                 "text": "Sample entry number <1>",
                 "otherfield": {"subfield": "x1y"},
+                "anotherfield": "delete_me",
                 "$vector": [0.1, 0.15, 0.3, 0.12, 0.05],
             },
             {
                 "_id": "2",
                 "text": "Sample entry number <2>",
                 "otherfield": {"subfield": "x2y"},
+                "anotherfield": "delete_me",
                 "$vector": [0.45, 0.09, 0.01, 0.2, 0.11],
             },
             {
                 "_id": "3",
                 "text": "Sample entry number <3>",
                 "otherfield": {"subfield": "x3y"},
+                "anotherfield": "dont_delete_me",
                 "$vector": [0.1, 0.05, 0.08, 0.3, 0.6],
             },
         ],
@@ -356,11 +359,22 @@ def test_delete_subdocument(collection, cliff_uuid):
     assert document is not None
 
 
-@pytest.mark.describe("should delete a document")
-def test_delete_document(collection, cliff_uuid):
-    response = collection.delete(id=cliff_uuid)
-
+@pytest.mark.describe("should delete a single document")
+def test_delete_one_document(collection, cliff_uuid):
+    response = collection.delete_one(id=cliff_uuid)
     assert response is not None
+
+    document = collection.find_one(filter={"_id": cliff_uuid})
+    assert document["data"]["document"] is None
+
+
+@pytest.mark.describe("should delete multiple documents")
+def test_delete_many_documents(collection):
+    response = collection.delete_many(filter={"anotherfield": "delete_me"})
+    assert response is not None
+
+    documents = collection.find(filter={"anotherfield": "delete_me"})
+    assert not documents["data"]["documents"]
 
 
 @pytest.mark.describe("Find documents using vector search")
@@ -556,8 +570,8 @@ def test_find_projection(projection_collection):
         {"text": 1, "$vector": 1},
     ]
     exp_fieldsets = [
-        {"$vector", "_id", "otherfield", "text"},
-        {"$vector", "_id", "otherfield", "text"},
+        {"$vector", "_id", "otherfield", "anotherfield", "text"},
+        {"$vector", "_id", "otherfield", "anotherfield", "text"},
         {"_id", "text"},
         {"$vector", "_id"},
         {"$vector", "_id", "text"},
@@ -580,8 +594,8 @@ def test_vector_find_projection(projection_collection):
         {"text", "$vector"},
     ]
     exp_fieldsets = [
-        {"$vector", "_id", "otherfield", "text"},
-        {"$vector", "_id", "otherfield", "text"},
+        {"$vector", "_id", "otherfield", "anotherfield", "text"},
+        {"$vector", "_id", "otherfield", "anotherfield", "text"},
         {"_id", "text"},
         {"$vector", "_id"},
         {"$vector", "_id", "text"},
