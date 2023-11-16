@@ -637,7 +637,7 @@ class AstraDBCollection:
             document (dict): The document to insert or update.
 
         Returns:
-            dict: The response from the database after the update operation. If the document_id does not exist, the response will contain the id of the newly inserted document. If the document_id already exists, the response will contain the data of the updated document.
+            str: The _id of the inserted or updated document.
         """
         # Build the payload for the insert attempt
         result = self.insert_one(document, failures_allowed=True)
@@ -653,8 +653,11 @@ class AstraDBCollection:
                 filter={"_id": document["_id"]},
                 replacement=document,
             )
+            upserted_id = result["data"]["document"]["_id"]
+        else:
+            upserted_id = result["status"]["insertedIds"][0]
 
-        return result
+        return upserted_id
 
 
 class AstraDB:
