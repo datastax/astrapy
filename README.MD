@@ -283,7 +283,7 @@ documents = collection.vector_find(
 )
 ```
 
-### 5.2 Find documents using vector search and projection"
+### 5.2 Find documents using vector search and projection
 
 ```python
 documents = collection.vector_find(
