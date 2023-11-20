@@ -3,67 +3,47 @@ import sys
 
 from dotenv import load_dotenv
 
-from astrapy.db import AstraDB, AstraDBCollection
-from astrapy.ops import AstraDBOps
+from astrapy.db import AstraDB
+
 
 sys.path.append("../")
 
 load_dotenv()
 
-# First, we work with devops
+
+# Grab the Astra token and api endpoint from the environment
 token = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
-astra_ops = AstraDBOps(token=token)
-
-# Define a database to create
-database_definition = {
-    "name": "vector_test",
-    "tier": "serverless",
-    "cloudProvider": "GCP",
-    "keyspace": os.getenv("ASTRA_DB_KEYSPACE", "default_keyspace"),
-    "region": os.getenv("ASTRA_DB_REGION", None),
-    "capacityUnits": 1,
-    "user": "example",
-    "password": token,
-    "dbType": "vector",
-}
-
-# Create the database
-create_result = astra_ops.create_database(database_definition=database_definition)
-
-# Grab the new information from the database
-# NOTE: Your database will take some time to initialize!
-database_id = create_result["id"]
-database_region = astra_ops.get_database()[0]["info"]["region"]
-database_base_url = "apps.astra.datastax.com"
-
-# Build the endpoint URL:
-api_endpoint = f"https://{database_id}-{database_region}.{database_base_url}"
+api_endpoint = os.getenv("ASTRA_DB_API_ENDPOINT")
 
 # Initialize our vector db
 astra_db = AstraDB(token=token, api_endpoint=api_endpoint)
 
-# Possible Operations
-astra_db.create_collection(collection_name="collection_test_delete", dimension=5)
-astra_db.delete_collection(collection_name="collection_test_delete")
-astra_db.create_collection(collection_name="collection_test", dimension=5)
+# In case we already have the collection, let's clear it out
+astra_db.delete_collection("collection_test")
 
-# Collections
-astra_db_collection = AstraDBCollection(
-    collection_name="collection_test", astra_db=astra_db
-)
-# Or...
-astra_db_collection = AstraDBCollection(
-    collection_name="collection_test", token=token, api_endpoint=api_endpoint
-)
+# Create a new test collection for example
+astra_db_collection = astra_db.create_collection("collection_test", dimension=5)
 
+# Insert a document into the test collection
 astra_db_collection.insert_one(
     {
-        "_id": "5",
+        "_id": "1",
         "name": "Coded Cleats Copy",
         "description": "ChatGPT integrated sneakers that talk to you",
         "$vector": [0.25, 0.25, 0.25, 0.25, 0.25],
     }
 )
 
-astra_db_collection.find_one({"name": "potato"})  # Not found
-astra_db_collection.find_one({"name": "Coded Cleats Copy"})
+# Perform a few vector find operations
+astra_db_collection.vector_find([0.1, 0.1, 0.2, 0.5, 1], limit=3)
+
+astra_db_collection.vector_find(
+    [0.1, 0.1, 0.2, 0.5, 1], limit=3, filter={"name": "Coded Cleats Copy"}
+)
+
+astra_db_collection.vector_find(
+    [0.1, 0.1, 0.2, 0.5, 1],
+    limit=3,
+    fields=["_id", "name"],
+    include_similarity=False,
+)

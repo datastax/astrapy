@@ -11,9 +11,9 @@ on:
 jobs:
   test:
     env:
-      ASTRA_DB_ID: ${{ secrets.ASTRA_DB_ID }}
-      ASTRA_DB_REGION: ${{ secrets.ASTRA_DB_REGION }}
+      ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
       ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
+      ASTRA_DB_REGION: ${{ secrets.ASTRA_DB_REGION }}
     runs-on: ubuntu-latest
 
     steps:
@@ -28,9 +28,9 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pytest
         pip install -r requirements.txt
+        pip install -r requirements-dev.txt
 
     - name: Run pytest
       run: |
-        PYTHONPATH=. pytest -s
+        pytest

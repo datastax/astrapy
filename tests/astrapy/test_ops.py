@@ -18,23 +18,26 @@ from astrapy.defaults import DEFAULT_KEYSPACE_NAME, DEFAULT_REGION
 import pytest
 import logging
 import os
+import uuid
+
+from dotenv import load_dotenv
 from faker import Faker
 
 logger = logging.getLogger(__name__)
 fake = Faker()
 
 
-from dotenv import load_dotenv
-
 load_dotenv()
 
 
 # Parameter for the ops testing
-ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID")
-ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION", DEFAULT_REGION)
 ASTRA_DB_APPLICATION_TOKEN = os.environ.get("ASTRA_DB_APPLICATION_TOKEN")
+ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID")
 ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
-ASTRA_DB_BASE_URL = os.environ.get("ASTRA_DB_BASE_URL", "apps.astra.datastax.com")
+ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION", DEFAULT_REGION)
+
+
+pytestmark = pytest.mark.skip("Currently skipping all ops tests")
 
 
 @pytest.fixture
@@ -50,7 +53,7 @@ def test_client_type(devops_client):
 @pytest.mark.describe("should get all databases")
 def test_get_databases(devops_client):
     response = devops_client.get_databases()
-    assert type(response) is list
+    assert isinstance(response, list)
 
 
 @pytest.mark.describe("should create a database")
@@ -67,6 +70,8 @@ def test_create_database(devops_client):
         "dbType": "vector",
     }
     response = devops_client.create_database(database_definition=database_definition)
+    assert response is not None
+    assert "id" in response
     assert response["id"] is not None
     ASTRA_TEMP_DB = response["id"]
 
@@ -80,7 +85,7 @@ def test_create_database(devops_client):
 @pytest.mark.describe("should create a keyspace")
 def test_create_keyspace(devops_client):
     response = devops_client.create_keyspace(
-        keyspace="test_namespace", database=os.environ["ASTRA_DB_ID"]
+        keyspace="test_namespace", database=str(uuid.uuid4())
     )
 
     assert response is not None

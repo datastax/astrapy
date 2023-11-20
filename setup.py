@@ -18,14 +18,21 @@ from os import path
 from astrapy import __version__
 
 this_directory = path.abspath(path.dirname(__file__))
-with open(path.join(this_directory, "README.md"), encoding="utf-8") as f:
+with open(path.join(this_directory, "README.MD"), encoding="utf-8") as f:
     long_description = f.read()
+
+install_requires = [
+    req_line.strip()
+    for req_line in open("requirements.txt").readlines()
+    if req_line.strip() != ""
+    if req_line.strip()[0] != "#"
+    if "-e ." not in req_line
+]
 
 setup(
     name="astrapy",
     packages=[
         "astrapy",
-        "astrapy/endpoints",
     ],
     version=__version__,
     license="Apache license 2.0",
@@ -35,25 +42,14 @@ setup(
     author="Kirsten Hunter",
     author_email="kirsten.hunter@datastax.com",
     url="https://github.com/datastax/astrapy",
-    keywords=["DataStax Astra", "Stargate"],
-    python_requires=">=3.6",
-    install_requires=[
-        "faker~=19.11.0",
-        "pytest~=7.4.2",
-        "pytest-cov~=4.1.0",
-        "pytest-testdox~=3.1.0",
-        "requests~=2.31.0",
-        "requests-toolbelt~=1.0.0",
-        "python-dotenv~=1.0.0",
-        "pre-commit~=3.5.0",
-        "cassio~=0.1.3",
-    ],
+    keywords=["DataStax", "Astra"],
+    python_requires=">=3.7",
+    install_requires=install_requires,
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Topic :: Software Development :: Build Tools",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

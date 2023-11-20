@@ -17,8 +17,8 @@ import os
 import logging
 from typing import Iterable, TypeVar
 
-from astrapy.db import AstraDBCollection, AstraDB
-from astrapy.defaults import DEFAULT_KEYSPACE_NAME, DEFAULT_REGION
+from astrapy.db import AstraDB
+from astrapy.defaults import DEFAULT_KEYSPACE_NAME
 
 from dotenv import load_dotenv
 import pytest
@@ -29,11 +29,9 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 
-ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID")
-ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION", DEFAULT_REGION)
 ASTRA_DB_APPLICATION_TOKEN = os.environ.get("ASTRA_DB_APPLICATION_TOKEN")
+ASTRA_DB_API_ENDPOINT = os.environ.get("ASTRA_DB_API_ENDPOINT")
 ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
-ASTRA_DB_BASE_URL = os.environ.get("ASTRA_DB_BASE_URL", "apps.astra.datastax.com")
 
 
 TEST_COLLECTION_NAME = "test_collection"
@@ -64,16 +62,14 @@ def _batch_iterable(iterable: Iterable[T], batch_size: int) -> Iterable[Iterable
 def test_collection():
     astra_db = AstraDB(
         token=ASTRA_DB_APPLICATION_TOKEN,
-        api_endpoint=f"https://{ASTRA_DB_ID}-{ASTRA_DB_REGION}.{ASTRA_DB_BASE_URL}",
+        api_endpoint=ASTRA_DB_API_ENDPOINT,
         namespace=ASTRA_DB_KEYSPACE,
     )
-    res = astra_db.create_collection(collection_name=TEST_COLLECTION_NAME, dimension=2)
-    astra_db_collection = AstraDBCollection(
-        collection_name=TEST_COLLECTION_NAME,
-        token=ASTRA_DB_APPLICATION_TOKEN,
-        api_endpoint=f"https://{ASTRA_DB_ID}-{ASTRA_DB_REGION}.{ASTRA_DB_BASE_URL}",
-        namespace=ASTRA_DB_KEYSPACE,
+
+    astra_db_collection = astra_db.create_collection(
+        collection_name=TEST_COLLECTION_NAME, dimension=2
     )
+
     if int(os.getenv("TEST_PAGINATION_SKIP_INSERTION", "0")) == 0:
         inserted_ids = set()
         for i_batch in _batch_iterable(range(N), INSERT_BATCH_SIZE):
@@ -84,7 +80,7 @@ def test_collection():
         assert inserted_ids == {str(i) for i in range(N)}
     yield astra_db_collection
     if int(os.getenv("TEST_PAGINATION_SKIP_DELETE_COLLECTION", "0")) == 0:
-        res = astra_db.delete_collection(collection_name=TEST_COLLECTION_NAME)
+        _ = astra_db.delete_collection(collection_name=TEST_COLLECTION_NAME)
 
 
 @pytest.mark.describe(
