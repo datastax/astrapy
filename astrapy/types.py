@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Dict
+from typing import Any, Dict, Protocol
 
 # A type for:
 #     "dict from parsing a JSON from the API responses"
@@ -13,3 +13,9 @@ API_RESPONSE = Dict[str, Any]
 # Identical to the above in its nature, but preferrably marked as
 # 'a disting thing, conceptually, from the returned JSONs'
 API_DOC = Dict[str, Any]
+
+
+# so are the functions that can be "paginated".
+# Build them by partialing if necessary
+class PaginableRequestMethod(Protocol):
+    def __call__(self, options: Dict[str, Any]) -> API_RESPONSE: ...

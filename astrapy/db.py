@@ -14,7 +14,8 @@
 from __future__ import annotations
 import logging
 import json
-from typing import Any, cast, Callable, Dict, List, Optional, Tuple
+from functools import partial
+from typing import Any, cast, Dict, Iterable, List, Optional, Tuple
 
 import httpx
 
@@ -25,7 +26,7 @@ from astrapy.defaults import (
     DEFAULT_KEYSPACE_NAME,
 )
 from astrapy.utils import make_payload, make_request, http_methods
-from astrapy.types import API_DOC, API_RESPONSE
+from astrapy.types import API_DOC, API_RESPONSE, PaginableRequestMethod
 
 
 logger = logging.getLogger(__name__)
@@ -125,7 +126,7 @@ class AstraDBCollection:
 
     def _pre_process_find(
         self, vector: List[float], fields: Optional[List[str]] = None
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
         # Must pass a vector
         if not vector:
             raise ValueError("Must pass a vector")
@@ -135,7 +136,7 @@ class AstraDBCollection:
             raise ValueError("Please use the `include_similarity` parameter")
 
         # Build the new vector parameter
-        sort = {"$vector": vector}
+        sort: Dict[str, Any] = {"$vector": vector}
 
         # Build the new fields parameter
         # Note: do not leave projection={}, make it None
@@ -147,36 +148,16 @@ class AstraDBCollection:
 
         return sort, projection
 
-    def _finalize_find_return(self, itm: API_RESPONSE, include_similarity: bool = True):
-        # Pop the returned similarity score
-        if "$similarity" in itm:
-            similarity = itm.pop("$similarity")
-            if include_similarity:
-                itm["$similarity"] = similarity
-
-        return itm
-
-    def _post_process_find(
-        self,
-        raw_find_result: API_RESPONSE,
-        include_similarity: bool = True,
-        _key: str = "documents",
+    def _finalize_document_from_find(
+        self, itm: API_DOC, include_similarity: bool = True
     ) -> API_DOC:
-        if isinstance(raw_find_result["data"][_key], list):
-            final_result = [
-                self._finalize_find_return(
-                    itm,
-                    include_similarity=include_similarity,
-                )
-                for itm in raw_find_result["data"][_key]
-            ]
+        # Clean away the returned similarity score if so desired
+        if include_similarity:
+            if "$similarity" not in itm:
+                raise ValueError("Expected '$similarity' not found in document.")
+            return itm
         else:
-            final_result = self._finalize_find_return(
-                raw_find_result["data"][_key],
-                include_similarity=include_similarity,
-            )
-
-        return final_result
+            return {k: v for k, v in itm.items() if k != "$similarity"}
 
     def get(self, path: Optional[str] = None) -> Optional[API_RESPONSE]:
         """
@@ -227,7 +208,7 @@ class AstraDBCollection:
         filter: Optional[Dict[str, Any]] = None,
         fields: Optional[List[str]] = None,
         include_similarity: bool = True,
-    ) -> API_DOC:
+    ) -> List[API_DOC]:
         """
         Perform a vector-based search in the collection.
         Args:
@@ -261,37 +242,48 @@ class AstraDBCollection:
         )
 
         # Post-process the return
-        find_result = self._post_process_find(
-            raw_find_result,
-            include_similarity=include_similarity,
-        )
+        find_result = [
+            self._finalize_document_from_find(
+                raw_doc, include_similarity=include_similarity
+            )
+            for raw_doc in raw_find_result["data"]["documents"]
+        ]
 
         return find_result
 
     @staticmethod
-    def paginate(*, method, options, **kwargs):
+    def paginate(
+        *, request_method: PaginableRequestMethod, options: Optional[Dict[str, Any]]
+    ) -> Iterable[API_DOC]:
         """
         Generate paginated results for a given database query method.
         Args:
-            method (function): The database query method to paginate.
+            request_method (function): The database query method to paginate.
             options (dict): Options for the database query.
             kwargs: Additional arguments to pass to the database query method.
         Yields:
             dict: The next document in the paginated result set.
         """
-        response0 = method(options=options, **kwargs)
+        _options = options or {}
+        response0 = request_method(options=_options)
         next_page_state = response0["data"]["nextPageState"]
-        options0 = options
+        options0 = _options
         for document in response0["data"]["documents"]:
             yield document
         while next_page_state is not None:
             options1 = {**options0, **{"pagingState": next_page_state}}
-            response1 = method(options=options1, **kwargs)
+            response1 = request_method(options=options1)
             for document in response1["data"]["documents"]:
                 yield document
             next_page_state = response1["data"]["nextPageState"]
 
-    def paginated_find(self, filter=None, projection=None, sort=None, options=None):
+    def paginated_find(
+        self,
+        filter: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
+        sort: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Iterable[API_DOC]:
         """
         Perform a paginated search in the collection.
         Args:
@@ -302,11 +294,14 @@ class AstraDBCollection:
         Returns:
             generator: A generator yielding documents in the paginated result set.
         """
-        return self.paginate(
-            method=self.find,
+        partialed_find = partial(
+            self.find,
             filter=filter,
             projection=projection,
             sort=sort,
+        )
+        return self.paginate(
+            request_method=partialed_find,
             options=options,
         )
 
@@ -427,10 +422,9 @@ class AstraDBCollection:
         )
 
         # Post-process the return
-        find_result = self._post_process_find(
-            raw_find_result,
+        find_result = self._finalize_document_from_find(
+            raw_find_result["data"]["document"],
             include_similarity=False,
-            _key="document",
         )
 
         return find_result
@@ -500,10 +494,9 @@ class AstraDBCollection:
         )
 
         # Post-process the return
-        find_result = self._post_process_find(
-            raw_find_result,
+        find_result = self._finalize_document_from_find(
+            raw_find_result["data"]["document"],
             include_similarity=False,
-            _key="document",
         )
 
         return find_result
@@ -572,10 +565,9 @@ class AstraDBCollection:
         )
 
         # Post-process the return
-        find_result = self._post_process_find(
-            raw_find_result,
+        find_result = self._finalize_document_from_find(
+            raw_find_result["data"]["document"],
             include_similarity=include_similarity,
-            _key="document",
         )
 
         return find_result
