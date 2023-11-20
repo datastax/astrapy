@@ -13,16 +13,18 @@
 # limitations under the License.
 
 import uuid
-import pytest
 import logging
 import os
 import json
+from typing import Iterable
 
+import pytest
 from faker import Faker
 from dotenv import load_dotenv
 
 from astrapy.db import AstraDB, AstraDBCollection
 from astrapy.defaults import DEFAULT_KEYSPACE_NAME
+from astrapy.types import API_DOC
 
 
 logger = logging.getLogger(__name__)
@@ -43,17 +45,17 @@ TEST_NONVECTOR_COLLECTION_NAME = "test_nonvector_collection"
 
 
 @pytest.fixture(scope="module")
-def cliff_uuid():
+def cliff_uuid() -> str:
     return str(uuid.uuid4())
 
 
 @pytest.fixture(scope="module")
-def vv_uuid():
+def vv_uuid() -> str:
     return str(uuid.uuid4())
 
 
 @pytest.fixture(scope="module")
-def db():
+def db() -> AstraDB:
     astra_db = AstraDB(
         token=ASTRA_DB_APPLICATION_TOKEN,
         api_endpoint=ASTRA_DB_API_ENDPOINT,
@@ -64,7 +66,7 @@ def db():
 
 
 @pytest.fixture(scope="module")
-def cliff_data(cliff_uuid):
+def cliff_data(cliff_uuid: str) -> API_DOC:
     json_query = {
         "_id": cliff_uuid,
         "first_name": "Cliff",
@@ -75,7 +77,7 @@ def cliff_data(cliff_uuid):
 
 
 @pytest.fixture(scope="module")
-def collection(db, cliff_data):
+def collection(db: AstraDB, cliff_data: API_DOC) -> Iterable[AstraDBCollection]:
     db.delete_collection(collection_name=TEST_FIXTURE_COLLECTION_NAME)
     collection = db.create_collection(
         collection_name=TEST_FIXTURE_COLLECTION_NAME, dimension=5
@@ -88,7 +90,7 @@ def collection(db, cliff_data):
 
 
 @pytest.fixture(scope="module")
-def projection_collection(db):
+def projection_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
     collection = db.create_collection(
         collection_name=TEST_FIXTURE_PROJECTION_COLLECTION_NAME, dimension=5
     )
@@ -125,7 +127,7 @@ def projection_collection(db):
 
 
 @pytest.mark.describe("should confirm path handling in constructor")
-def test_path_handling():
+def test_path_handling() -> None:
     astra_db_1 = AstraDB(
         token=ASTRA_DB_APPLICATION_TOKEN,
         api_endpoint=ASTRA_DB_API_ENDPOINT,
@@ -165,14 +167,14 @@ def test_path_handling():
 
 
 @pytest.mark.describe("should create a vector collection")
-def test_create_collection(db):
+def test_create_collection(db: AstraDB) -> None:
     res = db.create_collection(collection_name=TEST_COLLECTION_NAME, dimension=5)
     print("CREATE", res)
     assert isinstance(res, AstraDBCollection)
 
 
 @pytest.mark.describe("should create and use a non-vector collection")
-def test_nonvector_collection(db):
+def test_nonvector_collection(db: AstraDB) -> None:
     col = db.create_collection(TEST_NONVECTOR_COLLECTION_NAME)
     col.insert_one({"_id": "first", "name": "a"})
     col.insert_many(
@@ -194,13 +196,13 @@ def test_nonvector_collection(db):
 
 
 @pytest.mark.describe("should get all collections")
-def test_get_collections(db):
+def test_get_collections(db: AstraDB) -> None:
     res = db.get_collections()
     assert res["status"]["collections"] is not None
 
 
 @pytest.mark.describe("should create a vector document")
-def test_create_document(collection):
+def test_create_document(collection: AstraDBCollection) -> None:
     test_uuid = str(uuid.uuid4())
 
     json_query = {
@@ -216,14 +218,14 @@ def test_create_document(collection):
 
 
 @pytest.mark.describe("Find one document")
-def test_find_document(collection, cliff_uuid):
+def test_find_document(collection: AstraDBCollection, cliff_uuid: str) -> None:
     document = collection.find_one(filter={"_id": cliff_uuid})
     print("DOC", document)
     assert document is not None
 
 
 @pytest.mark.describe("Vector find one document")
-def test_vector_find_document(collection):
+def test_vector_find_document(collection: AstraDBCollection) -> None:
     documents = collection.vector_find_one(
         [0.15, 0.1, 0.1, 0.35, 0.55],
     )
@@ -233,7 +235,7 @@ def test_vector_find_document(collection):
 
 
 @pytest.mark.describe("should create multiple documents: nonvector")
-def test_insert_many(collection):
+def test_insert_many(collection: AstraDBCollection) -> None:
     id_1 = fake.bothify(text="????????")
     id_2 = fake.bothify(text="????????")
     id_3 = fake.bothify(text="????????")
@@ -284,7 +286,7 @@ def test_insert_many(collection):
 
 
 @pytest.mark.describe("create many vector documents")
-def test_create_documents(collection, vv_uuid):
+def test_create_documents(collection: AstraDBCollection, vv_uuid: str) -> None:
     json_query = [
         {
             "_id": str(uuid.uuid4()),
@@ -311,7 +313,7 @@ def test_create_documents(collection, vv_uuid):
 
 
 @pytest.mark.describe("should create a subdocument")
-def test_create_subdocument(collection, cliff_uuid):
+def test_create_subdocument(collection: AstraDBCollection, cliff_uuid: str) -> None:
     document = collection.update_one(
         filter={"_id": cliff_uuid},
         update={"$set": {"name": "Eric"}},
@@ -324,7 +326,7 @@ def test_create_subdocument(collection, cliff_uuid):
 
 
 @pytest.mark.describe("should create a document without an ID")
-def test_create_document_without_id(collection):
+def test_create_document_without_id(collection: AstraDBCollection) -> None:
     response = collection.insert_one(
         document={
             "first_name": "New",
@@ -337,7 +339,7 @@ def test_create_document_without_id(collection):
 
 
 @pytest.mark.describe("should update a document")
-def test_update_document(collection, cliff_uuid):
+def test_update_document(collection: AstraDBCollection, cliff_uuid: str) -> None:
     collection.update_one(
         filter={"_id": cliff_uuid},
         update={"$set": {"name": "Bob"}},
@@ -350,7 +352,7 @@ def test_update_document(collection, cliff_uuid):
 
 
 @pytest.mark.describe("replace a non-vector document")
-def test_replace_document(collection, cliff_uuid):
+def test_replace_document(collection: AstraDBCollection, cliff_uuid: str) -> None:
     collection.find_one_and_replace(
         filter={"_id": cliff_uuid},
         replacement={
@@ -375,7 +377,7 @@ def test_replace_document(collection, cliff_uuid):
 
 
 @pytest.mark.describe("should delete a subdocument")
-def test_delete_subdocument(collection, cliff_uuid):
+def test_delete_subdocument(collection: AstraDBCollection, cliff_uuid: str) -> None:
     response = collection.delete_subdocument(id=cliff_uuid, subdoc="addresses")
     document = collection.find(filter={"_id": cliff_uuid})
     assert response is not None
@@ -383,7 +385,7 @@ def test_delete_subdocument(collection, cliff_uuid):
 
 
 @pytest.mark.describe("should delete a single document")
-def test_delete_one_document(collection, cliff_uuid):
+def test_delete_one_document(collection: AstraDBCollection, cliff_uuid: str) -> None:
     response = collection.delete_one(id=cliff_uuid)
     assert response is not None
 
@@ -392,7 +394,7 @@ def test_delete_one_document(collection, cliff_uuid):
 
 
 @pytest.mark.describe("should delete multiple documents")
-def test_delete_many_documents(collection):
+def test_delete_many_documents(collection: AstraDBCollection) -> None:
     response = collection.delete_many(filter={"anotherfield": "delete_me"})
     assert response is not None
 
@@ -401,7 +403,7 @@ def test_delete_many_documents(collection):
 
 
 @pytest.mark.describe("Find documents using vector search")
-def test_find_documents_vector(collection):
+def test_find_documents_vector(collection: AstraDBCollection) -> None:
     sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
     options = {"limit": 100}
 
@@ -410,7 +412,7 @@ def test_find_documents_vector(collection):
 
 
 @pytest.mark.describe("Vector find documents using vector search")
-def test_vector_find_documents_vector(collection):
+def test_vector_find_documents_vector(collection: AstraDBCollection) -> None:
     documents = collection.vector_find(vector=[0.15, 0.1, 0.1, 0.35, 0.55], limit=3)
 
     assert documents is not None
@@ -431,18 +433,17 @@ def test_vector_find_documents_vector(collection):
 
 
 @pytest.mark.describe("Find documents using vector search with error")
-def test_find_documents_vector_error(collection):
+def test_find_documents_vector_error(collection: AstraDBCollection) -> None:
+    # passing 'sort' as a tuple must raise an error by the API:
     sort = ({"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]},)
     options = {"limit": 100}
 
-    try:
-        collection.find(sort=sort, options=options)
-    except ValueError as e:
-        assert e is not None
+    with pytest.raises(ValueError):
+        collection.find(sort=sort, options=options)  # type: ignore
 
 
 @pytest.mark.describe("Find documents using vector search and projection")
-def test_find_documents_vector_proj_limit_sim(collection):
+def test_find_documents_vector_proj_limit_sim(collection: AstraDBCollection) -> None:
     sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
     options = {"limit": 100}
     projection = {"$vector": 1, "$similarity": 1}
@@ -452,7 +453,7 @@ def test_find_documents_vector_proj_limit_sim(collection):
 
 
 @pytest.mark.describe("Find a document using vector search and projection")
-def test_find_documents_vector_proj_nolimit(collection):
+def test_find_documents_vector_proj_nolimit(collection: AstraDBCollection) -> None:
     sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
     projection = {"$vector": 1}
 
@@ -461,7 +462,7 @@ def test_find_documents_vector_proj_nolimit(collection):
 
 
 @pytest.mark.describe("Find one and update with vector search")
-def test_find_one_and_update_vector(collection):
+def test_find_one_and_update_vector(collection: AstraDBCollection) -> None:
     sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
     update = {"$set": {"status": "active"}}
     options = {"returnDocument": "after"}
@@ -474,7 +475,7 @@ def test_find_one_and_update_vector(collection):
 
 
 @pytest.mark.describe("Vector find documents using vector search")
-def test_vector_find_one_and_update_vector(collection):
+def test_vector_find_one_and_update_vector(collection: AstraDBCollection) -> None:
     update = {"$set": {"status": "active"}}
 
     collection.vector_find_one_and_update(
@@ -491,7 +492,9 @@ def test_vector_find_one_and_update_vector(collection):
 
 
 @pytest.mark.describe("Find one and replace with vector search")
-def test_find_one_and_replace_vector(collection, vv_uuid):
+def test_find_one_and_replace_vector(
+    collection: AstraDBCollection, vv_uuid: str
+) -> None:
     sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
     replacement = {
         "_id": vv_uuid,
@@ -508,7 +511,9 @@ def test_find_one_and_replace_vector(collection, vv_uuid):
 
 
 @pytest.mark.describe("Vector find documents using vector search")
-def test_vector_find_one_and_replace_vector(collection, vv_uuid):
+def test_vector_find_one_and_replace_vector(
+    collection: AstraDBCollection, vv_uuid: str
+) -> None:
     replacement = {
         "_id": vv_uuid,
         "name": "Vision Vector Frame 2",
@@ -531,7 +536,7 @@ def test_vector_find_one_and_replace_vector(collection, vv_uuid):
 
 
 @pytest.mark.describe("should find documents, non-vector")
-def test_find_documents(collection):
+def test_find_documents(collection: AstraDBCollection) -> None:
     user_id = str(uuid.uuid4())
     collection.insert_one(
         document={
@@ -553,7 +558,7 @@ def test_find_documents(collection):
 
 
 @pytest.mark.describe("should find a single document, non-vector")
-def test_find_one_document(collection):
+def test_find_one_document(collection: AstraDBCollection) -> None:
     user_id = str(uuid.uuid4())
     collection.insert_one(
         document={
@@ -580,7 +585,7 @@ def test_find_one_document(collection):
 
 
 @pytest.mark.describe("obey projection in find")
-def test_find_projection(projection_collection):
+def test_find_projection(projection_collection: AstraDBCollection) -> None:
     query = [0.15, 0.1, 0.1, 0.35, 0.55]
     sort = {"$vector": query}
     options = {"limit": 1}
@@ -606,10 +611,10 @@ def test_find_projection(projection_collection):
 
 
 @pytest.mark.describe("obey projection in vector_find")
-def test_vector_find_projection(projection_collection):
+def test_vector_find_projection(projection_collection: AstraDBCollection) -> None:
     query = [0.15, 0.1, 0.1, 0.35, 0.55]
 
-    req_fieldlists = [
+    req_fieldsets = [
         None,
         set(),
         {"text"},
@@ -624,11 +629,11 @@ def test_vector_find_projection(projection_collection):
         {"$vector", "_id", "text"},
     ]
     for include_similarity in [True, False]:
-        for req_fields, exp_fields0 in zip(req_fieldlists, exp_fieldsets):
+        for req_fields, exp_fields0 in zip(req_fieldsets, exp_fieldsets):
             vdocs = projection_collection.vector_find(
                 query,
                 limit=1,
-                fields=req_fields,
+                fields=list(req_fields) if req_fields is not None else req_fields,
                 include_similarity=include_similarity,
             )
             if include_similarity:
@@ -639,7 +644,7 @@ def test_vector_find_projection(projection_collection):
 
 
 @pytest.mark.describe("upsert a document")
-def test_upsert_document(collection):
+def test_upsert_document(collection: AstraDBCollection) -> None:
     new_uuid = str(uuid.uuid4())
 
     collection.upsert(
@@ -676,7 +681,7 @@ def test_upsert_document(collection):
 
 
 @pytest.mark.describe("should use document functions")
-def test_functions(collection):
+def test_functions(collection: AstraDBCollection) -> None:
     user_id = str(uuid.uuid4())
     collection.insert_one(
         document={
@@ -703,6 +708,6 @@ def test_functions(collection):
 
 
 @pytest.mark.describe("should delete a collection")
-def test_delete_collection(db):
+def test_delete_collection(db: AstraDB) -> None:
     res = db.delete_collection(collection_name=TEST_COLLECTION_NAME)
     assert res is not None

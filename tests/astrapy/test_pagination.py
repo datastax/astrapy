@@ -15,13 +15,13 @@
 import math
 import os
 import logging
-from typing import Iterable, TypeVar
-
-from astrapy.db import AstraDB
-from astrapy.defaults import DEFAULT_KEYSPACE_NAME
-
+from typing import Iterable, List, Set, TypeVar
 from dotenv import load_dotenv
 import pytest
+
+from astrapy.db import AstraDB, AstraDBCollection
+from astrapy.defaults import DEFAULT_KEYSPACE_NAME
+
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +42,8 @@ FIND_LIMIT = 183  # Keep this > 20 and <= N to actually put pagination to test
 T = TypeVar("T")
 
 
-def mk_vector(i, N):
-    angle = 2 * math.pi * i / N
+def mk_vector(index: int, n_total_steps: int) -> List[float]:
+    angle = 2 * math.pi * index / n_total_steps
     return [math.cos(angle), math.sin(angle)]
 
 
@@ -59,7 +59,7 @@ def _batch_iterable(iterable: Iterable[T], batch_size: int) -> Iterable[Iterable
 
 
 @pytest.fixture(scope="module")
-def test_collection():
+def test_collection() -> Iterable[AstraDBCollection]:
     astra_db = AstraDB(
         token=ASTRA_DB_APPLICATION_TOKEN,
         api_endpoint=ASTRA_DB_API_ENDPOINT,
@@ -71,7 +71,7 @@ def test_collection():
     )
 
     if int(os.getenv("TEST_PAGINATION_SKIP_INSERTION", "0")) == 0:
-        inserted_ids = set()
+        inserted_ids: Set[str] = set()
         for i_batch in _batch_iterable(range(N), INSERT_BATCH_SIZE):
             batch_ids = astra_db_collection.insert_many(
                 documents=[{"_id": str(i), "$vector": mk_vector(i, N)} for i in i_batch]
@@ -86,7 +86,7 @@ def test_collection():
 @pytest.mark.describe(
     "should retrieve the required amount of documents, all different, through pagination"
 )
-def test_find_paginated(test_collection):
+def test_find_paginated(test_collection: AstraDBCollection) -> None:
     options = {"limit": FIND_LIMIT}
     projection = {"$vector": 0}
 
