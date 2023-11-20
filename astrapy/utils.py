@@ -1,4 +1,8 @@
+from __future__ import annotations
+from typing import Any, Dict, Optional
 import logging
+
+import httpx
 
 from astrapy import __version__
 from astrapy.defaults import DEFAULT_TIMEOUT
@@ -19,7 +23,9 @@ class http_methods:
 package_name = __name__.split(".")[0]
 
 
-def log_request_response(r, json_data):
+def log_request_response(
+    r: httpx.Response, json_data: Optional[Dict[str, Any]]
+) -> None:
     """
     Log the details of an HTTP request and its response for debugging purposes.
 
@@ -40,15 +46,15 @@ def log_request_response(r, json_data):
 
 
 def make_request(
-    client,
-    base_url,
-    auth_header,
-    token,
-    method=http_methods.POST,
-    path=None,
-    json_data=None,
-    url_params=None,
-):
+    client: httpx.Client,
+    base_url: str,
+    auth_header: str,
+    token: str,
+    method: str = http_methods.POST,
+    path: Optional[str] = None,
+    json_data: Optional[Dict[str, Any]] = None,
+    url_params: Optional[Dict[str, Any]] = None,
+) -> httpx.Response:
     """
     Make an HTTP request to a specified URL.
 
@@ -80,7 +86,7 @@ def make_request(
     return r
 
 
-def make_payload(top_level, **kwargs):
+def make_payload(top_level: str, **kwargs: Any) -> Dict[str, Any]:
     """
     Construct a JSON payload for an HTTP request with a specified top-level key.
 
@@ -95,7 +101,7 @@ def make_payload(top_level, **kwargs):
     for key, value in kwargs.items():
         params[key] = value
 
-    json_query = {top_level: {}}
+    json_query: Dict[str, Any] = {top_level: {}}
 
     # Adding keys only if they're provided
     for key, value in params.items():

@@ -17,6 +17,7 @@ tests/screenshots
 .ipynb_checkpoints
 .scratch.py
 .pytest_cache
+.mypy_cache
 .vscode
 manifest
 dist
