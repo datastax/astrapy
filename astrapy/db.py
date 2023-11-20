@@ -771,16 +771,20 @@ class AstraDB:
         """
         return AstraDBCollection(collection_name=collection_name, astra_db=self)
 
-    def get_collections(self):
+    def get_collections(self, options=None):
         """
         Retrieve a list of collections from the database.
         Returns:
             dict: A list of collections in the database.
         """
+        # Parse the options parameter
+        if options is None:
+            options = {}
+
         response = self._request(
             method=http_methods.POST,
             path=self.base_path,
-            json_data={"findCollections": {}},
+            json_data={"findCollections": options},
         )
 
         return response
@@ -834,7 +838,7 @@ class AstraDB:
             if v is not None
         }
 
-        # Make the request to the endpoitn
+        # Make the request to the endpoint
         self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
@@ -863,3 +867,35 @@ class AstraDB:
         )
 
         return response
+
+    def truncate_collection(self, collection_name):
+        """
+        Truncate a collection in the database.
+        Args:
+            collection_name (str): The name of the collection to truncate.
+        Returns:
+            dict: The response from the database.
+        """
+        # Make sure we provide a collection name
+        if not collection_name:
+            raise ValueError("Must provide a collection name")
+
+        # Get the dimension of the existing collection
+        collections = self.get_collections(options={"options": {"explain": "true"}})
+
+        # Search over the collections
+        dimension = None
+        for collection in collections["status"]["collections"]:
+            if collection["name"] == collection_name:
+                dimension = collection["options"]["vector"]["dimension"]
+                break
+
+        # Check if we found the appropriate collection
+        if dimension is None:
+            raise ValueError(f"Collection {collection_name} not found")
+
+        # We found it, so let's delete it
+        self.delete_collection(collection_name)
+
+        # Now re-create it with the specified dimension
+        return self.create_collection(collection_name, dimension=dimension)
