@@ -354,6 +354,28 @@ You can use the Ops client to work with the Astra DevOps API. Check the [devops 
 
 ## For Developers
 
+You should additionally `pip install -e requirements-dev.txt` in a development
+environment (note that the `pip install -e .` is covered by the regular
+requirements file already).
+
+### Style, linter, typing
+
+AstraPy tries to be consistent in code style and linting.
+Moreover, **type annotations** are used everywhere.
+
+To ensure the code complies, you should get no errors
+(_Success: no issues found..._) when running the following in the root dir:
+
+```
+black --check astrapy && ruff astrapy && mypy astrapy
+```
+
+Likewise, for the tests:
+
+```
+black --check tests && ruff tests && mypy tests
+```
+
 ### Testing
 
 Ensure you provide all required environment variables:
