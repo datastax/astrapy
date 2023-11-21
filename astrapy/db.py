@@ -325,9 +325,7 @@ class AstraDBCollection:
 
         return response
 
-    def find_one_and_replace(
-        self, sort={}, filter=None, replacement=None, options=None
-    ):
+    def find_one_and_replace(self, replacement, *, sort={}, filter=None, options=None):
         """
         Find a single document and replace it.
         Args:
@@ -687,8 +685,8 @@ class AstraDBCollection:
         ):
             # Now we attempt to update
             result = self.find_one_and_replace(
-                filter={"_id": document["_id"]},
                 replacement=document,
+                filter={"_id": document["_id"]},
             )
             upserted_id = result["data"]["document"]["_id"]
         else:
