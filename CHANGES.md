@@ -8,6 +8,7 @@
 - **Non-Vector Collection Creation**: Implemented functionality to allow creation of non-vector collections.
 - **Support for the `delete_many` Operation**: Added a new AstraDBCollection method for `delete_many`, which calls the JSON API `deleteMany` endpoint to perform a multi-delete.
 - **Enhanced Documentation**: Added comprehensive docstrings for all public methods, improving code readability and ease of use.
+- **Full Support for Type Hints**: Type hints across all public functions
 
 ### Changed
 
