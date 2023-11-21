@@ -708,7 +708,7 @@ def test_functions(collection: AstraDBCollection) -> None:
 
 
 @pytest.mark.describe("should truncate a collection")
-def test_truncate_collection(db, collection):
+def test_truncate_collection(db: AstraDB, collection: AstraDBCollection) -> None:
     res = collection.vector_find([0.1, 0.1, 0.2, 0.5, 1], limit=3)
 
     assert len(res) > 0
@@ -721,7 +721,7 @@ def test_truncate_collection(db, collection):
 
 
 @pytest.mark.describe("should truncate a nonvector collection")
-def test_truncate_nonvector_collection(db):
+def test_truncate_nonvector_collection(db: AstraDB) -> None:
     col = db.create_collection("test_nonvector")
     col.insert_one({"a": 1})
     assert len(col.find()["data"]["documents"]) == 1
@@ -731,7 +731,7 @@ def test_truncate_nonvector_collection(db):
 
 
 @pytest.mark.describe("should fail truncating a non-existent collection")
-def test_truncate_collection_fail(db):
+def test_truncate_collection_fail(db: AstraDB) -> None:
     with pytest.raises(ValueError):
         db.truncate_collection("this$does%not exists!!!")
 
