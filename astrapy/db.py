@@ -887,7 +887,7 @@ class AstraDB:
             raise ValueError("Must provide a collection name")
 
         # Get the dimension of the existing collection
-        collections = self.get_collections(options={"options": {"explain": "true"}})
+        collections = self.get_collections(options={"explain": "true"})
 
         # Search over the collections
         matches = [
