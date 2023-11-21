@@ -769,16 +769,21 @@ class AstraDB:
         """
         return AstraDBCollection(collection_name=collection_name, astra_db=self)
 
-    def get_collections(self):
+    def get_collections(self, options={}):
         """
         Retrieve a list of collections from the database.
         Returns:
             dict: A list of collections in the database.
         """
+        json_query = make_payload(
+            top_level="findCollections",
+            options=options,
+        )
+
         response = self._request(
             method=http_methods.POST,
             path=self.base_path,
-            json_data={"findCollections": {}},
+            json_data=json_query,
         )
 
         return response
