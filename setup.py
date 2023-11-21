@@ -34,6 +34,7 @@ setup(
     packages=[
         "astrapy",
     ],
+    package_data={"astrapy": ["py.typed"]},
     version=__version__,
     license="Apache license 2.0",
     description="AstraPy is a Pythonic SDK for DataStax Astra",
