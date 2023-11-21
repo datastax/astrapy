@@ -361,17 +361,18 @@ class AstraDBCollection:
 
     def find_one_and_replace(
         self,
+        replacement: Optional[Dict[str, Any]] = None,
+        *,
         sort: Optional[Dict[str, Any]] = {},
         filter: Optional[Dict[str, Any]] = None,
-        replacement: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
         Find a single document and replace it.
         Args:
-            sort (dict, optional): Specifies the order in which to find the document.
-            filter (dict, optional): Criteria to filter documents.
             replacement (dict): The new document to replace the existing one.
+            filter (dict, optional): Criteria to filter documents.
+            sort (dict, optional): Specifies the order in which to find the document.
             options (dict, optional): Additional options for the operation.
         Returns:
             dict: The result of the find and replace operation.
@@ -743,8 +744,8 @@ class AstraDBCollection:
         ):
             # Now we attempt to update
             result = self.find_one_and_replace(
-                filter={"_id": document["_id"]},
                 replacement=document,
+                filter={"_id": document["_id"]},
             )
             upserted_id = cast(str, result["data"]["document"]["_id"])
         else:
@@ -836,16 +837,28 @@ class AstraDB:
         """
         return AstraDBCollection(collection_name=collection_name, astra_db=self)
 
-    def get_collections(self) -> API_RESPONSE:
+    def get_collections(self, options: Optional[Dict[str, Any]] = None) -> API_RESPONSE:
         """
         Retrieve a list of collections from the database.
+        Args:
+            options (dict, optional): Options to get the collection list
         Returns:
-            dict: A list of collections in the database.
+            dict: An object containing the list of collections in the database:
+                {"status": {"collections": [...]}}
         """
+        # Parse the options parameter
+        if options is None:
+            options = {}
+
+        json_query = make_payload(
+            top_level="findCollections",
+            options=options,
+        )
+
         response = self._request(
             method=http_methods.POST,
             path=self.base_path,
-            json_data={"findCollections": {}},
+            json_data=json_query,
         )
 
         return response
@@ -868,8 +881,6 @@ class AstraDB:
         Returns:
             AstraDBCollection: The created collection object.
         """
-        if not collection_name:
-            raise ValueError("Must provide a collection name")
         # options from named params
         vector_options = {
             k: v
@@ -879,15 +890,20 @@ class AstraDB:
             }.items()
             if v is not None
         }
+
         # overlap/merge with stuff in options.vector
         dup_params = set((options or {}).get("vector", {}).keys()) & set(
             vector_options.keys()
         )
+
+        # If any params are duplicated, we raise an error
         if dup_params:
             dups = ", ".join(sorted(dup_params))
             raise ValueError(
                 f"Parameter(s) {dups} passed both to the method and in the options"
             )
+
+        # Build our options dictionary if we have vector options
         if vector_options:
             options = options or {}
             options["vector"] = {
@@ -904,7 +920,7 @@ class AstraDB:
             if v is not None
         }
 
-        # Make the request to the endpoitn
+        # Make the request to the endpoint
         self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
@@ -933,3 +949,39 @@ class AstraDB:
         )
 
         return response
+
+    def truncate_collection(self, collection_name: str) -> API_RESPONSE:
+        """
+        Truncate a collection in the database.
+        Args:
+            collection_name (str): The name of the collection to truncate.
+        Returns:
+            dict: The response from the database.
+        """
+        # Make sure we provide a collection name
+        if not collection_name:
+            raise ValueError("Must provide a collection name")
+
+        # Retrieve the required collections from DB
+        collections = self.get_collections(options={"explain": "true"})
+        matches = [
+            col
+            for col in collections["status"]["collections"]
+            if col["name"] == collection_name
+        ]
+
+        # If we didn't find it, raise an error
+        if matches == []:
+            raise ValueError(f"Collection {collection_name} not found")
+
+        # Otherwise we found it, so get the collection
+        existing_collection = matches[0]
+
+        # We found it, so let's delete it
+        self.delete_collection(collection_name)
+
+        # End the function by returning the the new collection
+        return self.create_collection(
+            collection_name,
+            options=existing_collection.get("options"),
+        )
