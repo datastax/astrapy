@@ -325,13 +325,13 @@ class AstraDBCollection:
 
         return response
 
-    def find_one_and_replace(self, replacement, *, sort={}, filter=None, options=None):
+    def find_one_and_replace(self, replacement, *, filter=None, sort={}, options=None):
         """
         Find a single document and replace it.
         Args:
-            sort (dict, optional): Specifies the order in which to find the document.
-            filter (dict, optional): Criteria to filter documents.
             replacement (dict): The new document to replace the existing one.
+            filter (dict, optional): Criteria to filter documents.
+            sort (dict, optional): Specifies the order in which to find the document.
             options (dict, optional): Additional options for the operation.
         Returns:
             dict: The result of the find and replace operation.
@@ -796,8 +796,6 @@ class AstraDB:
         Returns:
             AstraDBCollection: The created collection object.
         """
-        if not collection_name:
-            raise ValueError("Must provide a collection name")
         # options from named params
         vector_options = {
             k: v
@@ -807,15 +805,20 @@ class AstraDB:
             }.items()
             if v is not None
         }
+
         # overlap/merge with stuff in options.vector
         dup_params = set((options or {}).get("vector", {}).keys()) & set(
             vector_options.keys()
         )
+
+        # If any params are duplicated, we raise an error
         if dup_params:
             dups = ", ".join(sorted(dup_params))
             raise ValueError(
                 f"Parameter(s) {dups} passed both to the method and in the options"
             )
+
+        # Build our options dictionary if we have vector options
         if vector_options:
             options = options or {}
             options["vector"] = {
