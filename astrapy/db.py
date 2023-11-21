@@ -884,31 +884,24 @@ class AstraDB:
         collections = self.get_collections(options={"options": {"explain": "true"}})
 
         # Search over the collections
-        collection_exists = False
-        for collection in collections["status"]["collections"]:
-            # If we find the collection, get the dimension
-            if collection["name"] == collection_name:
-                collection_exists = True
+        matches = [
+            col
+            for col in collections["status"]["collections"]
+            if col["name"] == collection_name
+        ]
 
-                # Assume no dimension or metric (non-vector collection)
-                dimension = None
-                metric = None
-
-                # On the other hand, if we do have the vector component, grab params
-                if "options" in collection and "vector" in collection["options"]:
-                    dimension = collection["options"]["vector"]["dimension"]
-                    metric = collection["options"]["vector"]["metric"]
-
-                # We can stop our search now
-                break
-
-        # If the collection didn't already exist, raise an error
-        if not collection_exists:
+        # If we didn't find it, raise an error
+        if matches == []:
             raise ValueError(f"Collection {collection_name} not found")
+
+        # Otherwise we found it, so get the collection
+        existing_collection = matches[0]
 
         # We found it, so let's delete it
         self.delete_collection(collection_name)
 
+        # End the function by returning the the new collection
         return self.create_collection(
-            collection_name, dimension=dimension, metric=metric
+            collection_name,
+            options=existing_collection.get("options"),
         )
