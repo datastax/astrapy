@@ -715,6 +715,22 @@ def test_truncate_collection(db, collection):
     assert len(res) == 0
 
 
+@pytest.mark.describe("should truncate a nonvector collection")
+def test_truncate_nonvector_collection(db):
+    col = db.create_collection("test_nonvector")
+    col.insert_one({"a": 1})
+    assert len(col.find()["data"]["documents"]) == 1
+    db.truncate_collection("test_nonvector")
+    assert len(col.find()["data"]["documents"]) == 0
+    db.delete_collection("test_nonvector")
+
+
+@pytest.mark.describe("should fail truncating a non-existent collection")
+def test_truncate_collection_fail(db):
+    with pytest.raises(ValueError):
+        db.truncate_collection("this$does%not exists!!!")
+
+
 @pytest.mark.describe("should delete a collection")
 def test_delete_collection(db):
     res = db.delete_collection(collection_name=TEST_COLLECTION_NAME)

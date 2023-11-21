@@ -772,8 +772,11 @@ class AstraDB:
     def get_collections(self, options=None):
         """
         Retrieve a list of collections from the database.
+        Args:
+            options (dict, optional): Options to get the collection list
         Returns:
-            dict: A list of collections in the database.
+            dict: An object containing the list of collections in the database:
+                {"status": {"collections": [...]}}
         """
         # Parse the options parameter
         if options is None:
@@ -886,10 +889,8 @@ class AstraDB:
         if not collection_name:
             raise ValueError("Must provide a collection name")
 
-        # Get the dimension of the existing collection
+        # Retrieve the required collections from DB
         collections = self.get_collections(options={"explain": "true"})
-
-        # Search over the collections
         matches = [
             col
             for col in collections["status"]["collections"]
