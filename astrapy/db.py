@@ -769,12 +769,16 @@ class AstraDB:
         """
         return AstraDBCollection(collection_name=collection_name, astra_db=self)
 
-    def get_collections(self, options={}):
+    def get_collections(self, options=None):
         """
         Retrieve a list of collections from the database.
         Returns:
             dict: A list of collections in the database.
         """
+        # Parse the options parameter
+        if options is None:
+            options = {}
+
         json_query = make_payload(
             top_level="findCollections",
             options=options,
@@ -840,7 +844,7 @@ class AstraDB:
             if v is not None
         }
 
-        # Make the request to the endpoitn
+        # Make the request to the endpoint
         self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
@@ -869,3 +873,41 @@ class AstraDB:
         )
 
         return response
+
+    def truncate_collection(self, collection_name: str):
+        """
+        Truncate a collection in the database.
+        Args:
+            collection_name (str): The name of the collection to truncate.
+        Returns:
+            dict: The response from the database.
+        """
+        # Make sure we provide a collection name
+        if not collection_name:
+            raise ValueError("Must provide a collection name")
+
+        # Get the dimension of the existing collection
+        collections = self.get_collections(options={"options": {"explain": "true"}})
+
+        # Search over the collections
+        matches = [
+            col
+            for col in collections["status"]["collections"]
+            if col["name"] == collection_name
+        ]
+
+        # If we didn't find it, raise an error
+        if matches == []:
+            raise ValueError(f"Collection {collection_name} not found")
+
+        # Otherwise we found it, so get the collection
+        existing_collection = matches[0]
+
+        # We found it, so let's delete it
+        self.delete_collection(collection_name)
+
+        # End the function by returning the the new collection
+        return self.create_collection(
+            collection_name,
+            options=existing_collection.get("options"),
+        )
