@@ -868,7 +868,7 @@ class AstraDB:
 
         return response
 
-    def truncate_collection(self, collection_name):
+    def truncate_collection(self, collection_name: str):
         """
         Truncate a collection in the database.
         Args:
@@ -884,18 +884,31 @@ class AstraDB:
         collections = self.get_collections(options={"options": {"explain": "true"}})
 
         # Search over the collections
-        dimension = None
+        collection_exists = False
         for collection in collections["status"]["collections"]:
+            # If we find the collection, get the dimension
             if collection["name"] == collection_name:
-                dimension = collection["options"]["vector"]["dimension"]
+                collection_exists = True
+
+                # Assume no dimension or metric (non-vector collection)
+                dimension = None
+                metric = None
+
+                # On the other hand, if we do have the vector component, grab params
+                if "options" in collection and "vector" in collection["options"]:
+                    dimension = collection["options"]["vector"]["dimension"]
+                    metric = collection["options"]["vector"]["metric"]
+
+                # We can stop our search now
                 break
 
-        # Check if we found the appropriate collection
-        if dimension is None:
+        # If the collection didn't already exist, raise an error
+        if not collection_exists:
             raise ValueError(f"Collection {collection_name} not found")
 
         # We found it, so let's delete it
         self.delete_collection(collection_name)
 
-        # Now re-create it with the specified dimension
-        return self.create_collection(collection_name, dimension=dimension)
+        return self.create_collection(
+            collection_name, dimension=dimension, metric=metric
+        )
