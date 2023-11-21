@@ -37,6 +37,7 @@ ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
 ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION", DEFAULT_REGION)
 
 
+# For now we skip these tests due to creation of DBs
 pytestmark = pytest.mark.skip("Currently skipping all ops tests")
 
 
