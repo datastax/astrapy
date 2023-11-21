@@ -950,7 +950,7 @@ class AstraDB:
 
         return response
 
-    def truncate_collection(self, collection_name: str) -> API_RESPONSE:
+    def truncate_collection(self, collection_name: str) -> AstraDBCollection:
         """
         Truncate a collection in the database.
         Args:
