@@ -325,15 +325,13 @@ class AstraDBCollection:
 
         return response
 
-    def find_one_and_replace(
-        self, sort={}, filter=None, replacement=None, options=None
-    ):
+    def find_one_and_replace(self, replacement, *, filter=None, sort={}, options=None):
         """
         Find a single document and replace it.
         Args:
-            sort (dict, optional): Specifies the order in which to find the document.
-            filter (dict, optional): Criteria to filter documents.
             replacement (dict): The new document to replace the existing one.
+            filter (dict, optional): Criteria to filter documents.
+            sort (dict, optional): Specifies the order in which to find the document.
             options (dict, optional): Additional options for the operation.
         Returns:
             dict: The result of the find and replace operation.
@@ -687,8 +685,8 @@ class AstraDBCollection:
         ):
             # Now we attempt to update
             result = self.find_one_and_replace(
-                filter={"_id": document["_id"]},
                 replacement=document,
+                filter={"_id": document["_id"]},
             )
             upserted_id = result["data"]["document"]["_id"]
         else:
@@ -781,10 +779,15 @@ class AstraDB:
         if options is None:
             options = {}
 
+        json_query = make_payload(
+            top_level="findCollections",
+            options=options,
+        )
+
         response = self._request(
             method=http_methods.POST,
             path=self.base_path,
-            json_data={"findCollections": options},
+            json_data=json_query,
         )
 
         return response
@@ -802,8 +805,6 @@ class AstraDB:
         Returns:
             AstraDBCollection: The created collection object.
         """
-        if not collection_name:
-            raise ValueError("Must provide a collection name")
         # options from named params
         vector_options = {
             k: v
@@ -813,15 +814,20 @@ class AstraDB:
             }.items()
             if v is not None
         }
+
         # overlap/merge with stuff in options.vector
         dup_params = set((options or {}).get("vector", {}).keys()) & set(
             vector_options.keys()
         )
+
+        # If any params are duplicated, we raise an error
         if dup_params:
             dups = ", ".join(sorted(dup_params))
             raise ValueError(
                 f"Parameter(s) {dups} passed both to the method and in the options"
             )
+
+        # Build our options dictionary if we have vector options
         if vector_options:
             options = options or {}
             options["vector"] = {
