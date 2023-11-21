@@ -354,7 +354,7 @@ You can use the Ops client to work with the Astra DevOps API. Check the [devops 
 
 ## For Developers
 
-You should additionally `pip install -e requirements-dev.txt` in a development
+You should additionally `pip install -r requirements-dev.txt` in a development
 environment (note that the `pip install -e .` is covered by the regular
 requirements file already).
 
