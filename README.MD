@@ -378,16 +378,25 @@ black --check tests && ruff tests && mypy tests
 
 ### Testing
 
-Ensure you provide all required environment variables:
+Ensure you provide all required environment variables (you can do so by editing `tests/.env` after `tests/.env.template`):
 
 ```bash
-export ASTRA_DB_ID="..."
 export ASTRA_DB_APPLICATION_TOKEN="..."
 export ASTRA_DB_API_ENDPOINT="..."
+export ASTRA_DB_KEYSPACE="..."              # Optional
+export ASTRA_DB_ID="..."                    # For the Ops testing only
 ```
 
 then you can run:
 
 ```bash
 pytest
+```
+
+To remove the noise from the logs (on by default), run `pytest -o log_cli=0`.
+
+To enable the `AstraDBOps` testing (off by default):
+
+```bash
+TEST_ASTRADBOPS=1 pytest
 ```
