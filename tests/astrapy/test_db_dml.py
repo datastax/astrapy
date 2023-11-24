@@ -19,17 +19,17 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 
 import uuid
 import logging
+from typing import List
 
 import pytest
-from faker import Faker
 
+from astrapy.types import API_DOC
 from astrapy.db import AstraDB, AstraDBCollection
 
 TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME = "ephemeral_tr_non_v_col"
 TEST_TRUNCATED_VECTOR_COLLECTION_NAME = "ephemeral_tr_v_col"
 
 logger = logging.getLogger(__name__)
-fake = Faker()
 
 
 @pytest.mark.describe("should fail truncating a non-existent collection")
@@ -62,26 +62,42 @@ def test_truncate_vector_collection(db: AstraDB) -> None:
         db.delete_collection(TEST_TRUNCATED_VECTOR_COLLECTION_NAME)
 
 
-###
-###
-###
-
-
-
 @pytest.mark.describe("find_one, not through vector")
-def test_find_one_filter_novector(readonly_vector_collection: AstraDBCollection, cliff_uuid: str) -> None:
+def test_find_one_filter_novector(
+    readonly_vector_collection: AstraDBCollection, cliff_uuid: str
+) -> None:
     response = readonly_vector_collection.find_one(
         filter={"_id": "1"},
     )
     document = response["data"]["document"]
     assert document["text"] == "Sample entry number <1>"
-    assert document.keys() ^ {"_id", "text", "otherfield", "anotherfield", "$vector"} == set()
+    assert (
+        document.keys() ^ {"_id", "text", "otherfield", "anotherfield", "$vector"}
+        == set()
+    )
+
+    response_not_by_id = readonly_vector_collection.find_one(
+        filter={"text": "Sample entry number <1>"},
+    )
+    document_not_by_id = response_not_by_id["data"]["document"]
+    assert document_not_by_id["_id"] == "1"
+    assert (
+        document_not_by_id.keys()
+        ^ {"_id", "text", "otherfield", "anotherfield", "$vector"}
+        == set()
+    )
 
     response_no = readonly_vector_collection.find_one(
         filter={"_id": "Z"},
     )
     document_no = response_no["data"]["document"]
     assert document_no is None
+
+    response_no_not_by_id = readonly_vector_collection.find_one(
+        filter={"text": "No such text."},
+    )
+    document_no_not_by_id = response_no_not_by_id["data"]["document"]
+    assert document_no_not_by_id is None
 
 
 @pytest.mark.describe("find, not through vector")
@@ -104,7 +120,9 @@ def test_find_filter_novector(readonly_vector_collection: AstraDBCollection) -> 
 
 
 @pytest.mark.describe("obey projection in find and find_one")
-def test_find_find_one_projection(readonly_vector_collection: AstraDBCollection) -> None:
+def test_find_find_one_projection(
+    readonly_vector_collection: AstraDBCollection,
+) -> None:
     query = [0.2, 0.6]
     sort = {"$vector": query}
     options = {"limit": 1}
@@ -124,7 +142,9 @@ def test_find_find_one_projection(readonly_vector_collection: AstraDBCollection)
         {"$vector", "_id", "text"},
     ]
     for proj, exp_fields in zip(projs, exp_fieldsets):
-        response_n = readonly_vector_collection.find(sort=sort, options=options, projection=proj)
+        response_n = readonly_vector_collection.find(
+            sort=sort, options=options, projection=proj
+        )
         fields = set(response_n["data"]["documents"][0].keys())
         assert fields == exp_fields
         #
@@ -161,296 +181,530 @@ def test_find_limitless(readonly_vector_collection: AstraDBCollection) -> None:
     assert response is not None
     assert isinstance(response["data"]["documents"], list)
 
-###
-###
-###
 
-@pytest.mark.describe("should create a vector document")
-def test_create_document(collection: AstraDBCollection) -> None:
-    test_uuid = str(uuid.uuid4())
-
-    json_query = {
-        "_id": test_uuid,
-        "name": "Coded Cleats Copy",
-        "description": "ChatGPT integrated sneakers that talk to you",
-        "$vector": [0.25, 0.25, 0.25, 0.25, 0.25],
-    }
-
-    res = collection.insert_one(document=json_query)
-
-    assert res is not None
-
-
-@pytest.mark.describe("should create multiple documents: nonvector")
-def test_insert_many(collection: AstraDBCollection) -> None:
-    id_1 = fake.bothify(text="????????")
-    id_2 = fake.bothify(text="????????")
-    id_3 = fake.bothify(text="????????")
-    documents = [
+@pytest.mark.describe("insert_one, w/out _id, w/out vector")
+def test_create_document_0(writable_vector_collection: AstraDBCollection) -> None:
+    i_vector = [0.3, 0.5]
+    id_v_i = str(uuid.uuid4())
+    result_v_i = writable_vector_collection.insert_one(
         {
-            "_id": id_1,
+            "_id": id_v_i,
+            "a": 1,
+            "$vector": i_vector,
+        }
+    )
+    assert result_v_i["status"]["insertedIds"] == [id_v_i]
+    assert (
+        writable_vector_collection.find_one(
+            {"_id": result_v_i["status"]["insertedIds"][0]}
+        )["data"]["document"]["a"]
+        == 1
+    )
+
+    id_n_i = str(uuid.uuid4())
+    result_n_i = writable_vector_collection.insert_one(
+        {
+            "_id": id_n_i,
+            "a": 2,
+        }
+    )
+    assert result_n_i["status"]["insertedIds"] == [id_n_i]
+    assert (
+        writable_vector_collection.find_one(
+            {"_id": result_n_i["status"]["insertedIds"][0]}
+        )["data"]["document"]["a"]
+        == 2
+    )
+
+    with pytest.raises(ValueError):
+        result_n_i = writable_vector_collection.insert_one(
+            {
+                "_id": id_n_i,
+                "a": 3,
+            }
+        )
+
+    result_v_n = writable_vector_collection.insert_one(
+        {
+            "a": 4,
+            "$vector": i_vector,
+        }
+    )
+    assert isinstance(result_v_n["status"]["insertedIds"], list)
+    assert isinstance(result_v_n["status"]["insertedIds"][0], str)
+    assert len(result_v_n["status"]["insertedIds"]) == 1
+    assert (
+        writable_vector_collection.find_one(
+            {"_id": result_v_n["status"]["insertedIds"][0]}
+        )["data"]["document"]["a"]
+        == 4
+    )
+
+    result_n_n = writable_vector_collection.insert_one(
+        {
+            "a": 5,
+        }
+    )
+    assert isinstance(result_n_n["status"]["insertedIds"], list)
+    assert isinstance(result_n_n["status"]["insertedIds"][0], str)
+    assert len(result_n_n["status"]["insertedIds"]) == 1
+    assert (
+        writable_vector_collection.find_one(
+            {"_id": result_n_n["status"]["insertedIds"][0]}
+        )["data"]["document"]["a"]
+        == 5
+    )
+
+
+@pytest.mark.describe("insert_many")
+def test_insert_many(writable_vector_collection: AstraDBCollection) -> None:
+    _id0 = str(uuid.uuid4())
+    _id2 = str(uuid.uuid4())
+    documents: List[API_DOC] = [
+        {
+            "_id": _id0,
+            "name": "Abba",
+            "traits": [10, 9, 3],
+            "$vector": [0.6, 0.2],
+        },
+        {
+            "name": "Bacchus",
+            "happy": True,
+        },
+        {
+            "_id": _id2,
+            "name": "Ciccio",
+            "description": "The thid in this list",
+            "$vector": [0.4, 0.3],
+        },
+    ]
+
+    response = writable_vector_collection.insert_many(documents)
+    assert response is not None
+    inserted_ids = set(response["status"]["insertedIds"])
+    assert len(inserted_ids - {_id0, _id2}) == 1
+    assert isinstance(list(inserted_ids - {_id0, _id2})[0], str)
+
+
+@pytest.mark.describe("insert_many with 'ordered' set to False")
+def test_insert_many_ordered_false(
+    writable_vector_collection: AstraDBCollection,
+) -> None:
+    _id0 = str(uuid.uuid4())
+    _id1 = str(uuid.uuid4())
+    _id2 = str(uuid.uuid4())
+    documents_a = [
+        {
+            "_id": _id0,
             "first_name": "Dang",
             "last_name": "Son",
         },
         {
-            "_id": id_2,
+            "_id": _id1,
             "first_name": "Yep",
             "last_name": "Boss",
         },
     ]
-    res = collection.insert_many(documents=documents)
-    assert res is not None
+    response_a = writable_vector_collection.insert_many(documents_a)
+    assert response_a is not None
+    assert response_a["status"]["insertedIds"] == [_id0, _id1]
 
-    documents2 = [
+    documents_b = [
         {
-            "_id": id_2,
-            "first_name": "Yep",
-            "last_name": "Boss",
+            "_id": _id1,
+            "first_name": "Maureen",
+            "last_name": "Caloggero",
         },
         {
-            "_id": id_3,
+            "_id": _id2,
             "first_name": "Miv",
             "last_name": "Fuff",
         },
     ]
-    res = collection.insert_many(
-        documents=documents2,
+    response_b = writable_vector_collection.insert_many(
+        documents_b,
         partial_failures_allowed=True,
     )
-    print(res)
-    assert set(res["status"]["insertedIds"]) == set()
+    assert response_b is not None
+    assert response_b["status"]["insertedIds"] == []
 
-    res = collection.insert_many(
-        documents=documents2,
+    response_b2 = writable_vector_collection.insert_many(
+        documents=documents_b,
         options={"ordered": False},
         partial_failures_allowed=True,
     )
-    print(res)
-    assert set(res["status"]["insertedIds"]) == {id_3}
+    assert response_b2 is not None
+    assert response_b2["status"]["insertedIds"] == [_id2]
 
-    document = collection.find(filter={"first_name": "Yep"})
-    assert document is not None
+    check_response = writable_vector_collection.find_one(filter={"first_name": "Yep"})
+    assert check_response is not None
+    assert check_response["data"]["document"]["_id"] == _id1
 
 
-@pytest.mark.describe("create many vector documents")
-def test_create_documents(collection: AstraDBCollection, vv_uuid: str) -> None:
-    json_query = [
-        {
-            "_id": str(uuid.uuid4()),
-            "name": "Coded Cleats",
-            "description": "ChatGPT integrated sneakers that talk to you",
-            "$vector": [0.1, 0.15, 0.3, 0.12, 0.05],
+@pytest.mark.describe("upsert")
+def test_upsert_document(writable_vector_collection: AstraDBCollection) -> None:
+    _id = str(uuid.uuid4())
+
+    document0 = {
+        "_id": _id,
+        "addresses": {
+            "work": {
+                "city": "Seattle",
+                "state": "WA",
+            },
         },
-        {
-            "_id": str(uuid.uuid4()),
-            "name": "Logic Layers",
-            "description": "An AI quilt to help you sleep forever",
-            "$vector": [0.45, 0.09, 0.01, 0.2, 0.11],
+    }
+    upsert_result0 = writable_vector_collection.upsert(document0)
+    assert upsert_result0 == _id
+
+    response0 = writable_vector_collection.find_one(filter={"_id": _id})
+    assert response0 is not None
+    assert response0["data"]["document"] == document0
+
+    document1 = {
+        "_id": _id,
+        "addresses": {
+            "work": {
+                "state": "MN",
+                "floor": 12,
+            },
         },
-        {
-            "_id": vv_uuid,
-            "name": "Vision Vector Frame",
-            "description": "Vision Vector Frame - A deep learning display that controls your mood",
-            "$vector": [0.1, 0.05, 0.08, 0.3, 0.6],
-        },
-    ]
+        "hobbies": [
+            "ice skating",
+            "accounting",
+        ],
+    }
+    upsert_result1 = writable_vector_collection.upsert(document1)
+    assert upsert_result1 == _id
 
-    res = collection.insert_many(documents=json_query)
-    assert res is not None
+    response1 = writable_vector_collection.find_one(filter={"_id": _id})
+    assert response1 is not None
+    assert response1["data"]["document"] == document1
 
 
-@pytest.mark.describe("should create a subdocument")
-def test_create_subdocument(collection: AstraDBCollection, cliff_uuid: str) -> None:
-    document = collection.update_one(
-        filter={"_id": cliff_uuid},
+@pytest.mark.describe("update_one to create a subdocument, not through vector")
+def test_update_one_create_subdocument_novector(
+    disposable_vector_collection: AstraDBCollection,
+) -> None:
+    update_one_response = disposable_vector_collection.update_one(
+        filter={"_id": "1"},
         update={"$set": {"name": "Eric"}},
     )
-    print("SUBSUB", document)
 
-    document = collection.find_one(filter={"_id": cliff_uuid})
-    print("SUBDOC", document)
-    assert document["data"]["document"]["name"] == "Eric"
+    assert update_one_response["status"]["matchedCount"] >= 1
+    assert update_one_response["status"]["modifiedCount"] == 1
 
-
-@pytest.mark.describe("should create a document without an ID")
-def test_create_document_without_id(collection: AstraDBCollection) -> None:
-    response = collection.insert_one(
-        document={
-            "first_name": "New",
-            "last_name": "Guy",
-        }
-    )
-    assert response is not None
-    document = collection.find_one(filter={"first_name": "New"})
-    assert document["data"]["document"]["last_name"] == "Guy"
+    response = disposable_vector_collection.find_one(filter={"_id": "1"})
+    assert response["data"]["document"]["name"] == "Eric"
 
 
-@pytest.mark.describe("should update a document")
-def test_update_document(collection: AstraDBCollection, cliff_uuid: str) -> None:
-    collection.update_one(
-        filter={"_id": cliff_uuid},
-        update={"$set": {"name": "Bob"}},
+@pytest.mark.describe("delete_subdocument, not through vector")
+def test_delete_subdocument_novector(
+    disposable_vector_collection: AstraDBCollection,
+) -> None:
+    delete_subdocument_response = disposable_vector_collection.delete_subdocument(
+        id="1",
+        subdoc="otherfield.subfield",
     )
 
-    document = collection.find_one(filter={"_id": cliff_uuid})
+    assert delete_subdocument_response["status"]["matchedCount"] >= 1
+    assert delete_subdocument_response["status"]["modifiedCount"] == 1
 
-    assert document["data"]["document"]["_id"] == cliff_uuid
-    assert document["data"]["document"]["name"] == "Bob"
+    response = disposable_vector_collection.find_one(filter={"_id": "1"})
+    assert response["data"]["document"]["otherfield"] == {}
 
 
-@pytest.mark.describe("replace a non-vector document")
-def test_replace_document(collection: AstraDBCollection, cliff_uuid: str) -> None:
-    collection.find_one_and_replace(
-        filter={"_id": cliff_uuid},
+@pytest.mark.describe("find_one_and_update, through vector")
+def test_find_one_and_update_vector(
+    disposable_vector_collection: AstraDBCollection,
+) -> None:
+    find_filter = {"status": {"$exists": True}}
+    response0 = disposable_vector_collection.find_one(filter=find_filter)
+    assert response0["data"]["document"] is None
+
+    sort = {"$vector": [0.2, 0.6]}
+
+    update0 = {"$set": {"status": "active"}}
+    options0 = {"returnDocument": "after"}
+
+    update_response0 = disposable_vector_collection.find_one_and_update(
+        sort=sort, update=update0, options=options0
+    )
+    assert isinstance(update_response0["data"]["document"], dict)
+    assert update_response0["data"]["document"]["status"] == "active"
+    assert update_response0["status"]["matchedCount"] >= 1
+    assert update_response0["status"]["modifiedCount"] >= 1
+
+    response1 = disposable_vector_collection.find_one(filter=find_filter)
+    assert isinstance(response1["data"]["document"], dict)
+    assert response1["data"]["document"]["status"] == "active"
+
+    update1 = {"$set": {"status": "inactive"}}
+    options1 = {"returnDocument": "before"}
+
+    update_response1 = disposable_vector_collection.find_one_and_update(
+        sort=sort, update=update1, options=options1
+    )
+    assert isinstance(update_response1["data"]["document"], dict)
+    assert update_response1["data"]["document"]["status"] == "active"
+    assert update_response1["status"]["matchedCount"] >= 1
+    assert update_response1["status"]["modifiedCount"] >= 1
+
+    response2 = disposable_vector_collection.find_one(filter=find_filter)
+    assert isinstance(response2["data"]["document"], dict)
+    assert response2["data"]["document"]["status"] == "inactive"
+
+    filter2 = {"nonexistent_subfield": 10}
+    update2 = update1
+    options2 = options1
+
+    update_response2 = disposable_vector_collection.find_one_and_update(
+        sort=sort, update=update2, options=options2, filter=filter2
+    )
+    assert update_response2["data"]["document"] is None
+    assert update_response2["status"]["matchedCount"] == 0
+    assert update_response2["status"]["modifiedCount"] == 0
+
+
+@pytest.mark.describe("find_one_and_update, not through vector")
+def test_find_one_and_update_novector(
+    disposable_vector_collection: AstraDBCollection,
+) -> None:
+    find_filter = {"status": {"$exists": True}}
+    response0 = disposable_vector_collection.find_one(filter=find_filter)
+    assert response0["data"]["document"] is None
+
+    update_filter = {"anotherfield": "omega"}
+
+    update0 = {"$set": {"status": "active"}}
+    options0 = {"returnDocument": "after"}
+
+    update_response0 = disposable_vector_collection.find_one_and_update(
+        filter=update_filter, update=update0, options=options0
+    )
+    assert isinstance(update_response0["data"]["document"], dict)
+    assert update_response0["data"]["document"]["status"] == "active"
+    assert update_response0["status"]["matchedCount"] >= 1
+    assert update_response0["status"]["modifiedCount"] >= 1
+
+    response1 = disposable_vector_collection.find_one(filter=find_filter)
+    assert isinstance(response1["data"]["document"], dict)
+    assert response1["data"]["document"]["status"] == "active"
+
+    update1 = {"$set": {"status": "inactive"}}
+    options1 = {"returnDocument": "before"}
+
+    update_response1 = disposable_vector_collection.find_one_and_update(
+        filter=update_filter, update=update1, options=options1
+    )
+    assert isinstance(update_response1["data"]["document"], dict)
+    assert update_response1["data"]["document"]["status"] == "active"
+    assert update_response1["status"]["matchedCount"] >= 1
+    assert update_response1["status"]["modifiedCount"] >= 1
+
+    response2 = disposable_vector_collection.find_one(filter=find_filter)
+    assert isinstance(response2["data"]["document"], dict)
+    assert response2["data"]["document"]["status"] == "inactive"
+
+    filter2 = {**update_filter, **{"nonexistent_subfield": 10}}
+    update2 = update1
+    options2 = options1
+
+    update_response2 = disposable_vector_collection.find_one_and_update(
+        filter=filter2, update=update2, options=options2
+    )
+    assert update_response2["data"]["document"] is None
+    assert update_response2["status"]["matchedCount"] == 0
+    assert update_response2["status"]["modifiedCount"] == 0
+
+
+@pytest.mark.describe("find_one_and_replace, through vector")
+def test_find_one_and_replace_vector(
+    disposable_vector_collection: AstraDBCollection,
+) -> None:
+    sort = {"$vector": [0.2, 0.6]}
+
+    response0 = disposable_vector_collection.find_one(sort=sort)
+    assert response0 is not None
+    assert "anotherfield" in response0["data"]["document"]
+
+    doc0vector = response0["data"]["document"]["$vector"]
+
+    replace_response0 = disposable_vector_collection.find_one_and_replace(
+        sort=sort,
         replacement={
-            "_id": cliff_uuid,
-            "addresses": {
-                "work": {
-                    "city": "New York",
-                    "state": "NY",
-                }
-            },
+            "phyla": ["Echinodermata", "Platelminta", "Chordata"],
+            "$vector": doc0vector,  # to find this doc again below!
         },
     )
-    document = collection.find_one(filter={"_id": cliff_uuid})
-    print(document)
+    assert replace_response0 is not None
+    assert "anotherfield" in replace_response0["data"]["document"]
 
-    assert document is not None
-    document_2 = collection.find_one(
-        filter={"_id": cliff_uuid}, projection={"addresses.work.city": 1}
+    response1 = disposable_vector_collection.find_one(sort=sort)
+    assert response1 is not None
+    assert response1["data"]["document"]["phyla"] == [
+        "Echinodermata",
+        "Platelminta",
+        "Chordata",
+    ]
+    assert "anotherfield" not in response1["data"]["document"]
+
+    replace_response1 = disposable_vector_collection.find_one_and_replace(
+        sort=sort,
+        replacement={
+            "phone": "0123-4567",
+            "$vector": doc0vector,
+        },
     )
+    assert replace_response1 is not None
+    assert replace_response1["data"]["document"]["phyla"] == [
+        "Echinodermata",
+        "Platelminta",
+        "Chordata",
+    ]
+    assert "anotherfield" not in replace_response1["data"]["document"]
 
-@pytest.mark.describe("should delete a subdocument")
-def test_delete_subdocument(collection: AstraDBCollection, cliff_uuid: str) -> None:
-    response = collection.delete_subdocument(id=cliff_uuid, subdoc="addresses")
-    document = collection.find(filter={"_id": cliff_uuid})
-    assert response is not None
-    assert document is not None
+    response2 = disposable_vector_collection.find_one(sort=sort)
+    assert response2 is not None
+    assert response2["data"]["document"]["phone"] == "0123-4567"
+    assert "phyla" not in response2["data"]["document"]
 
-
-@pytest.mark.describe("should delete a single document")
-def test_delete_one_document(collection: AstraDBCollection, cliff_uuid: str) -> None:
-    response = collection.delete_one(id=cliff_uuid)
-    assert response is not None
-
-    document = collection.find_one(filter={"_id": cliff_uuid})
-    assert document["data"]["document"] is None
-
-
-@pytest.mark.describe("should delete multiple documents")
-def test_delete_many_documents(collection: AstraDBCollection) -> None:
-    response = collection.delete_many(filter={"anotherfield": "alpha"})
-    assert response is not None
-
-    documents = collection.find(filter={"anotherfield": "alpha"})
-    assert not documents["data"]["documents"]
-
-
+    # non-existing-doc case
+    filter_no = {"nonexisting_field": -123}
+    replace_response_no = disposable_vector_collection.find_one_and_replace(
+        sort=sort,
+        filter=filter_no,
+        replacement={
+            "whatever": -123,
+            "$vector": doc0vector,
+        },
+    )
+    assert replace_response_no is not None
+    assert replace_response_no["data"]["document"] is None
 
 
-@pytest.mark.describe("Find one and update with vector search")
-def test_find_one_and_update_vector(collection: AstraDBCollection) -> None:
-    sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
-    update = {"$set": {"status": "active"}}
-    options = {"returnDocument": "after"}
+@pytest.mark.describe("find_one_and_replace, not through vector")
+def test_find_one_and_replace_novector(
+    disposable_vector_collection: AstraDBCollection,
+) -> None:
+    response0 = disposable_vector_collection.find_one(filter={"_id": "1"})
+    assert response0 is not None
+    assert response0["data"]["document"]["anotherfield"] == "alpha"
 
-    result = collection.find_one_and_update(sort=sort, update=update, options=options)
-    print(result)
-    document = collection.find_one(filter={"status": "active"})
-    print(document)
-    assert document["data"]["document"] is not None
+    replace_response0 = disposable_vector_collection.find_one_and_replace(
+        filter={"_id": "1"},
+        replacement={
+            "_id": "1",
+            "phyla": ["Echinodermata", "Platelminta", "Chordata"],
+        },
+    )
+    assert replace_response0 is not None
+    assert replace_response0["data"]["document"]["anotherfield"] == "alpha"
+
+    response1 = disposable_vector_collection.find_one(filter={"_id": "1"})
+    assert response1 is not None
+    assert response1["data"]["document"]["phyla"] == [
+        "Echinodermata",
+        "Platelminta",
+        "Chordata",
+    ]
+    assert "anotherfield" not in response1["data"]["document"]
+
+    replace_response1 = disposable_vector_collection.find_one_and_replace(
+        filter={"_id": "1"},
+        replacement={
+            "phone": "0123-4567",
+        },
+    )
+    assert replace_response1 is not None
+    assert replace_response1["data"]["document"]["phyla"] == [
+        "Echinodermata",
+        "Platelminta",
+        "Chordata",
+    ]
+    assert "anotherfield" not in replace_response1["data"]["document"]
+
+    response2 = disposable_vector_collection.find_one(filter={"_id": "1"})
+    assert response2 is not None
+    assert response2["data"]["document"]["phone"] == "0123-4567"
+    assert "phyla" not in response2["data"]["document"]
+
+    # non-existing-doc case
+    replace_response_no = disposable_vector_collection.find_one_and_replace(
+        filter={"_id": "z"},
+        replacement={
+            "whatever": -123,
+        },
+    )
+    assert replace_response_no is not None
+    assert replace_response_no["data"]["document"] is None
 
 
+@pytest.mark.describe("delete_one, not through vector")
+def test_delete_one_novector(disposable_vector_collection: AstraDBCollection) -> None:
+    delete_response = disposable_vector_collection.delete_one(id="3")
+    assert delete_response["status"]["deletedCount"] == 1
+
+    response = disposable_vector_collection.find_one(filter={"_id": "3"})
+    assert response["data"]["document"] is None
+
+    delete_response_no = disposable_vector_collection.delete_one(id="3")
+    assert delete_response_no["status"]["deletedCount"] == 0
 
 
-@pytest.mark.describe("should find a single document, non-vector")
-def test_find_one_document(collection: AstraDBCollection) -> None:
+@pytest.mark.describe("delete_many, not through vector")
+def test_delete_many_novector(disposable_vector_collection: AstraDBCollection) -> None:
+    delete_response = disposable_vector_collection.delete_many(
+        filter={"anotherfield": "alpha"}
+    )
+    assert delete_response["status"]["deletedCount"] == 2
+
+    documents_no = disposable_vector_collection.find(filter={"anotherfield": "alpha"})
+    assert documents_no["data"]["documents"] == []
+
+    delete_response_no = disposable_vector_collection.delete_many(
+        filter={"anotherfield": "alpha"}
+    )
+    assert delete_response_no["status"]["deletedCount"] == 0
+
+
+@pytest.mark.describe("pop, push functions, not through vector")
+def test_pop_push_novector(disposable_vector_collection: AstraDBCollection) -> None:
     user_id = str(uuid.uuid4())
-    collection.insert_one(
+    disposable_vector_collection.insert_one(
         document={
             "_id": user_id,
-            "first_name": f"Cliff-{user_id}",
+            "first_name": "Cliff",
             "last_name": "Wicklow",
+            "roles": ["user", "admin"],
         },
     )
-    user_id_2 = str(uuid.uuid4())
-    collection.insert_one(
-        document={
-            "_id": user_id_2,
-            "first_name": f"Cliff-{user_id}",
-            "last_name": "Danger",
-        },
-    )
-    document = collection.find_one(filter={"first_name": f"Cliff-{user_id}"})
-    print("DOCUMENT", document)
 
-    assert document["data"]["document"] is not None
-
-    document = collection.find_one(filter={"first_name": "Cliff-Not-There"})
-    assert document["data"]["document"] is None
-
-
-
-
-@pytest.mark.describe("upsert a document")
-def test_upsert_document(collection: AstraDBCollection) -> None:
-    new_uuid = str(uuid.uuid4())
-
-    collection.upsert(
-        {
-            "_id": new_uuid,
-            "addresses": {
-                "work": {
-                    "city": "Seattle",
-                    "state": "WA",
-                }
-            },
-        }
-    )
-
-    document = collection.find_one(filter={"_id": new_uuid})
-
-    # Check the document exists and that the city field is Seattle
-    assert document is not None
-    assert document["data"]["document"]["addresses"]["work"]["city"] == "Seattle"
-    assert "country" not in document["data"]["document"]["addresses"]["work"]
-
-    collection.upsert(
-        {
-            "_id": new_uuid,
-            "addresses": {"work": {"city": "Everett", "state": "WA", "country": "USA"}},
-        }
-    )
-
-    document = collection.find_one(filter={"_id": new_uuid})
-
-    assert document is not None
-    assert document["data"]["document"]["addresses"]["work"]["city"] == "Everett"
-    assert "country" in document["data"]["document"]["addresses"]["work"]
-
-
-@pytest.mark.describe("should use document functions")
-def test_functions(collection: AstraDBCollection) -> None:
-    user_id = str(uuid.uuid4())
-    collection.insert_one(
-        document={
-            "_id": user_id,
-            "first_name": f"Cliff-{user_id}",
-            "last_name": "Wicklow",
-            "roles": ["admin", "user"],
-        },
-    )
     pop = {"roles": 1}
     options = {"returnDocument": "after"}
 
-    _ = collection.pop(filter={"_id": user_id}, pop=pop, options=options)
+    pop_response = disposable_vector_collection.pop(
+        filter={"_id": user_id}, pop=pop, options=options
+    )
+    assert pop_response is not None
+    assert pop_response["data"]["document"]["roles"] == ["user"]
+    assert pop_response["status"]["matchedCount"] >= 1
+    assert pop_response["status"]["modifiedCount"] == 1
 
-    doc_1 = collection.find_one(filter={"_id": user_id})
-    assert doc_1["data"]["document"]["_id"] == user_id
+    response1 = disposable_vector_collection.find_one(filter={"_id": user_id})
+    assert response1 is not None
+    assert response1["data"]["document"]["roles"] == ["user"]
 
-    push = {"roles": "users"}
-    options = {"returnDocument": "after"}
+    push = {"roles": "auditor"}
 
-    collection.push(filter={"_id": user_id}, push=push, options=options)
-    doc_2 = collection.find_one(filter={"_id": user_id})
-    assert doc_2["data"]["document"]["_id"] == user_id
+    push_response = disposable_vector_collection.push(
+        filter={"_id": user_id}, push=push, options=options
+    )
+    assert push_response is not None
+    assert push_response["data"]["document"]["roles"] == ["user", "auditor"]
+    assert push_response["status"]["matchedCount"] >= 1
+    assert push_response["status"]["modifiedCount"] == 1
+
+    response2 = disposable_vector_collection.find_one(filter={"_id": user_id})
+    assert response2 is not None
+    assert response2["data"]["document"]["roles"] == ["user", "auditor"]

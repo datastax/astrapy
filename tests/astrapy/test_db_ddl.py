@@ -17,6 +17,7 @@ Tests for the `db.py` parts related to DML & client creation
 """
 
 import logging
+from typing import Dict, Optional
 
 import pytest
 
@@ -30,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.describe("should confirm path handling in constructor")
-def test_path_handling(astra_db_credentials_kwargs) -> None:
+def test_path_handling(astra_db_credentials_kwargs: Dict[str, Optional[str]]) -> None:
     astra_db_1 = AstraDB(**astra_db_credentials_kwargs)
 
     url_1 = astra_db_1.base_path
@@ -100,9 +101,13 @@ def test_create_use_destroy_nonvector_collection(db: AstraDB) -> None:
 
 @pytest.mark.describe("should create and destroy a vector collection")
 def test_create_use_destroy_vector_collection(db: AstraDB) -> None:
-    col = db.create_collection(collection_name=TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME, dimension=2)
+    col = db.create_collection(
+        collection_name=TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME, dimension=2
+    )
     assert isinstance(col, AstraDBCollection)
-    del_res = db.delete_collection(collection_name=TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME)
+    del_res = db.delete_collection(
+        collection_name=TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME
+    )
     assert del_res["status"]["ok"] == 1
 
 

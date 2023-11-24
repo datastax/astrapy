@@ -19,7 +19,7 @@ Tests for the `db.py` parts on pagination primitives
 import math
 import os
 import logging
-from typing import Iterable, List, Set, TypeVar
+from typing import Dict, Iterable, List, Optional, Set, TypeVar
 import pytest
 
 from astrapy.db import AstraDB, AstraDBCollection
@@ -53,7 +53,9 @@ def _batch_iterable(iterable: Iterable[T], batch_size: int) -> Iterable[Iterable
 
 
 @pytest.fixture(scope="module")
-def pag_test_collection(astra_db_credentials_kwargs) -> Iterable[AstraDBCollection]:
+def pag_test_collection(
+    astra_db_credentials_kwargs: Dict[str, Optional[str]]
+) -> Iterable[AstraDBCollection]:
     astra_db = AstraDB(**astra_db_credentials_kwargs)
 
     astra_db_collection = astra_db.create_collection(
@@ -64,7 +66,9 @@ def pag_test_collection(astra_db_credentials_kwargs) -> Iterable[AstraDBCollecti
         inserted_ids: Set[str] = set()
         for i_batch in _batch_iterable(range(N), INSERT_BATCH_SIZE):
             batch_ids = astra_db_collection.insert_many(
-                documents=[{"_id": str(i), "$vector": _mk_vector(i, N)} for i in i_batch]
+                documents=[
+                    {"_id": str(i), "$vector": _mk_vector(i, N)} for i in i_batch
+                ]
             )["status"]["insertedIds"]
             inserted_ids = inserted_ids | set(batch_ids)
         assert inserted_ids == {str(i) for i in range(N)}

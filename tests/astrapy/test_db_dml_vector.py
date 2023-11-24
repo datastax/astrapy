@@ -159,8 +159,7 @@ def test_vector_find_one(readonly_vector_collection: AstraDBCollection) -> None:
     assert "$similarity" not in document_no_sim
 
     document_w_fields = readonly_vector_collection.vector_find_one(
-        [0.2, 0.6],
-        fields=["text"]
+        [0.2, 0.6], fields=["text"]
     )
 
     assert document_w_fields is not None
@@ -178,7 +177,9 @@ def test_vector_find_one(readonly_vector_collection: AstraDBCollection) -> None:
 
 
 @pytest.mark.describe("vector_find_one_and_update")
-def test_vector_find_one_and_update(disposable_vector_collection: AstraDBCollection) -> None:
+def test_vector_find_one_and_update(
+    disposable_vector_collection: AstraDBCollection,
+) -> None:
     update = {"$set": {"status": "active"}}
 
     document0 = disposable_vector_collection.vector_find_one(
@@ -212,7 +213,9 @@ def test_vector_find_one_and_update(disposable_vector_collection: AstraDBCollect
 
 
 @pytest.mark.describe("vector_find_one_and_replace")
-def test_vector_find_one_and_replace(disposable_vector_collection: AstraDBCollection) -> None:
+def test_vector_find_one_and_replace(
+    disposable_vector_collection: AstraDBCollection,
+) -> None:
     replacement0 = {
         "_id": "1",
         "text": "Revised sample entry number <1>",
