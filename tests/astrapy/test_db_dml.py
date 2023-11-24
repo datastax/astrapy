@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""
+Tests for the `db.py` parts on data manipulation "standard" methods
+(i.e. non `vector_*` methods)
+"""
+
 import uuid
 import logging
 
@@ -19,10 +24,9 @@ import pytest
 from faker import Faker
 
 from astrapy.db import AstraDB, AstraDBCollection
-from astrapy.defaults import DEFAULT_KEYSPACE_NAME
 
-TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME = "ephemeral_v_col"
-TEST_CREATE_DELETE_NONVECTOR_COLLECTION_NAME = "ephemeral_non_v_col"
+TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME = "ephemeral_tr_non_v_col"
+TEST_TRUNCATED_VECTOR_COLLECTION_NAME = "ephemeral_tr_v_col"
 
 logger = logging.getLogger(__name__)
 fake = Faker()
@@ -34,8 +38,132 @@ def test_truncate_collection_fail(db: AstraDB) -> None:
         db.truncate_collection("this$does%not exist!!!")
 
 
+@pytest.mark.describe("should truncate a nonvector collection")
+def test_truncate_nonvector_collection(db: AstraDB) -> None:
+    col = db.create_collection(TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME)
+    try:
+        col.insert_one({"a": 1})
+        assert len(col.find()["data"]["documents"]) == 1
+        db.truncate_collection(TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME)
+        assert len(col.find()["data"]["documents"]) == 0
+    finally:
+        db.delete_collection(TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME)
 
 
+@pytest.mark.describe("should truncate a collection")
+def test_truncate_vector_collection(db: AstraDB) -> None:
+    col = db.create_collection(TEST_TRUNCATED_VECTOR_COLLECTION_NAME, dimension=2)
+    try:
+        col.insert_one({"a": 1, "$vector": [0.1, 0.2]})
+        assert len(col.find()["data"]["documents"]) == 1
+        db.truncate_collection(TEST_TRUNCATED_VECTOR_COLLECTION_NAME)
+        assert len(col.find()["data"]["documents"]) == 0
+    finally:
+        db.delete_collection(TEST_TRUNCATED_VECTOR_COLLECTION_NAME)
+
+
+###
+###
+###
+
+
+
+@pytest.mark.describe("find_one, not through vector")
+def test_find_one_filter_novector(readonly_vector_collection: AstraDBCollection, cliff_uuid: str) -> None:
+    response = readonly_vector_collection.find_one(
+        filter={"_id": "1"},
+    )
+    document = response["data"]["document"]
+    assert document["text"] == "Sample entry number <1>"
+    assert document.keys() ^ {"_id", "text", "otherfield", "anotherfield", "$vector"} == set()
+
+    response_no = readonly_vector_collection.find_one(
+        filter={"_id": "Z"},
+    )
+    document_no = response_no["data"]["document"]
+    assert document_no is None
+
+
+@pytest.mark.describe("find, not through vector")
+def test_find_filter_novector(readonly_vector_collection: AstraDBCollection) -> None:
+    response_n2 = readonly_vector_collection.find(
+        filter={"anotherfield": "alpha"},
+    )
+    documents_n2 = response_n2["data"]["documents"]
+    assert isinstance(documents_n2, list)
+    assert {document["_id"] for document in documents_n2} == {"1", "2"}
+
+    response_n1 = readonly_vector_collection.find(
+        filter={"anotherfield": "alpha"},
+        options={"limit": 1},
+    )
+    documents_n1 = response_n1["data"]["documents"]
+    assert isinstance(documents_n1, list)
+    assert len(documents_n1) == 1
+    assert documents_n1[0]["_id"] in {"1", "2"}
+
+
+@pytest.mark.describe("obey projection in find and find_one")
+def test_find_find_one_projection(readonly_vector_collection: AstraDBCollection) -> None:
+    query = [0.2, 0.6]
+    sort = {"$vector": query}
+    options = {"limit": 1}
+
+    projs = [
+        None,
+        {},
+        {"text": 1},
+        {"$vector": 1},
+        {"text": 1, "$vector": 1},
+    ]
+    exp_fieldsets = [
+        {"$vector", "_id", "otherfield", "anotherfield", "text"},
+        {"$vector", "_id", "otherfield", "anotherfield", "text"},
+        {"_id", "text"},
+        {"$vector", "_id"},
+        {"$vector", "_id", "text"},
+    ]
+    for proj, exp_fields in zip(projs, exp_fieldsets):
+        response_n = readonly_vector_collection.find(sort=sort, options=options, projection=proj)
+        fields = set(response_n["data"]["documents"][0].keys())
+        assert fields == exp_fields
+        #
+        response_1 = readonly_vector_collection.find_one(sort=sort, projection=proj)
+        fields = set(response_1["data"]["document"].keys())
+        assert fields == exp_fields
+
+
+@pytest.mark.describe("find through vector")
+def test_find(readonly_vector_collection: AstraDBCollection) -> None:
+    sort = {"$vector": [0.2, 0.6]}
+    options = {"limit": 100}
+
+    response = readonly_vector_collection.find(sort=sort, options=options)
+    assert isinstance(response["data"]["documents"], list)
+
+
+@pytest.mark.describe("proper error raising in find")
+def test_find_error(readonly_vector_collection: AstraDBCollection) -> None:
+    """Wrong type of arguments should raise an API error (ValueError)."""
+    sort = {"$vector": "clearly not a list of floats!"}
+    options = {"limit": 100}
+
+    with pytest.raises(ValueError):
+        readonly_vector_collection.find(sort=sort, options=options)
+
+
+@pytest.mark.describe("find through vector, without explicit limit")
+def test_find_limitless(readonly_vector_collection: AstraDBCollection) -> None:
+    sort = {"$vector": [0.2, 0.6]}
+    projection = {"$vector": 1}
+
+    response = readonly_vector_collection.find(sort=sort, projection=projection)
+    assert response is not None
+    assert isinstance(response["data"]["documents"], list)
+
+###
+###
+###
 
 @pytest.mark.describe("should create a vector document")
 def test_create_document(collection: AstraDBCollection) -> None:
@@ -51,23 +179,6 @@ def test_create_document(collection: AstraDBCollection) -> None:
     res = collection.insert_one(document=json_query)
 
     assert res is not None
-
-
-@pytest.mark.describe("Find one document")
-def test_find_document(collection: AstraDBCollection, cliff_uuid: str) -> None:
-    document = collection.find_one(filter={"_id": cliff_uuid})
-    print("DOC", document)
-    assert document is not None
-
-
-@pytest.mark.describe("Vector find one document")
-def test_vector_find_document(collection: AstraDBCollection) -> None:
-    documents = collection.vector_find_one(
-        [0.15, 0.1, 0.1, 0.35, 0.55],
-    )
-
-    assert documents is not None
-    assert len(documents) > 0
 
 
 @pytest.mark.describe("should create multiple documents: nonvector")
@@ -228,94 +339,13 @@ def test_delete_one_document(collection: AstraDBCollection, cliff_uuid: str) -> 
 
 @pytest.mark.describe("should delete multiple documents")
 def test_delete_many_documents(collection: AstraDBCollection) -> None:
-    response = collection.delete_many(filter={"anotherfield": "delete_me"})
+    response = collection.delete_many(filter={"anotherfield": "alpha"})
     assert response is not None
 
-    documents = collection.find(filter={"anotherfield": "delete_me"})
+    documents = collection.find(filter={"anotherfield": "alpha"})
     assert not documents["data"]["documents"]
 
 
-@pytest.mark.describe("Find documents using vector search")
-def test_find_documents_vector(collection: AstraDBCollection) -> None:
-    sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
-    options = {"limit": 100}
-
-    document = collection.find(sort=sort, options=options)
-    assert document is not None
-
-
-@pytest.mark.describe("Vector find documents using vector search")
-def test_vector_find_documents_vector(collection: AstraDBCollection) -> None:
-    documents_sim_1 = collection.vector_find(
-        vector=[0.15, 0.1, 0.1, 0.35, 0.55],
-        limit=3,
-    )
-
-    assert documents_sim_1 is not None
-    assert isinstance(documents_sim_1, list)
-    assert len(documents_sim_1) > 0
-    assert "_id" in documents_sim_1[0]
-    assert "$vector" in documents_sim_1[0]
-    assert "name" in documents_sim_1[0]
-    assert "$similarity" in documents_sim_1[0]
-
-    documents_sim_2 = collection.vector_find(
-        vector=[0.15, 0.1, 0.1, 0.35, 0.55],
-        limit=3,
-        include_similarity=True,
-    )
-
-    assert documents_sim_2 is not None
-    assert isinstance(documents_sim_2, list)
-    assert len(documents_sim_2) > 0
-    assert "_id" in documents_sim_2[0]
-    assert "$vector" in documents_sim_2[0]
-    assert "name" in documents_sim_2[0]
-    assert "$similarity" in documents_sim_2[0]
-
-    documents_no_sim = collection.vector_find(
-        [0.15, 0.1, 0.1, 0.35, 0.55],
-        limit=3,
-        fields=["_id", "$vector"],
-        include_similarity=False,
-    )
-
-    assert documents_no_sim is not None
-    assert isinstance(documents_no_sim, list)
-    assert len(documents_no_sim) > 0
-    assert "_id" in documents_no_sim[0]
-    assert "$vector" in documents_no_sim[0]
-    assert "name" not in documents_no_sim[0]
-    assert "$similarity" not in documents_no_sim[0]
-
-
-@pytest.mark.describe("Find documents using vector search with error")
-def test_find_documents_vector_error(collection: AstraDBCollection) -> None:
-    # passing 'sort' as a tuple must raise an error by the API:
-    sort = ({"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]},)
-    options = {"limit": 100}
-
-    with pytest.raises(ValueError):
-        collection.find(sort=sort, options=options)  # type: ignore
-
-
-@pytest.mark.describe("Find documents using vector search and projection")
-def test_find_documents_vector_proj_limit_sim(collection: AstraDBCollection) -> None:
-    sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
-    options = {"limit": 100}
-    projection = {"$vector": 1}
-
-    document = collection.find(sort=sort, options=options, projection=projection)
-    assert document is not None
-
-
-@pytest.mark.describe("Find a document using vector search and projection")
-def test_find_documents_vector_proj_nolimit(collection: AstraDBCollection) -> None:
-    sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
-    projection = {"$vector": 1}
-
-    document = collection.find(sort=sort, options={}, projection=projection)
-    assert document is not None
 
 
 @pytest.mark.describe("Find one and update with vector search")
@@ -331,87 +361,6 @@ def test_find_one_and_update_vector(collection: AstraDBCollection) -> None:
     assert document["data"]["document"] is not None
 
 
-@pytest.mark.describe("Vector find documents using vector search")
-def test_vector_find_one_and_update_vector(collection: AstraDBCollection) -> None:
-    update = {"$set": {"status": "active"}}
-
-    collection.vector_find_one_and_update(
-        vector=[0.15, 0.1, 0.1, 0.35, 0.55],
-        update=update,
-    )
-
-    document = collection.vector_find_one(
-        vector=[0.15, 0.1, 0.1, 0.35, 0.55],
-        filter={"status": "active"},
-    )
-
-    assert document is not None
-
-
-@pytest.mark.describe("Find one and replace with vector search")
-def test_find_one_and_replace_vector(
-    collection: AstraDBCollection, vv_uuid: str
-) -> None:
-    sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
-    replacement = {
-        "_id": vv_uuid,
-        "name": "Vision Vector Frame",
-        "description": "Vision Vector Frame - A deep learning display that controls your mood",
-        "$vector": [0.1, 0.05, 0.08, 0.3, 0.6],
-        "status": "inactive",
-    }
-    options = {"returnDocument": "after"}
-
-    collection.find_one_and_replace(sort=sort, replacement=replacement, options=options)
-    document = collection.find_one(filter={"name": "Vision Vector Frame"})
-    assert document["data"]["document"] is not None
-
-
-@pytest.mark.describe("Vector find documents using vector search")
-def test_vector_find_one_and_replace_vector(
-    collection: AstraDBCollection, vv_uuid: str
-) -> None:
-    replacement = {
-        "_id": vv_uuid,
-        "name": "Vision Vector Frame 2",
-        "description": "Vision Vector Frame - A deep learning display that controls your mood",
-        "$vector": [0.1, 0.05, 0.08, 0.3, 0.6],
-        "status": "inactive",
-    }
-
-    collection.vector_find_one_and_replace(
-        vector=[0.15, 0.1, 0.1, 0.35, 0.55],
-        replacement=replacement,
-    )
-
-    document = collection.vector_find_one(
-        vector=[0.15, 0.1, 0.1, 0.35, 0.55],
-        filter={"name": "Vision Vector Frame 2"},
-    )
-
-    assert document is not None
-
-
-@pytest.mark.describe("should find documents, non-vector")
-def test_find_documents(collection: AstraDBCollection) -> None:
-    user_id = str(uuid.uuid4())
-    collection.insert_one(
-        document={
-            "_id": user_id,
-            "first_name": f"Cliff-{user_id}",
-            "last_name": "Wicklow",
-        },
-    )
-    user_id_2 = str(uuid.uuid4())
-    collection.insert_one(
-        document={
-            "_id": user_id_2,
-            "first_name": f"Cliff-{user_id}",
-            "last_name": "Danger",
-        },
-    )
-    document = collection.find(filter={"first_name": f"Cliff-{user_id}"})
-    assert document is not None
 
 
 @pytest.mark.describe("should find a single document, non-vector")
@@ -441,63 +390,6 @@ def test_find_one_document(collection: AstraDBCollection) -> None:
     assert document["data"]["document"] is None
 
 
-@pytest.mark.describe("obey projection in find")
-def test_find_projection(projection_collection: AstraDBCollection) -> None:
-    query = [0.15, 0.1, 0.1, 0.35, 0.55]
-    sort = {"$vector": query}
-    options = {"limit": 1}
-
-    projs = [
-        None,
-        {},
-        {"text": 1},
-        {"$vector": 1},
-        {"text": 1, "$vector": 1},
-    ]
-    exp_fieldsets = [
-        {"$vector", "_id", "otherfield", "anotherfield", "text"},
-        {"$vector", "_id", "otherfield", "anotherfield", "text"},
-        {"_id", "text"},
-        {"$vector", "_id"},
-        {"$vector", "_id", "text"},
-    ]
-    for proj, exp_fields in zip(projs, exp_fieldsets):
-        docs = projection_collection.find(sort=sort, options=options, projection=proj)
-        fields = set(docs["data"]["documents"][0].keys())
-        assert fields == exp_fields
-
-
-@pytest.mark.describe("obey projection in vector_find")
-def test_vector_find_projection(projection_collection: AstraDBCollection) -> None:
-    query = [0.15, 0.1, 0.1, 0.35, 0.55]
-
-    req_fieldsets = [
-        None,
-        set(),
-        {"text"},
-        {"$vector"},
-        {"text", "$vector"},
-    ]
-    exp_fieldsets = [
-        {"$vector", "_id", "otherfield", "anotherfield", "text"},
-        {"$vector", "_id", "otherfield", "anotherfield", "text"},
-        {"_id", "text"},
-        {"$vector", "_id"},
-        {"$vector", "_id", "text"},
-    ]
-    for include_similarity in [True, False]:
-        for req_fields, exp_fields0 in zip(req_fieldsets, exp_fieldsets):
-            vdocs = projection_collection.vector_find(
-                query,
-                limit=1,
-                fields=list(req_fields) if req_fields is not None else req_fields,
-                include_similarity=include_similarity,
-            )
-            if include_similarity:
-                exp_fields = exp_fields0 | {"$similarity"}
-            else:
-                exp_fields = exp_fields0
-            assert set(vdocs[0].keys()) == exp_fields
 
 
 @pytest.mark.describe("upsert a document")
@@ -562,30 +454,3 @@ def test_functions(collection: AstraDBCollection) -> None:
     collection.push(filter={"_id": user_id}, push=push, options=options)
     doc_2 = collection.find_one(filter={"_id": user_id})
     assert doc_2["data"]["document"]["_id"] == user_id
-
-
-@pytest.mark.describe("should truncate a collection")
-def test_truncate_collection(db: AstraDB, collection: AstraDBCollection) -> None:
-    res = collection.vector_find([0.1, 0.1, 0.2, 0.5, 1], limit=3)
-
-    assert len(res) > 0
-
-    db.truncate_collection(collection_name=collection.collection_name)
-
-    res = collection.vector_find([0.1, 0.1, 0.2, 0.5, 1], limit=3)
-
-    assert len(res) == 0
-
-
-@pytest.mark.describe("should truncate a nonvector collection")
-def test_truncate_nonvector_collection(db: AstraDB) -> None:
-    col = db.create_collection("test_nonvector")
-    col.insert_one({"a": 1})
-    assert len(col.find()["data"]["documents"]) == 1
-    db.truncate_collection("test_nonvector")
-    assert len(col.find()["data"]["documents"]) == 0
-    db.delete_collection("test_nonvector")
-
-
-
-

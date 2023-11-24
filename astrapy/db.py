@@ -152,12 +152,16 @@ class AstraDBCollection:
         self, itm: API_DOC, include_similarity: bool = True
     ) -> API_DOC:
         # Clean away the returned similarity score if so desired
-        if include_similarity:
-            if "$similarity" not in itm:
-                raise ValueError("Expected '$similarity' not found in document.")
+        if itm is None:
+            # TODO
             return itm
         else:
-            return {k: v for k, v in itm.items() if k != "$similarity"}
+            if include_similarity:
+                if "$similarity" not in itm:
+                    raise ValueError("Expected '$similarity' not found in document.")
+                return itm
+            else:
+                return {k: v for k, v in itm.items() if k != "$similarity"}
 
     def get(self, path: Optional[str] = None) -> Optional[API_RESPONSE]:
         """
