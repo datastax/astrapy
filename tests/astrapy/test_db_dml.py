@@ -14,191 +14,27 @@
 
 import uuid
 import logging
-import os
-import json
-from typing import Iterable
 
 import pytest
 from faker import Faker
-from dotenv import load_dotenv
 
 from astrapy.db import AstraDB, AstraDBCollection
 from astrapy.defaults import DEFAULT_KEYSPACE_NAME
-from astrapy.types import API_DOC
 
+TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME = "ephemeral_v_col"
+TEST_CREATE_DELETE_NONVECTOR_COLLECTION_NAME = "ephemeral_non_v_col"
 
 logger = logging.getLogger(__name__)
 fake = Faker()
 
 
-load_dotenv()
+@pytest.mark.describe("should fail truncating a non-existent collection")
+def test_truncate_collection_fail(db: AstraDB) -> None:
+    with pytest.raises(ValueError):
+        db.truncate_collection("this$does%not exist!!!")
 
 
-ASTRA_DB_APPLICATION_TOKEN = os.environ.get("ASTRA_DB_APPLICATION_TOKEN")
-ASTRA_DB_API_ENDPOINT = os.environ.get("ASTRA_DB_API_ENDPOINT")
-ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
 
-TEST_COLLECTION_NAME = "test_collection"
-TEST_FIXTURE_COLLECTION_NAME = "test_fixture_collection"
-TEST_FIXTURE_PROJECTION_COLLECTION_NAME = "test_projection_collection"
-TEST_NONVECTOR_COLLECTION_NAME = "test_nonvector_collection"
-
-
-@pytest.fixture(scope="module")
-def cliff_uuid() -> str:
-    return str(uuid.uuid4())
-
-
-@pytest.fixture(scope="module")
-def vv_uuid() -> str:
-    return str(uuid.uuid4())
-
-
-@pytest.fixture(scope="module")
-def db() -> AstraDB:
-    astra_db = AstraDB(
-        token=ASTRA_DB_APPLICATION_TOKEN,
-        api_endpoint=ASTRA_DB_API_ENDPOINT,
-        namespace=ASTRA_DB_KEYSPACE,
-    )
-
-    return astra_db
-
-
-@pytest.fixture(scope="module")
-def cliff_data(cliff_uuid: str) -> API_DOC:
-    json_query = {
-        "_id": cliff_uuid,
-        "first_name": "Cliff",
-        "last_name": "Wicklow",
-    }
-
-    return json_query
-
-
-@pytest.fixture(scope="module")
-def collection(db: AstraDB, cliff_data: API_DOC) -> Iterable[AstraDBCollection]:
-    db.delete_collection(collection_name=TEST_FIXTURE_COLLECTION_NAME)
-    collection = db.create_collection(
-        collection_name=TEST_FIXTURE_COLLECTION_NAME, dimension=5
-    )
-    collection.insert_one(document=cliff_data)
-
-    yield collection
-
-    db.delete_collection(collection_name=TEST_FIXTURE_COLLECTION_NAME)
-
-
-@pytest.fixture(scope="module")
-def projection_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
-    collection = db.create_collection(
-        collection_name=TEST_FIXTURE_PROJECTION_COLLECTION_NAME, dimension=5
-    )
-
-    collection.insert_many(
-        [
-            {
-                "_id": "1",
-                "text": "Sample entry number <1>",
-                "otherfield": {"subfield": "x1y"},
-                "anotherfield": "delete_me",
-                "$vector": [0.1, 0.15, 0.3, 0.12, 0.05],
-            },
-            {
-                "_id": "2",
-                "text": "Sample entry number <2>",
-                "otherfield": {"subfield": "x2y"},
-                "anotherfield": "delete_me",
-                "$vector": [0.45, 0.09, 0.01, 0.2, 0.11],
-            },
-            {
-                "_id": "3",
-                "text": "Sample entry number <3>",
-                "otherfield": {"subfield": "x3y"},
-                "anotherfield": "dont_delete_me",
-                "$vector": [0.1, 0.05, 0.08, 0.3, 0.6],
-            },
-        ],
-    )
-
-    yield collection
-
-    db.delete_collection(collection_name=TEST_FIXTURE_PROJECTION_COLLECTION_NAME)
-
-
-@pytest.mark.describe("should confirm path handling in constructor")
-def test_path_handling() -> None:
-    astra_db_1 = AstraDB(
-        token=ASTRA_DB_APPLICATION_TOKEN,
-        api_endpoint=ASTRA_DB_API_ENDPOINT,
-        namespace=ASTRA_DB_KEYSPACE,
-    )
-
-    url_1 = astra_db_1.base_path
-
-    astra_db_2 = AstraDB(
-        token=ASTRA_DB_APPLICATION_TOKEN,
-        api_endpoint=ASTRA_DB_API_ENDPOINT,
-        namespace=ASTRA_DB_KEYSPACE,
-        api_version="v1",
-    )
-
-    url_2 = astra_db_2.base_path
-
-    astra_db_3 = AstraDB(
-        token=ASTRA_DB_APPLICATION_TOKEN,
-        api_endpoint=ASTRA_DB_API_ENDPOINT,
-        namespace=ASTRA_DB_KEYSPACE,
-        api_version="/v1",
-    )
-
-    url_3 = astra_db_3.base_path
-
-    astra_db_4 = AstraDB(
-        token=ASTRA_DB_APPLICATION_TOKEN,
-        api_endpoint=ASTRA_DB_API_ENDPOINT,
-        namespace=ASTRA_DB_KEYSPACE,
-        api_version="/v1/",
-    )
-
-    url_4 = astra_db_4.base_path
-
-    assert url_1 == url_2 == url_3 == url_4
-
-
-@pytest.mark.describe("should create a vector collection")
-def test_create_collection(db: AstraDB) -> None:
-    res = db.create_collection(collection_name=TEST_COLLECTION_NAME, dimension=5)
-    print("CREATE", res)
-    assert isinstance(res, AstraDBCollection)
-
-
-@pytest.mark.describe("should create and use a non-vector collection")
-def test_nonvector_collection(db: AstraDB) -> None:
-    col = db.create_collection(TEST_NONVECTOR_COLLECTION_NAME)
-    col.insert_one({"_id": "first", "name": "a"})
-    col.insert_many(
-        [
-            {"_id": "second", "name": "b", "room": 7},
-            {"name": "c", "room": 7},
-            {"_id": "last", "type": "unnamed", "room": 7},
-        ]
-    )
-    docs = col.find(filter={"room": 7}, projection={"name": 1})
-    ids = [doc["_id"] for doc in docs["data"]["documents"]]
-    assert len(ids) == 3
-    assert "second" in ids
-    assert "first" not in ids
-    auto_id = [id for id in ids if id not in {"second", "last"}][0]
-    col.delete(auto_id)
-    assert col.find_one(filter={"name": "c"})["data"]["document"] is None
-    db.delete_collection(TEST_NONVECTOR_COLLECTION_NAME)
-
-
-@pytest.mark.describe("should get all collections")
-def test_get_collections(db: AstraDB) -> None:
-    res = db.get_collections()
-    assert res["status"]["collections"] is not None
 
 
 @pytest.mark.describe("should create a vector document")
@@ -373,9 +209,6 @@ def test_replace_document(collection: AstraDBCollection, cliff_uuid: str) -> Non
         filter={"_id": cliff_uuid}, projection={"addresses.work.city": 1}
     )
 
-    print("HOME", json.dumps(document_2, indent=4))
-
-
 @pytest.mark.describe("should delete a subdocument")
 def test_delete_subdocument(collection: AstraDBCollection, cliff_uuid: str) -> None:
     response = collection.delete_subdocument(id=cliff_uuid, subdoc="addresses")
@@ -413,23 +246,47 @@ def test_find_documents_vector(collection: AstraDBCollection) -> None:
 
 @pytest.mark.describe("Vector find documents using vector search")
 def test_vector_find_documents_vector(collection: AstraDBCollection) -> None:
-    documents = collection.vector_find(vector=[0.15, 0.1, 0.1, 0.35, 0.55], limit=3)
+    documents_sim_1 = collection.vector_find(
+        vector=[0.15, 0.1, 0.1, 0.35, 0.55],
+        limit=3,
+    )
 
-    assert documents is not None
+    assert documents_sim_1 is not None
+    assert isinstance(documents_sim_1, list)
+    assert len(documents_sim_1) > 0
+    assert "_id" in documents_sim_1[0]
+    assert "$vector" in documents_sim_1[0]
+    assert "name" in documents_sim_1[0]
+    assert "$similarity" in documents_sim_1[0]
 
-    documents = collection.vector_find(
+    documents_sim_2 = collection.vector_find(
+        vector=[0.15, 0.1, 0.1, 0.35, 0.55],
+        limit=3,
+        include_similarity=True,
+    )
+
+    assert documents_sim_2 is not None
+    assert isinstance(documents_sim_2, list)
+    assert len(documents_sim_2) > 0
+    assert "_id" in documents_sim_2[0]
+    assert "$vector" in documents_sim_2[0]
+    assert "name" in documents_sim_2[0]
+    assert "$similarity" in documents_sim_2[0]
+
+    documents_no_sim = collection.vector_find(
         [0.15, 0.1, 0.1, 0.35, 0.55],
         limit=3,
         fields=["_id", "$vector"],
         include_similarity=False,
     )
 
-    assert documents is not None
-    assert len(documents) > 0
-    assert "_id" in documents[0]
-    assert "$vector" in documents[0]
-    assert "name" not in documents[0]
-    assert "$similarity" not in documents[0]
+    assert documents_no_sim is not None
+    assert isinstance(documents_no_sim, list)
+    assert len(documents_no_sim) > 0
+    assert "_id" in documents_no_sim[0]
+    assert "$vector" in documents_no_sim[0]
+    assert "name" not in documents_no_sim[0]
+    assert "$similarity" not in documents_no_sim[0]
 
 
 @pytest.mark.describe("Find documents using vector search with error")
@@ -446,7 +303,7 @@ def test_find_documents_vector_error(collection: AstraDBCollection) -> None:
 def test_find_documents_vector_proj_limit_sim(collection: AstraDBCollection) -> None:
     sort = {"$vector": [0.15, 0.1, 0.1, 0.35, 0.55]}
     options = {"limit": 100}
-    projection = {"$vector": 1, "$similarity": 1}
+    projection = {"$vector": 1}
 
     document = collection.find(sort=sort, options=options, projection=projection)
     assert document is not None
@@ -730,13 +587,5 @@ def test_truncate_nonvector_collection(db: AstraDB) -> None:
     db.delete_collection("test_nonvector")
 
 
-@pytest.mark.describe("should fail truncating a non-existent collection")
-def test_truncate_collection_fail(db: AstraDB) -> None:
-    with pytest.raises(ValueError):
-        db.truncate_collection("this$does%not exists!!!")
 
 
-@pytest.mark.describe("should delete a collection")
-def test_delete_collection(db: AstraDB) -> None:
-    res = db.delete_collection(collection_name=TEST_COLLECTION_NAME)
-    assert res is not None

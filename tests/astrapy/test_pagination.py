@@ -34,7 +34,7 @@ ASTRA_DB_API_ENDPOINT = os.environ.get("ASTRA_DB_API_ENDPOINT")
 ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
 
 
-TEST_COLLECTION_NAME = "test_collection"
+PAG_TEST_COLLECTION_NAME = "pag_test_collection"
 INSERT_BATCH_SIZE = 20  # max 20, fixed by API constraints
 N = 200  # must be EVEN
 FIND_LIMIT = 183  # Keep this > 20 and <= N to actually put pagination to test
@@ -59,7 +59,7 @@ def _batch_iterable(iterable: Iterable[T], batch_size: int) -> Iterable[Iterable
 
 
 @pytest.fixture(scope="module")
-def test_collection() -> Iterable[AstraDBCollection]:
+def pag_test_collection() -> Iterable[AstraDBCollection]:
     astra_db = AstraDB(
         token=ASTRA_DB_APPLICATION_TOKEN,
         api_endpoint=ASTRA_DB_API_ENDPOINT,
@@ -67,7 +67,7 @@ def test_collection() -> Iterable[AstraDBCollection]:
     )
 
     astra_db_collection = astra_db.create_collection(
-        collection_name=TEST_COLLECTION_NAME, dimension=2
+        collection_name=PAG_TEST_COLLECTION_NAME, dimension=2
     )
 
     if int(os.getenv("TEST_PAGINATION_SKIP_INSERTION", "0")) == 0:
@@ -80,17 +80,17 @@ def test_collection() -> Iterable[AstraDBCollection]:
         assert inserted_ids == {str(i) for i in range(N)}
     yield astra_db_collection
     if int(os.getenv("TEST_PAGINATION_SKIP_DELETE_COLLECTION", "0")) == 0:
-        _ = astra_db.delete_collection(collection_name=TEST_COLLECTION_NAME)
+        _ = astra_db.delete_collection(collection_name=PAG_TEST_COLLECTION_NAME)
 
 
 @pytest.mark.describe(
     "should retrieve the required amount of documents, all different, through pagination"
 )
-def test_find_paginated(test_collection: AstraDBCollection) -> None:
+def test_find_paginated(pag_test_collection: AstraDBCollection) -> None:
     options = {"limit": FIND_LIMIT}
     projection = {"$vector": 0}
 
-    paginated_documents = test_collection.paginated_find(
+    paginated_documents = pag_test_collection.paginated_find(
         projection=projection,
         options=options,
     )
