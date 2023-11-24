@@ -517,7 +517,11 @@ class AstraDBCollection:
             sort (dict, optional): Specifies the order in which to return the document.
             options (dict, optional): Additional options for the query.
         Returns:
-            dict: The found document or None if no matching document is found.
+            dict: the response, either
+                {"data": {"document": <DOCUMENT> }}
+            or
+                {"data": {"document": None}}
+            depending on whether a matching document is found or not.
         """
         json_query = make_payload(
             top_level="findOne",
