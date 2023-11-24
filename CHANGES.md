@@ -1,5 +1,14 @@
 # CHANGES.txt
 
+## Version 0.6.2
+
+### What's Changed
+
+- the docstring for find_one was slightly misleading by @hemidactylus in <https://github.com/datastax/astrapy/pull/121>
+- Fix bug in vector_ methods and rearrange tests by @hemidactylus in <https://github.com/datastax/astrapy/pull/123>
+
+**Full Changelog**: <https://github.com/datastax/astrapy/compare/v0.6.1...v0.6.2>
+
 ## Version 0.6.1
 
 ### Added
