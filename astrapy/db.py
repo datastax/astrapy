@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import json
 from functools import partial
-from typing import Any, cast, Dict, Iterable, List, Optional, Tuple
+from typing import Any, cast, Dict, Iterable, List, Optional, Tuple, Union
 
 import httpx
 
@@ -148,21 +148,6 @@ class AstraDBCollection:
 
         return sort, projection
 
-    def _finalize_document_from_find(
-        self, itm: API_DOC, include_similarity: bool = True
-    ) -> API_DOC:
-        # Clean away the returned similarity score if so desired
-        if itm is None:
-            # TODO
-            return itm
-        else:
-            if include_similarity:
-                if "$similarity" not in itm:
-                    raise ValueError("Expected '$similarity' not found in document.")
-                return itm
-            else:
-                return {k: v for k, v in itm.items() if k != "$similarity"}
-
     def get(self, path: Optional[str] = None) -> Optional[API_RESPONSE]:
         """
         Retrieve a document from the collection by its path.
@@ -245,15 +230,7 @@ class AstraDBCollection:
             },
         )
 
-        # Post-process the return
-        find_result = [
-            self._finalize_document_from_find(
-                raw_doc, include_similarity=include_similarity
-            )
-            for raw_doc in raw_find_result["data"]["documents"]
-        ]
-
-        return find_result
+        return cast(List[API_DOC], raw_find_result["data"]["documents"])
 
     @staticmethod
     def paginate(
@@ -402,7 +379,7 @@ class AstraDBCollection:
         *,
         filter: Optional[Dict[str, Any]] = None,
         fields: Optional[List[str]] = None,
-    ) -> API_DOC:
+    ) -> Union[API_DOC, None]:
         """
         Perform a vector-based search and replace the first matched document.
         Args:
@@ -411,7 +388,7 @@ class AstraDBCollection:
             filter (dict, optional): Criteria to filter documents.
             fields (list, optional): Specifies the fields to return in the result.
         Returns:
-            dict: The result of the vector find and replace operation.
+            dict or None: either the matched document or None if nothing found
         """
         # Pre-process the included arguments
         sort, _ = self._pre_process_find(
@@ -426,13 +403,7 @@ class AstraDBCollection:
             sort=sort,
         )
 
-        # Post-process the return
-        find_result = self._finalize_document_from_find(
-            raw_find_result["data"]["document"],
-            include_similarity=False,
-        )
-
-        return find_result
+        return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
 
     def find_one_and_update(
         self,
@@ -474,7 +445,7 @@ class AstraDBCollection:
         *,
         filter: Optional[Dict[str, Any]] = None,
         fields: Optional[List[str]] = None,
-    ) -> API_DOC:
+    ) -> Union[API_DOC, None]:
         """
         Perform a vector-based search and update the first matched document.
         Args:
@@ -483,7 +454,8 @@ class AstraDBCollection:
             filter (dict, optional): Criteria to filter documents before applying the vector search.
             fields (list, optional): Specifies the fields to return in the updated document.
         Returns:
-            dict: The result of the vector-based find and update operation.
+            dict or None: The result of the vector-based find and
+                update operation, or None if nothing found
         """
         # Pre-process the included arguments
         sort, _ = self._pre_process_find(
@@ -498,13 +470,7 @@ class AstraDBCollection:
             sort=sort,
         )
 
-        # Post-process the return
-        find_result = self._finalize_document_from_find(
-            raw_find_result["data"]["document"],
-            include_similarity=False,
-        )
-
-        return find_result
+        return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
 
     def find_one(
         self,
@@ -548,7 +514,7 @@ class AstraDBCollection:
         filter: Optional[Dict[str, Any]] = None,
         fields: Optional[List[str]] = None,
         include_similarity: bool = True,
-    ) -> API_DOC:
+    ) -> Union[API_DOC, None]:
         """
         Perform a vector-based search to find a single document in the collection.
         Args:
@@ -557,7 +523,7 @@ class AstraDBCollection:
             fields (list, optional): Specifies the fields to return in the result.
             include_similarity (bool, optional): Whether to include similarity score in the result.
         Returns:
-            dict: The found document or None if no matching document is found.
+            dict or None: The found document or None if no matching document is found.
         """
         # Pre-process the included arguments
         sort, projection = self._pre_process_find(
@@ -573,13 +539,7 @@ class AstraDBCollection:
             options={"includeSimilarity": include_similarity},
         )
 
-        # Post-process the return
-        find_result = self._finalize_document_from_find(
-            raw_find_result["data"]["document"],
-            include_similarity=include_similarity,
-        )
-
-        return find_result
+        return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
 
     def insert_one(
         self, document: API_DOC, failures_allowed: bool = False

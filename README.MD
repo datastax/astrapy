@@ -384,7 +384,9 @@ Ensure you provide all required environment variables (you can do so by editing 
 export ASTRA_DB_APPLICATION_TOKEN="..."
 export ASTRA_DB_API_ENDPOINT="..."
 export ASTRA_DB_KEYSPACE="..."              # Optional
+
 export ASTRA_DB_ID="..."                    # For the Ops testing only
+export ASTRA_DB_OPS_APPLICATION_TOKEN="..." # Ops-only, falls back to the other token
 ```
 
 then you can run:
