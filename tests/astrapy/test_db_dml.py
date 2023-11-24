@@ -183,7 +183,7 @@ def test_find_limitless(readonly_vector_collection: AstraDBCollection) -> None:
 
 
 @pytest.mark.describe("insert_one, w/out _id, w/out vector")
-def test_create_document_0(writable_vector_collection: AstraDBCollection) -> None:
+def test_create_document(writable_vector_collection: AstraDBCollection) -> None:
     i_vector = [0.3, 0.5]
     id_v_i = str(uuid.uuid4())
     result_v_i = writable_vector_collection.insert_one(
