@@ -19,7 +19,7 @@ import httpx
 
 from astrapy.utils import make_request, http_methods
 from astrapy.defaults import DEFAULT_DEV_OPS_API_VERSION, DEFAULT_DEV_OPS_URL
-from astrapy.types import API_RESPONSE
+from astrapy.types import API_RESPONSE, OPS_API_RESPONSE
 
 
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ class AstraDBOps:
         path: str,
         options: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         req_result = self._ops_request(
             method=method,
             path=path,
@@ -77,11 +77,13 @@ class AstraDBOps:
             json_data=json_data,
         )
         return cast(
-            API_RESPONSE,
+            OPS_API_RESPONSE,
             req_result.json(),
         )
 
-    def get_databases(self, options: Optional[Dict[str, Any]] = None) -> API_RESPONSE:
+    def get_databases(
+        self, options: Optional[Dict[str, Any]] = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve a list of databases.
 
@@ -89,7 +91,7 @@ class AstraDBOps:
             options (dict, optional): Additional options for the request.
 
         Returns:
-            dict: A JSON response containing the list of databases.
+            list: a JSON list of dictionaries, one per database.
         """
         response = self._json_ops_request(
             method=http_methods.GET, path="/databases", options=options

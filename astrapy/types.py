@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Dict, Protocol
+from typing import Any, Dict, Protocol, Union
 
 # A type for:
 #     "dict from parsing a JSON from the API responses"
@@ -7,6 +7,10 @@ from typing import Any, Dict, Protocol
 # (e.g. 'null' is valid JSON), but the JSON API are committed to always
 # return JSON objects with a mapping as top-level.
 API_RESPONSE = Dict[str, Any]
+
+# The DevOps API has a broader return type in that some calls return
+# a list at top level (e.g. "get databases")
+OPS_API_RESPONSE = Union[API_RESPONSE, Dict[str, Any]]
 
 # A type for:
 #     "document stored on the collections"
