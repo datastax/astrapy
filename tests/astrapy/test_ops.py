@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import pytest
 import logging
 import os
-import uuid
+from typing import Any, cast, Dict, List
 
 from dotenv import load_dotenv
 
@@ -39,12 +40,22 @@ ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
 ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION", DEFAULT_REGION)
 
 
+def find_new_name(existing: List[str], prefix: str) -> str:
+    candidate_name = prefix
+    for idx in itertools.count():
+        candidate_name = f"{prefix}{idx}"
+        if candidate_name not in existing:
+            break
+    return candidate_name
+
+
 @pytest.fixture
 def devops_client() -> AstraDBOps:
     return AstraDBOps(token=ASTRA_DB_APPLICATION_TOKEN)
 
 
-# For now we skip these tests due to creation of DBs
+# In the regular CI we skip these Ops tests (slow and require manual care).
+# To maintainers: please run them now and them while we figure out automation.
 @pytest.mark.skipif(
     int(os.environ.get("TEST_ASTRADBOPS", "0")) == 0,
     reason="Ops tests not explicitly requested",
@@ -61,8 +72,16 @@ class TestAstraDBOps:
 
     @pytest.mark.describe("should create a database")
     def test_create_database(self, devops_client: AstraDBOps) -> None:
+        pre_databases = cast(List[Dict[str, Any]], devops_client.get_databases())
+        pre_database_names = [db_item["info"]["name"] for db_item in pre_databases]
+
+        new_database_name = find_new_name(
+            existing=pre_database_names,
+            prefix="vector_create_test_",
+        )
+
         database_definition = {
-            "name": "vector_test_create",
+            "name": new_database_name,
             "tier": "serverless",
             "cloudProvider": "GCP",
             "keyspace": ASTRA_DB_KEYSPACE,
@@ -81,15 +100,22 @@ class TestAstraDBOps:
         ASTRA_TEMP_DB = response["id"]
 
         check_db = devops_client.get_database(database=ASTRA_TEMP_DB)
+        # actually, if we get to this (the above didn't error) we're good...
         assert check_db is not None
-
-        term_response = devops_client.terminate_database(database=ASTRA_TEMP_DB)
-        assert term_response is None
 
     @pytest.mark.describe("should create a keyspace")
     def test_create_keyspace(self, devops_client: AstraDBOps) -> None:
+        target_db = devops_client.get_database(database=ASTRA_DB_ID)
+        pre_keyspaces = target_db["info"]["keyspaces"]
+
+        new_keyspace_name = find_new_name(
+            existing=pre_keyspaces,
+            prefix="keyspace_create_test_",
+        )
+
         response = devops_client.create_keyspace(
-            keyspace="test_namespace", database=str(uuid.uuid4())
+            keyspace=new_keyspace_name, database=ASTRA_DB_ID
         )
 
         assert response is not None
+        assert response.status_code == 201  # Created

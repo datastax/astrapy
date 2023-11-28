@@ -17,11 +17,12 @@ Tests for the `db.py` parts on data manipulation `vector_*` methods
 """
 
 import logging
+from typing import cast
 
 import pytest
 
 from astrapy.db import AstraDBCollection
-
+from astrapy.types import API_DOC
 
 logger = logging.getLogger(__name__)
 
@@ -268,10 +269,10 @@ def test_vector_find_one_and_replace(
     )
 
     assert document2 is not None
-    assert document2["_id"] == replace_response1["_id"]
-    assert document2["text"] == replacement1["text"]
-    assert "added_field" not in document2
-    assert document2["different_added_field"] is False
+    assert cast(API_DOC, document2)["_id"] == cast(API_DOC, replace_response1)["_id"]
+    assert cast(API_DOC, document2)["text"] == replacement1["text"]
+    assert "added_field" not in cast(API_DOC, document2)
+    assert cast(API_DOC, document2)["different_added_field"] is False
 
     replace_response_no = disposable_vector_collection.vector_find_one_and_replace(
         vector=[0.1, 0.9],
