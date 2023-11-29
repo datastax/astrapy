@@ -22,6 +22,7 @@ import logging
 from typing import List
 
 import pytest
+from astrapy.api import APIRequestError
 
 from astrapy.types import API_DOC
 from astrapy.db import AstraDB, AstraDBCollection
@@ -168,7 +169,7 @@ def test_find_error(readonly_vector_collection: AstraDBCollection) -> None:
     sort = {"$vector": "clearly not a list of floats!"}
     options = {"limit": 100}
 
-    with pytest.raises(ValueError):
+    with pytest.raises(APIRequestError):
         readonly_vector_collection.find(sort=sort, options=options)
 
 
@@ -216,7 +217,7 @@ def test_create_document(writable_vector_collection: AstraDBCollection) -> None:
         == 2
     )
 
-    with pytest.raises(ValueError):
+    with pytest.raises(APIRequestError):
         result_n_i = writable_vector_collection.insert_one(
             {
                 "_id": id_n_i,

@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import annotations
+
 import logging
 import json
+import httpx
+
 from functools import partial
 from typing import Any, cast, Dict, Iterable, List, Optional, Tuple, Union
 
-import httpx
-
+from astrapy.api import APIRequestHandler
 from astrapy.defaults import (
     DEFAULT_AUTH_HEADER,
     DEFAULT_JSON_API_PATH,
@@ -79,7 +81,7 @@ class AstraDBCollection:
         skip_error_check: bool = False,
         **kwargs: Any,
     ) -> API_RESPONSE:
-        response = make_request(
+        request_handler = APIRequestHandler(
             client=self.client,
             base_url=self.astra_db.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
@@ -88,13 +90,13 @@ class AstraDBCollection:
             path=path,
             json_data=json_data,
             url_params=url_params,
+            skip_error_check=skip_error_check,
+            **kwargs,
         )
-        responsebody = cast(API_RESPONSE, response.json())
 
-        if not skip_error_check and "errors" in responsebody:
-            raise ValueError(json.dumps(responsebody["errors"]))
-        else:
-            return responsebody
+        result = request_handler.request()
+
+        return result
 
     def _get(
         self, path: Optional[str] = None, options: Optional[Dict[str, Any]] = None
