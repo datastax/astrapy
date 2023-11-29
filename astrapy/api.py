@@ -46,9 +46,14 @@ class APIRequestHandler:
                 json_data=self.json_data,
                 url_params=self.url_params,
             )
+
             return self._process_response(response)
         except httpx.RequestError as e:
             raise APIRequestError(f"An error occurred while making the request: {e}")
+        except httpx.HTTPStatusError as e:
+            raise APIRequestError(
+                f"The API returned an error while handling the request: {e}"
+            )
 
     def _process_response(self, response: httpx.Response):
         if (

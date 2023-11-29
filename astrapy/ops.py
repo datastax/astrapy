@@ -64,9 +64,9 @@ class AstraDBOps:
             url_params=_options,
         )
 
-        result = request_handler.request()
+        response = request_handler.request()
 
-        return result
+        return response
 
     def _json_ops_request(
         self,

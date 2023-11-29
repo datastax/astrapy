@@ -94,9 +94,9 @@ class AstraDBCollection:
             **kwargs,
         )
 
-        result = request_handler.request()
+        response = request_handler.request()
 
-        return result
+        return response
 
     def _get(
         self, path: Optional[str] = None, options: Optional[Dict[str, Any]] = None
@@ -779,7 +779,7 @@ class AstraDB:
         url_params: Optional[Dict[str, Any]] = None,
         skip_error_check: bool = False,
     ) -> API_RESPONSE:
-        response = make_request(
+        request_handler = APIRequestHandler(
             client=self.client,
             base_url=self.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
@@ -788,14 +788,12 @@ class AstraDB:
             path=path,
             json_data=json_data,
             url_params=url_params,
+            skip_error_check=skip_error_check,
         )
 
-        responsebody = cast(API_RESPONSE, response.json())
+        response = request_handler.request()
 
-        if not skip_error_check and "errors" in responsebody:
-            raise ValueError(json.dumps(responsebody["errors"]))
-        else:
-            return responsebody
+        return response
 
     def collection(self, collection_name: str) -> AstraDBCollection:
         """
