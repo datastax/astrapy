@@ -1,29 +1,46 @@
+import logging
 import httpx
-
-from typing import cast
+from typing import Any, Dict, Optional, TypeVar, cast
 
 from astrapy.types import API_RESPONSE
 from astrapy.utils import make_request
 
+T = TypeVar("T", bound="APIRequestHandler")
 
-class APIRequestError(Exception):
-    def __init__(self, message):
-        super().__init__(message)
+
+logger = logging.getLogger(__name__)
+
+
+class APIRequestError(ValueError):
+    def __init__(self, response: httpx.Response) -> None:
+        self.response = response
+        super().__init__("The API produced an error.")
+
+    def __repr__(self) -> str:
+        return f"{self.response}"
+
+    def get(self) -> API_RESPONSE:
+        return {
+            "error": True,
+            "status_code": self.response.status_code,
+            "response_body": self.response.json(),
+            "response": self.response,
+        }
 
 
 class APIRequestHandler:
     def __init__(
-        self,
-        client,
-        base_url,
-        auth_header,
-        token,
-        method,
-        path,
-        json_data,
-        url_params,
-        skip_error_check=False,
-    ):
+        self: T,
+        client: httpx.Client,
+        base_url: str,
+        auth_header: str,
+        token: str,
+        method: str,
+        json_data: Optional[Dict[str, Any]],
+        url_params: Optional[Dict[str, Any]],
+        path: Optional[str] = None,
+        skip_error_check: bool = False,
+    ) -> None:
         self.client = client
         self.base_url = base_url
         self.auth_header = auth_header
@@ -34,38 +51,41 @@ class APIRequestHandler:
         self.url_params = url_params
         self.skip_error_check = skip_error_check
 
-    def request(self):
+    def _raw_request(self: T) -> httpx.Response:
+        return make_request(
+            client=self.client,
+            base_url=self.base_url,
+            auth_header=self.auth_header,
+            token=self.token,
+            method=self.method,
+            path=self.path,
+            json_data=self.json_data,
+            url_params=self.url_params,
+        )
+
+    def request(self: T) -> API_RESPONSE:
+        # Make the raw request to the API
+        self.response = self._raw_request()
+
+        # If the response was not successful (non-success error code) raise an error directly
+        self.response.raise_for_status()
+
+        # Otherwise, process the successful response
+        return self._process_response()
+
+    def _process_response(self: T) -> API_RESPONSE:
+        # In case of other successful responses, parse the JSON body.
         try:
-            response = make_request(
-                client=self.client,
-                base_url=self.base_url,
-                auth_header=self.auth_header,
-                token=self.token,
-                method=self.method,
-                path=self.path,
-                json_data=self.json_data,
-                url_params=self.url_params,
-            )
+            # Cast the response to the expected type.
+            response_body: API_RESPONSE = cast(API_RESPONSE, self.response.json())
 
-            return self._process_response(response)
-        except httpx.RequestError as e:
-            raise APIRequestError(f"An error occurred while making the request: {e}")
-        except httpx.HTTPStatusError as e:
-            raise APIRequestError(
-                f"The API returned an error while handling the request: {e}"
-            )
+            # If the API produced an error, warn and return the API request error class
+            if "errors" in response_body and not self.skip_error_check:
+                logger.warning(response_body["errors"])
+                return APIRequestError(self.response).get()
 
-    def _process_response(self, response: httpx.Response):
-        if (
-            not 200 <= response.status_code < 300
-        ):  # TODO: Is this the right range? Any abstractions?
-            raise APIRequestError(
-                f"Non-success status code received: {response.status_code}"
-            )
-
-        responsebody = cast(API_RESPONSE, response.json())
-
-        if "errors" in responsebody and not self.skip_error_check:
-            raise APIRequestError(f"API returned an error: {responsebody['errors']}")
-
-        return responsebody
+            # Otherwise, set the response body
+            return response_body
+        except ValueError:
+            # Handle cases where json() parsing fails (e.g., empty body)
+            return APIRequestError(self.response).get()

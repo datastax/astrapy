@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import logging
-from typing import Any, cast, Dict, Optional
+from typing import Any, Dict, Optional
 
 import httpx
 from astrapy.api import APIRequestHandler
 
-from astrapy.utils import make_request, http_methods
+from astrapy.utils import http_methods
 from astrapy.defaults import DEFAULT_DEV_OPS_API_VERSION, DEFAULT_DEV_OPS_URL
 from astrapy.types import API_RESPONSE, OPS_API_RESPONSE
 
@@ -64,7 +64,7 @@ class AstraDBOps:
             url_params=_options,
         )
 
-        response = request_handler.request()
+        response = request_handler._raw_request()
 
         return response
 
@@ -75,16 +75,22 @@ class AstraDBOps:
         options: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
     ) -> OPS_API_RESPONSE:
-        req_result = self._ops_request(
+        _options = {} if options is None else options
+
+        request_handler = APIRequestHandler(
+            client=self.client,
+            base_url=self.base_url,
+            auth_header="Authorization",
+            token=self.token,
             method=method,
             path=path,
-            options=options,
             json_data=json_data,
+            url_params=_options,
         )
-        return cast(
-            OPS_API_RESPONSE,
-            req_result.json(),
-        )
+
+        response = request_handler.request()
+
+        return response
 
     def get_databases(
         self, options: Optional[Dict[str, Any]] = None

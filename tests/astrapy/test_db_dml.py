@@ -22,7 +22,6 @@ import logging
 from typing import List
 
 import pytest
-from astrapy.api import APIRequestError
 
 from astrapy.types import API_DOC
 from astrapy.db import AstraDB, AstraDBCollection
@@ -169,8 +168,9 @@ def test_find_error(readonly_vector_collection: AstraDBCollection) -> None:
     sort = {"$vector": "clearly not a list of floats!"}
     options = {"limit": 100}
 
-    with pytest.raises(APIRequestError):
-        readonly_vector_collection.find(sort=sort, options=options)
+    result = readonly_vector_collection.find(sort=sort, options=options)
+
+    assert "error" in result and result["error"]
 
 
 @pytest.mark.describe("find through vector, without explicit limit")
@@ -217,13 +217,14 @@ def test_create_document(writable_vector_collection: AstraDBCollection) -> None:
         == 2
     )
 
-    with pytest.raises(APIRequestError):
-        result_n_i = writable_vector_collection.insert_one(
-            {
-                "_id": id_n_i,
-                "a": 3,
-            }
-        )
+    result_n_i = writable_vector_collection.insert_one(
+        {
+            "_id": id_n_i,
+            "a": 3,
+        }
+    )
+
+    assert "error" in result_n_i and result_n_i["error"]
 
     result_v_n = writable_vector_collection.insert_one(
         {
