@@ -119,8 +119,9 @@ class AstraDBCollection:
     def _post(
         self, path: Optional[str] = None, document: Optional[API_DOC] = None
     ) -> API_RESPONSE:
+        full_path = f"{self.base_path}/{path}" if path else self.base_path
         response = self._request(
-            method=http_methods.POST, path=f"{self.base_path}", json_data=document
+            method=http_methods.POST, path=full_path, json_data=document
         )
         return response
 
