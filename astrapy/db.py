@@ -472,6 +472,31 @@ class AstraDBCollection:
 
         return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
 
+    def count_documents(
+        self,
+        filter: Dict[str, Any] = {},
+    ) -> API_RESPONSE:
+        """
+        Count documents matching a given predicate (expressed as filter).
+        Args:
+            filter (dict, defaults to {}): Criteria to filter documents.
+        Returns:
+            dict: the response, either
+                {"status": {"count": <NUMBER> }}
+            or
+                {"errors": [...]}
+        """
+        json_query = make_payload(
+            top_level="countDocuments",
+            filter=filter,
+        )
+
+        response = self._post(
+            document=json_query,
+        )
+
+        return response
+
     def find_one(
         self,
         filter: Optional[Dict[str, Any]] = {},
