@@ -81,7 +81,7 @@ class APIRequestHandler:
 
             # If the API produced an error, warn and return the API request error class
             if "errors" in response_body and not self.skip_error_check:
-                logger.warning(response_body["errors"])
+                logger.debug(response_body["errors"])
                 return APIRequestError(self.response).get()
 
             # Otherwise, set the response body
