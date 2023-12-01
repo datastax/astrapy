@@ -191,6 +191,27 @@ def test_find_limitless(readonly_vector_collection: AstraDBCollection) -> None:
     assert isinstance(response["data"]["documents"], list)
 
 
+@pytest.mark.describe("correctly count documents according to predicate")
+def test_count_documents(
+    readonly_vector_collection: AstraDBCollection,
+) -> None:
+    c_all_response0 = readonly_vector_collection.count_documents()
+    assert c_all_response0["status"]["count"] == 3
+
+    c_all_response1 = readonly_vector_collection.count_documents(filter={})
+    assert c_all_response1["status"]["count"] == 3
+
+    c_pred_response = readonly_vector_collection.count_documents(
+        filter={"anotherfield": "alpha"}
+    )
+    assert c_pred_response["status"]["count"] == 2
+
+    c_no_response = readonly_vector_collection.count_documents(
+        filter={"false_field": 137}
+    )
+    assert c_no_response["status"]["count"] == 0
+
+
 @pytest.mark.describe("insert_one, w/out _id, w/out vector")
 def test_create_document(writable_vector_collection: AstraDBCollection) -> None:
     i_vector = [0.3, 0.5]

@@ -120,8 +120,9 @@ class AstraDBCollection:
     def _post(
         self, path: Optional[str] = None, document: Optional[API_DOC] = None
     ) -> API_RESPONSE:
+        full_path = f"{self.base_path}/{path}" if path else self.base_path
         response = self._request(
-            method=http_methods.POST, path=f"{self.base_path}", json_data=document
+            method=http_methods.POST, path=full_path, json_data=document
         )
         return response
 
@@ -472,6 +473,31 @@ class AstraDBCollection:
         )
 
         return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
+
+    def count_documents(
+        self,
+        filter: Dict[str, Any] = {},
+    ) -> API_RESPONSE:
+        """
+        Count documents matching a given predicate (expressed as filter).
+        Args:
+            filter (dict, defaults to {}): Criteria to filter documents.
+        Returns:
+            dict: the response, either
+                {"status": {"count": <NUMBER> }}
+            or
+                {"errors": [...]}
+        """
+        json_query = make_payload(
+            top_level="countDocuments",
+            filter=filter,
+        )
+
+        response = self._post(
+            document=json_query,
+        )
+
+        return response
 
     def find_one(
         self,
