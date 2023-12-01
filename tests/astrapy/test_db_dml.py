@@ -307,6 +307,193 @@ def test_insert_many(writable_vector_collection: AstraDBCollection) -> None:
     assert isinstance(list(inserted_ids - {_id0, _id2})[0], str)
 
 
+@pytest.mark.describe("batched_concurrent_insert_many")
+def test_batched_concurrent_insert_many(
+    writable_vector_collection: AstraDBCollection,
+) -> None:
+    _id0 = str(uuid.uuid4())
+    _id2 = str(uuid.uuid4())
+    documents: List[API_DOC] = [
+        {
+            "_id": "c6910e2a-22d3-4995-b7e2-8993d36aac5f",
+            "name": "Abba",
+            "traits": [10, 9, 3],
+            "$vector": [0.6, 0.2],
+        },
+        {
+            "name": "Bacchus",
+            "happy": True,
+            "_id": "5a056a1d-493a-4823-900f-e996ea320510",
+        },
+        {
+            "_id": "4d567bc8-0c30-4ce7-bbc2-756d2e92afe4",
+            "name": "Ciccio",
+            "description": "The third in this list",
+            "$vector": [0.4, 0.3],
+        },
+        {
+            "_id": "3c163130-24e3-44f0-86c3-f9ef3863206c",
+            "name": "Abba",
+            "traits": [10, 9, 3],
+            "$vector": [0.6, 0.2],
+        },
+        {
+            "name": "Bacchus",
+            "happy": True,
+            "_id": "3994bff5-c1e2-4bb3-9f4e-913d59c103d9",
+        },
+        {
+            "_id": "529f5064-6630-4ce1-b065-6a5b3846a70b",
+            "name": "Ciccio",
+            "description": "The third in this list",
+            "$vector": [0.4, 0.3],
+        },
+        {
+            "_id": "a3bb7271-966a-4b85-9171-46e97b1bcbbe",
+            "name": "Abba",
+            "traits": [10, 9, 3],
+            "$vector": [0.6, 0.2],
+        },
+        {
+            "name": "Bacchus",
+            "happy": True,
+            "_id": "acde6241-3ced-45dd-9cee-f31887bb2409",
+        },
+        {
+            "_id": "686206fc-1416-48b3-9f62-1bb104e35681",
+            "name": "Ciccio",
+            "description": "The third in this list",
+            "$vector": [0.4, 0.3],
+        },
+        {
+            "_id": "09a5f695-b3b2-4bd7-ab4f-2dc4bcb24dbb",
+            "name": "Abba",
+            "traits": [10, 9, 3],
+            "$vector": [0.6, 0.2],
+        },
+        {
+            "name": "Bacchus",
+            "happy": True,
+            "_id": "4c88e9fb-a262-493a-aa17-5668f78bf1db",
+        },
+        {
+            "_id": "40935112-9a5d-4b42-bbe8-c3446a7f847f",
+            "name": "Ciccio",
+            "description": "The third in this list",
+            "$vector": [0.4, 0.3],
+        },
+        {
+            "_id": "43b28d05-889c-448f-b179-4394b94981e9",
+            "name": "Abba",
+            "traits": [10, 9, 3],
+            "$vector": [0.6, 0.2],
+        },
+        {
+            "name": "Bacchus",
+            "happy": True,
+            "_id": "8d7fcb5f-1c2d-4aa9-a258-889981889f33",
+        },
+        {
+            "_id": "c70abde2-722a-4102-94bb-5f1c69368b84",
+            "name": "Ciccio",
+            "description": "The third in this list",
+            "$vector": [0.4, 0.3],
+        },
+        {
+            "_id": "76c76dd8-1166-4398-9c39-4d4d52764055",
+            "name": "Abba",
+            "traits": [10, 9, 3],
+            "$vector": [0.6, 0.2],
+        },
+        {
+            "name": "Bacchus",
+            "happy": True,
+            "_id": "2291711b-3ce3-4f44-8dd3-5d025c82b58b",
+        },
+        {
+            "_id": "ec0f78ed-80be-401d-8be5-8b2d40d7eda7",
+            "name": "Ciccio",
+            "description": "The third in this list",
+            "$vector": [0.4, 0.3],
+        },
+        {
+            "_id": "dc4fab70-e235-47ce-9d72-b71fde42308d",
+            "name": "Abba",
+            "traits": [10, 9, 3],
+            "$vector": [0.6, 0.2],
+        },
+        {
+            "name": "Bacchus",
+            "happy": True,
+            "_id": "15be4aaa-2c22-4a25-bbfb-e475f94e6ebd",
+        },
+        {
+            "_id": "c8e55fc3-851c-44a9-ac58-2ae9f2fe8b35",
+            "name": "Ciccio",
+            "description": "The third in this list",
+            "$vector": [0.4, 0.3],
+        },
+        {
+            "_id": "c113e718-646d-4358-821a-a3adfa2f5cd8",
+            "name": "Abba",
+            "traits": [10, 9, 3],
+            "$vector": [0.6, 0.2],
+        },
+        {
+            "name": "Bacchus",
+            "happy": True,
+            "_id": "c587f215-4f95-415b-b12b-98e067fd2954",
+        },
+        {
+            "_id": "405d12f7-e754-4405-8b1a-7c6c808d4ee2",
+            "name": "Ciccio",
+            "description": "The third in this list",
+            "$vector": [0.4, 0.3],
+        },
+        {
+            "_id": "5c2d39bd-5766-4c46-bc20-105e4a3ccad5",
+            "name": "Abba",
+            "traits": [10, 9, 3],
+            "$vector": [0.6, 0.2],
+        },
+        {
+            "name": "Bacchus",
+            "happy": True,
+            "_id": "e267e980-aff1-4344-8432-651764e3c118",
+        },
+        {
+            "_id": "f38ee411-f53b-4e2c-a3c3-7f274d4bd471",
+            "name": "Ciccio",
+            "description": "The third in this list",
+            "$vector": [0.4, 0.3],
+        },
+        {
+            "_id": "88f67701-0e0b-4ea0-95d7-5e2b1b9b3809",
+            "name": "Abba",
+            "traits": [10, 9, 3],
+            "$vector": [0.6, 0.2],
+        },
+        {
+            "name": "Bacchus",
+            "happy": True,
+            "_id": "aa7571ad-a429-4b4f-9498-519ea9303de1",
+        },
+        {
+            "_id": "90249293-07a7-43a0-a7f7-310a1ad91bad",
+            "name": "Ciccio",
+            "description": "The third in this list",
+            "$vector": [0.4, 0.3],
+        },
+    ]
+
+    response = writable_vector_collection.batched_concurrent_insert_many(documents)
+    assert response is not None
+    inserted_ids_list = [set(r["status"]["insertedIds"]) for r in response]
+    inserted_ids = set.union(*inserted_ids_list)
+    assert len(inserted_ids) == 30
+    assert isinstance(list(inserted_ids)[0], str)
+
+
 @pytest.mark.describe("insert_many with 'ordered' set to False")
 def test_insert_many_ordered_false(
     writable_vector_collection: AstraDBCollection,
@@ -360,6 +547,68 @@ def test_insert_many_ordered_false(
     check_response = writable_vector_collection.find_one(filter={"first_name": "Yep"})
     assert check_response is not None
     assert check_response["data"]["document"]["_id"] == _id1
+
+
+@pytest.mark.describe("batched_concurrent_upsert")
+def test_batched_concurrent_upsert(
+    writable_vector_collection: AstraDBCollection,
+) -> None:
+    _id0 = str(uuid.uuid4())
+    _id1 = str(uuid.uuid4())
+
+    documents = [
+        {
+            "_id": _id0,
+            "addresses": {
+                "work": {
+                    "city": "Seattle",
+                    "state": "WA",
+                },
+            },
+        },
+        {
+            "_id": _id1,
+            "addresses": {
+                "work": {
+                    "city": "Seattle",
+                    "state": "WA",
+                },
+            },
+        },
+    ]
+    upsert_result0 = writable_vector_collection.batched_concurrent_upsert(documents)
+    assert upsert_result0[0] == _id0
+    assert upsert_result0[1] == _id1
+
+    response0 = writable_vector_collection.find_one(filter={"_id": _id0})
+    assert response0 is not None
+    assert response0["data"]["document"] == documents[0]
+
+    response0 = writable_vector_collection.find_one(filter={"_id": _id1})
+    assert response0 is not None
+    assert response0["data"]["document"] == documents[1]
+
+    documents2 = [
+        {
+            "_id": _id0,
+            "addresses": {
+                "work": {
+                    "state": "MN",
+                    "floor": 12,
+                },
+            },
+            "hobbies": [
+                "ice skating",
+                "accounting",
+            ],
+        }
+    ]
+    upsert_result2 = writable_vector_collection.batched_concurrent_upsert(documents2)
+    assert upsert_result2[0] == _id0
+
+    response2 = writable_vector_collection.find_one(filter={"_id": _id0})
+    assert response2 is not None
+    assert response2["data"]["document"] == documents2[0]
 
 
 @pytest.mark.describe("upsert")

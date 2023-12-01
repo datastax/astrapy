@@ -12,18 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import annotations
+
 import logging
 import json
+import httpx
+
 from functools import partial
 from typing import Any, cast, Dict, Iterable, List, Optional, Tuple, Union
-
-import httpx
+from concurrent.futures import ThreadPoolExecutor
 
 from astrapy.defaults import (
     DEFAULT_AUTH_HEADER,
     DEFAULT_JSON_API_PATH,
     DEFAULT_JSON_API_VERSION,
     DEFAULT_KEYSPACE_NAME,
+    MAX_INSERT_BATCH_SIZE,
 )
 from astrapy.utils import make_payload, make_request, http_methods
 from astrapy.types import API_DOC, API_RESPONSE, PaginableRequestMethod
@@ -604,10 +607,12 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the insert operation.
         """
+        # Make the payload for insertMany
         json_query = make_payload(
             top_level="insertMany", documents=documents, options=options
         )
 
+        # Send the data
         response = self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
@@ -616,6 +621,51 @@ class AstraDBCollection:
         )
 
         return response
+
+    def batched_concurrent_insert_many(
+        self,
+        documents: List[API_DOC],
+        options: Optional[Dict[str, Any]] = None,
+        partial_failures_allowed: bool = False,
+        batch_size: int = MAX_INSERT_BATCH_SIZE,
+        concurrency: int = 1,
+    ) -> List[API_RESPONSE]:
+        """
+        Batch insert multiple documents into the collection with concurrency.
+        Args:
+            documents (list): A list of documents to insert.
+            options (dict, optional): Additional options for the insert operation.
+            partial_failures_allowed (bool, optional): Whether to allow partial failures in the batch.
+            batch_size (int, optional): Override the default insertion batch size.
+            concurrency (int, optional): The number of concurrent batch insertions.
+        Returns:
+            list: The responses from the database after the batched insert operation.
+        """
+
+        # Split the documents into batches
+        batched_list = [
+            documents[i : i + batch_size] for i in range(0, len(documents), batch_size)
+        ]
+
+        # Function to insert a single batch
+        def insert_batch(batch: List[API_DOC], index: int) -> API_RESPONSE:
+            logger.debug(f"Processing batch #{index + 1} of size {len(batch)}")
+
+            return self.insert_many(
+                documents=batch,
+                options=options,
+                partial_failures_allowed=partial_failures_allowed,
+            )
+
+        # Perform the bulk insert with concurrency
+        with ThreadPoolExecutor(max_workers=concurrency) as executor:
+            futures = [
+                executor.submit(insert_batch, batch, i)
+                for i, batch in enumerate(batched_list)
+            ]
+            response_list = [future.result() for future in futures]
+
+        return response_list
 
     def update_one(
         self, filter: Dict[str, Any], update: Dict[str, Any]
@@ -746,6 +796,29 @@ class AstraDBCollection:
             upserted_id = cast(str, result["status"]["insertedIds"][0])
 
         return upserted_id
+
+    def batched_concurrent_upsert(
+        self, documents: list[API_DOC], concurrency: int = 1
+    ) -> List[str]:
+        """
+        Emulate an upsert operation for multiple documents in the collection.
+
+        This method attempts to insert the documents. If a document with the same _id exists, it updates the existing document.
+
+        Args:
+            documents (List[dict]): The documents to insert or update.
+            concurrency (int, optional): The number of concurrent batch updates.
+
+        Returns:
+            List[str]: A list of "_id"s of the inserted or updated documents.
+        """
+
+        # Perform the bulk upsert with concurrency
+        with ThreadPoolExecutor(max_workers=concurrency) as executor:
+            futures = [executor.submit(self.upsert, document) for document in documents]
+            response_list = [future.result() for future in futures]
+
+        return response_list
 
 
 class AstraDB:
