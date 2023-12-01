@@ -41,6 +41,10 @@ def test_truncate_collection_fail(db: AstraDB) -> None:
 @pytest.mark.describe("should truncate a nonvector collection")
 def test_truncate_nonvector_collection(db: AstraDB) -> None:
     col = db.create_collection(TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME)
+
+    if not isinstance(col, AstraDBCollection):
+        raise Exception("Collection was not created")
+
     try:
         col.insert_one({"a": 1})
         assert len(col.find()["data"]["documents"]) == 1
@@ -53,6 +57,10 @@ def test_truncate_nonvector_collection(db: AstraDB) -> None:
 @pytest.mark.describe("should truncate a collection")
 def test_truncate_vector_collection(db: AstraDB) -> None:
     col = db.create_collection(TEST_TRUNCATED_VECTOR_COLLECTION_NAME, dimension=2)
+
+    if not isinstance(col, AstraDBCollection):
+        raise Exception("Collection was not created")
+
     try:
         col.insert_one({"a": 1, "$vector": [0.1, 0.2]})
         assert len(col.find()["data"]["documents"]) == 1

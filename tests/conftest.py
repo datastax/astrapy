@@ -83,6 +83,9 @@ def writable_vector_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
         dimension=2,
     )
 
+    if not isinstance(collection, AstraDBCollection):
+        raise Exception("Collection was not created")
+
     collection.insert_many(VECTOR_DOCUMENTS)
 
     yield collection
@@ -97,6 +100,9 @@ def readonly_vector_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
         dimension=2,
     )
 
+    if not isinstance(collection, AstraDBCollection):
+        raise Exception("Collection was not created")
+
     collection.insert_many(VECTOR_DOCUMENTS)
 
     yield collection
@@ -110,6 +116,9 @@ def disposable_vector_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
         TEST_DISPOSABLE_VECTOR_COLLECTION,
         dimension=2,
     )
+
+    if not isinstance(collection, AstraDBCollection):
+        raise Exception("Collection was not created")
 
     collection.insert_many(VECTOR_DOCUMENTS)
 

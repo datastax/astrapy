@@ -62,6 +62,9 @@ def pag_test_collection(
         collection_name=TEST_PAGINATION_COLLECTION_NAME, dimension=2
     )
 
+    if not isinstance(astra_db_collection, AstraDBCollection):
+        raise Exception("Collection was not created")
+
     if int(os.getenv("TEST_PAGINATION_SKIP_INSERTION", "0")) == 0:
         inserted_ids: Set[str] = set()
         for i_batch in _batch_iterable(range(N), INSERT_BATCH_SIZE):
