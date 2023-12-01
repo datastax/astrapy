@@ -2,9 +2,11 @@ name: Black, Ruff and MyPy Checks
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - master
   pull_request:
-    branches: [ main ]
+    branches:
+      - master
 
 jobs:
   mypy:
@@ -27,9 +29,13 @@ jobs:
       run: |
         black --check .
 
-    - name: Black linting
+    - name: Ruff Linting AstraPy
       run: |
         ruff astrapy
+
+    - name: Ruff Linting Tests
+      run: |
+        ruff tests
 
     - name: Run MyPy AstraPy
       run: |
