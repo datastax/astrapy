@@ -19,7 +19,7 @@ import httpx
 
 from astrapy.utils import make_request, http_methods
 from astrapy.defaults import DEFAULT_DEV_OPS_API_VERSION, DEFAULT_DEV_OPS_URL
-from astrapy.types import OPS_API_RESPONSE
+from astrapy.types import API_RESPONSE, OPS_API_RESPONSE
 
 
 logger = logging.getLogger(__name__)
@@ -141,7 +141,7 @@ class AstraDBOps:
 
     def get_database(
         self, database: str = "", options: Optional[Dict[str, Any]] = None
-    ) -> OPS_API_RESPONSE:
+    ) -> API_RESPONSE:
         """
         Retrieve details of a specific database.
 
@@ -152,10 +152,13 @@ class AstraDBOps:
         Returns:
             dict: A JSON response containing the details of the specified database.
         """
-        return self._json_ops_request(
-            method=http_methods.GET,
-            path=f"/databases/{database}",
-            options=options,
+        return cast(
+            API_RESPONSE,
+            self._json_ops_request(
+                method=http_methods.GET,
+                path=f"/databases/{database}",
+                options=options,
+            ),
         )
 
     def create_keyspace(self, database: str = "", keyspace: str = "") -> httpx.Response:
