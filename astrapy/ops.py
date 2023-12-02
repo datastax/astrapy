@@ -19,7 +19,7 @@ import httpx
 
 from astrapy.utils import make_request, http_methods
 from astrapy.defaults import DEFAULT_DEV_OPS_API_VERSION, DEFAULT_DEV_OPS_URL
-from astrapy.types import API_RESPONSE, OPS_API_RESPONSE
+from astrapy.types import OPS_API_RESPONSE
 
 
 logger = logging.getLogger(__name__)
@@ -141,7 +141,7 @@ class AstraDBOps:
 
     def get_database(
         self, database: str = "", options: Optional[Dict[str, Any]] = None
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve details of a specific database.
 
@@ -174,7 +174,7 @@ class AstraDBOps:
             path=f"/databases/{database}/keyspaces/{keyspace}",
         )
 
-    def park_database(self, database: str = "") -> API_RESPONSE:
+    def park_database(self, database: str = "") -> OPS_API_RESPONSE:
         """
         Park a specific database, making it inactive.
 
@@ -188,7 +188,7 @@ class AstraDBOps:
             method=http_methods.POST, path=f"/databases/{database}/park"
         )
 
-    def unpark_database(self, database: str = "") -> API_RESPONSE:
+    def unpark_database(self, database: str = "") -> OPS_API_RESPONSE:
         """
         Unpark a specific database, making it active again.
 
@@ -204,7 +204,7 @@ class AstraDBOps:
 
     def resize_database(
         self, database: str = "", options: Optional[Dict[str, Any]] = None
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Resize a specific database according to provided options.
 
@@ -223,7 +223,7 @@ class AstraDBOps:
 
     def reset_database_password(
         self, database: str = "", options: Optional[Dict[str, Any]] = None
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Reset the password for a specific database.
 
@@ -240,7 +240,7 @@ class AstraDBOps:
             json_data=options,
         )
 
-    def get_secure_bundle(self, database: str = "") -> API_RESPONSE:
+    def get_secure_bundle(self, database: str = "") -> OPS_API_RESPONSE:
         """
         Retrieve a secure bundle URL for a specific database.
 
@@ -255,7 +255,7 @@ class AstraDBOps:
             path=f"/databases/{database}/secureBundleURL",
         )
 
-    def get_datacenters(self, database: str = "") -> API_RESPONSE:
+    def get_datacenters(self, database: str = "") -> OPS_API_RESPONSE:
         """
         Get a list of datacenters associated with a specific database.
 
@@ -272,7 +272,7 @@ class AstraDBOps:
 
     def create_datacenter(
         self, database: str = "", options: Optional[Dict[str, Any]] = None
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Create a new datacenter for a specific database.
 
@@ -291,7 +291,7 @@ class AstraDBOps:
 
     def terminate_datacenter(
         self, database: str = "", datacenter: str = ""
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Terminate a specific datacenter in a database.
 
@@ -307,7 +307,7 @@ class AstraDBOps:
             path=f"/databases/{database}/datacenters/{datacenter}/terminate",
         )
 
-    def get_access_list(self, database: str = "") -> API_RESPONSE:
+    def get_access_list(self, database: str = "") -> OPS_API_RESPONSE:
         """
         Retrieve the access list for a specific database.
 
@@ -324,7 +324,7 @@ class AstraDBOps:
 
     def replace_access_list(
         self, database: str = "", access_list: Optional[Dict[str, Any]] = None
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Replace the entire access list for a specific database.
 
@@ -343,7 +343,7 @@ class AstraDBOps:
 
     def update_access_list(
         self, database: str = "", access_list: Optional[Dict[str, Any]] = None
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Update the access list for a specific database.
 
@@ -362,7 +362,7 @@ class AstraDBOps:
 
     def add_access_list_address(
         self, database: str = "", address: Optional[Dict[str, Any]] = None
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Add a new address to the access list for a specific database.
 
@@ -379,7 +379,7 @@ class AstraDBOps:
             json_data=address,
         )
 
-    def delete_access_list(self, database: str = "") -> API_RESPONSE:
+    def delete_access_list(self, database: str = "") -> OPS_API_RESPONSE:
         """
         Delete the access list for a specific database.
 
@@ -394,7 +394,7 @@ class AstraDBOps:
             path=f"/databases/{database}/access-list",
         )
 
-    def get_private_link(self, database: str = "") -> API_RESPONSE:
+    def get_private_link(self, database: str = "") -> OPS_API_RESPONSE:
         """
         Retrieve the private link information for a specified database.
 
@@ -411,7 +411,7 @@ class AstraDBOps:
 
     def get_datacenter_private_link(
         self, database: str = "", datacenter: str = ""
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve the private link information for a specific datacenter in a database.
 
@@ -432,7 +432,7 @@ class AstraDBOps:
         database: str = "",
         datacenter: str = "",
         private_link: Optional[Dict[str, Any]] = None,
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Create a private link for a specific datacenter in a database.
 
@@ -455,7 +455,7 @@ class AstraDBOps:
         database: str = "",
         datacenter: str = "",
         endpoint: Optional[Dict[str, Any]] = None,
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Create an endpoint for a specific datacenter in a database.
 
@@ -475,7 +475,7 @@ class AstraDBOps:
 
     def update_datacenter_endpoint(
         self, database: str = "", datacenter: str = "", endpoint: Dict[str, Any] = {}
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Update an existing endpoint for a specific datacenter in a database.
 
@@ -495,7 +495,7 @@ class AstraDBOps:
 
     def get_datacenter_endpoint(
         self, database: str = "", datacenter: str = "", endpoint: str = ""
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve information about a specific endpoint in a datacenter of a database.
 
@@ -514,7 +514,7 @@ class AstraDBOps:
 
     def delete_datacenter_endpoint(
         self, database: str = "", datacenter: str = "", endpoint: str = ""
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Delete a specific endpoint in a datacenter of a database.
 
@@ -531,7 +531,7 @@ class AstraDBOps:
             path=f"/organizations/clusters/{database}/datacenters/{datacenter}/endpoints/{endpoint}",
         )
 
-    def get_available_classic_regions(self) -> API_RESPONSE:
+    def get_available_classic_regions(self) -> OPS_API_RESPONSE:
         """
         Retrieve a list of available classic regions.
 
@@ -540,7 +540,7 @@ class AstraDBOps:
         """
         return self._json_ops_request(method=http_methods.GET, path="/availableRegions")
 
-    def get_available_regions(self) -> API_RESPONSE:
+    def get_available_regions(self) -> OPS_API_RESPONSE:
         """
         Retrieve a list of available regions for serverless deployment.
 
@@ -551,7 +551,7 @@ class AstraDBOps:
             method=http_methods.GET, path="/regions/serverless"
         )
 
-    def get_roles(self) -> API_RESPONSE:
+    def get_roles(self) -> OPS_API_RESPONSE:
         """
         Retrieve a list of roles within the organization.
 
@@ -564,7 +564,7 @@ class AstraDBOps:
 
     def create_role(
         self, role_definition: Optional[Dict[str, Any]] = None
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Create a new role within the organization.
 
@@ -580,7 +580,7 @@ class AstraDBOps:
             json_data=role_definition,
         )
 
-    def get_role(self, role: str = "") -> API_RESPONSE:
+    def get_role(self, role: str = "") -> OPS_API_RESPONSE:
         """
         Retrieve details of a specific role within the organization.
 
@@ -596,7 +596,7 @@ class AstraDBOps:
 
     def update_role(
         self, role: str = "", role_definition: Optional[Dict[str, Any]] = None
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Update the definition of an existing role within the organization.
 
@@ -613,7 +613,7 @@ class AstraDBOps:
             json_data=role_definition,
         )
 
-    def delete_role(self, role: str = "") -> API_RESPONSE:
+    def delete_role(self, role: str = "") -> OPS_API_RESPONSE:
         """
         Delete a specific role from the organization.
 
@@ -629,7 +629,7 @@ class AstraDBOps:
 
     def invite_user(
         self, user_definition: Optional[Dict[str, Any]] = None
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Invite a new user to the organization.
 
@@ -645,7 +645,7 @@ class AstraDBOps:
             json_data=user_definition,
         )
 
-    def get_users(self) -> API_RESPONSE:
+    def get_users(self) -> OPS_API_RESPONSE:
         """
         Retrieve a list of users within the organization.
 
@@ -656,7 +656,7 @@ class AstraDBOps:
             method=http_methods.GET, path="/organizations/users"
         )
 
-    def get_user(self, user: str = "") -> API_RESPONSE:
+    def get_user(self, user: str = "") -> OPS_API_RESPONSE:
         """
         Retrieve details of a specific user within the organization.
 
@@ -670,7 +670,7 @@ class AstraDBOps:
             method=http_methods.GET, path=f"/organizations/users/{user}"
         )
 
-    def remove_user(self, user: str = "") -> API_RESPONSE:
+    def remove_user(self, user: str = "") -> OPS_API_RESPONSE:
         """
         Remove a user from the organization.
 
@@ -686,7 +686,7 @@ class AstraDBOps:
 
     def update_user_roles(
         self, user: str = "", roles: Optional[Dict[str, Any]] = None
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Update the roles assigned to a specific user within the organization.
 
@@ -703,7 +703,7 @@ class AstraDBOps:
             json_data=roles,
         )
 
-    def get_clients(self) -> API_RESPONSE:
+    def get_clients(self) -> OPS_API_RESPONSE:
         """
         Retrieve a list of client IDs and secrets associated with the organization.
 
@@ -712,7 +712,7 @@ class AstraDBOps:
         """
         return self._json_ops_request(method=http_methods.GET, path="/clientIdSecrets")
 
-    def create_token(self, roles: Optional[Dict[str, Any]] = None) -> API_RESPONSE:
+    def create_token(self, roles: Optional[Dict[str, Any]] = None) -> OPS_API_RESPONSE:
         """
         Create a new token with specific roles.
 
@@ -729,7 +729,7 @@ class AstraDBOps:
             json_data=roles,
         )
 
-    def delete_token(self, token: str = "") -> API_RESPONSE:
+    def delete_token(self, token: str = "") -> OPS_API_RESPONSE:
         """
         Delete a specific token.
 
@@ -743,7 +743,7 @@ class AstraDBOps:
             method=http_methods.DELETE, path=f"/clientIdSecret/{token}"
         )
 
-    def get_organization(self) -> API_RESPONSE:
+    def get_organization(self) -> OPS_API_RESPONSE:
         """
         Retrieve details of the current organization.
 
@@ -752,7 +752,7 @@ class AstraDBOps:
         """
         return self._json_ops_request(method=http_methods.GET, path="/currentOrg")
 
-    def get_access_lists(self) -> API_RESPONSE:
+    def get_access_lists(self) -> OPS_API_RESPONSE:
         """
         Retrieve a list of access lists for the organization.
 
@@ -761,7 +761,7 @@ class AstraDBOps:
         """
         return self._json_ops_request(method=http_methods.GET, path="/access-lists")
 
-    def get_access_list_template(self) -> API_RESPONSE:
+    def get_access_list_template(self) -> OPS_API_RESPONSE:
         """
         Retrieve a template for creating an access list.
 
@@ -772,7 +772,7 @@ class AstraDBOps:
             method=http_methods.GET, path="/access-list/template"
         )
 
-    def validate_access_list(self) -> API_RESPONSE:
+    def validate_access_list(self) -> OPS_API_RESPONSE:
         """
         Validate the configuration of the access list.
 
@@ -783,7 +783,7 @@ class AstraDBOps:
             method=http_methods.POST, path="/access-list/validate"
         )
 
-    def get_private_links(self) -> API_RESPONSE:
+    def get_private_links(self) -> OPS_API_RESPONSE:
         """
         Retrieve a list of private link connections for the organization.
 
@@ -794,7 +794,7 @@ class AstraDBOps:
             method=http_methods.GET, path="/organizations/private-link"
         )
 
-    def get_streaming_providers(self) -> API_RESPONSE:
+    def get_streaming_providers(self) -> OPS_API_RESPONSE:
         """
         Retrieve a list of streaming service providers.
 
@@ -805,7 +805,7 @@ class AstraDBOps:
             method=http_methods.GET, path="/streaming/providers"
         )
 
-    def get_streaming_tenants(self) -> API_RESPONSE:
+    def get_streaming_tenants(self) -> OPS_API_RESPONSE:
         """
         Retrieve a list of streaming tenants.
 
@@ -818,7 +818,7 @@ class AstraDBOps:
 
     def create_streaming_tenant(
         self, tenant: Optional[Dict[str, Any]] = None
-    ) -> API_RESPONSE:
+    ) -> OPS_API_RESPONSE:
         """
         Create a new streaming tenant.
 
@@ -855,7 +855,7 @@ class AstraDBOps:
         else:
             raise ValueError(r.text)
 
-    def get_streaming_tenant(self, tenant: str = "") -> API_RESPONSE:
+    def get_streaming_tenant(self, tenant: str = "") -> OPS_API_RESPONSE:
         """
         Retrieve information about the limits and usage of a specific streaming tenant.
 
