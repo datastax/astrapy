@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, cast, Dict, Optional
 
 import httpx
-from astrapy.api import APIRequestHandler
+from astrapy.exceptions import APIRequestHandler
 
 from astrapy.utils import http_methods
 from astrapy.defaults import DEFAULT_DEV_OPS_API_VERSION, DEFAULT_DEV_OPS_URL
@@ -64,7 +64,7 @@ class AstraDBOps:
             url_params=_options,
         )
 
-        response = request_handler._raw_request()
+        response = request_handler.raw_request()
 
         return response
 

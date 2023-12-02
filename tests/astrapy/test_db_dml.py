@@ -42,9 +42,6 @@ def test_truncate_collection_fail(db: AstraDB) -> None:
 def test_truncate_nonvector_collection(db: AstraDB) -> None:
     col = db.create_collection(TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME)
 
-    if not isinstance(col, AstraDBCollection):
-        raise Exception("Collection was not created")
-
     try:
         col.insert_one({"a": 1})
         assert len(col.find()["data"]["documents"]) == 1
@@ -57,9 +54,6 @@ def test_truncate_nonvector_collection(db: AstraDB) -> None:
 @pytest.mark.describe("should truncate a collection")
 def test_truncate_vector_collection(db: AstraDB) -> None:
     col = db.create_collection(TEST_TRUNCATED_VECTOR_COLLECTION_NAME, dimension=2)
-
-    if not isinstance(col, AstraDBCollection):
-        raise Exception("Collection was not created")
 
     try:
         col.insert_one({"a": 1, "$vector": [0.1, 0.2]})
@@ -176,9 +170,8 @@ def test_find_error(readonly_vector_collection: AstraDBCollection) -> None:
     sort = {"$vector": "clearly not a list of floats!"}
     options = {"limit": 100}
 
-    result = readonly_vector_collection.find(sort=sort, options=options)
-
-    assert "error" in result and result["error"]
+    with pytest.raises(ValueError):
+        readonly_vector_collection.find(sort=sort, options=options)
 
 
 @pytest.mark.describe("find through vector, without explicit limit")
@@ -246,14 +239,13 @@ def test_create_document(writable_vector_collection: AstraDBCollection) -> None:
         == 2
     )
 
-    result_n_i = writable_vector_collection.insert_one(
-        {
-            "_id": id_n_i,
-            "a": 3,
-        }
-    )
-
-    assert "error" in result_n_i and result_n_i["error"]
+    with pytest.raises(ValueError):
+        result_n_i = writable_vector_collection.insert_one(
+            {
+                "_id": id_n_i,
+                "a": 3,
+            }
+        )
 
     result_v_n = writable_vector_collection.insert_one(
         {

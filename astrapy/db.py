@@ -19,7 +19,7 @@ import httpx
 from functools import partial
 from typing import Any, cast, Dict, Iterable, List, Optional, Tuple, Union
 
-from astrapy.api import APIRequestHandler
+from astrapy.exceptions import APIRequestHandler
 from astrapy.defaults import (
     DEFAULT_AUTH_HEADER,
     DEFAULT_JSON_API_PATH,
@@ -863,7 +863,7 @@ class AstraDB:
         options: Optional[Dict[str, Any]] = None,
         dimension: Optional[int] = None,
         metric: Optional[str] = None,
-    ) -> AstraDBCollection | API_RESPONSE:
+    ) -> AstraDBCollection:
         """
         Create a new collection in the database.
         Args:
@@ -914,15 +914,11 @@ class AstraDB:
         }
 
         # Make the request to the endpoint
-        response = self._request(
+        self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
             json_data={"createCollection": jsondata},
         )
-
-        # If collection creation failed, raise an error
-        if "error" in response and response["error"]:
-            return response
 
         # Get the instance object as the return of the call
         return AstraDBCollection(astra_db=self, collection_name=collection_name)
@@ -947,9 +943,7 @@ class AstraDB:
 
         return response
 
-    def truncate_collection(
-        self, collection_name: str
-    ) -> AstraDBCollection | API_RESPONSE:
+    def truncate_collection(self, collection_name: str) -> AstraDBCollection:
         """
         Truncate a collection in the database.
         Args:

@@ -14,18 +14,10 @@ logger = logging.getLogger(__name__)
 class APIRequestError(ValueError):
     def __init__(self, response: httpx.Response) -> None:
         self.response = response
-        super().__init__("The API produced an error.")
+        super().__init__(response.text)
 
     def __repr__(self) -> str:
         return f"{self.response}"
-
-    def get(self) -> API_RESPONSE:
-        return {
-            "error": True,
-            "status_code": self.response.status_code,
-            "response_body": self.response.json(),
-            "response": self.response,
-        }
 
 
 class APIRequestHandler:
@@ -51,7 +43,7 @@ class APIRequestHandler:
         self.url_params = url_params
         self.skip_error_check = skip_error_check
 
-    def _raw_request(self: T) -> httpx.Response:
+    def raw_request(self: T) -> httpx.Response:
         return make_request(
             client=self.client,
             base_url=self.base_url,
@@ -65,7 +57,7 @@ class APIRequestHandler:
 
     def request(self: T) -> API_RESPONSE:
         # Make the raw request to the API
-        self.response = self._raw_request()
+        self.response = self.raw_request()
 
         # If the response was not successful (non-success error code) raise an error directly
         self.response.raise_for_status()
@@ -82,10 +74,10 @@ class APIRequestHandler:
             # If the API produced an error, warn and return the API request error class
             if "errors" in response_body and not self.skip_error_check:
                 logger.debug(response_body["errors"])
-                return APIRequestError(self.response).get()
+                raise APIRequestError(self.response)
 
             # Otherwise, set the response body
             return response_body
         except ValueError:
             # Handle cases where json() parsing fails (e.g., empty body)
-            return APIRequestError(self.response).get()
+            raise APIRequestError(self.response)
