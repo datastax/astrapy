@@ -19,6 +19,7 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 
 import uuid
 import logging
+import json
 from typing import List
 
 import pytest
@@ -362,6 +363,50 @@ def test_insert_many_ordered_false(
     check_response = writable_vector_collection.find_one(filter={"first_name": "Yep"})
     assert check_response is not None
     assert check_response["data"]["document"]["_id"] == _id1
+
+
+@pytest.mark.describe("test error handling")
+def test_error_handling(writable_vector_collection: AstraDBCollection) -> None:
+    _id1 = str(uuid.uuid4())
+
+    result1 = writable_vector_collection.insert_one(
+        {
+            "_id": _id1,
+            "a": 1,
+            "$vector": [0.3, 0.5],
+        }
+    )
+
+    assert result1["status"]["insertedIds"] == [_id1]
+    assert (
+        writable_vector_collection.find_one(
+            {"_id": result1["status"]["insertedIds"][0]}
+        )["data"]["document"]["a"]
+        == 1
+    )
+
+    with pytest.raises(ValueError):
+        writable_vector_collection.insert_one(
+            {
+                "_id": _id1,
+                "a": 1,
+                "$vector": [0.3, 0.5],
+            }
+        )
+
+    try:
+        writable_vector_collection.insert_one(
+            {
+                "_id": _id1,
+                "a": 1,
+                "$vector": [0.3, 0.5],
+            }
+        )
+    except ValueError as e:
+        message = str(e)
+        parsed_json = json.loads(message)
+
+        assert parsed_json["errors"][0]["errorCode"] == "DOCUMENT_ALREADY_EXISTS"
 
 
 @pytest.mark.describe("upsert")
