@@ -354,18 +354,51 @@ You can use the Ops client to work with the Astra DevOps API. Check the [devops 
 
 ## For Developers
 
+You should additionally `pip install -r requirements-dev.txt` in a development
+environment (note that the `pip install -e .` is covered by the regular
+requirements file already).
+
+### Style, linter, typing
+
+AstraPy tries to be consistent in code style and linting.
+Moreover, **type annotations** are used everywhere.
+
+To ensure the code complies, you should get no errors
+(_Success: no issues found..._) when running the following in the root dir:
+
+```
+black --check astrapy && ruff astrapy && mypy astrapy
+```
+
+Likewise, for the tests:
+
+```
+black --check tests && ruff tests && mypy tests
+```
+
 ### Testing
 
-Ensure you provide all required environment variables:
+Ensure you provide all required environment variables (you can do so by editing `tests/.env` after `tests/.env.template`):
 
 ```bash
-export ASTRA_DB_ID="..."
 export ASTRA_DB_APPLICATION_TOKEN="..."
 export ASTRA_DB_API_ENDPOINT="..."
+export ASTRA_DB_KEYSPACE="..."              # Optional
+
+export ASTRA_DB_ID="..."                    # For the Ops testing only
+export ASTRA_DB_OPS_APPLICATION_TOKEN="..." # Ops-only, falls back to the other token
 ```
 
 then you can run:
 
 ```bash
 pytest
+```
+
+To remove the noise from the logs (on by default), run `pytest -o log_cli=0`.
+
+To enable the `AstraDBOps` testing (off by default):
+
+```bash
+TEST_ASTRADBOPS=1 pytest
 ```

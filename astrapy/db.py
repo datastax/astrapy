@@ -11,6 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+import logging
+import json
+from functools import partial
+from typing import Any, cast, Dict, Iterable, List, Optional, Tuple, Union
+
+import httpx
 
 from astrapy.defaults import (
     DEFAULT_AUTH_HEADER,
@@ -19,10 +26,8 @@ from astrapy.defaults import (
     DEFAULT_KEYSPACE_NAME,
 )
 from astrapy.utils import make_payload, make_request, http_methods
+from astrapy.types import API_DOC, API_RESPONSE, PaginableRequestMethod
 
-import logging
-import json
-import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +38,12 @@ class AstraDBCollection:
 
     def __init__(
         self,
-        collection_name,
-        astra_db=None,
-        token=None,
-        api_endpoint=None,
-        namespace=None,
-        auth_header=DEFAULT_AUTH_HEADER,
-    ):
+        collection_name: str,
+        astra_db: Optional[AstraDB] = None,
+        token: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        namespace: Optional[str] = None,
+    ) -> None:
         """
         Initialize an AstraDBCollection instance.
         Args:
@@ -62,28 +66,39 @@ class AstraDBCollection:
         self.astra_db = astra_db
         self.collection_name = collection_name
         self.base_path = f"{self.astra_db.base_path}/{self.collection_name}"
-        self.auth_header = auth_header
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'Astra DB Collection[name="{self.collection_name}", endpoint="{self.astra_db.base_url}"]'
 
-    def _request(self, *args, skip_error_check=False, **kwargs):
+    def _request(
+        self,
+        method: str = http_methods.POST,
+        path: Optional[str] = None,
+        json_data: Optional[Dict[str, Any]] = None,
+        url_params: Optional[Dict[str, Any]] = None,
+        skip_error_check: bool = False,
+        **kwargs: Any,
+    ) -> API_RESPONSE:
         response = make_request(
-            *args,
-            **kwargs,
             client=self.client,
             base_url=self.astra_db.base_url,
-            auth_header=self.auth_header,
+            auth_header=DEFAULT_AUTH_HEADER,
             token=self.astra_db.token,
+            method=method,
+            path=path,
+            json_data=json_data,
+            url_params=url_params,
         )
-        responsebody = response.json()
+        responsebody = cast(API_RESPONSE, response.json())
 
         if not skip_error_check and "errors" in responsebody:
             raise ValueError(json.dumps(responsebody["errors"]))
         else:
             return responsebody
 
-    def _get(self, path=None, options=None):
+    def _get(
+        self, path: Optional[str] = None, options: Optional[Dict[str, Any]] = None
+    ) -> Optional[API_RESPONSE]:
         full_path = f"{self.base_path}/{path}" if path else self.base_path
         response = self._request(
             method=http_methods.GET, path=full_path, url_params=options
@@ -92,23 +107,37 @@ class AstraDBCollection:
             return response
         return None
 
-    def _post(self, path=None, document=None):
+    def _put(
+        self, path: Optional[str] = None, document: Optional[API_RESPONSE] = None
+    ) -> API_RESPONSE:
+        full_path = f"{self.base_path}/{path}" if path else self.base_path
         response = self._request(
-            method=http_methods.POST, path=f"{self.base_path}", json_data=document
+            method=http_methods.PUT, path=full_path, json_data=document
         )
         return response
 
-    def _pre_process_find(self, vector, fields=None):
+    def _post(
+        self, path: Optional[str] = None, document: Optional[API_DOC] = None
+    ) -> API_RESPONSE:
+        full_path = f"{self.base_path}/{path}" if path else self.base_path
+        response = self._request(
+            method=http_methods.POST, path=full_path, json_data=document
+        )
+        return response
+
+    def _pre_process_find(
+        self, vector: List[float], fields: Optional[List[str]] = None
+    ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
         # Must pass a vector
         if not vector:
-            return ValueError("Must pass a vector")
+            raise ValueError("Must pass a vector")
 
         # Edge case for field selection
         if fields and "$similarity" in fields:
             raise ValueError("Please use the `include_similarity` parameter")
 
         # Build the new vector parameter
-        sort = {"$vector": vector}
+        sort: Dict[str, Any] = {"$vector": vector}
 
         # Build the new fields parameter
         # Note: do not leave projection={}, make it None
@@ -120,38 +149,7 @@ class AstraDBCollection:
 
         return sort, projection
 
-    def _finalize_find_return(self, itm, include_similarity=True):
-        # Pop the returned similarity score
-        if "$similarity" in itm:
-            similarity = itm.pop("$similarity")
-            if include_similarity:
-                itm["$similarity"] = similarity
-
-        return itm
-
-    def _post_process_find(
-        self,
-        raw_find_result,
-        include_similarity=True,
-        _key="documents",
-    ):
-        if isinstance(raw_find_result["data"][_key], list):
-            final_result = [
-                self._finalize_find_return(
-                    itm,
-                    include_similarity=include_similarity,
-                )
-                for itm in raw_find_result["data"][_key]
-            ]
-        else:
-            final_result = self._finalize_find_return(
-                raw_find_result["data"][_key],
-                include_similarity=include_similarity,
-            )
-
-        return final_result
-
-    def get(self, path=None):
+    def get(self, path: Optional[str] = None) -> Optional[API_RESPONSE]:
         """
         Retrieve a document from the collection by its path.
         Args:
@@ -161,7 +159,13 @@ class AstraDBCollection:
         """
         return self._get(path=path)
 
-    def find(self, filter=None, projection=None, sort={}, options=None):
+    def find(
+        self,
+        filter: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
+        sort: Optional[Dict[str, Any]] = {},
+        options: Optional[Dict[str, Any]] = None,
+    ) -> API_RESPONSE:
         """
         Find documents in the collection that match the given filter.
         Args:
@@ -188,13 +192,13 @@ class AstraDBCollection:
 
     def vector_find(
         self,
-        vector,
+        vector: List[float],
         *,
-        limit,
-        filter=None,
-        fields=None,
-        include_similarity=True,
-    ):
+        limit: int,
+        filter: Optional[Dict[str, Any]] = None,
+        fields: Optional[List[str]] = None,
+        include_similarity: bool = True,
+    ) -> List[API_DOC]:
         """
         Perform a vector-based search in the collection.
         Args:
@@ -208,7 +212,7 @@ class AstraDBCollection:
         """
         # Must pass a limit
         if not limit:
-            return ValueError("Must pass a limit")
+            raise ValueError("Must pass a limit")
 
         # Pre-process the included arguments
         sort, projection = self._pre_process_find(
@@ -227,38 +231,41 @@ class AstraDBCollection:
             },
         )
 
-        # Post-process the return
-        find_result = self._post_process_find(
-            raw_find_result,
-            include_similarity=include_similarity,
-        )
-
-        return find_result
+        return cast(List[API_DOC], raw_find_result["data"]["documents"])
 
     @staticmethod
-    def paginate(*, method, options, **kwargs):
+    def paginate(
+        *, request_method: PaginableRequestMethod, options: Optional[Dict[str, Any]]
+    ) -> Iterable[API_DOC]:
         """
         Generate paginated results for a given database query method.
         Args:
-            method (function): The database query method to paginate.
+            request_method (function): The database query method to paginate.
             options (dict): Options for the database query.
             kwargs: Additional arguments to pass to the database query method.
         Yields:
             dict: The next document in the paginated result set.
         """
-        response0 = method(options=options, **kwargs)
+        _options = options or {}
+        response0 = request_method(options=_options)
         next_page_state = response0["data"]["nextPageState"]
-        options0 = options
+        options0 = _options
         for document in response0["data"]["documents"]:
             yield document
         while next_page_state is not None:
             options1 = {**options0, **{"pageState": next_page_state}}
-            response1 = method(options=options1, **kwargs)
+            response1 = request_method(options=options1)
             for document in response1["data"]["documents"]:
                 yield document
             next_page_state = response1["data"]["nextPageState"]
 
-    def paginated_find(self, filter=None, projection=None, sort=None, options=None):
+    def paginated_find(
+        self,
+        filter: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
+        sort: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Iterable[API_DOC]:
         """
         Perform a paginated search in the collection.
         Args:
@@ -269,15 +276,20 @@ class AstraDBCollection:
         Returns:
             generator: A generator yielding documents in the paginated result set.
         """
-        return self.paginate(
-            method=self.find,
+        partialed_find = partial(
+            self.find,
             filter=filter,
             projection=projection,
             sort=sort,
+        )
+        return self.paginate(
+            request_method=partialed_find,
             options=options,
         )
 
-    def pop(self, filter, pop, options):
+    def pop(
+        self, filter: Dict[str, Any], pop: Dict[str, Any], options: Dict[str, Any]
+    ) -> API_RESPONSE:
         """
         Pop the last data in the tags array
         Args:
@@ -302,7 +314,9 @@ class AstraDBCollection:
 
         return response
 
-    def push(self, filter, push, options):
+    def push(
+        self, filter: Dict[str, Any], push: Dict[str, Any], options: Dict[str, Any]
+    ) -> API_RESPONSE:
         """
         Push new data to the tags array
         Args:
@@ -328,14 +342,19 @@ class AstraDBCollection:
         return response
 
     def find_one_and_replace(
-        self, sort={}, filter=None, replacement=None, options=None
-    ):
+        self,
+        replacement: Optional[Dict[str, Any]] = None,
+        *,
+        sort: Optional[Dict[str, Any]] = {},
+        filter: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> API_RESPONSE:
         """
         Find a single document and replace it.
         Args:
-            sort (dict, optional): Specifies the order in which to find the document.
-            filter (dict, optional): Criteria to filter documents.
             replacement (dict): The new document to replace the existing one.
+            filter (dict, optional): Criteria to filter documents.
+            sort (dict, optional): Specifies the order in which to find the document.
             options (dict, optional): Additional options for the operation.
         Returns:
             dict: The result of the find and replace operation.
@@ -356,12 +375,12 @@ class AstraDBCollection:
 
     def vector_find_one_and_replace(
         self,
-        vector,
-        replacement,
+        vector: List[float],
+        replacement: Dict[str, Any],
         *,
-        filter=None,
-        fields=None,
-    ):
+        filter: Optional[Dict[str, Any]] = None,
+        fields: Optional[List[str]] = None,
+    ) -> Union[API_DOC, None]:
         """
         Perform a vector-based search and replace the first matched document.
         Args:
@@ -370,7 +389,7 @@ class AstraDBCollection:
             filter (dict, optional): Criteria to filter documents.
             fields (list, optional): Specifies the fields to return in the result.
         Returns:
-            dict: The result of the vector find and replace operation.
+            dict or None: either the matched document or None if nothing found
         """
         # Pre-process the included arguments
         sort, _ = self._pre_process_find(
@@ -385,16 +404,15 @@ class AstraDBCollection:
             sort=sort,
         )
 
-        # Post-process the return
-        find_result = self._post_process_find(
-            raw_find_result,
-            include_similarity=False,
-            _key="document",
-        )
+        return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
 
-        return find_result
-
-    def find_one_and_update(self, sort={}, update=None, filter=None, options=None):
+    def find_one_and_update(
+        self,
+        sort: Optional[Dict[str, Any]] = {},
+        update: Optional[Dict[str, Any]] = None,
+        filter: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> API_RESPONSE:
         """
         Find a single document and update it.
         Args:
@@ -423,12 +441,12 @@ class AstraDBCollection:
 
     def vector_find_one_and_update(
         self,
-        vector,
-        update,
+        vector: List[float],
+        update: Dict[str, Any],
         *,
-        filter=None,
-        fields=None,
-    ):
+        filter: Optional[Dict[str, Any]] = None,
+        fields: Optional[List[str]] = None,
+    ) -> Union[API_DOC, None]:
         """
         Perform a vector-based search and update the first matched document.
         Args:
@@ -437,7 +455,8 @@ class AstraDBCollection:
             filter (dict, optional): Criteria to filter documents before applying the vector search.
             fields (list, optional): Specifies the fields to return in the updated document.
         Returns:
-            dict: The result of the vector-based find and update operation.
+            dict or None: The result of the vector-based find and
+                update operation, or None if nothing found
         """
         # Pre-process the included arguments
         sort, _ = self._pre_process_find(
@@ -452,16 +471,40 @@ class AstraDBCollection:
             sort=sort,
         )
 
-        # Post-process the return
-        find_result = self._post_process_find(
-            raw_find_result,
-            include_similarity=False,
-            _key="document",
+        return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
+
+    def count_documents(
+        self,
+        filter: Dict[str, Any] = {},
+    ) -> API_RESPONSE:
+        """
+        Count documents matching a given predicate (expressed as filter).
+        Args:
+            filter (dict, defaults to {}): Criteria to filter documents.
+        Returns:
+            dict: the response, either
+                {"status": {"count": <NUMBER> }}
+            or
+                {"errors": [...]}
+        """
+        json_query = make_payload(
+            top_level="countDocuments",
+            filter=filter,
         )
 
-        return find_result
+        response = self._post(
+            document=json_query,
+        )
 
-    def find_one(self, filter={}, projection={}, sort={}, options={}):
+        return response
+
+    def find_one(
+        self,
+        filter: Optional[Dict[str, Any]] = {},
+        projection: Optional[Dict[str, Any]] = {},
+        sort: Optional[Dict[str, Any]] = {},
+        options: Optional[Dict[str, Any]] = {},
+    ) -> API_RESPONSE:
         """
         Find a single document in the collection.
         Args:
@@ -470,7 +513,11 @@ class AstraDBCollection:
             sort (dict, optional): Specifies the order in which to return the document.
             options (dict, optional): Additional options for the query.
         Returns:
-            dict: The found document or None if no matching document is found.
+            dict: the response, either
+                {"data": {"document": <DOCUMENT> }}
+            or
+                {"data": {"document": None}}
+            depending on whether a matching document is found or not.
         """
         json_query = make_payload(
             top_level="findOne",
@@ -488,12 +535,12 @@ class AstraDBCollection:
 
     def vector_find_one(
         self,
-        vector,
+        vector: List[float],
         *,
-        filter=None,
-        fields=None,
-        include_similarity=True,
-    ):
+        filter: Optional[Dict[str, Any]] = None,
+        fields: Optional[List[str]] = None,
+        include_similarity: bool = True,
+    ) -> Union[API_DOC, None]:
         """
         Perform a vector-based search to find a single document in the collection.
         Args:
@@ -502,7 +549,7 @@ class AstraDBCollection:
             fields (list, optional): Specifies the fields to return in the result.
             include_similarity (bool, optional): Whether to include similarity score in the result.
         Returns:
-            dict: The found document or None if no matching document is found.
+            dict or None: The found document or None if no matching document is found.
         """
         # Pre-process the included arguments
         sort, projection = self._pre_process_find(
@@ -518,16 +565,11 @@ class AstraDBCollection:
             options={"includeSimilarity": include_similarity},
         )
 
-        # Post-process the return
-        find_result = self._post_process_find(
-            raw_find_result,
-            include_similarity=include_similarity,
-            _key="document",
-        )
+        return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
 
-        return find_result
-
-    def insert_one(self, document, failures_allowed=False):
+    def insert_one(
+        self, document: API_DOC, failures_allowed: bool = False
+    ) -> API_RESPONSE:
         """
         Insert a single document into the collection.
         Args:
@@ -547,7 +589,12 @@ class AstraDBCollection:
 
         return response
 
-    def insert_many(self, documents, options=None, partial_failures_allowed=False):
+    def insert_many(
+        self,
+        documents: List[API_DOC],
+        options: Optional[Dict[str, Any]] = None,
+        partial_failures_allowed: bool = False,
+    ) -> API_RESPONSE:
         """
         Insert multiple documents into the collection.
         Args:
@@ -570,7 +617,9 @@ class AstraDBCollection:
 
         return response
 
-    def update_one(self, filter, update):
+    def update_one(
+        self, filter: Dict[str, Any], update: Dict[str, Any]
+    ) -> API_RESPONSE:
         """
         Update a single document in the collection.
         Args:
@@ -589,7 +638,7 @@ class AstraDBCollection:
 
         return response
 
-    def replace(self, path, document):
+    def replace(self, path: str, document: API_DOC) -> API_RESPONSE:
         """
         Replace a document in the collection.
         Args:
@@ -600,11 +649,11 @@ class AstraDBCollection:
         """
         return self._put(path=path, document=document)
 
-    def delete(self, id):
+    def delete(self, id: str) -> API_RESPONSE:
         # TODO: Deprecate this method
         return self.delete_one(id)
 
-    def delete_one(self, id):
+    def delete_one(self, id: str) -> API_RESPONSE:
         """
         Delete a single document from the collection based on its ID.
         Args:
@@ -624,7 +673,7 @@ class AstraDBCollection:
 
         return response
 
-    def delete_many(self, filter):
+    def delete_many(self, filter: Dict[str, Any]) -> API_RESPONSE:
         """
         Delete many documents from the collection based on a filter condition
         Args:
@@ -644,7 +693,7 @@ class AstraDBCollection:
 
         return response
 
-    def delete_subdocument(self, id, subdoc):
+    def delete_subdocument(self, id: str, subdoc: str) -> API_RESPONSE:
         """
         Delete a subdocument or field from a document in the collection.
         Args:
@@ -666,7 +715,7 @@ class AstraDBCollection:
 
         return response
 
-    def upsert(self, document):
+    def upsert(self, document: API_DOC) -> str:
         """
         Emulate an upsert operation for a single document in the collection.
 
@@ -689,12 +738,12 @@ class AstraDBCollection:
         ):
             # Now we attempt to update
             result = self.find_one_and_replace(
-                filter={"_id": document["_id"]},
                 replacement=document,
+                filter={"_id": document["_id"]},
             )
-            upserted_id = result["data"]["document"]["_id"]
+            upserted_id = cast(str, result["data"]["document"]["_id"])
         else:
-            upserted_id = result["status"]["insertedIds"][0]
+            upserted_id = cast(str, result["status"]["insertedIds"][0])
 
         return upserted_id
 
@@ -705,13 +754,12 @@ class AstraDB:
 
     def __init__(
         self,
-        token=None,
-        api_endpoint=None,
-        api_path=None,
-        api_version=None,
-        namespace=None,
-        auth_header=DEFAULT_AUTH_HEADER,
-    ):
+        token: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+        namespace: Optional[str] = None,
+    ) -> None:
         """
         Initialize an Astra DB instance.
         Args:
@@ -741,33 +789,39 @@ class AstraDB:
         # Set the namespace
         self.namespace = namespace
 
-        # Set the default name of the auth header
-        self.auth_header = auth_header
-
         # Finally, construct the full base path
         self.base_path = f"/{self.api_path}/{self.api_version}/{self.namespace}"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'Astra DB[endpoint="{self.base_url}"]'
 
-    def _request(self, *args, skip_error_check=False, **kwargs):
+    def _request(
+        self,
+        method: str = http_methods.POST,
+        path: Optional[str] = None,
+        json_data: Optional[Dict[str, Any]] = None,
+        url_params: Optional[Dict[str, Any]] = None,
+        skip_error_check: bool = False,
+    ) -> API_RESPONSE:
         response = make_request(
-            *args,
-            **kwargs,
             client=self.client,
             base_url=self.base_url,
-            auth_header=self.auth_header,
+            auth_header=DEFAULT_AUTH_HEADER,
             token=self.token,
+            method=method,
+            path=path,
+            json_data=json_data,
+            url_params=url_params,
         )
 
-        responsebody = response.json()
+        responsebody = cast(API_RESPONSE, response.json())
 
         if not skip_error_check and "errors" in responsebody:
             raise ValueError(json.dumps(responsebody["errors"]))
         else:
             return responsebody
 
-    def collection(self, collection_name):
+    def collection(self, collection_name: str) -> AstraDBCollection:
         """
         Retrieve a collection from the database.
         Args:
@@ -777,23 +831,40 @@ class AstraDB:
         """
         return AstraDBCollection(collection_name=collection_name, astra_db=self)
 
-    def get_collections(self):
+    def get_collections(self, options: Optional[Dict[str, Any]] = None) -> API_RESPONSE:
         """
         Retrieve a list of collections from the database.
+        Args:
+            options (dict, optional): Options to get the collection list
         Returns:
-            dict: A list of collections in the database.
+            dict: An object containing the list of collections in the database:
+                {"status": {"collections": [...]}}
         """
+        # Parse the options parameter
+        if options is None:
+            options = {}
+
+        json_query = make_payload(
+            top_level="findCollections",
+            options=options,
+        )
+
         response = self._request(
             method=http_methods.POST,
             path=self.base_path,
-            json_data={"findCollections": {}},
+            json_data=json_query,
         )
 
         return response
 
     def create_collection(
-        self, collection_name, *, options=None, dimension=None, metric=None
-    ):
+        self,
+        collection_name: str,
+        *,
+        options: Optional[Dict[str, Any]] = None,
+        dimension: Optional[int] = None,
+        metric: Optional[str] = None,
+    ) -> AstraDBCollection:
         """
         Create a new collection in the database.
         Args:
@@ -804,8 +875,6 @@ class AstraDB:
         Returns:
             AstraDBCollection: The created collection object.
         """
-        if not collection_name:
-            raise ValueError("Must provide a collection name")
         # options from named params
         vector_options = {
             k: v
@@ -815,15 +884,20 @@ class AstraDB:
             }.items()
             if v is not None
         }
+
         # overlap/merge with stuff in options.vector
         dup_params = set((options or {}).get("vector", {}).keys()) & set(
             vector_options.keys()
         )
+
+        # If any params are duplicated, we raise an error
         if dup_params:
             dups = ", ".join(sorted(dup_params))
             raise ValueError(
                 f"Parameter(s) {dups} passed both to the method and in the options"
             )
+
+        # Build our options dictionary if we have vector options
         if vector_options:
             options = options or {}
             options["vector"] = {
@@ -840,7 +914,7 @@ class AstraDB:
             if v is not None
         }
 
-        # Make the request to the endpoitn
+        # Make the request to the endpoint
         self._request(
             method=http_methods.POST,
             path=f"{self.base_path}",
@@ -850,7 +924,7 @@ class AstraDB:
         # Get the instance object as the return of the call
         return AstraDBCollection(astra_db=self, collection_name=collection_name)
 
-    def delete_collection(self, collection_name):
+    def delete_collection(self, collection_name: str) -> API_RESPONSE:
         """
         Delete a collection from the database.
         Args:
@@ -869,3 +943,39 @@ class AstraDB:
         )
 
         return response
+
+    def truncate_collection(self, collection_name: str) -> AstraDBCollection:
+        """
+        Truncate a collection in the database.
+        Args:
+            collection_name (str): The name of the collection to truncate.
+        Returns:
+            dict: The response from the database.
+        """
+        # Make sure we provide a collection name
+        if not collection_name:
+            raise ValueError("Must provide a collection name")
+
+        # Retrieve the required collections from DB
+        collections = self.get_collections(options={"explain": "true"})
+        matches = [
+            col
+            for col in collections["status"]["collections"]
+            if col["name"] == collection_name
+        ]
+
+        # If we didn't find it, raise an error
+        if matches == []:
+            raise ValueError(f"Collection {collection_name} not found")
+
+        # Otherwise we found it, so get the collection
+        existing_collection = matches[0]
+
+        # We found it, so let's delete it
+        self.delete_collection(collection_name)
+
+        # End the function by returning the the new collection
+        return self.create_collection(
+            collection_name,
+            options=existing_collection.get("options"),
+        )
