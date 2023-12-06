@@ -1,5 +1,12 @@
 # CHANGES.txt
 
+## Version 0.6.3 (?)
+
+### What's Changed
+
+- the authentication header for the JSON Api is changed from `X-Cassandra-Token` to `Token`, in line with changes in the API by @hemidactylus in <https://github.com/datastax/astrapy/pull/73>
+- the parameter name for pagination is changed from `nextPagingState` to `nextPageState`, in line with changes in the API by @hemidactylus in <https://github.com/datastax/astrapy/pull/72>
+
 ## Version 0.6.2
 
 ### What's Changed
