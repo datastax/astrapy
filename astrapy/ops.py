@@ -18,7 +18,11 @@ from typing import Any, cast, Dict, Optional
 import httpx
 
 from astrapy.utils import make_request, http_methods
-from astrapy.defaults import DEFAULT_DEV_OPS_API_VERSION, DEFAULT_DEV_OPS_URL
+from astrapy.defaults import (
+    DEFAULT_DEV_OPS_AUTH_HEADER,
+    DEFAULT_DEV_OPS_API_VERSION,
+    DEFAULT_DEV_OPS_URL,
+)
 from astrapy.types import API_RESPONSE, OPS_API_RESPONSE
 
 
@@ -56,7 +60,7 @@ class AstraDBOps:
             client=self.client,
             base_url=self.base_url,
             method=method,
-            auth_header="Authorization",
+            auth_header=DEFAULT_DEV_OPS_AUTH_HEADER,
             token=self.token,
             json_data=json_data,
             url_params=_options,

@@ -253,7 +253,7 @@ class AstraDBCollection:
         for document in response0["data"]["documents"]:
             yield document
         while next_page_state is not None:
-            options1 = {**options0, **{"pagingState": next_page_state}}
+            options1 = {**options0, **{"pageState": next_page_state}}
             response1 = request_method(options=options1)
             for document in response1["data"]["documents"]:
                 yield document
