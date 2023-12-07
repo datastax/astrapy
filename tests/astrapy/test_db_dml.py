@@ -19,6 +19,7 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 
 import uuid
 import logging
+import numpy
 from typing import List
 
 import pytest
@@ -275,6 +276,21 @@ def test_create_document(writable_vector_collection: AstraDBCollection) -> None:
         )["data"]["document"]["a"]
         == 5
     )
+
+
+@pytest.mark.describe("should truncate a nonvector collection")
+def test_insert_float32(writable_vector_collection: AstraDBCollection) -> None:
+    _id0 = str(uuid.uuid4())
+    document = {
+        "_id": _id0,
+        "name": "Numpy",
+        "$vector": [numpy.float32(0.1), numpy.float32(0.2)],
+    }
+    response = writable_vector_collection.insert_one(document)
+    assert response is not None
+    inserted_ids = response["status"]["insertedIds"]
+    assert len(inserted_ids) == 1
+    assert inserted_ids[0] == _id0
 
 
 @pytest.mark.describe("insert_many")

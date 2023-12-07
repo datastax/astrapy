@@ -25,7 +25,12 @@ from astrapy.defaults import (
     DEFAULT_JSON_API_VERSION,
     DEFAULT_KEYSPACE_NAME,
 )
-from astrapy.utils import make_payload, make_request, http_methods
+from astrapy.utils import (
+    convert_vector_to_floats,
+    make_payload,
+    make_request,
+    http_methods,
+)
 from astrapy.types import API_DOC, API_RESPONSE, PaginableRequestMethod
 
 
@@ -578,6 +583,13 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the insert operation.
         """
+        if (
+            "$vector" in document
+            and document["$vector"]
+            and not isinstance(document["$vector"][0], float)
+        ):
+            document["$vector"] = convert_vector_to_floats(document["$vector"])
+
         json_query = make_payload(top_level="insertOne", document=document)
 
         response = self._request(
@@ -604,6 +616,17 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the insert operation.
         """
+        # Check if the vector is a list of floats
+        for i, document in enumerate(documents):
+            if (
+                "$vector" in document
+                and document["$vector"]
+                and isinstance(document["$vector"][0], float)
+            ):
+                documents[i]["$vector"] = convert_vector_to_floats(
+                    documents[i]["$vector"]
+                )
+
         json_query = make_payload(
             top_level="insertMany", documents=documents, options=options
         )
