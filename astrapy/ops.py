@@ -18,8 +18,12 @@ from typing import Any, cast, Dict, Optional
 import httpx
 from astrapy.exceptions import APIRequestHandler
 
-from astrapy.utils import http_methods
-from astrapy.defaults import DEFAULT_DEV_OPS_API_VERSION, DEFAULT_DEV_OPS_URL
+from astrapy.utils import make_request, http_methods
+from astrapy.defaults import (
+    DEFAULT_DEV_OPS_AUTH_HEADER,
+    DEFAULT_DEV_OPS_API_VERSION,
+    DEFAULT_DEV_OPS_URL,
+)
 from astrapy.types import API_RESPONSE, OPS_API_RESPONSE
 
 
@@ -56,7 +60,8 @@ class AstraDBOps:
         request_handler = APIRequestHandler(
             client=self.client,
             base_url=self.base_url,
-            auth_header="Authorization",
+            method=method,
+            auth_header=DEFAULT_DEV_OPS_AUTH_HEADER,
             token=self.token,
             method=method,
             path=path,
