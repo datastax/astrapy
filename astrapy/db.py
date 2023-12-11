@@ -30,6 +30,7 @@ from astrapy.utils import (
     make_payload,
     make_request,
     http_methods,
+    preprocess_insert,
 )
 from astrapy.types import API_DOC, API_RESPONSE, PaginableRequestMethod
 
@@ -221,7 +222,7 @@ class AstraDBCollection:
 
         # Pre-process the included arguments
         sort, projection = self._pre_process_find(
-            vector,
+            convert_vector_to_floats(vector),
             fields=fields,
         )
 
@@ -348,7 +349,7 @@ class AstraDBCollection:
 
     def find_one_and_replace(
         self,
-        replacement: Optional[Dict[str, Any]] = None,
+        replacement: Dict[str, Any],
         *,
         sort: Optional[Dict[str, Any]] = {},
         filter: Optional[Dict[str, Any]] = None,
@@ -364,6 +365,8 @@ class AstraDBCollection:
         Returns:
             dict: The result of the find and replace operation.
         """
+        replacement = preprocess_insert(replacement)
+
         json_query = make_payload(
             top_level="findOneAndReplace",
             filter=filter,
@@ -396,9 +399,11 @@ class AstraDBCollection:
         Returns:
             dict or None: either the matched document or None if nothing found
         """
+        replacement = preprocess_insert(replacement)
+
         # Pre-process the included arguments
         sort, _ = self._pre_process_find(
-            vector,
+            convert_vector_to_floats(vector),
             fields=fields,
         )
 
@@ -413,21 +418,23 @@ class AstraDBCollection:
 
     def find_one_and_update(
         self,
+        update: Dict[str, Any],
         sort: Optional[Dict[str, Any]] = {},
-        update: Optional[Dict[str, Any]] = None,
         filter: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
         Find a single document and update it.
         Args:
+            update (dict): The update to apply to the document.
             sort (dict, optional): Specifies the order in which to find the document.
-            update (dict, optional): The update to apply to the document.
             filter (dict, optional): Criteria to filter documents.
             options (dict, optional): Additional options for the operation.
         Returns:
             dict: The result of the find and update operation.
         """
+        update = preprocess_insert(update)
+
         json_query = make_payload(
             top_level="findOneAndUpdate",
             filter=filter,
@@ -463,9 +470,11 @@ class AstraDBCollection:
             dict or None: The result of the vector-based find and
                 update operation, or None if nothing found
         """
+        update = preprocess_insert(update)
+
         # Pre-process the included arguments
         sort, _ = self._pre_process_find(
-            vector,
+            convert_vector_to_floats(vector),
             fields=fields,
         )
 
@@ -558,7 +567,7 @@ class AstraDBCollection:
         """
         # Pre-process the included arguments
         sort, projection = self._pre_process_find(
-            vector,
+            convert_vector_to_floats(vector),
             fields=fields,
         )
 
@@ -583,12 +592,7 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the insert operation.
         """
-        if (
-            "$vector" in document
-            and document["$vector"]
-            and not isinstance(document["$vector"][0], float)
-        ):
-            document["$vector"] = convert_vector_to_floats(document["$vector"])
+        document = preprocess_insert(document)
 
         json_query = make_payload(top_level="insertOne", document=document)
 
@@ -618,14 +622,7 @@ class AstraDBCollection:
         """
         # Check if the vector is a list of floats
         for i, document in enumerate(documents):
-            if (
-                "$vector" in document
-                and document["$vector"]
-                and isinstance(document["$vector"][0], float)
-            ):
-                documents[i]["$vector"] = convert_vector_to_floats(
-                    documents[i]["$vector"]
-                )
+            documents[i] = preprocess_insert(document)
 
         json_query = make_payload(
             top_level="insertMany", documents=documents, options=options
@@ -751,6 +748,7 @@ class AstraDBCollection:
             str: The _id of the inserted or updated document.
         """
         # Build the payload for the insert attempt
+        document = preprocess_insert(document)
         result = self.insert_one(document, failures_allowed=True)
 
         # If the call failed, then we replace the existing doc
