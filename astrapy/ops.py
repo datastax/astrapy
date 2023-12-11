@@ -60,7 +60,6 @@ class AstraDBOps:
         request_handler = APIRequestHandler(
             client=self.client,
             base_url=self.base_url,
-            method=method,
             auth_header=DEFAULT_DEV_OPS_AUTH_HEADER,
             token=self.token,
             method=method,
