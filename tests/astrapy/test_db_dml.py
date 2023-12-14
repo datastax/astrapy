@@ -20,6 +20,7 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 import uuid
 import logging
 import json
+import httpx
 from typing import List
 
 import pytest
@@ -365,8 +366,10 @@ def test_insert_many_ordered_false(
     assert check_response["data"]["document"]["_id"] == _id1
 
 
-@pytest.mark.describe("test error handling")
-def test_error_handling(writable_vector_collection: AstraDBCollection) -> None:
+@pytest.mark.describe("test error handling - duplicate document")
+def test_error_handling_duplicate(
+    writable_vector_collection: AstraDBCollection,
+) -> None:
     _id1 = str(uuid.uuid4())
 
     result1 = writable_vector_collection.insert_one(
@@ -407,6 +410,22 @@ def test_error_handling(writable_vector_collection: AstraDBCollection) -> None:
         parsed_json = json.loads(message)
 
         assert parsed_json["errors"][0]["errorCode"] == "DOCUMENT_ALREADY_EXISTS"
+
+
+@pytest.mark.describe("test error handling - network error")
+def test_error_handling_network(
+    invalid_writable_vector_collection: AstraDBCollection,
+) -> None:
+    _id1 = str(uuid.uuid4())
+
+    with pytest.raises(httpx.ConnectError):
+        invalid_writable_vector_collection.insert_one(
+            {
+                "_id": _id1,
+                "a": 1,
+                "$vector": [0.3, 0.5],
+            }
+        )
 
 
 @pytest.mark.describe("upsert")

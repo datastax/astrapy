@@ -19,7 +19,7 @@ import httpx
 from functools import partial
 from typing import Any, cast, Dict, Iterable, List, Optional, Tuple, Union
 
-from astrapy.exceptions import APIRequestHandler
+from astrapy.api import APIRequestHandler
 from astrapy.defaults import (
     DEFAULT_AUTH_HEADER,
     DEFAULT_JSON_API_PATH,

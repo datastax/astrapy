@@ -16,7 +16,7 @@ import logging
 from typing import Any, cast, Dict, Optional
 
 import httpx
-from astrapy.exceptions import APIRequestHandler
+from astrapy.api import APIRequestHandler
 
 from astrapy.utils import http_methods
 from astrapy.defaults import (
