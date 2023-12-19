@@ -13,8 +13,9 @@ logger = logging.getLogger(__name__)
 
 class APIRequestError(ValueError):
     def __init__(self, response: httpx.Response) -> None:
-        self.response = response
         super().__init__(response.text)
+
+        self.response = response
 
     def __repr__(self) -> str:
         return f"{self.response}"
@@ -74,6 +75,7 @@ class APIRequestHandler:
             # If the API produced an error, warn and return the API request error class
             if "errors" in response_body and not self.skip_error_check:
                 logger.debug(response_body["errors"])
+
                 raise APIRequestError(self.response)
 
             # Otherwise, set the response body
