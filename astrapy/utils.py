@@ -8,8 +8,24 @@ from astrapy import __version__
 from astrapy.defaults import DEFAULT_TIMEOUT
 
 
+class CustomLogger(logging.Logger):
+    def trace(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        if self.isEnabledFor(5):
+            self._log(5, msg, *args, **kwargs)
+
+
+# Add a new TRACE logging level
+logging.addLevelName(5, "TRACE")
+
+# Tell the logging system to use your custom logger
+logging.setLoggerClass(CustomLogger)
+
+# Now you can use the trace method on your logger instances
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG) # Apply if wishing to debug requests
+logger.trace("This is a trace message")  # type: ignore
+
+
+logger = logging.getLogger(__name__)
 
 
 class http_methods:
@@ -38,7 +54,7 @@ def log_request_response(
     logger.debug(f"Request headers: {r.request.headers}")
 
     if json_data:
-        logger.debug(f"Request payload: {json_data}")
+        logger.trace(f"Request payload: {json_data}")  # type: ignore
 
     logger.debug(f"Response status code: {r.status_code}")
     logger.debug(f"Response headers: {r.headers}")
@@ -80,8 +96,7 @@ def make_request(
         headers={auth_header: token, "User-Agent": f"{package_name}/{__version__}"},
     )
 
-    if logger.isEnabledFor(logging.DEBUG):
-        log_request_response(r, json_data)
+    log_request_response(r, json_data)
 
     r.raise_for_status()
 
