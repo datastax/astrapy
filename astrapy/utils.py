@@ -88,6 +88,49 @@ def make_request(
     return r
 
 
+async def amake_request(
+    client: httpx.AsyncClient,
+    base_url: str,
+    auth_header: str,
+    token: str,
+    method: str = http_methods.POST,
+    path: Optional[str] = None,
+    json_data: Optional[Dict[str, Any]] = None,
+    url_params: Optional[Dict[str, Any]] = None,
+) -> httpx.Response:
+    """
+    Make an HTTP request to a specified URL.
+
+    Args:
+        client (httpx): The httpx client for the request.
+        base_url (str): The base URL for the request.
+        auth_header (str): The authentication header key.
+        token (str): The token used for authentication.
+        method (str, optional): The HTTP method to use for the request. Default is POST.
+        path (str, optional): The specific path to append to the base URL.
+        json_data (dict, optional): JSON payload to be sent with the request.
+        url_params (dict, optional): URL parameters to be sent with the request.
+
+    Returns:
+        requests.Response: The response from the HTTP request.
+    """
+    r = await client.request(
+        method=method,
+        url=f"{base_url}{path}",
+        params=url_params,
+        json=json_data,
+        timeout=DEFAULT_TIMEOUT,
+        headers={auth_header: token, "User-Agent": f"{package_name}/{__version__}"},
+    )
+
+    if logger.isEnabledFor(logging.DEBUG):
+        log_request_response(r, json_data)
+
+    r.raise_for_status()
+
+    return r
+
+
 def make_payload(top_level: str, **kwargs: Any) -> Dict[str, Any]:
     """
     Construct a JSON payload for an HTTP request with a specified top-level key.
