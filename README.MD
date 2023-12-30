@@ -354,9 +354,15 @@ You can use the Ops client to work with the Astra DevOps API. Check the [devops 
 
 ## For Developers
 
-You should additionally `pip install -r requirements-dev.txt` in a development
-environment (note that the `pip install -e .` is covered by the regular
-requirements file already).
+Install poetry
+```bash
+pip install poetry
+```
+
+Install the project dependencies
+```bash
+poetry install
+```
 
 ### Style, linter, typing
 
@@ -366,14 +372,14 @@ Moreover, **type annotations** are used everywhere.
 To ensure the code complies, you should get no errors
 (_Success: no issues found..._) when running the following in the root dir:
 
-```
-black --check astrapy && ruff astrapy && mypy astrapy
+```bash
+poetry run black --check astrapy && poetry run ruff astrapy && poetry run mypy astrapy
 ```
 
 Likewise, for the tests:
 
-```
-black --check tests && ruff tests && mypy tests
+```bash
+poetry run black --check tests && poetry run ruff tests && poetry run mypy tests
 ```
 
 ### Testing
@@ -392,7 +398,7 @@ export ASTRA_DB_OPS_APPLICATION_TOKEN="..." # Ops-only, falls back to the other 
 then you can run:
 
 ```bash
-pytest
+poetry run pytest
 ```
 
 To remove the noise from the logs (on by default), run `pytest -o log_cli=0`.
