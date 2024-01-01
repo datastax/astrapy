@@ -12,9 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import annotations
+
+import asyncio
 import logging
 import json
+import threading
 from functools import partial
+from queue import Queue
 from types import TracebackType
 from typing import (
     Any,
@@ -252,14 +256,17 @@ class AstraDBCollection:
 
     @staticmethod
     def paginate(
-        *, request_method: PaginableRequestMethod, options: Optional[Dict[str, Any]]
+        *,
+        request_method: PaginableRequestMethod,
+        options: Optional[Dict[str, Any]],
+        prefetched: Optional[int] = None,
     ) -> Iterable[API_DOC]:
         """
         Generate paginated results for a given database query method.
         Args:
             request_method (function): The database query method to paginate.
-            options (dict): Options for the database query.
-            kwargs: Additional arguments to pass to the database query method.
+            options (dict, optional): Options for the database query.
+            prefetched (int, optional): Number of pre-fetched documents.
         Yields:
             dict: The next document in the paginated result set.
         """
@@ -267,14 +274,43 @@ class AstraDBCollection:
         response0 = request_method(options=_options)
         next_page_state = response0["data"]["nextPageState"]
         options0 = _options
-        for document in response0["data"]["documents"]:
-            yield document
-        while next_page_state is not None:
+        if next_page_state is not None and prefetched:
+
+            def queued_paginate(
+                queue: Queue[Optional[API_DOC]],
+                request_method: PaginableRequestMethod,
+                options: Optional[Dict[str, Any]],
+            ) -> None:
+                try:
+                    for row in AstraDBCollection.paginate(
+                        request_method=request_method, options=options
+                    ):
+                        queue.put(row)
+                finally:
+                    queue.put(None)
+
+            queue: Queue[Optional[API_DOC]] = Queue(prefetched)
             options1 = {**options0, **{"pageState": next_page_state}}
-            response1 = request_method(options=options1)
-            for document in response1["data"]["documents"]:
+            t = threading.Thread(
+                target=queued_paginate, args=(queue, request_method, options1)
+            )
+            t.start()
+            for document in response0["data"]["documents"]:
                 yield document
-            next_page_state = response1["data"]["nextPageState"]
+            doc = queue.get()
+            while doc is not None:
+                yield doc
+                doc = queue.get()
+            t.join()
+        else:
+            for document in response0["data"]["documents"]:
+                yield document
+            while next_page_state is not None and not prefetched:
+                options1 = {**options0, **{"pageState": next_page_state}}
+                response1 = request_method(options=options1)
+                for document in response1["data"]["documents"]:
+                    yield document
+                next_page_state = response1["data"]["nextPageState"]
 
     def paginated_find(
         self,
@@ -282,6 +318,7 @@ class AstraDBCollection:
         projection: Optional[Dict[str, Any]] = None,
         sort: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
+        prefetched: Optional[int] = None,
     ) -> Iterable[API_DOC]:
         """
         Perform a paginated search in the collection.
@@ -290,6 +327,7 @@ class AstraDBCollection:
             projection (dict, optional): Specifies the fields to return.
             sort (dict, optional): Specifies the order in which to return matching documents.
             options (dict, optional): Additional options for the query.
+            prefetched (int, optional): Number of pre-fetched documents.
         Returns:
             generator: A generator yielding documents in the paginated result set.
         """
@@ -302,6 +340,7 @@ class AstraDBCollection:
         return self.paginate(
             request_method=partialed_find,
             options=options,
+            prefetched=prefetched,
         )
 
     def pop(
@@ -969,13 +1008,14 @@ class AsyncAstraDBCollection:
         *,
         request_method: AsyncPaginableRequestMethod,
         options: Optional[Dict[str, Any]],
+        prefetched: Optional[int] = None,
     ) -> AsyncGenerator[API_DOC, None]:
         """
         Generate paginated results for a given database query method.
         Args:
             request_method (function): The database query method to paginate.
-            options (dict): Options for the database query.
-            kwargs: Additional arguments to pass to the database query method.
+            options (dict, optional): Options for the database query.
+            prefetched (int, optional): Number of pre-fetched documents.
         Yields:
             dict: The next document in the paginated result set.
         """
@@ -983,14 +1023,39 @@ class AsyncAstraDBCollection:
         response0 = await request_method(options=_options)
         next_page_state = response0["data"]["nextPageState"]
         options0 = _options
-        for document in response0["data"]["documents"]:
-            yield document
-        while next_page_state is not None:
+        if next_page_state is not None and prefetched:
+
+            async def queued_paginate(
+                queue: asyncio.Queue[Optional[API_DOC]],
+                request_method: AsyncPaginableRequestMethod,
+                options: Optional[Dict[str, Any]],
+            ) -> None:
+                try:
+                    async for doc in AsyncAstraDBCollection.paginate(
+                        request_method=request_method, options=options
+                    ):
+                        await queue.put(doc)
+                finally:
+                    await queue.put(None)
+
+            queue: asyncio.Queue[Optional[API_DOC]] = asyncio.Queue(prefetched)
             options1 = {**options0, **{"pageState": next_page_state}}
-            response1 = await request_method(options=options1)
-            for document in response1["data"]["documents"]:
+            asyncio.create_task(queued_paginate(queue, request_method, options1))
+            for document in response0["data"]["documents"]:
                 yield document
-            next_page_state = response1["data"]["nextPageState"]
+            doc = await queue.get()
+            while doc is not None:
+                yield doc
+                doc = await queue.get()
+        else:
+            for document in response0["data"]["documents"]:
+                yield document
+            while next_page_state is not None:
+                options1 = {**options0, **{"pageState": next_page_state}}
+                response1 = await request_method(options=options1)
+                for document in response1["data"]["documents"]:
+                    yield document
+                next_page_state = response1["data"]["nextPageState"]
 
     def paginated_find(
         self,
@@ -998,6 +1063,7 @@ class AsyncAstraDBCollection:
         projection: Optional[Dict[str, Any]] = None,
         sort: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
+        prefetched: Optional[int] = None,
     ) -> AsyncIterable[API_DOC]:
         """
         Perform a paginated search in the collection.
@@ -1006,6 +1072,7 @@ class AsyncAstraDBCollection:
             projection (dict, optional): Specifies the fields to return.
             sort (dict, optional): Specifies the order in which to return matching documents.
             options (dict, optional): Additional options for the query.
+            prefetched (int, optional): Number of pre-fetched documents
         Returns:
             generator: A generator yielding documents in the paginated result set.
         """
@@ -1018,6 +1085,7 @@ class AsyncAstraDBCollection:
         return self.paginate(
             request_method=partialed_find,
             options=options,
+            prefetched=prefetched,
         )
 
     async def pop(
