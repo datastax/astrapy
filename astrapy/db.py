@@ -36,7 +36,7 @@ from typing import (
     AsyncGenerator,
 )
 
-from astrapy.api import APIRequestHandler
+from astrapy.api import AsyncAPIRequestHandler, APIRequestHandler
 from astrapy.defaults import (
     DEFAULT_AUTH_HEADER,
     DEFAULT_JSON_API_PATH,
@@ -873,7 +873,6 @@ class AsyncAstraDBCollection:
         skip_error_check: bool = False,
         **kwargs: Any,
     ) -> API_RESPONSE:
-
         arequest_handler = AsyncAPIRequestHandler(
             client=self.client,
             base_url=self.astra_db.base_url,
