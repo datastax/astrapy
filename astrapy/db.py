@@ -13,11 +13,28 @@
 # limitations under the License.
 from __future__ import annotations
 
-import logging
+import asyncio
 import httpx
+import logging
+import json
+import threading
 
 from functools import partial
-from typing import Any, cast, Dict, Iterable, List, Optional, Tuple, Union
+from queue import Queue
+from types import TracebackType
+from typing import (
+    Any,
+    cast,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    Type,
+    AsyncIterable,
+    AsyncGenerator,
+)
 
 from astrapy.api import APIRequestHandler
 from astrapy.defaults import (
@@ -26,8 +43,20 @@ from astrapy.defaults import (
     DEFAULT_JSON_API_VERSION,
     DEFAULT_KEYSPACE_NAME,
 )
-from astrapy.utils import make_payload, http_methods
-from astrapy.types import API_DOC, API_RESPONSE, PaginableRequestMethod
+from astrapy.utils import (
+    convert_vector_to_floats,
+    make_payload,
+    make_request,
+    http_methods,
+    amake_request,
+    preprocess_insert,
+)
+from astrapy.types import (
+    API_DOC,
+    API_RESPONSE,
+    PaginableRequestMethod,
+    AsyncPaginableRequestMethod,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -217,7 +246,7 @@ class AstraDBCollection:
 
         # Pre-process the included arguments
         sort, projection = self._pre_process_find(
-            vector,
+            convert_vector_to_floats(vector),
             fields=fields,
         )
 
@@ -236,14 +265,17 @@ class AstraDBCollection:
 
     @staticmethod
     def paginate(
-        *, request_method: PaginableRequestMethod, options: Optional[Dict[str, Any]]
+        *,
+        request_method: PaginableRequestMethod,
+        options: Optional[Dict[str, Any]],
+        prefetched: Optional[int] = None,
     ) -> Iterable[API_DOC]:
         """
         Generate paginated results for a given database query method.
         Args:
             request_method (function): The database query method to paginate.
-            options (dict): Options for the database query.
-            kwargs: Additional arguments to pass to the database query method.
+            options (dict, optional): Options for the database query.
+            prefetched (int, optional): Number of pre-fetched documents.
         Yields:
             dict: The next document in the paginated result set.
         """
@@ -251,14 +283,43 @@ class AstraDBCollection:
         response0 = request_method(options=_options)
         next_page_state = response0["data"]["nextPageState"]
         options0 = _options
-        for document in response0["data"]["documents"]:
-            yield document
-        while next_page_state is not None:
+        if next_page_state is not None and prefetched:
+
+            def queued_paginate(
+                queue: Queue[Optional[API_DOC]],
+                request_method: PaginableRequestMethod,
+                options: Optional[Dict[str, Any]],
+            ) -> None:
+                try:
+                    for row in AstraDBCollection.paginate(
+                        request_method=request_method, options=options
+                    ):
+                        queue.put(row)
+                finally:
+                    queue.put(None)
+
+            queue: Queue[Optional[API_DOC]] = Queue(prefetched)
             options1 = {**options0, **{"pageState": next_page_state}}
-            response1 = request_method(options=options1)
-            for document in response1["data"]["documents"]:
+            t = threading.Thread(
+                target=queued_paginate, args=(queue, request_method, options1)
+            )
+            t.start()
+            for document in response0["data"]["documents"]:
                 yield document
-            next_page_state = response1["data"]["nextPageState"]
+            doc = queue.get()
+            while doc is not None:
+                yield doc
+                doc = queue.get()
+            t.join()
+        else:
+            for document in response0["data"]["documents"]:
+                yield document
+            while next_page_state is not None and not prefetched:
+                options1 = {**options0, **{"pageState": next_page_state}}
+                response1 = request_method(options=options1)
+                for document in response1["data"]["documents"]:
+                    yield document
+                next_page_state = response1["data"]["nextPageState"]
 
     def paginated_find(
         self,
@@ -266,6 +327,7 @@ class AstraDBCollection:
         projection: Optional[Dict[str, Any]] = None,
         sort: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
+        prefetched: Optional[int] = None,
     ) -> Iterable[API_DOC]:
         """
         Perform a paginated search in the collection.
@@ -274,6 +336,7 @@ class AstraDBCollection:
             projection (dict, optional): Specifies the fields to return.
             sort (dict, optional): Specifies the order in which to return matching documents.
             options (dict, optional): Additional options for the query.
+            prefetched (int, optional): Number of pre-fetched documents.
         Returns:
             generator: A generator yielding documents in the paginated result set.
         """
@@ -286,6 +349,7 @@ class AstraDBCollection:
         return self.paginate(
             request_method=partialed_find,
             options=options,
+            prefetched=prefetched,
         )
 
     def pop(
@@ -344,7 +408,7 @@ class AstraDBCollection:
 
     def find_one_and_replace(
         self,
-        replacement: Optional[Dict[str, Any]] = None,
+        replacement: Dict[str, Any],
         *,
         sort: Optional[Dict[str, Any]] = {},
         filter: Optional[Dict[str, Any]] = None,
@@ -360,6 +424,8 @@ class AstraDBCollection:
         Returns:
             dict: The result of the find and replace operation.
         """
+        replacement = preprocess_insert(replacement)
+
         json_query = make_payload(
             top_level="findOneAndReplace",
             filter=filter,
@@ -392,9 +458,11 @@ class AstraDBCollection:
         Returns:
             dict or None: either the matched document or None if nothing found
         """
+        replacement = preprocess_insert(replacement)
+
         # Pre-process the included arguments
         sort, _ = self._pre_process_find(
-            vector,
+            convert_vector_to_floats(vector),
             fields=fields,
         )
 
@@ -409,21 +477,23 @@ class AstraDBCollection:
 
     def find_one_and_update(
         self,
+        update: Dict[str, Any],
         sort: Optional[Dict[str, Any]] = {},
-        update: Optional[Dict[str, Any]] = None,
         filter: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
         Find a single document and update it.
         Args:
+            update (dict): The update to apply to the document.
             sort (dict, optional): Specifies the order in which to find the document.
-            update (dict, optional): The update to apply to the document.
             filter (dict, optional): Criteria to filter documents.
             options (dict, optional): Additional options for the operation.
         Returns:
             dict: The result of the find and update operation.
         """
+        update = preprocess_insert(update)
+
         json_query = make_payload(
             top_level="findOneAndUpdate",
             filter=filter,
@@ -459,9 +529,11 @@ class AstraDBCollection:
             dict or None: The result of the vector-based find and
                 update operation, or None if nothing found
         """
+        update = preprocess_insert(update)
+
         # Pre-process the included arguments
         sort, _ = self._pre_process_find(
-            vector,
+            convert_vector_to_floats(vector),
             fields=fields,
         )
 
@@ -554,7 +626,7 @@ class AstraDBCollection:
         """
         # Pre-process the included arguments
         sort, projection = self._pre_process_find(
-            vector,
+            convert_vector_to_floats(vector),
             fields=fields,
         )
 
@@ -579,6 +651,8 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the insert operation.
         """
+        document = preprocess_insert(document)
+
         json_query = make_payload(top_level="insertOne", document=document)
 
         response = self._request(
@@ -605,6 +679,10 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the insert operation.
         """
+        # Check if the vector is a list of floats
+        for i, document in enumerate(documents):
+            documents[i] = preprocess_insert(document)
+
         json_query = make_payload(
             top_level="insertMany", documents=documents, options=options
         )
@@ -729,6 +807,7 @@ class AstraDBCollection:
             str: The _id of the inserted or updated document.
         """
         # Build the payload for the insert attempt
+        document = preprocess_insert(document)
         result = self.insert_one(document, failures_allowed=True)
 
         # If the call failed, then we replace the existing doc
@@ -739,6 +818,747 @@ class AstraDBCollection:
         ):
             # Now we attempt to update
             result = self.find_one_and_replace(
+                replacement=document,
+                filter={"_id": document["_id"]},
+            )
+            upserted_id = cast(str, result["data"]["document"]["_id"])
+        else:
+            upserted_id = cast(str, result["status"]["insertedIds"][0])
+
+        return upserted_id
+
+
+class AsyncAstraDBCollection:
+    def __init__(
+        self,
+        collection_name: str,
+        astra_db: Optional[AsyncAstraDB] = None,
+        token: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        namespace: Optional[str] = None,
+    ) -> None:
+        """
+        Initialize an AstraDBCollection instance.
+        Args:
+            collection_name (str): The name of the collection.
+            astra_db (AstraDB, optional): An instance of Astra DB.
+            token (str, optional): Authentication token for Astra DB.
+            api_endpoint (str, optional): API endpoint URL.
+            namespace (str, optional): Namespace for the database.
+        """
+        # Check for presence of the Astra DB object
+        if astra_db is None:
+            if token is None or api_endpoint is None:
+                raise AssertionError("Must provide token and api_endpoint")
+
+            astra_db = AsyncAstraDB(
+                token=token, api_endpoint=api_endpoint, namespace=namespace
+            )
+
+        # Set the remaining instance attributes
+        self.astra_db: AsyncAstraDB = astra_db
+        self.client = astra_db.client
+        self.collection_name = collection_name
+        self.base_path = f"{self.astra_db.base_path}/{self.collection_name}"
+
+    def __repr__(self) -> str:
+        return f'Astra DB Collection[name="{self.collection_name}", endpoint="{self.astra_db.base_url}"]'
+
+    async def _request(
+        self,
+        method: str = http_methods.POST,
+        path: Optional[str] = None,
+        json_data: Optional[Dict[str, Any]] = None,
+        url_params: Optional[Dict[str, Any]] = None,
+        skip_error_check: bool = False,
+        **kwargs: Any,
+    ) -> API_RESPONSE:
+
+        arequest_handler = AsyncAPIRequestHandler(
+            client=self.client,
+            base_url=self.astra_db.base_url,
+            auth_header=DEFAULT_AUTH_HEADER,
+            token=self.astra_db.token,
+            method=method,
+            path=path,
+            json_data=json_data,
+            url_params=url_params,
+            skip_error_check=skip_error_check,
+        )
+
+        response = await arequest_handler.request()
+
+        return response
+
+    async def _get(
+        self, path: Optional[str] = None, options: Optional[Dict[str, Any]] = None
+    ) -> Optional[API_RESPONSE]:
+        full_path = f"{self.base_path}/{path}" if path else self.base_path
+        response = await self._request(
+            method=http_methods.GET, path=full_path, url_params=options
+        )
+        if isinstance(response, dict):
+            return response
+        return None
+
+    async def _put(
+        self, path: Optional[str] = None, document: Optional[API_RESPONSE] = None
+    ) -> API_RESPONSE:
+        full_path = f"{self.base_path}/{path}" if path else self.base_path
+        response = await self._request(
+            method=http_methods.PUT, path=full_path, json_data=document
+        )
+        return response
+
+    async def _post(
+        self, path: Optional[str] = None, document: Optional[API_DOC] = None
+    ) -> API_RESPONSE:
+        full_path = f"{self.base_path}/{path}" if path else self.base_path
+        response = await self._request(
+            method=http_methods.POST, path=full_path, json_data=document
+        )
+        return response
+
+    def _pre_process_find(
+        self, vector: List[float], fields: Optional[List[str]] = None
+    ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+        # Must pass a vector
+        if not vector:
+            raise ValueError("Must pass a vector")
+
+        # Edge case for field selection
+        if fields and "$similarity" in fields:
+            raise ValueError("Please use the `include_similarity` parameter")
+
+        # Build the new vector parameter
+        sort: Dict[str, Any] = {"$vector": vector}
+
+        # Build the new fields parameter
+        # Note: do not leave projection={}, make it None
+        # (or it will devour $similarity away in the API response)
+        if fields is not None and len(fields) > 0:
+            projection = {f: 1 for f in fields}
+        else:
+            projection = None
+
+        return sort, projection
+
+    async def get(self, path: Optional[str] = None) -> Optional[API_RESPONSE]:
+        """
+        Retrieve a document from the collection by its path.
+        Args:
+            path (str, optional): The path of the document to retrieve.
+        Returns:
+            dict: The retrieved document.
+        """
+        return await self._get(path=path)
+
+    async def find(
+        self,
+        filter: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
+        sort: Optional[Dict[str, Any]] = {},
+        options: Optional[Dict[str, Any]] = None,
+    ) -> API_RESPONSE:
+        """
+        Find documents in the collection that match the given filter.
+        Args:
+            filter (dict, optional): Criteria to filter documents.
+            projection (dict, optional): Specifies the fields to return.
+            sort (dict, optional): Specifies the order in which to return matching documents.
+            options (dict, optional): Additional options for the query.
+        Returns:
+            dict: The query response containing matched documents.
+        """
+        json_query = make_payload(
+            top_level="find",
+            filter=filter,
+            projection=projection,
+            options=options,
+            sort=sort,
+        )
+
+        response = await self._post(
+            document=json_query,
+        )
+
+        return response
+
+    async def vector_find(
+        self,
+        vector: List[float],
+        *,
+        limit: int,
+        filter: Optional[Dict[str, Any]] = None,
+        fields: Optional[List[str]] = None,
+        include_similarity: bool = True,
+    ) -> List[API_DOC]:
+        """
+        Perform a vector-based search in the collection.
+        Args:
+            vector (list): The vector to search with.
+            limit (int): The maximum number of documents to return.
+            filter (dict, optional): Criteria to filter documents.
+            fields (list, optional): Specifies the fields to return.
+            include_similarity (bool, optional): Whether to include similarity score in the result.
+        Returns:
+            list: A list of documents matching the vector search criteria.
+        """
+        # Must pass a limit
+        if not limit:
+            raise ValueError("Must pass a limit")
+
+        # Pre-process the included arguments
+        sort, projection = self._pre_process_find(
+            vector,
+            fields=fields,
+        )
+
+        # Call the underlying find() method to search
+        raw_find_result = await self.find(
+            filter=filter,
+            projection=projection,
+            sort=sort,
+            options={
+                "limit": limit,
+                "includeSimilarity": include_similarity,
+            },
+        )
+
+        return cast(List[API_DOC], raw_find_result["data"]["documents"])
+
+    @staticmethod
+    async def paginate(
+        *,
+        request_method: AsyncPaginableRequestMethod,
+        options: Optional[Dict[str, Any]],
+        prefetched: Optional[int] = None,
+    ) -> AsyncGenerator[API_DOC, None]:
+        """
+        Generate paginated results for a given database query method.
+        Args:
+            request_method (function): The database query method to paginate.
+            options (dict, optional): Options for the database query.
+            prefetched (int, optional): Number of pre-fetched documents.
+        Yields:
+            dict: The next document in the paginated result set.
+        """
+        _options = options or {}
+        response0 = await request_method(options=_options)
+        next_page_state = response0["data"]["nextPageState"]
+        options0 = _options
+        if next_page_state is not None and prefetched:
+
+            async def queued_paginate(
+                queue: asyncio.Queue[Optional[API_DOC]],
+                request_method: AsyncPaginableRequestMethod,
+                options: Optional[Dict[str, Any]],
+            ) -> None:
+                try:
+                    async for doc in AsyncAstraDBCollection.paginate(
+                        request_method=request_method, options=options
+                    ):
+                        await queue.put(doc)
+                finally:
+                    await queue.put(None)
+
+            queue: asyncio.Queue[Optional[API_DOC]] = asyncio.Queue(prefetched)
+            options1 = {**options0, **{"pageState": next_page_state}}
+            asyncio.create_task(queued_paginate(queue, request_method, options1))
+            for document in response0["data"]["documents"]:
+                yield document
+            doc = await queue.get()
+            while doc is not None:
+                yield doc
+                doc = await queue.get()
+        else:
+            for document in response0["data"]["documents"]:
+                yield document
+            while next_page_state is not None:
+                options1 = {**options0, **{"pageState": next_page_state}}
+                response1 = await request_method(options=options1)
+                for document in response1["data"]["documents"]:
+                    yield document
+                next_page_state = response1["data"]["nextPageState"]
+
+    def paginated_find(
+        self,
+        filter: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
+        sort: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
+        prefetched: Optional[int] = None,
+    ) -> AsyncIterable[API_DOC]:
+        """
+        Perform a paginated search in the collection.
+        Args:
+            filter (dict, optional): Criteria to filter documents.
+            projection (dict, optional): Specifies the fields to return.
+            sort (dict, optional): Specifies the order in which to return matching documents.
+            options (dict, optional): Additional options for the query.
+            prefetched (int, optional): Number of pre-fetched documents
+        Returns:
+            generator: A generator yielding documents in the paginated result set.
+        """
+        partialed_find = partial(
+            self.find,
+            filter=filter,
+            projection=projection,
+            sort=sort,
+        )
+        return self.paginate(
+            request_method=partialed_find,
+            options=options,
+            prefetched=prefetched,
+        )
+
+    async def pop(
+        self, filter: Dict[str, Any], pop: Dict[str, Any], options: Dict[str, Any]
+    ) -> API_RESPONSE:
+        """
+        Pop the last data in the tags array
+        Args:
+            filter (dict): Criteria to identify the document to update.
+            pop (dict): The pop to apply to the tags.
+            options (dict): Additional options for the update operation.
+        Returns:
+            dict: The original document before the update.
+        """
+        json_query = make_payload(
+            top_level="findOneAndUpdate",
+            filter=filter,
+            update={"$pop": pop},
+            options=options,
+        )
+
+        response = await self._request(
+            method=http_methods.POST,
+            path=self.base_path,
+            json_data=json_query,
+        )
+
+        return response
+
+    async def push(
+        self, filter: Dict[str, Any], push: Dict[str, Any], options: Dict[str, Any]
+    ) -> API_RESPONSE:
+        """
+        Push new data to the tags array
+        Args:
+            filter (dict): Criteria to identify the document to update.
+            push (dict): The push to apply to the tags.
+            options (dict): Additional options for the update operation.
+        Returns:
+            dict: The result of the update operation.
+        """
+        json_query = make_payload(
+            top_level="findOneAndUpdate",
+            filter=filter,
+            update={"$push": push},
+            options=options,
+        )
+
+        response = await self._request(
+            method=http_methods.POST,
+            path=self.base_path,
+            json_data=json_query,
+        )
+
+        return response
+
+    async def find_one_and_replace(
+        self,
+        replacement: Optional[Dict[str, Any]] = None,
+        *,
+        sort: Optional[Dict[str, Any]] = {},
+        filter: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> API_RESPONSE:
+        """
+        Find a single document and replace it.
+        Args:
+            replacement (dict): The new document to replace the existing one.
+            filter (dict, optional): Criteria to filter documents.
+            sort (dict, optional): Specifies the order in which to find the document.
+            options (dict, optional): Additional options for the operation.
+        Returns:
+            dict: The result of the find and replace operation.
+        """
+        json_query = make_payload(
+            top_level="findOneAndReplace",
+            filter=filter,
+            replacement=replacement,
+            options=options,
+            sort=sort,
+        )
+
+        response = await self._request(
+            method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
+        )
+
+        return response
+
+    async def vector_find_one_and_replace(
+        self,
+        vector: List[float],
+        replacement: Dict[str, Any],
+        *,
+        filter: Optional[Dict[str, Any]] = None,
+        fields: Optional[List[str]] = None,
+    ) -> Union[API_DOC, None]:
+        """
+        Perform a vector-based search and replace the first matched document.
+        Args:
+            vector (dict): The vector to search with.
+            replacement (dict): The new document to replace the existing one.
+            filter (dict, optional): Criteria to filter documents.
+            fields (list, optional): Specifies the fields to return in the result.
+        Returns:
+            dict or None: either the matched document or None if nothing found
+        """
+        # Pre-process the included arguments
+        sort, _ = self._pre_process_find(
+            vector,
+            fields=fields,
+        )
+
+        # Call the underlying find() method to search
+        raw_find_result = await self.find_one_and_replace(
+            replacement=replacement,
+            filter=filter,
+            sort=sort,
+        )
+
+        return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
+
+    async def find_one_and_update(
+        self,
+        sort: Optional[Dict[str, Any]] = {},
+        update: Optional[Dict[str, Any]] = None,
+        filter: Optional[Dict[str, Any]] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> API_RESPONSE:
+        """
+        Find a single document and update it.
+        Args:
+            sort (dict, optional): Specifies the order in which to find the document.
+            update (dict, optional): The update to apply to the document.
+            filter (dict, optional): Criteria to filter documents.
+            options (dict, optional): Additional options for the operation.
+        Returns:
+            dict: The result of the find and update operation.
+        """
+        json_query = make_payload(
+            top_level="findOneAndUpdate",
+            filter=filter,
+            update=update,
+            options=options,
+            sort=sort,
+        )
+
+        response = await self._request(
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data=json_query,
+        )
+
+        return response
+
+    async def vector_find_one_and_update(
+        self,
+        vector: List[float],
+        update: Dict[str, Any],
+        *,
+        filter: Optional[Dict[str, Any]] = None,
+        fields: Optional[List[str]] = None,
+    ) -> Union[API_DOC, None]:
+        """
+        Perform a vector-based search and update the first matched document.
+        Args:
+            vector (list): The vector to search with.
+            update (dict): The update to apply to the matched document.
+            filter (dict, optional): Criteria to filter documents before applying the vector search.
+            fields (list, optional): Specifies the fields to return in the updated document.
+        Returns:
+            dict or None: The result of the vector-based find and
+                update operation, or None if nothing found
+        """
+        # Pre-process the included arguments
+        sort, _ = self._pre_process_find(
+            vector,
+            fields=fields,
+        )
+
+        # Call the underlying find() method to search
+        raw_find_result = await self.find_one_and_update(
+            update=update,
+            filter=filter,
+            sort=sort,
+        )
+
+        return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
+
+    async def count_documents(
+        self,
+        filter: Dict[str, Any] = {},
+    ) -> API_RESPONSE:
+        """
+        Count documents matching a given predicate (expressed as filter).
+        Args:
+            filter (dict, defaults to {}): Criteria to filter documents.
+        Returns:
+            dict: the response, either
+                {"status": {"count": <NUMBER> }}
+            or
+                {"errors": [...]}
+        """
+        json_query = make_payload(
+            top_level="countDocuments",
+            filter=filter,
+        )
+
+        response = await self._post(
+            document=json_query,
+        )
+
+        return response
+
+    async def find_one(
+        self,
+        filter: Optional[Dict[str, Any]] = {},
+        projection: Optional[Dict[str, Any]] = {},
+        sort: Optional[Dict[str, Any]] = {},
+        options: Optional[Dict[str, Any]] = {},
+    ) -> API_RESPONSE:
+        """
+        Find a single document in the collection.
+        Args:
+            filter (dict, optional): Criteria to filter documents.
+            projection (dict, optional): Specifies the fields to return.
+            sort (dict, optional): Specifies the order in which to return the document.
+            options (dict, optional): Additional options for the query.
+        Returns:
+            dict: the response, either
+                {"data": {"document": <DOCUMENT> }}
+            or
+                {"data": {"document": None}}
+            depending on whether a matching document is found or not.
+        """
+        json_query = make_payload(
+            top_level="findOne",
+            filter=filter,
+            projection=projection,
+            options=options,
+            sort=sort,
+        )
+
+        response = await self._post(
+            document=json_query,
+        )
+
+        return response
+
+    async def vector_find_one(
+        self,
+        vector: List[float],
+        *,
+        filter: Optional[Dict[str, Any]] = None,
+        fields: Optional[List[str]] = None,
+        include_similarity: bool = True,
+    ) -> Union[API_DOC, None]:
+        """
+        Perform a vector-based search to find a single document in the collection.
+        Args:
+            vector (list): The vector to search with.
+            filter (dict, optional): Additional criteria to filter documents.
+            fields (list, optional): Specifies the fields to return in the result.
+            include_similarity (bool, optional): Whether to include similarity score in the result.
+        Returns:
+            dict or None: The found document or None if no matching document is found.
+        """
+        # Pre-process the included arguments
+        sort, projection = self._pre_process_find(
+            vector,
+            fields=fields,
+        )
+
+        # Call the underlying find() method to search
+        raw_find_result = await self.find_one(
+            filter=filter,
+            projection=projection,
+            sort=sort,
+            options={"includeSimilarity": include_similarity},
+        )
+
+        return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
+
+    async def insert_one(
+        self, document: API_DOC, failures_allowed: bool = False
+    ) -> API_RESPONSE:
+        """
+        Insert a single document into the collection.
+        Args:
+            document (dict): The document to insert.
+            failures_allowed (bool): Whether to allow failures in the insert operation.
+        Returns:
+            dict: The response from the database after the insert operation.
+        """
+        json_query = make_payload(top_level="insertOne", document=document)
+
+        response = await self._request(
+            method=http_methods.POST,
+            path=self.base_path,
+            json_data=json_query,
+            skip_error_check=failures_allowed,
+        )
+
+        return response
+
+    async def insert_many(
+        self,
+        documents: List[API_DOC],
+        options: Optional[Dict[str, Any]] = None,
+        partial_failures_allowed: bool = False,
+    ) -> API_RESPONSE:
+        """
+        Insert multiple documents into the collection.
+        Args:
+            documents (list): A list of documents to insert.
+            options (dict, optional): Additional options for the insert operation.
+            partial_failures_allowed (bool, optional): Whether to allow partial failures in the batch.
+        Returns:
+            dict: The response from the database after the insert operation.
+        """
+        json_query = make_payload(
+            top_level="insertMany", documents=documents, options=options
+        )
+
+        response = await self._request(
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data=json_query,
+            skip_error_check=partial_failures_allowed,
+        )
+
+        return response
+
+    async def update_one(
+        self, filter: Dict[str, Any], update: Dict[str, Any]
+    ) -> API_RESPONSE:
+        """
+        Update a single document in the collection.
+        Args:
+            filter (dict): Criteria to identify the document to update.
+            update (dict): The update to apply to the document.
+        Returns:
+            dict: The response from the database after the update operation.
+        """
+        json_query = make_payload(top_level="updateOne", filter=filter, update=update)
+
+        response = await self._request(
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data=json_query,
+        )
+
+        return response
+
+    async def replace(self, path: str, document: API_DOC) -> API_RESPONSE:
+        """
+        Replace a document in the collection.
+        Args:
+            path (str): The path to the document to replace.
+            document (dict): The new document to replace the existing one.
+        Returns:
+            dict: The response from the database after the replace operation.
+        """
+        return await self._put(path=path, document=document)
+
+    async def delete_one(self, id: str) -> API_RESPONSE:
+        """
+        Delete a single document from the collection based on its ID.
+        Args:
+            id (str): The ID of the document to delete.
+        Returns:
+            dict: The response from the database after the delete operation.
+        """
+        json_query = {
+            "deleteOne": {
+                "filter": {"_id": id},
+            }
+        }
+
+        response = await self._request(
+            method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
+        )
+
+        return response
+
+    async def delete_many(self, filter: Dict[str, Any]) -> API_RESPONSE:
+        """
+        Delete many documents from the collection based on a filter condition
+        Args:
+            filter (dict): Criteria to identify the documents to delete.
+        Returns:
+            dict: The response from the database after the delete operation.
+        """
+        json_query = {
+            "deleteMany": {
+                "filter": filter,
+            }
+        }
+
+        response = await self._request(
+            method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
+        )
+
+        return response
+
+    async def delete_subdocument(self, id: str, subdoc: str) -> API_RESPONSE:
+        """
+        Delete a subdocument or field from a document in the collection.
+        Args:
+            id (str): The ID of the document containing the subdocument.
+            subdoc (str): The key of the subdocument or field to remove.
+        Returns:
+            dict: The response from the database after the update operation.
+        """
+        json_query = {
+            "findOneAndUpdate": {
+                "filter": {"_id": id},
+                "update": {"$unset": {subdoc: ""}},
+            }
+        }
+
+        response = await self._request(
+            method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
+        )
+
+        return response
+
+    async def upsert(self, document: API_DOC) -> str:
+        """
+        Emulate an upsert operation for a single document in the collection.
+
+        This method attempts to insert the document. If a document with the same _id exists, it updates the existing document.
+
+        Args:
+            document (dict): The document to insert or update.
+
+        Returns:
+            str: The _id of the inserted or updated document.
+        """
+        # Build the payload for the insert attempt
+        result = await self.insert_one(document, failures_allowed=True)
+
+        # If the call failed, then we replace the existing doc
+        if (
+            "errors" in result
+            and "errorCode" in result["errors"][0]
+            and result["errors"][0]["errorCode"] == "DOCUMENT_ALREADY_EXISTS"
+        ):
+            # Now we attempt to update
+            result = await self.find_one_and_replace(
                 replacement=document,
                 filter={"_id": document["_id"]},
             )
@@ -804,7 +1624,7 @@ class AstraDB:
         url_params: Optional[Dict[str, Any]] = None,
         skip_error_check: bool = False,
     ) -> API_RESPONSE:
-        request_handler = APIRequestHandler(
+        response = make_request(
             client=self.client,
             base_url=self.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
@@ -813,12 +1633,14 @@ class AstraDB:
             path=path,
             json_data=json_data,
             url_params=url_params,
-            skip_error_check=skip_error_check,
         )
 
-        response = request_handler.request()
+        responsebody = cast(API_RESPONSE, response.json())
 
-        return response
+        if not skip_error_check and "errors" in responsebody:
+            raise ValueError(json.dumps(responsebody["errors"]))
+        else:
+            return responsebody
 
     def collection(self, collection_name: str) -> AstraDBCollection:
         """
@@ -975,6 +1797,250 @@ class AstraDB:
 
         # End the function by returning the the new collection
         return self.create_collection(
+            collection_name,
+            options=existing_collection.get("options"),
+        )
+
+
+class AsyncAstraDB:
+    def __init__(
+        self,
+        token: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+        namespace: Optional[str] = None,
+    ) -> None:
+        """
+        Initialize an Astra DB instance.
+        Args:
+            token (str, optional): Authentication token for Astra DB.
+            api_endpoint (str, optional): API endpoint URL.
+            namespace (str, optional): Namespace for the database.
+        """
+        self.client = httpx.AsyncClient()
+        if token is None or api_endpoint is None:
+            raise AssertionError("Must provide token and api_endpoint")
+
+        if namespace is None:
+            logger.info(
+                f"ASTRA_DB_KEYSPACE is not set. Defaulting to '{DEFAULT_KEYSPACE_NAME}'"
+            )
+            namespace = DEFAULT_KEYSPACE_NAME
+
+        # Store the API token
+        self.token = token
+
+        # Set the Base URL for the API calls
+        self.base_url = api_endpoint.strip("/")
+
+        # Set the API version and path from the call
+        self.api_path = (api_path or DEFAULT_JSON_API_PATH).strip("/")
+        self.api_version = (api_version or DEFAULT_JSON_API_VERSION).strip("/")
+
+        # Set the namespace
+        self.namespace = namespace
+
+        # Finally, construct the full base path
+        self.base_path = f"/{self.api_path}/{self.api_version}/{self.namespace}"
+
+    def __repr__(self) -> str:
+        return f'Async Astra DB[endpoint="{self.base_url}"]'
+
+    async def __aenter__(self) -> AsyncAstraDB:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]] = None,
+        exc_value: Optional[BaseException] = None,
+        traceback: Optional[TracebackType] = None,
+    ) -> None:
+        await self.client.aclose()
+
+    async def _request(
+        self,
+        method: str = http_methods.POST,
+        path: Optional[str] = None,
+        json_data: Optional[Dict[str, Any]] = None,
+        url_params: Optional[Dict[str, Any]] = None,
+        skip_error_check: bool = False,
+    ) -> API_RESPONSE:
+        response = await amake_request(
+            client=self.client,
+            base_url=self.base_url,
+            auth_header=DEFAULT_AUTH_HEADER,
+            token=self.token,
+            method=method,
+            path=path,
+            json_data=json_data,
+            url_params=url_params,
+        )
+
+        responsebody = cast(API_RESPONSE, response.json())
+
+        if not skip_error_check and "errors" in responsebody:
+            raise ValueError(json.dumps(responsebody["errors"]))
+        else:
+            return responsebody
+
+    async def collection(self, collection_name: str) -> AsyncAstraDBCollection:
+        """
+        Retrieve a collection from the database.
+        Args:
+            collection_name (str): The name of the collection to retrieve.
+        Returns:
+            AstraDBCollection: The collection object.
+        """
+        return AsyncAstraDBCollection(collection_name=collection_name, astra_db=self)
+
+    async def get_collections(
+        self, options: Optional[Dict[str, Any]] = None
+    ) -> API_RESPONSE:
+        """
+        Retrieve a list of collections from the database.
+        Args:
+            options (dict, optional): Options to get the collection list
+        Returns:
+            dict: An object containing the list of collections in the database:
+                {"status": {"collections": [...]}}
+        """
+        # Parse the options parameter
+        if options is None:
+            options = {}
+
+        json_query = make_payload(
+            top_level="findCollections",
+            options=options,
+        )
+
+        response = await self._request(
+            method=http_methods.POST,
+            path=self.base_path,
+            json_data=json_query,
+        )
+
+        return response
+
+    async def create_collection(
+        self,
+        collection_name: str,
+        *,
+        options: Optional[Dict[str, Any]] = None,
+        dimension: Optional[int] = None,
+        metric: Optional[str] = None,
+    ) -> AsyncAstraDBCollection:
+        """
+        Create a new collection in the database.
+        Args:
+            collection_name (str): The name of the collection to create.
+            options (dict, optional): Options for the collection.
+            dimension (int, optional): Dimension for vector search.
+            metric (str, optional): Metric choice for vector search.
+        Returns:
+            AsyncAstraDBCollection: The created collection object.
+        """
+        # options from named params
+        vector_options = {
+            k: v
+            for k, v in {
+                "dimension": dimension,
+                "metric": metric,
+            }.items()
+            if v is not None
+        }
+
+        # overlap/merge with stuff in options.vector
+        dup_params = set((options or {}).get("vector", {}).keys()) & set(
+            vector_options.keys()
+        )
+
+        # If any params are duplicated, we raise an error
+        if dup_params:
+            dups = ", ".join(sorted(dup_params))
+            raise ValueError(
+                f"Parameter(s) {dups} passed both to the method and in the options"
+            )
+
+        # Build our options dictionary if we have vector options
+        if vector_options:
+            options = options or {}
+            options["vector"] = {
+                **options.get("vector", {}),
+                **vector_options,
+            }
+            if "dimension" not in options["vector"]:
+                raise ValueError("Must pass dimension for vector collections")
+
+        # Build the final json payload
+        jsondata = {
+            k: v
+            for k, v in {"name": collection_name, "options": options}.items()
+            if v is not None
+        }
+
+        # Make the request to the endpoint
+        await self._request(
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data={"createCollection": jsondata},
+        )
+
+        # Get the instance object as the return of the call
+        return AsyncAstraDBCollection(astra_db=self, collection_name=collection_name)
+
+    async def delete_collection(self, collection_name: str) -> API_RESPONSE:
+        """
+        Delete a collection from the database.
+        Args:
+            collection_name (str): The name of the collection to delete.
+        Returns:
+            dict: The response from the database.
+        """
+        # Make sure we provide a collection name
+        if not collection_name:
+            raise ValueError("Must provide a collection name")
+
+        response = await self._request(
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data={"deleteCollection": {"name": collection_name}},
+        )
+
+        return response
+
+    async def truncate_collection(self, collection_name: str) -> AsyncAstraDBCollection:
+        """
+        Truncate a collection in the database.
+        Args:
+            collection_name (str): The name of the collection to truncate.
+        Returns:
+            dict: The response from the database.
+        """
+        # Make sure we provide a collection name
+        if not collection_name:
+            raise ValueError("Must provide a collection name")
+
+        # Retrieve the required collections from DB
+        collections = await self.get_collections(options={"explain": "true"})
+        matches = [
+            col
+            for col in collections["status"]["collections"]
+            if col["name"] == collection_name
+        ]
+
+        # If we didn't find it, raise an error
+        if matches == []:
+            raise ValueError(f"Collection {collection_name} not found")
+
+        # Otherwise we found it, so get the collection
+        existing_collection = matches[0]
+
+        # We found it, so let's delete it
+        await self.delete_collection(collection_name)
+
+        # End the function by returning the the new collection
+        return await self.create_collection(
             collection_name,
             options=existing_collection.get("options"),
         )

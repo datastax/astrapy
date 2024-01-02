@@ -2,15 +2,16 @@
 Test fixtures
 """
 import os
+
 import pytest
 import uuid
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, Optional, AsyncIterable
 
+import pytest_asyncio
 from dotenv import load_dotenv
 
 from astrapy.defaults import DEFAULT_KEYSPACE_NAME
-from astrapy.db import AstraDB, AstraDBCollection
-
+from astrapy.db import AstraDB, AstraDBCollection, AsyncAstraDB, AsyncAstraDBCollection
 
 load_dotenv()
 
@@ -81,6 +82,14 @@ def db(astra_db_credentials_kwargs: Dict[str, Optional[str]]) -> AstraDB:
     return AstraDB(**astra_db_credentials_kwargs)
 
 
+@pytest.fixture
+async def async_db(
+    astra_db_credentials_kwargs: Dict[str, Optional[str]]
+) -> AsyncIterable[AsyncAstraDB]:
+    async with AsyncAstraDB(**astra_db_credentials_kwargs) as db:
+        yield db
+
+
 @pytest.fixture(scope="module")
 def invalid_db(
     astra_invalid_db_credentials_kwargs: Dict[str, Optional[str]]
@@ -104,6 +113,26 @@ def writable_vector_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
     yield collection
 
     db.delete_collection(TEST_WRITABLE_VECTOR_COLLECTION)
+
+
+@pytest_asyncio.fixture
+async def async_writable_vector_collection(
+    async_db: AsyncAstraDB,
+) -> AsyncIterable[AsyncAstraDBCollection]:
+    """
+    This is lasting for the whole test. Functions can write to it,
+    no guarantee (i.e. each test should use a different ID...
+    """
+    collection = await async_db.create_collection(
+        TEST_WRITABLE_VECTOR_COLLECTION,
+        dimension=2,
+    )
+
+    await collection.insert_many(VECTOR_DOCUMENTS)
+
+    yield collection
+
+    await async_db.delete_collection(TEST_WRITABLE_VECTOR_COLLECTION)
 
 
 @pytest.fixture(scope="module")
@@ -135,6 +164,22 @@ def readonly_vector_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
     db.delete_collection(TEST_READONLY_VECTOR_COLLECTION)
 
 
+@pytest.fixture
+async def async_readonly_vector_collection(
+    async_db: AsyncAstraDB,
+) -> AsyncIterable[AsyncAstraDBCollection]:
+    collection = await async_db.create_collection(
+        TEST_READONLY_VECTOR_COLLECTION,
+        dimension=2,
+    )
+
+    await collection.insert_many(VECTOR_DOCUMENTS)
+
+    yield collection
+
+    await async_db.delete_collection(TEST_READONLY_VECTOR_COLLECTION)
+
+
 @pytest.fixture(scope="function")
 def disposable_vector_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
     collection = db.create_collection(
@@ -147,3 +192,19 @@ def disposable_vector_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
     yield collection
 
     db.delete_collection(TEST_DISPOSABLE_VECTOR_COLLECTION)
+
+
+@pytest.fixture
+async def async_disposable_vector_collection(
+    async_db: AsyncAstraDB,
+) -> AsyncIterable[AsyncAstraDBCollection]:
+    collection = await async_db.create_collection(
+        TEST_DISPOSABLE_VECTOR_COLLECTION,
+        dimension=2,
+    )
+
+    await collection.insert_many(VECTOR_DOCUMENTS)
+
+    yield collection
+
+    await async_db.delete_collection(TEST_DISPOSABLE_VECTOR_COLLECTION)
