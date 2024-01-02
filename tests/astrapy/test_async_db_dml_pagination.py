@@ -31,6 +31,7 @@ TEST_PAGINATION_COLLECTION_NAME = "pagination_v_col"
 INSERT_BATCH_SIZE = 20  # max 20, fixed by API constraints
 N = 200  # must be EVEN
 FIND_LIMIT = 183  # Keep this > 20 and <= N to actually put pagination to test
+PREFETCHED = 42  # Keep this > 20 and <= FIND_LIMIT to actually trigger prefetching
 
 T = TypeVar("T")
 
@@ -83,13 +84,21 @@ async def pag_test_collection(
 @pytest.mark.describe(
     "should retrieve the required amount of documents, all different, through pagination"
 )
-async def test_find_paginated(pag_test_collection: AsyncAstraDBCollection) -> None:
+@pytest.mark.parametrize(
+    "prefetched",
+    [
+        pytest.param(None, id="without pre-fetching"),
+        pytest.param(PREFETCHED, id="with pre-fetching"),
+    ],
+)
+async def test_find_paginated(
+    prefetched: Optional[int], pag_test_collection: AsyncAstraDBCollection
+) -> None:
     options = {"limit": FIND_LIMIT}
     projection = {"$vector": 0}
 
     paginated_documents = pag_test_collection.paginated_find(
-        projection=projection,
-        options=options,
+        projection=projection, options=options, prefetched=prefetched
     )
     paginated_ids = [doc["_id"] async for doc in paginated_documents]
     assert len(paginated_ids) == FIND_LIMIT
