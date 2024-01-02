@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Dict, Protocol, Union
+from typing import Any, Dict, List, Protocol, Union
 
 # A type for:
 #     "dict from parsing a JSON from the API responses"
@@ -10,7 +10,7 @@ API_RESPONSE = Dict[str, Any]
 
 # The DevOps API has a broader return type in that some calls return
 # a list at top level (e.g. "get databases")
-OPS_API_RESPONSE = Union[API_RESPONSE, Dict[str, Any]]
+OPS_API_RESPONSE = Union[API_RESPONSE, List[Any]]
 
 # A type for:
 #     "document stored on the collections"
@@ -22,4 +22,10 @@ API_DOC = Dict[str, Any]
 # This is for the (partialed, if necessary) functions that can be "paginated".
 class PaginableRequestMethod(Protocol):
     def __call__(self, options: Dict[str, Any]) -> API_RESPONSE:
+        ...
+
+
+# This is for the (partialed, if necessary) async functions that can be "paginated".
+class AsyncPaginableRequestMethod(Protocol):
+    async def __call__(self, options: Dict[str, Any]) -> API_RESPONSE:
         ...

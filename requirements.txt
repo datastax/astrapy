@@ -1,3 +1,0 @@
--e .
-cassio~=0.1.3
-httpx[http2]~=0.25.1
