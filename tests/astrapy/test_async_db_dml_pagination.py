@@ -19,11 +19,10 @@ Tests for the `db.py` parts on pagination primitives
 import math
 import os
 import logging
-from typing import Dict, Iterable, List, Optional, Set, TypeVar
+from typing import Dict, Iterable, List, Optional, Set, TypeVar, AsyncIterable
 import pytest
 
-from astrapy.db import AstraDB, AstraDBCollection
-
+from astrapy.db import AsyncAstraDBCollection, AsyncAstraDB
 
 logger = logging.getLogger(__name__)
 
@@ -53,29 +52,33 @@ def _batch_iterable(iterable: Iterable[T], batch_size: int) -> Iterable[Iterable
         yield this_batch
 
 
-@pytest.fixture(scope="module")
-def pag_test_collection(
+@pytest.fixture
+async def pag_test_collection(
     astra_db_credentials_kwargs: Dict[str, Optional[str]]
-) -> Iterable[AstraDBCollection]:
-    astra_db = AstraDB(**astra_db_credentials_kwargs)
+) -> AsyncIterable[AsyncAstraDBCollection]:
+    async with AsyncAstraDB(**astra_db_credentials_kwargs) as astra_db:
+        astra_db_collection = await astra_db.create_collection(
+            collection_name=TEST_PAGINATION_COLLECTION_NAME, dimension=2
+        )
 
-    astra_db_collection = astra_db.create_collection(
-        collection_name=TEST_PAGINATION_COLLECTION_NAME, dimension=2
-    )
-
-    if int(os.getenv("TEST_PAGINATION_SKIP_INSERTION", "0")) == 0:
-        inserted_ids: Set[str] = set()
-        for i_batch in _batch_iterable(range(N), INSERT_BATCH_SIZE):
-            batch_ids = astra_db_collection.insert_many(
-                documents=[
-                    {"_id": str(i), "$vector": _mk_vector(i, N)} for i in i_batch
-                ]
-            )["status"]["insertedIds"]
-            inserted_ids = inserted_ids | set(batch_ids)
-        assert inserted_ids == {str(i) for i in range(N)}
-    yield astra_db_collection
-    if int(os.getenv("TEST_PAGINATION_SKIP_DELETE_COLLECTION", "0")) == 0:
-        _ = astra_db.delete_collection(collection_name=TEST_PAGINATION_COLLECTION_NAME)
+        if int(os.getenv("TEST_PAGINATION_SKIP_INSERTION", "0")) == 0:
+            inserted_ids: Set[str] = set()
+            for i_batch in _batch_iterable(range(N), INSERT_BATCH_SIZE):
+                batch_ids = (
+                    await astra_db_collection.insert_many(
+                        documents=[
+                            {"_id": str(i), "$vector": _mk_vector(i, N)}
+                            for i in i_batch
+                        ]
+                    )
+                )["status"]["insertedIds"]
+                inserted_ids = inserted_ids | set(batch_ids)
+            assert inserted_ids == {str(i) for i in range(N)}
+        yield astra_db_collection
+        if int(os.getenv("TEST_PAGINATION_SKIP_DELETE_COLLECTION", "0")) == 0:
+            _ = await astra_db.delete_collection(
+                collection_name=TEST_PAGINATION_COLLECTION_NAME
+            )
 
 
 @pytest.mark.describe(
@@ -88,8 +91,8 @@ def pag_test_collection(
         pytest.param(PREFETCHED, id="with pre-fetching"),
     ],
 )
-def test_find_paginated(
-    prefetched: Optional[int], pag_test_collection: AstraDBCollection
+async def test_find_paginated(
+    prefetched: Optional[int], pag_test_collection: AsyncAstraDBCollection
 ) -> None:
     options = {"limit": FIND_LIMIT}
     projection = {"$vector": 0}
@@ -97,6 +100,6 @@ def test_find_paginated(
     paginated_documents = pag_test_collection.paginated_find(
         projection=projection, options=options, prefetched=prefetched
     )
-    paginated_ids = [doc["_id"] for doc in paginated_documents]
+    paginated_ids = [doc["_id"] async for doc in paginated_documents]
     assert len(paginated_ids) == FIND_LIMIT
     assert len(paginated_ids) == len(set(paginated_ids))
