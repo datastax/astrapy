@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterable, List, Optional
 import logging
 
 import httpx
@@ -169,3 +169,38 @@ def make_payload(top_level: str, **kwargs: Any) -> Dict[str, Any]:
             json_query[top_level][key] = value
 
     return json_query
+
+
+def convert_vector_to_floats(vector: Iterable[Any]) -> List[float]:
+    """
+    Convert a vector of strings to a vector of floats.
+
+    Args:
+        vector (list): A vector of objects.
+
+    Returns:
+        list: A vector of floats.
+    """
+    return [float(value) for value in vector]
+
+
+def preprocess_insert(document: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Perform preprocessing operations before an insertion
+
+    Args:
+        vector (list): A vector of objects.
+
+    Returns:
+        list: A vector of objects
+    """
+
+    # Process each field of the cocument
+    for key, value in document.items():
+        # Vector coercision
+        if key == "$vector" and not isinstance(document["$vector"][0], float):
+            document[key] = convert_vector_to_floats(value)
+
+        # TODO: More pre-processing operations
+
+    return document

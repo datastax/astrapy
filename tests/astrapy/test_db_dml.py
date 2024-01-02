@@ -277,6 +277,23 @@ def test_create_document(writable_vector_collection: AstraDBCollection) -> None:
     )
 
 
+@pytest.mark.describe("should truncate a nonvector collection")
+def test_insert_float32(
+    writable_vector_collection: AstraDBCollection, N: int = 2
+) -> None:
+    _id0 = str(uuid.uuid4())
+    document = {
+        "_id": _id0,
+        "name": "Coerce",
+        "$vector": [f"{(i+1)/N+2:.4f}" for i in range(N)],
+    }
+    response = writable_vector_collection.insert_one(document)
+    assert response is not None
+    inserted_ids = response["status"]["insertedIds"]
+    assert len(inserted_ids) == 1
+    assert inserted_ids[0] == _id0
+
+
 @pytest.mark.describe("insert_many")
 def test_insert_many(writable_vector_collection: AstraDBCollection) -> None:
     _id0 = str(uuid.uuid4())
