@@ -324,8 +324,8 @@ def test_insert_many(writable_vector_collection: AstraDBCollection) -> None:
     assert isinstance(list(inserted_ids - {_id0, _id2})[0], str)
 
 
-@pytest.mark.describe("batched_concurrent_insert_many")
-def test_batched_concurrent_insert_many(
+@pytest.mark.describe("chunked_insert_many")
+def test_chunked_insert_many(
     writable_vector_collection: AstraDBCollection,
 ) -> None:
     _id0 = str(uuid.uuid4())
@@ -503,7 +503,7 @@ def test_batched_concurrent_insert_many(
         },
     ]
 
-    response = writable_vector_collection.batched_concurrent_insert_many(documents)
+    response = writable_vector_collection.chunked_insert_many(documents)
     assert response is not None
     inserted_ids_list = [set(r["status"]["insertedIds"]) for r in response]
     inserted_ids = set.union(*inserted_ids_list)
@@ -566,8 +566,8 @@ def test_insert_many_ordered_false(
     assert check_response["data"]["document"]["_id"] == _id1
 
 
-@pytest.mark.describe("batched_concurrent_upsert")
-def test_batched_concurrent_upsert(
+@pytest.mark.describe("upsert_many")
+def test_upsert_many(
     writable_vector_collection: AstraDBCollection,
 ) -> None:
     _id0 = str(uuid.uuid4())
@@ -593,7 +593,7 @@ def test_batched_concurrent_upsert(
             },
         },
     ]
-    upsert_result0 = writable_vector_collection.batched_concurrent_upsert(documents)
+    upsert_result0 = writable_vector_collection.upsert_many(documents)
     assert upsert_result0[0] == _id0
     assert upsert_result0[1] == _id1
 
@@ -620,7 +620,7 @@ def test_batched_concurrent_upsert(
             ],
         }
     ]
-    upsert_result2 = writable_vector_collection.batched_concurrent_upsert(documents2)
+    upsert_result2 = writable_vector_collection.upsert_many(documents2)
     assert upsert_result2[0] == _id0
 
     response2 = writable_vector_collection.find_one(filter={"_id": _id0})

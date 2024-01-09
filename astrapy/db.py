@@ -697,7 +697,7 @@ class AstraDBCollection:
 
         return response
 
-    def batched_concurrent_insert_many(
+    def chunked_insert_many(
         self,
         documents: List[API_DOC],
         options: Optional[Dict[str, Any]] = None,
@@ -717,27 +717,32 @@ class AstraDBCollection:
             list: The responses from the database after the batched insert operation.
         """
 
-        # Split the documents into batches
-        batched_list = [
-            documents[i : i + batch_size] for i in range(0, len(documents), batch_size)
-        ]
-
-        # Function to insert a single batch
-        def insert_batch(batch: List[API_DOC], index: int) -> API_RESPONSE:
-            logger.debug(f"Processing batch #{index + 1} of size {len(batch)}")
-
-            return self.insert_many(
-                documents=batch,
-                options=options,
-                partial_failures_allowed=partial_failures_allowed,
-            )
-
-        # Perform the bulk insert with concurrency
-        with ThreadPoolExecutor(max_workers=concurrency) as executor:
-            futures = [
-                executor.submit(insert_batch, batch, i)
-                for i, batch in enumerate(batched_list)
+        # If we have concurrency as 1, don't use a thread pool
+        if concurrency == 1:
+            # Split the documents into chunks
+            return [
+                self.insert_many(
+                    documents[i : i + batch_size],
+                    options,
+                    partial_failures_allowed,
+                )
+                for i in range(0, len(documents), batch_size)
             ]
+
+        # Perform the bulk insert with concurrency otherwise
+        with ThreadPoolExecutor(max_workers=concurrency) as executor:
+            # Submit the jobs
+            futures = [
+                executor.submit(
+                    self.insert_many,
+                    documents[i : i + batch_size],
+                    options,
+                    partial_failures_allowed,
+                )
+                for i in range(0, len(documents), batch_size)
+            ]
+
+            # Collect the results
             response_list = [future.result() for future in futures]
 
         return response_list
@@ -873,9 +878,7 @@ class AstraDBCollection:
 
         return upserted_id
 
-    def batched_concurrent_upsert(
-        self, documents: list[API_DOC], concurrency: int = 1
-    ) -> List[str]:
+    def upsert_many(self, documents: list[API_DOC], concurrency: int = 1) -> List[str]:
         """
         Emulate an upsert operation for multiple documents in the collection.
 
@@ -883,16 +886,19 @@ class AstraDBCollection:
 
         Args:
             documents (List[dict]): The documents to insert or update.
-            concurrency (int, optional): The number of concurrent batch updates.
+            concurrency (int, optional): The number of concurrent upserts.
 
         Returns:
             List[str]: A list of "_id"s of the inserted or updated documents.
         """
 
+        # If concurrency is 1, no need for thread pool
+        if concurrency == 1:
+            return [self.upsert(document) for document in documents]
+
         # Perform the bulk upsert with concurrency
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
-            futures = [executor.submit(self.upsert, document) for document in documents]
-            response_list = [future.result() for future in futures]
+            response_list = list(executor.map(self.upsert, documents))
 
         return response_list
 
