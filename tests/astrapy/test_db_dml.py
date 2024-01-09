@@ -19,7 +19,7 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 
 import uuid
 import logging
-from typing import List
+from typing import Dict, List, Optional, Union
 
 import pytest
 
@@ -126,8 +126,7 @@ def test_find_find_one_projection(
     query = [0.2, 0.6]
     sort = {"$vector": query}
     options = {"limit": 1}
-
-    projs = [
+    projs: List[Optional[Dict[str, Union[int, None]]]] = [
         None,
         {},
         {"text": 1},
