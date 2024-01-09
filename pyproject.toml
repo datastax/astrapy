@@ -6,7 +6,7 @@ authors = [
     "Kirsten Hunter <kirsten.hunter@datastax.com>"
 ]
 license = "Apache-2.0"
-readme = "README.md"
+readme = "README.MD"
 packages = [
     { include = "astrapy" }
 ]
