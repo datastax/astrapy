@@ -19,7 +19,7 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 
 import uuid
 import logging
-from typing import Dict, List, Literal, Optional, Set, Union
+from typing import Dict, List, Literal, Optional, Set
 
 import pytest
 
@@ -372,7 +372,7 @@ def test_chunked_insert_many(
     ]
 
     with pytest.raises(ValueError):
-        responses1 = writable_vector_collection.chunked_insert_many(
+        _ = writable_vector_collection.chunked_insert_many(
             documents1, chunk_size=3
         )
 
@@ -449,7 +449,7 @@ def test_concurrent_chunked_insert_many(
     ]
 
     with pytest.raises(ValueError):
-        responses1 = writable_vector_collection.chunked_insert_many(
+        _ = writable_vector_collection.chunked_insert_many(
             documents1, chunk_size=3, concurrency=4
         )
 
