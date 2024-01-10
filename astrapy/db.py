@@ -15,9 +15,10 @@ from __future__ import annotations
 
 import asyncio
 import httpx
-import json
 import logging
+import json
 import threading
+
 
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
@@ -37,6 +38,7 @@ from typing import (
     AsyncGenerator,
 )
 
+from astrapy.api import AsyncAPIRequestHandler, APIRequestHandler
 from astrapy.defaults import (
     DEFAULT_AUTH_HEADER,
     DEFAULT_JSON_API_PATH,
@@ -58,6 +60,7 @@ from astrapy.types import (
     PaginableRequestMethod,
     AsyncPaginableRequestMethod,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +112,7 @@ class AstraDBCollection:
         skip_error_check: bool = False,
         **kwargs: Any,
     ) -> API_RESPONSE:
-        response = make_request(
+        request_handler = APIRequestHandler(
             client=self.client,
             base_url=self.astra_db.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
@@ -118,13 +121,13 @@ class AstraDBCollection:
             path=path,
             json_data=json_data,
             url_params=url_params,
+            skip_error_check=skip_error_check,
+            **kwargs,
         )
-        responsebody = cast(API_RESPONSE, response.json())
 
-        if not skip_error_check and "errors" in responsebody:
-            raise ValueError(json.dumps(responsebody["errors"]))
-        else:
-            return responsebody
+        response = request_handler.request()
+
+        return response
 
     def _get(
         self, path: Optional[str] = None, options: Optional[Dict[str, Any]] = None
@@ -955,7 +958,7 @@ class AsyncAstraDBCollection:
         skip_error_check: bool = False,
         **kwargs: Any,
     ) -> API_RESPONSE:
-        response = await amake_request(
+        arequest_handler = AsyncAPIRequestHandler(
             client=self.client,
             base_url=self.astra_db.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
@@ -964,13 +967,12 @@ class AsyncAstraDBCollection:
             path=path,
             json_data=json_data,
             url_params=url_params,
+            skip_error_check=skip_error_check,
         )
-        responsebody = cast(API_RESPONSE, response.json())
 
-        if not skip_error_check and "errors" in responsebody:
-            raise ValueError(json.dumps(responsebody["errors"]))
-        else:
-            return responsebody
+        response = await arequest_handler.request()
+
+        return response
 
     async def _get(
         self, path: Optional[str] = None, options: Optional[Dict[str, Any]] = None

@@ -141,8 +141,6 @@ async def amake_request(
     if logger.isEnabledFor(logging.DEBUG):
         log_request_response(r, json_data)
 
-    r.raise_for_status()
-
     return r
 
 

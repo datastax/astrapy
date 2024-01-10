@@ -59,6 +59,15 @@ def astra_db_credentials_kwargs() -> Dict[str, Optional[str]]:
     }
 
 
+@pytest.fixture(scope="session")
+def astra_invalid_db_credentials_kwargs() -> Dict[str, Optional[str]]:
+    return {
+        "token": ASTRA_DB_APPLICATION_TOKEN,
+        "api_endpoint": "http://localhost:1234",
+        "namespace": ASTRA_DB_KEYSPACE,
+    }
+
+
 @pytest.fixture(scope="module")
 def cliff_uuid() -> str:
     return str(uuid.uuid4())
@@ -80,6 +89,13 @@ async def async_db(
 ) -> AsyncIterable[AsyncAstraDB]:
     async with AsyncAstraDB(**astra_db_credentials_kwargs) as db:
         yield db
+
+
+@pytest.fixture(scope="module")
+def invalid_db(
+    astra_invalid_db_credentials_kwargs: Dict[str, Optional[str]]
+) -> AstraDB:
+    return AstraDB(**astra_invalid_db_credentials_kwargs)
 
 
 @pytest.fixture(scope="module")
@@ -118,6 +134,21 @@ async def async_writable_vector_collection(
     yield collection
 
     await async_db.delete_collection(TEST_WRITABLE_VECTOR_COLLECTION)
+
+
+@pytest.fixture(scope="module")
+def invalid_writable_vector_collection(
+    invalid_db: AstraDB,
+) -> Iterable[AstraDBCollection]:
+    """
+    This is lasting for the whole test. Functions can write to it,
+    no guarantee (i.e. each test should use a different ID...
+    """
+    collection = invalid_db.collection(
+        TEST_WRITABLE_VECTOR_COLLECTION,
+    )
+
+    yield collection
 
 
 @pytest.fixture(scope="module")

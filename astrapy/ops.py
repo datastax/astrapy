@@ -16,8 +16,9 @@ import logging
 from typing import Any, cast, Dict, Optional
 
 import httpx
+from astrapy.api import APIRequestHandler
 
-from astrapy.utils import make_request, http_methods
+from astrapy.utils import http_methods
 from astrapy.defaults import (
     DEFAULT_DEV_OPS_AUTH_HEADER,
     DEFAULT_DEV_OPS_API_VERSION,
@@ -56,16 +57,20 @@ class AstraDBOps:
     ) -> httpx.Response:
         _options = {} if options is None else options
 
-        return make_request(
+        request_handler = APIRequestHandler(
             client=self.client,
             base_url=self.base_url,
-            method=method,
             auth_header=DEFAULT_DEV_OPS_AUTH_HEADER,
             token=self.token,
+            method=method,
+            path=path,
             json_data=json_data,
             url_params=_options,
-            path=path,
         )
+
+        response = request_handler.raw_request()
+
+        return response
 
     def _json_ops_request(
         self,
@@ -74,16 +79,22 @@ class AstraDBOps:
         options: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
     ) -> OPS_API_RESPONSE:
-        req_result = self._ops_request(
+        _options = {} if options is None else options
+
+        request_handler = APIRequestHandler(
+            client=self.client,
+            base_url=self.base_url,
+            auth_header="Authorization",
+            token=self.token,
             method=method,
             path=path,
-            options=options,
             json_data=json_data,
+            url_params=_options,
         )
-        return cast(
-            OPS_API_RESPONSE,
-            req_result.json(),
-        )
+
+        response = request_handler.request()
+
+        return response
 
     def get_databases(
         self, options: Optional[Dict[str, Any]] = None

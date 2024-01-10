@@ -19,10 +19,13 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 
 import uuid
 import logging
+import json
+import httpx
 from typing import Dict, List, Literal, Optional, Set
 
 import pytest
 
+from astrapy.api import APIRequestError
 from astrapy.types import API_DOC
 from astrapy.db import AstraDB, AstraDBCollection
 
@@ -41,6 +44,7 @@ def test_truncate_collection_fail(db: AstraDB) -> None:
 @pytest.mark.describe("should truncate a nonvector collection")
 def test_truncate_nonvector_collection(db: AstraDB) -> None:
     col = db.create_collection(TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME)
+
     try:
         col.insert_one({"a": 1})
         assert len(col.find()["data"]["documents"]) == 1
@@ -53,6 +57,7 @@ def test_truncate_nonvector_collection(db: AstraDB) -> None:
 @pytest.mark.describe("should truncate a collection")
 def test_truncate_vector_collection(db: AstraDB) -> None:
     col = db.create_collection(TEST_TRUNCATED_VECTOR_COLLECTION_NAME, dimension=2)
+
     try:
         col.insert_one({"a": 1, "$vector": [0.1, 0.2]})
         assert len(col.find()["data"]["documents"]) == 1
@@ -167,7 +172,7 @@ def test_find_error(readonly_vector_collection: AstraDBCollection) -> None:
     sort = {"$vector": "clearly not a list of floats!"}
     options = {"limit": 100}
 
-    with pytest.raises(ValueError):
+    with pytest.raises(APIRequestError):
         readonly_vector_collection.find(sort=sort, options=options)
 
 
@@ -529,6 +534,68 @@ def test_insert_many_ordered_false(
     check_response = writable_vector_collection.find_one(filter={"first_name": "Yep"})
     assert check_response is not None
     assert check_response["data"]["document"]["_id"] == _id1
+
+
+@pytest.mark.describe("test error handling - duplicate document")
+def test_error_handling_duplicate(
+    writable_vector_collection: AstraDBCollection,
+) -> None:
+    _id1 = str(uuid.uuid4())
+
+    result1 = writable_vector_collection.insert_one(
+        {
+            "_id": _id1,
+            "a": 1,
+            "$vector": [0.3, 0.5],
+        }
+    )
+
+    assert result1["status"]["insertedIds"] == [_id1]
+    assert (
+        writable_vector_collection.find_one(
+            {"_id": result1["status"]["insertedIds"][0]}
+        )["data"]["document"]["a"]
+        == 1
+    )
+
+    with pytest.raises(ValueError):
+        writable_vector_collection.insert_one(
+            {
+                "_id": _id1,
+                "a": 1,
+                "$vector": [0.3, 0.5],
+            }
+        )
+
+    try:
+        writable_vector_collection.insert_one(
+            {
+                "_id": _id1,
+                "a": 1,
+                "$vector": [0.3, 0.5],
+            }
+        )
+    except ValueError as e:
+        message = str(e)
+        parsed_json = json.loads(message)
+
+        assert parsed_json["errors"][0]["errorCode"] == "DOCUMENT_ALREADY_EXISTS"
+
+
+@pytest.mark.describe("test error handling - network error")
+def test_error_handling_network(
+    invalid_writable_vector_collection: AstraDBCollection,
+) -> None:
+    _id1 = str(uuid.uuid4())
+
+    with pytest.raises(httpx.ConnectError):
+        invalid_writable_vector_collection.insert_one(
+            {
+                "_id": _id1,
+                "a": 1,
+                "$vector": [0.3, 0.5],
+            }
+        )
 
 
 @pytest.mark.describe("upsert_many")

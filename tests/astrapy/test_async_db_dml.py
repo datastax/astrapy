@@ -23,6 +23,7 @@ from typing import List
 
 import pytest
 
+from astrapy.api import APIRequestError
 from astrapy.types import API_DOC
 from astrapy.db import AsyncAstraDB, AsyncAstraDBCollection
 
@@ -176,7 +177,7 @@ async def test_find_error(
     sort = {"$vector": "clearly not a list of floats!"}
     options = {"limit": 100}
 
-    with pytest.raises(ValueError):
+    with pytest.raises(APIRequestError):
         await async_readonly_vector_collection.find(sort=sort, options=options)
 
 
