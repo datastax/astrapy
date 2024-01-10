@@ -1527,6 +1527,52 @@ class AsyncAstraDBCollection:
 
         return response
 
+    async def chunked_insert_many(
+        self,
+        documents: List[API_DOC],
+        options: Optional[Dict[str, Any]] = None,
+        partial_failures_allowed: bool = False,
+        chunk_size: int = MAX_INSERT_NUM_DOCUMENTS,
+        concurrency: int = 1,
+    ) -> List[Union[API_RESPONSE, BaseException]]:
+        """
+        Insert multiple documents into the collection, handling chunking and
+        optionally with concurrent insertions.
+        Args:
+            documents (list): A list of documents to insert.
+            options (dict, optional): Additional options for the insert operation.
+            partial_failures_allowed (bool, optional): Whether to allow partial
+                failures in the chunk. Should be used combined with
+                options={"ordered": False} in most cases.
+            chunk_size (int, optional): Override the default insertion chunk size.
+            concurrency (int, optional): The number of concurrent chunk insertions.
+                Default is no concurrency.
+        Returns:
+            list: The responses from the database after the chunked insert operation.
+                This is a list of individual responses from the API: the caller
+                will need to inspect them all, e.g. to collate the inserted IDs.
+        """
+        sem = asyncio.Semaphore(concurrency)
+
+        async def concurrent_insert_many(
+            docs: List[API_DOC], index: int
+        ) -> API_RESPONSE:
+            async with sem:
+                logger.debug(f"Processing chunk #{index + 1} of size {len(docs)}")
+                return await self.insert_many(
+                    documents=docs,
+                    options=options,
+                    partial_failures_allowed=partial_failures_allowed,
+                )
+
+        tasks = [
+            asyncio.create_task(
+                concurrent_insert_many(documents[i : i + chunk_size], i)
+            )
+            for i in range(0, len(documents), chunk_size)
+        ]
+        return await asyncio.gather(*tasks, return_exceptions=partial_failures_allowed)
+
     async def update_one(
         self, filter: Dict[str, Any], update: Dict[str, Any]
     ) -> API_RESPONSE:
@@ -1652,6 +1698,33 @@ class AsyncAstraDBCollection:
             upserted_id = cast(str, result["status"]["insertedIds"][0])
 
         return upserted_id
+
+    async def upsert_many(
+        self,
+        documents: list[API_DOC],
+        concurrency: int = 1,
+        partial_failures_allowed: bool = False,
+    ) -> List[Union[str, BaseException]]:
+        """
+        Emulate an upsert operation for multiple documents in the collection.
+        This method attempts to insert the documents.
+        If a document with the same _id exists, it updates the existing document.
+        Args:
+            documents (List[dict]): The documents to insert or update.
+            concurrency (int, optional): The number of concurrent upserts.
+            partial_failures_allowed (bool, optional): Whether to allow partial
+                failures in the batch.
+        Returns:
+            List[str]: A list of "_id"s of the inserted or updated documents.
+        """
+        sem = asyncio.Semaphore(concurrency)
+
+        async def concurrent_upsert(doc: API_DOC) -> str:
+            async with sem:
+                return await self.upsert(document=doc)
+
+        tasks = [asyncio.create_task(concurrent_upsert(doc)) for doc in documents]
+        return await asyncio.gather(*tasks, return_exceptions=partial_failures_allowed)
 
 
 class AstraDB:
