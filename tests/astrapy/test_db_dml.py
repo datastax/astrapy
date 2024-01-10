@@ -25,6 +25,7 @@ from typing import Dict, List, Literal, Optional, Set
 
 import pytest
 
+from astrapy.api import APIRequestError
 from astrapy.types import API_DOC
 from astrapy.db import AstraDB, AstraDBCollection
 
@@ -171,7 +172,7 @@ def test_find_error(readonly_vector_collection: AstraDBCollection) -> None:
     sort = {"$vector": "clearly not a list of floats!"}
     options = {"limit": 100}
 
-    with pytest.raises(ValueError):
+    with pytest.raises(APIRequestError):
         readonly_vector_collection.find(sort=sort, options=options)
 
 
