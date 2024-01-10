@@ -746,3 +746,142 @@ def test_pop_push_novector(disposable_vector_collection: AstraDBCollection) -> N
     response2 = disposable_vector_collection.find_one(filter={"_id": user_id})
     assert response2 is not None
     assert response2["data"]["document"]["roles"] == ["user", "auditor"]
+
+
+@pytest.mark.describe("find/find_one with non-equality operators in filter")
+def test_find_find_one_non_equality_operators(
+    disposable_empty_nonvector_collection: AstraDBCollection,
+) -> None:
+    full_document = {
+        "_id": "1",
+        "marker": "abc",
+        "metadata_boolean": True,
+        "metadata_boolean_array": [
+            True,
+            False,
+            True,
+        ],
+        "metadata_byte": 1,
+        "metadata_calendar": {
+            "$date": 1704727049823,
+        },
+        "metadata_character": "c",
+        "metadata_date": {
+            "$date": 1704727049823,
+        },
+        "metadata_double": 1213.343243,
+        "metadata_double_array": [
+            1.0,
+            2.0,
+            3.0,
+        ],
+        "metadata_enum": "GCP",
+        "metadata_enum_array": ["GCP", "AWS"],
+        "metadata_float": 1.1232435,
+        "metadata_float_array": [
+            1.0,
+            2.0,
+            3.0,
+        ],
+        "metadata_instant": {
+            "$date": 1704727049822,
+        },
+        "metadata_int": 1,
+        "metadata_int_array": [
+            1,
+            2,
+            3,
+        ],
+        "metadata_list": [
+            "value1",
+            "value2",
+        ],
+        "metadata_long": 12321323,
+        "metadata_long_array": [
+            1,
+            2,
+            3,
+        ],
+        "metadata_map": {
+            "key1": "value1",
+            "key2": "value2",
+        },
+        "metadata_object": {
+            "product_name": "name",
+            "product_price": 1.0,
+        },
+        "metadata_short": 1,
+        "metadata_short_array": [
+            1,
+            2,
+            3,
+        ],
+        "metadata_string": "hello",
+        "metadata_string_array": [
+            "a",
+            "b",
+            "c",
+        ],
+        "metadata_uuid": "2123d205-2d8e-45f0-b22f-0e6980cd56c8",
+        "metadata_uuid_array": [
+            "b98b4bbc-5a48-4b07-86a6-1c98fd7d5821",
+            "b525cd48-abf7-4b40-b9ef-0c3248fbb8e8",
+        ],
+    }
+    disposable_empty_nonvector_collection.insert_one(full_document)
+    projection = {"marker": 1}
+
+    # find by id
+    resp0 = disposable_empty_nonvector_collection.find_one(
+        filter={"_id": "1"}, projection=projection
+    )
+    assert resp0["data"]["document"]["marker"] == "abc"
+
+    # find with $in
+    resp1 = disposable_empty_nonvector_collection.find(
+        filter={"metadata_string": {"$in": ["hello", "world"]}}, projection=projection
+    )
+    assert resp1["data"]["documents"][0]["marker"] == "abc"
+
+    # find with $nin
+    resp2 = disposable_empty_nonvector_collection.find(
+        filter={"metadata_string": {"$nin": ["Hallo", "Welt"]}}, projection=projection
+    )
+    assert resp2["data"]["documents"][0]["marker"] == "abc"
+
+    # find with $size
+    resp3 = disposable_empty_nonvector_collection.find(
+        filter={"metadata_boolean_array": {"$size": 3}}, projection=projection
+    )
+    assert resp3["data"]["documents"][0]["marker"] == "abc"
+
+    # find with $lt
+    resp4 = disposable_empty_nonvector_collection.find(
+        filter={"metadata_int": {"$lt": 2}}, projection=projection
+    )
+    assert resp4["data"]["documents"][0]["marker"] == "abc"
+
+    # find with $lte
+    resp5 = disposable_empty_nonvector_collection.find(
+        filter={"metadata_int": {"$lte": 1}}, projection=projection
+    )
+    assert resp5["data"]["documents"][0]["marker"] == "abc"
+
+    # find with $gt
+    resp6 = disposable_empty_nonvector_collection.find(
+        filter={"metadata_int": {"$gt": 0}}, projection=projection
+    )
+    assert resp6["data"]["documents"][0]["marker"] == "abc"
+
+    # find with $gte
+    resp7 = disposable_empty_nonvector_collection.find(
+        filter={"metadata_int": {"$gte": 1}}, projection=projection
+    )
+    assert resp7["data"]["documents"][0]["marker"] == "abc"
+
+    # find with $gte on a Date
+    resp8 = disposable_empty_nonvector_collection.find(
+        filter={"metadata_instant": {"$lt": {"$date": 1704727050218}}},
+        projection=projection,
+    )
+    assert resp8["data"]["documents"][0]["marker"] == "abc"
