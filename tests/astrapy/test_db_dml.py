@@ -372,9 +372,7 @@ def test_chunked_insert_many(
     ]
 
     with pytest.raises(ValueError):
-        _ = writable_vector_collection.chunked_insert_many(
-            documents1, chunk_size=3
-        )
+        _ = writable_vector_collection.chunked_insert_many(documents1, chunk_size=3)
 
     responses1_ok = writable_vector_collection.chunked_insert_many(
         documents1,
