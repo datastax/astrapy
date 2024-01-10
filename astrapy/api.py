@@ -12,7 +12,7 @@ AT = TypeVar("AT", bound="AsyncAPIRequestHandler")
 logger = logging.getLogger(__name__)
 
 
-class APIRequestError(Exception):
+class APIRequestError(ValueError):
     def __init__(self, response: httpx.Response) -> None:
         super().__init__(response.text)
 
