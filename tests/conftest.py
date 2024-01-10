@@ -23,6 +23,7 @@ ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
 TEST_WRITABLE_VECTOR_COLLECTION = "writable_v_col"
 TEST_READONLY_VECTOR_COLLECTION = "readonly_v_col"
 TEST_DISPOSABLE_VECTOR_COLLECTION = "disposable_v_col"
+TEST_DISPOSABLE_EMPTY_NONVECTOR_COLLECTION = "disposable_empty_col"
 
 VECTOR_DOCUMENTS = [
     {
@@ -147,6 +148,17 @@ async def async_readonly_vector_collection(
     yield collection
 
     await async_db.delete_collection(TEST_READONLY_VECTOR_COLLECTION)
+
+
+@pytest.fixture(scope="function")
+def disposable_empty_nonvector_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
+    collection = db.create_collection(
+        TEST_DISPOSABLE_EMPTY_NONVECTOR_COLLECTION,
+    )
+
+    yield collection
+
+    db.delete_collection(TEST_DISPOSABLE_EMPTY_NONVECTOR_COLLECTION)
 
 
 @pytest.fixture(scope="function")
