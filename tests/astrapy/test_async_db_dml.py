@@ -307,7 +307,7 @@ async def test_insert_many(
         {
             "_id": _id2,
             "name": "Ciccio",
-            "description": "The thid in this list",
+            "description": "The third in this list",
             "$vector": [0.4, 0.3],
         },
     ]
@@ -317,6 +317,165 @@ async def test_insert_many(
     inserted_ids = set(response["status"]["insertedIds"])
     assert len(inserted_ids - {_id0, _id2}) == 1
     assert isinstance(list(inserted_ids - {_id0, _id2})[0], str)
+
+
+@pytest.mark.describe("chunked_insert_many")
+async def test_chunked_insert_many(
+    async_writable_vector_collection: AsyncAstraDBCollection,
+) -> None:
+    _ids0 = [str(uuid.uuid4()) for _ in range(20)]
+    documents0: List[API_DOC] = [
+        {
+            "_id": _id,
+            "specs": {
+                "gen": "0",
+                "doc_idx": doc_idx,
+            },
+            "$vector": [1, doc_idx],
+        }
+        for doc_idx, _id in enumerate(_ids0)
+    ]
+
+    responses0 = await async_writable_vector_collection.chunked_insert_many(
+        documents0, chunk_size=3
+    )
+    assert responses0 is not None
+    inserted_ids0 = [
+        ins_id
+        for response in responses0
+        for ins_id in response["status"]["insertedIds"]
+    ]
+    assert inserted_ids0 == _ids0
+
+    response0a = await async_writable_vector_collection.find_one(
+        filter={"_id": _ids0[0]}
+    )
+    assert response0a is not None
+    assert response0a["data"]["document"] == documents0[0]
+
+    # partial overlap of IDs for failure modes
+    _ids1 = [
+        _id0 if idx % 3 == 0 else str(uuid.uuid4()) for idx, _id0 in enumerate(_ids0)
+    ]
+    documents1: List[API_DOC] = [
+        {
+            "_id": _id,
+            "specs": {
+                "gen": "1",
+                "doc_idx": doc_idx,
+            },
+            "$vector": [1, doc_idx],
+        }
+        for doc_idx, _id in enumerate(_ids1)
+    ]
+
+    with pytest.raises(ValueError):
+        _ = await async_writable_vector_collection.chunked_insert_many(
+            documents1, chunk_size=3
+        )
+
+    responses1_ok = await async_writable_vector_collection.chunked_insert_many(
+        documents1,
+        chunk_size=3,
+        options={"ordered": False},
+        partial_failures_allowed=True,
+    )
+    inserted_ids1 = [
+        ins_id
+        for response in responses1_ok
+        if "status" in response and "insertedIds" in response["status"]
+        for ins_id in response["status"]["insertedIds"]
+    ]
+    # insertions that succeeded are those with a new ID
+    assert set(inserted_ids1) == set(_ids1) - set(_ids0)
+    # we can check that the failures are as many as the preexisting docs
+    errors1 = [
+        err
+        for response in responses1_ok
+        if "errors" in response
+        for err in response["errors"]
+    ]
+    assert len(set(_ids0) & set(_ids1)) == len(errors1)
+
+
+@pytest.mark.describe("chunked_insert_many concurrently")
+async def test_concurrent_chunked_insert_many(
+    async_writable_vector_collection: AsyncAstraDBCollection,
+) -> None:
+    _ids0 = [str(uuid.uuid4()) for _ in range(20)]
+    documents0: List[API_DOC] = [
+        {
+            "_id": _id,
+            "specs": {
+                "gen": "0",
+                "doc_idx": doc_idx,
+            },
+            "$vector": [2, doc_idx],
+        }
+        for doc_idx, _id in enumerate(_ids0)
+    ]
+
+    responses0 = await async_writable_vector_collection.chunked_insert_many(
+        documents0, chunk_size=3, concurrency=4
+    )
+    assert responses0 is not None
+    inserted_ids0 = [
+        ins_id
+        for response in responses0
+        for ins_id in response["status"]["insertedIds"]
+    ]
+    assert inserted_ids0 == _ids0
+
+    response0a = await async_writable_vector_collection.find_one(
+        filter={"_id": _ids0[0]}
+    )
+    assert response0a is not None
+    assert response0a["data"]["document"] == documents0[0]
+
+    # partial overlap of IDs for failure modes
+    _ids1 = [
+        _id0 if idx % 3 == 0 else str(uuid.uuid4()) for idx, _id0 in enumerate(_ids0)
+    ]
+    documents1: List[API_DOC] = [
+        {
+            "_id": _id,
+            "specs": {
+                "gen": "1",
+                "doc_idx": doc_idx,
+            },
+            "$vector": [1, doc_idx],
+        }
+        for doc_idx, _id in enumerate(_ids1)
+    ]
+
+    with pytest.raises(ValueError):
+        _ = await async_writable_vector_collection.chunked_insert_many(
+            documents1, chunk_size=3, concurrency=4
+        )
+
+    responses1_ok = await async_writable_vector_collection.chunked_insert_many(
+        documents1,
+        chunk_size=3,
+        options={"ordered": False},
+        partial_failures_allowed=True,
+        concurrency=4,
+    )
+    inserted_ids1 = [
+        ins_id
+        for response in responses1_ok
+        if "status" in response and "insertedIds" in response["status"]
+        for ins_id in response["status"]["insertedIds"]
+    ]
+    # insertions that succeeded are those with a new ID
+    assert set(inserted_ids1) == set(_ids1) - set(_ids0)
+    # we can check that the failures are as many as the preexisting docs
+    errors1 = [
+        err
+        for response in responses1_ok
+        if "errors" in response
+        for err in response["errors"]
+    ]
+    assert len(set(_ids0) & set(_ids1)) == len(errors1)
 
 
 @pytest.mark.describe("insert_many with 'ordered' set to False")
@@ -374,6 +533,67 @@ async def test_insert_many_ordered_false(
     )
     assert check_response is not None
     assert check_response["data"]["document"]["_id"] == _id1
+
+
+@pytest.mark.describe("upsert_many")
+async def test_upsert_many(
+    async_writable_vector_collection: AsyncAstraDBCollection,
+) -> None:
+    _ids0 = [str(uuid.uuid4()) for _ in range(12)]
+    documents0 = [
+        {
+            "_id": _id,
+            "specs": {
+                "gen": "0",
+                "doc_i": doc_i,
+            },
+        }
+        for doc_i, _id in enumerate(_ids0)
+    ]
+
+    upsert_result0 = await async_writable_vector_collection.upsert_many(documents0)
+    assert upsert_result0 == [doc["_id"] for doc in documents0]
+
+    response0a = await async_writable_vector_collection.find_one(
+        filter={"_id": _ids0[0]}
+    )
+    assert response0a is not None
+    assert response0a["data"]["document"] == documents0[0]
+
+    response0b = await async_writable_vector_collection.find_one(
+        filter={"_id": _ids0[-1]}
+    )
+    assert response0b is not None
+    assert response0b["data"]["document"] == documents0[-1]
+
+    _ids1 = _ids0[::2] + [str(uuid.uuid4()) for _ in range(3)]
+    documents1 = [
+        {
+            "_id": _id,
+            "specs": {
+                "gen": "1",
+                "doc_i": doc_i,
+            },
+        }
+        for doc_i, _id in enumerate(_ids1)
+    ]
+    upsert_result1 = await async_writable_vector_collection.upsert_many(
+        documents1,
+        concurrency=5,
+    )
+    assert upsert_result1 == [doc["_id"] for doc in documents1]
+
+    response1a = await async_writable_vector_collection.find_one(
+        filter={"_id": _ids1[0]}
+    )
+    assert response1a is not None
+    assert response1a["data"]["document"] == documents1[0]
+
+    response1b = await async_writable_vector_collection.find_one(
+        filter={"_id": _ids1[-1]}
+    )
+    assert response1b is not None
+    assert response1b["data"]["document"] == documents1[-1]
 
 
 @pytest.mark.describe("upsert")
