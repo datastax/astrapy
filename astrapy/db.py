@@ -42,7 +42,7 @@ from astrapy.defaults import (
     DEFAULT_JSON_API_PATH,
     DEFAULT_JSON_API_VERSION,
     DEFAULT_KEYSPACE_NAME,
-    MAX_INSERT_BATCH_SIZE,
+    MAX_INSERT_NUM_DOCUMENTS,
 )
 from astrapy.utils import (
     convert_vector_to_floats,
@@ -675,7 +675,8 @@ class AstraDBCollection:
         Args:
             documents (list): A list of documents to insert.
             options (dict, optional): Additional options for the insert operation.
-            partial_failures_allowed (bool, optional): Whether to allow partial failures in the batch.
+            partial_failures_allowed (bool, optional): Whether to allow partial
+                failures through the insertion (i.e. on some documents).
         Returns:
             dict: The response from the database after the insert operation.
         """
@@ -702,19 +703,25 @@ class AstraDBCollection:
         documents: List[API_DOC],
         options: Optional[Dict[str, Any]] = None,
         partial_failures_allowed: bool = False,
-        batch_size: int = MAX_INSERT_BATCH_SIZE,
+        chunk_size: int = MAX_INSERT_NUM_DOCUMENTS,
         concurrency: int = 1,
     ) -> List[API_RESPONSE]:
         """
-        Batch insert multiple documents into the collection with concurrency.
+        Insert multiple documents into the collection, handling chunking and
+        optionally with concurrent insertions.
         Args:
             documents (list): A list of documents to insert.
             options (dict, optional): Additional options for the insert operation.
-            partial_failures_allowed (bool, optional): Whether to allow partial failures in the batch.
-            batch_size (int, optional): Override the default insertion batch size.
-            concurrency (int, optional): The number of concurrent batch insertions.
+            partial_failures_allowed (bool, optional): Whether to allow partial
+                failures in the chunk. Should be used combined with
+                options={"ordered": False} in most cases.
+            chunk_size (int, optional): Override the default insertion chunk size.
+            concurrency (int, optional): The number of concurrent chunk insertions.
+                Default is no concurrency.
         Returns:
-            list: The responses from the database after the batched insert operation.
+            list: The responses from the database after the chunked insert operation.
+                This is a list of individual responses from the API: the caller
+                will need to inspect them all, e.g. to collate the inserted IDs.
         """
 
         # If we have concurrency as 1, don't use a thread pool
@@ -722,11 +729,11 @@ class AstraDBCollection:
             # Split the documents into chunks
             return [
                 self.insert_many(
-                    documents[i : i + batch_size],
+                    documents[i : i + chunk_size],
                     options,
                     partial_failures_allowed,
                 )
-                for i in range(0, len(documents), batch_size)
+                for i in range(0, len(documents), chunk_size)
             ]
 
         # Perform the bulk insert with concurrency otherwise
@@ -735,11 +742,11 @@ class AstraDBCollection:
             futures = [
                 executor.submit(
                     self.insert_many,
-                    documents[i : i + batch_size],
+                    documents[i : i + chunk_size],
                     options,
                     partial_failures_allowed,
                 )
-                for i in range(0, len(documents), batch_size)
+                for i in range(0, len(documents), chunk_size)
             ]
 
             # Collect the results
@@ -1500,7 +1507,8 @@ class AsyncAstraDBCollection:
         Args:
             documents (list): A list of documents to insert.
             options (dict, optional): Additional options for the insert operation.
-            partial_failures_allowed (bool, optional): Whether to allow partial failures in the batch.
+            partial_failures_allowed (bool, optional): Whether to allow partial
+                failures through the insertion (i.e. on some documents).
         Returns:
             dict: The response from the database after the insert operation.
         """

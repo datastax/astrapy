@@ -19,7 +19,7 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 
 import uuid
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Literal, Optional, Set, Union
 
 import pytest
 
@@ -126,14 +126,14 @@ def test_find_find_one_projection(
     query = [0.2, 0.6]
     sort = {"$vector": query}
     options = {"limit": 1}
-    projs: List[Optional[Dict[str, Union[int, None]]]] = [
+    projs: List[Optional[Dict[str, Literal[1]]]] = [
         None,
         {},
         {"text": 1},
         {"$vector": 1},
         {"text": 1, "$vector": 1},
     ]
-    exp_fieldsets = [
+    exp_fieldsets: List[Set[str]] = [
         {"$vector", "_id", "otherfield", "anotherfield", "text"},
         {"$vector", "_id", "otherfield", "anotherfield", "text"},
         {"_id", "text"},
@@ -327,187 +327,155 @@ def test_insert_many(writable_vector_collection: AstraDBCollection) -> None:
 def test_chunked_insert_many(
     writable_vector_collection: AstraDBCollection,
 ) -> None:
-    _id0 = str(uuid.uuid4())
-    _id2 = str(uuid.uuid4())
-    documents: List[API_DOC] = [
+    _ids0 = [str(uuid.uuid4()) for _ in range(20)]
+    documents0: List[API_DOC] = [
         {
-            "_id": "c6910e2a-22d3-4995-b7e2-8993d36aac5f",
-            "name": "Abba",
-            "traits": [10, 9, 3],
-            "$vector": [0.6, 0.2],
-        },
-        {
-            "name": "Bacchus",
-            "happy": True,
-            "_id": "5a056a1d-493a-4823-900f-e996ea320510",
-        },
-        {
-            "_id": "4d567bc8-0c30-4ce7-bbc2-756d2e92afe4",
-            "name": "Ciccio",
-            "description": "The third in this list",
-            "$vector": [0.4, 0.3],
-        },
-        {
-            "_id": "3c163130-24e3-44f0-86c3-f9ef3863206c",
-            "name": "Abba",
-            "traits": [10, 9, 3],
-            "$vector": [0.6, 0.2],
-        },
-        {
-            "name": "Bacchus",
-            "happy": True,
-            "_id": "3994bff5-c1e2-4bb3-9f4e-913d59c103d9",
-        },
-        {
-            "_id": "529f5064-6630-4ce1-b065-6a5b3846a70b",
-            "name": "Ciccio",
-            "description": "The third in this list",
-            "$vector": [0.4, 0.3],
-        },
-        {
-            "_id": "a3bb7271-966a-4b85-9171-46e97b1bcbbe",
-            "name": "Abba",
-            "traits": [10, 9, 3],
-            "$vector": [0.6, 0.2],
-        },
-        {
-            "name": "Bacchus",
-            "happy": True,
-            "_id": "acde6241-3ced-45dd-9cee-f31887bb2409",
-        },
-        {
-            "_id": "686206fc-1416-48b3-9f62-1bb104e35681",
-            "name": "Ciccio",
-            "description": "The third in this list",
-            "$vector": [0.4, 0.3],
-        },
-        {
-            "_id": "09a5f695-b3b2-4bd7-ab4f-2dc4bcb24dbb",
-            "name": "Abba",
-            "traits": [10, 9, 3],
-            "$vector": [0.6, 0.2],
-        },
-        {
-            "name": "Bacchus",
-            "happy": True,
-            "_id": "4c88e9fb-a262-493a-aa17-5668f78bf1db",
-        },
-        {
-            "_id": "40935112-9a5d-4b42-bbe8-c3446a7f847f",
-            "name": "Ciccio",
-            "description": "The third in this list",
-            "$vector": [0.4, 0.3],
-        },
-        {
-            "_id": "43b28d05-889c-448f-b179-4394b94981e9",
-            "name": "Abba",
-            "traits": [10, 9, 3],
-            "$vector": [0.6, 0.2],
-        },
-        {
-            "name": "Bacchus",
-            "happy": True,
-            "_id": "8d7fcb5f-1c2d-4aa9-a258-889981889f33",
-        },
-        {
-            "_id": "c70abde2-722a-4102-94bb-5f1c69368b84",
-            "name": "Ciccio",
-            "description": "The third in this list",
-            "$vector": [0.4, 0.3],
-        },
-        {
-            "_id": "76c76dd8-1166-4398-9c39-4d4d52764055",
-            "name": "Abba",
-            "traits": [10, 9, 3],
-            "$vector": [0.6, 0.2],
-        },
-        {
-            "name": "Bacchus",
-            "happy": True,
-            "_id": "2291711b-3ce3-4f44-8dd3-5d025c82b58b",
-        },
-        {
-            "_id": "ec0f78ed-80be-401d-8be5-8b2d40d7eda7",
-            "name": "Ciccio",
-            "description": "The third in this list",
-            "$vector": [0.4, 0.3],
-        },
-        {
-            "_id": "dc4fab70-e235-47ce-9d72-b71fde42308d",
-            "name": "Abba",
-            "traits": [10, 9, 3],
-            "$vector": [0.6, 0.2],
-        },
-        {
-            "name": "Bacchus",
-            "happy": True,
-            "_id": "15be4aaa-2c22-4a25-bbfb-e475f94e6ebd",
-        },
-        {
-            "_id": "c8e55fc3-851c-44a9-ac58-2ae9f2fe8b35",
-            "name": "Ciccio",
-            "description": "The third in this list",
-            "$vector": [0.4, 0.3],
-        },
-        {
-            "_id": "c113e718-646d-4358-821a-a3adfa2f5cd8",
-            "name": "Abba",
-            "traits": [10, 9, 3],
-            "$vector": [0.6, 0.2],
-        },
-        {
-            "name": "Bacchus",
-            "happy": True,
-            "_id": "c587f215-4f95-415b-b12b-98e067fd2954",
-        },
-        {
-            "_id": "405d12f7-e754-4405-8b1a-7c6c808d4ee2",
-            "name": "Ciccio",
-            "description": "The third in this list",
-            "$vector": [0.4, 0.3],
-        },
-        {
-            "_id": "5c2d39bd-5766-4c46-bc20-105e4a3ccad5",
-            "name": "Abba",
-            "traits": [10, 9, 3],
-            "$vector": [0.6, 0.2],
-        },
-        {
-            "name": "Bacchus",
-            "happy": True,
-            "_id": "e267e980-aff1-4344-8432-651764e3c118",
-        },
-        {
-            "_id": "f38ee411-f53b-4e2c-a3c3-7f274d4bd471",
-            "name": "Ciccio",
-            "description": "The third in this list",
-            "$vector": [0.4, 0.3],
-        },
-        {
-            "_id": "88f67701-0e0b-4ea0-95d7-5e2b1b9b3809",
-            "name": "Abba",
-            "traits": [10, 9, 3],
-            "$vector": [0.6, 0.2],
-        },
-        {
-            "name": "Bacchus",
-            "happy": True,
-            "_id": "aa7571ad-a429-4b4f-9498-519ea9303de1",
-        },
-        {
-            "_id": "90249293-07a7-43a0-a7f7-310a1ad91bad",
-            "name": "Ciccio",
-            "description": "The third in this list",
-            "$vector": [0.4, 0.3],
-        },
+            "_id": _id,
+            "specs": {
+                "gen": "0",
+                "doc_idx": doc_idx,
+            },
+            "$vector": [1, doc_idx],
+        }
+        for doc_idx, _id in enumerate(_ids0)
     ]
 
-    response = writable_vector_collection.chunked_insert_many(documents)
-    assert response is not None
-    inserted_ids_list = [set(r["status"]["insertedIds"]) for r in response]
-    inserted_ids = set.union(*inserted_ids_list)
-    assert len(inserted_ids) == 30
-    assert isinstance(list(inserted_ids)[0], str)
+    responses0 = writable_vector_collection.chunked_insert_many(
+        documents0, chunk_size=3
+    )
+    assert responses0 is not None
+    inserted_ids0 = [
+        ins_id
+        for response in responses0
+        for ins_id in response["status"]["insertedIds"]
+    ]
+    assert inserted_ids0 == _ids0
+
+    response0a = writable_vector_collection.find_one(filter={"_id": _ids0[0]})
+    assert response0a is not None
+    assert response0a["data"]["document"] == documents0[0]
+
+    # partial overlap of IDs for failure modes
+    _ids1 = [
+        _id0 if idx % 3 == 0 else str(uuid.uuid4()) for idx, _id0 in enumerate(_ids0)
+    ]
+    documents1: List[API_DOC] = [
+        {
+            "_id": _id,
+            "specs": {
+                "gen": "1",
+                "doc_idx": doc_idx,
+            },
+            "$vector": [1, doc_idx],
+        }
+        for doc_idx, _id in enumerate(_ids1)
+    ]
+
+    with pytest.raises(ValueError):
+        responses1 = writable_vector_collection.chunked_insert_many(
+            documents1, chunk_size=3
+        )
+
+    responses1_ok = writable_vector_collection.chunked_insert_many(
+        documents1,
+        chunk_size=3,
+        options={"ordered": False},
+        partial_failures_allowed=True,
+    )
+    inserted_ids1 = [
+        ins_id
+        for response in responses1_ok
+        if "status" in response and "insertedIds" in response["status"]
+        for ins_id in response["status"]["insertedIds"]
+    ]
+    # insertions that succeeded are those with a new ID
+    assert set(inserted_ids1) == set(_ids1) - set(_ids0)
+    # we can check that the failures are as many as the preexisting docs
+    errors1 = [
+        err
+        for response in responses1_ok
+        if "errors" in response
+        for err in response["errors"]
+    ]
+    assert len(set(_ids0) & set(_ids1)) == len(errors1)
+
+
+@pytest.mark.describe("chunked_insert_many concurrently")
+def test_concurrent_chunked_insert_many(
+    writable_vector_collection: AstraDBCollection,
+) -> None:
+    _ids0 = [str(uuid.uuid4()) for _ in range(20)]
+    documents0: List[API_DOC] = [
+        {
+            "_id": _id,
+            "specs": {
+                "gen": "0",
+                "doc_idx": doc_idx,
+            },
+            "$vector": [2, doc_idx],
+        }
+        for doc_idx, _id in enumerate(_ids0)
+    ]
+
+    responses0 = writable_vector_collection.chunked_insert_many(
+        documents0, chunk_size=3, concurrency=4
+    )
+    assert responses0 is not None
+    inserted_ids0 = [
+        ins_id
+        for response in responses0
+        for ins_id in response["status"]["insertedIds"]
+    ]
+    assert inserted_ids0 == _ids0
+
+    response0a = writable_vector_collection.find_one(filter={"_id": _ids0[0]})
+    assert response0a is not None
+    assert response0a["data"]["document"] == documents0[0]
+
+    # partial overlap of IDs for failure modes
+    _ids1 = [
+        _id0 if idx % 3 == 0 else str(uuid.uuid4()) for idx, _id0 in enumerate(_ids0)
+    ]
+    documents1: List[API_DOC] = [
+        {
+            "_id": _id,
+            "specs": {
+                "gen": "1",
+                "doc_idx": doc_idx,
+            },
+            "$vector": [1, doc_idx],
+        }
+        for doc_idx, _id in enumerate(_ids1)
+    ]
+
+    with pytest.raises(ValueError):
+        responses1 = writable_vector_collection.chunked_insert_many(
+            documents1, chunk_size=3, concurrency=4
+        )
+
+    responses1_ok = writable_vector_collection.chunked_insert_many(
+        documents1,
+        chunk_size=3,
+        options={"ordered": False},
+        partial_failures_allowed=True,
+        concurrency=4,
+    )
+    inserted_ids1 = [
+        ins_id
+        for response in responses1_ok
+        if "status" in response and "insertedIds" in response["status"]
+        for ins_id in response["status"]["insertedIds"]
+    ]
+    # insertions that succeeded are those with a new ID
+    assert set(inserted_ids1) == set(_ids1) - set(_ids0)
+    # we can check that the failures are as many as the preexisting docs
+    errors1 = [
+        err
+        for response in responses1_ok
+        if "errors" in response
+        for err in response["errors"]
+    ]
+    assert len(set(_ids0) & set(_ids1)) == len(errors1)
 
 
 @pytest.mark.describe("insert_many with 'ordered' set to False")
@@ -569,62 +537,53 @@ def test_insert_many_ordered_false(
 def test_upsert_many(
     writable_vector_collection: AstraDBCollection,
 ) -> None:
-    _id0 = str(uuid.uuid4())
-    _id1 = str(uuid.uuid4())
-
-    documents = [
+    _ids0 = [str(uuid.uuid4()) for _ in range(12)]
+    documents0 = [
         {
-            "_id": _id0,
-            "addresses": {
-                "work": {
-                    "city": "Seattle",
-                    "state": "WA",
-                },
+            "_id": _id,
+            "specs": {
+                "gen": "0",
+                "doc_i": doc_i,
             },
-        },
-        {
-            "_id": _id1,
-            "addresses": {
-                "work": {
-                    "city": "Seattle",
-                    "state": "WA",
-                },
-            },
-        },
-    ]
-    upsert_result0 = writable_vector_collection.upsert_many(documents)
-    assert upsert_result0[0] == _id0
-    assert upsert_result0[1] == _id1
-
-    response0 = writable_vector_collection.find_one(filter={"_id": _id0})
-    assert response0 is not None
-    assert response0["data"]["document"] == documents[0]
-
-    response0 = writable_vector_collection.find_one(filter={"_id": _id1})
-    assert response0 is not None
-    assert response0["data"]["document"] == documents[1]
-
-    documents2 = [
-        {
-            "_id": _id0,
-            "addresses": {
-                "work": {
-                    "state": "MN",
-                    "floor": 12,
-                },
-            },
-            "hobbies": [
-                "ice skating",
-                "accounting",
-            ],
         }
+        for doc_i, _id in enumerate(_ids0)
     ]
-    upsert_result2 = writable_vector_collection.upsert_many(documents2)
-    assert upsert_result2[0] == _id0
 
-    response2 = writable_vector_collection.find_one(filter={"_id": _id0})
-    assert response2 is not None
-    assert response2["data"]["document"] == documents2[0]
+    upsert_result0 = writable_vector_collection.upsert_many(documents0)
+    assert upsert_result0 == [doc["_id"] for doc in documents0]
+
+    response0a = writable_vector_collection.find_one(filter={"_id": _ids0[0]})
+    assert response0a is not None
+    assert response0a["data"]["document"] == documents0[0]
+
+    response0b = writable_vector_collection.find_one(filter={"_id": _ids0[-1]})
+    assert response0b is not None
+    assert response0b["data"]["document"] == documents0[-1]
+
+    _ids1 = _ids0[::2] + [str(uuid.uuid4()) for _ in range(3)]
+    documents1 = [
+        {
+            "_id": _id,
+            "specs": {
+                "gen": "1",
+                "doc_i": doc_i,
+            },
+        }
+        for doc_i, _id in enumerate(_ids1)
+    ]
+    upsert_result1 = writable_vector_collection.upsert_many(
+        documents1,
+        concurrency=5,
+    )
+    assert upsert_result1 == [doc["_id"] for doc in documents1]
+
+    response1a = writable_vector_collection.find_one(filter={"_id": _ids1[0]})
+    assert response1a is not None
+    assert response1a["data"]["document"] == documents1[0]
+
+    response1b = writable_vector_collection.find_one(filter={"_id": _ids1[-1]})
+    assert response1b is not None
+    assert response1b["data"]["document"] == documents1[-1]
 
 
 @pytest.mark.describe("upsert")
