@@ -596,6 +596,7 @@ def test_error_handling_network(
             }
         )
 
+
 @pytest.mark.describe("upsert_many")
 def test_upsert_many(
     writable_vector_collection: AstraDBCollection,

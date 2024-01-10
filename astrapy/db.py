@@ -17,7 +17,6 @@ import asyncio
 import httpx
 import logging
 import json
-import logging
 import threading
 
 
