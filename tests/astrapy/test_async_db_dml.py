@@ -19,7 +19,7 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 
 import uuid
 import logging
-from typing import List
+from typing import Any, Dict, List, Literal, Optional, Union
 
 import pytest
 
@@ -131,7 +131,7 @@ async def test_find_find_one_projection(
     sort = {"$vector": query}
     options = {"limit": 1}
 
-    projs = [
+    projs: List[Optional[Dict[str, Literal[1]]]] = [
         None,
         {},
         {"text": 1},
@@ -336,13 +336,16 @@ async def test_chunked_insert_many(
         for doc_idx, _id in enumerate(_ids0)
     ]
 
-    responses0 = await async_writable_vector_collection.chunked_insert_many(
+    responses0: List[
+        Union[Dict[str, Any], BaseException]
+    ] = await async_writable_vector_collection.chunked_insert_many(
         documents0, chunk_size=3
     )
     assert responses0 is not None
     inserted_ids0 = [
         ins_id
         for response in responses0
+        if isinstance(response, dict)  # Add type check here
         for ins_id in response["status"]["insertedIds"]
     ]
     assert inserted_ids0 == _ids0
@@ -383,7 +386,9 @@ async def test_chunked_insert_many(
     inserted_ids1 = [
         ins_id
         for response in responses1_ok
-        if "status" in response and "insertedIds" in response["status"]
+        if isinstance(response, dict)
+        and "status" in response
+        and "insertedIds" in response["status"]
         for ins_id in response["status"]["insertedIds"]
     ]
     # insertions that succeeded are those with a new ID
@@ -392,7 +397,7 @@ async def test_chunked_insert_many(
     errors1 = [
         err
         for response in responses1_ok
-        if "errors" in response
+        if isinstance(response, dict) and "errors" in response
         for err in response["errors"]
     ]
     assert len(set(_ids0) & set(_ids1)) == len(errors1)
@@ -422,6 +427,9 @@ async def test_concurrent_chunked_insert_many(
     inserted_ids0 = [
         ins_id
         for response in responses0
+        if isinstance(response, dict)
+        and "status" in response
+        and "insertedIds" in response["status"]
         for ins_id in response["status"]["insertedIds"]
     ]
     assert inserted_ids0 == _ids0
@@ -463,7 +471,9 @@ async def test_concurrent_chunked_insert_many(
     inserted_ids1 = [
         ins_id
         for response in responses1_ok
-        if "status" in response and "insertedIds" in response["status"]
+        if isinstance(response, dict)
+        and "status" in response
+        and "insertedIds" in response["status"]
         for ins_id in response["status"]["insertedIds"]
     ]
     # insertions that succeeded are those with a new ID
@@ -472,7 +482,7 @@ async def test_concurrent_chunked_insert_many(
     errors1 = [
         err
         for response in responses1_ok
-        if "errors" in response
+        if isinstance(response, dict) and "errors" in response
         for err in response["errors"]
     ]
     assert len(set(_ids0) & set(_ids1)) == len(errors1)
