@@ -182,7 +182,7 @@ def convert_vector_to_floats(vector: Iterable[Any]) -> List[float]:
     return [float(value) for value in vector]
 
 
-def list_of_floats(vector: Iterable[Any]) -> bool:
+def is_list_of_floats(vector: Iterable[Any]) -> bool:
     """
     Safely determine if it's a list of floats.
     Assumption: if list, and first item is float, then all items are.
@@ -196,24 +196,41 @@ def list_of_floats(vector: Iterable[Any]) -> bool:
         return False
 
 
-def normalize_for_api(document: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_payload_value(key: str, value: Any) -> Any:
     """
-    Normalize a document for API calls.
-    This includes e.g. ensuring vectors are plain lists of floats.
+    The key has only the role of regulating special treatments.
+    """
+    if key == "$vector":
+        if not is_list_of_floats(value):
+            return convert_vector_to_floats(value)
+        else:
+            return value
+    else:
+        if isinstance(value, dict):
+            return {
+                k: _normalize_payload_value(k, v)
+                for k, v in value.items()
+            }
+        elif isinstance(value, list):
+            return [
+                _normalize_payload_value(key, list_item)
+                for list_item in value
+            ]
+        else:
+            return value
+
+
+def normalize_for_api(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Normalize a payload for API calls.
+    This includes e.g. ensuring values for "$vector" key
+    are made into plain lists of floats.
 
     Args:
-        document (Dict[str, Any]): A dict expressing a document or equivalent
+        payload (Dict[str, Any]): A dict expressing a payload for an API call
 
     Returns:
-        Dict[str, Any]: a "normalized" dict
+        Dict[str, Any]: a "normalized" payload dict
     """
 
-    # Inspect each field of the document
-    for key, value in document.items():
-        # Vector coercion to plain list of floats
-        if key == "$vector" and not list_of_floats(document["$vector"]):
-            document[key] = convert_vector_to_floats(value)
-
-        # TODO: More pre-processing operations
-
-    return document
+    return _normalize_payload_value("", payload)
