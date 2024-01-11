@@ -157,6 +157,19 @@ def test_find_find_one_projection(
         assert fields == exp_fields
 
 
+@pytest.mark.describe("should coerce vectors in the find sort argument")
+def test_find_float32(
+    readonly_vector_collection: AstraDBCollection,
+) -> None:
+    def ite():
+        for v in [0.1, 0.2]:
+            yield f"{v}"
+    sort = {"$vector": ite()}
+    options = {"limit": 5}
+
+    response = readonly_vector_collection.find(sort=sort, options=options)
+    assert isinstance(response["data"]["documents"], list)
+
 @pytest.mark.describe("find through vector")
 def test_find(readonly_vector_collection: AstraDBCollection) -> None:
     sort = {"$vector": [0.2, 0.6]}
@@ -281,7 +294,7 @@ def test_create_document(writable_vector_collection: AstraDBCollection) -> None:
     )
 
 
-@pytest.mark.describe("should truncate a nonvector collection")
+@pytest.mark.describe("should coerce vectors to plain lists of floats")
 def test_insert_float32(
     writable_vector_collection: AstraDBCollection, N: int = 2
 ) -> None:

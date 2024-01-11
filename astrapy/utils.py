@@ -182,21 +182,36 @@ def convert_vector_to_floats(vector: Iterable[Any]) -> List[float]:
     return [float(value) for value in vector]
 
 
-def preprocess_insert(document: Dict[str, Any]) -> Dict[str, Any]:
+def list_of_floats(vector: Iterable[Any]) -> bool:
     """
-    Perform preprocessing operations before an insertion
+    Safely determine if it's a list of floats.
+    Assumption: if list, and first item is float, then all items are.
+    """
+    if isinstance(vector, list):
+        if len(vector):
+            return isinstance(vector[0], float) or isinstance(vector[0], int)
+        else:
+            return True
+    else:
+        return False
+
+
+def normalize_for_api(document: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Normalize a document for API calls.
+    This includes e.g. ensuring vectors are plain lists of floats.
 
     Args:
-        vector (list): A vector of objects.
+        document (Dict[str, Any]): A dict expressing a document or equivalent
 
     Returns:
-        list: A vector of objects
+        Dict[str, Any]: a "normalized" dict
     """
 
-    # Process each field of the cocument
+    # Inspect each field of the document
     for key, value in document.items():
-        # Vector coercision
-        if key == "$vector" and not isinstance(document["$vector"][0], float):
+        # Vector coercion to plain list of floats
+        if key == "$vector" and not list_of_floats(document["$vector"]):
             document[key] = convert_vector_to_floats(value)
 
         # TODO: More pre-processing operations

@@ -52,7 +52,7 @@ from astrapy.utils import (
     make_request,
     http_methods,
     amake_request,
-    preprocess_insert,
+    normalize_for_api,
 )
 from astrapy.types import (
     API_DOC,
@@ -209,6 +209,8 @@ class AstraDBCollection:
         Returns:
             dict: The query response containing matched documents.
         """
+        sort = normalize_for_api(sort)
+
         json_query = make_payload(
             top_level="find",
             filter=filter,
@@ -427,7 +429,7 @@ class AstraDBCollection:
         Returns:
             dict: The result of the find and replace operation.
         """
-        replacement = preprocess_insert(replacement)
+        replacement = normalize_for_api(replacement)
 
         json_query = make_payload(
             top_level="findOneAndReplace",
@@ -461,8 +463,6 @@ class AstraDBCollection:
         Returns:
             dict or None: either the matched document or None if nothing found
         """
-        replacement = preprocess_insert(replacement)
-
         # Pre-process the included arguments
         sort, _ = self._pre_process_find(
             convert_vector_to_floats(vector),
@@ -495,7 +495,7 @@ class AstraDBCollection:
         Returns:
             dict: The result of the find and update operation.
         """
-        update = preprocess_insert(update)
+        update = normalize_for_api(update)
 
         json_query = make_payload(
             top_level="findOneAndUpdate",
@@ -532,7 +532,7 @@ class AstraDBCollection:
             dict or None: The result of the vector-based find and
                 update operation, or None if nothing found
         """
-        update = preprocess_insert(update)
+        update = normalize_for_api(update)
 
         # Pre-process the included arguments
         sort, _ = self._pre_process_find(
@@ -654,7 +654,7 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the insert operation.
         """
-        document = preprocess_insert(document)
+        document = normalize_for_api(document)
 
         json_query = make_payload(top_level="insertOne", document=document)
 
@@ -684,8 +684,7 @@ class AstraDBCollection:
             dict: The response from the database after the insert operation.
         """
         # Check if the vector is a list of floats
-        for i, document in enumerate(documents):
-            documents[i] = preprocess_insert(document)
+        documents = [normalize_for_api(document) for document in documents]
 
         json_query = make_payload(
             top_level="insertMany", documents=documents, options=options
@@ -883,7 +882,7 @@ class AstraDBCollection:
             str: The _id of the inserted or updated document.
         """
         # Build the payload for the insert attempt
-        document = preprocess_insert(document)
+        document = normalize_for_api(document)
         result = self.insert_one(document, failures_allowed=True)
 
         # If the call failed, then we replace the existing doc
@@ -1093,6 +1092,8 @@ class AsyncAstraDBCollection:
         Returns:
             dict: The query response containing matched documents.
         """
+        sort = normalize_for_api(sort)
+
         json_query = make_payload(
             top_level="find",
             filter=filter,
@@ -1291,7 +1292,7 @@ class AsyncAstraDBCollection:
 
     async def find_one_and_replace(
         self,
-        replacement: Optional[Dict[str, Any]] = None,
+        replacement: Dict[str, Any],
         *,
         sort: Optional[Dict[str, Any]] = {},
         filter: Optional[Dict[str, Any]] = None,
@@ -1307,6 +1308,8 @@ class AsyncAstraDBCollection:
         Returns:
             dict: The result of the find and replace operation.
         """
+        replacement = normalize_for_api(replacement)
+
         json_query = make_payload(
             top_level="findOneAndReplace",
             filter=filter,
@@ -1356,8 +1359,8 @@ class AsyncAstraDBCollection:
 
     async def find_one_and_update(
         self,
+        update: Dict[str, Any],
         sort: Optional[Dict[str, Any]] = {},
-        update: Optional[Dict[str, Any]] = None,
         filter: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
@@ -1365,12 +1368,14 @@ class AsyncAstraDBCollection:
         Find a single document and update it.
         Args:
             sort (dict, optional): Specifies the order in which to find the document.
-            update (dict, optional): The update to apply to the document.
+            update (dict): The update to apply to the document.
             filter (dict, optional): Criteria to filter documents.
             options (dict, optional): Additional options for the operation.
         Returns:
             dict: The result of the find and update operation.
         """
+        update = normalize_for_api(update)
+
         json_query = make_payload(
             top_level="findOneAndUpdate",
             filter=filter,
@@ -1406,6 +1411,8 @@ class AsyncAstraDBCollection:
             dict or None: The result of the vector-based find and
                 update operation, or None if nothing found
         """
+        update = normalize_for_api(update)
+
         # Pre-process the included arguments
         sort, _ = self._pre_process_find(
             vector,
@@ -1526,6 +1533,8 @@ class AsyncAstraDBCollection:
         Returns:
             dict: The response from the database after the insert operation.
         """
+        document = normalize_for_api(document)
+
         json_query = make_payload(top_level="insertOne", document=document)
 
         response = await self._request(
@@ -1553,6 +1562,9 @@ class AsyncAstraDBCollection:
         Returns:
             dict: The response from the database after the insert operation.
         """
+        # Check if the vector is a list of floats
+        documents = [normalize_for_api(document) for document in documents]
+
         json_query = make_payload(
             top_level="insertMany", documents=documents, options=options
         )
@@ -1725,6 +1737,7 @@ class AsyncAstraDBCollection:
             str: The _id of the inserted or updated document.
         """
         # Build the payload for the insert attempt
+        document = normalize_for_api(document)
         result = await self.insert_one(document, failures_allowed=True)
 
         # If the call failed, then we replace the existing doc

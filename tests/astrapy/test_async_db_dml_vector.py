@@ -74,6 +74,28 @@ async def test_vector_find(
     assert "$similarity" not in documents_no_sim[0]
 
 
+@pytest.mark.describe("should coerce vectors in vector_find")
+async def test_vector_find_float32(
+    async_readonly_vector_collection: AsyncAstraDBCollection,
+) -> None:
+    def ite():
+        for v in [0.1, 0.2]:
+            yield f"{v}"
+
+    documents_sim_1 = await async_readonly_vector_collection.vector_find(
+        vector=ite(),
+        limit=3,
+    )
+
+    assert documents_sim_1 is not None
+    assert isinstance(documents_sim_1, list)
+    assert len(documents_sim_1) > 0
+    assert "_id" in documents_sim_1[0]
+    assert "$vector" in documents_sim_1[0]
+    assert "text" in documents_sim_1[0]
+    assert "$similarity" in documents_sim_1[0]
+
+
 @pytest.mark.describe("vector_find, obey projection")
 async def test_vector_find_projection(
     async_readonly_vector_collection: AsyncAstraDBCollection,

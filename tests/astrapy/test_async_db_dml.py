@@ -160,6 +160,20 @@ async def test_find_find_one_projection(
         assert fields == exp_fields
 
 
+@pytest.mark.describe("should coerce vectors in the find sort argument")
+async def test_find_float32(
+    async_readonly_vector_collection: AsyncAstraDBCollection,
+) -> None:
+    def ite():
+        for v in [0.1, 0.2]:
+            yield f"{v}"
+    sort = {"$vector": ite()}
+    options = {"limit": 5}
+
+    response = await async_readonly_vector_collection.find(sort=sort, options=options)
+    assert isinstance(response["data"]["documents"], list)
+
+
 @pytest.mark.describe("find through vector")
 async def test_find(async_readonly_vector_collection: AsyncAstraDBCollection) -> None:
     sort = {"$vector": [0.2, 0.6]}
@@ -286,6 +300,23 @@ async def test_create_document(
             {"_id": result_n_n["status"]["insertedIds"][0]}
         )
     )["data"]["document"]["a"] == 5
+
+
+@pytest.mark.describe("should coerce vectors to plain lists of floats")
+async def test_insert_float32(
+    async_writable_vector_collection: AsyncAstraDBCollection, N: int = 2
+) -> None:
+    _id0 = str(uuid.uuid4())
+    document = {
+        "_id": _id0,
+        "name": "Coerce",
+        "$vector": [f"{(i+1)/N+2:.4f}" for i in range(N)],
+    }
+    response = await async_writable_vector_collection.insert_one(document)
+    assert response is not None
+    inserted_ids = response["status"]["insertedIds"]
+    assert len(inserted_ids) == 1
+    assert inserted_ids[0] == _id0
 
 
 @pytest.mark.describe("insert_many")
