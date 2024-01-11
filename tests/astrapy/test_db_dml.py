@@ -352,6 +352,7 @@ def test_chunked_insert_many(
     inserted_ids0 = [
         ins_id
         for response in responses0
+        if isinstance(response, dict)
         for ins_id in response["status"]["insertedIds"]
     ]
     assert inserted_ids0 == _ids0
@@ -388,7 +389,9 @@ def test_chunked_insert_many(
     inserted_ids1 = [
         ins_id
         for response in responses1_ok
-        if "status" in response and "insertedIds" in response["status"]
+        if isinstance(response, dict)
+        and "status" in response
+        and "insertedIds" in response["status"]
         for ins_id in response["status"]["insertedIds"]
     ]
     # insertions that succeeded are those with a new ID
@@ -397,7 +400,7 @@ def test_chunked_insert_many(
     errors1 = [
         err
         for response in responses1_ok
-        if "errors" in response
+        if isinstance(response, dict) and "errors" in response
         for err in response["errors"]
     ]
     assert len(set(_ids0) & set(_ids1)) == len(errors1)
@@ -427,6 +430,7 @@ def test_concurrent_chunked_insert_many(
     inserted_ids0 = [
         ins_id
         for response in responses0
+        if isinstance(response, dict)
         for ins_id in response["status"]["insertedIds"]
     ]
     assert inserted_ids0 == _ids0
@@ -466,7 +470,9 @@ def test_concurrent_chunked_insert_many(
     inserted_ids1 = [
         ins_id
         for response in responses1_ok
-        if "status" in response and "insertedIds" in response["status"]
+        if isinstance(response, dict)
+        and "status" in response
+        and "insertedIds" in response["status"]
         for ins_id in response["status"]["insertedIds"]
     ]
     # insertions that succeeded are those with a new ID
@@ -475,7 +481,7 @@ def test_concurrent_chunked_insert_many(
     errors1 = [
         err
         for response in responses1_ok
-        if "errors" in response
+        if isinstance(response, dict) and "errors" in response
         for err in response["errors"]
     ]
     assert len(set(_ids0) & set(_ids1)) == len(errors1)
