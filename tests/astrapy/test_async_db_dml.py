@@ -338,7 +338,7 @@ async def test_chunked_insert_many(
     ]
 
     responses0: List[
-        Union[Dict[str, Any], BaseException]
+        Union[Dict[str, Any], Exception]
     ] = await async_writable_vector_collection.chunked_insert_many(
         documents0, chunk_size=3
     )

@@ -708,7 +708,7 @@ class AstraDBCollection:
         partial_failures_allowed: bool = False,
         chunk_size: int = MAX_INSERT_NUM_DOCUMENTS,
         concurrency: int = 1,
-    ) -> List[API_RESPONSE]:
+    ) -> List[Union[API_RESPONSE, Exception]]:
         """
         Insert multiple documents into the collection, handling chunking and
         optionally with concurrent insertions.
@@ -726,18 +726,26 @@ class AstraDBCollection:
                 This is a list of individual responses from the API: the caller
                 will need to inspect them all, e.g. to collate the inserted IDs.
         """
+        results: List[Union[API_RESPONSE, Exception]] = []
 
         # If we have concurrency as 1, don't use a thread pool
         if concurrency == 1:
             # Split the documents into chunks
-            return [
-                self.insert_many(
-                    documents[i : i + chunk_size],
-                    options,
-                    partial_failures_allowed,
-                )
-                for i in range(0, len(documents), chunk_size)
-            ]
+            for i in range(0, len(documents), chunk_size):
+                try:
+                    results.append(
+                        self.insert_many(
+                            documents[i : i + chunk_size],
+                            options,
+                            partial_failures_allowed,
+                        )
+                    )
+                except Exception as e:
+                    if partial_failures_allowed:
+                        results.append(e)
+                    else:
+                        raise e
+            return results
 
         # Perform the bulk insert with concurrency otherwise
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
@@ -753,9 +761,16 @@ class AstraDBCollection:
             ]
 
             # Collect the results
-            response_list = [future.result() for future in futures]
+            for future in futures:
+                try:
+                    results.append(future.result())
+                except Exception as e:
+                    if partial_failures_allowed:
+                        results.append(e)
+                    else:
+                        raise e
 
-        return response_list
+        return results
 
     def update_one(
         self, filter: Dict[str, Any], update: Dict[str, Any]
@@ -888,7 +903,12 @@ class AstraDBCollection:
 
         return upserted_id
 
-    def upsert_many(self, documents: list[API_DOC], concurrency: int = 1) -> List[str]:
+    def upsert_many(
+        self,
+        documents: list[API_DOC],
+        concurrency: int = 1,
+        partial_failures_allowed: bool = False,
+    ) -> List[Union[str, Exception]]:
         """
         Emulate an upsert operation for multiple documents in the collection.
 
@@ -897,20 +917,39 @@ class AstraDBCollection:
         Args:
             documents (List[dict]): The documents to insert or update.
             concurrency (int, optional): The number of concurrent upserts.
+            partial_failures_allowed (bool, optional): Whether to allow partial
+                failures in the batch.
 
         Returns:
-            List[str]: A list of "_id"s of the inserted or updated documents.
+            List[Union[str, Exception]]: A list of "_id"s of the inserted or updated documents.
         """
+        results: List[Union[str, Exception]] = []
 
         # If concurrency is 1, no need for thread pool
         if concurrency == 1:
-            return [self.upsert(document) for document in documents]
+            for document in documents:
+                try:
+                    results.append(self.upsert(document))
+                except Exception as e:
+                    results.append(e)
+            return results
 
         # Perform the bulk upsert with concurrency
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
-            response_list = list(executor.map(self.upsert, documents))
+            # Submit the jobs
+            futures = [executor.submit(self.upsert, document) for document in documents]
 
-        return response_list
+            # Collect the results
+            for future in futures:
+                try:
+                    results.append(future.result())
+                except Exception as e:
+                    if partial_failures_allowed:
+                        results.append(e)
+                    else:
+                        raise e
+
+        return results
 
 
 class AsyncAstraDBCollection:
@@ -1534,7 +1573,7 @@ class AsyncAstraDBCollection:
         partial_failures_allowed: bool = False,
         chunk_size: int = MAX_INSERT_NUM_DOCUMENTS,
         concurrency: int = 1,
-    ) -> List[Union[API_RESPONSE, BaseException]]:
+    ) -> List[Union[API_RESPONSE, Exception]]:
         """
         Insert multiple documents into the collection, handling chunking and
         optionally with concurrent insertions.
@@ -1571,7 +1610,13 @@ class AsyncAstraDBCollection:
             )
             for i in range(0, len(documents), chunk_size)
         ]
-        return await asyncio.gather(*tasks, return_exceptions=partial_failures_allowed)
+        results = await asyncio.gather(
+            *tasks, return_exceptions=partial_failures_allowed
+        )
+        for result in results:
+            if isinstance(result, BaseException) and not isinstance(result, Exception):
+                raise result
+        return results  # type: ignore
 
     async def update_one(
         self, filter: Dict[str, Any], update: Dict[str, Any]
@@ -1704,7 +1749,7 @@ class AsyncAstraDBCollection:
         documents: list[API_DOC],
         concurrency: int = 1,
         partial_failures_allowed: bool = False,
-    ) -> List[Union[str, BaseException]]:
+    ) -> List[Union[str, Exception]]:
         """
         Emulate an upsert operation for multiple documents in the collection.
         This method attempts to insert the documents.
@@ -1714,8 +1759,9 @@ class AsyncAstraDBCollection:
             concurrency (int, optional): The number of concurrent upserts.
             partial_failures_allowed (bool, optional): Whether to allow partial
                 failures in the batch.
+
         Returns:
-            List[str]: A list of "_id"s of the inserted or updated documents.
+            List[Union[str, Exception]]: A list of "_id"s of the inserted or updated documents.
         """
         sem = asyncio.Semaphore(concurrency)
 
@@ -1724,7 +1770,13 @@ class AsyncAstraDBCollection:
                 return await self.upsert(document=doc)
 
         tasks = [asyncio.create_task(concurrent_upsert(doc)) for doc in documents]
-        return await asyncio.gather(*tasks, return_exceptions=partial_failures_allowed)
+        results = await asyncio.gather(
+            *tasks, return_exceptions=partial_failures_allowed
+        )
+        for result in results:
+            if isinstance(result, BaseException) and not isinstance(result, Exception):
+                raise result
+        return results  # type: ignore
 
 
 class AstraDB:
