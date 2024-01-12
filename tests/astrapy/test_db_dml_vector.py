@@ -17,7 +17,7 @@ Tests for the `db.py` parts on data manipulation `vector_*` methods
 """
 
 import logging
-from typing import cast
+from typing import cast, Iterable, List
 
 import pytest
 
@@ -76,12 +76,12 @@ def test_vector_find(readonly_vector_collection: AstraDBCollection) -> None:
 def test_vector_find_float32(
     readonly_vector_collection: AstraDBCollection,
 ) -> None:
-    def ite():
+    def ite() -> Iterable[str]:
         for v in [0.1, 0.2]:
             yield f"{v}"
 
     documents_sim_1 = readonly_vector_collection.vector_find(
-        vector=ite(),
+        vector=cast(List[float], ite()),  # we surreptitously trick typing here
         limit=3,
     )
 

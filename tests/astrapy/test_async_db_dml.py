@@ -18,8 +18,9 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 """
 
 import uuid
+import datetime
 import logging
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, cast, Dict, Iterable, List, Literal, Optional, Union
 
 import pytest
 
@@ -164,10 +165,12 @@ async def test_find_find_one_projection(
 async def test_find_float32(
     async_readonly_vector_collection: AsyncAstraDBCollection,
 ) -> None:
-    def ite():
+    def ite() -> Iterable[str]:
         for v in [0.1, 0.2]:
             yield f"{v}"
-    sort = {"$vector": ite()}
+
+    # we surreptitously trick typing here
+    sort = {"$vector": cast(List[float], ite())}
     options = {"limit": 5}
 
     response = await async_readonly_vector_collection.find(sort=sort, options=options)
@@ -1021,3 +1024,83 @@ async def test_pop_push_novector(
     )
     assert response2 is not None
     assert response2["data"]["document"]["roles"] == ["user", "auditor"]
+
+
+@pytest.mark.describe("store and retrieve dates and datetimes correctly")
+async def test_insert_find_with_dates(
+    async_writable_vector_collection: AsyncAstraDBCollection,
+) -> None:
+    date0 = datetime.date(2024, 1, 12)
+    datetime0 = datetime.datetime(2024, 1, 12, 0, 0)
+    date1 = datetime.date(2024, 1, 13)
+    datetime1 = datetime.datetime(2024, 1, 13, 0, 0)
+
+    d_doc_id = str(uuid.uuid4())
+    d_document = {
+        "_id": d_doc_id,
+        "my_date": date0,
+        "my_datetime": datetime0,
+        "nested": {
+            "n_date": date1,
+            "n_datetime": datetime1,
+        },
+        "nested_list": {
+            "the_list": [
+                date0,
+                datetime0,
+                date1,
+                datetime1,
+            ]
+        },
+    }
+    expected_d_document = {
+        "_id": d_doc_id,
+        "my_date": datetime0,
+        "my_datetime": datetime0,
+        "nested": {
+            "n_date": datetime1,
+            "n_datetime": datetime1,
+        },
+        "nested_list": {
+            "the_list": [
+                datetime0,
+                datetime0,
+                datetime1,
+                datetime1,
+            ]
+        },
+    }
+
+    _ = await async_writable_vector_collection.insert_one(d_document)
+
+    # retrieve it, simple
+    response0 = await async_writable_vector_collection.find_one(
+        filter={"_id": d_doc_id}
+    )
+    assert response0 is not None
+    document0 = response0["data"]["document"]
+    assert document0 == expected_d_document
+
+    # retrieve it, lt condition on a date
+    response1 = await async_writable_vector_collection.find_one(
+        filter={"nested_list.the_list.0": {"$lt": date1}}
+    )
+    assert response1 is not None
+    document1 = response1["data"]["document"]
+    assert document1 == expected_d_document
+
+    # retrieve it, gte condition on a datetime
+    response2 = await async_writable_vector_collection.find_one(
+        filter={"nested.n_date": {"$gte": datetime0}}
+    )
+    assert response2 is not None
+    document2 = response2["data"]["document"]
+    assert document2 == expected_d_document
+
+    # retrieve it, filter == condition on a datetime
+    response3 = await async_writable_vector_collection.find_one(
+        filter={"my_date": datetime0}
+    )
+    assert response3 is not None
+    document3 = response3["data"]["document"]
+    assert document3 == expected_d_document

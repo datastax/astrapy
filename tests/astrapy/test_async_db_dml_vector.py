@@ -17,7 +17,7 @@ Tests for the `db.py` parts on data manipulation `vector_*` methods
 """
 
 import logging
-from typing import cast
+from typing import cast, Iterable, List
 
 import pytest
 
@@ -78,12 +78,13 @@ async def test_vector_find(
 async def test_vector_find_float32(
     async_readonly_vector_collection: AsyncAstraDBCollection,
 ) -> None:
-    def ite():
+    def ite() -> Iterable[str]:
         for v in [0.1, 0.2]:
             yield f"{v}"
 
     documents_sim_1 = await async_readonly_vector_collection.vector_find(
-        vector=ite(),
+        # we surreptitously trick typing here
+        vector=cast(List[float], ite()),
         limit=3,
     )
 

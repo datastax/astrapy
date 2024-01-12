@@ -53,6 +53,7 @@ from astrapy.utils import (
     http_methods,
     amake_request,
     normalize_for_api,
+    restore_from_api,
 )
 from astrapy.types import (
     API_DOC,
@@ -125,7 +126,8 @@ class AstraDBCollection:
             **kwargs,
         )
 
-        response = request_handler.request()
+        direct_response = request_handler.request()
+        response = restore_from_api(direct_response)
 
         return response
 
@@ -999,7 +1001,8 @@ class AsyncAstraDBCollection:
             skip_error_check=skip_error_check,
         )
 
-        response = await arequest_handler.request()
+        direct_response = await arequest_handler.request()
+        response = restore_from_api(direct_response)
 
         return response
 
