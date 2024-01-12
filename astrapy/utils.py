@@ -98,8 +98,6 @@ def make_request(
 
     log_request_response(r, json_data)
 
-    r.raise_for_status()
-
     return r
 
 
@@ -138,8 +136,7 @@ async def amake_request(
         headers={auth_header: token, "User-Agent": f"{package_name}/{__version__}"},
     )
 
-    if logger.isEnabledFor(logging.DEBUG):
-        log_request_response(r, json_data)
+    log_request_response(r, json_data)
 
     return r
 
