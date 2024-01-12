@@ -158,9 +158,14 @@ class AstraDBCollection:
         )
         return response
 
-    def _pre_process_find(
+    def _recast_as_sort_projection(
         self, vector: List[float], fields: Optional[List[str]] = None
     ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+        """
+        Given a vector and optionally a list of fields,
+        reformulate them as a sort, projection pair for regular
+        'find'-like API calls (with basic validation as well).
+        """
         # Must pass a vector
         if not vector:
             raise ValueError("Must pass a vector")
@@ -248,7 +253,7 @@ class AstraDBCollection:
             raise ValueError("Must pass a limit")
 
         # Pre-process the included arguments
-        sort, projection = self._pre_process_find(
+        sort, projection = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -460,7 +465,7 @@ class AstraDBCollection:
             dict or None: either the matched document or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._pre_process_find(
+        sort, _ = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -527,7 +532,7 @@ class AstraDBCollection:
                 update operation, or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._pre_process_find(
+        sort, _ = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -620,7 +625,7 @@ class AstraDBCollection:
             dict or None: The found document or None if no matching document is found.
         """
         # Pre-process the included arguments
-        sort, projection = self._pre_process_find(
+        sort, projection = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -1027,9 +1032,14 @@ class AsyncAstraDBCollection:
         )
         return response
 
-    def _pre_process_find(
+    def _recast_as_sort_projection(
         self, vector: List[float], fields: Optional[List[str]] = None
     ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+        """
+        Given a vector and optionally a list of fields,
+        reformulate them as a sort, projection pair for regular
+        'find'-like API calls (with basic validation as well).
+        """
         # Must pass a vector
         if not vector:
             raise ValueError("Must pass a vector")
@@ -1117,7 +1127,7 @@ class AsyncAstraDBCollection:
             raise ValueError("Must pass a limit")
 
         # Pre-process the included arguments
-        sort, projection = self._pre_process_find(
+        sort, projection = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )
@@ -1325,7 +1335,7 @@ class AsyncAstraDBCollection:
             dict or None: either the matched document or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._pre_process_find(
+        sort, _ = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )
@@ -1392,7 +1402,7 @@ class AsyncAstraDBCollection:
                 update operation, or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._pre_process_find(
+        sort, _ = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )
@@ -1485,7 +1495,7 @@ class AsyncAstraDBCollection:
             dict or None: The found document or None if no matching document is found.
         """
         # Pre-process the included arguments
-        sort, projection = self._pre_process_find(
+        sort, projection = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )

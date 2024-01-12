@@ -196,11 +196,13 @@ def is_list_of_floats(vector: Iterable[Any]) -> bool:
         return False
 
 
-def _normalize_payload_value(key: str, value: Any) -> Any:
+def _normalize_payload_value(path: List[str], value: Any) -> Any:
     """
-    The key has only the role of regulating special treatments.
+    The path helps determining special treatments
     """
-    if key == "$vector":
+    _l2 = '.'.join(path[-2:])
+    _l1 = '.'.join(path[-1:])
+    if _l1 == "$vector" and _l2 != "projection.$vector":
         if not is_list_of_floats(value):
             return convert_vector_to_floats(value)
         else:
@@ -208,12 +210,12 @@ def _normalize_payload_value(key: str, value: Any) -> Any:
     else:
         if isinstance(value, dict):
             return {
-                k: _normalize_payload_value(k, v)
+                k: _normalize_payload_value(path + [k], v)
                 for k, v in value.items()
             }
         elif isinstance(value, list):
             return [
-                _normalize_payload_value(key, list_item)
+                _normalize_payload_value(path + [""], list_item)
                 for list_item in value
             ]
         else:
@@ -233,4 +235,4 @@ def normalize_for_api(payload: Dict[str, Any]) -> Dict[str, Any]:
         Dict[str, Any]: a "normalized" payload dict
     """
 
-    return _normalize_payload_value("", payload)
+    return _normalize_payload_value([], payload)

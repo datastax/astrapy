@@ -188,7 +188,7 @@ async def test_find_error(
     async_readonly_vector_collection: AsyncAstraDBCollection,
 ) -> None:
     """Wrong type of arguments should raise an API error (ValueError)."""
-    sort = {"$vector": "clearly not a list of floats!"}
+    sort = {"$vector": [0, "clearly not a list of floats!"]}
     options = {"limit": 100}
 
     with pytest.raises(APIRequestError):
