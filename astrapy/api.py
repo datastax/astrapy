@@ -73,7 +73,7 @@ class APIRequestHandler:
             # Cast the response to the expected type.
             response_body: API_RESPONSE = cast(API_RESPONSE, self.response.json())
 
-            # If the API produced an error, warn and return the API request error class
+            # If the API produced an error, warn and raise it as an Exception
             if "errors" in response_body and not self.skip_error_check:
                 logger.debug(response_body["errors"])
 
