@@ -190,13 +190,9 @@ def is_list_of_floats(vector: Iterable[Any]) -> bool:
     Safely determine if it's a list of floats.
     Assumption: if list, and first item is float, then all items are.
     """
-    if isinstance(vector, list):
-        if len(vector):
-            return isinstance(vector[0], float) or isinstance(vector[0], int)
-        else:
-            return True
-    else:
-        return False
+    return isinstance(vector, list) and (
+        len(vector) == 0 or isinstance(vector[0], float) or isinstance(vector[0], int)
+    )
 
 
 def convert_to_ejson_date_object(

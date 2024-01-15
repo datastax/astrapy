@@ -1227,7 +1227,7 @@ def test_insert_find_with_dates(
         },
     }
 
-    _ = writable_vector_collection.insert_one(d_document)
+    writable_vector_collection.insert_one(d_document)
 
     # retrieve it, simple
     response0 = writable_vector_collection.find_one(filter={"_id": d_doc_id})

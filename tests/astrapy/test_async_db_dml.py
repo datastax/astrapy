@@ -1071,7 +1071,7 @@ async def test_insert_find_with_dates(
         },
     }
 
-    _ = await async_writable_vector_collection.insert_one(d_document)
+    await async_writable_vector_collection.insert_one(d_document)
 
     # retrieve it, simple
     response0 = await async_writable_vector_collection.find_one(
