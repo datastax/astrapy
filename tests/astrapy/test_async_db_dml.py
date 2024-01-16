@@ -349,7 +349,8 @@ async def test_chunked_insert_many(
         if isinstance(response, dict)  # Add type check here
         for ins_id in response["status"]["insertedIds"]
     ]
-    assert inserted_ids0 == _ids0
+    # unordered inserts: this only has to be a set equality
+    assert set(inserted_ids0) == set(_ids0)
 
     response0a = await async_writable_vector_collection.find_one(
         filter={"_id": _ids0[0]}
@@ -375,7 +376,9 @@ async def test_chunked_insert_many(
 
     with pytest.raises(ValueError):
         _ = await async_writable_vector_collection.chunked_insert_many(
-            documents1, chunk_size=3
+            documents1,
+            chunk_size=3,
+            options={"ordered": True},
         )
 
     responses1_ok = await async_writable_vector_collection.chunked_insert_many(
@@ -433,7 +436,8 @@ async def test_concurrent_chunked_insert_many(
         and "insertedIds" in response["status"]
         for ins_id in response["status"]["insertedIds"]
     ]
-    assert inserted_ids0 == _ids0
+    # unordered inserts: this only has to be a set equality
+    assert set(inserted_ids0) == set(_ids0)
 
     response0a = await async_writable_vector_collection.find_one(
         filter={"_id": _ids0[0]}
@@ -458,8 +462,15 @@ async def test_concurrent_chunked_insert_many(
     ]
 
     with pytest.raises(ValueError):
+        # the first doc must be pre-existing
+        # and the doc array size must be <= chunk size
+        # for this not to spoil the rest of the test
+        docs_for_error = documents0[0:1] + [{"_id": str(uuid.uuid4())}]
         _ = await async_writable_vector_collection.chunked_insert_many(
-            documents1, chunk_size=3, concurrency=4
+            docs_for_error,
+            chunk_size=3,
+            concurrency=4,
+            options={"ordered": True},
         )
 
     responses1_ok = await async_writable_vector_collection.chunked_insert_many(
@@ -489,8 +500,8 @@ async def test_concurrent_chunked_insert_many(
     assert len(set(_ids0) & set(_ids1)) == len(errors1)
 
 
-@pytest.mark.describe("insert_many with 'ordered' set to False")
-async def test_insert_many_ordered_false(
+@pytest.mark.describe("insert_many with 'ordered' set to True")
+async def test_insert_many_ordered_true(
     async_writable_vector_collection: AsyncAstraDBCollection,
 ) -> None:
     _id0 = str(uuid.uuid4())
@@ -508,7 +519,10 @@ async def test_insert_many_ordered_false(
             "last_name": "Boss",
         },
     ]
-    response_a = await async_writable_vector_collection.insert_many(documents_a)
+    response_a = await async_writable_vector_collection.insert_many(
+        documents_a,
+        options={"ordered": True},
+    )
     assert response_a is not None
     assert response_a["status"]["insertedIds"] == [_id0, _id1]
 
@@ -527,6 +541,7 @@ async def test_insert_many_ordered_false(
     response_b = await async_writable_vector_collection.insert_many(
         documents_b,
         partial_failures_allowed=True,
+        options={"ordered": True},
     )
     assert response_b is not None
     assert response_b["status"]["insertedIds"] == []
