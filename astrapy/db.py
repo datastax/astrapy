@@ -1983,33 +1983,18 @@ class AstraDB:
         Returns:
             dict: The response from the database.
         """
-        # Make sure we provide a collection name
-        if not collection_name:
-            raise ValueError("Must provide a collection name")
-
-        # Retrieve the required collections from DB
-        collections = self.get_collections(options={"explain": "true"})
-        matches = [
-            col
-            for col in collections["status"]["collections"]
-            if col["name"] == collection_name
-        ]
-
-        # If we didn't find it, raise an error
-        if matches == []:
-            raise ValueError(f"Collection {collection_name} not found")
-
-        # Otherwise we found it, so get the collection
-        existing_collection = matches[0]
-
-        # We found it, so let's delete it
-        self.delete_collection(collection_name)
-
-        # End the function by returning the the new collection
-        return self.create_collection(
-            collection_name,
-            options=existing_collection.get("options"),
+        # truncate
+        collection = AstraDBCollection(
+            collection_name=collection_name,
+            astra_db=self,
         )
+        truncate_response = collection.delete_many(filter={})
+
+        if truncate_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError("Could not issue a truncate API command.")
+
+        # return the collection itself
+        return collection
 
 
 class AsyncAstraDB:
@@ -2227,30 +2212,14 @@ class AsyncAstraDB:
         Returns:
             dict: The response from the database.
         """
-        # Make sure we provide a collection name
-        if not collection_name:
-            raise ValueError("Must provide a collection name")
-
-        # Retrieve the required collections from DB
-        collections = await self.get_collections(options={"explain": "true"})
-        matches = [
-            col
-            for col in collections["status"]["collections"]
-            if col["name"] == collection_name
-        ]
-
-        # If we didn't find it, raise an error
-        if matches == []:
-            raise ValueError(f"Collection {collection_name} not found")
-
-        # Otherwise we found it, so get the collection
-        existing_collection = matches[0]
-
-        # We found it, so let's delete it
-        await self.delete_collection(collection_name)
-
-        # End the function by returning the the new collection
-        return await self.create_collection(
-            collection_name,
-            options=existing_collection.get("options"),
+        collection = AsyncAstraDBCollection(
+            collection_name=collection_name,
+            astra_db=self,
         )
+        truncate_response = await collection.delete_many(filter={})
+
+        if truncate_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError("Could not issue a truncate API command.")
+
+        # return the collection itself
+        return collection

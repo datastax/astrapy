@@ -193,6 +193,19 @@ def disposable_empty_nonvector_collection(db: AstraDB) -> Iterable[AstraDBCollec
 
 
 @pytest.fixture(scope="function")
+async def async_disposable_empty_nonvector_collection(
+    db: AsyncAstraDB,
+) -> AsyncIterable[AsyncAstraDBCollection]:
+    collection = await db.create_collection(
+        TEST_DISPOSABLE_EMPTY_NONVECTOR_COLLECTION,
+    )
+
+    yield collection
+
+    await db.delete_collection(TEST_DISPOSABLE_EMPTY_NONVECTOR_COLLECTION)
+
+
+@pytest.fixture(scope="function")
 def disposable_vector_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
     collection = db.create_collection(
         TEST_DISPOSABLE_VECTOR_COLLECTION,

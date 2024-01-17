@@ -19,6 +19,7 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 
 import uuid
 import logging
+import time
 import json
 import httpx
 from typing import Dict, List, Literal, Optional, Set
@@ -29,42 +30,39 @@ from astrapy.api import APIRequestError
 from astrapy.types import API_DOC
 from astrapy.db import AstraDB, AstraDBCollection
 
-TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME = "ephemeral_tr_non_v_col"
-TEST_TRUNCATED_VECTOR_COLLECTION_NAME = "ephemeral_tr_v_col"
 
 logger = logging.getLogger(__name__)
 
 
 @pytest.mark.describe("should fail truncating a non-existent collection")
 def test_truncate_collection_fail(db: AstraDB) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(APIRequestError):
         db.truncate_collection("this$does%not exist!!!")
 
 
-@pytest.mark.describe("should truncate a nonvector collection")
-def test_truncate_nonvector_collection(db: AstraDB) -> None:
-    col = db.create_collection(TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME)
+@pytest.mark.describe("should truncate a nonvector collection through AstraDB")
+def test_truncate_nonvector_collection_through_astradb(
+    db: AstraDB, disposable_empty_nonvector_collection: AstraDBCollection
+) -> None:
+    db.truncate_collection(disposable_empty_nonvector_collection.collection_name)
+    assert len(disposable_empty_nonvector_collection.find()["data"]["documents"]) == 0
+    disposable_empty_nonvector_collection.insert_one({"a": 1})
+    assert len(disposable_empty_nonvector_collection.find()["data"]["documents"]) == 1
+    time.sleep(1)
+    db.truncate_collection(disposable_empty_nonvector_collection.collection_name)
+    assert len(disposable_empty_nonvector_collection.find()["data"]["documents"]) == 0
 
-    try:
-        col.insert_one({"a": 1})
-        assert len(col.find()["data"]["documents"]) == 1
-        db.truncate_collection(TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME)
-        assert len(col.find()["data"]["documents"]) == 0
-    finally:
-        db.delete_collection(TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME)
 
-
-@pytest.mark.describe("should truncate a collection")
-def test_truncate_vector_collection(db: AstraDB) -> None:
-    col = db.create_collection(TEST_TRUNCATED_VECTOR_COLLECTION_NAME, dimension=2)
-
-    try:
-        col.insert_one({"a": 1, "$vector": [0.1, 0.2]})
-        assert len(col.find()["data"]["documents"]) == 1
-        db.truncate_collection(TEST_TRUNCATED_VECTOR_COLLECTION_NAME)
-        assert len(col.find()["data"]["documents"]) == 0
-    finally:
-        db.delete_collection(TEST_TRUNCATED_VECTOR_COLLECTION_NAME)
+@pytest.mark.describe("should truncate a collection through AstraDB")
+def test_truncate_vector_collection_through_astradb(
+    db: AstraDB, writable_vector_collection: AstraDBCollection
+) -> None:
+    db.truncate_collection(writable_vector_collection.collection_name)
+    assert len(writable_vector_collection.find()["data"]["documents"]) == 0
+    writable_vector_collection.insert_one({"a": 1, "$vector": [0.1, 0.2]})
+    assert len(writable_vector_collection.find()["data"]["documents"]) == 1
+    db.truncate_collection(writable_vector_collection.collection_name)
+    assert len(writable_vector_collection.find()["data"]["documents"]) == 0
 
 
 @pytest.mark.describe("find_one, not through vector")

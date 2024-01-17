@@ -35,34 +35,68 @@ logger = logging.getLogger(__name__)
 
 @pytest.mark.describe("should fail truncating a non-existent collection")
 async def test_truncate_collection_fail(async_db: AsyncAstraDB) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(APIRequestError):
         await async_db.truncate_collection("this$does%not exist!!!")
 
 
-@pytest.mark.describe("should truncate a nonvector collection")
-async def test_truncate_nonvector_collection(async_db: AsyncAstraDB) -> None:
-    col = await async_db.create_collection(TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME)
-    try:
-        await col.insert_one({"a": 1})
-        assert len((await col.find())["data"]["documents"]) == 1
-        await async_db.truncate_collection(TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME)
-        assert len((await col.find())["data"]["documents"]) == 0
-    finally:
-        await async_db.delete_collection(TEST_TRUNCATED_NONVECTOR_COLLECTION_NAME)
-
-
-@pytest.mark.describe("should truncate a collection")
-async def test_truncate_vector_collection(async_db: AsyncAstraDB) -> None:
-    col = await async_db.create_collection(
-        TEST_TRUNCATED_VECTOR_COLLECTION_NAME, dimension=2
+@pytest.mark.describe("should truncate a nonvector collection through AstraDB")
+async def test_truncate_nonvector_collection_through_astradb(
+    async_db: AsyncAstraDB,
+    async_disposable_empty_nonvector_collection: AsyncAstraDBCollection,
+) -> None:
+    await async_db.truncate_collection(
+        async_disposable_empty_nonvector_collection.collection_name
     )
-    try:
-        await col.insert_one({"a": 1, "$vector": [0.1, 0.2]})
-        assert len((await col.find())["data"]["documents"]) == 1
-        await async_db.truncate_collection(TEST_TRUNCATED_VECTOR_COLLECTION_NAME)
-        assert len((await col.find())["data"]["documents"]) == 0
-    finally:
-        await async_db.delete_collection(TEST_TRUNCATED_VECTOR_COLLECTION_NAME)
+    assert (
+        len(
+            (await async_disposable_empty_nonvector_collection.find())["data"][
+                "documents"
+            ]
+        )
+        == 0
+    )
+    await async_disposable_empty_nonvector_collection.insert_one({"a": 1})
+    assert (
+        len(
+            (await async_disposable_empty_nonvector_collection.find())["data"][
+                "documents"
+            ]
+        )
+        == 1
+    )
+    await async_db.truncate_collection(
+        async_disposable_empty_nonvector_collection.collection_name
+    )
+    assert (
+        len(
+            (await async_disposable_empty_nonvector_collection.find())["data"][
+                "documents"
+            ]
+        )
+        == 0
+    )
+
+
+@pytest.mark.describe("should truncate a collection through AstraDB")
+async def test_truncate_vector_collection_through_astradb(
+    async_db: AsyncAstraDB, async_disposable_vector_collection: AsyncAstraDBCollection
+) -> None:
+    await async_db.truncate_collection(
+        async_disposable_vector_collection.collection_name
+    )
+    assert (
+        len((await async_disposable_vector_collection.find())["data"]["documents"]) == 0
+    )
+    await async_disposable_vector_collection.insert_one({"a": 1, "$vector": [0.1, 0.2]})
+    assert (
+        len((await async_disposable_vector_collection.find())["data"]["documents"]) == 1
+    )
+    await async_db.truncate_collection(
+        async_disposable_vector_collection.collection_name
+    )
+    assert (
+        len((await async_disposable_vector_collection.find())["data"]["documents"]) == 0
+    )
 
 
 @pytest.mark.describe("find_one, not through vector")
