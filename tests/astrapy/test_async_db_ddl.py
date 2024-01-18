@@ -22,7 +22,7 @@ from typing import Dict, Optional
 
 import pytest
 
-from astrapy.db import AsyncAstraDB, AsyncAstraDBCollection
+from astrapy.db import AstraDBCollection, AsyncAstraDB, AsyncAstraDBCollection
 from astrapy.defaults import DEFAULT_KEYSPACE_NAME
 
 TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME = "ephemeral_v_col"
@@ -121,7 +121,9 @@ async def test_create_use_destroy_vector_collection(async_db: AsyncAstraDB) -> N
 
 @pytest.mark.describe("should get all collections (async)")
 async def test_get_collections(
-    async_db: AsyncAstraDB, async_readonly_v_collection: AsyncAstraDBCollection
+    async_db: AsyncAstraDB,
+    async_readonly_v_collection: AsyncAstraDBCollection,
+    readonly_v_collection: AstraDBCollection,
 ) -> None:
     res = await async_db.get_collections()
     assert res["status"]["collections"] is not None

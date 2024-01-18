@@ -25,7 +25,7 @@ import pytest
 
 from astrapy.api import APIRequestError
 from astrapy.types import API_DOC
-from astrapy.db import AsyncAstraDB, AsyncAstraDBCollection
+from astrapy.db import AstraDBCollection, AsyncAstraDB, AsyncAstraDBCollection
 
 
 logger = logging.getLogger(__name__)
@@ -41,6 +41,7 @@ async def test_truncate_collection_fail(async_db: AsyncAstraDB) -> None:
 async def test_truncate_nonvector_collection_through_astradb(
     async_db: AsyncAstraDB,
     async_empty_nonv_collection: AsyncAstraDBCollection,
+    empty_nonv_collection: AstraDBCollection,
 ) -> None:
     await async_empty_nonv_collection.insert_one({"a": 1})
     assert len((await async_empty_nonv_collection.find())["data"]["documents"]) == 1
@@ -56,7 +57,9 @@ async def test_truncate_nonvector_collection_through_astradb(
 
 @pytest.mark.describe("should truncate a collection through AstraDB (async)")
 async def test_truncate_vector_collection_through_astradb(
-    async_db: AsyncAstraDB, async_empty_v_collection: AsyncAstraDBCollection
+    async_db: AsyncAstraDB,
+    async_empty_v_collection: AsyncAstraDBCollection,
+    empty_v_collection: AstraDBCollection,
 ) -> None:
     await async_empty_v_collection.insert_one({"a": 1, "$vector": [0.1, 0.2]})
     assert len((await async_empty_v_collection.find())["data"]["documents"]) == 1
@@ -93,6 +96,7 @@ async def test_truncate_vector_collection(
 @pytest.mark.describe("find_one, not through vector (async)")
 async def test_find_one_filter_novector(
     async_readonly_v_collection: AsyncAstraDBCollection,
+    readonly_v_collection: AstraDBCollection,
 ) -> None:
     response = await async_readonly_v_collection.find_one(
         filter={"_id": "1"},
@@ -131,6 +135,7 @@ async def test_find_one_filter_novector(
 @pytest.mark.describe("find, not through vector (async)")
 async def test_find_filter_novector(
     async_readonly_v_collection: AsyncAstraDBCollection,
+    readonly_v_collection: AstraDBCollection,
 ) -> None:
     response_n2 = await async_readonly_v_collection.find(
         filter={"anotherfield": "alpha"},
@@ -152,6 +157,7 @@ async def test_find_filter_novector(
 @pytest.mark.describe("obey projection in find and find_one (async)")
 async def test_find_find_one_projection(
     async_readonly_v_collection: AsyncAstraDBCollection,
+    readonly_v_collection: AstraDBCollection,
 ) -> None:
     query = [0.2, 0.6]
     sort = {"$vector": query}
@@ -186,7 +192,10 @@ async def test_find_find_one_projection(
 
 
 @pytest.mark.describe("find through vector (async)")
-async def test_find(async_readonly_v_collection: AsyncAstraDBCollection) -> None:
+async def test_find(
+    async_readonly_v_collection: AsyncAstraDBCollection,
+    readonly_v_collection: AstraDBCollection,
+) -> None:
     sort = {"$vector": [0.2, 0.6]}
     options = {"limit": 100}
 
@@ -197,6 +206,7 @@ async def test_find(async_readonly_v_collection: AsyncAstraDBCollection) -> None
 @pytest.mark.describe("proper error raising in find (async)")
 async def test_find_error(
     async_readonly_v_collection: AsyncAstraDBCollection,
+    readonly_v_collection: AstraDBCollection,
 ) -> None:
     """Wrong type of arguments should raise an API error (ValueError)."""
     sort = {"$vector": "clearly not a list of floats!"}
@@ -209,6 +219,7 @@ async def test_find_error(
 @pytest.mark.describe("find through vector, without explicit limit (async)")
 async def test_find_limitless(
     async_readonly_v_collection: AsyncAstraDBCollection,
+    readonly_v_collection: AstraDBCollection,
 ) -> None:
     sort = {"$vector": [0.2, 0.6]}
     projection = {"$vector": 1}
@@ -221,6 +232,7 @@ async def test_find_limitless(
 @pytest.mark.describe("correctly count documents according to predicate (async)")
 async def test_count_documents(
     async_readonly_v_collection: AsyncAstraDBCollection,
+    readonly_v_collection: AstraDBCollection,
 ) -> None:
     c_all_response0 = await async_readonly_v_collection.count_documents()
     assert c_all_response0["status"]["count"] == 3
@@ -242,6 +254,7 @@ async def test_count_documents(
 @pytest.mark.describe("insert_one, w/out _id, w/out vector (async)")
 async def test_create_document(
     async_writable_v_collection: AsyncAstraDBCollection,
+    writable_v_collection: AstraDBCollection,
 ) -> None:
     i_vector = [0.3, 0.5]
     id_v_i = str(uuid.uuid4())
@@ -314,6 +327,7 @@ async def test_create_document(
 @pytest.mark.describe("insert_many (async)")
 async def test_insert_many(
     async_writable_v_collection: AsyncAstraDBCollection,
+    writable_v_collection: AstraDBCollection,
 ) -> None:
     _id0 = str(uuid.uuid4())
     _id2 = str(uuid.uuid4())
@@ -346,6 +360,7 @@ async def test_insert_many(
 @pytest.mark.describe("chunked_insert_many (async)")
 async def test_chunked_insert_many(
     async_writable_v_collection: AsyncAstraDBCollection,
+    writable_v_collection: AstraDBCollection,
 ) -> None:
     _ids0 = [str(uuid.uuid4()) for _ in range(20)]
     documents0: List[API_DOC] = [
@@ -429,6 +444,7 @@ async def test_chunked_insert_many(
 @pytest.mark.describe("chunked_insert_many concurrently (async)")
 async def test_concurrent_chunked_insert_many(
     async_writable_v_collection: AsyncAstraDBCollection,
+    writable_v_collection: AstraDBCollection,
 ) -> None:
     _ids0 = [str(uuid.uuid4()) for _ in range(20)]
     documents0: List[API_DOC] = [
@@ -520,6 +536,7 @@ async def test_concurrent_chunked_insert_many(
 @pytest.mark.describe("insert_many with 'ordered' set to True (async)")
 async def test_insert_many_ordered_true(
     async_writable_v_collection: AsyncAstraDBCollection,
+    writable_v_collection: AstraDBCollection,
 ) -> None:
     _id0 = str(uuid.uuid4())
     _id1 = str(uuid.uuid4())
@@ -581,6 +598,7 @@ async def test_insert_many_ordered_true(
 @pytest.mark.describe("upsert_many (async)")
 async def test_upsert_many(
     async_writable_v_collection: AsyncAstraDBCollection,
+    writable_v_collection: AstraDBCollection,
 ) -> None:
     _ids0 = [str(uuid.uuid4()) for _ in range(12)]
     documents0 = [
@@ -634,6 +652,7 @@ async def test_upsert_many(
 @pytest.mark.describe("upsert (async)")
 async def test_upsert_document(
     async_writable_v_collection: AsyncAstraDBCollection,
+    writable_v_collection: AstraDBCollection,
 ) -> None:
     _id = str(uuid.uuid4())
 
@@ -677,6 +696,7 @@ async def test_upsert_document(
 @pytest.mark.describe("update_one to create a subdocument, not through vector (async)")
 async def test_update_one_create_subdocument_novector(
     async_writable_v_collection: AsyncAstraDBCollection,
+    writable_v_collection: AstraDBCollection,
 ) -> None:
     _id = str(uuid.uuid4())
     await async_writable_v_collection.insert_one({"_id": _id, "name": "Not Eric!"})
@@ -695,6 +715,7 @@ async def test_update_one_create_subdocument_novector(
 @pytest.mark.describe("delete_subdocument, not through vector (async)")
 async def test_delete_subdocument_novector(
     async_writable_v_collection: AsyncAstraDBCollection,
+    writable_v_collection: AstraDBCollection,
 ) -> None:
     _id = str(uuid.uuid4())
     await async_writable_v_collection.insert_one(
@@ -773,6 +794,7 @@ async def test_find_one_and_update_vector(
 @pytest.mark.describe("find_one_and_update, not through vector (async)")
 async def test_find_one_and_update_novector(
     async_disposable_v_collection: AsyncAstraDBCollection,
+    disposable_v_collection: AstraDBCollection,
 ) -> None:
     find_filter = {"status": {"$exists": True}}
     response0 = await async_disposable_v_collection.find_one(filter=find_filter)
@@ -825,6 +847,7 @@ async def test_find_one_and_update_novector(
 @pytest.mark.describe("find_one_and_replace, through vector (async)")
 async def test_find_one_and_replace_vector(
     async_disposable_v_collection: AsyncAstraDBCollection,
+    disposable_v_collection: AstraDBCollection,
 ) -> None:
     sort = {"$vector": [0.2, 0.6]}
 
@@ -890,6 +913,7 @@ async def test_find_one_and_replace_vector(
 @pytest.mark.describe("find_one_and_replace, not through vector (async)")
 async def test_find_one_and_replace_novector(
     async_disposable_v_collection: AsyncAstraDBCollection,
+    disposable_v_collection: AstraDBCollection,
 ) -> None:
     response0 = await async_disposable_v_collection.find_one(filter={"_id": "1"})
     assert response0 is not None
@@ -947,6 +971,7 @@ async def test_find_one_and_replace_novector(
 @pytest.mark.describe("delete_one, not through vector (async)")
 async def test_delete_one_novector(
     async_disposable_v_collection: AsyncAstraDBCollection,
+    disposable_v_collection: AstraDBCollection,
 ) -> None:
     delete_response = await async_disposable_v_collection.delete_one(id="3")
     assert delete_response["status"]["deletedCount"] == 1
@@ -961,6 +986,7 @@ async def test_delete_one_novector(
 @pytest.mark.describe("delete_many, not through vector (async)")
 async def test_delete_many_novector(
     async_disposable_v_collection: AsyncAstraDBCollection,
+    disposable_v_collection: AstraDBCollection,
 ) -> None:
     delete_response = await async_disposable_v_collection.delete_many(
         filter={"anotherfield": "alpha"}
@@ -981,6 +1007,7 @@ async def test_delete_many_novector(
 @pytest.mark.describe("pop, push functions, not through vector (async)")
 async def test_pop_push_novector(
     async_empty_v_collection: AsyncAstraDBCollection,
+    empty_v_collection: AstraDBCollection,
 ) -> None:
     user_id = str(uuid.uuid4())
     await async_empty_v_collection.insert_one(

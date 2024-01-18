@@ -211,21 +211,12 @@ async def async_readonly_v_collection(
     async_db: AsyncAstraDB,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
     """
-    This is lasting for the whole test. Functions can write to it,
-    no guarantee (i.e. each test should use a different ID...
+    This fixture piggybacks on its sync counterspart:
+    it must not do anything to the collection (test functions depend on both)
     """
-    collection = await async_db.create_collection(
-        TEST_READONLY_VECTOR_COLLECTION,
-        dimension=2,
-    )
-
-    await collection.truncate()
-    await collection.insert_many(VECTOR_DOCUMENTS)
+    collection = await async_db.collection(TEST_READONLY_VECTOR_COLLECTION)
 
     yield collection
-
-    if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
-        await async_db.delete_collection(TEST_READONLY_VECTOR_COLLECTION)
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -233,26 +224,24 @@ async def async_writable_v_collection(
     async_db: AsyncAstraDB,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
     """
-    This is lasting for the whole test. Functions can write to it,
-    no guarantee (i.e. each test should use a different ID...
+    This fixture piggybacks on its sync counterspart:
+    it must not do anything to the collection (test functions depend on both)
     """
-    collection = await async_db.create_collection(
-        TEST_WRITABLE_VECTOR_COLLECTION,
-        dimension=2,
-    )
+    collection = await async_db.collection(TEST_WRITABLE_VECTOR_COLLECTION)
 
     yield collection
-
-    if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
-        await async_db.delete_collection(TEST_WRITABLE_VECTOR_COLLECTION)
 
 
 @pytest_asyncio.fixture(scope="function")
 async def async_empty_v_collection(
     async_writable_v_collection: AsyncAstraDBCollection,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
-    """available empty to each test function."""
-    await async_writable_v_collection.truncate()
+    """
+    available empty to each test function.
+
+    This fixture piggybacks on its sync counterspart:
+    it must not do anything to the collection (test functions depend on both)
+    """
     yield async_writable_v_collection
 
 
@@ -260,9 +249,12 @@ async def async_empty_v_collection(
 async def async_disposable_v_collection(
     async_writable_v_collection: AsyncAstraDBCollection,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
-    """available prepopulated to each test function."""
-    await async_writable_v_collection.truncate()
-    await async_writable_v_collection.insert_many(VECTOR_DOCUMENTS)
+    """
+    available prepopulated to each test function.
+
+    This fixture piggybacks on its sync counterspart:
+    it must not do anything to the collection (test functions depend on both)
+    """
     yield async_writable_v_collection
 
 
@@ -271,26 +263,24 @@ async def async_writable_nonv_collection(
     async_db: AsyncAstraDB,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
     """
-    This is lasting for the whole test. Functions can write to it,
-    no guarantee (i.e. each test should use a different ID...
+    This fixture piggybacks on its sync counterspart:
+    it must not do anything to the collection (test functions depend on both)
     """
-    collection = await async_db.create_collection(
-        TEST_WRITABLE_VECTOR_COLLECTION,
-        dimension=2,
-    )
+    collection = await async_db.collection(TEST_WRITABLE_NONVECTOR_COLLECTION)
 
     yield collection
-
-    if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
-        await async_db.delete_collection(TEST_WRITABLE_VECTOR_COLLECTION)
 
 
 @pytest_asyncio.fixture(scope="function")
 async def async_empty_nonv_collection(
     async_writable_nonv_collection: AsyncAstraDBCollection,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
-    """available empty to each test function."""
-    await async_writable_nonv_collection.truncate()
+    """
+    available empty to each test function.
+
+    This fixture piggybacks on its sync counterspart:
+    it must not do anything to the collection (test functions depend on both)
+    """
     yield async_writable_nonv_collection
 
 
@@ -298,20 +288,8 @@ async def async_empty_nonv_collection(
 async def async_pagination_v_collection(
     async_empty_v_collection: AsyncAstraDBCollection,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
-    INSERT_BATCH_SIZE = 20  # max 20, fixed by API constraints
-    N = 200  # must be EVEN
-
-    def _mk_vector(index: int, n_total_steps: int) -> List[float]:
-        angle = 2 * math.pi * index / n_total_steps
-        return [math.cos(angle), math.sin(angle)]
-
-    inserted_ids: Set[str] = set()
-    for i_batch in _batch_iterable(range(N), INSERT_BATCH_SIZE):
-        insert_response = await async_empty_v_collection.insert_many(
-            documents=[{"_id": str(i), "$vector": _mk_vector(i, N)} for i in i_batch]
-        )
-        batch_ids = insert_response["status"]["insertedIds"]
-        inserted_ids = inserted_ids | set(batch_ids)
-    assert inserted_ids == {str(i) for i in range(N)}
-
+    """
+    This fixture piggybacks on its sync counterspart:
+    it must not do anything to the collection (test functions depend on both)
+    """
     yield async_empty_v_collection
