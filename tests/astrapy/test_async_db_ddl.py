@@ -16,6 +16,7 @@
 Tests for the `db.py` parts related to DML & client creation
 """
 
+import os
 import logging
 from typing import Dict, Optional
 
@@ -30,7 +31,7 @@ TEST_CREATE_DELETE_NONVECTOR_COLLECTION_NAME = "ephemeral_non_v_col"
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.describe("should confirm path handling in constructor")
+@pytest.mark.describe("should confirm path handling in constructor (async)")
 async def test_path_handling(
     astra_db_credentials_kwargs: Dict[str, Optional[str]]
 ) -> None:
@@ -72,7 +73,11 @@ async def test_path_handling(
         assert unspecified_ks_client.base_path == explicit_ks_client.base_path
 
 
-@pytest.mark.describe("should create, use and destroy a non-vector collection")
+@pytest.mark.skipif(
+    int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 1,
+    reason="collection-deletion tests are suppressed",
+)
+@pytest.mark.describe("should create, use and destroy a non-vector collection (async)")
 async def test_create_use_destroy_nonvector_collection(async_db: AsyncAstraDB) -> None:
     col = await async_db.create_collection(TEST_CREATE_DELETE_NONVECTOR_COLLECTION_NAME)
     assert isinstance(col, AsyncAstraDBCollection)
@@ -98,7 +103,11 @@ async def test_create_use_destroy_nonvector_collection(async_db: AsyncAstraDB) -
     assert del_res["status"]["ok"] == 1
 
 
-@pytest.mark.describe("should create and destroy a vector collection")
+@pytest.mark.skipif(
+    int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 1,
+    reason="collection-deletion tests are suppressed",
+)
+@pytest.mark.describe("should create and destroy a vector collection (async)")
 async def test_create_use_destroy_vector_collection(async_db: AsyncAstraDB) -> None:
     col = await async_db.create_collection(
         collection_name=TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME, dimension=2
@@ -110,7 +119,7 @@ async def test_create_use_destroy_vector_collection(async_db: AsyncAstraDB) -> N
     assert del_res["status"]["ok"] == 1
 
 
-@pytest.mark.describe("should get all collections")
+@pytest.mark.describe("should get all collections (async)")
 async def test_get_collections(async_db: AsyncAstraDB) -> None:
     res = await async_db.get_collections()
     assert res["status"]["collections"] is not None

@@ -848,6 +848,19 @@ class AstraDBCollection:
 
         return response
 
+    def truncate(self) -> API_RESPONSE:
+        """
+        Truncate the collection, deleting all documents
+        Returns:
+            dict: The response from the database.
+        """
+        truncate_response = self.delete_many(filter={})
+
+        if truncate_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError("Could not issue a truncate API command.")
+
+        return truncate_response
+
     def delete_subdocument(self, id: str, subdoc: str) -> API_RESPONSE:
         """
         Delete a subdocument or field from a document in the collection.
@@ -1690,6 +1703,19 @@ class AsyncAstraDBCollection:
 
         return response
 
+    async def truncate(self) -> API_RESPONSE:
+        """
+        Truncate the collection, deleting all documents
+        Returns:
+            dict: The response from the database.
+        """
+        truncate_response = await self.delete_many(filter={})
+
+        if truncate_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError("Could not issue a truncate API command.")
+
+        return truncate_response
+
     async def delete_subdocument(self, id: str, subdoc: str) -> API_RESPONSE:
         """
         Delete a subdocument or field from a document in the collection.
@@ -1981,7 +2007,7 @@ class AstraDB:
         Args:
             collection_name (str): The name of the collection to truncate.
         Returns:
-            dict: The response from the database.
+            collection: an AstraDBCollection instance
         """
         # truncate
         collection = AstraDBCollection(
@@ -2210,7 +2236,7 @@ class AsyncAstraDB:
         Args:
             collection_name (str): The name of the collection to truncate.
         Returns:
-            dict: The response from the database.
+            collection: an AsyncAstraDBCollection instance
         """
         collection = AsyncAstraDBCollection(
             collection_name=collection_name,

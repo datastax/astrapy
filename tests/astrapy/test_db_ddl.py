@@ -16,6 +16,7 @@
 Tests for the `db.py` parts related to DML & client creation
 """
 
+import os
 import logging
 from typing import Dict, Optional
 
@@ -75,6 +76,10 @@ def test_path_handling(astra_db_credentials_kwargs: Dict[str, Optional[str]]) ->
     assert unspecified_ks_client.base_path == explicit_ks_client.base_path
 
 
+@pytest.mark.skipif(
+    int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 1,
+    reason="collection-deletion tests are suppressed",
+)
 @pytest.mark.describe("should create, use and destroy a non-vector collection")
 def test_create_use_destroy_nonvector_collection(db: AstraDB) -> None:
     col = db.create_collection(TEST_CREATE_DELETE_NONVECTOR_COLLECTION_NAME)
@@ -99,6 +104,10 @@ def test_create_use_destroy_nonvector_collection(db: AstraDB) -> None:
     assert del_res["status"]["ok"] == 1
 
 
+@pytest.mark.skipif(
+    int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 1,
+    reason="collection-deletion tests are suppressed",
+)
 @pytest.mark.describe("should create and destroy a vector collection")
 def test_create_use_destroy_vector_collection(db: AstraDB) -> None:
     col = db.create_collection(
