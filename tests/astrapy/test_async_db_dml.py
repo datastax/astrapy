@@ -720,10 +720,10 @@ async def test_delete_subdocument_novector(
 
 @pytest.mark.describe("find_one_and_update, through vector (async)")
 async def test_find_one_and_update_vector(
-    async_writable_v_collection: AsyncAstraDBCollection,
+    async_disposable_v_collection: AsyncAstraDBCollection,
 ) -> None:
     find_filter = {"status": {"$exists": True}}
-    response0 = await async_writable_v_collection.find_one(filter=find_filter)
+    response0 = await async_disposable_v_collection.find_one(filter=find_filter)
     assert response0["data"]["document"] is None
 
     sort = {"$vector": [0.2, 0.6]}
@@ -731,7 +731,7 @@ async def test_find_one_and_update_vector(
     update0 = {"$set": {"status": "active"}}
     options0 = {"returnDocument": "after"}
 
-    update_response0 = await async_writable_v_collection.find_one_and_update(
+    update_response0 = await async_disposable_v_collection.find_one_and_update(
         sort=sort, update=update0, options=options0
     )
     assert isinstance(update_response0["data"]["document"], dict)
@@ -739,14 +739,14 @@ async def test_find_one_and_update_vector(
     assert update_response0["status"]["matchedCount"] >= 1
     assert update_response0["status"]["modifiedCount"] >= 1
 
-    response1 = await async_writable_v_collection.find_one(filter=find_filter)
+    response1 = await async_disposable_v_collection.find_one(filter=find_filter)
     assert isinstance(response1["data"]["document"], dict)
     assert response1["data"]["document"]["status"] == "active"
 
     update1 = {"$set": {"status": "inactive"}}
     options1 = {"returnDocument": "before"}
 
-    update_response1 = await async_writable_v_collection.find_one_and_update(
+    update_response1 = await async_disposable_v_collection.find_one_and_update(
         sort=sort, update=update1, options=options1
     )
     assert isinstance(update_response1["data"]["document"], dict)
@@ -754,7 +754,7 @@ async def test_find_one_and_update_vector(
     assert update_response1["status"]["matchedCount"] >= 1
     assert update_response1["status"]["modifiedCount"] >= 1
 
-    response2 = await async_writable_v_collection.find_one(filter=find_filter)
+    response2 = await async_disposable_v_collection.find_one(filter=find_filter)
     assert isinstance(response2["data"]["document"], dict)
     assert response2["data"]["document"]["status"] == "inactive"
 
@@ -762,7 +762,7 @@ async def test_find_one_and_update_vector(
     update2 = update1
     options2 = options1
 
-    update_response2 = await async_writable_v_collection.find_one_and_update(
+    update_response2 = await async_disposable_v_collection.find_one_and_update(
         sort=sort, update=update2, options=options2, filter=filter2
     )
     assert update_response2["data"]["document"] is None
@@ -772,10 +772,10 @@ async def test_find_one_and_update_vector(
 
 @pytest.mark.describe("find_one_and_update, not through vector (async)")
 async def test_find_one_and_update_novector(
-    async_writable_v_collection: AsyncAstraDBCollection,
+    async_disposable_v_collection: AsyncAstraDBCollection,
 ) -> None:
     find_filter = {"status": {"$exists": True}}
-    response0 = await async_writable_v_collection.find_one(filter=find_filter)
+    response0 = await async_disposable_v_collection.find_one(filter=find_filter)
     assert response0["data"]["document"] is None
 
     update_filter = {"anotherfield": "omega"}
@@ -783,7 +783,7 @@ async def test_find_one_and_update_novector(
     update0 = {"$set": {"status": "active"}}
     options0 = {"returnDocument": "after"}
 
-    update_response0 = await async_writable_v_collection.find_one_and_update(
+    update_response0 = await async_disposable_v_collection.find_one_and_update(
         filter=update_filter, update=update0, options=options0
     )
     assert isinstance(update_response0["data"]["document"], dict)
@@ -791,14 +791,14 @@ async def test_find_one_and_update_novector(
     assert update_response0["status"]["matchedCount"] >= 1
     assert update_response0["status"]["modifiedCount"] >= 1
 
-    response1 = await async_writable_v_collection.find_one(filter=find_filter)
+    response1 = await async_disposable_v_collection.find_one(filter=find_filter)
     assert isinstance(response1["data"]["document"], dict)
     assert response1["data"]["document"]["status"] == "active"
 
     update1 = {"$set": {"status": "inactive"}}
     options1 = {"returnDocument": "before"}
 
-    update_response1 = await async_writable_v_collection.find_one_and_update(
+    update_response1 = await async_disposable_v_collection.find_one_and_update(
         filter=update_filter, update=update1, options=options1
     )
     assert isinstance(update_response1["data"]["document"], dict)
@@ -806,7 +806,7 @@ async def test_find_one_and_update_novector(
     assert update_response1["status"]["matchedCount"] >= 1
     assert update_response1["status"]["modifiedCount"] >= 1
 
-    response2 = await async_writable_v_collection.find_one(filter=find_filter)
+    response2 = await async_disposable_v_collection.find_one(filter=find_filter)
     assert isinstance(response2["data"]["document"], dict)
     assert response2["data"]["document"]["status"] == "inactive"
 
@@ -814,7 +814,7 @@ async def test_find_one_and_update_novector(
     update2 = update1
     options2 = options1
 
-    update_response2 = await async_writable_v_collection.find_one_and_update(
+    update_response2 = await async_disposable_v_collection.find_one_and_update(
         filter=filter2, update=update2, options=options2
     )
     assert update_response2["data"]["document"] is None
@@ -824,17 +824,17 @@ async def test_find_one_and_update_novector(
 
 @pytest.mark.describe("find_one_and_replace, through vector (async)")
 async def test_find_one_and_replace_vector(
-    async_writable_v_collection: AsyncAstraDBCollection,
+    async_disposable_v_collection: AsyncAstraDBCollection,
 ) -> None:
     sort = {"$vector": [0.2, 0.6]}
 
-    response0 = await async_writable_v_collection.find_one(sort=sort)
+    response0 = await async_disposable_v_collection.find_one(sort=sort)
     assert response0 is not None
     assert "anotherfield" in response0["data"]["document"]
 
     doc0vector = response0["data"]["document"]["$vector"]
 
-    replace_response0 = await async_writable_v_collection.find_one_and_replace(
+    replace_response0 = await async_disposable_v_collection.find_one_and_replace(
         sort=sort,
         replacement={
             "phyla": ["Echinodermata", "Platelminta", "Chordata"],
@@ -844,7 +844,7 @@ async def test_find_one_and_replace_vector(
     assert replace_response0 is not None
     assert "anotherfield" in replace_response0["data"]["document"]
 
-    response1 = await async_writable_v_collection.find_one(sort=sort)
+    response1 = await async_disposable_v_collection.find_one(sort=sort)
     assert response1 is not None
     assert response1["data"]["document"]["phyla"] == [
         "Echinodermata",
@@ -853,7 +853,7 @@ async def test_find_one_and_replace_vector(
     ]
     assert "anotherfield" not in response1["data"]["document"]
 
-    replace_response1 = await async_writable_v_collection.find_one_and_replace(
+    replace_response1 = await async_disposable_v_collection.find_one_and_replace(
         sort=sort,
         replacement={
             "phone": "0123-4567",
@@ -868,14 +868,14 @@ async def test_find_one_and_replace_vector(
     ]
     assert "anotherfield" not in replace_response1["data"]["document"]
 
-    response2 = await async_writable_v_collection.find_one(sort=sort)
+    response2 = await async_disposable_v_collection.find_one(sort=sort)
     assert response2 is not None
     assert response2["data"]["document"]["phone"] == "0123-4567"
     assert "phyla" not in response2["data"]["document"]
 
     # non-existing-doc case
     filter_no = {"nonexisting_field": -123}
-    replace_response_no = await async_writable_v_collection.find_one_and_replace(
+    replace_response_no = await async_disposable_v_collection.find_one_and_replace(
         sort=sort,
         filter=filter_no,
         replacement={
@@ -889,13 +889,13 @@ async def test_find_one_and_replace_vector(
 
 @pytest.mark.describe("find_one_and_replace, not through vector (async)")
 async def test_find_one_and_replace_novector(
-    async_writable_v_collection: AsyncAstraDBCollection,
+    async_disposable_v_collection: AsyncAstraDBCollection,
 ) -> None:
-    response0 = await async_writable_v_collection.find_one(filter={"_id": "1"})
+    response0 = await async_disposable_v_collection.find_one(filter={"_id": "1"})
     assert response0 is not None
     assert response0["data"]["document"]["anotherfield"] == "alpha"
 
-    replace_response0 = await async_writable_v_collection.find_one_and_replace(
+    replace_response0 = await async_disposable_v_collection.find_one_and_replace(
         filter={"_id": "1"},
         replacement={
             "_id": "1",
@@ -905,7 +905,7 @@ async def test_find_one_and_replace_novector(
     assert replace_response0 is not None
     assert replace_response0["data"]["document"]["anotherfield"] == "alpha"
 
-    response1 = await async_writable_v_collection.find_one(filter={"_id": "1"})
+    response1 = await async_disposable_v_collection.find_one(filter={"_id": "1"})
     assert response1 is not None
     assert response1["data"]["document"]["phyla"] == [
         "Echinodermata",
@@ -914,7 +914,7 @@ async def test_find_one_and_replace_novector(
     ]
     assert "anotherfield" not in response1["data"]["document"]
 
-    replace_response1 = await async_writable_v_collection.find_one_and_replace(
+    replace_response1 = await async_disposable_v_collection.find_one_and_replace(
         filter={"_id": "1"},
         replacement={
             "phone": "0123-4567",
@@ -928,13 +928,13 @@ async def test_find_one_and_replace_novector(
     ]
     assert "anotherfield" not in replace_response1["data"]["document"]
 
-    response2 = await async_writable_v_collection.find_one(filter={"_id": "1"})
+    response2 = await async_disposable_v_collection.find_one(filter={"_id": "1"})
     assert response2 is not None
     assert response2["data"]["document"]["phone"] == "0123-4567"
     assert "phyla" not in response2["data"]["document"]
 
     # non-existing-doc case
-    replace_response_no = await async_writable_v_collection.find_one_and_replace(
+    replace_response_no = await async_disposable_v_collection.find_one_and_replace(
         filter={"_id": "z"},
         replacement={
             "whatever": -123,
@@ -946,33 +946,33 @@ async def test_find_one_and_replace_novector(
 
 @pytest.mark.describe("delete_one, not through vector (async)")
 async def test_delete_one_novector(
-    async_writable_v_collection: AsyncAstraDBCollection,
+    async_disposable_v_collection: AsyncAstraDBCollection,
 ) -> None:
-    delete_response = await async_writable_v_collection.delete_one(id="3")
+    delete_response = await async_disposable_v_collection.delete_one(id="3")
     assert delete_response["status"]["deletedCount"] == 1
 
-    response = await async_writable_v_collection.find_one(filter={"_id": "3"})
+    response = await async_disposable_v_collection.find_one(filter={"_id": "3"})
     assert response["data"]["document"] is None
 
-    delete_response_no = await async_writable_v_collection.delete_one(id="3")
+    delete_response_no = await async_disposable_v_collection.delete_one(id="3")
     assert delete_response_no["status"]["deletedCount"] == 0
 
 
 @pytest.mark.describe("delete_many, not through vector (async)")
 async def test_delete_many_novector(
-    async_writable_v_collection: AsyncAstraDBCollection,
+    async_disposable_v_collection: AsyncAstraDBCollection,
 ) -> None:
-    delete_response = await async_writable_v_collection.delete_many(
+    delete_response = await async_disposable_v_collection.delete_many(
         filter={"anotherfield": "alpha"}
     )
     assert delete_response["status"]["deletedCount"] == 2
 
-    documents_no = await async_writable_v_collection.find(
+    documents_no = await async_disposable_v_collection.find(
         filter={"anotherfield": "alpha"}
     )
     assert documents_no["data"]["documents"] == []
 
-    delete_response_no = await async_writable_v_collection.delete_many(
+    delete_response_no = await async_disposable_v_collection.delete_many(
         filter={"anotherfield": "alpha"}
     )
     assert delete_response_no["status"]["deletedCount"] == 0

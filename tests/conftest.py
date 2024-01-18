@@ -83,7 +83,7 @@ def db(astra_db_credentials_kwargs: Dict[str, Optional[str]]) -> AstraDB:
     return AstraDB(**astra_db_credentials_kwargs)
 
 
-@pytest.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def async_db(
     astra_db_credentials_kwargs: Dict[str, Optional[str]]
 ) -> AsyncIterable[AsyncAstraDB]:
@@ -228,7 +228,7 @@ async def async_readonly_v_collection(
         await async_db.delete_collection(TEST_READONLY_VECTOR_COLLECTION)
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def async_writable_v_collection(
     async_db: AsyncAstraDB,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
@@ -266,7 +266,7 @@ async def async_disposable_v_collection(
     yield async_writable_v_collection
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def async_writable_nonv_collection(
     async_db: AsyncAstraDB,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
