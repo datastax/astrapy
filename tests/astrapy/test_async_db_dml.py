@@ -17,7 +17,6 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 (i.e. non `vector_*` methods)
 """
 
-import os
 import uuid
 import logging
 from typing import Any, Dict, List, Literal, Optional, Union
@@ -38,59 +37,63 @@ async def test_truncate_collection_fail(async_db: AsyncAstraDB) -> None:
         await async_db.truncate_collection("this$does%not exist!!!")
 
 
-@pytest.mark.skipif(
-    int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 1,
-    reason="collection-deletion tests are suppressed",
-)
 @pytest.mark.describe("should truncate a nonvector collection through AstraDB (async)")
 async def test_truncate_nonvector_collection_through_astradb(
     async_db: AsyncAstraDB,
     async_empty_nonv_collection: AsyncAstraDBCollection,
 ) -> None:
     await async_empty_nonv_collection.insert_one({"a": 1})
-    assert (
-        len(
-            (await async_empty_nonv_collection.find())["data"][
-                "documents"
-            ]
-        )
-        == 1
-    )
-    await async_db.truncate_collection(
+    assert len((await async_empty_nonv_collection.find())["data"]["documents"]) == 1
+    tr_response_col = await async_db.truncate_collection(
         async_empty_nonv_collection.collection_name
     )
+    assert len((await async_empty_nonv_collection.find())["data"]["documents"]) == 0
+    assert isinstance(tr_response_col, AsyncAstraDBCollection)
     assert (
-        len(
-            (await async_empty_nonv_collection.find())["data"][
-                "documents"
-            ]
-        )
-        == 0
+        tr_response_col.collection_name == async_empty_nonv_collection.collection_name
     )
 
 
-@pytest.mark.skipif(
-    int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 1,
-    reason="collection-deletion tests are suppressed",
-)
 @pytest.mark.describe("should truncate a collection through AstraDB (async)")
 async def test_truncate_vector_collection_through_astradb(
     async_db: AsyncAstraDB, async_empty_v_collection: AsyncAstraDBCollection
 ) -> None:
     await async_empty_v_collection.insert_one({"a": 1, "$vector": [0.1, 0.2]})
-    assert (
-        len((await async_empty_v_collection.find())["data"]["documents"]) == 1
-    )
-    await async_db.truncate_collection(
+    assert len((await async_empty_v_collection.find())["data"]["documents"]) == 1
+    tr_response_col = await async_db.truncate_collection(
         async_empty_v_collection.collection_name
     )
-    assert (
-        len((await async_empty_v_collection.find())["data"]["documents"]) == 0
-    )
+    assert len((await async_empty_v_collection.find())["data"]["documents"]) == 0
+    assert isinstance(tr_response_col, AsyncAstraDBCollection)
+    assert tr_response_col.collection_name == async_empty_v_collection.collection_name
+
+
+@pytest.mark.describe("should truncate a nonvector collection (async)")
+async def test_truncate_nonvector_collection(
+    async_empty_nonv_collection: AsyncAstraDBCollection,
+) -> None:
+    await async_empty_nonv_collection.insert_one({"a": 1})
+    assert len((await async_empty_nonv_collection.find())["data"]["documents"]) == 1
+    tr_response = await async_empty_nonv_collection.truncate()
+    assert len((await async_empty_nonv_collection.find())["data"]["documents"]) == 0
+    assert tr_response["status"]["deletedCount"] == -1
+
+
+@pytest.mark.describe("should truncate a collection (async)")
+async def test_truncate_vector_collection(
+    async_empty_v_collection: AsyncAstraDBCollection,
+) -> None:
+    await async_empty_v_collection.insert_one({"a": 1, "$vector": [0.1, 0.2]})
+    assert len((await async_empty_v_collection.find())["data"]["documents"]) == 1
+    tr_response = await async_empty_v_collection.truncate()
+    assert len((await async_empty_v_collection.find())["data"]["documents"]) == 0
+    assert tr_response["status"]["deletedCount"] == -1
 
 
 @pytest.mark.describe("find_one, not through vector (async)")
-async def test_find_one_filter_novector(async_readonly_v_collection: AsyncAstraDBCollection) -> None:
+async def test_find_one_filter_novector(
+    async_readonly_v_collection: AsyncAstraDBCollection,
+) -> None:
     response = await async_readonly_v_collection.find_one(
         filter={"_id": "1"},
     )
@@ -210,9 +213,7 @@ async def test_find_limitless(
     sort = {"$vector": [0.2, 0.6]}
     projection = {"$vector": 1}
 
-    response = await async_readonly_v_collection.find(
-        sort=sort, projection=projection
-    )
+    response = await async_readonly_v_collection.find(sort=sort, projection=projection)
     assert response is not None
     assert isinstance(response["data"]["documents"], list)
 
@@ -361,9 +362,7 @@ async def test_chunked_insert_many(
 
     responses0: List[
         Union[Dict[str, Any], Exception]
-    ] = await async_writable_v_collection.chunked_insert_many(
-        documents0, chunk_size=3
-    )
+    ] = await async_writable_v_collection.chunked_insert_many(documents0, chunk_size=3)
     assert responses0 is not None
     inserted_ids0 = [
         ins_id
@@ -374,9 +373,7 @@ async def test_chunked_insert_many(
     # unordered inserts: this only has to be a set equality
     assert set(inserted_ids0) == set(_ids0)
 
-    response0a = await async_writable_v_collection.find_one(
-        filter={"_id": _ids0[0]}
-    )
+    response0a = await async_writable_v_collection.find_one(filter={"_id": _ids0[0]})
     assert response0a is not None
     assert response0a["data"]["document"] == documents0[0]
 
@@ -461,9 +458,7 @@ async def test_concurrent_chunked_insert_many(
     # unordered inserts: this only has to be a set equality
     assert set(inserted_ids0) == set(_ids0)
 
-    response0a = await async_writable_v_collection.find_one(
-        filter={"_id": _ids0[0]}
-    )
+    response0a = await async_writable_v_collection.find_one(filter={"_id": _ids0[0]})
     assert response0a is not None
     assert response0a["data"]["document"] == documents0[0]
 
@@ -602,15 +597,11 @@ async def test_upsert_many(
     upsert_result0 = await async_writable_v_collection.upsert_many(documents0)
     assert upsert_result0 == [doc["_id"] for doc in documents0]
 
-    response0a = await async_writable_v_collection.find_one(
-        filter={"_id": _ids0[0]}
-    )
+    response0a = await async_writable_v_collection.find_one(filter={"_id": _ids0[0]})
     assert response0a is not None
     assert response0a["data"]["document"] == documents0[0]
 
-    response0b = await async_writable_v_collection.find_one(
-        filter={"_id": _ids0[-1]}
-    )
+    response0b = await async_writable_v_collection.find_one(filter={"_id": _ids0[-1]})
     assert response0b is not None
     assert response0b["data"]["document"] == documents0[-1]
 
@@ -631,15 +622,11 @@ async def test_upsert_many(
     )
     assert upsert_result1 == [doc["_id"] for doc in documents1]
 
-    response1a = await async_writable_v_collection.find_one(
-        filter={"_id": _ids1[0]}
-    )
+    response1a = await async_writable_v_collection.find_one(filter={"_id": _ids1[0]})
     assert response1a is not None
     assert response1a["data"]["document"] == documents1[0]
 
-    response1b = await async_writable_v_collection.find_one(
-        filter={"_id": _ids1[-1]}
-    )
+    response1b = await async_writable_v_collection.find_one(filter={"_id": _ids1[-1]})
     assert response1b is not None
     assert response1b["data"]["document"] == documents1[-1]
 
@@ -719,11 +706,9 @@ async def test_delete_subdocument_novector(
             "$vector": [0.1, 0.9],
         },
     )
-    delete_subdocument_response = (
-        await async_writable_v_collection.delete_subdocument(
-            id=_id,
-            subdoc="otherfield.subfield",
-        )
+    delete_subdocument_response = await async_writable_v_collection.delete_subdocument(
+        id=_id,
+        subdoc="otherfield.subfield",
     )
 
     assert delete_subdocument_response["status"]["matchedCount"] >= 1
@@ -1018,9 +1003,7 @@ async def test_pop_push_novector(
     assert pop_response["status"]["matchedCount"] >= 1
     assert pop_response["status"]["modifiedCount"] == 1
 
-    response1 = await async_empty_v_collection.find_one(
-        filter={"_id": user_id}
-    )
+    response1 = await async_empty_v_collection.find_one(filter={"_id": user_id})
     assert response1 is not None
     assert response1["data"]["document"]["roles"] == ["user"]
 
@@ -1034,8 +1017,6 @@ async def test_pop_push_novector(
     assert push_response["status"]["matchedCount"] >= 1
     assert push_response["status"]["modifiedCount"] == 1
 
-    response2 = await async_empty_v_collection.find_one(
-        filter={"_id": user_id}
-    )
+    response2 = await async_empty_v_collection.find_one(filter={"_id": user_id})
     assert response2 is not None
     assert response2["data"]["document"]["roles"] == ["user", "auditor"]

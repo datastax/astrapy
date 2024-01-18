@@ -17,10 +17,8 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 (i.e. non `vector_*` methods)
 """
 
-import os
 import uuid
 import logging
-import time
 import json
 import httpx
 from typing import Dict, List, Literal, Optional, Set
@@ -41,32 +39,48 @@ def test_truncate_collection_fail(db: AstraDB) -> None:
         db.truncate_collection("this$does%not exist!!!")
 
 
-@pytest.mark.skipif(
-    int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 1,
-    reason="collection-deletion tests are suppressed",
-)
 @pytest.mark.describe("should truncate a nonvector collection through AstraDB")
 def test_truncate_nonvector_collection_through_astradb(
     db: AstraDB, empty_nonv_collection: AstraDBCollection
 ) -> None:
     empty_nonv_collection.insert_one({"a": 1})
     assert len(empty_nonv_collection.find()["data"]["documents"]) == 1
-    db.truncate_collection(empty_nonv_collection.collection_name)
+    tr_response_col = db.truncate_collection(empty_nonv_collection.collection_name)
     assert len(empty_nonv_collection.find()["data"]["documents"]) == 0
+    assert isinstance(tr_response_col, AstraDBCollection)
+    assert tr_response_col.collection_name == empty_nonv_collection.collection_name
 
 
-@pytest.mark.skipif(
-    int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 1,
-    reason="collection-deletion tests are suppressed",
-)
 @pytest.mark.describe("should truncate a collection through AstraDB")
 def test_truncate_vector_collection_through_astradb(
     db: AstraDB, empty_v_collection: AstraDBCollection
 ) -> None:
     empty_v_collection.insert_one({"a": 1, "$vector": [0.1, 0.2]})
     assert len(empty_v_collection.find()["data"]["documents"]) == 1
-    db.truncate_collection(empty_v_collection.collection_name)
+    tr_response_col = db.truncate_collection(empty_v_collection.collection_name)
     assert len(empty_v_collection.find()["data"]["documents"]) == 0
+    assert isinstance(tr_response_col, AstraDBCollection)
+    assert tr_response_col.collection_name == empty_v_collection.collection_name
+
+
+@pytest.mark.describe("should truncate a nonvector collection")
+def test_truncate_nonvector_collection(
+    empty_nonv_collection: AstraDBCollection,
+) -> None:
+    empty_nonv_collection.insert_one({"a": 1})
+    assert len(empty_nonv_collection.find()["data"]["documents"]) == 1
+    tr_response = empty_nonv_collection.truncate()
+    assert len(empty_nonv_collection.find()["data"]["documents"]) == 0
+    assert tr_response["status"]["deletedCount"] == -1
+
+
+@pytest.mark.describe("should truncate a collection")
+def test_truncate_vector_collection(empty_v_collection: AstraDBCollection) -> None:
+    empty_v_collection.insert_one({"a": 1, "$vector": [0.1, 0.2]})
+    assert len(empty_v_collection.find()["data"]["documents"]) == 1
+    tr_response = empty_v_collection.truncate()
+    assert len(empty_v_collection.find()["data"]["documents"]) == 0
+    assert tr_response["status"]["deletedCount"] == -1
 
 
 @pytest.mark.describe("find_one, not through vector")
@@ -201,9 +215,7 @@ def test_count_documents(
     )
     assert c_pred_response["status"]["count"] == 2
 
-    c_no_response = readonly_v_collection.count_documents(
-        filter={"false_field": 137}
-    )
+    c_no_response = readonly_v_collection.count_documents(filter={"false_field": 137})
     assert c_no_response["status"]["count"] == 0
 
 
@@ -220,9 +232,9 @@ def test_create_document(writable_v_collection: AstraDBCollection) -> None:
     )
     assert result_v_i["status"]["insertedIds"] == [id_v_i]
     assert (
-        writable_v_collection.find_one(
-            {"_id": result_v_i["status"]["insertedIds"][0]}
-        )["data"]["document"]["a"]
+        writable_v_collection.find_one({"_id": result_v_i["status"]["insertedIds"][0]})[
+            "data"
+        ]["document"]["a"]
         == 1
     )
 
@@ -235,9 +247,9 @@ def test_create_document(writable_v_collection: AstraDBCollection) -> None:
     )
     assert result_n_i["status"]["insertedIds"] == [id_n_i]
     assert (
-        writable_v_collection.find_one(
-            {"_id": result_n_i["status"]["insertedIds"][0]}
-        )["data"]["document"]["a"]
+        writable_v_collection.find_one({"_id": result_n_i["status"]["insertedIds"][0]})[
+            "data"
+        ]["document"]["a"]
         == 2
     )
 
@@ -259,9 +271,9 @@ def test_create_document(writable_v_collection: AstraDBCollection) -> None:
     assert isinstance(result_v_n["status"]["insertedIds"][0], str)
     assert len(result_v_n["status"]["insertedIds"]) == 1
     assert (
-        writable_v_collection.find_one(
-            {"_id": result_v_n["status"]["insertedIds"][0]}
-        )["data"]["document"]["a"]
+        writable_v_collection.find_one({"_id": result_v_n["status"]["insertedIds"][0]})[
+            "data"
+        ]["document"]["a"]
         == 4
     )
 
@@ -274,17 +286,15 @@ def test_create_document(writable_v_collection: AstraDBCollection) -> None:
     assert isinstance(result_n_n["status"]["insertedIds"][0], str)
     assert len(result_n_n["status"]["insertedIds"]) == 1
     assert (
-        writable_v_collection.find_one(
-            {"_id": result_n_n["status"]["insertedIds"][0]}
-        )["data"]["document"]["a"]
+        writable_v_collection.find_one({"_id": result_n_n["status"]["insertedIds"][0]})[
+            "data"
+        ]["document"]["a"]
         == 5
     )
 
 
 @pytest.mark.describe("should coerce 'vectors' to lists of floats")
-def test_insert_float32(
-    writable_v_collection: AstraDBCollection, N: int = 2
-) -> None:
+def test_insert_float32(writable_v_collection: AstraDBCollection, N: int = 2) -> None:
     _id0 = str(uuid.uuid4())
     document = {
         "_id": _id0,
@@ -345,9 +355,7 @@ def test_chunked_insert_many(
         for doc_idx, _id in enumerate(_ids0)
     ]
 
-    responses0 = writable_v_collection.chunked_insert_many(
-        documents0, chunk_size=3
-    )
+    responses0 = writable_v_collection.chunked_insert_many(documents0, chunk_size=3)
     assert responses0 is not None
     inserted_ids0 = [
         ins_id
@@ -573,9 +581,9 @@ def test_error_handling_duplicate(
 
     assert result1["status"]["insertedIds"] == [_id1]
     assert (
-        writable_v_collection.find_one(
-            {"_id": result1["status"]["insertedIds"][0]}
-        )["data"]["document"]["a"]
+        writable_v_collection.find_one({"_id": result1["status"]["insertedIds"][0]})[
+            "data"
+        ]["document"]["a"]
         == 1
     )
 
@@ -1137,9 +1145,7 @@ def test_find_find_one_non_equality_operators(
     projection = {"marker": 1}
 
     # find by id
-    resp0 = empty_nonv_collection.find_one(
-        filter={"_id": "1"}, projection=projection
-    )
+    resp0 = empty_nonv_collection.find_one(filter={"_id": "1"}, projection=projection)
     assert resp0["data"]["document"]["marker"] == "abc"
 
     # find with $in

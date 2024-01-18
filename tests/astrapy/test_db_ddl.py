@@ -121,6 +121,7 @@ def test_create_use_destroy_vector_collection(db: AstraDB) -> None:
 
 
 @pytest.mark.describe("should get all collections")
-def test_get_collections(db: AstraDB) -> None:
+def test_get_collections(db: AstraDB, readonly_v_collection: AstraDBCollection) -> None:
     res = db.get_collections()
     assert res["status"]["collections"] is not None
+    assert readonly_v_collection.collection_name in res["status"]["collections"]

@@ -16,12 +16,11 @@
 Tests for the `db.py` parts on pagination primitives
 """
 
-import os
 import logging
-from typing import Dict, Iterable, List, Optional, Set, AsyncIterable
+from typing import Optional
 import pytest
 
-from astrapy.db import AsyncAstraDBCollection, AsyncAstraDB
+from astrapy.db import AsyncAstraDBCollection
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ PREFETCHED = 42  # Keep this > 20 and <= FIND_LIMIT to actually trigger prefetch
 
 
 @pytest.mark.describe(
-    "should retrieve the required amount of documents, all different, through pagination"
+    "should retrieve the required amount of documents, all different, through pagination (async)"
 )
 @pytest.mark.parametrize(
     "prefetched",
@@ -51,6 +50,6 @@ async def test_find_paginated(
     )
     paginated_documents = [doc async for doc in paginated_documents_agen]
     paginated_ids = [doc["_id"] for doc in paginated_documents]
-    assert all(["$vector" not in doc for doc in  paginated_documents])
+    assert all(["$vector" not in doc for doc in paginated_documents])
     assert len(paginated_ids) == FIND_LIMIT
     assert len(paginated_ids) == len(set(paginated_ids))

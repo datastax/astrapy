@@ -5,18 +5,15 @@ import os
 import math
 
 import pytest
-import uuid
-from typing import AsyncIterable, Dict, Iterable, List, Optional, TypeVar
+from typing import AsyncIterable, Dict, Iterable, List, Optional, Set, TypeVar
 
 import pytest_asyncio
-# from dotenv import load_dotenv
 
 from astrapy.defaults import DEFAULT_KEYSPACE_NAME
 from astrapy.db import AstraDB, AstraDBCollection, AsyncAstraDB, AsyncAstraDBCollection
 
 T = TypeVar("T")
 
-# load_dotenv()
 
 ASTRA_DB_APPLICATION_TOKEN = os.environ.get("ASTRA_DB_APPLICATION_TOKEN")
 ASTRA_DB_API_ENDPOINT = os.environ.get("ASTRA_DB_API_ENDPOINT")
@@ -188,8 +185,9 @@ def invalid_writable_v_collection(
 
 
 @pytest.fixture(scope="function")
-def pagination_v_collection(empty_v_collection: AstraDBCollection) -> Iterable[AstraDBCollection]:
-
+def pagination_v_collection(
+    empty_v_collection: AstraDBCollection,
+) -> Iterable[AstraDBCollection]:
     INSERT_BATCH_SIZE = 20  # max 20, fixed by API constraints
     N = 200  # must be EVEN
 
@@ -200,9 +198,7 @@ def pagination_v_collection(empty_v_collection: AstraDBCollection) -> Iterable[A
     inserted_ids: Set[str] = set()
     for i_batch in _batch_iterable(range(N), INSERT_BATCH_SIZE):
         batch_ids = empty_v_collection.insert_many(
-            documents=[
-                {"_id": str(i), "$vector": _mk_vector(i, N)} for i in i_batch
-            ]
+            documents=[{"_id": str(i), "$vector": _mk_vector(i, N)} for i in i_batch]
         )["status"]["insertedIds"]
         inserted_ids = inserted_ids | set(batch_ids)
     assert inserted_ids == {str(i) for i in range(N)}
@@ -267,7 +263,7 @@ async def async_disposable_v_collection(
     """available prepopulated to each test function."""
     await async_writable_v_collection.truncate()
     await async_writable_v_collection.insert_many(VECTOR_DOCUMENTS)
-    yield writable_v_collection
+    yield async_writable_v_collection
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -299,8 +295,9 @@ async def async_empty_nonv_collection(
 
 
 @pytest_asyncio.fixture(scope="function")
-async def async_pagination_v_collection(async_empty_v_collection: AsyncAstraDBCollection) -> AsyncIterable[AsyncAstraDBCollection]:
-
+async def async_pagination_v_collection(
+    async_empty_v_collection: AsyncAstraDBCollection,
+) -> AsyncIterable[AsyncAstraDBCollection]:
     INSERT_BATCH_SIZE = 20  # max 20, fixed by API constraints
     N = 200  # must be EVEN
 
@@ -311,9 +308,7 @@ async def async_pagination_v_collection(async_empty_v_collection: AsyncAstraDBCo
     inserted_ids: Set[str] = set()
     for i_batch in _batch_iterable(range(N), INSERT_BATCH_SIZE):
         insert_response = await async_empty_v_collection.insert_many(
-            documents=[
-                {"_id": str(i), "$vector": _mk_vector(i, N)} for i in i_batch
-            ]
+            documents=[{"_id": str(i), "$vector": _mk_vector(i, N)} for i in i_batch]
         )
         batch_ids = insert_response["status"]["insertedIds"]
         inserted_ids = inserted_ids | set(batch_ids)

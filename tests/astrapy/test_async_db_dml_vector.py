@@ -197,11 +197,9 @@ async def test_vector_find_one_and_update(
     )
     assert document0 is None
 
-    update_response = (
-        await async_disposable_v_collection.vector_find_one_and_update(
-            vector=[0.1, 0.9],
-            update=update,
-        )
+    update_response = await async_disposable_v_collection.vector_find_one_and_update(
+        vector=[0.1, 0.9],
+        update=update,
     )
     assert update_response is not None
     assert update_response["_id"] == "1"
@@ -215,12 +213,10 @@ async def test_vector_find_one_and_update(
     assert document1["_id"] == update_response["_id"]
     assert document1["status"] == "active"
 
-    update_response_no = (
-        await async_disposable_v_collection.vector_find_one_and_update(
-            vector=[0.1, 0.9],
-            filter={"nonexisting": "gotcha"},
-            update=update,
-        )
+    update_response_no = await async_disposable_v_collection.vector_find_one_and_update(
+        vector=[0.1, 0.9],
+        filter={"nonexisting": "gotcha"},
+        update=update,
     )
     assert update_response_no is None
 
@@ -242,11 +238,9 @@ async def test_vector_find_one_and_replace(
     )
     assert document0 is None
 
-    replace_response0 = (
-        await async_disposable_v_collection.vector_find_one_and_replace(
-            vector=[0.1, 0.9],
-            replacement=replacement0,
-        )
+    replace_response0 = await async_disposable_v_collection.vector_find_one_and_replace(
+        vector=[0.1, 0.9],
+        replacement=replacement0,
     )
     assert replace_response0 is not None
     assert replace_response0["_id"] == "1"
@@ -270,11 +264,9 @@ async def test_vector_find_one_and_replace(
         "$vector": [0.101, 0.899],
     }
 
-    replace_response1 = (
-        await async_disposable_v_collection.vector_find_one_and_replace(
-            vector=[0.1, 0.9],
-            replacement=replacement1,
-        )
+    replace_response1 = await async_disposable_v_collection.vector_find_one_and_replace(
+        vector=[0.1, 0.9],
+        replacement=replacement1,
     )
     assert replace_response0 is not None
     assert replace_response0["_id"] == "1"

@@ -120,6 +120,9 @@ async def test_create_use_destroy_vector_collection(async_db: AsyncAstraDB) -> N
 
 
 @pytest.mark.describe("should get all collections (async)")
-async def test_get_collections(async_db: AsyncAstraDB) -> None:
+async def test_get_collections(
+    async_db: AsyncAstraDB, async_readonly_v_collection: AsyncAstraDBCollection
+) -> None:
     res = await async_db.get_collections()
     assert res["status"]["collections"] is not None
+    assert async_readonly_v_collection.collection_name in res["status"]["collections"]

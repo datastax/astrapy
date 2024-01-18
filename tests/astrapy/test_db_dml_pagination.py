@@ -16,12 +16,11 @@
 Tests for the `db.py` parts on pagination primitives
 """
 
-import os
 import logging
-from typing import Dict, Iterable, List, Optional, Set
+from typing import Optional
 import pytest
 
-from astrapy.db import AstraDB, AstraDBCollection
+from astrapy.db import AstraDBCollection
 
 
 logger = logging.getLogger(__name__)
@@ -44,7 +43,6 @@ PREFETCHED = 42  # Keep this > 20 and <= FIND_LIMIT to actually trigger prefetch
 def test_find_paginated(
     prefetched: Optional[int], pagination_v_collection: AstraDBCollection
 ) -> None:
-
     options = {"limit": FIND_LIMIT}
     projection = {"$vector": 0}
 
@@ -53,6 +51,6 @@ def test_find_paginated(
     )
     paginated_documents = list(paginated_documents_gen)
     paginated_ids = [doc["_id"] for doc in paginated_documents]
-    assert all(["$vector" not in doc for doc in  paginated_documents])
+    assert all(["$vector" not in doc for doc in paginated_documents])
     assert len(paginated_ids) == FIND_LIMIT
     assert len(paginated_ids) == len(set(paginated_ids))
