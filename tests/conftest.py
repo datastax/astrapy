@@ -285,7 +285,7 @@ async def async_writable_nonv_collection(
         await async_db.delete_collection(TEST_WRITABLE_VECTOR_COLLECTION)
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="function")
 async def async_empty_nonv_collection(
     async_writable_nonv_collection: AsyncAstraDBCollection,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
