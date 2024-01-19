@@ -14,6 +14,7 @@ jobs:
       ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
       ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
       ASTRA_DB_ID: ${{ secrets.ASTRA_DB_ID }}
+      TEST_SKIP_COLLECTION_DELETE: ${{ vars.TEST_SKIP_COLLECTION_DELETE }}
     runs-on: ubuntu-latest
 
     steps:
