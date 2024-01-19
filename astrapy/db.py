@@ -848,18 +848,28 @@ class AstraDBCollection:
 
         return response
 
+    def clear(self) -> API_RESPONSE:
+        """
+        Truncate the collection, deleting all documents
+        Returns:
+            dict: The response from the database.
+        """
+        clear_response = self.delete_many(filter={})
+
+        if clear_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError(
+                f"Could not issue a truncation API command (response: {json.dumps(clear_response)})."
+            )
+
+        return clear_response
+
     def truncate(self) -> API_RESPONSE:
         """
         Truncate the collection, deleting all documents
         Returns:
             dict: The response from the database.
         """
-        truncate_response = self.delete_many(filter={})
-
-        if truncate_response.get("status", {}).get("deletedCount") != -1:
-            raise ValueError("Could not issue a truncate API command.")
-
-        return truncate_response
+        return self.clear()
 
     def delete_subdocument(self, id: str, subdoc: str) -> API_RESPONSE:
         """
@@ -1703,18 +1713,28 @@ class AsyncAstraDBCollection:
 
         return response
 
+    async def clear(self) -> API_RESPONSE:
+        """
+        Truncate the collection, deleting all documents
+        Returns:
+            dict: The response from the database.
+        """
+        clear_response = await self.delete_many(filter={})
+
+        if clear_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError(
+                f"Could not issue a truncation API command (response: {json.dumps(clear_response)})."
+            )
+
+        return clear_response
+
     async def truncate(self) -> API_RESPONSE:
         """
         Truncate the collection, deleting all documents
         Returns:
             dict: The response from the database.
         """
-        truncate_response = await self.delete_many(filter={})
-
-        if truncate_response.get("status", {}).get("deletedCount") != -1:
-            raise ValueError("Could not issue a truncate API command.")
-
-        return truncate_response
+        return await self.clear()
 
     async def delete_subdocument(self, id: str, subdoc: str) -> API_RESPONSE:
         """
@@ -2001,9 +2021,9 @@ class AstraDB:
 
         return response
 
-    def truncate_collection(self, collection_name: str) -> AstraDBCollection:
+    def clear_collection(self, collection_name: str) -> AstraDBCollection:
         """
-        Truncate a collection in the database.
+        Truncate a collection in the database, deleting all stored documents.
         Args:
             collection_name (str): The name of the collection to truncate.
         Returns:
@@ -2014,13 +2034,25 @@ class AstraDB:
             collection_name=collection_name,
             astra_db=self,
         )
-        truncate_response = collection.delete_many(filter={})
+        clear_response = collection.delete_many(filter={})
 
-        if truncate_response.get("status", {}).get("deletedCount") != -1:
-            raise ValueError("Could not issue a truncate API command.")
+        if clear_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError(
+                f"Could not issue a truncation API command (response: {json.dumps(clear_response)})."
+            )
 
         # return the collection itself
         return collection
+
+    def truncate_collection(self, collection_name: str) -> AstraDBCollection:
+        """
+        Truncate a collection in the database, deleting all stored documents.
+        Args:
+            collection_name (str): The name of the collection to truncate.
+        Returns:
+            collection: an AstraDBCollection instance
+        """
+        return self.clear_collection(collection_name)
 
 
 class AsyncAstraDB:
@@ -2230,9 +2262,9 @@ class AsyncAstraDB:
 
         return response
 
-    async def truncate_collection(self, collection_name: str) -> AsyncAstraDBCollection:
+    async def clear_collection(self, collection_name: str) -> AsyncAstraDBCollection:
         """
-        Truncate a collection in the database.
+        Truncate a collection in the database, deleting all stored documents.
         Args:
             collection_name (str): The name of the collection to truncate.
         Returns:
@@ -2242,10 +2274,22 @@ class AsyncAstraDB:
             collection_name=collection_name,
             astra_db=self,
         )
-        truncate_response = await collection.delete_many(filter={})
+        clear_response = await collection.delete_many(filter={})
 
-        if truncate_response.get("status", {}).get("deletedCount") != -1:
-            raise ValueError("Could not issue a truncate API command.")
+        if clear_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError(
+                f"Could not issue a truncation API command (response: {json.dumps(clear_response)})."
+            )
 
         # return the collection itself
         return collection
+
+    async def truncate_collection(self, collection_name: str) -> AsyncAstraDBCollection:
+        """
+        Truncate a collection in the database, deleting all stored documents.
+        Args:
+            collection_name (str): The name of the collection to truncate.
+        Returns:
+            collection: an AsyncAstraDBCollection instance
+        """
+        return await self.clear_collection(collection_name)
