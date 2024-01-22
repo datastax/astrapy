@@ -25,7 +25,7 @@ import pytest
 
 from astrapy.api import APIRequestError
 from astrapy.types import API_DOC
-from astrapy.db import AstraDBCollection, AsyncAstraDB, AsyncAstraDBCollection
+from astrapy.db import AsyncAstraDB, AsyncAstraDBCollection
 
 
 logger = logging.getLogger(__name__)

@@ -21,7 +21,7 @@ from typing import cast
 
 import pytest
 
-from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
+from astrapy.db import AsyncAstraDBCollection
 from astrapy.types import API_DOC
 
 logger = logging.getLogger(__name__)

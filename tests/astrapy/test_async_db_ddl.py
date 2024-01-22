@@ -22,7 +22,7 @@ from typing import Dict, Optional
 
 import pytest
 
-from astrapy.db import AstraDBCollection, AsyncAstraDB, AsyncAstraDBCollection
+from astrapy.db import AsyncAstraDB, AsyncAstraDBCollection
 from astrapy.defaults import DEFAULT_KEYSPACE_NAME
 
 TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME = "ephemeral_v_col"

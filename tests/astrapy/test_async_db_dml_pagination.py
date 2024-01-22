@@ -20,7 +20,7 @@ import logging
 from typing import Optional
 import pytest
 
-from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
+from astrapy.db import AsyncAstraDBCollection
 
 logger = logging.getLogger(__name__)
 
