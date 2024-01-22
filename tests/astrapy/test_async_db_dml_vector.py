@@ -27,11 +27,11 @@ from astrapy.types import API_DOC
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.describe("vector_find and include_similarity parameter")
+@pytest.mark.describe("vector_find and include_similarity parameter (async)")
 async def test_vector_find(
-    async_readonly_vector_collection: AsyncAstraDBCollection,
+    async_readonly_v_collection: AsyncAstraDBCollection,
 ) -> None:
-    documents_sim_1 = await async_readonly_vector_collection.vector_find(
+    documents_sim_1 = await async_readonly_v_collection.vector_find(
         vector=[0.2, 0.6],
         limit=3,
     )
@@ -44,7 +44,7 @@ async def test_vector_find(
     assert "text" in documents_sim_1[0]
     assert "$similarity" in documents_sim_1[0]
 
-    documents_sim_2 = await async_readonly_vector_collection.vector_find(
+    documents_sim_2 = await async_readonly_v_collection.vector_find(
         vector=[0.2, 0.6],
         limit=3,
         include_similarity=True,
@@ -58,7 +58,7 @@ async def test_vector_find(
     assert "text" in documents_sim_2[0]
     assert "$similarity" in documents_sim_2[0]
 
-    documents_no_sim = await async_readonly_vector_collection.vector_find(
+    documents_no_sim = await async_readonly_v_collection.vector_find(
         vector=[0.2, 0.6],
         limit=3,
         fields=["_id", "$vector"],
@@ -74,15 +74,15 @@ async def test_vector_find(
     assert "$similarity" not in documents_no_sim[0]
 
 
-@pytest.mark.describe("should coerce vectors in vector_find")
+@pytest.mark.describe("should coerce vectors in vector_find (async)")
 async def test_vector_find_float32(
-    async_readonly_vector_collection: AsyncAstraDBCollection,
+    async_readonly_v_collection: AsyncAstraDBCollection,
 ) -> None:
     def ite() -> Iterable[str]:
         for v in [0.1, 0.2]:
             yield f"{v}"
 
-    documents_sim_1 = await async_readonly_vector_collection.vector_find(
+    documents_sim_1 = await async_readonly_v_collection.vector_find(
         # we surreptitously trick typing here
         vector=cast(List[float], ite()),
         limit=3,
@@ -97,9 +97,9 @@ async def test_vector_find_float32(
     assert "$similarity" in documents_sim_1[0]
 
 
-@pytest.mark.describe("vector_find, obey projection")
+@pytest.mark.describe("vector_find, obey projection (async)")
 async def test_vector_find_projection(
-    async_readonly_vector_collection: AsyncAstraDBCollection,
+    async_readonly_v_collection: AsyncAstraDBCollection,
 ) -> None:
     query = [0.2, 0.6]
 
@@ -119,7 +119,7 @@ async def test_vector_find_projection(
     ]
     for include_similarity in [True, False]:
         for req_fields, exp_fields0 in zip(req_fieldsets, exp_fieldsets):
-            vdocs = await async_readonly_vector_collection.vector_find(
+            vdocs = await async_readonly_v_collection.vector_find(
                 query,
                 limit=1,
                 fields=list(req_fields) if req_fields is not None else req_fields,
@@ -132,11 +132,11 @@ async def test_vector_find_projection(
             assert set(vdocs[0].keys()) == exp_fields
 
 
-@pytest.mark.describe("vector_find with filters")
+@pytest.mark.describe("vector_find with filters (async)")
 async def test_vector_find_filters(
-    async_readonly_vector_collection: AsyncAstraDBCollection,
+    async_readonly_v_collection: AsyncAstraDBCollection,
 ) -> None:
-    documents = await async_readonly_vector_collection.vector_find(
+    documents = await async_readonly_v_collection.vector_find(
         vector=[0.2, 0.6],
         filter={"anotherfield": "alpha"},
         limit=3,
@@ -145,7 +145,7 @@ async def test_vector_find_filters(
     assert len(documents) == 2
     assert {doc["otherfield"]["subfield"] for doc in documents} == {"x1y", "x2y"}
 
-    documents_no = await async_readonly_vector_collection.vector_find(
+    documents_no = await async_readonly_v_collection.vector_find(
         vector=[0.2, 0.6],
         filter={"anotherfield": "epsilon"},
         limit=3,
@@ -154,11 +154,11 @@ async def test_vector_find_filters(
     assert len(documents_no) == 0
 
 
-@pytest.mark.describe("vector_find_one and include_similarity parameter")
+@pytest.mark.describe("vector_find_one and include_similarity parameter (async)")
 async def test_vector_find_one(
-    async_readonly_vector_collection: AsyncAstraDBCollection,
+    async_readonly_v_collection: AsyncAstraDBCollection,
 ) -> None:
-    document0 = await async_readonly_vector_collection.vector_find_one(
+    document0 = await async_readonly_v_collection.vector_find_one(
         [0.2, 0.6],
     )
 
@@ -168,7 +168,7 @@ async def test_vector_find_one(
     assert "text" in document0
     assert "$similarity" in document0
 
-    document_w_sim = await async_readonly_vector_collection.vector_find_one(
+    document_w_sim = await async_readonly_v_collection.vector_find_one(
         [0.2, 0.6],
         include_similarity=True,
     )
@@ -179,7 +179,7 @@ async def test_vector_find_one(
     assert "text" in document_w_sim
     assert "$similarity" in document_w_sim
 
-    document_no_sim = await async_readonly_vector_collection.vector_find_one(
+    document_no_sim = await async_readonly_v_collection.vector_find_one(
         [0.2, 0.6],
         include_similarity=False,
     )
@@ -190,7 +190,7 @@ async def test_vector_find_one(
     assert "text" in document_no_sim
     assert "$similarity" not in document_no_sim
 
-    document_w_fields = await async_readonly_vector_collection.vector_find_one(
+    document_w_fields = await async_readonly_v_collection.vector_find_one(
         [0.2, 0.6], fields=["text"]
     )
 
@@ -200,7 +200,7 @@ async def test_vector_find_one(
     assert "text" in document_w_fields
     assert "$similarity" in document_w_fields
 
-    document_no = await async_readonly_vector_collection.vector_find_one(
+    document_no = await async_readonly_v_collection.vector_find_one(
         [0.2, 0.6],
         filter={"nonexisting": "gotcha"},
     )
@@ -208,28 +208,26 @@ async def test_vector_find_one(
     assert document_no is None
 
 
-@pytest.mark.describe("vector_find_one_and_update")
+@pytest.mark.describe("vector_find_one_and_update (async)")
 async def test_vector_find_one_and_update(
-    async_disposable_vector_collection: AsyncAstraDBCollection,
+    async_disposable_v_collection: AsyncAstraDBCollection,
 ) -> None:
     update = {"$set": {"status": "active"}}
 
-    document0 = await async_disposable_vector_collection.vector_find_one(
+    document0 = await async_disposable_v_collection.vector_find_one(
         vector=[0.1, 0.9],
         filter={"status": "active"},
     )
     assert document0 is None
 
-    update_response = (
-        await async_disposable_vector_collection.vector_find_one_and_update(
-            vector=[0.1, 0.9],
-            update=update,
-        )
+    update_response = await async_disposable_v_collection.vector_find_one_and_update(
+        vector=[0.1, 0.9],
+        update=update,
     )
     assert update_response is not None
     assert update_response["_id"] == "1"
 
-    document1 = await async_disposable_vector_collection.vector_find_one(
+    document1 = await async_disposable_v_collection.vector_find_one(
         vector=[0.1, 0.9],
         filter={"status": "active"},
     )
@@ -238,19 +236,17 @@ async def test_vector_find_one_and_update(
     assert document1["_id"] == update_response["_id"]
     assert document1["status"] == "active"
 
-    update_response_no = (
-        await async_disposable_vector_collection.vector_find_one_and_update(
-            vector=[0.1, 0.9],
-            filter={"nonexisting": "gotcha"},
-            update=update,
-        )
+    update_response_no = await async_disposable_v_collection.vector_find_one_and_update(
+        vector=[0.1, 0.9],
+        filter={"nonexisting": "gotcha"},
+        update=update,
     )
     assert update_response_no is None
 
 
-@pytest.mark.describe("vector_find_one_and_replace")
+@pytest.mark.describe("vector_find_one_and_replace (async)")
 async def test_vector_find_one_and_replace(
-    async_disposable_vector_collection: AsyncAstraDBCollection,
+    async_disposable_v_collection: AsyncAstraDBCollection,
 ) -> None:
     replacement0 = {
         "_id": "1",
@@ -259,22 +255,20 @@ async def test_vector_find_one_and_replace(
         "$vector": [0.101, 0.899],
     }
 
-    document0 = await async_disposable_vector_collection.vector_find_one(
+    document0 = await async_disposable_v_collection.vector_find_one(
         vector=[0.1, 0.9],
         filter={"added_field": True},
     )
     assert document0 is None
 
-    replace_response0 = (
-        await async_disposable_vector_collection.vector_find_one_and_replace(
-            vector=[0.1, 0.9],
-            replacement=replacement0,
-        )
+    replace_response0 = await async_disposable_v_collection.vector_find_one_and_replace(
+        vector=[0.1, 0.9],
+        replacement=replacement0,
     )
     assert replace_response0 is not None
     assert replace_response0["_id"] == "1"
 
-    document1 = await async_disposable_vector_collection.vector_find_one(
+    document1 = await async_disposable_v_collection.vector_find_one(
         vector=[0.1, 0.9],
         filter={"added_field": True},
     )
@@ -293,16 +287,14 @@ async def test_vector_find_one_and_replace(
         "$vector": [0.101, 0.899],
     }
 
-    replace_response1 = (
-        await async_disposable_vector_collection.vector_find_one_and_replace(
-            vector=[0.1, 0.9],
-            replacement=replacement1,
-        )
+    replace_response1 = await async_disposable_v_collection.vector_find_one_and_replace(
+        vector=[0.1, 0.9],
+        replacement=replacement1,
     )
     assert replace_response0 is not None
     assert replace_response0["_id"] == "1"
 
-    document2 = await async_disposable_vector_collection.vector_find_one(
+    document2 = await async_disposable_v_collection.vector_find_one(
         vector=[0.1, 0.9],
         filter={"different_added_field": False},
     )
@@ -314,7 +306,7 @@ async def test_vector_find_one_and_replace(
     assert cast(API_DOC, document2)["different_added_field"] is False
 
     replace_response_no = (
-        await async_disposable_vector_collection.vector_find_one_and_replace(
+        await async_disposable_v_collection.vector_find_one_and_replace(
             vector=[0.1, 0.9],
             filter={"nonexisting": "gotcha"},
             replacement=replacement1,

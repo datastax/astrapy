@@ -28,8 +28,8 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.describe("vector_find and include_similarity parameter")
-def test_vector_find(readonly_vector_collection: AstraDBCollection) -> None:
-    documents_sim_1 = readonly_vector_collection.vector_find(
+def test_vector_find(readonly_v_collection: AstraDBCollection) -> None:
+    documents_sim_1 = readonly_v_collection.vector_find(
         vector=[0.2, 0.6],
         limit=3,
     )
@@ -42,7 +42,7 @@ def test_vector_find(readonly_vector_collection: AstraDBCollection) -> None:
     assert "text" in documents_sim_1[0]
     assert "$similarity" in documents_sim_1[0]
 
-    documents_sim_2 = readonly_vector_collection.vector_find(
+    documents_sim_2 = readonly_v_collection.vector_find(
         vector=[0.2, 0.6],
         limit=3,
         include_similarity=True,
@@ -56,7 +56,7 @@ def test_vector_find(readonly_vector_collection: AstraDBCollection) -> None:
     assert "text" in documents_sim_2[0]
     assert "$similarity" in documents_sim_2[0]
 
-    documents_no_sim = readonly_vector_collection.vector_find(
+    documents_no_sim = readonly_v_collection.vector_find(
         vector=[0.2, 0.6],
         limit=3,
         fields=["_id", "$vector"],
@@ -74,13 +74,13 @@ def test_vector_find(readonly_vector_collection: AstraDBCollection) -> None:
 
 @pytest.mark.describe("should coerce vectors in vector_find")
 def test_vector_find_float32(
-    readonly_vector_collection: AstraDBCollection,
+    readonly_v_collection: AstraDBCollection,
 ) -> None:
     def ite() -> Iterable[str]:
         for v in [0.1, 0.2]:
             yield f"{v}"
 
-    documents_sim_1 = readonly_vector_collection.vector_find(
+    documents_sim_1 = readonly_v_collection.vector_find(
         vector=cast(List[float], ite()),  # we surreptitously trick typing here
         limit=3,
     )
@@ -95,7 +95,7 @@ def test_vector_find_float32(
 
 
 @pytest.mark.describe("vector_find, obey projection")
-def test_vector_find_projection(readonly_vector_collection: AstraDBCollection) -> None:
+def test_vector_find_projection(readonly_v_collection: AstraDBCollection) -> None:
     query = [0.2, 0.6]
 
     req_fieldsets = [
@@ -114,7 +114,7 @@ def test_vector_find_projection(readonly_vector_collection: AstraDBCollection) -
     ]
     for include_similarity in [True, False]:
         for req_fields, exp_fields0 in zip(req_fieldsets, exp_fieldsets):
-            vdocs = readonly_vector_collection.vector_find(
+            vdocs = readonly_v_collection.vector_find(
                 query,
                 limit=1,
                 fields=list(req_fields) if req_fields is not None else req_fields,
@@ -128,8 +128,8 @@ def test_vector_find_projection(readonly_vector_collection: AstraDBCollection) -
 
 
 @pytest.mark.describe("vector_find with filters")
-def test_vector_find_filters(readonly_vector_collection: AstraDBCollection) -> None:
-    documents = readonly_vector_collection.vector_find(
+def test_vector_find_filters(readonly_v_collection: AstraDBCollection) -> None:
+    documents = readonly_v_collection.vector_find(
         vector=[0.2, 0.6],
         filter={"anotherfield": "alpha"},
         limit=3,
@@ -138,7 +138,7 @@ def test_vector_find_filters(readonly_vector_collection: AstraDBCollection) -> N
     assert len(documents) == 2
     assert {doc["otherfield"]["subfield"] for doc in documents} == {"x1y", "x2y"}
 
-    documents_no = readonly_vector_collection.vector_find(
+    documents_no = readonly_v_collection.vector_find(
         vector=[0.2, 0.6],
         filter={"anotherfield": "epsilon"},
         limit=3,
@@ -148,8 +148,8 @@ def test_vector_find_filters(readonly_vector_collection: AstraDBCollection) -> N
 
 
 @pytest.mark.describe("vector_find_one and include_similarity parameter")
-def test_vector_find_one(readonly_vector_collection: AstraDBCollection) -> None:
-    document0 = readonly_vector_collection.vector_find_one(
+def test_vector_find_one(readonly_v_collection: AstraDBCollection) -> None:
+    document0 = readonly_v_collection.vector_find_one(
         [0.2, 0.6],
     )
 
@@ -159,7 +159,7 @@ def test_vector_find_one(readonly_vector_collection: AstraDBCollection) -> None:
     assert "text" in document0
     assert "$similarity" in document0
 
-    document_w_sim = readonly_vector_collection.vector_find_one(
+    document_w_sim = readonly_v_collection.vector_find_one(
         [0.2, 0.6],
         include_similarity=True,
     )
@@ -170,7 +170,7 @@ def test_vector_find_one(readonly_vector_collection: AstraDBCollection) -> None:
     assert "text" in document_w_sim
     assert "$similarity" in document_w_sim
 
-    document_no_sim = readonly_vector_collection.vector_find_one(
+    document_no_sim = readonly_v_collection.vector_find_one(
         [0.2, 0.6],
         include_similarity=False,
     )
@@ -181,7 +181,7 @@ def test_vector_find_one(readonly_vector_collection: AstraDBCollection) -> None:
     assert "text" in document_no_sim
     assert "$similarity" not in document_no_sim
 
-    document_w_fields = readonly_vector_collection.vector_find_one(
+    document_w_fields = readonly_v_collection.vector_find_one(
         [0.2, 0.6], fields=["text"]
     )
 
@@ -191,7 +191,7 @@ def test_vector_find_one(readonly_vector_collection: AstraDBCollection) -> None:
     assert "text" in document_w_fields
     assert "$similarity" in document_w_fields
 
-    document_no = readonly_vector_collection.vector_find_one(
+    document_no = readonly_v_collection.vector_find_one(
         [0.2, 0.6],
         filter={"nonexisting": "gotcha"},
     )
@@ -201,24 +201,24 @@ def test_vector_find_one(readonly_vector_collection: AstraDBCollection) -> None:
 
 @pytest.mark.describe("vector_find_one_and_update")
 def test_vector_find_one_and_update(
-    disposable_vector_collection: AstraDBCollection,
+    disposable_v_collection: AstraDBCollection,
 ) -> None:
     update = {"$set": {"status": "active"}}
 
-    document0 = disposable_vector_collection.vector_find_one(
+    document0 = disposable_v_collection.vector_find_one(
         vector=[0.1, 0.9],
         filter={"status": "active"},
     )
     assert document0 is None
 
-    update_response = disposable_vector_collection.vector_find_one_and_update(
+    update_response = disposable_v_collection.vector_find_one_and_update(
         vector=[0.1, 0.9],
         update=update,
     )
     assert update_response is not None
     assert update_response["_id"] == "1"
 
-    document1 = disposable_vector_collection.vector_find_one(
+    document1 = disposable_v_collection.vector_find_one(
         vector=[0.1, 0.9],
         filter={"status": "active"},
     )
@@ -227,7 +227,7 @@ def test_vector_find_one_and_update(
     assert document1["_id"] == update_response["_id"]
     assert document1["status"] == "active"
 
-    update_response_no = disposable_vector_collection.vector_find_one_and_update(
+    update_response_no = disposable_v_collection.vector_find_one_and_update(
         vector=[0.1, 0.9],
         filter={"nonexisting": "gotcha"},
         update=update,
@@ -237,7 +237,7 @@ def test_vector_find_one_and_update(
 
 @pytest.mark.describe("vector_find_one_and_replace")
 def test_vector_find_one_and_replace(
-    disposable_vector_collection: AstraDBCollection,
+    disposable_v_collection: AstraDBCollection,
 ) -> None:
     replacement0 = {
         "_id": "1",
@@ -246,20 +246,20 @@ def test_vector_find_one_and_replace(
         "$vector": [0.101, 0.899],
     }
 
-    document0 = disposable_vector_collection.vector_find_one(
+    document0 = disposable_v_collection.vector_find_one(
         vector=[0.1, 0.9],
         filter={"added_field": True},
     )
     assert document0 is None
 
-    replace_response0 = disposable_vector_collection.vector_find_one_and_replace(
+    replace_response0 = disposable_v_collection.vector_find_one_and_replace(
         vector=[0.1, 0.9],
         replacement=replacement0,
     )
     assert replace_response0 is not None
     assert replace_response0["_id"] == "1"
 
-    document1 = disposable_vector_collection.vector_find_one(
+    document1 = disposable_v_collection.vector_find_one(
         vector=[0.1, 0.9],
         filter={"added_field": True},
     )
@@ -278,14 +278,14 @@ def test_vector_find_one_and_replace(
         "$vector": [0.101, 0.899],
     }
 
-    replace_response1 = disposable_vector_collection.vector_find_one_and_replace(
+    replace_response1 = disposable_v_collection.vector_find_one_and_replace(
         vector=[0.1, 0.9],
         replacement=replacement1,
     )
     assert replace_response0 is not None
     assert replace_response0["_id"] == "1"
 
-    document2 = disposable_vector_collection.vector_find_one(
+    document2 = disposable_v_collection.vector_find_one(
         vector=[0.1, 0.9],
         filter={"different_added_field": False},
     )
@@ -296,7 +296,7 @@ def test_vector_find_one_and_replace(
     assert "added_field" not in cast(API_DOC, document2)
     assert cast(API_DOC, document2)["different_added_field"] is False
 
-    replace_response_no = disposable_vector_collection.vector_find_one_and_replace(
+    replace_response_no = disposable_v_collection.vector_find_one_and_replace(
         vector=[0.1, 0.9],
         filter={"nonexisting": "gotcha"},
         replacement=replacement1,

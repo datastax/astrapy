@@ -18,6 +18,7 @@ import httpx
 import logging
 import json
 import threading
+from warnings import warn
 
 
 from concurrent.futures import ThreadPoolExecutor
@@ -798,7 +799,11 @@ class AstraDBCollection:
         return self._put(path=path, document=document)
 
     def delete(self, id: str) -> API_RESPONSE:
-        # TODO: Deprecate this method
+        DEPRECATION_MESSAGE = (
+            "Method 'delete' of AstraDBCollection is deprecated. Please "
+            "switch to method 'delete_one'."
+        )
+        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
         return self.delete_one(id)
 
     def delete_one(self, id: str) -> API_RESPONSE:
@@ -840,6 +845,21 @@ class AstraDBCollection:
         )
 
         return response
+
+    def clear(self) -> API_RESPONSE:
+        """
+        Clear the collection, deleting all documents
+        Returns:
+            dict: The response from the database.
+        """
+        clear_response = self.delete_many(filter={})
+
+        if clear_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError(
+                f"Could not issue a clear-collection API command (response: {json.dumps(clear_response)})."
+            )
+
+        return clear_response
 
     def delete_subdocument(self, id: str, subdoc: str) -> API_RESPONSE:
         """
@@ -1688,6 +1708,21 @@ class AsyncAstraDBCollection:
 
         return response
 
+    async def clear(self) -> API_RESPONSE:
+        """
+        Clear the collection, deleting all documents
+        Returns:
+            dict: The response from the database.
+        """
+        clear_response = await self.delete_many(filter={})
+
+        if clear_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError(
+                f"Could not issue a clear-collection API command (response: {json.dumps(clear_response)})."
+            )
+
+        return clear_response
+
     async def delete_subdocument(self, id: str, subdoc: str) -> API_RESPONSE:
         """
         Delete a subdocument or field from a document in the collection.
@@ -1975,39 +2010,33 @@ class AstraDB:
 
     def truncate_collection(self, collection_name: str) -> AstraDBCollection:
         """
-        Truncate a collection in the database.
+        Clear a collection in the database, deleting all stored documents.
         Args:
-            collection_name (str): The name of the collection to truncate.
+            collection_name (str): The name of the collection to clear.
         Returns:
-            dict: The response from the database.
+            collection: an AstraDBCollection instance
         """
-        # Make sure we provide a collection name
-        if not collection_name:
-            raise ValueError("Must provide a collection name")
-
-        # Retrieve the required collections from DB
-        collections = self.get_collections(options={"explain": "true"})
-        matches = [
-            col
-            for col in collections["status"]["collections"]
-            if col["name"] == collection_name
-        ]
-
-        # If we didn't find it, raise an error
-        if matches == []:
-            raise ValueError(f"Collection {collection_name} not found")
-
-        # Otherwise we found it, so get the collection
-        existing_collection = matches[0]
-
-        # We found it, so let's delete it
-        self.delete_collection(collection_name)
-
-        # End the function by returning the the new collection
-        return self.create_collection(
-            collection_name,
-            options=existing_collection.get("options"),
+        DEPRECATION_MESSAGE = (
+            "Method 'truncate_collection' of AstraDB is deprecated. Please "
+            "switch to method 'clear' of the AstraDBCollection object, e.g. "
+            "'astra_db.collection(\"my_collection\").clear()'."
+            " Note the returned object is different."
         )
+        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
+
+        collection = AstraDBCollection(
+            collection_name=collection_name,
+            astra_db=self,
+        )
+        clear_response = collection.clear()
+
+        if clear_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError(
+                f"Could not issue a truncation API command (response: {json.dumps(clear_response)})."
+            )
+
+        # return the collection itself
+        return collection
 
 
 class AsyncAstraDB:
@@ -2219,36 +2248,30 @@ class AsyncAstraDB:
 
     async def truncate_collection(self, collection_name: str) -> AsyncAstraDBCollection:
         """
-        Truncate a collection in the database.
+        Clear a collection in the database, deleting all stored documents.
         Args:
-            collection_name (str): The name of the collection to truncate.
+            collection_name (str): The name of the collection to clear.
         Returns:
-            dict: The response from the database.
+            collection: an AsyncAstraDBCollection instance
         """
-        # Make sure we provide a collection name
-        if not collection_name:
-            raise ValueError("Must provide a collection name")
-
-        # Retrieve the required collections from DB
-        collections = await self.get_collections(options={"explain": "true"})
-        matches = [
-            col
-            for col in collections["status"]["collections"]
-            if col["name"] == collection_name
-        ]
-
-        # If we didn't find it, raise an error
-        if matches == []:
-            raise ValueError(f"Collection {collection_name} not found")
-
-        # Otherwise we found it, so get the collection
-        existing_collection = matches[0]
-
-        # We found it, so let's delete it
-        await self.delete_collection(collection_name)
-
-        # End the function by returning the the new collection
-        return await self.create_collection(
-            collection_name,
-            options=existing_collection.get("options"),
+        DEPRECATION_MESSAGE = (
+            "Method 'truncate_collection' of AsyncAstraDB is deprecated. Please "
+            "switch to method 'clear' of the AsyncAstraDBCollection object, e.g. "
+            "'async_astra_db.collection(\"my_collection\").clear()'"
+            " Note the returned object is different."
         )
+        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
+
+        collection = AsyncAstraDBCollection(
+            collection_name=collection_name,
+            astra_db=self,
+        )
+        clear_response = await collection.clear()
+
+        if clear_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError(
+                f"Could not issue a truncation API command (response: {json.dumps(clear_response)})."
+            )
+
+        # return the collection itself
+        return collection
