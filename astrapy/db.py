@@ -899,7 +899,7 @@ class AstraDBCollection:
         # Build the payload for the insert attempt
         result = self.insert_one(document, failures_allowed=True)
 
-        # If the call failed, then we replace the existing doc
+        # If the call failed because of preexisting doc, then we replace it
         if "errors" in result:
             if (
                 "errorCode" in result["errors"][0]
@@ -1768,7 +1768,7 @@ class AsyncAstraDBCollection:
         # Build the payload for the insert attempt
         result = await self.insert_one(document, failures_allowed=True)
 
-        # If the call failed, then we replace the existing doc
+        # If the call failed because of preexisting doc, then we replace it
         if "errors" in result:
             if (
                 "errorCode" in result["errors"][0]
