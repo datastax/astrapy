@@ -1,5 +1,16 @@
 # CHANGES.txt
 
+## Version 0.7.1
+
+###  What's Changed
+
+* Align sync and async behavior regarding exceptions in chunked_insert_ many by @cbornet in https://github.com/datastax/astrapy/pull/164
+* Align make_request and amake_request by @cbornet in https://github.com/datastax/astrapy/pull/165
+* Adjust tests to the ordered=False API default by @hemidactylus in https://github.com/datastax/astrapy/pull/169
+* Feature/#166 slick truncate by @hemidactylus in https://github.com/datastax/astrapy/pull/172
+* Support for $date, generalized pre- and post-processing, comprehensive management of vector coercion by @hemidactylus in https://github.com/datastax/astrapy/pull/167
+* rework upsert flow to handle all errors from API by @hemidactylus in https://github.com/datastax/astrapy/pull/170
+
 ## Version 0.7.0
 
 ### What's Changed
