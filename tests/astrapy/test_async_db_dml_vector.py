@@ -30,7 +30,6 @@ logger = logging.getLogger(__name__)
 @pytest.mark.describe("vector_find and include_similarity parameter (async)")
 async def test_vector_find(
     async_readonly_v_collection: AsyncAstraDBCollection,
-    readonly_v_collection: AstraDBCollection,
 ) -> None:
     documents_sim_1 = await async_readonly_v_collection.vector_find(
         vector=[0.2, 0.6],
@@ -78,7 +77,6 @@ async def test_vector_find(
 @pytest.mark.describe("vector_find, obey projection (async)")
 async def test_vector_find_projection(
     async_readonly_v_collection: AsyncAstraDBCollection,
-    readonly_v_collection: AstraDBCollection,
 ) -> None:
     query = [0.2, 0.6]
 
@@ -114,7 +112,6 @@ async def test_vector_find_projection(
 @pytest.mark.describe("vector_find with filters (async)")
 async def test_vector_find_filters(
     async_readonly_v_collection: AsyncAstraDBCollection,
-    readonly_v_collection: AstraDBCollection,
 ) -> None:
     documents = await async_readonly_v_collection.vector_find(
         vector=[0.2, 0.6],
@@ -137,7 +134,6 @@ async def test_vector_find_filters(
 @pytest.mark.describe("vector_find_one and include_similarity parameter (async)")
 async def test_vector_find_one(
     async_readonly_v_collection: AsyncAstraDBCollection,
-    readonly_v_collection: AstraDBCollection,
 ) -> None:
     document0 = await async_readonly_v_collection.vector_find_one(
         [0.2, 0.6],
@@ -192,7 +188,6 @@ async def test_vector_find_one(
 @pytest.mark.describe("vector_find_one_and_update (async)")
 async def test_vector_find_one_and_update(
     async_disposable_v_collection: AsyncAstraDBCollection,
-    disposable_v_collection: AstraDBCollection,
 ) -> None:
     update = {"$set": {"status": "active"}}
 
@@ -229,7 +224,6 @@ async def test_vector_find_one_and_update(
 @pytest.mark.describe("vector_find_one_and_replace (async)")
 async def test_vector_find_one_and_replace(
     async_disposable_v_collection: AsyncAstraDBCollection,
-    disposable_v_collection: AstraDBCollection,
 ) -> None:
     replacement0 = {
         "_id": "1",

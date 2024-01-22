@@ -209,10 +209,11 @@ def pagination_v_collection(
 @pytest_asyncio.fixture(scope="function")
 async def async_readonly_v_collection(
     async_db: AsyncAstraDB,
+    readonly_v_collection: AstraDBCollection,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
     """
-    This fixture piggybacks on its sync counterspart:
-    it must not do anything to the collection (test functions depend on both)
+    This fixture piggybacks on its sync counterpart (and depends on it):
+    it must not actually do anything to the collection
     """
     collection = await async_db.collection(TEST_READONLY_VECTOR_COLLECTION)
 
@@ -222,10 +223,11 @@ async def async_readonly_v_collection(
 @pytest_asyncio.fixture(scope="function")
 async def async_writable_v_collection(
     async_db: AsyncAstraDB,
+    writable_v_collection: AstraDBCollection,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
     """
-    This fixture piggybacks on its sync counterspart:
-    it must not do anything to the collection (test functions depend on both)
+    This fixture piggybacks on its sync counterpart (and depends on it):
+    it must not actually do anything to the collection
     """
     collection = await async_db.collection(TEST_WRITABLE_VECTOR_COLLECTION)
 
@@ -235,12 +237,13 @@ async def async_writable_v_collection(
 @pytest_asyncio.fixture(scope="function")
 async def async_empty_v_collection(
     async_writable_v_collection: AsyncAstraDBCollection,
+    empty_v_collection: AstraDBCollection,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
     """
     available empty to each test function.
 
-    This fixture piggybacks on its sync counterspart:
-    it must not do anything to the collection (test functions depend on both)
+    This fixture piggybacks on its sync counterpart (and depends on it):
+    it must not actually do anything to the collection
     """
     yield async_writable_v_collection
 
@@ -248,12 +251,13 @@ async def async_empty_v_collection(
 @pytest_asyncio.fixture(scope="function")
 async def async_disposable_v_collection(
     async_writable_v_collection: AsyncAstraDBCollection,
+    disposable_v_collection: AstraDBCollection,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
     """
     available prepopulated to each test function.
 
-    This fixture piggybacks on its sync counterspart:
-    it must not do anything to the collection (test functions depend on both)
+    This fixture piggybacks on its sync counterpart (and depends on it):
+    it must not actually do anything to the collection
     """
     yield async_writable_v_collection
 
@@ -261,10 +265,11 @@ async def async_disposable_v_collection(
 @pytest_asyncio.fixture(scope="function")
 async def async_writable_nonv_collection(
     async_db: AsyncAstraDB,
+    writable_nonv_collection: AstraDBCollection,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
     """
-    This fixture piggybacks on its sync counterspart:
-    it must not do anything to the collection (test functions depend on both)
+    This fixture piggybacks on its sync counterpart (and depends on it):
+    it must not actually do anything to the collection
     """
     collection = await async_db.collection(TEST_WRITABLE_NONVECTOR_COLLECTION)
 
@@ -274,12 +279,13 @@ async def async_writable_nonv_collection(
 @pytest_asyncio.fixture(scope="function")
 async def async_empty_nonv_collection(
     async_writable_nonv_collection: AsyncAstraDBCollection,
+    empty_nonv_collection: AstraDBCollection,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
     """
     available empty to each test function.
 
-    This fixture piggybacks on its sync counterspart:
-    it must not do anything to the collection (test functions depend on both)
+    This fixture piggybacks on its sync counterpart (and depends on it):
+    it must not actually do anything to the collection
     """
     yield async_writable_nonv_collection
 
@@ -287,9 +293,10 @@ async def async_empty_nonv_collection(
 @pytest_asyncio.fixture(scope="function")
 async def async_pagination_v_collection(
     async_empty_v_collection: AsyncAstraDBCollection,
+    pagination_v_collection: AstraDBCollection,
 ) -> AsyncIterable[AsyncAstraDBCollection]:
     """
-    This fixture piggybacks on its sync counterspart:
-    it must not do anything to the collection (test functions depend on both)
+    This fixture piggybacks on its sync counterpart (and depends on it):
+    it must not actually do anything to the collection
     """
     yield async_empty_v_collection

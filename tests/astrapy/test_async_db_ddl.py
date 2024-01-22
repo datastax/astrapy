@@ -123,7 +123,6 @@ async def test_create_use_destroy_vector_collection(async_db: AsyncAstraDB) -> N
 async def test_get_collections(
     async_db: AsyncAstraDB,
     async_readonly_v_collection: AsyncAstraDBCollection,
-    readonly_v_collection: AstraDBCollection,
 ) -> None:
     res = await async_db.get_collections()
     assert res["status"]["collections"] is not None

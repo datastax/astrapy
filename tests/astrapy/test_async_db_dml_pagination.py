@@ -42,7 +42,6 @@ PREFETCHED = 42  # Keep this > 20 and <= FIND_LIMIT to actually trigger prefetch
 async def test_find_paginated(
     prefetched: Optional[int],
     async_pagination_v_collection: AsyncAstraDBCollection,
-    pagination_v_collection: AstraDBCollection,
 ) -> None:
     options = {"limit": FIND_LIMIT}
     projection = {"$vector": 0}
