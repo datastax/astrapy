@@ -2030,7 +2030,7 @@ class AstraDB:
             collection_name=collection_name,
             astra_db=self,
         )
-        clear_response = collection.delete_many(filter={})
+        clear_response = collection.clear()
 
         if clear_response.get("status", {}).get("deletedCount") != -1:
             raise ValueError(
@@ -2268,7 +2268,7 @@ class AsyncAstraDB:
             collection_name=collection_name,
             astra_db=self,
         )
-        clear_response = await collection.delete_many(filter={})
+        clear_response = await collection.clear()
 
         if clear_response.get("status", {}).get("deletedCount") != -1:
             raise ValueError(
