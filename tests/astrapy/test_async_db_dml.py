@@ -18,8 +18,9 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 """
 
 import uuid
+import datetime
 import logging
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import cast, Any, Dict, Iterable, List, Literal, Optional, Union
 
 import pytest
 
@@ -188,6 +189,22 @@ async def test_find_find_one_projection(
         assert fields == exp_fields
 
 
+@pytest.mark.describe("should coerce vectors in the find sort argument (async)")
+async def test_find_float32(
+    async_readonly_v_collection: AsyncAstraDBCollection,
+) -> None:
+    def ite() -> Iterable[str]:
+        for v in [0.1, 0.2]:
+            yield f"{v}"
+
+    # we surreptitously trick typing here
+    sort = {"$vector": cast(List[float], ite())}
+    options = {"limit": 5}
+
+    response = await async_readonly_v_collection.find(sort=sort, options=options)
+    assert isinstance(response["data"]["documents"], list)
+
+
 @pytest.mark.describe("find through vector (async)")
 async def test_find(
     async_readonly_v_collection: AsyncAstraDBCollection,
@@ -204,7 +221,7 @@ async def test_find_error(
     async_readonly_v_collection: AsyncAstraDBCollection,
 ) -> None:
     """Wrong type of arguments should raise an API error (ValueError)."""
-    sort = {"$vector": "clearly not a list of floats!"}
+    sort = {"$vector": [0, "clearly not a list of floats!"]}
     options = {"limit": 100}
 
     with pytest.raises(APIRequestError):
@@ -314,6 +331,23 @@ async def test_create_document(
             {"_id": result_n_n["status"]["insertedIds"][0]}
         )
     )["data"]["document"]["a"] == 5
+
+
+@pytest.mark.describe("should coerce vectors to plain lists of floats (async)")
+async def test_insert_float32(
+    async_writable_v_collection: AsyncAstraDBCollection, N: int = 2
+) -> None:
+    _id0 = str(uuid.uuid4())
+    document = {
+        "_id": _id0,
+        "name": "Coerce",
+        "$vector": [f"{(i+1)/N+2:.4f}" for i in range(N)],
+    }
+    response = await async_writable_v_collection.insert_one(document)
+    assert response is not None
+    inserted_ids = response["status"]["insertedIds"]
+    assert len(inserted_ids) == 1
+    assert inserted_ids[0] == _id0
 
 
 @pytest.mark.describe("insert_many (async)")
@@ -1025,3 +1059,81 @@ async def test_pop_push_novector(
     response2 = await async_empty_v_collection.find_one(filter={"_id": user_id})
     assert response2 is not None
     assert response2["data"]["document"]["roles"] == ["user", "auditor"]
+
+
+@pytest.mark.describe("store and retrieve dates and datetimes correctly (async)")
+async def test_insert_find_with_dates(
+    async_writable_v_collection: AsyncAstraDBCollection,
+) -> None:
+    date0 = datetime.date(2024, 1, 12)
+    datetime0 = datetime.datetime(2024, 1, 12, 0, 0)
+    date1 = datetime.date(2024, 1, 13)
+    datetime1 = datetime.datetime(2024, 1, 13, 0, 0)
+
+    d_doc_id = str(uuid.uuid4())
+    d_document = {
+        "_id": d_doc_id,
+        "my_date": date0,
+        "my_datetime": datetime0,
+        "nested": {
+            "n_date": date1,
+            "n_datetime": datetime1,
+        },
+        "nested_list": {
+            "the_list": [
+                date0,
+                datetime0,
+                date1,
+                datetime1,
+            ]
+        },
+    }
+    expected_d_document = {
+        "_id": d_doc_id,
+        "my_date": datetime0,
+        "my_datetime": datetime0,
+        "nested": {
+            "n_date": datetime1,
+            "n_datetime": datetime1,
+        },
+        "nested_list": {
+            "the_list": [
+                datetime0,
+                datetime0,
+                datetime1,
+                datetime1,
+            ]
+        },
+    }
+
+    await async_writable_v_collection.insert_one(d_document)
+
+    # retrieve it, simple
+    response0 = await async_writable_v_collection.find_one(filter={"_id": d_doc_id})
+    assert response0 is not None
+    document0 = response0["data"]["document"]
+    assert document0 == expected_d_document
+
+    # retrieve it, lt condition on a date
+    response1 = await async_writable_v_collection.find_one(
+        filter={"nested_list.the_list.0": {"$lt": date1}}
+    )
+    assert response1 is not None
+    document1 = response1["data"]["document"]
+    assert document1 == expected_d_document
+
+    # retrieve it, gte condition on a datetime
+    response2 = await async_writable_v_collection.find_one(
+        filter={"nested.n_date": {"$gte": datetime0}}
+    )
+    assert response2 is not None
+    document2 = response2["data"]["document"]
+    assert document2 == expected_d_document
+
+    # retrieve it, filter == condition on a datetime
+    response3 = await async_writable_v_collection.find_one(
+        filter={"my_date": datetime0}
+    )
+    assert response3 is not None
+    document3 = response3["data"]["document"]
+    assert document3 == expected_d_document

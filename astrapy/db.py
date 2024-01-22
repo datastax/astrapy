@@ -53,7 +53,8 @@ from astrapy.utils import (
     make_request,
     http_methods,
     amake_request,
-    preprocess_insert,
+    normalize_for_api,
+    restore_from_api,
 )
 from astrapy.types import (
     API_DOC,
@@ -120,13 +121,14 @@ class AstraDBCollection:
             token=self.astra_db.token,
             method=method,
             path=path,
-            json_data=json_data,
+            json_data=normalize_for_api(json_data),
             url_params=url_params,
             skip_error_check=skip_error_check,
             **kwargs,
         )
 
-        response = request_handler.request()
+        direct_response = request_handler.request()
+        response = restore_from_api(direct_response)
 
         return response
 
@@ -159,9 +161,14 @@ class AstraDBCollection:
         )
         return response
 
-    def _pre_process_find(
+    def _recast_as_sort_projection(
         self, vector: List[float], fields: Optional[List[str]] = None
     ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+        """
+        Given a vector and optionally a list of fields,
+        reformulate them as a sort, projection pair for regular
+        'find'-like API calls (with basic validation as well).
+        """
         # Must pass a vector
         if not vector:
             raise ValueError("Must pass a vector")
@@ -249,7 +256,7 @@ class AstraDBCollection:
             raise ValueError("Must pass a limit")
 
         # Pre-process the included arguments
-        sort, projection = self._pre_process_find(
+        sort, projection = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -428,8 +435,6 @@ class AstraDBCollection:
         Returns:
             dict: The result of the find and replace operation.
         """
-        replacement = preprocess_insert(replacement)
-
         json_query = make_payload(
             top_level="findOneAndReplace",
             filter=filter,
@@ -462,10 +467,8 @@ class AstraDBCollection:
         Returns:
             dict or None: either the matched document or None if nothing found
         """
-        replacement = preprocess_insert(replacement)
-
         # Pre-process the included arguments
-        sort, _ = self._pre_process_find(
+        sort, _ = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -496,8 +499,6 @@ class AstraDBCollection:
         Returns:
             dict: The result of the find and update operation.
         """
-        update = preprocess_insert(update)
-
         json_query = make_payload(
             top_level="findOneAndUpdate",
             filter=filter,
@@ -533,10 +534,8 @@ class AstraDBCollection:
             dict or None: The result of the vector-based find and
                 update operation, or None if nothing found
         """
-        update = preprocess_insert(update)
-
         # Pre-process the included arguments
-        sort, _ = self._pre_process_find(
+        sort, _ = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -629,7 +628,7 @@ class AstraDBCollection:
             dict or None: The found document or None if no matching document is found.
         """
         # Pre-process the included arguments
-        sort, projection = self._pre_process_find(
+        sort, projection = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -655,8 +654,6 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the insert operation.
         """
-        document = preprocess_insert(document)
-
         json_query = make_payload(top_level="insertOne", document=document)
 
         response = self._request(
@@ -684,10 +681,6 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the insert operation.
         """
-        # Check if the vector is a list of floats
-        for i, document in enumerate(documents):
-            documents[i] = preprocess_insert(document)
-
         json_query = make_payload(
             top_level="insertMany", documents=documents, options=options
         )
@@ -903,7 +896,6 @@ class AstraDBCollection:
             str: The _id of the inserted or updated document.
         """
         # Build the payload for the insert attempt
-        document = preprocess_insert(document)
         result = self.insert_one(document, failures_allowed=True)
 
         # If the call failed, then we replace the existing doc
@@ -1024,12 +1016,13 @@ class AsyncAstraDBCollection:
             token=self.astra_db.token,
             method=method,
             path=path,
-            json_data=json_data,
+            json_data=normalize_for_api(json_data),
             url_params=url_params,
             skip_error_check=skip_error_check,
         )
 
-        response = await arequest_handler.request()
+        direct_response = await arequest_handler.request()
+        response = restore_from_api(direct_response)
 
         return response
 
@@ -1062,9 +1055,14 @@ class AsyncAstraDBCollection:
         )
         return response
 
-    def _pre_process_find(
+    def _recast_as_sort_projection(
         self, vector: List[float], fields: Optional[List[str]] = None
     ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+        """
+        Given a vector and optionally a list of fields,
+        reformulate them as a sort, projection pair for regular
+        'find'-like API calls (with basic validation as well).
+        """
         # Must pass a vector
         if not vector:
             raise ValueError("Must pass a vector")
@@ -1152,7 +1150,7 @@ class AsyncAstraDBCollection:
             raise ValueError("Must pass a limit")
 
         # Pre-process the included arguments
-        sort, projection = self._pre_process_find(
+        sort, projection = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )
@@ -1311,7 +1309,7 @@ class AsyncAstraDBCollection:
 
     async def find_one_and_replace(
         self,
-        replacement: Optional[Dict[str, Any]] = None,
+        replacement: Dict[str, Any],
         *,
         sort: Optional[Dict[str, Any]] = {},
         filter: Optional[Dict[str, Any]] = None,
@@ -1360,7 +1358,7 @@ class AsyncAstraDBCollection:
             dict or None: either the matched document or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._pre_process_find(
+        sort, _ = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )
@@ -1376,8 +1374,8 @@ class AsyncAstraDBCollection:
 
     async def find_one_and_update(
         self,
+        update: Dict[str, Any],
         sort: Optional[Dict[str, Any]] = {},
-        update: Optional[Dict[str, Any]] = None,
         filter: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
@@ -1385,7 +1383,7 @@ class AsyncAstraDBCollection:
         Find a single document and update it.
         Args:
             sort (dict, optional): Specifies the order in which to find the document.
-            update (dict, optional): The update to apply to the document.
+            update (dict): The update to apply to the document.
             filter (dict, optional): Criteria to filter documents.
             options (dict, optional): Additional options for the operation.
         Returns:
@@ -1427,7 +1425,7 @@ class AsyncAstraDBCollection:
                 update operation, or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._pre_process_find(
+        sort, _ = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )
@@ -1520,7 +1518,7 @@ class AsyncAstraDBCollection:
             dict or None: The found document or None if no matching document is found.
         """
         # Pre-process the included arguments
-        sort, projection = self._pre_process_find(
+        sort, projection = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )

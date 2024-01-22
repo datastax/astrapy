@@ -1,11 +1,14 @@
 from __future__ import annotations
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, cast, Dict, Iterable, List, Optional, Union
+import time
+import datetime
 import logging
 
 import httpx
 
 from astrapy import __version__
 from astrapy.defaults import DEFAULT_TIMEOUT
+from astrapy.types import API_RESPONSE
 
 
 class CustomLogger(logging.Logger):
@@ -179,23 +182,96 @@ def convert_vector_to_floats(vector: Iterable[Any]) -> List[float]:
     return [float(value) for value in vector]
 
 
-def preprocess_insert(document: Dict[str, Any]) -> Dict[str, Any]:
+def is_list_of_floats(vector: Iterable[Any]) -> bool:
     """
-    Perform preprocessing operations before an insertion
+    Safely determine if it's a list of floats.
+    Assumption: if list, and first item is float, then all items are.
+    """
+    return isinstance(vector, list) and (
+        len(vector) == 0 or isinstance(vector[0], float) or isinstance(vector[0], int)
+    )
+
+
+def convert_to_ejson_date_object(
+    date_value: Union[datetime.date, datetime.datetime]
+) -> Dict[str, int]:
+    return {"$date": int(time.mktime(date_value.timetuple()) * 1000)}
+
+
+def convert_ejson_date_object_to_datetime(
+    date_object: Dict[str, int]
+) -> datetime.datetime:
+    return datetime.datetime.fromtimestamp(date_object["$date"] / 1000.0)
+
+
+def _normalize_payload_value(path: List[str], value: Any) -> Any:
+    """
+    The path helps determining special treatments
+    """
+    _l2 = ".".join(path[-2:])
+    _l1 = ".".join(path[-1:])
+    if _l1 == "$vector" and _l2 != "projection.$vector":
+        if not is_list_of_floats(value):
+            return convert_vector_to_floats(value)
+        else:
+            return value
+    else:
+        if isinstance(value, dict):
+            return {
+                k: _normalize_payload_value(path + [k], v) for k, v in value.items()
+            }
+        elif isinstance(value, list):
+            return [
+                _normalize_payload_value(path + [""], list_item) for list_item in value
+            ]
+        else:
+            if isinstance(value, datetime.datetime) or isinstance(value, datetime.date):
+                return convert_to_ejson_date_object(value)
+            else:
+                return value
+
+
+def normalize_for_api(
+    payload: Union[Dict[str, Any], None]
+) -> Union[Dict[str, Any], None]:
+    """
+    Normalize a payload for API calls.
+    This includes e.g. ensuring values for "$vector" key
+    are made into plain lists of floats.
 
     Args:
-        vector (list): A vector of objects.
+        payload (Dict[str, Any]): A dict expressing a payload for an API call
 
     Returns:
-        list: A vector of objects
+        Dict[str, Any]: a "normalized" payload dict
     """
 
-    # Process each field of the cocument
-    for key, value in document.items():
-        # Vector coercision
-        if key == "$vector" and not isinstance(document["$vector"][0], float):
-            document[key] = convert_vector_to_floats(value)
+    if payload:
+        return cast(Dict[str, Any], _normalize_payload_value([], payload))
+    else:
+        return payload
 
-        # TODO: More pre-processing operations
 
-    return document
+def _restore_response_value(path: List[str], value: Any) -> Any:
+    """
+    The path helps determining special treatments
+    """
+    if isinstance(value, dict):
+        if len(value) == 1 and "$date" in value:
+            # this is `{"$date": 123456}`, restore to datetime.datetime
+            return convert_ejson_date_object_to_datetime(value)
+        else:
+            return {k: _restore_response_value(path + [k], v) for k, v in value.items()}
+    elif isinstance(value, list):
+        return [_restore_response_value(path + [""], list_item) for list_item in value]
+    else:
+        return value
+
+
+def restore_from_api(response: API_RESPONSE) -> API_RESPONSE:
+    """
+    Process a dictionary just returned from the API.
+    This is the place where e.g. `{"$date": 123}` is
+    converted back into a datetime object.
+    """
+    return cast(API_RESPONSE, _restore_response_value([], response))

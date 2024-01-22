@@ -18,10 +18,11 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 """
 
 import uuid
+import datetime
 import logging
 import json
 import httpx
-from typing import Dict, List, Literal, Optional, Set
+from typing import cast, Dict, Iterable, List, Literal, Optional, Set
 
 import pytest
 
@@ -173,6 +174,22 @@ def test_find_find_one_projection(
         assert fields == exp_fields
 
 
+@pytest.mark.describe("should coerce vectors in the find sort argument")
+def test_find_float32(
+    readonly_v_collection: AstraDBCollection,
+) -> None:
+    def ite() -> Iterable[str]:
+        for v in [0.1, 0.2]:
+            yield f"{v}"
+
+    # we surreptitously trick typing here
+    sort = {"$vector": cast(List[float], ite())}
+    options = {"limit": 5}
+
+    response = readonly_v_collection.find(sort=sort, options=options)
+    assert isinstance(response["data"]["documents"], list)
+
+
 @pytest.mark.describe("find through vector")
 def test_find(readonly_v_collection: AstraDBCollection) -> None:
     sort = {"$vector": [0.2, 0.6]}
@@ -185,7 +202,7 @@ def test_find(readonly_v_collection: AstraDBCollection) -> None:
 @pytest.mark.describe("proper error raising in find")
 def test_find_error(readonly_v_collection: AstraDBCollection) -> None:
     """Wrong type of arguments should raise an API error (ValueError)."""
-    sort = {"$vector": "clearly not a list of floats!"}
+    sort = {"$vector": [0, "clearly not a list of floats!"]}
     options = {"limit": 100}
 
     with pytest.raises(APIRequestError):
@@ -1198,3 +1215,79 @@ def test_find_find_one_non_equality_operators(
         projection=projection,
     )
     assert resp8["data"]["documents"][0]["marker"] == "abc"
+
+
+@pytest.mark.describe("store and retrieve dates and datetimes correctly")
+def test_insert_find_with_dates(
+    writable_v_collection: AstraDBCollection,
+) -> None:
+    date0 = datetime.date(2024, 1, 12)
+    datetime0 = datetime.datetime(2024, 1, 12, 0, 0)
+    date1 = datetime.date(2024, 1, 13)
+    datetime1 = datetime.datetime(2024, 1, 13, 0, 0)
+
+    d_doc_id = str(uuid.uuid4())
+    d_document = {
+        "_id": d_doc_id,
+        "my_date": date0,
+        "my_datetime": datetime0,
+        "nested": {
+            "n_date": date1,
+            "n_datetime": datetime1,
+        },
+        "nested_list": {
+            "the_list": [
+                date0,
+                datetime0,
+                date1,
+                datetime1,
+            ]
+        },
+    }
+    expected_d_document = {
+        "_id": d_doc_id,
+        "my_date": datetime0,
+        "my_datetime": datetime0,
+        "nested": {
+            "n_date": datetime1,
+            "n_datetime": datetime1,
+        },
+        "nested_list": {
+            "the_list": [
+                datetime0,
+                datetime0,
+                datetime1,
+                datetime1,
+            ]
+        },
+    }
+
+    writable_v_collection.insert_one(d_document)
+
+    # retrieve it, simple
+    response0 = writable_v_collection.find_one(filter={"_id": d_doc_id})
+    assert response0 is not None
+    document0 = response0["data"]["document"]
+    assert document0 == expected_d_document
+
+    # retrieve it, lt condition on a date
+    response1 = writable_v_collection.find_one(
+        filter={"nested_list.the_list.0": {"$lt": date1}}
+    )
+    assert response1 is not None
+    document1 = response1["data"]["document"]
+    assert document1 == expected_d_document
+
+    # retrieve it, gte condition on a datetime
+    response2 = writable_v_collection.find_one(
+        filter={"nested.n_date": {"$gte": datetime0}}
+    )
+    assert response2 is not None
+    document2 = response2["data"]["document"]
+    assert document2 == expected_d_document
+
+    # retrieve it, filter == condition on a datetime
+    response3 = writable_v_collection.find_one(filter={"my_date": datetime0})
+    assert response3 is not None
+    document3 = response3["data"]["document"]
+    assert document3 == expected_d_document
