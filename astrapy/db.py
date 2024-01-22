@@ -18,6 +18,7 @@ import httpx
 import logging
 import json
 import threading
+from warnings import warn
 
 
 from concurrent.futures import ThreadPoolExecutor
@@ -805,7 +806,11 @@ class AstraDBCollection:
         return self._put(path=path, document=document)
 
     def delete(self, id: str) -> API_RESPONSE:
-        # TODO: Deprecate this method
+        DEPRECATION_MESSAGE = (
+            "Method 'delete' of AstraDBCollection is deprecated. Please "
+            "switch to method 'delete_one'."
+        )
+        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
         return self.delete_one(id)
 
     def delete_one(self, id: str) -> API_RESPONSE:
@@ -850,7 +855,7 @@ class AstraDBCollection:
 
     def clear(self) -> API_RESPONSE:
         """
-        Truncate the collection, deleting all documents
+        Clear the collection, deleting all documents
         Returns:
             dict: The response from the database.
         """
@@ -858,18 +863,10 @@ class AstraDBCollection:
 
         if clear_response.get("status", {}).get("deletedCount") != -1:
             raise ValueError(
-                f"Could not issue a truncation API command (response: {json.dumps(clear_response)})."
+                f"Could not issue a clear-collection API command (response: {json.dumps(clear_response)})."
             )
 
         return clear_response
-
-    def truncate(self) -> API_RESPONSE:
-        """
-        Truncate the collection, deleting all documents
-        Returns:
-            dict: The response from the database.
-        """
-        return self.clear()
 
     def delete_subdocument(self, id: str, subdoc: str) -> API_RESPONSE:
         """
@@ -1715,7 +1712,7 @@ class AsyncAstraDBCollection:
 
     async def clear(self) -> API_RESPONSE:
         """
-        Truncate the collection, deleting all documents
+        Clear the collection, deleting all documents
         Returns:
             dict: The response from the database.
         """
@@ -1723,18 +1720,10 @@ class AsyncAstraDBCollection:
 
         if clear_response.get("status", {}).get("deletedCount") != -1:
             raise ValueError(
-                f"Could not issue a truncation API command (response: {json.dumps(clear_response)})."
+                f"Could not issue a clear-collection API command (response: {json.dumps(clear_response)})."
             )
 
         return clear_response
-
-    async def truncate(self) -> API_RESPONSE:
-        """
-        Truncate the collection, deleting all documents
-        Returns:
-            dict: The response from the database.
-        """
-        return await self.clear()
 
     async def delete_subdocument(self, id: str, subdoc: str) -> API_RESPONSE:
         """
@@ -2021,15 +2010,22 @@ class AstraDB:
 
         return response
 
-    def clear_collection(self, collection_name: str) -> AstraDBCollection:
+    def truncate_collection(self, collection_name: str) -> AstraDBCollection:
         """
-        Truncate a collection in the database, deleting all stored documents.
+        Clear a collection in the database, deleting all stored documents.
         Args:
-            collection_name (str): The name of the collection to truncate.
+            collection_name (str): The name of the collection to clear.
         Returns:
             collection: an AstraDBCollection instance
         """
-        # truncate
+        DEPRECATION_MESSAGE = (
+            "Method 'truncate_collection' of AstraDB is deprecated. Please "
+            "switch to method 'clear' of the AstraDBCollection object, e.g. "
+            "'astra_db.collection(\"my_collection\").clear()'."
+            " Note the returned object is different."
+        )
+        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
+
         collection = AstraDBCollection(
             collection_name=collection_name,
             astra_db=self,
@@ -2043,16 +2039,6 @@ class AstraDB:
 
         # return the collection itself
         return collection
-
-    def truncate_collection(self, collection_name: str) -> AstraDBCollection:
-        """
-        Truncate a collection in the database, deleting all stored documents.
-        Args:
-            collection_name (str): The name of the collection to truncate.
-        Returns:
-            collection: an AstraDBCollection instance
-        """
-        return self.clear_collection(collection_name)
 
 
 class AsyncAstraDB:
@@ -2262,14 +2248,22 @@ class AsyncAstraDB:
 
         return response
 
-    async def clear_collection(self, collection_name: str) -> AsyncAstraDBCollection:
+    async def truncate_collection(self, collection_name: str) -> AsyncAstraDBCollection:
         """
-        Truncate a collection in the database, deleting all stored documents.
+        Clear a collection in the database, deleting all stored documents.
         Args:
-            collection_name (str): The name of the collection to truncate.
+            collection_name (str): The name of the collection to clear.
         Returns:
             collection: an AsyncAstraDBCollection instance
         """
+        DEPRECATION_MESSAGE = (
+            "Method 'truncate_collection' of AsyncAstraDB is deprecated. Please "
+            "switch to method 'clear' of the AsyncAstraDBCollection object, e.g. "
+            "'async_astra_db.collection(\"my_collection\").clear()'"
+            " Note the returned object is different."
+        )
+        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
+
         collection = AsyncAstraDBCollection(
             collection_name=collection_name,
             astra_db=self,
@@ -2283,13 +2277,3 @@ class AsyncAstraDB:
 
         # return the collection itself
         return collection
-
-    async def truncate_collection(self, collection_name: str) -> AsyncAstraDBCollection:
-        """
-        Truncate a collection in the database, deleting all stored documents.
-        Args:
-            collection_name (str): The name of the collection to truncate.
-        Returns:
-            collection: an AsyncAstraDBCollection instance
-        """
-        return await self.clear_collection(collection_name)

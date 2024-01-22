@@ -33,10 +33,10 @@ from astrapy.db import AstraDB, AstraDBCollection
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.describe("should fail truncating a non-existent collection")
-def test_truncate_collection_fail(db: AstraDB) -> None:
+@pytest.mark.describe("should fail clearing a non-existent collection")
+def test_clear_collection_fail(db: AstraDB) -> None:
     with pytest.raises(APIRequestError):
-        db.truncate_collection("this$does%not exist!!!")
+        db.collection("this$does%not exist!!!").clear()
 
 
 @pytest.mark.describe("should truncate a nonvector collection through AstraDB")
@@ -45,7 +45,8 @@ def test_truncate_nonvector_collection_through_astradb(
 ) -> None:
     empty_nonv_collection.insert_one({"a": 1})
     assert len(empty_nonv_collection.find()["data"]["documents"]) == 1
-    tr_response_col = db.truncate_collection(empty_nonv_collection.collection_name)
+    with pytest.warns(DeprecationWarning):
+        tr_response_col = db.truncate_collection(empty_nonv_collection.collection_name)
     assert len(empty_nonv_collection.find()["data"]["documents"]) == 0
     assert isinstance(tr_response_col, AstraDBCollection)
     assert tr_response_col.collection_name == empty_nonv_collection.collection_name
@@ -57,28 +58,29 @@ def test_truncate_vector_collection_through_astradb(
 ) -> None:
     empty_v_collection.insert_one({"a": 1, "$vector": [0.1, 0.2]})
     assert len(empty_v_collection.find()["data"]["documents"]) == 1
-    tr_response_col = db.truncate_collection(empty_v_collection.collection_name)
+    with pytest.warns(DeprecationWarning):
+        tr_response_col = db.truncate_collection(empty_v_collection.collection_name)
     assert len(empty_v_collection.find()["data"]["documents"]) == 0
     assert isinstance(tr_response_col, AstraDBCollection)
     assert tr_response_col.collection_name == empty_v_collection.collection_name
 
 
-@pytest.mark.describe("should truncate a nonvector collection")
-def test_truncate_nonvector_collection(
+@pytest.mark.describe("should clear a nonvector collection")
+def test_clear_nonvector_collection(
     empty_nonv_collection: AstraDBCollection,
 ) -> None:
     empty_nonv_collection.insert_one({"a": 1})
     assert len(empty_nonv_collection.find()["data"]["documents"]) == 1
-    tr_response = empty_nonv_collection.truncate()
+    tr_response = empty_nonv_collection.clear()
     assert len(empty_nonv_collection.find()["data"]["documents"]) == 0
     assert tr_response["status"]["deletedCount"] == -1
 
 
-@pytest.mark.describe("should truncate a collection")
-def test_truncate_vector_collection(empty_v_collection: AstraDBCollection) -> None:
+@pytest.mark.describe("should clear a collection")
+def test_clear_vector_collection(empty_v_collection: AstraDBCollection) -> None:
     empty_v_collection.insert_one({"a": 1, "$vector": [0.1, 0.2]})
     assert len(empty_v_collection.find()["data"]["documents"]) == 1
-    tr_response = empty_v_collection.truncate()
+    tr_response = empty_v_collection.clear()
     assert len(empty_v_collection.find()["data"]["documents"]) == 0
     assert tr_response["status"]["deletedCount"] == -1
 

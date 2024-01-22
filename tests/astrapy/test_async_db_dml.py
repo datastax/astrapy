@@ -31,10 +31,10 @@ from astrapy.db import AsyncAstraDB, AsyncAstraDBCollection
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.describe("should fail truncating a non-existent collection (async)")
-async def test_truncate_collection_fail(async_db: AsyncAstraDB) -> None:
+@pytest.mark.describe("should fail clearing a non-existent collection (async)")
+async def test_clear_collection_fail(async_db: AsyncAstraDB) -> None:
     with pytest.raises(APIRequestError):
-        await async_db.truncate_collection("this$does%not exist!!!")
+        await (await async_db.collection("this$does%not exist!!!")).clear()
 
 
 @pytest.mark.describe("should truncate a nonvector collection through AstraDB (async)")
@@ -44,9 +44,10 @@ async def test_truncate_nonvector_collection_through_astradb(
 ) -> None:
     await async_empty_nonv_collection.insert_one({"a": 1})
     assert len((await async_empty_nonv_collection.find())["data"]["documents"]) == 1
-    tr_response_col = await async_db.truncate_collection(
-        async_empty_nonv_collection.collection_name
-    )
+    with pytest.warns(DeprecationWarning):
+        tr_response_col = await async_db.truncate_collection(
+            async_empty_nonv_collection.collection_name
+        )
     assert len((await async_empty_nonv_collection.find())["data"]["documents"]) == 0
     assert isinstance(tr_response_col, AsyncAstraDBCollection)
     assert (
@@ -61,32 +62,33 @@ async def test_truncate_vector_collection_through_astradb(
 ) -> None:
     await async_empty_v_collection.insert_one({"a": 1, "$vector": [0.1, 0.2]})
     assert len((await async_empty_v_collection.find())["data"]["documents"]) == 1
-    tr_response_col = await async_db.truncate_collection(
-        async_empty_v_collection.collection_name
-    )
+    with pytest.warns(DeprecationWarning):
+        tr_response_col = await async_db.truncate_collection(
+            async_empty_v_collection.collection_name
+        )
     assert len((await async_empty_v_collection.find())["data"]["documents"]) == 0
     assert isinstance(tr_response_col, AsyncAstraDBCollection)
     assert tr_response_col.collection_name == async_empty_v_collection.collection_name
 
 
-@pytest.mark.describe("should truncate a nonvector collection (async)")
-async def test_truncate_nonvector_collection(
+@pytest.mark.describe("should clear a nonvector collection (async)")
+async def test_clear_nonvector_collection(
     async_empty_nonv_collection: AsyncAstraDBCollection,
 ) -> None:
     await async_empty_nonv_collection.insert_one({"a": 1})
     assert len((await async_empty_nonv_collection.find())["data"]["documents"]) == 1
-    tr_response = await async_empty_nonv_collection.truncate()
+    tr_response = await async_empty_nonv_collection.clear()
     assert len((await async_empty_nonv_collection.find())["data"]["documents"]) == 0
     assert tr_response["status"]["deletedCount"] == -1
 
 
-@pytest.mark.describe("should truncate a collection (async)")
-async def test_truncate_vector_collection(
+@pytest.mark.describe("should clear a collection (async)")
+async def test_clear_vector_collection(
     async_empty_v_collection: AsyncAstraDBCollection,
 ) -> None:
     await async_empty_v_collection.insert_one({"a": 1, "$vector": [0.1, 0.2]})
     assert len((await async_empty_v_collection.find())["data"]["documents"]) == 1
-    tr_response = await async_empty_v_collection.truncate()
+    tr_response = await async_empty_v_collection.clear()
     assert len((await async_empty_v_collection.find())["data"]["documents"]) == 0
     assert tr_response["status"]["deletedCount"] == -1
 

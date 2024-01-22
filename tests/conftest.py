@@ -105,7 +105,7 @@ def readonly_v_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
         dimension=2,
     )
 
-    collection.truncate()
+    collection.clear()
     collection.insert_many(VECTOR_DOCUMENTS)
 
     yield collection
@@ -136,7 +136,7 @@ def empty_v_collection(
     writable_v_collection: AstraDBCollection,
 ) -> Iterable[AstraDBCollection]:
     """available empty to each test function."""
-    writable_v_collection.truncate()
+    writable_v_collection.clear()
     yield writable_v_collection
 
 
@@ -145,7 +145,7 @@ def disposable_v_collection(
     writable_v_collection: AstraDBCollection,
 ) -> Iterable[AstraDBCollection]:
     """available prepopulated to each test function."""
-    writable_v_collection.truncate()
+    writable_v_collection.clear()
     writable_v_collection.insert_many(VECTOR_DOCUMENTS)
     yield writable_v_collection
 
@@ -169,7 +169,7 @@ def empty_nonv_collection(
     writable_nonv_collection: AstraDBCollection,
 ) -> Iterable[AstraDBCollection]:
     """available empty to each test function."""
-    writable_nonv_collection.truncate()
+    writable_nonv_collection.clear()
     yield writable_nonv_collection
 
 
