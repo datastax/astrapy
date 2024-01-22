@@ -403,8 +403,14 @@ poetry run pytest
 
 To remove the noise from the logs (on by default), run `pytest -o log_cli=0`.
 
+To skip all collection deletions (done by default):
+
+```bash
+TEST_SKIP_COLLECTION_DELETE=1 poetry run pytest [...]
+```
+
 To enable the `AstraDBOps` testing (off by default):
 
 ```bash
-TEST_ASTRADBOPS=1 pytest
+TEST_ASTRADBOPS=1 poetry run pytest [...]
 ```

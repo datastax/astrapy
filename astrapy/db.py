@@ -18,6 +18,7 @@ import httpx
 import logging
 import json
 import threading
+from warnings import warn
 
 
 from concurrent.futures import ThreadPoolExecutor
@@ -52,7 +53,8 @@ from astrapy.utils import (
     make_request,
     http_methods,
     amake_request,
-    preprocess_insert,
+    normalize_for_api,
+    restore_from_api,
 )
 from astrapy.types import (
     API_DOC,
@@ -119,13 +121,14 @@ class AstraDBCollection:
             token=self.astra_db.token,
             method=method,
             path=path,
-            json_data=json_data,
+            json_data=normalize_for_api(json_data),
             url_params=url_params,
             skip_error_check=skip_error_check,
             **kwargs,
         )
 
-        response = request_handler.request()
+        direct_response = request_handler.request()
+        response = restore_from_api(direct_response)
 
         return response
 
@@ -158,9 +161,14 @@ class AstraDBCollection:
         )
         return response
 
-    def _pre_process_find(
+    def _recast_as_sort_projection(
         self, vector: List[float], fields: Optional[List[str]] = None
     ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+        """
+        Given a vector and optionally a list of fields,
+        reformulate them as a sort, projection pair for regular
+        'find'-like API calls (with basic validation as well).
+        """
         # Must pass a vector
         if not vector:
             raise ValueError("Must pass a vector")
@@ -248,7 +256,7 @@ class AstraDBCollection:
             raise ValueError("Must pass a limit")
 
         # Pre-process the included arguments
-        sort, projection = self._pre_process_find(
+        sort, projection = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -427,8 +435,6 @@ class AstraDBCollection:
         Returns:
             dict: The result of the find and replace operation.
         """
-        replacement = preprocess_insert(replacement)
-
         json_query = make_payload(
             top_level="findOneAndReplace",
             filter=filter,
@@ -461,10 +467,8 @@ class AstraDBCollection:
         Returns:
             dict or None: either the matched document or None if nothing found
         """
-        replacement = preprocess_insert(replacement)
-
         # Pre-process the included arguments
-        sort, _ = self._pre_process_find(
+        sort, _ = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -495,8 +499,6 @@ class AstraDBCollection:
         Returns:
             dict: The result of the find and update operation.
         """
-        update = preprocess_insert(update)
-
         json_query = make_payload(
             top_level="findOneAndUpdate",
             filter=filter,
@@ -532,10 +534,8 @@ class AstraDBCollection:
             dict or None: The result of the vector-based find and
                 update operation, or None if nothing found
         """
-        update = preprocess_insert(update)
-
         # Pre-process the included arguments
-        sort, _ = self._pre_process_find(
+        sort, _ = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -628,7 +628,7 @@ class AstraDBCollection:
             dict or None: The found document or None if no matching document is found.
         """
         # Pre-process the included arguments
-        sort, projection = self._pre_process_find(
+        sort, projection = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -654,8 +654,6 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the insert operation.
         """
-        document = preprocess_insert(document)
-
         json_query = make_payload(top_level="insertOne", document=document)
 
         response = self._request(
@@ -683,10 +681,6 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the insert operation.
         """
-        # Check if the vector is a list of floats
-        for i, document in enumerate(documents):
-            documents[i] = preprocess_insert(document)
-
         json_query = make_payload(
             top_level="insertMany", documents=documents, options=options
         )
@@ -805,7 +799,11 @@ class AstraDBCollection:
         return self._put(path=path, document=document)
 
     def delete(self, id: str) -> API_RESPONSE:
-        # TODO: Deprecate this method
+        DEPRECATION_MESSAGE = (
+            "Method 'delete' of AstraDBCollection is deprecated. Please "
+            "switch to method 'delete_one'."
+        )
+        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
         return self.delete_one(id)
 
     def delete_one(self, id: str) -> API_RESPONSE:
@@ -848,6 +846,21 @@ class AstraDBCollection:
 
         return response
 
+    def clear(self) -> API_RESPONSE:
+        """
+        Clear the collection, deleting all documents
+        Returns:
+            dict: The response from the database.
+        """
+        clear_response = self.delete_many(filter={})
+
+        if clear_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError(
+                f"Could not issue a clear-collection API command (response: {json.dumps(clear_response)})."
+            )
+
+        return clear_response
+
     def delete_subdocument(self, id: str, subdoc: str) -> API_RESPONSE:
         """
         Delete a subdocument or field from a document in the collection.
@@ -884,7 +897,6 @@ class AstraDBCollection:
             str: The _id of the inserted or updated document.
         """
         # Build the payload for the insert attempt
-        document = preprocess_insert(document)
         result = self.insert_one(document, failures_allowed=True)
 
         # If the call failed, then we replace the existing doc
@@ -1011,12 +1023,13 @@ class AsyncAstraDBCollection:
             token=self.astra_db.token,
             method=method,
             path=path,
-            json_data=json_data,
+            json_data=normalize_for_api(json_data),
             url_params=url_params,
             skip_error_check=skip_error_check,
         )
 
-        response = await arequest_handler.request()
+        direct_response = await arequest_handler.request()
+        response = restore_from_api(direct_response)
 
         return response
 
@@ -1049,9 +1062,14 @@ class AsyncAstraDBCollection:
         )
         return response
 
-    def _pre_process_find(
+    def _recast_as_sort_projection(
         self, vector: List[float], fields: Optional[List[str]] = None
     ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+        """
+        Given a vector and optionally a list of fields,
+        reformulate them as a sort, projection pair for regular
+        'find'-like API calls (with basic validation as well).
+        """
         # Must pass a vector
         if not vector:
             raise ValueError("Must pass a vector")
@@ -1139,7 +1157,7 @@ class AsyncAstraDBCollection:
             raise ValueError("Must pass a limit")
 
         # Pre-process the included arguments
-        sort, projection = self._pre_process_find(
+        sort, projection = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )
@@ -1298,7 +1316,7 @@ class AsyncAstraDBCollection:
 
     async def find_one_and_replace(
         self,
-        replacement: Optional[Dict[str, Any]] = None,
+        replacement: Dict[str, Any],
         *,
         sort: Optional[Dict[str, Any]] = {},
         filter: Optional[Dict[str, Any]] = None,
@@ -1347,7 +1365,7 @@ class AsyncAstraDBCollection:
             dict or None: either the matched document or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._pre_process_find(
+        sort, _ = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )
@@ -1363,8 +1381,8 @@ class AsyncAstraDBCollection:
 
     async def find_one_and_update(
         self,
+        update: Dict[str, Any],
         sort: Optional[Dict[str, Any]] = {},
-        update: Optional[Dict[str, Any]] = None,
         filter: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
@@ -1372,7 +1390,7 @@ class AsyncAstraDBCollection:
         Find a single document and update it.
         Args:
             sort (dict, optional): Specifies the order in which to find the document.
-            update (dict, optional): The update to apply to the document.
+            update (dict): The update to apply to the document.
             filter (dict, optional): Criteria to filter documents.
             options (dict, optional): Additional options for the operation.
         Returns:
@@ -1414,7 +1432,7 @@ class AsyncAstraDBCollection:
                 update operation, or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._pre_process_find(
+        sort, _ = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )
@@ -1507,7 +1525,7 @@ class AsyncAstraDBCollection:
             dict or None: The found document or None if no matching document is found.
         """
         # Pre-process the included arguments
-        sort, projection = self._pre_process_find(
+        sort, projection = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )
@@ -1696,6 +1714,21 @@ class AsyncAstraDBCollection:
         )
 
         return response
+
+    async def clear(self) -> API_RESPONSE:
+        """
+        Clear the collection, deleting all documents
+        Returns:
+            dict: The response from the database.
+        """
+        clear_response = await self.delete_many(filter={})
+
+        if clear_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError(
+                f"Could not issue a clear-collection API command (response: {json.dumps(clear_response)})."
+            )
+
+        return clear_response
 
     async def delete_subdocument(self, id: str, subdoc: str) -> API_RESPONSE:
         """
@@ -1990,39 +2023,33 @@ class AstraDB:
 
     def truncate_collection(self, collection_name: str) -> AstraDBCollection:
         """
-        Truncate a collection in the database.
+        Clear a collection in the database, deleting all stored documents.
         Args:
-            collection_name (str): The name of the collection to truncate.
+            collection_name (str): The name of the collection to clear.
         Returns:
-            dict: The response from the database.
+            collection: an AstraDBCollection instance
         """
-        # Make sure we provide a collection name
-        if not collection_name:
-            raise ValueError("Must provide a collection name")
-
-        # Retrieve the required collections from DB
-        collections = self.get_collections(options={"explain": "true"})
-        matches = [
-            col
-            for col in collections["status"]["collections"]
-            if col["name"] == collection_name
-        ]
-
-        # If we didn't find it, raise an error
-        if matches == []:
-            raise ValueError(f"Collection {collection_name} not found")
-
-        # Otherwise we found it, so get the collection
-        existing_collection = matches[0]
-
-        # We found it, so let's delete it
-        self.delete_collection(collection_name)
-
-        # End the function by returning the the new collection
-        return self.create_collection(
-            collection_name,
-            options=existing_collection.get("options"),
+        DEPRECATION_MESSAGE = (
+            "Method 'truncate_collection' of AstraDB is deprecated. Please "
+            "switch to method 'clear' of the AstraDBCollection object, e.g. "
+            "'astra_db.collection(\"my_collection\").clear()'."
+            " Note the returned object is different."
         )
+        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
+
+        collection = AstraDBCollection(
+            collection_name=collection_name,
+            astra_db=self,
+        )
+        clear_response = collection.clear()
+
+        if clear_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError(
+                f"Could not issue a truncation API command (response: {json.dumps(clear_response)})."
+            )
+
+        # return the collection itself
+        return collection
 
 
 class AsyncAstraDB:
@@ -2234,36 +2261,30 @@ class AsyncAstraDB:
 
     async def truncate_collection(self, collection_name: str) -> AsyncAstraDBCollection:
         """
-        Truncate a collection in the database.
+        Clear a collection in the database, deleting all stored documents.
         Args:
-            collection_name (str): The name of the collection to truncate.
+            collection_name (str): The name of the collection to clear.
         Returns:
-            dict: The response from the database.
+            collection: an AsyncAstraDBCollection instance
         """
-        # Make sure we provide a collection name
-        if not collection_name:
-            raise ValueError("Must provide a collection name")
-
-        # Retrieve the required collections from DB
-        collections = await self.get_collections(options={"explain": "true"})
-        matches = [
-            col
-            for col in collections["status"]["collections"]
-            if col["name"] == collection_name
-        ]
-
-        # If we didn't find it, raise an error
-        if matches == []:
-            raise ValueError(f"Collection {collection_name} not found")
-
-        # Otherwise we found it, so get the collection
-        existing_collection = matches[0]
-
-        # We found it, so let's delete it
-        await self.delete_collection(collection_name)
-
-        # End the function by returning the the new collection
-        return await self.create_collection(
-            collection_name,
-            options=existing_collection.get("options"),
+        DEPRECATION_MESSAGE = (
+            "Method 'truncate_collection' of AsyncAstraDB is deprecated. Please "
+            "switch to method 'clear' of the AsyncAstraDBCollection object, e.g. "
+            "'async_astra_db.collection(\"my_collection\").clear()'"
+            " Note the returned object is different."
         )
+        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
+
+        collection = AsyncAstraDBCollection(
+            collection_name=collection_name,
+            astra_db=self,
+        )
+        clear_response = await collection.clear()
+
+        if clear_response.get("status", {}).get("deletedCount") != -1:
+            raise ValueError(
+                f"Could not issue a truncation API command (response: {json.dumps(clear_response)})."
+            )
+
+        # return the collection itself
+        return collection
