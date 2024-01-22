@@ -887,7 +887,8 @@ class AstraDBCollection:
         """
         Emulate an upsert operation for a single document in the collection.
 
-        This method attempts to insert the document. If a document with the same _id exists, it updates the existing document.
+        This method attempts to insert the document.
+        If a document with the same _id exists, it updates the existing document.
 
         Args:
             document (dict): The document to insert or update.
@@ -898,20 +899,25 @@ class AstraDBCollection:
         # Build the payload for the insert attempt
         result = self.insert_one(document, failures_allowed=True)
 
-        # If the call failed, then we replace the existing doc
-        if (
-            "errors" in result
-            and "errorCode" in result["errors"][0]
-            and result["errors"][0]["errorCode"] == "DOCUMENT_ALREADY_EXISTS"
-        ):
-            # Now we attempt to update
-            result = self.find_one_and_replace(
-                replacement=document,
-                filter={"_id": document["_id"]},
-            )
-            upserted_id = cast(str, result["data"]["document"]["_id"])
+        # If the call failed because of preexisting doc, then we replace it
+        if "errors" in result:
+            if (
+                "errorCode" in result["errors"][0]
+                and result["errors"][0]["errorCode"] == "DOCUMENT_ALREADY_EXISTS"
+            ):
+                # Now we attempt the update
+                result = self.find_one_and_replace(
+                    replacement=document,
+                    filter={"_id": document["_id"]},
+                )
+                upserted_id = cast(str, result["data"]["document"]["_id"])
+            else:
+                raise ValueError(result)
         else:
-            upserted_id = cast(str, result["status"]["insertedIds"][0])
+            if result.get("status", {}).get("insertedIds", []):
+                upserted_id = cast(str, result["status"]["insertedIds"][0])
+            else:
+                raise ValueError("Unexplained empty insertedIds from API")
 
         return upserted_id
 
@@ -924,7 +930,8 @@ class AstraDBCollection:
         """
         Emulate an upsert operation for multiple documents in the collection.
 
-        This method attempts to insert the documents. If a document with the same _id exists, it updates the existing document.
+        This method attempts to insert the documents.
+        If a document with the same _id exists, it updates the existing document.
 
         Args:
             documents (List[dict]): The documents to insert or update.
@@ -1749,7 +1756,8 @@ class AsyncAstraDBCollection:
         """
         Emulate an upsert operation for a single document in the collection.
 
-        This method attempts to insert the document. If a document with the same _id exists, it updates the existing document.
+        This method attempts to insert the document.
+        If a document with the same _id exists, it updates the existing document.
 
         Args:
             document (dict): The document to insert or update.
@@ -1760,20 +1768,25 @@ class AsyncAstraDBCollection:
         # Build the payload for the insert attempt
         result = await self.insert_one(document, failures_allowed=True)
 
-        # If the call failed, then we replace the existing doc
-        if (
-            "errors" in result
-            and "errorCode" in result["errors"][0]
-            and result["errors"][0]["errorCode"] == "DOCUMENT_ALREADY_EXISTS"
-        ):
-            # Now we attempt to update
-            result = await self.find_one_and_replace(
-                replacement=document,
-                filter={"_id": document["_id"]},
-            )
-            upserted_id = cast(str, result["data"]["document"]["_id"])
+        # If the call failed because of preexisting doc, then we replace it
+        if "errors" in result:
+            if (
+                "errorCode" in result["errors"][0]
+                and result["errors"][0]["errorCode"] == "DOCUMENT_ALREADY_EXISTS"
+            ):
+                # Now we attempt the update
+                result = await self.find_one_and_replace(
+                    replacement=document,
+                    filter={"_id": document["_id"]},
+                )
+                upserted_id = cast(str, result["data"]["document"]["_id"])
+            else:
+                raise ValueError(result)
         else:
-            upserted_id = cast(str, result["status"]["insertedIds"][0])
+            if result.get("status", {}).get("insertedIds", []):
+                upserted_id = cast(str, result["status"]["insertedIds"][0])
+            else:
+                raise ValueError("Unexplained empty insertedIds from API")
 
         return upserted_id
 
