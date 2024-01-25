@@ -1941,6 +1941,7 @@ class AstraDB:
         options: Optional[Dict[str, Any]] = None,
         dimension: Optional[int] = None,
         metric: Optional[str] = None,
+        indexing: Optional[Dict[str, Any]] = None,
     ) -> AstraDBCollection:
         """
         Create a new collection in the database.
@@ -1949,6 +1950,7 @@ class AstraDB:
             options (dict, optional): Options for the collection.
             dimension (int, optional): Dimension for vector search.
             metric (str, optional): Metric choice for vector search.
+            indexing (dict, optional): Indexing options for the collection.
         Returns:
             AstraDBCollection: The created collection object.
         """
@@ -1987,7 +1989,11 @@ class AstraDB:
         # Build the final json payload
         jsondata = {
             k: v
-            for k, v in {"name": collection_name, "options": options}.items()
+            for k, v in {
+                "name": collection_name,
+                "options": options,
+                "indexing": indexing,
+            }.items()
             if v is not None
         }
 
@@ -2179,6 +2185,7 @@ class AsyncAstraDB:
         options: Optional[Dict[str, Any]] = None,
         dimension: Optional[int] = None,
         metric: Optional[str] = None,
+        indexing: Optional[Dict[str, Any]] = None,
     ) -> AsyncAstraDBCollection:
         """
         Create a new collection in the database.
@@ -2187,6 +2194,7 @@ class AsyncAstraDB:
             options (dict, optional): Options for the collection.
             dimension (int, optional): Dimension for vector search.
             metric (str, optional): Metric choice for vector search.
+            indexing (dict, optional): Indexing options for the collection.
         Returns:
             AsyncAstraDBCollection: The created collection object.
         """
@@ -2225,7 +2233,11 @@ class AsyncAstraDB:
         # Build the final json payload
         jsondata = {
             k: v
-            for k, v in {"name": collection_name, "options": options}.items()
+            for k, v in {
+                "name": collection_name,
+                "options": options,
+                "indexing": indexing,
+            }.items()
             if v is not None
         }
 
