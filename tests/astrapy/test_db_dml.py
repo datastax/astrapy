@@ -1323,3 +1323,53 @@ def test_insert_find_with_dates(
     assert response3 is not None
     document3 = response3["data"]["document"]
     assert document3 == expected_d_document
+
+
+@pytest.mark.describe("probe retrieval on a collection indexed with allowlist")
+def test_collection_indexing_allow(
+    allowindex_nonv_collection: AstraDBCollection,
+) -> None:
+    resp_ok1 = allowindex_nonv_collection.find_one({"A.a": "A.a"})
+    assert resp_ok1["data"]["document"] is not None
+    assert resp_ok1["data"]["document"]["_id"] == "0"
+
+    resp_ok2 = allowindex_nonv_collection.find_one({"C.a": "C.a"})
+    assert resp_ok2["data"]["document"] is not None
+    assert resp_ok2["data"]["document"]["_id"] == "0"
+
+    with pytest.raises(APIRequestError):
+        # path not indexed
+        allowindex_nonv_collection.find_one({"B.a": "B.a"})
+
+    with pytest.raises(APIRequestError):
+        # path not indexed
+        allowindex_nonv_collection.find_one({"C.b": "C.b"})
+
+    with pytest.raises(APIRequestError):
+        # id not indexed (raised only with some operators, such as $nin)
+        allowindex_nonv_collection.find_one({"_id": {"$nin": ["1", "2"]}})
+
+
+@pytest.mark.describe("probe retrieval on a collection indexed with denylist")
+def test_collection_indexing_deny(
+    denyindex_nonv_collection: AstraDBCollection,
+) -> None:
+    resp_ok1 = denyindex_nonv_collection.find_one({"A.a": "A.a"})
+    assert resp_ok1["data"]["document"] is not None
+    assert resp_ok1["data"]["document"]["_id"] == "0"
+
+    resp_ok2 = denyindex_nonv_collection.find_one({"C.a": "C.a"})
+    assert resp_ok2["data"]["document"] is not None
+    assert resp_ok2["data"]["document"]["_id"] == "0"
+
+    with pytest.raises(APIRequestError):
+        # path not indexed
+        denyindex_nonv_collection.find_one({"B.a": "B.a"})
+
+    with pytest.raises(APIRequestError):
+        # path not indexed
+        denyindex_nonv_collection.find_one({"C.b": "C.b"})
+
+    with pytest.raises(APIRequestError):
+        # id not indexed (raised only with some operators, such as $nin)
+        denyindex_nonv_collection.find_one({"_id": {"$nin": ["1", "2"]}})

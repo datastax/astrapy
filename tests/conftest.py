@@ -23,6 +23,8 @@ ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
 TEST_WRITABLE_VECTOR_COLLECTION = "writable_v_col"
 TEST_READONLY_VECTOR_COLLECTION = "readonly_v_col"
 TEST_WRITABLE_NONVECTOR_COLLECTION = "writable_nonv_col"
+TEST_WRITABLE_ALLOWINDEX_NONVECTOR_COLLECTION = "writable_allowindex_nonv_col"
+TEST_WRITABLE_DENYINDEX_NONVECTOR_COLLECTION = "writable_denyindex_nonv_col"
 
 VECTOR_DOCUMENTS = [
     {
@@ -47,6 +49,22 @@ VECTOR_DOCUMENTS = [
         "$vector": [0.9, 0.1],
     },
 ]
+
+INDEXING_SAMPLE_DOCUMENT = {
+    "_id": "0",
+    "A": {
+        "a": "A.a",
+        "b": "A.b",
+    },
+    "B": {
+        "a": "B.a",
+        "b": "B.b",
+    },
+    "C": {
+        "a": "C.a",
+        "b": "C.b",
+    },
+}
 
 
 def _batch_iterable(iterable: Iterable[T], batch_size: int) -> Iterable[Iterable[T]]:
@@ -162,6 +180,60 @@ def writable_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
 
     if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
         db.delete_collection(TEST_WRITABLE_NONVECTOR_COLLECTION)
+
+
+@pytest.fixture(scope="session")
+def allowindex_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
+    """
+    This is lasting for the whole test. Functions can write to it,
+    no guarantee (i.e. each test should use a different ID...
+    """
+    collection = db.create_collection(
+        TEST_WRITABLE_ALLOWINDEX_NONVECTOR_COLLECTION,
+        options={
+            "indexing": {
+                "allow": [
+                    "A",
+                    "C.a",
+                ],
+            },
+        },
+    )
+    collection.upsert(INDEXING_SAMPLE_DOCUMENT)
+
+    yield collection
+
+    if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
+        db.delete_collection(TEST_WRITABLE_ALLOWINDEX_NONVECTOR_COLLECTION)
+
+
+@pytest.fixture(scope="session")
+def denyindex_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
+    """
+    This is lasting for the whole test. Functions can write to it,
+    no guarantee (i.e. each test should use a different ID...
+
+    Note in light of the sample document this results in the same
+    filtering paths being available ... if one remembers to deny _id here.
+    """
+    collection = db.create_collection(
+        TEST_WRITABLE_DENYINDEX_NONVECTOR_COLLECTION,
+        options={
+            "indexing": {
+                "deny": [
+                    "B",
+                    "C.b",
+                    "_id",
+                ],
+            },
+        },
+    )
+    collection.upsert(INDEXING_SAMPLE_DOCUMENT)
+
+    yield collection
+
+    if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
+        db.delete_collection(TEST_WRITABLE_DENYINDEX_NONVECTOR_COLLECTION)
 
 
 @pytest.fixture(scope="function")
