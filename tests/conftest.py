@@ -213,7 +213,7 @@ def denyindex_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
     This is lasting for the whole test. Functions can write to it,
     no guarantee (i.e. each test should use a different ID...
 
-    Note in light of the sample document this results in the same
+    Note in light of the sample document this almost results in the same
     filtering paths being available ... if one remembers to deny _id here.
     """
     collection = db.create_collection(
