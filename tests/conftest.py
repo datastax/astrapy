@@ -182,7 +182,7 @@ def writable_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
         db.delete_collection(TEST_WRITABLE_NONVECTOR_COLLECTION)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def allowindex_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
     """
     This is lasting for the whole test. Functions can write to it,
@@ -207,7 +207,7 @@ def allowindex_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
         db.delete_collection(TEST_WRITABLE_ALLOWINDEX_NONVECTOR_COLLECTION)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def denyindex_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
     """
     This is lasting for the whole test. Functions can write to it,
