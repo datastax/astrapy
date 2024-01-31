@@ -50,9 +50,7 @@ from astrapy.defaults import (
 from astrapy.utils import (
     convert_vector_to_floats,
     make_payload,
-    make_request,
     http_methods,
-    amake_request,
     normalize_for_api,
     restore_from_api,
 )
@@ -1879,24 +1877,25 @@ class AstraDB:
         json_data: Optional[Dict[str, Any]] = None,
         url_params: Optional[Dict[str, Any]] = None,
         skip_error_check: bool = False,
+        **kwargs: Any,
     ) -> API_RESPONSE:
-        response = make_request(
+        request_handler = APIRequestHandler(
             client=self.client,
             base_url=self.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
             token=self.token,
             method=method,
             path=path,
-            json_data=json_data,
+            json_data=normalize_for_api(json_data),
             url_params=url_params,
+            skip_error_check=skip_error_check,
+            **kwargs,
         )
 
-        responsebody = cast(API_RESPONSE, response.json())
+        direct_response = request_handler.request()
+        response = restore_from_api(direct_response)
 
-        if not skip_error_check and "errors" in responsebody:
-            raise ValueError(json.dumps(responsebody["errors"]))
-        else:
-            return responsebody
+        return response
 
     def collection(self, collection_name: str) -> AstraDBCollection:
         """
@@ -2115,24 +2114,25 @@ class AsyncAstraDB:
         json_data: Optional[Dict[str, Any]] = None,
         url_params: Optional[Dict[str, Any]] = None,
         skip_error_check: bool = False,
+        **kwargs: Any,
     ) -> API_RESPONSE:
-        response = await amake_request(
+        request_handler = AsyncAPIRequestHandler(
             client=self.client,
             base_url=self.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
             token=self.token,
             method=method,
             path=path,
-            json_data=json_data,
+            json_data=normalize_for_api(json_data),
             url_params=url_params,
+            skip_error_check=skip_error_check,
+            **kwargs,
         )
 
-        responsebody = cast(API_RESPONSE, response.json())
+        direct_response = await request_handler.request()
+        response = restore_from_api(direct_response)
 
-        if not skip_error_check and "errors" in responsebody:
-            raise ValueError(json.dumps(responsebody["errors"]))
-        else:
-            return responsebody
+        return response
 
     async def collection(self, collection_name: str) -> AsyncAstraDBCollection:
         """
