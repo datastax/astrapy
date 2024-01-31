@@ -105,6 +105,11 @@ class AstraDBCollection:
     def __repr__(self) -> str:
         return f'Astra DB Collection[name="{self.collection_name}", endpoint="{self.astra_db.base_url}"]'
 
+    def to_async(self) -> AsyncAstraDBCollection:
+        return AsyncAstraDBCollection(
+            astra_db=self.astra_db.to_async(), collection_name=self.collection_name
+        )
+
     def _request(
         self,
         method: str = http_methods.POST,
@@ -1007,6 +1012,11 @@ class AsyncAstraDBCollection:
     def __repr__(self) -> str:
         return f'Astra DB Collection[name="{self.collection_name}", endpoint="{self.astra_db.base_url}"]'
 
+    def to_sync(self) -> AstraDBCollection:
+        return AstraDBCollection(
+            astra_db=self.astra_db.to_sync(), collection_name=self.collection_name
+        )
+
     async def _request(
         self,
         method: str = http_methods.POST,
@@ -1872,6 +1882,15 @@ class AstraDB:
     def __repr__(self) -> str:
         return f'Astra DB[endpoint="{self.base_url}"]'
 
+    def to_async(self) -> AsyncAstraDB:
+        return AsyncAstraDB(
+            token=self.token,
+            api_endpoint=self.base_url,
+            api_path=self.api_path,
+            api_version=self.api_version,
+            namespace=self.namespace,
+        )
+
     def _request(
         self,
         method: str = http_methods.POST,
@@ -2107,6 +2126,15 @@ class AsyncAstraDB:
         traceback: Optional[TracebackType] = None,
     ) -> None:
         await self.client.aclose()
+
+    def to_sync(self) -> AstraDB:
+        return AstraDB(
+            token=self.token,
+            api_endpoint=self.base_url,
+            api_path=self.api_path,
+            api_version=self.api_version,
+            namespace=self.namespace,
+        )
 
     async def _request(
         self,
