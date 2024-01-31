@@ -14,12 +14,11 @@
 from __future__ import annotations
 
 import asyncio
+import deprecation
 import httpx
 import logging
 import json
 import threading
-from warnings import warn
-
 
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
@@ -39,6 +38,7 @@ from typing import (
     AsyncGenerator,
 )
 
+from astrapy import __version__
 from astrapy.api import AsyncAPIRequestHandler, APIRequestHandler
 from astrapy.defaults import (
     DEFAULT_AUTH_HEADER,
@@ -796,12 +796,13 @@ class AstraDBCollection:
         """
         return self._put(path=path, document=document)
 
+    @deprecation.deprecated(  # type: ignore
+        deprecated_in="0.7.0",
+        removed_in="1.0.0",
+        current_version=__version__,
+        details="Use the 'delete_one' method instead",
+    )
     def delete(self, id: str) -> API_RESPONSE:
-        DEPRECATION_MESSAGE = (
-            "Method 'delete' of AstraDBCollection is deprecated. Please "
-            "switch to method 'delete_one'."
-        )
-        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
         return self.delete_one(id)
 
     def delete_one(self, id: str) -> API_RESPONSE:
@@ -881,7 +882,16 @@ class AstraDBCollection:
 
         return response
 
+    @deprecation.deprecated(  # type: ignore
+        deprecated_in="0.7.0",
+        removed_in="1.0.0",
+        current_version=__version__,
+        details="Use the 'upsert_one' method instead",
+    )
     def upsert(self, document: API_DOC) -> str:
+        return self.upsert_one(document)
+
+    def upsert_one(self, document: API_DOC) -> str:
         """
         Emulate an upsert operation for a single document in the collection.
 
@@ -946,7 +956,7 @@ class AstraDBCollection:
         if concurrency == 1:
             for document in documents:
                 try:
-                    results.append(self.upsert(document))
+                    results.append(self.upsert_one(document))
                 except Exception as e:
                     results.append(e)
             return results
@@ -1750,7 +1760,16 @@ class AsyncAstraDBCollection:
 
         return response
 
+    @deprecation.deprecated(  # type: ignore
+        deprecated_in="0.7.0",
+        removed_in="1.0.0",
+        current_version=__version__,
+        details="Use the 'upsert_one' method instead",
+    )
     async def upsert(self, document: API_DOC) -> str:
+        return await self.upsert_one(document)
+
+    async def upsert_one(self, document: API_DOC) -> str:
         """
         Emulate an upsert operation for a single document in the collection.
 
@@ -1811,7 +1830,7 @@ class AsyncAstraDBCollection:
 
         async def concurrent_upsert(doc: API_DOC) -> str:
             async with sem:
-                return await self.upsert(document=doc)
+                return await self.upsert_one(document=doc)
 
         tasks = [asyncio.create_task(concurrent_upsert(doc)) for doc in documents]
         results = await asyncio.gather(
@@ -2020,6 +2039,12 @@ class AstraDB:
 
         return response
 
+    @deprecation.deprecated(  # type: ignore
+        deprecated_in="0.7.0",
+        removed_in="1.0.0",
+        current_version=__version__,
+        details="Use the 'AstraDBCollection.clear()' method instead",
+    )
     def truncate_collection(self, collection_name: str) -> AstraDBCollection:
         """
         Clear a collection in the database, deleting all stored documents.
@@ -2028,14 +2053,6 @@ class AstraDB:
         Returns:
             collection: an AstraDBCollection instance
         """
-        DEPRECATION_MESSAGE = (
-            "Method 'truncate_collection' of AstraDB is deprecated. Please "
-            "switch to method 'clear' of the AstraDBCollection object, e.g. "
-            "'astra_db.collection(\"my_collection\").clear()'."
-            " Note the returned object is different."
-        )
-        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
-
         collection = AstraDBCollection(
             collection_name=collection_name,
             astra_db=self,
@@ -2259,6 +2276,12 @@ class AsyncAstraDB:
 
         return response
 
+    @deprecation.deprecated(  # type: ignore
+        deprecated_in="0.7.0",
+        removed_in="1.0.0",
+        current_version=__version__,
+        details="Use the 'AsyncAstraDBCollection.clear()' method instead",
+    )
     async def truncate_collection(self, collection_name: str) -> AsyncAstraDBCollection:
         """
         Clear a collection in the database, deleting all stored documents.
@@ -2267,13 +2290,6 @@ class AsyncAstraDB:
         Returns:
             collection: an AsyncAstraDBCollection instance
         """
-        DEPRECATION_MESSAGE = (
-            "Method 'truncate_collection' of AsyncAstraDB is deprecated. Please "
-            "switch to method 'clear' of the AsyncAstraDBCollection object, e.g. "
-            "'async_astra_db.collection(\"my_collection\").clear()'"
-            " Note the returned object is different."
-        )
-        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
 
         collection = AsyncAstraDBCollection(
             collection_name=collection_name,
