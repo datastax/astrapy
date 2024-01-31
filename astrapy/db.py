@@ -14,12 +14,11 @@
 from __future__ import annotations
 
 import asyncio
+import deprecation
 import httpx
 import logging
 import json
 import threading
-from warnings import warn
-
 
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
@@ -39,6 +38,7 @@ from typing import (
     AsyncGenerator,
 )
 
+from astrapy import __version__
 from astrapy.api import AsyncAPIRequestHandler, APIRequestHandler
 from astrapy.defaults import (
     DEFAULT_AUTH_HEADER,
@@ -50,9 +50,7 @@ from astrapy.defaults import (
 from astrapy.utils import (
     convert_vector_to_floats,
     make_payload,
-    make_request,
     http_methods,
-    amake_request,
     normalize_for_api,
     restore_from_api,
 )
@@ -104,6 +102,11 @@ class AstraDBCollection:
 
     def __repr__(self) -> str:
         return f'Astra DB Collection[name="{self.collection_name}", endpoint="{self.astra_db.base_url}"]'
+
+    def to_async(self) -> AsyncAstraDBCollection:
+        return AsyncAstraDBCollection(
+            astra_db=self.astra_db.to_async(), collection_name=self.collection_name
+        )
 
     def _request(
         self,
@@ -798,12 +801,13 @@ class AstraDBCollection:
         """
         return self._put(path=path, document=document)
 
+    @deprecation.deprecated(  # type: ignore
+        deprecated_in="0.7.0",
+        removed_in="1.0.0",
+        current_version=__version__,
+        details="Use the 'delete_one' method instead",
+    )
     def delete(self, id: str) -> API_RESPONSE:
-        DEPRECATION_MESSAGE = (
-            "Method 'delete' of AstraDBCollection is deprecated. Please "
-            "switch to method 'delete_one'."
-        )
-        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
         return self.delete_one(id)
 
     def delete_one(self, id: str) -> API_RESPONSE:
@@ -883,7 +887,16 @@ class AstraDBCollection:
 
         return response
 
+    @deprecation.deprecated(  # type: ignore
+        deprecated_in="0.7.0",
+        removed_in="1.0.0",
+        current_version=__version__,
+        details="Use the 'upsert_one' method instead",
+    )
     def upsert(self, document: API_DOC) -> str:
+        return self.upsert_one(document)
+
+    def upsert_one(self, document: API_DOC) -> str:
         """
         Emulate an upsert operation for a single document in the collection.
 
@@ -948,7 +961,7 @@ class AstraDBCollection:
         if concurrency == 1:
             for document in documents:
                 try:
-                    results.append(self.upsert(document))
+                    results.append(self.upsert_one(document))
                 except Exception as e:
                     results.append(e)
             return results
@@ -1006,6 +1019,11 @@ class AsyncAstraDBCollection:
 
     def __repr__(self) -> str:
         return f'Astra DB Collection[name="{self.collection_name}", endpoint="{self.astra_db.base_url}"]'
+
+    def to_sync(self) -> AstraDBCollection:
+        return AstraDBCollection(
+            astra_db=self.astra_db.to_sync(), collection_name=self.collection_name
+        )
 
     async def _request(
         self,
@@ -1752,7 +1770,16 @@ class AsyncAstraDBCollection:
 
         return response
 
+    @deprecation.deprecated(  # type: ignore
+        deprecated_in="0.7.0",
+        removed_in="1.0.0",
+        current_version=__version__,
+        details="Use the 'upsert_one' method instead",
+    )
     async def upsert(self, document: API_DOC) -> str:
+        return await self.upsert_one(document)
+
+    async def upsert_one(self, document: API_DOC) -> str:
         """
         Emulate an upsert operation for a single document in the collection.
 
@@ -1813,7 +1840,7 @@ class AsyncAstraDBCollection:
 
         async def concurrent_upsert(doc: API_DOC) -> str:
             async with sem:
-                return await self.upsert(document=doc)
+                return await self.upsert_one(document=doc)
 
         tasks = [asyncio.create_task(concurrent_upsert(doc)) for doc in documents]
         results = await asyncio.gather(
@@ -1872,6 +1899,15 @@ class AstraDB:
     def __repr__(self) -> str:
         return f'Astra DB[endpoint="{self.base_url}"]'
 
+    def to_async(self) -> AsyncAstraDB:
+        return AsyncAstraDB(
+            token=self.token,
+            api_endpoint=self.base_url,
+            api_path=self.api_path,
+            api_version=self.api_version,
+            namespace=self.namespace,
+        )
+
     def _request(
         self,
         method: str = http_methods.POST,
@@ -1879,24 +1915,25 @@ class AstraDB:
         json_data: Optional[Dict[str, Any]] = None,
         url_params: Optional[Dict[str, Any]] = None,
         skip_error_check: bool = False,
+        **kwargs: Any,
     ) -> API_RESPONSE:
-        response = make_request(
+        request_handler = APIRequestHandler(
             client=self.client,
             base_url=self.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
             token=self.token,
             method=method,
             path=path,
-            json_data=json_data,
+            json_data=normalize_for_api(json_data),
             url_params=url_params,
+            skip_error_check=skip_error_check,
+            **kwargs,
         )
 
-        responsebody = cast(API_RESPONSE, response.json())
+        direct_response = request_handler.request()
+        response = restore_from_api(direct_response)
 
-        if not skip_error_check and "errors" in responsebody:
-            raise ValueError(json.dumps(responsebody["errors"]))
-        else:
-            return responsebody
+        return response
 
     def collection(self, collection_name: str) -> AstraDBCollection:
         """
@@ -2021,6 +2058,12 @@ class AstraDB:
 
         return response
 
+    @deprecation.deprecated(  # type: ignore
+        deprecated_in="0.7.0",
+        removed_in="1.0.0",
+        current_version=__version__,
+        details="Use the 'AstraDBCollection.clear()' method instead",
+    )
     def truncate_collection(self, collection_name: str) -> AstraDBCollection:
         """
         Clear a collection in the database, deleting all stored documents.
@@ -2029,14 +2072,6 @@ class AstraDB:
         Returns:
             collection: an AstraDBCollection instance
         """
-        DEPRECATION_MESSAGE = (
-            "Method 'truncate_collection' of AstraDB is deprecated. Please "
-            "switch to method 'clear' of the AstraDBCollection object, e.g. "
-            "'astra_db.collection(\"my_collection\").clear()'."
-            " Note the returned object is different."
-        )
-        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
-
         collection = AstraDBCollection(
             collection_name=collection_name,
             astra_db=self,
@@ -2108,6 +2143,15 @@ class AsyncAstraDB:
     ) -> None:
         await self.client.aclose()
 
+    def to_sync(self) -> AstraDB:
+        return AstraDB(
+            token=self.token,
+            api_endpoint=self.base_url,
+            api_path=self.api_path,
+            api_version=self.api_version,
+            namespace=self.namespace,
+        )
+
     async def _request(
         self,
         method: str = http_methods.POST,
@@ -2115,24 +2159,25 @@ class AsyncAstraDB:
         json_data: Optional[Dict[str, Any]] = None,
         url_params: Optional[Dict[str, Any]] = None,
         skip_error_check: bool = False,
+        **kwargs: Any,
     ) -> API_RESPONSE:
-        response = await amake_request(
+        request_handler = AsyncAPIRequestHandler(
             client=self.client,
             base_url=self.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
             token=self.token,
             method=method,
             path=path,
-            json_data=json_data,
+            json_data=normalize_for_api(json_data),
             url_params=url_params,
+            skip_error_check=skip_error_check,
+            **kwargs,
         )
 
-        responsebody = cast(API_RESPONSE, response.json())
+        direct_response = await request_handler.request()
+        response = restore_from_api(direct_response)
 
-        if not skip_error_check and "errors" in responsebody:
-            raise ValueError(json.dumps(responsebody["errors"]))
-        else:
-            return responsebody
+        return response
 
     async def collection(self, collection_name: str) -> AsyncAstraDBCollection:
         """
@@ -2259,6 +2304,12 @@ class AsyncAstraDB:
 
         return response
 
+    @deprecation.deprecated(  # type: ignore
+        deprecated_in="0.7.0",
+        removed_in="1.0.0",
+        current_version=__version__,
+        details="Use the 'AsyncAstraDBCollection.clear()' method instead",
+    )
     async def truncate_collection(self, collection_name: str) -> AsyncAstraDBCollection:
         """
         Clear a collection in the database, deleting all stored documents.
@@ -2267,13 +2318,6 @@ class AsyncAstraDB:
         Returns:
             collection: an AsyncAstraDBCollection instance
         """
-        DEPRECATION_MESSAGE = (
-            "Method 'truncate_collection' of AsyncAstraDB is deprecated. Please "
-            "switch to method 'clear' of the AsyncAstraDBCollection object, e.g. "
-            "'async_astra_db.collection(\"my_collection\").clear()'"
-            " Note the returned object is different."
-        )
-        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
 
         collection = AsyncAstraDBCollection(
             collection_name=collection_name,
