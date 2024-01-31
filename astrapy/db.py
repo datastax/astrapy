@@ -1858,8 +1858,8 @@ class AstraDB:
 
     def __init__(
         self,
-        token: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
+        token: str,
+        api_endpoint: str,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
         namespace: Optional[str] = None,
@@ -2090,8 +2090,8 @@ class AstraDB:
 class AsyncAstraDB:
     def __init__(
         self,
-        token: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
+        token: str,
+        api_endpoint: str,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
         namespace: Optional[str] = None,
