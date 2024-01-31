@@ -699,7 +699,7 @@ def test_upsert_many(
     assert response1b["data"]["document"] == documents1[-1]
 
 
-@pytest.mark.describe("upsert")
+@pytest.mark.describe("upsert_one")
 def test_upsert_document(writable_v_collection: AstraDBCollection) -> None:
     _id = str(uuid.uuid4())
 
@@ -712,7 +712,7 @@ def test_upsert_document(writable_v_collection: AstraDBCollection) -> None:
             },
         },
     }
-    upsert_result0 = writable_v_collection.upsert(document0)
+    upsert_result0 = writable_v_collection.upsert_one(document0)
     assert upsert_result0 == _id
 
     response0 = writable_v_collection.find_one(filter={"_id": _id})
@@ -732,7 +732,7 @@ def test_upsert_document(writable_v_collection: AstraDBCollection) -> None:
             "accounting",
         ],
     }
-    upsert_result1 = writable_v_collection.upsert(document1)
+    upsert_result1 = writable_v_collection.upsert_one(document1)
     assert upsert_result1 == _id
 
     response1 = writable_v_collection.find_one(filter={"_id": _id})
@@ -740,7 +740,7 @@ def test_upsert_document(writable_v_collection: AstraDBCollection) -> None:
     assert response1["data"]["document"] == document1
 
 
-@pytest.mark.describe("upsert should catch general errors from API")
+@pytest.mark.describe("upsert_one should catch general errors from API")
 def test_upsert_api_errors(writable_v_collection: AstraDBCollection) -> None:
     _id0 = str(uuid.uuid4())
     _id1 = str(uuid.uuid4())
@@ -750,7 +750,7 @@ def test_upsert_api_errors(writable_v_collection: AstraDBCollection) -> None:
         "nature": "good vector",
         "$vector": [10, 11],
     }
-    upsert_result0 = writable_v_collection.upsert(document0a)
+    upsert_result0 = writable_v_collection.upsert_one(document0a)
     assert upsert_result0 == _id0
 
     # triggering an API error for the already-exists path of the upsert
@@ -760,7 +760,7 @@ def test_upsert_api_errors(writable_v_collection: AstraDBCollection) -> None:
         "$vector": [10, 11, 999, -153],
     }
     with pytest.raises(ValueError):
-        _ = writable_v_collection.upsert(document0b)
+        _ = writable_v_collection.upsert_one(document0b)
 
     # triggering an API error for the already-exists path of the upsert
     document1 = {
@@ -769,7 +769,7 @@ def test_upsert_api_errors(writable_v_collection: AstraDBCollection) -> None:
         "$vector": [10, 11, 999, -153],
     }
     with pytest.raises(ValueError):
-        _ = writable_v_collection.upsert(document1)
+        _ = writable_v_collection.upsert_one(document1)
 
 
 @pytest.mark.describe("update_one to create a subdocument, not through vector")

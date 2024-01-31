@@ -670,8 +670,8 @@ async def test_upsert_many(
     assert response1b["data"]["document"] == documents1[-1]
 
 
-@pytest.mark.describe("upsert (async)")
-async def test_upsert_document(
+@pytest.mark.describe("upsert one (async)")
+async def test_upsert_one_document(
     async_writable_v_collection: AsyncAstraDBCollection,
 ) -> None:
     _id = str(uuid.uuid4())
@@ -685,7 +685,7 @@ async def test_upsert_document(
             },
         },
     }
-    upsert_result0 = await async_writable_v_collection.upsert(document0)
+    upsert_result0 = await async_writable_v_collection.upsert_one(document0)
     assert upsert_result0 == _id
 
     response0 = await async_writable_v_collection.find_one(filter={"_id": _id})
@@ -705,7 +705,7 @@ async def test_upsert_document(
             "accounting",
         ],
     }
-    upsert_result1 = await async_writable_v_collection.upsert(document1)
+    upsert_result1 = await async_writable_v_collection.upsert_one(document1)
     assert upsert_result1 == _id
 
     response1 = await async_writable_v_collection.find_one(filter={"_id": _id})
@@ -725,7 +725,7 @@ async def test_upsert_api_errors(
         "nature": "good vector",
         "$vector": [10, 11],
     }
-    upsert_result0 = await async_writable_v_collection.upsert(document0a)
+    upsert_result0 = await async_writable_v_collection.upsert_one(document0a)
     assert upsert_result0 == _id0
 
     # triggering an API error for the already-exists path of the upsert
@@ -735,7 +735,7 @@ async def test_upsert_api_errors(
         "$vector": [10, 11, 999, -153],
     }
     with pytest.raises(ValueError):
-        _ = await async_writable_v_collection.upsert(document0b)
+        _ = await async_writable_v_collection.upsert_one(document0b)
 
     # triggering an API error for the already-exists path of the upsert
     document1 = {
@@ -744,7 +744,7 @@ async def test_upsert_api_errors(
         "$vector": [10, 11, 999, -153],
     }
     with pytest.raises(ValueError):
-        _ = await async_writable_v_collection.upsert(document1)
+        _ = await async_writable_v_collection.upsert_one(document1)
 
 
 @pytest.mark.describe("update_one to create a subdocument, not through vector (async)")

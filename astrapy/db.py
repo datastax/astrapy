@@ -884,6 +884,14 @@ class AstraDBCollection:
         return response
 
     def upsert(self, document: API_DOC) -> str:
+        # Deprecated: call the upsert_one method
+        DEPRECATION_MESSAGE = "Method 'upsert' of AstraDBCollection is deprecated. Please switch to method 'upsert_one'."
+
+        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
+
+        return self.upsert_one(document)
+
+    def upsert_one(self, document: API_DOC) -> str:
         """
         Emulate an upsert operation for a single document in the collection.
 
@@ -948,7 +956,7 @@ class AstraDBCollection:
         if concurrency == 1:
             for document in documents:
                 try:
-                    results.append(self.upsert(document))
+                    results.append(self.upsert_one(document))
                 except Exception as e:
                     results.append(e)
             return results
@@ -1753,6 +1761,14 @@ class AsyncAstraDBCollection:
         return response
 
     async def upsert(self, document: API_DOC) -> str:
+        # Deprecated: call the upsert_one method
+        DEPRECATION_MESSAGE = "Method 'upsert' of AstraDBCollection is deprecated. Please switch to method 'upsert_one'."
+
+        warn(DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
+
+        return await self.upsert_one(document)
+
+    async def upsert_one(self, document: API_DOC) -> str:
         """
         Emulate an upsert operation for a single document in the collection.
 
@@ -1813,7 +1829,7 @@ class AsyncAstraDBCollection:
 
         async def concurrent_upsert(doc: API_DOC) -> str:
             async with sem:
-                return await self.upsert(document=doc)
+                return await self.upsert_one(document=doc)
 
         tasks = [asyncio.create_task(concurrent_upsert(doc)) for doc in documents]
         results = await asyncio.gather(
