@@ -39,7 +39,7 @@ from typing import (
 )
 
 from astrapy import __version__
-from astrapy.api import AsyncAPIRequestHandler, APIRequestHandler
+from astrapy.api import api_request, async_api_request
 from astrapy.defaults import (
     DEFAULT_AUTH_HEADER,
     DEFAULT_JSON_API_PATH,
@@ -115,24 +115,19 @@ class AstraDBCollection:
         json_data: Optional[Dict[str, Any]] = None,
         url_params: Optional[Dict[str, Any]] = None,
         skip_error_check: bool = False,
-        **kwargs: Any,
     ) -> API_RESPONSE:
-        request_handler = APIRequestHandler(
+        direct_response = api_request(
             client=self.client,
             base_url=self.astra_db.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
             token=self.astra_db.token,
             method=method,
-            path=path,
             json_data=normalize_for_api(json_data),
             url_params=url_params,
+            path=path,
             skip_error_check=skip_error_check,
-            **kwargs,
         )
-
-        direct_response = request_handler.request()
         response = restore_from_api(direct_response)
-
         return response
 
     def _get(
@@ -1034,21 +1029,18 @@ class AsyncAstraDBCollection:
         skip_error_check: bool = False,
         **kwargs: Any,
     ) -> API_RESPONSE:
-        arequest_handler = AsyncAPIRequestHandler(
+        adirect_response = await async_api_request(
             client=self.client,
             base_url=self.astra_db.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
             token=self.astra_db.token,
             method=method,
-            path=path,
             json_data=normalize_for_api(json_data),
             url_params=url_params,
             skip_error_check=skip_error_check,
+            path=path,
         )
-
-        direct_response = await arequest_handler.request()
-        response = restore_from_api(direct_response)
-
+        response = restore_from_api(adirect_response)
         return response
 
     async def _get(
@@ -1915,24 +1907,19 @@ class AstraDB:
         json_data: Optional[Dict[str, Any]] = None,
         url_params: Optional[Dict[str, Any]] = None,
         skip_error_check: bool = False,
-        **kwargs: Any,
     ) -> API_RESPONSE:
-        request_handler = APIRequestHandler(
+        direct_response = api_request(
             client=self.client,
             base_url=self.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
             token=self.token,
             method=method,
-            path=path,
             json_data=normalize_for_api(json_data),
             url_params=url_params,
+            path=path,
             skip_error_check=skip_error_check,
-            **kwargs,
         )
-
-        direct_response = request_handler.request()
         response = restore_from_api(direct_response)
-
         return response
 
     def collection(self, collection_name: str) -> AstraDBCollection:
@@ -2159,24 +2146,19 @@ class AsyncAstraDB:
         json_data: Optional[Dict[str, Any]] = None,
         url_params: Optional[Dict[str, Any]] = None,
         skip_error_check: bool = False,
-        **kwargs: Any,
     ) -> API_RESPONSE:
-        request_handler = AsyncAPIRequestHandler(
+        adirect_response = await async_api_request(
             client=self.client,
             base_url=self.base_url,
             auth_header=DEFAULT_AUTH_HEADER,
             token=self.token,
             method=method,
-            path=path,
             json_data=normalize_for_api(json_data),
             url_params=url_params,
             skip_error_check=skip_error_check,
-            **kwargs,
+            path=path,
         )
-
-        direct_response = await request_handler.request()
-        response = restore_from_api(direct_response)
-
+        response = restore_from_api(adirect_response)
         return response
 
     async def collection(self, collection_name: str) -> AsyncAstraDBCollection:
