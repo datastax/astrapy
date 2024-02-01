@@ -33,46 +33,39 @@ logger = logging.getLogger(__name__)
 
 @pytest.mark.describe("should confirm path handling in constructor")
 def test_path_handling(astra_db_credentials_kwargs: Dict[str, Optional[str]]) -> None:
-    astra_db_1 = AstraDB(**astra_db_credentials_kwargs)
+    token = astra_db_credentials_kwargs["token"]
+    api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
+    namespace = astra_db_credentials_kwargs.get("namespace")
 
+    if token is None or api_endpoint is None:
+        raise ValueError("Required ASTRA DB configuration is missing")
+
+    astra_db_1 = AstraDB(token=token, api_endpoint=api_endpoint, namespace=namespace)
     url_1 = astra_db_1.base_path
 
     astra_db_2 = AstraDB(
-        **astra_db_credentials_kwargs,
-        api_version="v1",
+        token=token, api_endpoint=api_endpoint, namespace=namespace, api_version="v1"
     )
-
     url_2 = astra_db_2.base_path
 
     astra_db_3 = AstraDB(
-        **astra_db_credentials_kwargs,
-        api_version="/v1",
+        token=token, api_endpoint=api_endpoint, namespace=namespace, api_version="/v1"
     )
-
     url_3 = astra_db_3.base_path
 
     astra_db_4 = AstraDB(
-        **astra_db_credentials_kwargs,
-        api_version="/v1/",
+        token=token, api_endpoint=api_endpoint, namespace=namespace, api_version="/v1/"
     )
-
     url_4 = astra_db_4.base_path
 
     assert url_1 == url_2 == url_3 == url_4
 
     # autofill of the default keyspace name
     unspecified_ks_client = AstraDB(
-        **{
-            **astra_db_credentials_kwargs,
-            **{"namespace": DEFAULT_KEYSPACE_NAME},
-        }
+        token=token, api_endpoint=api_endpoint, namespace=DEFAULT_KEYSPACE_NAME
     )
-    explicit_ks_client = AstraDB(
-        **{
-            **astra_db_credentials_kwargs,
-            **{"namespace": None},
-        }
-    )
+    explicit_ks_client = AstraDB(token=token, api_endpoint=api_endpoint, namespace=None)
+
     assert unspecified_ks_client.base_path == explicit_ks_client.base_path
 
 

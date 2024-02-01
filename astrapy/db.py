@@ -1858,8 +1858,8 @@ class AstraDB:
 
     def __init__(
         self,
-        token: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
+        token: str,
+        api_endpoint: str,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
         namespace: Optional[str] = None,
@@ -1867,8 +1867,8 @@ class AstraDB:
         """
         Initialize an Astra DB instance.
         Args:
-            token (str, optional): Authentication token for Astra DB.
-            api_endpoint (str, optional): API endpoint URL.
+            token (str): Authentication token for Astra DB.
+            api_endpoint (str): API endpoint URL.
             namespace (str, optional): Namespace for the database.
         """
         if token is None or api_endpoint is None:
@@ -2090,8 +2090,8 @@ class AstraDB:
 class AsyncAstraDB:
     def __init__(
         self,
-        token: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
+        token: str,
+        api_endpoint: str,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
         namespace: Optional[str] = None,
@@ -2099,8 +2099,8 @@ class AsyncAstraDB:
         """
         Initialize an Astra DB instance.
         Args:
-            token (str, optional): Authentication token for Astra DB.
-            api_endpoint (str, optional): API endpoint URL.
+            token (str): Authentication token for Astra DB.
+            api_endpoint (str): API endpoint URL.
             namespace (str, optional): Namespace for the database.
         """
         self.client = httpx.AsyncClient()
