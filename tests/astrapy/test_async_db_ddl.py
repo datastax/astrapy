@@ -35,24 +35,30 @@ logger = logging.getLogger(__name__)
 async def test_path_handling(
     astra_db_credentials_kwargs: Dict[str, Optional[str]]
 ) -> None:
-    async with AsyncAstraDB(**astra_db_credentials_kwargs) as astra_db_1:
+    token = astra_db_credentials_kwargs["token"]
+    api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
+    namespace = astra_db_credentials_kwargs.get("namespace")
+
+    if token is None or api_endpoint is None:
+        raise ValueError("Required ASTRA DB configuration is missing")
+
+    async with AsyncAstraDB(
+        token=token, api_endpoint=api_endpoint, namespace=namespace
+    ) as astra_db_1:
         url_1 = astra_db_1.base_path
 
     async with AsyncAstraDB(
-        **astra_db_credentials_kwargs,
-        api_version="v1",
+        token=token, api_endpoint=api_endpoint, namespace=namespace, api_version="v1"
     ) as astra_db_2:
         url_2 = astra_db_2.base_path
 
     async with AsyncAstraDB(
-        **astra_db_credentials_kwargs,
-        api_version="/v1",
+        token=token, api_endpoint=api_endpoint, namespace=namespace, api_version="/v1"
     ) as astra_db_3:
         url_3 = astra_db_3.base_path
 
     async with AsyncAstraDB(
-        **astra_db_credentials_kwargs,
-        api_version="/v1/",
+        token=token, api_endpoint=api_endpoint, namespace=namespace, api_version="/v1/"
     ) as astra_db_4:
         url_4 = astra_db_4.base_path
 
@@ -60,15 +66,9 @@ async def test_path_handling(
 
     # autofill of the default keyspace name
     async with AsyncAstraDB(
-        **{
-            **astra_db_credentials_kwargs,
-            **{"namespace": DEFAULT_KEYSPACE_NAME},
-        }
+        token=token, api_endpoint=api_endpoint, namespace=DEFAULT_KEYSPACE_NAME
     ) as unspecified_ks_client, AsyncAstraDB(
-        **{
-            **astra_db_credentials_kwargs,
-            **{"namespace": None},
-        }
+        token=token, api_endpoint=api_endpoint, namespace=None
     ) as explicit_ks_client:
         assert unspecified_ks_client.base_path == explicit_ks_client.base_path
 
