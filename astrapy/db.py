@@ -1867,8 +1867,8 @@ class AstraDB:
         """
         Initialize an Astra DB instance.
         Args:
-            token (str, optional): Authentication token for Astra DB.
-            api_endpoint (str, optional): API endpoint URL.
+            token (str): Authentication token for Astra DB.
+            api_endpoint (str): API endpoint URL.
             namespace (str, optional): Namespace for the database.
         """
         if token is None or api_endpoint is None:
@@ -2099,8 +2099,8 @@ class AsyncAstraDB:
         """
         Initialize an Astra DB instance.
         Args:
-            token (str, optional): Authentication token for Astra DB.
-            api_endpoint (str, optional): API endpoint URL.
+            token (str): Authentication token for Astra DB.
+            api_endpoint (str): API endpoint URL.
             namespace (str, optional): Namespace for the database.
         """
         self.client = httpx.AsyncClient()

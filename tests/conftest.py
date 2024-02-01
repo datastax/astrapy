@@ -5,7 +5,16 @@ import os
 import math
 
 import pytest
-from typing import AsyncIterable, Dict, Iterable, List, Optional, Set, TypeVar
+from typing import (
+    AsyncIterable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    TypeVar,
+    TypedDict,
+)
 
 import pytest_asyncio
 
@@ -15,8 +24,9 @@ from astrapy.db import AstraDB, AstraDBCollection, AsyncAstraDB, AsyncAstraDBCol
 T = TypeVar("T")
 
 
-ASTRA_DB_APPLICATION_TOKEN = os.environ.get("ASTRA_DB_APPLICATION_TOKEN")
-ASTRA_DB_API_ENDPOINT = os.environ.get("ASTRA_DB_API_ENDPOINT")
+ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
+ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
+
 ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
 
 # fixed
@@ -49,6 +59,12 @@ VECTOR_DOCUMENTS = [
 ]
 
 
+class AstraDBCredentials(TypedDict, total=False):
+    token: str
+    api_endpoint: str
+    namespace: Optional[str]
+
+
 def _batch_iterable(iterable: Iterable[T], batch_size: int) -> Iterable[Iterable[T]]:
     this_batch = []
     for entry in iterable:
@@ -61,33 +77,53 @@ def _batch_iterable(iterable: Iterable[T], batch_size: int) -> Iterable[Iterable
 
 
 @pytest.fixture(scope="session")
-def astra_db_credentials_kwargs() -> Dict[str, Optional[str]]:
-    return {
+def astra_db_credentials_kwargs() -> AstraDBCredentials:
+    astra_db_creds: AstraDBCredentials = {
         "token": ASTRA_DB_APPLICATION_TOKEN,
         "api_endpoint": ASTRA_DB_API_ENDPOINT,
         "namespace": ASTRA_DB_KEYSPACE,
     }
 
+    return astra_db_creds
+
 
 @pytest.fixture(scope="session")
-def astra_invalid_db_credentials_kwargs() -> Dict[str, Optional[str]]:
-    return {
+def astra_invalid_db_credentials_kwargs() -> AstraDBCredentials:
+    astra_db_creds: AstraDBCredentials = {
         "token": ASTRA_DB_APPLICATION_TOKEN,
         "api_endpoint": "http://localhost:1234",
         "namespace": ASTRA_DB_KEYSPACE,
     }
 
+    return astra_db_creds
+
 
 @pytest.fixture(scope="session")
 def db(astra_db_credentials_kwargs: Dict[str, Optional[str]]) -> AstraDB:
-    return AstraDB(**astra_db_credentials_kwargs)
+    token = astra_db_credentials_kwargs["token"]
+    api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
+    namespace = astra_db_credentials_kwargs.get("namespace")
+
+    if token is None or api_endpoint is None:
+        raise ValueError("Required ASTRA DB configuration is missing")
+
+    return AstraDB(token=token, api_endpoint=api_endpoint, namespace=namespace)
 
 
 @pytest_asyncio.fixture(scope="function")
 async def async_db(
     astra_db_credentials_kwargs: Dict[str, Optional[str]]
 ) -> AsyncIterable[AsyncAstraDB]:
-    async with AsyncAstraDB(**astra_db_credentials_kwargs) as db:
+    token = astra_db_credentials_kwargs["token"]
+    api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
+    namespace = astra_db_credentials_kwargs.get("namespace")
+
+    if token is None or api_endpoint is None:
+        raise ValueError("Required ASTRA DB configuration is missing")
+
+    async with AsyncAstraDB(
+        token=token, api_endpoint=api_endpoint, namespace=namespace
+    ) as db:
         yield db
 
 
@@ -95,7 +131,14 @@ async def async_db(
 def invalid_db(
     astra_invalid_db_credentials_kwargs: Dict[str, Optional[str]]
 ) -> AstraDB:
-    return AstraDB(**astra_invalid_db_credentials_kwargs)
+    token = astra_invalid_db_credentials_kwargs["token"]
+    api_endpoint = astra_invalid_db_credentials_kwargs["api_endpoint"]
+    namespace = astra_invalid_db_credentials_kwargs.get("namespace")
+
+    if token is None or api_endpoint is None:
+        raise ValueError("Required ASTRA DB configuration is missing")
+
+    return AstraDB(token=token, api_endpoint=api_endpoint, namespace=namespace)
 
 
 @pytest.fixture(scope="session")
