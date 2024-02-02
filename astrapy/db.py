@@ -126,8 +126,8 @@ class AstraDBCollection:
             url_params=url_params,
             path=path,
             skip_error_check=skip_error_check,
-            client_name=None,
-            client_version=None,
+            caller_name=None,
+            caller_version=None,
         )
         response = restore_from_api(direct_response)
         return response
@@ -1041,8 +1041,8 @@ class AsyncAstraDBCollection:
             url_params=url_params,
             path=path,
             skip_error_check=skip_error_check,
-            client_name=None,
-            client_version=None,
+            caller_name=None,
+            caller_version=None,
         )
         response = restore_from_api(adirect_response)
         return response
@@ -1922,8 +1922,8 @@ class AstraDB:
             url_params=url_params,
             path=path,
             skip_error_check=skip_error_check,
-            client_name=None,
-            client_version=None,
+            caller_name=None,
+            caller_version=None,
         )
         response = restore_from_api(direct_response)
         return response
@@ -2163,8 +2163,8 @@ class AsyncAstraDB:
             url_params=url_params,
             path=path,
             skip_error_check=skip_error_check,
-            client_name=None,
-            client_version=None,
+            caller_name=None,
+            caller_version=None,
         )
         response = restore_from_api(adirect_response)
         return response

@@ -65,15 +65,15 @@ def log_request_response(
 
 
 def compose_user_agent(
-    client_name: Optional[str], client_version: Optional[str]
+    caller_name: Optional[str], caller_version: Optional[str]
 ) -> str:
-    if client_name:
+    if caller_name:
         return f"{package_name}/{__version__}"
     else:
-        if client_version:
-            return f"{client_name}/{package_name}/{__version__}"
+        if caller_version:
+            return f"{caller_name}/{package_name}/{__version__}"
         else:
-            return f"{client_name}/{package_name}/{__version__}/{client_version}"
+            return f"{caller_name}/{package_name}/{__version__}/{caller_version}"
 
 
 def make_request(
@@ -85,8 +85,8 @@ def make_request(
     json_data: Optional[Dict[str, Any]],
     url_params: Optional[Dict[str, Any]],
     path: Optional[str],
-    client_name: Optional[str],
-    client_version: Optional[str],
+    caller_name: Optional[str],
+    caller_version: Optional[str],
 ) -> httpx.Response:
     """
     Make an HTTP request to a specified URL.
@@ -112,7 +112,7 @@ def make_request(
         timeout=DEFAULT_TIMEOUT,
         headers={
             auth_header: token,
-            "User-Agent": compose_user_agent(client_name, client_version),
+            "User-Agent": compose_user_agent(caller_name, caller_version),
         },
     )
 
@@ -130,8 +130,8 @@ async def amake_request(
     path: Optional[str],
     json_data: Optional[Dict[str, Any]],
     url_params: Optional[Dict[str, Any]],
-    client_name: Optional[str],
-    client_version: Optional[str],
+    caller_name: Optional[str],
+    caller_version: Optional[str],
 ) -> httpx.Response:
     """
     Make an HTTP request to a specified URL.
@@ -157,7 +157,7 @@ async def amake_request(
         timeout=DEFAULT_TIMEOUT,
         headers={
             auth_header: token,
-            "User-Agent": compose_user_agent(client_name, client_version),
+            "User-Agent": compose_user_agent(caller_name, caller_version),
         },
     )
 
