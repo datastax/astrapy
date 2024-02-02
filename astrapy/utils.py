@@ -67,10 +67,10 @@ def log_request_response(
 def compose_user_agent(
     client_name: Optional[str], client_version: Optional[str]
 ) -> str:
-    if client_name is None:
+    if client_name:
         return f"{package_name}/{__version__}"
     else:
-        if client_version is None:
+        if client_version:
             return f"{client_name}/{package_name}/{__version__}"
         else:
             return f"{client_name}/{package_name}/{__version__}/{client_version}"
@@ -85,8 +85,8 @@ def make_request(
     json_data: Optional[Dict[str, Any]],
     url_params: Optional[Dict[str, Any]],
     path: Optional[str],
-    client_name: Optional[str] = None,
-    client_version: Optional[str] = None,
+    client_name: Optional[str],
+    client_version: Optional[str],
 ) -> httpx.Response:
     """
     Make an HTTP request to a specified URL.
@@ -130,8 +130,8 @@ async def amake_request(
     path: Optional[str],
     json_data: Optional[Dict[str, Any]],
     url_params: Optional[Dict[str, Any]],
-    client_name: Optional[str] = None,
-    client_version: Optional[str] = None,
+    client_name: Optional[str],
+    client_version: Optional[str],
 ) -> httpx.Response:
     """
     Make an HTTP request to a specified URL.

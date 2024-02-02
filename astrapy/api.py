@@ -27,6 +27,8 @@ def raw_api_request(
     json_data: Optional[Dict[str, Any]],
     url_params: Optional[Dict[str, Any]],
     path: Optional[str],
+    client_name: Optional[str],
+    client_version: Optional[str],
 ) -> httpx.Response:
     return make_request(
         client=client,
@@ -37,6 +39,8 @@ def raw_api_request(
         json_data=json_data,
         url_params=url_params,
         path=path,
+        client_name=client_name,
+        client_version=client_version,
     )
 
 
@@ -71,6 +75,8 @@ def api_request(
     url_params: Optional[Dict[str, Any]],
     path: Optional[str],
     skip_error_check: bool,
+    client_name: Optional[str],
+    client_version: Optional[str],
 ) -> API_RESPONSE:
     raw_response = raw_api_request(
         client=client,
@@ -81,6 +87,8 @@ def api_request(
         json_data=json_data,
         url_params=url_params,
         path=path,
+        client_name=client_name,
+        client_version=client_version,
     )
     raw_response.raise_for_status()
     return process_raw_api_response(raw_response, skip_error_check=skip_error_check)
@@ -96,6 +104,8 @@ async def async_raw_api_request(
     json_data: Optional[Dict[str, Any]],
     url_params: Optional[Dict[str, Any]],
     path: Optional[str],
+    client_name: Optional[str],
+    client_version: Optional[str],
 ) -> httpx.Response:
     return await amake_request(
         client=client,
@@ -106,6 +116,8 @@ async def async_raw_api_request(
         json_data=json_data,
         url_params=url_params,
         path=path,
+        client_name=client_name,
+        client_version=client_version,
     )
 
 
@@ -140,6 +152,8 @@ async def async_api_request(
     url_params: Optional[Dict[str, Any]],
     path: Optional[str],
     skip_error_check: bool,
+    client_name: Optional[str],
+    client_version: Optional[str],
 ) -> API_RESPONSE:
     raw_response = await async_raw_api_request(
         client=client,
@@ -150,6 +164,8 @@ async def async_api_request(
         json_data=json_data,
         url_params=url_params,
         path=path,
+        client_name=client_name,
+        client_version=client_version,
     )
     raw_response.raise_for_status()
     return await async_process_raw_api_response(

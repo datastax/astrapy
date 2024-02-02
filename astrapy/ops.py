@@ -66,6 +66,8 @@ class AstraDBOps:
             json_data=json_data,
             url_params=_options,
             path=path,
+            client_name=None,
+            client_version=None,
         )
         return raw_response
 
@@ -88,6 +90,8 @@ class AstraDBOps:
             url_params=_options,
             path=path,
             skip_error_check=False,
+            client_name=None,
+            client_version=None,
         )
         return response
 
