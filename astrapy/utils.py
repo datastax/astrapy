@@ -64,15 +64,29 @@ def log_request_response(
     logger.debug(f"Response content: {r.text}")
 
 
+def compose_user_agent(
+    client_name: Optional[str], client_version: Optional[str]
+) -> str:
+    if client_name is None:
+        return f"{package_name}/{__version__}"
+    else:
+        if client_version is None:
+            return f"{client_name}/{package_name}/{__version__}"
+        else:
+            return f"{client_name}/{package_name}/{__version__}/{client_version}"
+
+
 def make_request(
     client: httpx.Client,
     base_url: str,
     auth_header: str,
     token: str,
-    method: str = http_methods.POST,
-    path: Optional[str] = None,
-    json_data: Optional[Dict[str, Any]] = None,
-    url_params: Optional[Dict[str, Any]] = None,
+    method: str,
+    json_data: Optional[Dict[str, Any]],
+    url_params: Optional[Dict[str, Any]],
+    path: Optional[str],
+    client_name: Optional[str] = None,
+    client_version: Optional[str] = None,
 ) -> httpx.Response:
     """
     Make an HTTP request to a specified URL.
@@ -96,7 +110,10 @@ def make_request(
         params=url_params,
         json=json_data,
         timeout=DEFAULT_TIMEOUT,
-        headers={auth_header: token, "User-Agent": f"{package_name}/{__version__}"},
+        headers={
+            auth_header: token,
+            "User-Agent": compose_user_agent(client_name, client_version),
+        },
     )
 
     log_request_response(r, json_data)
@@ -109,10 +126,12 @@ async def amake_request(
     base_url: str,
     auth_header: str,
     token: str,
-    method: str = http_methods.POST,
-    path: Optional[str] = None,
-    json_data: Optional[Dict[str, Any]] = None,
-    url_params: Optional[Dict[str, Any]] = None,
+    method: str,
+    path: Optional[str],
+    json_data: Optional[Dict[str, Any]],
+    url_params: Optional[Dict[str, Any]],
+    client_name: Optional[str] = None,
+    client_version: Optional[str] = None,
 ) -> httpx.Response:
     """
     Make an HTTP request to a specified URL.
@@ -136,7 +155,10 @@ async def amake_request(
         params=url_params,
         json=json_data,
         timeout=DEFAULT_TIMEOUT,
-        headers={auth_header: token, "User-Agent": f"{package_name}/{__version__}"},
+        headers={
+            auth_header: token,
+            "User-Agent": compose_user_agent(client_name, client_version),
+        },
     )
 
     log_request_response(r, json_data)

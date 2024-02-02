@@ -26,7 +26,7 @@ def raw_api_request(
     method: str,
     json_data: Optional[Dict[str, Any]],
     url_params: Optional[Dict[str, Any]],
-    path: Optional[str] = None,
+    path: Optional[str],
 ) -> httpx.Response:
     return make_request(
         client=client,
@@ -69,8 +69,8 @@ def api_request(
     method: str,
     json_data: Optional[Dict[str, Any]],
     url_params: Optional[Dict[str, Any]],
-    path: Optional[str] = None,
-    skip_error_check: bool = False,
+    path: Optional[str],
+    skip_error_check: bool,
 ) -> API_RESPONSE:
     raw_response = raw_api_request(
         client=client,
@@ -95,7 +95,7 @@ async def async_raw_api_request(
     method: str,
     json_data: Optional[Dict[str, Any]],
     url_params: Optional[Dict[str, Any]],
-    path: Optional[str] = None,
+    path: Optional[str],
 ) -> httpx.Response:
     return await amake_request(
         client=client,
@@ -138,8 +138,8 @@ async def async_api_request(
     method: str,
     json_data: Optional[Dict[str, Any]],
     url_params: Optional[Dict[str, Any]],
-    path: Optional[str] = None,
-    skip_error_check: bool = False,
+    path: Optional[str],
+    skip_error_check: bool,
 ) -> API_RESPONSE:
     raw_response = await async_raw_api_request(
         client=client,

@@ -87,6 +87,7 @@ class AstraDBOps:
             json_data=json_data,
             url_params=_options,
             path=path,
+            skip_error_check=False,
         )
         return response
 

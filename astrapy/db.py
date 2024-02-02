@@ -1037,8 +1037,8 @@ class AsyncAstraDBCollection:
             method=method,
             json_data=normalize_for_api(json_data),
             url_params=url_params,
-            skip_error_check=skip_error_check,
             path=path,
+            skip_error_check=skip_error_check,
         )
         response = restore_from_api(adirect_response)
         return response
@@ -2155,8 +2155,8 @@ class AsyncAstraDB:
             method=method,
             json_data=normalize_for_api(json_data),
             url_params=url_params,
-            skip_error_check=skip_error_check,
             path=path,
+            skip_error_check=skip_error_check,
         )
         response = restore_from_api(adirect_response)
         return response
