@@ -42,6 +42,7 @@ pytest-cov = "~4.1.0"
 pytest-testdox = "~3.1.0"
 pytest = "~7.4.3"
 python-dotenv = "~1.0.0"
+pytest-httpserver = "~1.0.8"
 ruff = "~0.1.5"
 types-toml = "^0.10.8.7"
 
