@@ -68,12 +68,12 @@ def compose_user_agent(
     caller_name: Optional[str], caller_version: Optional[str]
 ) -> str:
     if caller_name:
-        return f"{package_name}/{__version__}"
-    else:
         if caller_version:
-            return f"{caller_name}/{package_name}/{__version__}"
+            return f"{caller_name}/{caller_version} {package_name}/{__version__}"
         else:
-            return f"{caller_name}/{package_name}/{__version__}/{caller_version}"
+            return f"{caller_name} {package_name}/{__version__}"
+    else:
+        return f"{package_name}/{__version__}"
 
 
 def make_request(
