@@ -20,7 +20,8 @@ import logging
 import pytest
 from pytest_httpserver import HTTPServer
 
-from astrapy.utils import __version__, compose_user_agent, package_name
+from astrapy import __version__
+from astrapy.utils import compose_user_agent, package_name
 from astrapy.db import AstraDB
 
 
