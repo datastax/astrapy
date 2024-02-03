@@ -17,7 +17,6 @@ Tests for the User-Agent customization logic
 """
 
 import logging
-from typing import Optional
 import pytest
 from pytest_httpserver import HTTPServer
 
@@ -27,21 +26,29 @@ from astrapy.db import AstraDB
 
 logger = logging.getLogger(__name__)
 
+
 @pytest.mark.describe("compose_user_agent")
 def test_compose_user_agent() -> None:
-    assert compose_user_agent(caller_name=None, caller_version=None) == f"{package_name}/{__version__}"
-    assert compose_user_agent(caller_name="N", caller_version=None) == f"N {package_name}/{__version__}"
-    assert compose_user_agent(caller_name=None, caller_version="V") == f"{package_name}/{__version__}"
-    assert compose_user_agent(caller_name="N", caller_version="V") == f"N/V {package_name}/{__version__}"
+    assert (
+        compose_user_agent(caller_name=None, caller_version=None)
+        == f"{package_name}/{__version__}"
+    )
+    assert (
+        compose_user_agent(caller_name="N", caller_version=None)
+        == f"N {package_name}/{__version__}"
+    )
+    assert (
+        compose_user_agent(caller_name=None, caller_version="V")
+        == f"{package_name}/{__version__}"
+    )
+    assert (
+        compose_user_agent(caller_name="N", caller_version="V")
+        == f"N/V {package_name}/{__version__}"
+    )
 
 
-@pytest.mark.describe(
-    "test user-agent in the standard way for AstraDB"
-)
-def test_useragent_astradb_standard(
-    httpserver: HTTPServer
-) -> None:
-
+@pytest.mark.describe("test user-agent in the standard way for AstraDB")
+def test_useragent_astradb_standard(httpserver: HTTPServer) -> None:
     root_endpoint = httpserver.url_for("/")
     my_db = AstraDB(
         token="token",
@@ -53,7 +60,9 @@ def test_useragent_astradb_standard(
     httpserver.expect_request(
         expected_url,
         method="POST",
-        headers={"user-agent": compose_user_agent(caller_name=None, caller_version=None)}
+        headers={
+            "user-agent": compose_user_agent(caller_name=None, caller_version=None)
+        },
     ).respond_with_data("{}")
 
     my_db.get_collections()
