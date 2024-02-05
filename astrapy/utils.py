@@ -14,7 +14,7 @@ from astrapy.types import API_RESPONSE
 class CustomLogger(logging.Logger):
     def trace(self, msg: str, *args: Any, **kwargs: Any) -> None:
         if self.isEnabledFor(5):
-            self._log(5, msg, *args, **kwargs)
+            self._log(5, msg, args, **kwargs)
 
 
 # Add a new TRACE logging level
@@ -22,10 +22,6 @@ logging.addLevelName(5, "TRACE")
 
 # Tell the logging system to use your custom logger
 logging.setLoggerClass(CustomLogger)
-
-# Now you can use the trace method on your logger instances
-logger = logging.getLogger(__name__)
-logger.trace("This is a trace message")  # type: ignore
 
 
 logger = logging.getLogger(__name__)
