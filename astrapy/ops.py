@@ -70,6 +70,20 @@ class AstraDBOps:
         self.token = "Bearer " + token
         self.base_url = f"https://{dev_ops_url}/{dev_ops_api_version}"
 
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, AstraDBOps):
+            # work on the "normalized" quantities (stripped, etc)
+            return all(
+                [
+                    self.token == other.token,
+                    self.base_url == other.base_url,
+                    self.caller_name == other.caller_name,
+                    self.caller_version == other.caller_version,
+                ]
+            )
+        else:
+            return False
+
     def copy(self) -> AstraDBOps:
         return AstraDBOps(**self.constructor_params)
 

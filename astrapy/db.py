@@ -88,26 +88,45 @@ class AstraDBCollection:
             api_endpoint (str, optional): API endpoint URL.
             namespace (str, optional): Namespace for the database.
             caller_name (str, optional): identity of the caller ("my_framework")
+                If passing a client, its caller is used as fallback
             caller_version (str, optional): version of the caller code ("1.0.3")
+                If passing a client, its caller is used as fallback
         """
-        self.caller_name = caller_name
-        self.caller_version = caller_version
         # Check for presence of the Astra DB object
         if astra_db is None:
             if token is None or api_endpoint is None:
                 raise AssertionError("Must provide token and api_endpoint")
 
             astra_db = AstraDB(
-                token=token, api_endpoint=api_endpoint, namespace=namespace
+                token=token,
+                api_endpoint=api_endpoint,
+                namespace=namespace,
+                caller_name=caller_name,
+                caller_version=caller_version,
             )
 
         # Set the remaining instance attributes
         self.astra_db = astra_db
+        self.caller_name = caller_name or self.astra_db.caller_name
+        self.caller_version = caller_version or self.astra_db.caller_version
         self.collection_name = collection_name
         self.base_path = f"{self.astra_db.base_path}/{self.collection_name}"
 
     def __repr__(self) -> str:
         return f'Astra DB Collection[name="{self.collection_name}", endpoint="{self.astra_db.base_url}"]'
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, AstraDBCollection):
+            return all(
+                [
+                    self.collection_name == other.collection_name,
+                    self.astra_db == other.astra_db,
+                    self.caller_name == other.caller_name,
+                    self.caller_version == other.caller_version,
+                ]
+            )
+        else:
+            return False
 
     def copy(self) -> AstraDBCollection:
         return AstraDBCollection(
@@ -130,6 +149,10 @@ class AstraDBCollection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
+        self.astra_db.set_caller(
+            caller_name=caller_name,
+            caller_version=caller_version,
+        )
         self.caller_name = caller_name
         self.caller_version = caller_version
 
@@ -1026,27 +1049,46 @@ class AsyncAstraDBCollection:
             api_endpoint (str, optional): API endpoint URL.
             namespace (str, optional): Namespace for the database.
             caller_name (str, optional): identity of the caller ("my_framework")
+                If passing a client, its caller is used as fallback
             caller_version (str, optional): version of the caller code ("1.0.3")
+                If passing a client, its caller is used as fallback
         """
-        self.caller_name = caller_name
-        self.caller_version = caller_version
         # Check for presence of the Astra DB object
         if astra_db is None:
             if token is None or api_endpoint is None:
                 raise AssertionError("Must provide token and api_endpoint")
 
             astra_db = AsyncAstraDB(
-                token=token, api_endpoint=api_endpoint, namespace=namespace
+                token=token,
+                api_endpoint=api_endpoint,
+                namespace=namespace,
+                caller_name=caller_name,
+                caller_version=caller_version,
             )
 
         # Set the remaining instance attributes
         self.astra_db: AsyncAstraDB = astra_db
+        self.caller_name = caller_name or self.astra_db.caller_name
+        self.caller_version = caller_version or self.astra_db.caller_version
         self.client = astra_db.client
         self.collection_name = collection_name
         self.base_path = f"{self.astra_db.base_path}/{self.collection_name}"
 
     def __repr__(self) -> str:
         return f'Astra DB Collection[name="{self.collection_name}", endpoint="{self.astra_db.base_url}"]'
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, AsyncAstraDBCollection):
+            return all(
+                [
+                    self.collection_name == other.collection_name,
+                    self.astra_db == other.astra_db,
+                    self.caller_name == other.caller_name,
+                    self.caller_version == other.caller_version,
+                ]
+            )
+        else:
+            return False
 
     def copy(self) -> AsyncAstraDBCollection:
         return AsyncAstraDBCollection(
@@ -1061,6 +1103,10 @@ class AsyncAstraDBCollection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
+        self.astra_db.set_caller(
+            caller_name=caller_name,
+            caller_version=caller_version,
+        )
         self.caller_name = caller_name
         self.caller_version = caller_version
 
@@ -1954,6 +2000,21 @@ class AstraDB:
     def __repr__(self) -> str:
         return f'Astra DB[endpoint="{self.base_url}"]'
 
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, AstraDB):
+            # work on the "normalized" quantities (stripped, etc)
+            return all(
+                [
+                    self.token == other.token,
+                    self.base_url == other.base_url,
+                    self.base_path == other.base_path,
+                    self.caller_name == other.caller_name,
+                    self.caller_version == other.caller_version,
+                ]
+            )
+        else:
+            return False
+
     def copy(self) -> AstraDB:
         return AstraDB(
             token=self.token,
@@ -2213,6 +2274,21 @@ class AsyncAstraDB:
 
     def __repr__(self) -> str:
         return f'Async Astra DB[endpoint="{self.base_url}"]'
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, AsyncAstraDB):
+            # work on the "normalized" quantities (stripped, etc)
+            return all(
+                [
+                    self.token == other.token,
+                    self.base_url == other.base_url,
+                    self.base_path == other.base_path,
+                    self.caller_name == other.caller_name,
+                    self.caller_version == other.caller_version,
+                ]
+            )
+        else:
+            return False
 
     async def __aenter__(self) -> AsyncAstraDB:
         return self
