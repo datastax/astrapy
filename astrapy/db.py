@@ -101,7 +101,7 @@ class AstraDBCollection:
         self.base_path = f"{self.astra_db.base_path}/{self.collection_name}"
 
     def __repr__(self) -> str:
-        return f'Astra DB Collection[name="{self.collection_name}", endpoint="{self.astra_db.base_url}"]'
+        return f'AstraDBCollection[astra_db="{self.astra_db}", collection_name="{self.collection_name}"]'
 
     def to_async(self) -> AsyncAstraDBCollection:
         return AsyncAstraDBCollection(
@@ -1015,7 +1015,7 @@ class AsyncAstraDBCollection:
         self.base_path = f"{self.astra_db.base_path}/{self.collection_name}"
 
     def __repr__(self) -> str:
-        return f'Astra DB Collection[name="{self.collection_name}", endpoint="{self.astra_db.base_url}"]'
+        return f'AsyncAstraDBCollection[astra_db="{self.astra_db}", collection_name="{self.collection_name}"]'
 
     def to_sync(self) -> AstraDBCollection:
         return AstraDBCollection(
@@ -1893,7 +1893,7 @@ class AstraDB:
         self.base_path = f"/{self.api_path}/{self.api_version}/{self.namespace}"
 
     def __repr__(self) -> str:
-        return f'Astra DB[endpoint="{self.base_url}"]'
+        return f'AstraDB[endpoint="{self.base_url}", keyspace="{self.namespace}"]'
 
     def to_async(self) -> AsyncAstraDB:
         return AsyncAstraDB(
@@ -2123,7 +2123,7 @@ class AsyncAstraDB:
         self.base_path = f"/{self.api_path}/{self.api_version}/{self.namespace}"
 
     def __repr__(self) -> str:
-        return f'Async Astra DB[endpoint="{self.base_url}"]'
+        return f'AsyncAstraDB[endpoint="{self.base_url}", keyspace="{self.namespace}"]'
 
     async def __aenter__(self) -> AsyncAstraDB:
         return self
