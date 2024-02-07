@@ -346,7 +346,7 @@ response = collection.delete(id="id_1")
 
 Check out the [notebook](https://colab.research.google.com/github/synedra/astra_vector_examples/blob/main/notebook/vector.ipynb#scrollTo=f04a1806) which has examples for finding and inserting information into the database, including vector commands.
 
-Take a look at the [Astra DB DML tests](https://github.com/datastax/astrapy/blob/master/tests/astrapy/test_db_dml.py) for specific endpoint examples. Further examples are available in the other corresponding [test files](https://github.com/datastax/astrapy/tree/master/tests/astrapy)
+Take a look at the [Astra DB DML tests](https://github.com/datastax/astrapy/blob/master/tests/astrapy/test_db_dml.py) for specific endpoint examples. Further examples are available in the other corresponding [test files](https://github.com/datastax/astrapy/tree/master/tests/astrapy).
 
 ### Using the Ops Client
 
