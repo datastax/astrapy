@@ -76,6 +76,8 @@ class AstraDBCollection:
         token: Optional[str] = None,
         api_endpoint: Optional[str] = None,
         namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
     ) -> None:
         """
         Initialize an AstraDBCollection instance.
@@ -85,7 +87,11 @@ class AstraDBCollection:
             token (str, optional): Authentication token for Astra DB.
             api_endpoint (str, optional): API endpoint URL.
             namespace (str, optional): Namespace for the database.
+            caller_name (str, optional): identity of the caller ("my_framework")
+            caller_version (str, optional): version of the caller code ("1.0.3")
         """
+        self.caller_name = caller_name
+        self.caller_version = caller_version
         # Check for presence of the Astra DB object
         if astra_db is None:
             if token is None or api_endpoint is None:
@@ -103,10 +109,29 @@ class AstraDBCollection:
     def __repr__(self) -> str:
         return f'Astra DB Collection[name="{self.collection_name}", endpoint="{self.astra_db.base_url}"]'
 
+    def copy(self) -> AstraDBCollection:
+        return AstraDBCollection(
+            collection_name=self.collection_name,
+            astra_db=self.astra_db.copy(),
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
+        )
+
     def to_async(self) -> AsyncAstraDBCollection:
         return AsyncAstraDBCollection(
-            astra_db=self.astra_db.to_async(), collection_name=self.collection_name
+            collection_name=self.collection_name,
+            astra_db=self.astra_db.to_async(),
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
         )
+
+    def set_caller(
+        self,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> None:
+        self.caller_name = caller_name
+        self.caller_version = caller_version
 
     def _request(
         self,
@@ -126,8 +151,8 @@ class AstraDBCollection:
             url_params=url_params,
             path=path,
             skip_error_check=skip_error_check,
-            caller_name=None,
-            caller_version=None,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
         )
         response = restore_from_api(direct_response)
         return response
@@ -989,6 +1014,8 @@ class AsyncAstraDBCollection:
         token: Optional[str] = None,
         api_endpoint: Optional[str] = None,
         namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
     ) -> None:
         """
         Initialize an AstraDBCollection instance.
@@ -998,7 +1025,11 @@ class AsyncAstraDBCollection:
             token (str, optional): Authentication token for Astra DB.
             api_endpoint (str, optional): API endpoint URL.
             namespace (str, optional): Namespace for the database.
+            caller_name (str, optional): identity of the caller ("my_framework")
+            caller_version (str, optional): version of the caller code ("1.0.3")
         """
+        self.caller_name = caller_name
+        self.caller_version = caller_version
         # Check for presence of the Astra DB object
         if astra_db is None:
             if token is None or api_endpoint is None:
@@ -1017,9 +1048,28 @@ class AsyncAstraDBCollection:
     def __repr__(self) -> str:
         return f'Astra DB Collection[name="{self.collection_name}", endpoint="{self.astra_db.base_url}"]'
 
+    def copy(self) -> AsyncAstraDBCollection:
+        return AsyncAstraDBCollection(
+            collection_name=self.collection_name,
+            astra_db=self.astra_db.copy(),
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
+        )
+
+    def set_caller(
+        self,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> None:
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+
     def to_sync(self) -> AstraDBCollection:
         return AstraDBCollection(
-            astra_db=self.astra_db.to_sync(), collection_name=self.collection_name
+            collection_name=self.collection_name,
+            astra_db=self.astra_db.to_sync(),
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
         )
 
     async def _request(
@@ -1041,8 +1091,8 @@ class AsyncAstraDBCollection:
             url_params=url_params,
             path=path,
             skip_error_check=skip_error_check,
-            caller_name=None,
-            caller_version=None,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
         )
         response = restore_from_api(adirect_response)
         return response
@@ -1859,14 +1909,23 @@ class AstraDB:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
         namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
     ) -> None:
         """
         Initialize an Astra DB instance.
         Args:
             token (str): Authentication token for Astra DB.
             api_endpoint (str): API endpoint URL.
+            api_path (str, optional): used to override default URI construction
+            api_version (str, optional): to override default URI construction
             namespace (str, optional): Namespace for the database.
+            caller_name (str, optional): identity of the caller ("my_framework")
+            caller_version (str, optional): version of the caller code ("1.0.3")
         """
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+
         if token is None or api_endpoint is None:
             raise AssertionError("Must provide token and api_endpoint")
 
@@ -1895,6 +1954,17 @@ class AstraDB:
     def __repr__(self) -> str:
         return f'Astra DB[endpoint="{self.base_url}"]'
 
+    def copy(self) -> AstraDB:
+        return AstraDB(
+            token=self.token,
+            api_endpoint=self.base_url,
+            api_path=self.api_path,
+            api_version=self.api_version,
+            namespace=self.namespace,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
+        )
+
     def to_async(self) -> AsyncAstraDB:
         return AsyncAstraDB(
             token=self.token,
@@ -1902,7 +1972,17 @@ class AstraDB:
             api_path=self.api_path,
             api_version=self.api_version,
             namespace=self.namespace,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
         )
+
+    def set_caller(
+        self,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> None:
+        self.caller_name = caller_name
+        self.caller_version = caller_version
 
     def _request(
         self,
@@ -1922,8 +2002,8 @@ class AstraDB:
             url_params=url_params,
             path=path,
             skip_error_check=skip_error_check,
-            caller_name=None,
-            caller_version=None,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
         )
         response = restore_from_api(direct_response)
         return response
@@ -2088,14 +2168,23 @@ class AsyncAstraDB:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
         namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
     ) -> None:
         """
         Initialize an Astra DB instance.
         Args:
             token (str): Authentication token for Astra DB.
             api_endpoint (str): API endpoint URL.
+            api_path (str, optional): used to override default URI construction
+            api_version (str, optional): to override default URI construction
             namespace (str, optional): Namespace for the database.
+            caller_name (str, optional): identity of the caller ("my_framework")
+            caller_version (str, optional): version of the caller code ("1.0.3")
         """
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+
         self.client = httpx.AsyncClient()
         if token is None or api_endpoint is None:
             raise AssertionError("Must provide token and api_endpoint")
@@ -2136,6 +2225,17 @@ class AsyncAstraDB:
     ) -> None:
         await self.client.aclose()
 
+    def copy(self) -> AsyncAstraDB:
+        return AsyncAstraDB(
+            token=self.token,
+            api_endpoint=self.base_url,
+            api_path=self.api_path,
+            api_version=self.api_version,
+            namespace=self.namespace,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
+        )
+
     def to_sync(self) -> AstraDB:
         return AstraDB(
             token=self.token,
@@ -2143,7 +2243,17 @@ class AsyncAstraDB:
             api_path=self.api_path,
             api_version=self.api_version,
             namespace=self.namespace,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
         )
+
+    def set_caller(
+        self,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> None:
+        self.caller_name = caller_name
+        self.caller_version = caller_version
 
     async def _request(
         self,
@@ -2163,8 +2273,8 @@ class AsyncAstraDB:
             url_params=url_params,
             path=path,
             skip_error_check=skip_error_check,
-            caller_name=None,
-            caller_version=None,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
         )
         response = restore_from_api(adirect_response)
         return response

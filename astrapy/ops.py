@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
 
 import logging
-from typing import Any, cast, Dict, Optional
+from typing import Any, cast, Dict, Optional, TypedDict
 
 import httpx
 from astrapy.api import api_request, raw_api_request
@@ -30,6 +31,14 @@ from astrapy.types import API_RESPONSE, OPS_API_RESPONSE
 logger = logging.getLogger(__name__)
 
 
+class AstraDBOpsConstructorParams(TypedDict):
+    token: str
+    dev_ops_url: Optional[str]
+    dev_ops_api_version: Optional[str]
+    caller_name: Optional[str]
+    caller_version: Optional[str]
+
+
 class AstraDBOps:
     # Initialize the shared httpx client as a class attribute
     client = httpx.Client()
@@ -39,7 +48,20 @@ class AstraDBOps:
         token: str,
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
     ) -> None:
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        # constructor params (for the copy() method):
+        self.constructor_params: AstraDBOpsConstructorParams = {
+            "token": token,
+            "dev_ops_url": dev_ops_url,
+            "dev_ops_api_version": dev_ops_api_version,
+            "caller_name": caller_name,
+            "caller_version": caller_version,
+        }
+        #
         dev_ops_url = (dev_ops_url or DEFAULT_DEV_OPS_URL).strip("/")
         dev_ops_api_version = (
             dev_ops_api_version or DEFAULT_DEV_OPS_API_VERSION
@@ -47,6 +69,17 @@ class AstraDBOps:
 
         self.token = "Bearer " + token
         self.base_url = f"https://{dev_ops_url}/{dev_ops_api_version}"
+
+    def copy(self) -> AstraDBOps:
+        return AstraDBOps(**self.constructor_params)
+
+    def set_caller(
+        self,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> None:
+        self.caller_name = caller_name
+        self.caller_version = caller_version
 
     def _ops_request(
         self,
@@ -66,8 +99,8 @@ class AstraDBOps:
             json_data=json_data,
             url_params=_options,
             path=path,
-            caller_name=None,
-            caller_version=None,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
         )
         return raw_response
 
