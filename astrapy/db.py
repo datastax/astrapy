@@ -770,6 +770,12 @@ class AstraDBCollection:
         """
         results: List[Union[API_RESPONSE, Exception]] = []
 
+        # Raise a warning if ordered and concurrency
+        if options and options.get("ordered") is True and concurrency > 1:
+            logger.warning(
+                "Using ordered insert with concurrency may lead to unexpected results."
+            )
+
         # If we have concurrency as 1, don't use a thread pool
         if concurrency == 1:
             # Split the documents into chunks
