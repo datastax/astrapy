@@ -68,7 +68,7 @@ class AstraDBOps:
         ).strip("/")
 
         self.token = "Bearer " + token
-        self.base_url = f"https://{dev_ops_url}/{dev_ops_api_version}"
+        self.base_url = f"{dev_ops_url}/{dev_ops_api_version}"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AstraDBOps):
