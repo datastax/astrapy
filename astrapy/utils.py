@@ -3,6 +3,7 @@ from typing import Any, cast, Dict, Iterable, List, Optional, Union
 import time
 import datetime
 import logging
+import copy
 
 import httpx
 
@@ -56,7 +57,7 @@ def log_request(
     logger.debug(f"Request params: {params}")
 
     # Redact the token from the request headers
-    headers_log = headers
+    headers_log = copy.deepcopy(headers)
     if DEFAULT_AUTH_HEADER in headers_log:
         headers_log[DEFAULT_AUTH_HEADER] = "AstraCS:<...>"
 
