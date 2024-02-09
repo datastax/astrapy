@@ -12,8 +12,8 @@ load_dotenv()
 
 
 # Grab the Astra token and api endpoint from the environment
-token = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
-api_endpoint = os.getenv("ASTRA_DB_API_ENDPOINT")
+token = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
+api_endpoint = os.environ["ASTRA_DB_API_ENDPOINT"]
 
 # Initialize our vector db
 astra_db = AstraDB(token=token, api_endpoint=api_endpoint)
