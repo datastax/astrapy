@@ -7,7 +7,7 @@ import logging
 import httpx
 
 from astrapy import __version__
-from astrapy.defaults import DEFAULT_TIMEOUT
+from astrapy.defaults import DEFAULT_AUTH_HEADER, DEFAULT_TIMEOUT
 from astrapy.types import API_RESPONSE
 
 
@@ -38,23 +38,41 @@ class http_methods:
 package_name = __name__.split(".")[0]
 
 
-def log_request_response(
-    r: httpx.Response, json_data: Optional[Dict[str, Any]]
+def log_request(
+    method: str,
+    url: str,
+    params: Optional[Dict[str, Any]],
+    headers: Dict[str, str],
+    json_data: Optional[Dict[str, Any]],
 ) -> None:
     """
-    Log the details of an HTTP request and its response for debugging purposes.
+    Log the details of an HTTP request for debugging purposes.
 
     Args:
-        r (requests.Response): The response object from the HTTP request.
         json_data (dict or None): The JSON payload sent with the request, if any.
     """
-    logger.debug(f"Request URL: {r.url}")
-    logger.debug(f"Request method: {r.request.method}")
-    logger.debug(f"Request headers: {r.request.headers}")
+    logger.debug(f"Request url: {url}")
+    logger.debug(f"Request method: {method}")
+    logger.debug(f"Request params: {params}")
+
+    # Redact the token from the request headers
+    headers_log = headers
+    if DEFAULT_AUTH_HEADER in headers_log:
+        headers_log[DEFAULT_AUTH_HEADER] = "AstraCS:<...>"
+
+    logger.debug(f"Request headers: {headers_log}")
 
     if json_data:
         logger.trace(f"Request payload: {json_data}")  # type: ignore
 
+
+def log_response(r: httpx.Response) -> None:
+    """
+    Log the details of an HTTP response for debugging purposes.
+
+    Args:
+        r (requests.Response): The response object from the HTTP request.
+    """
     logger.debug(f"Response status code: {r.status_code}")
     logger.debug(f"Response headers: {r.headers}")
     logger.debug(f"Response content: {r.text}")
@@ -100,19 +118,27 @@ def make_request(
     Returns:
         requests.Response: The response from the HTTP request.
     """
+    # Build the request headers from the token and user agent
+    request_headers = {
+        auth_header: token,
+        "User-Agent": compose_user_agent(caller_name, caller_version),
+    }
+
+    # Log the parameters of the request accordingly
+    log_request(method, f"{base_url}{path}", url_params, request_headers, json_data)
+
+    # Make the request
     r = client.request(
         method=method,
         url=f"{base_url}{path}",
         params=url_params,
         json=json_data,
         timeout=DEFAULT_TIMEOUT,
-        headers={
-            auth_header: token,
-            "User-Agent": compose_user_agent(caller_name, caller_version),
-        },
+        headers=request_headers,
     )
 
-    log_request_response(r, json_data)
+    # Log the response before returning it
+    log_response(r)
 
     return r
 
@@ -145,19 +171,27 @@ async def amake_request(
     Returns:
         requests.Response: The response from the HTTP request.
     """
+    # Build the request headers from the token and user agent
+    request_headers = {
+        auth_header: token,
+        "User-Agent": compose_user_agent(caller_name, caller_version),
+    }
+
+    # Log the parameters of the request accordingly
+    log_request(method, f"{base_url}{path}", url_params, request_headers, json_data)
+
+    # Make the request
     r = await client.request(
         method=method,
         url=f"{base_url}{path}",
         params=url_params,
         json=json_data,
         timeout=DEFAULT_TIMEOUT,
-        headers={
-            auth_header: token,
-            "User-Agent": compose_user_agent(caller_name, caller_version),
-        },
+        headers=request_headers,
     )
 
-    log_request_response(r, json_data)
+    # Log the response before returning it
+    log_response(r)
 
     return r
 
