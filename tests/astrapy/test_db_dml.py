@@ -790,6 +790,26 @@ def test_update_one_create_subdocument_novector(
     assert response["data"]["document"]["name"] == "Eric"
 
 
+@pytest.mark.describe("update_many to create a subdocument, not through vector")
+def test_update_many_create_subdocument_novector(
+    empty_v_collection: AstraDBCollection,
+) -> None:
+    _id1 = str(uuid.uuid4())
+    _id2 = str(uuid.uuid4())
+    empty_v_collection.insert_one({"_id": _id1, "name": "Not Eric!"})
+    empty_v_collection.insert_one({"_id": _id2, "name": "Not Eric!"})
+    update_many_response = empty_v_collection.update_many(
+        filter={"name": "Not Eric!"},
+        update={"$set": {"name": "Eric"}},
+    )
+
+    assert update_many_response["status"]["matchedCount"] > 1
+    assert update_many_response["status"]["modifiedCount"] > 1
+
+    response = empty_v_collection.find(filter={"name": "Eric"})
+    assert len(response["data"]["documents"]) > 1
+
+
 @pytest.mark.describe("delete_subdocument, not through vector")
 def test_delete_subdocument_novector(
     writable_v_collection: AstraDBCollection,

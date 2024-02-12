@@ -841,6 +841,27 @@ class AstraDBCollection:
 
         return response
 
+    def update_many(
+        self, filter: Dict[str, Any], update: Dict[str, Any]
+    ) -> API_RESPONSE:
+        """
+        Updates multiple documents in the collection.
+        Args:
+            filter (dict): Criteria to identify the document to update.
+            update (dict): The update to apply to the document.
+        Returns:
+            dict: The response from the database after the update operation.
+        """
+        json_query = make_payload(top_level="updateMany", filter=filter, update=update)
+
+        response = self._request(
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data=json_query,
+        )
+
+        return response
+
     def replace(self, path: str, document: API_DOC) -> API_RESPONSE:
         """
         Replace a document in the collection.
