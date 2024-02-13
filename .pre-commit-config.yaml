@@ -1,6 +1,6 @@
 repos:
 -   repo: https://github.com/psf/black
-    rev: main  # Replace with your desired version or use 'stable'
+    rev: 24.2.0  # Replace with your desired version or use 'stable'
     hooks:
     - id: black
       args: ['--quiet']
