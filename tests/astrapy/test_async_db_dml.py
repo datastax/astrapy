@@ -765,6 +765,26 @@ async def test_update_one_create_subdocument_novector(
     assert response["data"]["document"]["name"] == "Eric"
 
 
+@pytest.mark.describe("update_many to create a subdocument, not through vector (async)")
+async def test_update_many_create_subdocument_novector(
+    async_empty_v_collection: AsyncAstraDBCollection,
+) -> None:
+    _id1 = str(uuid.uuid4())
+    _id2 = str(uuid.uuid4())
+    await async_empty_v_collection.insert_one({"_id": _id1, "name": "Not Eric!"})
+    await async_empty_v_collection.insert_one({"_id": _id2, "name": "Not Eric!"})
+    update_many_response = await async_empty_v_collection.update_many(
+        filter={"name": "Not Eric!"},
+        update={"$set": {"name": "Eric"}},
+    )
+
+    assert update_many_response["status"]["matchedCount"] > 1
+    assert update_many_response["status"]["modifiedCount"] > 1
+
+    response = await async_empty_v_collection.find(filter={"name": "Eric"})
+    assert len(response["data"]["documents"]) > 1
+
+
 @pytest.mark.describe("delete_subdocument, not through vector (async)")
 async def test_delete_subdocument_novector(
     async_writable_v_collection: AsyncAstraDBCollection,
