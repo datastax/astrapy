@@ -39,7 +39,6 @@ def test_clear_collection_fail(db: AstraDB) -> None:
     with pytest.raises(APIRequestError):
         db.collection("this$does%not exist!!!").clear()
 
-
 @pytest.mark.describe("should truncate a nonvector collection through AstraDB")
 def test_truncate_nonvector_collection_through_astradb(
     db: AstraDB, empty_nonv_collection: AstraDBCollection
@@ -1268,6 +1267,12 @@ def test_find_find_one_non_equality_operators(
     )
     assert resp8["data"]["documents"][0]["marker"] == "abc"
 
+@pytest.mark.describe("test unsupported operation")
+def test_unsupported_operation(
+    writable_v_collection: AstraDBCollection,
+) -> None:
+    with pytest.raises(Exception):
+        writeable_v_collection.aggregate()
 
 @pytest.mark.describe("store and retrieve dates and datetimes correctly")
 def test_insert_find_with_dates(

@@ -53,6 +53,7 @@ from astrapy.utils import (
     http_methods,
     normalize_for_api,
     restore_from_api,
+    return_unsupported_error 
 )
 from astrapy.types import (
     API_DOC,
@@ -1990,6 +1991,58 @@ class AsyncAstraDBCollection:
             if isinstance(result, BaseException) and not isinstance(result, Exception):
                 raise result
         return results  # type: ignore
+    
+    # Mongodb calls not supported by the API
+    async def find_raw_batches():
+        return_unsupported_error()
+
+    async def aggregate():
+        return_unsupported_error()      
+
+    async def aggregate_raw_batches():
+        return_unsupported_error()
+
+    async def watch():
+        return_unsupported_error()
+
+    async def rename():
+        return_unsupported_error()  
+
+    async def create_index():
+        return_unsupported_error()
+
+    async def create_indexes():
+        return_unsupported_error()
+
+    async def drop_index():
+        return_unsupported_error()
+
+    async def drop_indexes():
+        return_unsupported_error()
+
+    async def list_indexes():
+        return_unsupported_error()
+
+    async def index_information():
+        return_unsupported_error()
+
+    async def create_search_index():
+        return_unsupported_error()
+
+    async def create_search_indexes():
+        return_unsupported_error()
+
+    async def drop_search_index():
+        return_unsupported_error()
+
+    async def list_search_indexes():
+        return_unsupported_error()
+
+    async def update_search_index():
+        return_unsupported_error()
+
+    async def distinct():
+        return_unsupported_error()
 
 
 class AstraDB:
@@ -2268,6 +2321,20 @@ class AstraDB:
         # return the collection itself
         return collection
 
+    def aggregate():
+        return_unsupported_error() 
+    
+    def cursor_command():
+        return_unsupported_error()
+
+    def dereference():
+        return_unsupported_error()
+
+    def watch():
+        return_unsupported_error()
+
+    def validate_collection():
+        return_unsupported_error()
 
 class AsyncAstraDB:
     def __init__(
