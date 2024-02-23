@@ -97,7 +97,7 @@ async def test_create_use_destroy_nonvector_collection(async_db: AsyncAstraDB) -
     auto_id = [id for id in ids if id not in {"second", "last"}][0]
     await col.delete_one(auto_id)
     assert (await col.find_one(filter={"name": "c"}))["data"]["document"] is None
-    del_res = await async_db.delete_collection(
+    del_res = await async_db.drop_collection(
         TEST_CREATE_DELETE_NONVECTOR_COLLECTION_NAME
     )
     assert del_res["status"]["ok"] == 1
@@ -113,7 +113,7 @@ async def test_create_use_destroy_vector_collection(async_db: AsyncAstraDB) -> N
         collection_name=TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME, dimension=2
     )
     assert isinstance(col, AsyncAstraDBCollection)
-    del_res = await async_db.delete_collection(
+    del_res = await async_db.drop_collection(
         collection_name=TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME
     )
     assert del_res["status"]["ok"] == 1

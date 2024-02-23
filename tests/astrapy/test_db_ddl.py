@@ -93,7 +93,7 @@ def test_create_use_destroy_nonvector_collection(db: AstraDB) -> None:
     auto_id = [id for id in ids if id not in {"second", "last"}][0]
     col.delete(auto_id)
     assert col.find_one(filter={"name": "c"})["data"]["document"] is None
-    del_res = db.delete_collection(TEST_CREATE_DELETE_NONVECTOR_COLLECTION_NAME)
+    del_res = db.drop_collection(TEST_CREATE_DELETE_NONVECTOR_COLLECTION_NAME)
     assert del_res["status"]["ok"] == 1
 
 @pytest.mark.describe("should get information about the database")
@@ -117,7 +117,7 @@ def test_create_use_destroy_vector_collection(db: AstraDB) -> None:
         collection_name=TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME, dimension=2
     )
     assert isinstance(col, AstraDBCollection)
-    del_res = db.delete_collection(
+    del_res = db.drop_collection(
         collection_name=TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME
     )
     assert del_res["status"]["ok"] == 1

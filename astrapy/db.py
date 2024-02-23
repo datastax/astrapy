@@ -959,7 +959,7 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database.
         """
-        drop_response = self.database.delete_collection(
+        drop_response = self.database.drop_collection(
             collection_name=self.collection_name
         )
 
@@ -2369,7 +2369,7 @@ class AstraDB:
         # Get the instance object as the return of the call
         return AstraDBCollection(astra_db=self, collection_name=collection_name)
 
-    def delete_collection(self, collection_name: str) -> API_RESPONSE:
+    def drop_collection(self, collection_name: str) -> API_RESPONSE:
         """
         Delete a collection from the database.
         Args:
@@ -2675,7 +2675,7 @@ class AsyncAstraDB:
         # Get the instance object as the return of the call
         return AsyncAstraDBCollection(astra_db=self, collection_name=collection_name)
 
-    async def delete_collection(self, collection_name: str) -> API_RESPONSE:
+    async def drop_collection(self, collection_name: str) -> API_RESPONSE:
         """
         Delete a collection from the database.
         Args:

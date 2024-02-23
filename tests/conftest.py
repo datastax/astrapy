@@ -173,7 +173,7 @@ def readonly_v_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
     yield collection
 
     if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
-        db.delete_collection(TEST_READONLY_VECTOR_COLLECTION)
+        db.drop_collection(TEST_READONLY_VECTOR_COLLECTION)
 
 
 @pytest.fixture(scope="session")
@@ -190,7 +190,7 @@ def writable_v_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
     yield collection
 
     if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
-        db.delete_collection(TEST_WRITABLE_VECTOR_COLLECTION)
+        db.drop_collection(TEST_WRITABLE_VECTOR_COLLECTION)
 
 
 @pytest.fixture(scope="function")
@@ -223,7 +223,7 @@ def writable_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
     yield collection
 
     if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
-        db.delete_collection(TEST_WRITABLE_NONVECTOR_COLLECTION)
+        db.drop_collection(TEST_WRITABLE_NONVECTOR_COLLECTION)
 
 
 @pytest.fixture(scope="function")
@@ -248,7 +248,7 @@ def allowindex_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
     yield collection
 
     if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
-        db.delete_collection(TEST_WRITABLE_ALLOWINDEX_NONVECTOR_COLLECTION)
+        db.drop_collection(TEST_WRITABLE_ALLOWINDEX_NONVECTOR_COLLECTION)
 
 
 @pytest.fixture(scope="function")
@@ -277,7 +277,7 @@ def denyindex_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
     yield collection
 
     if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
-        db.delete_collection(TEST_WRITABLE_DENYINDEX_NONVECTOR_COLLECTION)
+        db.drop_collection(TEST_WRITABLE_DENYINDEX_NONVECTOR_COLLECTION)
 
 
 @pytest.fixture(scope="function")
