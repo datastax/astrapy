@@ -952,6 +952,18 @@ class AstraDBCollection:
             )
 
         return clear_response
+    
+    def drop(self) -> API_RESPONSE:
+        """
+        Drop the collection, deleting all documents
+        Returns:
+            dict: The response from the database.
+        """
+        drop_response = self.database.delete_collection(
+            collection_name=self.collection_name
+        )
+
+        return drop_response
 
     def delete_subdocument(self, id: str, subdoc: str) -> API_RESPONSE:
         """
