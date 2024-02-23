@@ -96,6 +96,14 @@ def test_create_use_destroy_nonvector_collection(db: AstraDB) -> None:
     del_res = db.delete_collection(TEST_CREATE_DELETE_NONVECTOR_COLLECTION_NAME)
     assert del_res["status"]["ok"] == 1
 
+@pytest.mark.describe("should get information about the database")
+def test_db_info(db: AstraDB) -> None:
+    name = db.name
+    region = db.region
+    id = db.dbid
+    assert name is not None
+    assert region is not None
+    assert id is not None
 
 @pytest.mark.skipif(
     int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 1,
@@ -113,8 +121,13 @@ def test_create_use_destroy_vector_collection(db: AstraDB) -> None:
     assert del_res["status"]["ok"] == 1
 
 
+
 @pytest.mark.describe("should get all collections")
 def test_get_collections(db: AstraDB, readonly_v_collection: AstraDBCollection) -> None:
     res = db.get_collections()
     assert res["status"]["collections"] is not None
     assert readonly_v_collection.collection_name in res["status"]["collections"]
+
+@pytest.mark.describe("should get database information")
+def test_database_(db: AstraDB, readonly_v_collection: AstraDBCollection) -> None:
+    res = db.get_collections()

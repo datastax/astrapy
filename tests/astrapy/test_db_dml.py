@@ -1277,6 +1277,16 @@ def test_unsupported_operation(
         writable_v_collection.aggregate()
 
 
+@pytest.mark.describe("check database metainfo for collection")
+def test_unsupported_operation(
+    writable_v_collection: AstraDBCollection,
+) -> None:
+    assert writable_v_collection.database != None
+    assert writable_v_collection.full_name != None
+    assert writable_v_collection.name != None
+
+
+
 @pytest.mark.describe("store and retrieve dates and datetimes correctly")
 def test_insert_find_with_dates(
     writable_v_collection: AstraDBCollection,

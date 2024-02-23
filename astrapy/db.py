@@ -19,6 +19,7 @@ import httpx
 import logging
 import json
 import threading
+import os
 
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
@@ -40,6 +41,7 @@ from typing import (
 
 from astrapy import __version__
 from astrapy.api import api_request, async_api_request
+from astrapy.ops import AstraDBOps
 from astrapy.defaults import (
     DEFAULT_AUTH_HEADER,
     DEFAULT_JSON_API_PATH,
@@ -61,7 +63,6 @@ from astrapy.types import (
     PaginableRequestMethod,
     AsyncPaginableRequestMethod,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +106,10 @@ class AstraDBCollection:
                 caller_name=caller_name,
                 caller_version=caller_version,
             )
+        # For pymongo compatibility
+        self.database = astra_db
+        self.name = collection_name
+        self.full_name = f"{astra_db.name}.{collection_name}"
 
         # Set the remaining instance attributes
         self.astra_db = astra_db
@@ -2127,6 +2132,8 @@ class AstraDB:
 
         if token is None or api_endpoint is None:
             raise AssertionError("Must provide token and api_endpoint")
+        
+        astraDBOps = AstraDBOps(token=token)
 
         if namespace is None:
             logger.info(
@@ -2147,8 +2154,22 @@ class AstraDB:
         # Set the namespace
         self.namespace = namespace
 
+
         # Finally, construct the full base path
         self.base_path = f"/{self.api_path}/{self.api_version}/{self.namespace}"
+
+        # Get the database details
+        if "-" in api_endpoint:
+            print(api_endpoint)
+            self.dbid = api_endpoint.split('/')[2].split('.')[0][:36]
+            
+            details = astraDBOps.get_database(database=self.dbid)
+            self.name = details['info']['name']
+            self.region = details['info']['region']
+            print (self.region)
+        else:
+            self.name = ""
+            self.region = ""
 
     def __repr__(self) -> str:
         return f'AstraDB[endpoint="{self.base_url}", keyspace="{self.namespace}"]'
@@ -2387,6 +2408,9 @@ class AstraDB:
 
     def validate_collection(self) -> None:
         raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+    
+    def name(self) -> str:
+        return self.name
 
 
 class AsyncAstraDB:
@@ -2690,4 +2714,7 @@ class AsyncAstraDB:
         raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
 
     def validate_collection(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+    
+    def estimated_document_count(self) -> None:
         raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
