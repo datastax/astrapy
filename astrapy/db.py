@@ -45,6 +45,7 @@ from astrapy.defaults import (
     DEFAULT_JSON_API_PATH,
     DEFAULT_JSON_API_VERSION,
     DEFAULT_KEYSPACE_NAME,
+    DEFAULT_NOT_IMPLEMENTED_MESSAGE,
     MAX_INSERT_NUM_DOCUMENTS,
 )
 from astrapy.utils import (
@@ -1055,6 +1056,58 @@ class AstraDBCollection:
 
         return results
 
+    # Mongodb calls not supported by the API
+    def find_raw_batches(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def aggregate(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def aggregate_raw_batches(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def watch(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def rename(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def create_index(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def create_indexes(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def drop_index(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def drop_indexes(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def list_indexes(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def index_information(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def create_search_index(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def create_search_indexes(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def drop_search_index(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def list_search_indexes(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def update_search_index(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def distinct(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
 
 class AsyncAstraDBCollection:
     def __init__(
@@ -1991,6 +2044,58 @@ class AsyncAstraDBCollection:
                 raise result
         return results  # type: ignore
 
+    # Mongodb calls not supported by the API
+    async def find_raw_batches(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def aggregate(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def aggregate_raw_batches(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def watch(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def rename(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def create_index(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def create_indexes(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def drop_index(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def drop_indexes(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def list_indexes(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def index_information(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def create_search_index(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def create_search_indexes(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def drop_search_index(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def list_search_indexes(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def update_search_index(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    async def distinct(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
 
 class AstraDB:
     # Initialize the shared httpx client as a class attribute
@@ -2267,6 +2372,21 @@ class AstraDB:
 
         # return the collection itself
         return collection
+
+    def aggregate(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def cursor_command(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def dereference(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def watch(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def validate_collection(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
 
 
 class AsyncAstraDB:
@@ -2556,3 +2676,18 @@ class AsyncAstraDB:
 
         # return the collection itself
         return collection
+
+    def aggregate(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def cursor_command(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def dereference(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def watch(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)
+
+    def validate_collection(self) -> None:
+        raise NotImplementedError(DEFAULT_NOT_IMPLEMENTED_MESSAGE)

@@ -1269,6 +1269,14 @@ def test_find_find_one_non_equality_operators(
     assert resp8["data"]["documents"][0]["marker"] == "abc"
 
 
+@pytest.mark.describe("test unsupported operation")
+def test_unsupported_operation(
+    writable_v_collection: AstraDBCollection,
+) -> None:
+    with pytest.raises(NotImplementedError):
+        writable_v_collection.aggregate()
+
+
 @pytest.mark.describe("store and retrieve dates and datetimes correctly")
 def test_insert_find_with_dates(
     writable_v_collection: AstraDBCollection,
