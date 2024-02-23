@@ -101,9 +101,11 @@ def test_db_info(db: AstraDB) -> None:
     name = db.name
     region = db.region
     id = db.dbid
+    client_options = db.client_options
     assert name is not None
     assert region is not None
     assert id is not None
+    assert client_options is not None
 
 @pytest.mark.skipif(
     int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 1,

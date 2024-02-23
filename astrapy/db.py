@@ -64,6 +64,16 @@ from astrapy.types import (
     AsyncPaginableRequestMethod,
 )
 
+client_options = {
+            'token': "",
+            'api_endpoint': "",
+            'api_path': "",
+            'api_version': "",
+            'namespace': "",
+            'caller_name': "",
+            'caller_version': ""
+}
+
 logger = logging.getLogger(__name__)
 
 
@@ -2127,6 +2137,7 @@ class AstraDB:
             caller_name (str, optional): identity of the caller ("my_framework")
             caller_version (str, optional): version of the caller code ("1.0.3")
         """
+
         self.caller_name = caller_name
         self.caller_version = caller_version
 
@@ -2154,7 +2165,6 @@ class AstraDB:
         # Set the namespace
         self.namespace = namespace
 
-
         # Finally, construct the full base path
         self.base_path = f"/{self.api_path}/{self.api_version}/{self.namespace}"
 
@@ -2166,10 +2176,11 @@ class AstraDB:
             details = astraDBOps.get_database(database=self.dbid)
             self.name = details['info']['name']
             self.region = details['info']['region']
-            print (self.region)
         else:
             self.name = ""
             self.region = ""
+        
+        self.client_options = client_options
 
     def __repr__(self) -> str:
         return f'AstraDB[endpoint="{self.base_url}", keyspace="{self.namespace}"]'
