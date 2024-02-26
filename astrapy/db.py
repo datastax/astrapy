@@ -113,6 +113,9 @@ class AstraDBCollection:
         self.collection_name = collection_name
         self.base_path = f"{self.astra_db.base_path}/{self.collection_name}"
 
+        # Set read concern to "NEAREST"
+        self.read_preference = "NEAREST"
+
     def __repr__(self) -> str:
         return f'AstraDBCollection[astra_db="{self.astra_db}", collection_name="{self.collection_name}"]'
 
@@ -2269,6 +2272,7 @@ class AstraDB:
             path=f"{self.base_path}",
             json_data={"createCollection": jsondata},
         )
+
 
         # Get the instance object as the return of the call
         return AstraDBCollection(astra_db=self, collection_name=collection_name)

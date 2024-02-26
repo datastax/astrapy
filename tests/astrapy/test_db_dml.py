@@ -1274,6 +1274,12 @@ def test_unsupported_operation(
     with pytest.raises(Exception):
         writeable_v_collection.aggregate()
 
+@pytest.mark.describe("test read preference")
+def test_read_preference(
+    writable_v_collection: AstraDBCollection,
+) -> None:
+    assert writable_v_collection.read_preference is not None
+
 @pytest.mark.describe("store and retrieve dates and datetimes correctly")
 def test_insert_find_with_dates(
     writable_v_collection: AstraDBCollection,
@@ -1398,3 +1404,5 @@ def test_collection_indexing_deny(
     with pytest.raises(APIRequestError):
         # id not indexed (raised only with some operators, such as $nin)
         denyindex_nonv_collection.find_one({"_id": {"$nin": ["1", "2"]}})
+
+    
