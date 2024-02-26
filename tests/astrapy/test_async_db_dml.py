@@ -399,9 +399,9 @@ async def test_chunked_insert_many(
         for doc_idx, _id in enumerate(_ids0)
     ]
 
-    responses0: List[Union[Dict[str, Any], Exception]] = (
-        await async_writable_v_collection.chunked_insert_many(documents0, chunk_size=3)
-    )
+    responses0: List[
+        Union[Dict[str, Any], Exception]
+    ] = await async_writable_v_collection.chunked_insert_many(documents0, chunk_size=3)
     assert responses0 is not None
     inserted_ids0 = [
         ins_id

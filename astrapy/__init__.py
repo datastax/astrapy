@@ -46,3 +46,5 @@ def get_version() -> Any:
 
 
 __version__ = get_version()
+
+from astrapy.idiomatic import AsyncCollection, AsyncDatabase, Collection, Database
