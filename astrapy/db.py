@@ -115,6 +115,7 @@ class AstraDBCollection:
 
         # Set read concern to "NEAREST"
         self.read_preference = "NEAREST"
+        self.codec_options = []
 
     def __repr__(self) -> str:
         return f'AstraDBCollection[astra_db="{self.astra_db}", collection_name="{self.collection_name}"]'
