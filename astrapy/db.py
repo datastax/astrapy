@@ -128,12 +128,31 @@ class AstraDBCollection:
         else:
             return False
 
-    def copy(self) -> AstraDBCollection:
+    def copy(
+        self,
+        *,
+        collection_name: Optional[str] = None,
+        token: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> AstraDBCollection:
         return AstraDBCollection(
-            collection_name=self.collection_name,
-            astra_db=self.astra_db.copy(),
-            caller_name=self.caller_name,
-            caller_version=self.caller_version,
+            collection_name=collection_name or self.collection_name,
+            astra_db=self.astra_db.copy(
+                token=token,
+                api_endpoint=api_endpoint,
+                api_path=api_path,
+                api_version=api_version,
+                namespace=namespace,
+                caller_name=caller_name,
+                caller_version=caller_version,
+            ),
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
         )
 
     def to_async(self) -> AsyncAstraDBCollection:
@@ -1117,12 +1136,31 @@ class AsyncAstraDBCollection:
         else:
             return False
 
-    def copy(self) -> AsyncAstraDBCollection:
+    def copy(
+        self,
+        *,
+        collection_name: Optional[str] = None,
+        token: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> AsyncAstraDBCollection:
         return AsyncAstraDBCollection(
-            collection_name=self.collection_name,
-            astra_db=self.astra_db.copy(),
-            caller_name=self.caller_name,
-            caller_version=self.caller_version,
+            collection_name=collection_name or self.collection_name,
+            astra_db=self.astra_db.copy(
+                token=token,
+                api_endpoint=api_endpoint,
+                api_path=api_path,
+                api_version=api_version,
+                namespace=namespace,
+                caller_name=caller_name,
+                caller_version=caller_version,
+            ),
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
         )
 
     def set_caller(
@@ -2063,15 +2101,25 @@ class AstraDB:
         else:
             return False
 
-    def copy(self) -> AstraDB:
+    def copy(
+        self,
+        *,
+        token: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> AstraDB:
         return AstraDB(
-            token=self.token,
-            api_endpoint=self.base_url,
-            api_path=self.api_path,
-            api_version=self.api_version,
-            namespace=self.namespace,
-            caller_name=self.caller_name,
-            caller_version=self.caller_version,
+            token=token or self.token,
+            api_endpoint=api_endpoint or self.base_url,
+            api_path=api_path or self.api_path,
+            api_version=api_version or self.api_version,
+            namespace=namespace or self.namespace,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
         )
 
     def to_async(self) -> AsyncAstraDB:
@@ -2349,15 +2397,25 @@ class AsyncAstraDB:
     ) -> None:
         await self.client.aclose()
 
-    def copy(self) -> AsyncAstraDB:
+    def copy(
+        self,
+        *,
+        token: Optional[str] = None,
+        api_endpoint: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> AsyncAstraDB:
         return AsyncAstraDB(
-            token=self.token,
-            api_endpoint=self.base_url,
-            api_path=self.api_path,
-            api_version=self.api_version,
-            namespace=self.namespace,
-            caller_name=self.caller_name,
-            caller_version=self.caller_version,
+            token=token or self.token,
+            api_endpoint=api_endpoint or self.base_url,
+            api_path=api_path or self.api_path,
+            api_version=api_version or self.api_version,
+            namespace=namespace or self.namespace,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
         )
 
     def to_sync(self) -> AstraDB:
