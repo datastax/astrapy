@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 from astrapy.db import AstraDB, AstraDBCollection, AsyncAstraDB, AsyncAstraDBCollection
+from astrapy.idiomatic.utils import unsupported
 
 
 class Collection:
@@ -63,6 +64,74 @@ class Collection:
             caller_version=caller_version,
         )
 
+    @unsupported
+    def find_raw_batches(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def aggregate(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def aggregate_raw_batches(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def watch(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def rename(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def create_index(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def create_indexes(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def drop_index(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def drop_indexes(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def list_indexes(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def index_information(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def create_search_index(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def create_search_indexes(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def drop_search_index(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def list_search_indexes(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def update_search_index(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def distinct(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
 
 class AsyncCollection:
     def __init__(
@@ -109,3 +178,71 @@ class AsyncCollection:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+
+    @unsupported
+    async def find_raw_batches(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def aggregate(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def aggregate_raw_batches(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def watch(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def rename(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def create_index(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def create_indexes(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def drop_index(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def drop_indexes(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def list_indexes(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def index_information(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def create_search_index(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def create_search_indexes(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def drop_search_index(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def list_search_indexes(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def update_search_index(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def distinct(*pargs: Any, **kwargs: Any) -> Any:
+        ...

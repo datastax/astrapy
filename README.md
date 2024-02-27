@@ -414,3 +414,14 @@ To enable the `AstraDBOps` testing (off by default):
 ```bash
 TEST_ASTRADBOPS=1 poetry run pytest [...]
 ```
+
+To separately test the "astrapy proper" vs. the "idiomatic" part, and/or only the unit/integration part of the latter:
+
+```
+poetry run pytest tests/astrapy
+poetry run pytest tests/idiomatic
+poetry run pytest tests/idiomatic/unit
+poetry run pytest tests/idiomatic/integration
+```
+
+(the above can be combined with the options seen earlier, where it makes sense).

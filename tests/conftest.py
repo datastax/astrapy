@@ -6,7 +6,7 @@ from typing import Optional, TypedDict
 from astrapy.defaults import DEFAULT_KEYSPACE_NAME
 
 
-class AstraDBCredentials(TypedDict, total=False):
+class AstraDBCredentials(TypedDict):
     token: str
     api_endpoint: str
     namespace: Optional[str]

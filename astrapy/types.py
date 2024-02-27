@@ -21,9 +21,11 @@ API_DOC = Dict[str, Any]
 
 # This is for the (partialed, if necessary) functions that can be "paginated".
 class PaginableRequestMethod(Protocol):
-    def __call__(self, options: Dict[str, Any]) -> API_RESPONSE: ...
+    def __call__(self, options: Dict[str, Any]) -> API_RESPONSE:
+        ...
 
 
 # This is for the (partialed, if necessary) async functions that can be "paginated".
 class AsyncPaginableRequestMethod(Protocol):
-    async def __call__(self, options: Dict[str, Any]) -> API_RESPONSE: ...
+    async def __call__(self, options: Dict[str, Any]) -> API_RESPONSE:
+        ...

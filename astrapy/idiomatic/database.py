@@ -16,6 +16,7 @@ from __future__ import annotations
 from types import TracebackType
 from typing import Any, Optional, Type
 from astrapy.db import AstraDB, AsyncAstraDB
+from astrapy.idiomatic.utils import unsupported
 
 
 class Database:
@@ -61,6 +62,26 @@ class Database:
     ) -> None:
         self._astra_db.caller_name = caller_name
         self._astra_db.caller_version = caller_version
+
+    @unsupported
+    def aggregate(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def cursor_command(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def dereference(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def watch(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    def validate_collection(*pargs: Any, **kwargs: Any) -> Any:
+        ...
 
 
 class AsyncDatabase:
@@ -121,3 +142,23 @@ class AsyncDatabase:
     ) -> None:
         self._astra_db.caller_name = caller_name
         self._astra_db.caller_version = caller_version
+
+    @unsupported
+    async def aggregate(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def cursor_command(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def dereference(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def watch(*pargs: Any, **kwargs: Any) -> Any:
+        ...
+
+    @unsupported
+    async def validate_collection(*pargs: Any, **kwargs: Any) -> Any:
+        ...

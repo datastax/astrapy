@@ -11,13 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import annotations
+from functools import wraps
+from typing import Any, Callable
 
-from astrapy.idiomatic.collection import AsyncCollection, Collection
-from astrapy.idiomatic.database import AsyncDatabase, Database
+DEFAULT_NOT_SUPPORTED_MESSAGE = "Operation not supported."
 
-__all__ = [
-    "AsyncCollection",
-    "Collection",
-    "AsyncDatabase",
-    "Database",
-]
+
+def unsupported(func: Callable[..., Any]) -> Callable[..., Any]:
+    @wraps(func)
+    def unsupported_func(*args: Any, **kwargs: Any) -> Any:
+        raise TypeError(DEFAULT_NOT_SUPPORTED_MESSAGE)
+
+    return unsupported_func

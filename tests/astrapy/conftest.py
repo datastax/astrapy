@@ -18,6 +18,7 @@ from typing import (
 
 import pytest_asyncio
 
+from ..conftest import AstraDBCredentials
 from astrapy.db import AstraDB, AstraDBCollection, AsyncAstraDB, AsyncAstraDBCollection
 
 
@@ -84,7 +85,7 @@ def _batch_iterable(iterable: Iterable[T], batch_size: int) -> Iterable[Iterable
 
 
 @pytest.fixture(scope="session")
-def db(astra_db_credentials_kwargs: Dict[str, Optional[str]]) -> AstraDB:
+def db(astra_db_credentials_kwargs: AstraDBCredentials) -> AstraDB:
     token = astra_db_credentials_kwargs["token"]
     api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
     namespace = astra_db_credentials_kwargs.get("namespace")
@@ -97,7 +98,7 @@ def db(astra_db_credentials_kwargs: Dict[str, Optional[str]]) -> AstraDB:
 
 @pytest_asyncio.fixture(scope="function")
 async def async_db(
-    astra_db_credentials_kwargs: Dict[str, Optional[str]]
+    astra_db_credentials_kwargs: AstraDBCredentials,
 ) -> AsyncIterable[AsyncAstraDB]:
     token = astra_db_credentials_kwargs["token"]
     api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
