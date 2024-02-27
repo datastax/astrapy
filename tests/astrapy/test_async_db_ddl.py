@@ -18,10 +18,10 @@ Tests for the `db.py` parts related to DML & client creation
 
 import os
 import logging
-from typing import Dict, Optional
 
 import pytest
 
+from ..conftest import AstraDBCredentials
 from astrapy.db import AsyncAstraDB, AsyncAstraDBCollection
 from astrapy.defaults import DEFAULT_KEYSPACE_NAME
 
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 @pytest.mark.describe("should confirm path handling in constructor (async)")
 async def test_path_handling(
-    astra_db_credentials_kwargs: Dict[str, Optional[str]]
+    astra_db_credentials_kwargs: AstraDBCredentials,
 ) -> None:
     token = astra_db_credentials_kwargs["token"]
     api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
