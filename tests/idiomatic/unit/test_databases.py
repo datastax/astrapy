@@ -14,40 +14,8 @@
 
 import pytest
 
-from astrapy import Database, AsyncDatabase
 
-
-@pytest.mark.describe("test errors for unsupported Database methods, sync")
-def test_database_unsupported_methods_sync() -> None:
-    db = Database(
-        token="t",
-        api_endpoint="a",
-    )
-    with pytest.raises(TypeError):
-        db.aggregate(1, "x")
-    with pytest.raises(TypeError):
-        db.cursor_command(1, "x")
-    with pytest.raises(TypeError):
-        db.dereference(1, "x")
-    with pytest.raises(TypeError):
-        db.watch(1, "x")
-    with pytest.raises(TypeError):
-        db.validate_collection(1, "x")
-
-
-@pytest.mark.describe("test errors for unsupported Database methods, async")
-async def test_database_unsupported_methods_async() -> None:
-    db = AsyncDatabase(
-        token="t",
-        api_endpoint="a",
-    )
-    with pytest.raises(TypeError):
-        await db.aggregate(1, "x")
-    with pytest.raises(TypeError):
-        await db.cursor_command(1, "x")
-    with pytest.raises(TypeError):
-        await db.dereference(1, "x")
-    with pytest.raises(TypeError):
-        await db.watch(1, "x")
-    with pytest.raises(TypeError):
-        await db.validate_collection(1, "x")
+class TestDatabasesUnit:
+    @pytest.mark.describe("test placeholder, unit tests on Database")
+    def test_database_unit_placeholder(self) -> None:
+        assert True

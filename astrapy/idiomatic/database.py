@@ -14,22 +14,42 @@
 from __future__ import annotations
 
 from types import TracebackType
-from typing import Any, Optional, Type
+from typing import Any, Optional, Type, TypedDict
 from astrapy.db import AstraDB, AsyncAstraDB
 from astrapy.idiomatic.utils import unsupported
+
+
+class DatabaseConstructorParams(TypedDict):
+    api_endpoint: str
+    token: str
+    namespace: Optional[str]
+    caller_name: Optional[str]
+    caller_version: Optional[str]
+    api_path: Optional[str]
+    api_version: Optional[str]
 
 
 class Database:
     def __init__(
         self,
-        token: str,
         api_endpoint: str,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
+        token: str,
+        *,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
     ) -> None:
+        self._constructor_params: DatabaseConstructorParams = {
+            "api_endpoint": api_endpoint,
+            "token": token,
+            "namespace": namespace,
+            "caller_name": caller_name,
+            "caller_version": caller_version,
+            "api_path": api_path,
+            "api_version": api_version,
+        }
         self._astra_db = AstraDB(
             token=token,
             api_endpoint=api_endpoint,
@@ -50,10 +70,10 @@ class Database:
             return False
 
     def copy(self) -> Database:
-        raise NotImplementedError  # FIXME
+        return Database(**self._constructor_params)
 
     def to_async(self) -> AsyncDatabase:
-        raise NotImplementedError  # FIXME
+        return AsyncDatabase(**self._constructor_params)
 
     def set_caller(
         self,
@@ -64,37 +84,42 @@ class Database:
         self._astra_db.caller_version = caller_version
 
     @unsupported
-    def aggregate(*pargs: Any, **kwargs: Any) -> Any:
-        ...
+    def aggregate(*pargs: Any, **kwargs: Any) -> Any: ...
 
     @unsupported
-    def cursor_command(*pargs: Any, **kwargs: Any) -> Any:
-        ...
+    def cursor_command(*pargs: Any, **kwargs: Any) -> Any: ...
 
     @unsupported
-    def dereference(*pargs: Any, **kwargs: Any) -> Any:
-        ...
+    def dereference(*pargs: Any, **kwargs: Any) -> Any: ...
 
     @unsupported
-    def watch(*pargs: Any, **kwargs: Any) -> Any:
-        ...
+    def watch(*pargs: Any, **kwargs: Any) -> Any: ...
 
     @unsupported
-    def validate_collection(*pargs: Any, **kwargs: Any) -> Any:
-        ...
+    def validate_collection(*pargs: Any, **kwargs: Any) -> Any: ...
 
 
 class AsyncDatabase:
     def __init__(
         self,
-        token: str,
         api_endpoint: str,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
+        token: str,
+        *,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
     ) -> None:
+        self._constructor_params: DatabaseConstructorParams = {
+            "api_endpoint": api_endpoint,
+            "token": token,
+            "namespace": namespace,
+            "caller_name": caller_name,
+            "caller_version": caller_version,
+            "api_path": api_path,
+            "api_version": api_version,
+        }
         self._astra_db = AsyncAstraDB(
             token=token,
             api_endpoint=api_endpoint,
@@ -130,10 +155,10 @@ class AsyncDatabase:
         )
 
     def copy(self) -> AsyncDatabase:
-        raise NotImplementedError  # FIXME
+        return AsyncDatabase(**self._constructor_params)
 
     def to_sync(self) -> Database:
-        raise NotImplementedError  # FIXME
+        return Database(**self._constructor_params)
 
     def set_caller(
         self,
@@ -144,21 +169,16 @@ class AsyncDatabase:
         self._astra_db.caller_version = caller_version
 
     @unsupported
-    async def aggregate(*pargs: Any, **kwargs: Any) -> Any:
-        ...
+    async def aggregate(*pargs: Any, **kwargs: Any) -> Any: ...
 
     @unsupported
-    async def cursor_command(*pargs: Any, **kwargs: Any) -> Any:
-        ...
+    async def cursor_command(*pargs: Any, **kwargs: Any) -> Any: ...
 
     @unsupported
-    async def dereference(*pargs: Any, **kwargs: Any) -> Any:
-        ...
+    async def dereference(*pargs: Any, **kwargs: Any) -> Any: ...
 
     @unsupported
-    async def watch(*pargs: Any, **kwargs: Any) -> Any:
-        ...
+    async def watch(*pargs: Any, **kwargs: Any) -> Any: ...
 
     @unsupported
-    async def validate_collection(*pargs: Any, **kwargs: Any) -> Any:
-        ...
+    async def validate_collection(*pargs: Any, **kwargs: Any) -> Any: ...
