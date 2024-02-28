@@ -21,7 +21,7 @@ def sync_database(
 
 
 @pytest.fixture(scope="session")
-def async_database(
+async def async_database(
     astra_db_credentials_kwargs: AstraDBCredentials,
 ) -> Iterable[AsyncDatabase]:
     yield AsyncDatabase(**astra_db_credentials_kwargs)
@@ -41,7 +41,7 @@ def sync_collection_instance(
 
 
 @pytest.fixture(scope="session")
-def async_collection_instance(
+async def async_collection_instance(
     astra_db_credentials_kwargs: AstraDBCredentials,
     async_database: AsyncDatabase,
 ) -> Iterable[AsyncCollection]:
@@ -59,22 +59,39 @@ def sync_collection(
     sync_database: Database,
 ) -> Iterable[Collection]:
     """An actual collection on DB, in the main namespace"""
-    yield sync_database.create_collection(
+    collection = sync_database.create_collection(
         TEST_COLLECTION_NAME,
         dimension=2,
         metric="dot_product",
         indexing={"deny": ["not_indexed"]},
     )
+    yield collection
 
     sync_database.drop_collection(TEST_COLLECTION_NAME)
 
 
+@pytest.fixture(scope="function")
+def sync_empty_collection(sync_collection: Collection) -> Iterable[Collection]:
+    """Emptied for each test function"""
+    sync_collection.delete_many(filter={})
+    yield sync_collection
+
+
 @pytest.fixture(scope="session")
-def async_collection(
+async def async_collection(
     sync_collection: Collection,
 ) -> Iterable[AsyncCollection]:
     """An actual collection on DB, the same as the sync counterpart"""
     yield sync_collection.to_async()
+
+
+@pytest.fixture(scope="function")
+async def async_empty_collection(
+    async_collection: AsyncCollection,
+) -> Iterable[AsyncCollection]:
+    """Emptied for each test function"""
+    await async_collection.delete_many(filter={})
+    yield async_collection
 
 
 __all__ = [

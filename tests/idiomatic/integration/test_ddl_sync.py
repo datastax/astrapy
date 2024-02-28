@@ -53,7 +53,7 @@ class TestDDLSync:
             sync_database.list_collection_names(filter={"k": "v"})
 
     @pytest.mark.skipif(
-        ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace"
+        ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
     )
     @pytest.mark.describe("test of Database list_collections on cross-namespaces, sync")
     def test_database_list_collections_cross_namespace_sync(

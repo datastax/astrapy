@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.idiomatic.collection import AsyncCollection, Collection
-from astrapy.idiomatic.database import AsyncDatabase, Database
-import astrapy.idiomatic.results as results
+"""Idiomatic "results" subpackage."""
+
+from astrapy.idiomatic.results import DeleteResult
+
 
 __all__ = [
-    "AsyncCollection",
-    "AsyncDatabase",
-    "Collection",
-    "Database",
-    "results",
+    "DeleteResult",
 ]

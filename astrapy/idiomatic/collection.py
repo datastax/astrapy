@@ -11,12 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
-from typing import Any, Optional, TypedDict
+import json
+from typing import Any, Dict, Optional, TypedDict
+
 from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
-from astrapy.idiomatic.utils import unsupported
+from astrapy.idiomatic.utils import raise_unsupported_parameter, unsupported
 from astrapy.idiomatic.database import AsyncDatabase, Database
+from astrapy.idiomatic.results import DeleteResult
 
 
 class CollectionConstructorParams(TypedDict):
@@ -89,6 +93,66 @@ class Collection:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+
+    def count_documents(
+        self,
+        filter: Dict[str, Any],
+        *,
+        skip: Optional[int] = None,
+        limit: Optional[int] = None,
+    ) -> int:
+        if skip:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="count_documents",
+                parameter_name="skip",
+            )
+        if limit:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="count_documents",
+                parameter_name="limit",
+            )
+        cd_response = self._astra_db_collection.count_documents(filter=filter)
+        if "count" in cd_response.get("status", {}):
+            return cd_response["status"]["count"]  # type: ignore[no-any-return]
+        else:
+            raise ValueError(
+                "Could not complete a count_documents operation. "
+                f"(gotten '${json.dumps(cd_response)}')"
+            )
+
+    def delete_many(
+        self,
+        filter: Dict[str, Any],
+        *,
+        let: Optional[int] = None,
+    ) -> DeleteResult:
+        if let:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="count_documents",
+                parameter_name="let",
+            )
+        dm_response = self._astra_db_collection.delete_many(filter=filter)
+        if "deletedCount" in dm_response.get("status", {}):
+            deleted_count = dm_response["status"]["deletedCount"]
+            if deleted_count == -1:
+                return DeleteResult(
+                    deleted_count=None,
+                    raw_result=dm_response,
+                )
+            else:
+                # expected a non-negative integer:
+                return DeleteResult(
+                    deleted_count=deleted_count,
+                    raw_result=dm_response,
+                )
+        else:
+            raise ValueError(
+                "Could not complete a delete_many operation. "
+                f"(gotten '${json.dumps(dm_response)}')"
+            )
 
     @unsupported
     def find_raw_batches(*pargs: Any, **kwargs: Any) -> Any: ...
@@ -196,6 +260,66 @@ class AsyncCollection:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+
+    async def count_documents(
+        self,
+        filter: Dict[str, Any],
+        *,
+        skip: Optional[int] = None,
+        limit: Optional[int] = None,
+    ) -> int:
+        if skip:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="count_documents",
+                parameter_name="skip",
+            )
+        if limit:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="count_documents",
+                parameter_name="limit",
+            )
+        cd_response = await self._astra_db_collection.count_documents(filter=filter)
+        if "count" in cd_response.get("status", {}):
+            return cd_response["status"]["count"]  # type: ignore[no-any-return]
+        else:
+            raise ValueError(
+                "Could not complete a count_documents operation. "
+                f"(gotten '${json.dumps(cd_response)}')"
+            )
+
+    async def delete_many(
+        self,
+        filter: Dict[str, Any],
+        *,
+        let: Optional[int] = None,
+    ) -> DeleteResult:
+        if let:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="count_documents",
+                parameter_name="let",
+            )
+        dm_response = await self._astra_db_collection.delete_many(filter=filter)
+        if "deletedCount" in dm_response.get("status", {}):
+            deleted_count = dm_response["status"]["deletedCount"]
+            if deleted_count == -1:
+                return DeleteResult(
+                    deleted_count=None,
+                    raw_result=dm_response,
+                )
+            else:
+                # expected a non-negative integer:
+                return DeleteResult(
+                    deleted_count=deleted_count,
+                    raw_result=dm_response,
+                )
+        else:
+            raise ValueError(
+                "Could not complete a delete_many operation. "
+                f"(gotten '${json.dumps(dm_response)}')"
+            )
 
     @unsupported
     async def find_raw_batches(*pargs: Any, **kwargs: Any) -> Any: ...

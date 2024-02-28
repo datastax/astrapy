@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.idiomatic.collection import AsyncCollection, Collection
-from astrapy.idiomatic.database import AsyncDatabase, Database
-import astrapy.idiomatic.results as results
+import pytest
 
-__all__ = [
-    "AsyncCollection",
-    "AsyncDatabase",
-    "Collection",
-    "Database",
-    "results",
-]
+from astrapy import AsyncCollection
+
+
+class TestDMLAsync:
+    @pytest.mark.describe("test of collection count_documents, async")
+    async def test_collection_count_documents_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        assert await async_empty_collection.count_documents(filter={}) == 0
+        # TEST WITH FILTER ALSO

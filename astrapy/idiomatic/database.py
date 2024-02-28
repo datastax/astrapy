@@ -11,10 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import annotations
 
+import json
 from types import TracebackType
 from typing import Any, Dict, List, Optional, Type, TypedDict, Union, TYPE_CHECKING
+
 from astrapy.db import AstraDB, AsyncAstraDB
 from astrapy.idiomatic.utils import raise_unsupported_parameter, unsupported
 
@@ -187,7 +190,10 @@ class Database:
             _client = self._astra_db
         gc_response = _client.get_collections()
         if "collections" not in gc_response.get("status", {}):
-            raise ValueError("Could not retrieve the collection list.")
+            raise ValueError(
+                "Could not complete a get_collections operation. "
+                f"(gotten '${json.dumps(gc_response)}')"
+            )
         else:
             # we know this is a list of strings
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
@@ -350,7 +356,10 @@ class AsyncDatabase:
             )
         gc_response = await self._astra_db.copy(namespace=namespace).get_collections()
         if "collections" not in gc_response.get("status", {}):
-            raise ValueError("Could not retrieve the collection list.")
+            raise ValueError(
+                "Could not complete a get_collections operation. "
+                f"(gotten '${json.dumps(gc_response)}')"
+            )
         else:
             # we know this is a list of strings
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
