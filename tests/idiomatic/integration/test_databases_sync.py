@@ -14,7 +14,7 @@
 
 import pytest
 
-from ..conftest import AstraDBCredentials, TEST_COLLECTION_NAME
+from ..conftest import AstraDBCredentials, TEST_COLLECTION_INSTANCE_NAME
 from astrapy import Collection, Database
 
 
@@ -90,17 +90,17 @@ class TestDatabasesSync:
     def test_database_get_collection_sync(
         self,
         sync_database: Database,
-        sync_collection: Collection,
+        sync_collection_instance: Collection,
         astra_db_credentials_kwargs: AstraDBCredentials,
     ) -> None:
-        collection = sync_database.get_collection(TEST_COLLECTION_NAME)
-        assert collection == sync_collection
+        collection = sync_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)
+        assert collection == sync_collection_instance
 
         NAMESPACE_2 = "other_namespace"
         collection_ns2 = sync_database.get_collection(
-            TEST_COLLECTION_NAME, namespace=NAMESPACE_2
+            TEST_COLLECTION_INSTANCE_NAME, namespace=NAMESPACE_2
         )
         assert collection_ns2 == Collection(
-            sync_database, TEST_COLLECTION_NAME, namespace=NAMESPACE_2
+            sync_database, TEST_COLLECTION_INSTANCE_NAME, namespace=NAMESPACE_2
         )
         assert collection_ns2._astra_db_collection.astra_db.namespace == NAMESPACE_2

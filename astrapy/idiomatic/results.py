@@ -12,12 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.idiomatic.collection import AsyncCollection, Collection
-from astrapy.idiomatic.database import AsyncDatabase, Database
+from __future__ import annotations
 
-__all__ = [
-    "AsyncCollection",
-    "AsyncDatabase",
-    "Collection",
-    "Database",
-]
+from dataclasses import dataclass
+from typing import Any, Dict, Optional
+
+
+@dataclass
+class DeleteResult:
+    deleted_count: Optional[int]
+    raw_result: Dict[str, Any]
+    acknowledged: bool = True
+
+
+@dataclass
+class InsertOneResult:
+    inserted_id: Any
+    acknowledged: bool = True
