@@ -1,7 +1,7 @@
 """Fixtures specific to the idiomatic-side testing, if any."""
 
 import os
-from typing import Iterable
+from typing import AsyncIterable, Iterable
 import pytest
 
 from ..conftest import AstraDBCredentials
@@ -23,7 +23,7 @@ def sync_database(
 @pytest.fixture(scope="session")
 async def async_database(
     astra_db_credentials_kwargs: AstraDBCredentials,
-) -> Iterable[AsyncDatabase]:
+) -> AsyncIterable[AsyncDatabase]:
     yield AsyncDatabase(**astra_db_credentials_kwargs)
 
 
@@ -44,7 +44,7 @@ def sync_collection_instance(
 async def async_collection_instance(
     astra_db_credentials_kwargs: AstraDBCredentials,
     async_database: AsyncDatabase,
-) -> Iterable[AsyncCollection]:
+) -> AsyncIterable[AsyncCollection]:
     """Just an instance of the class, no DB-level stuff."""
     yield AsyncCollection(
         async_database,
@@ -80,7 +80,7 @@ def sync_empty_collection(sync_collection: Collection) -> Iterable[Collection]:
 @pytest.fixture(scope="session")
 async def async_collection(
     sync_collection: Collection,
-) -> Iterable[AsyncCollection]:
+) -> AsyncIterable[AsyncCollection]:
     """An actual collection on DB, the same as the sync counterpart"""
     yield sync_collection.to_async()
 
@@ -88,7 +88,7 @@ async def async_collection(
 @pytest.fixture(scope="function")
 async def async_empty_collection(
     async_collection: AsyncCollection,
-) -> Iterable[AsyncCollection]:
+) -> AsyncIterable[AsyncCollection]:
     """Emptied for each test function"""
     await async_collection.delete_many(filter={})
     yield async_collection
