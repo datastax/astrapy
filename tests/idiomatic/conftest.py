@@ -9,6 +9,7 @@ from astrapy import AsyncCollection, AsyncDatabase, Collection, Database
 
 TEST_COLLECTION_INSTANCE_NAME = "test_coll_instance"
 TEST_COLLECTION_NAME = "id_test_collection"
+TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME = "ephemeral_v_col"
 
 ASTRA_DB_SECONDARY_KEYSPACE = os.environ.get("ASTRA_DB_SECONDARY_KEYSPACE")
 

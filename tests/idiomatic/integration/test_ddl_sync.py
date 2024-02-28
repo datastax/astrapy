@@ -14,9 +14,8 @@
 
 import pytest
 
-from ..conftest import ASTRA_DB_SECONDARY_KEYSPACE, TEST_COLLECTION_NAME
+from ..conftest import ASTRA_DB_SECONDARY_KEYSPACE, TEST_COLLECTION_NAME, TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME
 from astrapy import Collection, Database
-
 
 class TestDDLSync:
     @pytest.mark.describe("test of collection creation, get, and then drop, sync")
@@ -34,6 +33,18 @@ class TestDDLSync:
         col2 = sync_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
         assert col1 == col2
         sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
+
+    @pytest.mark.describe("should create and destroy a vector collection using collection drop ")
+    def test_create_destroy_collection(self, sync_database: Database) -> None:
+        col = sync_database.create_collection(
+            name="TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME", dimension=2
+        )
+        assert isinstance(col, Collection)
+        del_res = col.drop(
+            TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME
+        )
+        assert del_res["status"]["ok"] == 1
+
 
     @pytest.mark.describe("test of Database list_collections, sync")
     def test_database_list_collections_sync(
