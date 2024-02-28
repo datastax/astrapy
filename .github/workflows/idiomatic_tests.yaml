@@ -15,6 +15,7 @@ jobs:
       ASTRA_DB_APPLICATION_TOKEN: ${{ secrets.ASTRA_DB_APPLICATION_TOKEN }}
       ASTRA_DB_ID: ${{ secrets.ASTRA_DB_ID }}
       TEST_SKIP_COLLECTION_DELETE: ${{ secrets.TEST_SKIP_COLLECTION_DELETE }}
+      ASTRA_DB_SECONDARY_KEYSPACE: ${{ secrets.ASTRA_DB_SECONDARY_KEYSPACE }}
     runs-on: ubuntu-latest
 
     steps:
