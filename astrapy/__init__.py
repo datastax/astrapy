@@ -16,10 +16,8 @@ import toml
 import os
 import importlib.metadata
 
-from typing import Any
 
-
-def get_version() -> Any:
+def get_version() -> str:
     try:
         # Poetry will create a __version__ attribute in the package's __init__.py file
         return importlib.metadata.version(__package__)
@@ -38,11 +36,27 @@ def get_version() -> Any:
                 pyproject_data = toml.loads(file_contents)
 
                 # Return the version from the poetry section
-                return pyproject_data["tool"]["poetry"]["version"]
+                return str(pyproject_data["tool"]["poetry"]["version"])
 
         # If the pyproject.toml file does not exist or the version is not found, return unknown
         except (FileNotFoundError, KeyError):
             return "unknown"
 
 
-__version__ = get_version()
+__version__: str = get_version()
+
+# There's a circular-import issue to heal here to bring this to top
+from astrapy.idiomatic import (  # noqa: E402
+    AsyncCollection,
+    AsyncDatabase,
+    Collection,
+    Database,
+)
+
+__all__ = [
+    "AsyncCollection",
+    "AsyncDatabase",
+    "Collection",
+    "Database",
+    "__version__",
+]

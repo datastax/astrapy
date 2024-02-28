@@ -174,6 +174,173 @@ def test_copy_methods() -> None:
     assert c_adb_ops is not adb_ops
 
 
+@pytest.mark.describe("test parameter override in copy methods")
+def test_parameter_override_copy_methods() -> None:
+    sync_astradb = AstraDB(
+        token="token",
+        api_endpoint="api_endpoint",
+        api_path="api_path",
+        api_version="api_version",
+        namespace="namespace",
+        caller_name="caller_name",
+        caller_version="caller_version",
+    )
+    sync_astradb2 = AstraDB(
+        token="token2",
+        api_endpoint="api_endpoint2",
+        api_path="api_path2",
+        api_version="api_version2",
+        namespace="namespace2",
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    c_sync_astradb = sync_astradb.copy(
+        token="token2",
+        api_endpoint="api_endpoint2",
+        api_path="api_path2",
+        api_version="api_version2",
+        namespace="namespace2",
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    assert c_sync_astradb == sync_astradb2
+
+    async_astradb = AsyncAstraDB(
+        token="token",
+        api_endpoint="api_endpoint",
+        api_path="api_path",
+        api_version="api_version",
+        namespace="namespace",
+        caller_name="caller_name",
+        caller_version="caller_version",
+    )
+    async_astradb2 = AsyncAstraDB(
+        token="token2",
+        api_endpoint="api_endpoint2",
+        api_path="api_path2",
+        api_version="api_version2",
+        namespace="namespace2",
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    c_async_astradb = async_astradb.copy(
+        token="token2",
+        api_endpoint="api_endpoint2",
+        api_path="api_path2",
+        api_version="api_version2",
+        namespace="namespace2",
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    assert c_async_astradb == async_astradb2
+
+    sync_adbcollection = AstraDBCollection(
+        collection_name="collection_name",
+        astra_db=sync_astradb,
+        caller_name="caller_name",
+        caller_version="caller_version",
+    )
+    sync_adbcollection2 = AstraDBCollection(
+        collection_name="collection_name2",
+        astra_db=sync_astradb2,
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    c_sync_adbcollection = sync_adbcollection.copy(
+        collection_name="collection_name2",
+        token="token2",
+        api_endpoint="api_endpoint2",
+        api_path="api_path2",
+        api_version="api_version2",
+        namespace="namespace2",
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    assert c_sync_adbcollection == sync_adbcollection2
+
+    async_adbcollection = AsyncAstraDBCollection(
+        collection_name="collection_name",
+        astra_db=async_astradb,
+        caller_name="caller_name",
+        caller_version="caller_version",
+    )
+    async_adbcollection2 = AsyncAstraDBCollection(
+        collection_name="collection_name2",
+        astra_db=async_astradb2,
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    c_async_adbcollection = async_adbcollection.copy(
+        collection_name="collection_name2",
+        token="token2",
+        api_endpoint="api_endpoint2",
+        api_path="api_path2",
+        api_version="api_version2",
+        namespace="namespace2",
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    assert c_async_adbcollection == async_adbcollection2
+
+    adb_ops = AstraDBOps(
+        token="token",
+        dev_ops_url="dev_ops_url",
+        dev_ops_api_version="dev_ops_api_version",
+        caller_name="caller_name",
+        caller_version="caller_version",
+    )
+    adb_ops2 = AstraDBOps(
+        token="token2",
+        dev_ops_url="dev_ops_url2",
+        dev_ops_api_version="dev_ops_api_version2",
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    c_adb_ops = adb_ops.copy(
+        token="token2",
+        dev_ops_url="dev_ops_url2",
+        dev_ops_api_version="dev_ops_api_version2",
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    assert c_adb_ops == adb_ops2
+
+
+@pytest.mark.describe("test parameter override when instantiating collections")
+def test_parameter_override_collection_instances() -> None:
+    astradb0 = AstraDB(token="t0", api_endpoint="a0")
+    astradb1 = AstraDB(token="t1", api_endpoint="a1", namespace="n1")
+    col0 = AstraDBCollection(
+        collection_name="col0",
+        astra_db=astradb0,
+    )
+    col1 = AstraDBCollection(
+        collection_name="col0",
+        astra_db=astradb0,
+        token="t1",
+        api_endpoint="a1",
+        namespace="n1",
+    )
+    assert col0 != col1
+    assert col1 == AstraDBCollection(collection_name="col0", astra_db=astradb1)
+
+    a_astradb0 = AsyncAstraDB(token="t0", api_endpoint="a0")
+    a_astradb1 = AsyncAstraDB(token="t1", api_endpoint="a1", namespace="n1")
+    a_col0 = AsyncAstraDBCollection(
+        collection_name="col0",
+        astra_db=a_astradb0,
+    )
+    a_col1 = AsyncAstraDBCollection(
+        collection_name="col0",
+        astra_db=a_astradb0,
+        token="t1",
+        api_endpoint="a1",
+        namespace="n1",
+    )
+    assert a_col0 != a_col1
+    assert a_col1 == AsyncAstraDBCollection(collection_name="col0", astra_db=a_astradb1)
+
+
 @pytest.mark.describe("test set_caller works in place for clients")
 def test_set_caller_clients() -> None:
     astradb0 = AstraDB(token="t1", api_endpoint="a1")

@@ -221,9 +221,7 @@ def make_payload(top_level: str, **kwargs: Any) -> Dict[str, Any]:
 
     return json_query
 
-def return_unsupported_error():
-    raise Exception("Unsupported operation")
-    
+
 def convert_vector_to_floats(vector: Iterable[Any]) -> List[float]:
     """
     Convert a vector of strings to a vector of floats.
