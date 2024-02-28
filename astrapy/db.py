@@ -104,6 +104,13 @@ class AstraDBCollection:
                 caller_name=caller_name,
                 caller_version=caller_version,
             )
+        else:
+            # if astra_db passed, copy and apply possible overrides
+            astra_db = astra_db.copy(
+                token=token,
+                api_endpoint=api_endpoint,
+                namespace=namespace,
+            )
 
         # Set the remaining instance attributes
         self.astra_db = astra_db
@@ -1110,6 +1117,13 @@ class AsyncAstraDBCollection:
                 namespace=namespace,
                 caller_name=caller_name,
                 caller_version=caller_version,
+            )
+        else:
+            # if astra_db passed, copy and apply possible overrides
+            astra_db = astra_db.copy(
+                token=token,
+                api_endpoint=api_endpoint,
+                namespace=namespace,
             )
 
         # Set the remaining instance attributes

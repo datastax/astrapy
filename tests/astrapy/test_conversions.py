@@ -306,6 +306,41 @@ def test_parameter_override_copy_methods() -> None:
     assert c_adb_ops == adb_ops2
 
 
+@pytest.mark.describe("test parameter override when instantiating collections")
+def test_parameter_override_collection_instances() -> None:
+    astradb0 = AstraDB(token="t0", api_endpoint="a0")
+    astradb1 = AstraDB(token="t1", api_endpoint="a1", namespace="n1")
+    col0 = AstraDBCollection(
+        collection_name="col0",
+        astra_db=astradb0,
+    )
+    col1 = AstraDBCollection(
+        collection_name="col0",
+        astra_db=astradb0,
+        token="t1",
+        api_endpoint="a1",
+        namespace="n1",
+    )
+    assert col0 != col1
+    assert col1 == AstraDBCollection(collection_name="col0", astra_db=astradb1)
+
+    a_astradb0 = AsyncAstraDB(token="t0", api_endpoint="a0")
+    a_astradb1 = AsyncAstraDB(token="t1", api_endpoint="a1", namespace="n1")
+    a_col0 = AsyncAstraDBCollection(
+        collection_name="col0",
+        astra_db=a_astradb0,
+    )
+    a_col1 = AsyncAstraDBCollection(
+        collection_name="col0",
+        astra_db=a_astradb0,
+        token="t1",
+        api_endpoint="a1",
+        namespace="n1",
+    )
+    assert a_col0 != a_col1
+    assert a_col1 == AsyncAstraDBCollection(collection_name="col0", astra_db=a_astradb1)
+
+
 @pytest.mark.describe("test set_caller works in place for clients")
 def test_set_caller_clients() -> None:
     astradb0 = AstraDB(token="t1", api_endpoint="a1")
