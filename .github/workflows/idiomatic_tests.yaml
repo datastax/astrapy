@@ -1,12 +1,12 @@
-name: Run Pytest on Astrapy
+name: Run Pytest on Idiomatic
 
 on:
   push:
     branches:
-      - master
+      - pymongo-convergence-m1
   pull_request:
     branches:
-      - master
+      - pymongo-convergence-m1
 
 jobs:
   test:
@@ -34,4 +34,4 @@ jobs:
 
     - name: Run pytest
       run: |
-        poetry run pytest tests/astrapy
+        poetry run pytest tests/idiomatic
