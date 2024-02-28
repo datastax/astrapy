@@ -90,39 +90,39 @@ class TestCollectionsAsync:
     @pytest.mark.describe("test errors for unsupported Collection methods, async")
     async def test_collection_unsupported_methods_async(
         self,
-        async_collection: AsyncCollection,
+        async_collection_instance: AsyncCollection,
     ) -> None:
         with pytest.raises(TypeError):
-            await async_collection.find_raw_batches(1, "x")
+            await async_collection_instance.find_raw_batches(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.aggregate(1, "x")
+            await async_collection_instance.aggregate(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.aggregate_raw_batches(1, "x")
+            await async_collection_instance.aggregate_raw_batches(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.watch(1, "x")
+            await async_collection_instance.watch(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.rename(1, "x")
+            await async_collection_instance.rename(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.create_index(1, "x")
+            await async_collection_instance.create_index(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.create_indexes(1, "x")
+            await async_collection_instance.create_indexes(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.drop_index(1, "x")
+            await async_collection_instance.drop_index(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.drop_indexes(1, "x")
+            await async_collection_instance.drop_indexes(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.list_indexes(1, "x")
+            await async_collection_instance.list_indexes(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.index_information(1, "x")
+            await async_collection_instance.index_information(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.create_search_index(1, "x")
+            await async_collection_instance.create_search_index(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.create_search_indexes(1, "x")
+            await async_collection_instance.create_search_indexes(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.drop_search_index(1, "x")
+            await async_collection_instance.drop_search_index(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.list_search_indexes(1, "x")
+            await async_collection_instance.list_search_indexes(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.update_search_index(1, "x")
+            await async_collection_instance.update_search_index(1, "x")
         with pytest.raises(TypeError):
-            await async_collection.distinct(1, "x")
+            await async_collection_instance.distinct(1, "x")

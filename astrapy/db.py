@@ -930,6 +930,26 @@ class AstraDBCollection:
 
         return response
 
+    def delete_one_filter(self, filter: Dict[str, Any]) -> API_RESPONSE:
+        """
+        Delete a single document from the collection based on a filter clause
+        Args:
+            filter: any filter dictionary
+        Returns:
+            dict: The response from the database after the delete operation.
+        """
+        json_query = {
+            "deleteOne": {
+                "filter": filter,
+            }
+        }
+
+        response = self._request(
+            method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
+        )
+
+        return response
+
     def delete_many(self, filter: Dict[str, Any]) -> API_RESPONSE:
         """
         Delete many documents from the collection based on a filter condition
@@ -1900,6 +1920,26 @@ class AsyncAstraDBCollection:
         json_query = {
             "deleteOne": {
                 "filter": {"_id": id},
+            }
+        }
+
+        response = await self._request(
+            method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
+        )
+
+        return response
+
+    async def delete_one_filter(self, filter: Dict[str, Any]) -> API_RESPONSE:
+        """
+        Delete a single document from the collection based on a filter clause
+        Args:
+            filter: any filter dictionary
+        Returns:
+            dict: The response from the database after the delete operation.
+        """
+        json_query = {
+            "deleteOne": {
+                "filter": filter,
             }
         }
 
