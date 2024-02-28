@@ -14,7 +14,8 @@
 
 import pytest
 
-from astrapy import AsyncDatabase
+from ..conftest import ASTRA_DB_SECONDARY_KEYSPACE, TEST_COLLECTION_NAME
+from astrapy import AsyncCollection, AsyncDatabase
 
 
 class TestDDLAsync:
@@ -23,13 +24,45 @@ class TestDDLAsync:
         self,
         async_database: AsyncDatabase,
     ) -> None:
-        TEST_COLLECTION_NAME = "test_coll"
+        TEST_LOCAL_COLLECTION_NAME = "test_local_coll"
         col1 = await async_database.create_collection(
-            TEST_COLLECTION_NAME,
+            TEST_LOCAL_COLLECTION_NAME,
             dimension=123,
             metric="euclidean",
             indexing={"deny": ["a", "b", "c"]},
         )
-        col2 = await async_database.get_collection(TEST_COLLECTION_NAME)
+        col2 = await async_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
         assert col1 == col2
-        await async_database.drop_collection(TEST_COLLECTION_NAME)
+        await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
+
+    @pytest.mark.describe("test of Database list_collections, async")
+    async def test_database_list_collections_async(
+        self,
+        async_database: AsyncDatabase,
+        async_collection: AsyncCollection,
+    ) -> None:
+        assert TEST_COLLECTION_NAME in await async_database.list_collection_names()
+
+    @pytest.mark.describe("test of Database list_collections unsupported filter, async")
+    async def test_database_list_collections_filter_async(
+        self,
+        async_database: AsyncDatabase,
+        async_collection: AsyncCollection,
+    ) -> None:
+        with pytest.raises(TypeError):
+            await async_database.list_collection_names(filter={"k": "v"})
+
+    @pytest.mark.skipif(
+        ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace"
+    )
+    @pytest.mark.describe(
+        "test of Database list_collections on cross-namespaces, async"
+    )
+    async def test_database_list_collections_cross_namespace_async(
+        self,
+        async_database: AsyncDatabase,
+        async_collection: AsyncCollection,
+    ) -> None:
+        assert TEST_COLLECTION_NAME not in await async_database.list_collection_names(
+            namespace=ASTRA_DB_SECONDARY_KEYSPACE
+        )
