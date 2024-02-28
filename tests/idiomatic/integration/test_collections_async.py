@@ -16,6 +16,8 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
 
+TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME = "ephemeral_v_col"
+TEST_CREATE_DELETE_NONVECTOR_COLLECTION_NAME = "ephemeral_non_v_col"
 
 class TestCollectionsAsync:
     @pytest.mark.describe("test of instantiating Collection, async")
@@ -73,6 +75,17 @@ class TestCollectionsAsync:
             caller_version="c_v1",
         )
         assert col1 == col2
+
+    @pytest.mark.describe("should create and destroy a vector collection using collection drop (async)")
+    async def test_create_destroy_collection(self, async_database: AsyncDatabase) -> None:
+        col = await async_database.create_collection(
+            name=TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME, dimension=2
+        )
+        assert isinstance(col, AsyncCollection)
+        del_res = await col.drop(
+            TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME
+        )
+        assert del_res["status"]["ok"] == 1
 
     @pytest.mark.describe("test errors for unsupported Collection methods, async")
     async def test_collection_unsupported_methods_async(

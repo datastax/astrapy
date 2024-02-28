@@ -91,7 +91,7 @@ class Collection:
         )
 
     def drop(self, collection_name: str) -> API_RESPONSE:
-        return self.astra_db.delete_collection(collection_name)
+        return self.database.delete_collection(collection_name)
 
     @unsupported
     def find_raw_batches(*pargs: Any, **kwargs: Any) -> Any: ...
@@ -201,7 +201,7 @@ class AsyncCollection:
         )
 
     async def drop(self, collection_name: str) -> API_RESPONSE:
-        return await self.astra_db.delete_collection(collection_name)
+        return await self.database.delete_collection(collection_name)
 
 
     @unsupported
