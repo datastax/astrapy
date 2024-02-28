@@ -14,12 +14,38 @@
 from __future__ import annotations
 
 from types import TracebackType
-from typing import Any, Optional, Type, TypedDict, TYPE_CHECKING
+from typing import Any, Dict, Optional, Type, TypedDict, Union, TYPE_CHECKING
 from astrapy.db import AstraDB, AsyncAstraDB
 from astrapy.idiomatic.utils import unsupported
 
 if TYPE_CHECKING:
     from astrapy.idiomatic.collection import AsyncCollection, Collection
+
+
+def _validate_create_collection_options(
+    dimension: Optional[int] = None,
+    metric: Optional[str] = None,
+    indexing: Optional[Dict[str, Any]] = None,
+    additional_options: Optional[Dict[str, Any]] = None,
+) -> None:
+    if additional_options:
+        if "vector" in additional_options:
+            raise ValueError(
+                "`additional_options` dict parameter to create_collection "
+                "cannot have a `vector` key. Please use the specific "
+                "method parameter."
+            )
+        if "indexing" in additional_options:
+            raise ValueError(
+                "`additional_options` dict parameter to create_collection "
+                "cannot have a `indexing` key. Please use the specific "
+                "method parameter."
+            )
+    if dimension is None and metric is not None:
+        raise ValueError(
+            "Cannot specify `metric` and not `vector_dimension` in the "
+            "create_collection method."
+        )
 
 
 class DatabaseConstructorParams(TypedDict):
@@ -86,12 +112,62 @@ class Database:
         self._astra_db.caller_name = caller_name
         self._astra_db.caller_version = caller_version
 
-    def get_collection(self, name: str, namespace: Optional[str] = None) -> Collection:
+    def get_collection(
+        self, name: str, *, namespace: Optional[str] = None
+    ) -> Collection:
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import Collection
 
         _namespace = namespace or self._constructor_params["namespace"]
         return Collection(self, name, namespace=_namespace)
+
+    def create_collection(
+        self,
+        name: str,
+        *,
+        namespace: Optional[str] = None,
+        dimension: Optional[int] = None,
+        metric: Optional[str] = None,
+        indexing: Optional[Dict[str, Any]] = None,
+        additional_options: Optional[Dict[str, Any]] = None,
+    ) -> Collection:
+        _validate_create_collection_options(
+            dimension=dimension,
+            metric=metric,
+            indexing=indexing,
+            additional_options=additional_options,
+        )
+        _options = {
+            **(additional_options or {}),
+            **({"indexing": indexing} if indexing else {}),
+        }
+        if namespace is not None:
+            self._astra_db.copy(namespace=namespace).create_collection(
+                name,
+                options=_options,
+                dimension=dimension,
+                metric=metric,
+            )
+        else:
+            self._astra_db.create_collection(
+                name,
+                options=_options,
+                dimension=dimension,
+                metric=metric,
+            )
+        return self.get_collection(name, namespace=namespace)
+
+    # TODO, the return type should be a Dict[str, Any] (investigate what)
+    def drop_collection(self, name_or_collection: Union[str, Collection]) -> None:
+        # lazy importing here against circular-import error
+        from astrapy.idiomatic.collection import Collection
+
+        _name: str
+        if isinstance(name_or_collection, Collection):
+            _name = name_or_collection._astra_db_collection.collection_name
+        else:
+            _name = name_or_collection
+        self._astra_db.delete_collection(_name)
 
     @unsupported
     def aggregate(*pargs: Any, **kwargs: Any) -> Any: ...
@@ -179,13 +255,63 @@ class AsyncDatabase:
         self._astra_db.caller_version = caller_version
 
     async def get_collection(
-        self, name: str, namespace: Optional[str] = None
+        self, name: str, *, namespace: Optional[str] = None
     ) -> AsyncCollection:
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import AsyncCollection
 
         _namespace = namespace or self._constructor_params["namespace"]
         return AsyncCollection(self, name, namespace=_namespace)
+
+    async def create_collection(
+        self,
+        name: str,
+        *,
+        namespace: Optional[str] = None,
+        dimension: Optional[int] = None,
+        metric: Optional[str] = None,
+        indexing: Optional[Dict[str, Any]] = None,
+        additional_options: Optional[Dict[str, Any]] = None,
+    ) -> AsyncCollection:
+        _validate_create_collection_options(
+            dimension=dimension,
+            metric=metric,
+            indexing=indexing,
+            additional_options=additional_options,
+        )
+        _options = {
+            **(additional_options or {}),
+            **({"indexing": indexing} if indexing else {}),
+        }
+        if namespace is not None:
+            await self._astra_db.copy(namespace=namespace).create_collection(
+                name,
+                options=_options,
+                dimension=dimension,
+                metric=metric,
+            )
+        else:
+            await self._astra_db.create_collection(
+                name,
+                options=_options,
+                dimension=dimension,
+                metric=metric,
+            )
+        return await self.get_collection(name, namespace=namespace)
+
+    # TODO, the return type should be a Dict[str, Any] (investigate what)
+    async def drop_collection(
+        self, name_or_collection: Union[str, AsyncCollection]
+    ) -> None:
+        # lazy importing here against circular-import error
+        from astrapy.idiomatic.collection import AsyncCollection
+
+        _name: str
+        if isinstance(name_or_collection, AsyncCollection):
+            _name = name_or_collection._astra_db_collection.collection_name
+        else:
+            _name = name_or_collection
+        await self._astra_db.delete_collection(_name)
 
     @unsupported
     async def aggregate(*pargs: Any, **kwargs: Any) -> Any: ...

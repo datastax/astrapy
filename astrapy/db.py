@@ -110,12 +110,14 @@ class AstraDBCollection:
                 token=token,
                 api_endpoint=api_endpoint,
                 namespace=namespace,
+                caller_name=caller_name,
+                caller_version=caller_version,
             )
 
         # Set the remaining instance attributes
         self.astra_db = astra_db
-        self.caller_name = caller_name or self.astra_db.caller_name
-        self.caller_version = caller_version or self.astra_db.caller_version
+        self.caller_name = self.astra_db.caller_name
+        self.caller_version = self.astra_db.caller_version
         self.collection_name = collection_name
         self.base_path = f"{self.astra_db.base_path}/{self.collection_name}"
 
@@ -1124,12 +1126,14 @@ class AsyncAstraDBCollection:
                 token=token,
                 api_endpoint=api_endpoint,
                 namespace=namespace,
+                caller_name=caller_name,
+                caller_version=caller_version,
             )
 
         # Set the remaining instance attributes
         self.astra_db: AsyncAstraDB = astra_db
-        self.caller_name = caller_name or self.astra_db.caller_name
-        self.caller_version = caller_version or self.astra_db.caller_version
+        self.caller_name = self.astra_db.caller_name
+        self.caller_version = self.astra_db.caller_version
         self.client = astra_db.client
         self.collection_name = collection_name
         self.base_path = f"{self.astra_db.base_path}/{self.collection_name}"
