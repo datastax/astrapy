@@ -23,3 +23,9 @@ class DeleteResult:
     deleted_count: Optional[int]
     raw_result: Dict[str, Any]
     acknowledged: bool = True
+
+
+@dataclass
+class InsertOneResult:
+    inserted_id: Any
+    acknowledged: bool = True

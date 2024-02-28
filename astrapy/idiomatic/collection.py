@@ -20,7 +20,7 @@ from typing import Any, Dict, Optional, TypedDict
 from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
 from astrapy.idiomatic.utils import raise_unsupported_parameter, unsupported
 from astrapy.idiomatic.database import AsyncDatabase, Database
-from astrapy.idiomatic.results import DeleteResult
+from astrapy.idiomatic.results import DeleteResult, InsertOneResult
 
 
 class CollectionConstructorParams(TypedDict):
@@ -94,6 +94,36 @@ class Collection:
             caller_version=caller_version,
         )
 
+    def insert_one(
+        self,
+        document: Dict[str, Any],
+        *,
+        bypass_document_validation: Optional[bool] = None,
+    ) -> InsertOneResult:
+        if bypass_document_validation:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="insert_one",
+                parameter_name="bypass_document_validation",
+            )
+        io_response = self._astra_db_collection.insert_one(document)
+        if "insertedIds" in io_response.get("status", {}):
+            if io_response["status"]["insertedIds"]:
+                inserted_id = io_response["status"]["insertedIds"][0]
+                return InsertOneResult(
+                    inserted_id=inserted_id,
+                )
+            else:
+                raise ValueError(
+                    "Could not complete a insert_one operation. "
+                    f"(gotten '${json.dumps(io_response)}')"
+                )
+        else:
+            raise ValueError(
+                "Could not complete a insert_one operation. "
+                f"(gotten '${json.dumps(io_response)}')"
+            )
+
     def count_documents(
         self,
         filter: Dict[str, Any],
@@ -122,6 +152,38 @@ class Collection:
                 f"(gotten '${json.dumps(cd_response)}')"
             )
 
+    def delete_one(
+        self,
+        filter: Dict[str, Any],
+        *,
+        let: Optional[int] = None,
+    ) -> DeleteResult:
+        if let:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="delete_one",
+                parameter_name="let",
+            )
+        do_response = self._astra_db_collection.delete_one_filter(filter=filter)
+        if "deletedCount" in do_response.get("status", {}):
+            deleted_count = do_response["status"]["deletedCount"]
+            if deleted_count == -1:
+                return DeleteResult(
+                    deleted_count=None,
+                    raw_result=do_response,
+                )
+            else:
+                # expected a non-negative integer:
+                return DeleteResult(
+                    deleted_count=deleted_count,
+                    raw_result=do_response,
+                )
+        else:
+            raise ValueError(
+                "Could not complete a delete_one operation. "
+                f"(gotten '${json.dumps(do_response)}')"
+            )
+
     def delete_many(
         self,
         filter: Dict[str, Any],
@@ -131,7 +193,7 @@ class Collection:
         if let:
             raise_unsupported_parameter(
                 class_name=self.__class__.__name__,
-                method_name="count_documents",
+                method_name="delete_many",
                 parameter_name="let",
             )
         dm_response = self._astra_db_collection.delete_many(filter=filter)
@@ -261,6 +323,36 @@ class AsyncCollection:
             caller_version=caller_version,
         )
 
+    async def insert_one(
+        self,
+        document: Dict[str, Any],
+        *,
+        bypass_document_validation: Optional[bool] = None,
+    ) -> InsertOneResult:
+        if bypass_document_validation:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="insert_one",
+                parameter_name="bypass_document_validation",
+            )
+        io_response = await self._astra_db_collection.insert_one(document)
+        if "insertedIds" in io_response.get("status", {}):
+            if io_response["status"]["insertedIds"]:
+                inserted_id = io_response["status"]["insertedIds"][0]
+                return InsertOneResult(
+                    inserted_id=inserted_id,
+                )
+            else:
+                raise ValueError(
+                    "Could not complete a insert_one operation. "
+                    f"(gotten '${json.dumps(io_response)}')"
+                )
+        else:
+            raise ValueError(
+                "Could not complete a insert_one operation. "
+                f"(gotten '${json.dumps(io_response)}')"
+            )
+
     async def count_documents(
         self,
         filter: Dict[str, Any],
@@ -289,6 +381,38 @@ class AsyncCollection:
                 f"(gotten '${json.dumps(cd_response)}')"
             )
 
+    async def delete_one(
+        self,
+        filter: Dict[str, Any],
+        *,
+        let: Optional[int] = None,
+    ) -> DeleteResult:
+        if let:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="delete_one",
+                parameter_name="let",
+            )
+        do_response = await self._astra_db_collection.delete_one_filter(filter=filter)
+        if "deletedCount" in do_response.get("status", {}):
+            deleted_count = do_response["status"]["deletedCount"]
+            if deleted_count == -1:
+                return DeleteResult(
+                    deleted_count=None,
+                    raw_result=do_response,
+                )
+            else:
+                # expected a non-negative integer:
+                return DeleteResult(
+                    deleted_count=deleted_count,
+                    raw_result=do_response,
+                )
+        else:
+            raise ValueError(
+                "Could not complete a delete_one operation. "
+                f"(gotten '${json.dumps(do_response)}')"
+            )
+
     async def delete_many(
         self,
         filter: Dict[str, Any],
@@ -298,7 +422,7 @@ class AsyncCollection:
         if let:
             raise_unsupported_parameter(
                 class_name=self.__class__.__name__,
-                method_name="count_documents",
+                method_name="delete_many",
                 parameter_name="let",
             )
         dm_response = await self._astra_db_collection.delete_many(filter=filter)

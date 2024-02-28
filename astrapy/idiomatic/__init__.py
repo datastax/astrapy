@@ -14,12 +14,10 @@
 
 from astrapy.idiomatic.collection import AsyncCollection, Collection
 from astrapy.idiomatic.database import AsyncDatabase, Database
-import astrapy.idiomatic.results as results
 
 __all__ = [
     "AsyncCollection",
     "AsyncDatabase",
     "Collection",
     "Database",
-    "results",
 ]

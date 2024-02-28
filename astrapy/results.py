@@ -14,9 +14,10 @@
 
 """Idiomatic "results" subpackage."""
 
-from astrapy.idiomatic.results import DeleteResult
+from astrapy.idiomatic.results import DeleteResult, InsertOneResult
 
 
 __all__ = [
     "DeleteResult",
+    "InsertOneResult",
 ]
