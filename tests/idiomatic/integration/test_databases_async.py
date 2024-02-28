@@ -14,8 +14,8 @@
 
 import pytest
 
-from ..conftest import AstraDBCredentials
-from astrapy import AsyncDatabase
+from ..conftest import AstraDBCredentials, TEST_COLLECTION_NAME
+from astrapy import AsyncCollection, AsyncDatabase
 
 
 class TestDatabasesAsync:
@@ -85,3 +85,21 @@ class TestDatabasesAsync:
             await async_database.watch(1, "x")
         with pytest.raises(TypeError):
             await async_database.validate_collection(1, "x")
+
+    @pytest.mark.describe("test get_collection method, async")
+    async def test_database_get_collection_async(
+        self,
+        async_database: AsyncDatabase,
+        async_collection: AsyncCollection,
+    ) -> None:
+        collection = await async_database.get_collection(TEST_COLLECTION_NAME)
+        assert collection == async_collection
+
+        NAMESPACE_2 = "other_namespace"
+        collection_ns2 = await async_database.get_collection(
+            TEST_COLLECTION_NAME, namespace=NAMESPACE_2
+        )
+        assert collection_ns2 == AsyncCollection(
+            async_database, TEST_COLLECTION_NAME, namespace=NAMESPACE_2
+        )
+        assert collection_ns2._astra_db_collection.astra_db.namespace == NAMESPACE_2

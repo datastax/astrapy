@@ -6,6 +6,8 @@ import pytest
 from ..conftest import AstraDBCredentials
 from astrapy import AsyncCollection, AsyncDatabase, Collection, Database
 
+TEST_COLLECTION_NAME = "test_coll_sync"
+
 
 @pytest.fixture(scope="session")
 def sync_database(
@@ -28,7 +30,7 @@ def sync_collection(
 ) -> Iterable[Collection]:
     yield Collection(
         sync_database,
-        "test_coll_sync",
+        TEST_COLLECTION_NAME,
         namespace=astra_db_credentials_kwargs["namespace"],
     )
 
@@ -40,7 +42,7 @@ def async_collection(
 ) -> Iterable[AsyncCollection]:
     yield AsyncCollection(
         async_database,
-        "test_coll_async",
+        TEST_COLLECTION_NAME,
         namespace=astra_db_credentials_kwargs["namespace"],
     )
 
