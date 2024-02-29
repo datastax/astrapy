@@ -930,7 +930,7 @@ class AstraDBCollection:
 
         return response
 
-    def delete_one_filter(self, filter: Dict[str, Any]) -> API_RESPONSE:
+    def delete_one_by_predicate(self, filter: Dict[str, Any]) -> API_RESPONSE:
         """
         Delete a single document from the collection based on a filter clause
         Args:
@@ -1929,7 +1929,7 @@ class AsyncAstraDBCollection:
 
         return response
 
-    async def delete_one_filter(self, filter: Dict[str, Any]) -> API_RESPONSE:
+    async def delete_one_by_predicate(self, filter: Dict[str, Any]) -> API_RESPONSE:
         """
         Delete a single document from the collection based on a filter clause
         Args:

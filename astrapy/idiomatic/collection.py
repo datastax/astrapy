@@ -172,7 +172,7 @@ class Collection:
                 method_name="delete_one",
                 parameter_name="let",
             )
-        do_response = self._astra_db_collection.delete_one_filter(filter=filter)
+        do_response = self._astra_db_collection.delete_one_by_predicate(filter=filter)
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
             if deleted_count == -1:
@@ -409,7 +409,9 @@ class AsyncCollection:
                 method_name="delete_one",
                 parameter_name="let",
             )
-        do_response = await self._astra_db_collection.delete_one_filter(filter=filter)
+        do_response = await self._astra_db_collection.delete_one_by_predicate(
+            filter=filter
+        )
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
             if deleted_count == -1:

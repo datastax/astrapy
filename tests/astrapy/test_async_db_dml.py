@@ -1051,6 +1051,28 @@ async def test_delete_one_novector(
     assert delete_response_no["status"]["deletedCount"] == 0
 
 
+@pytest.mark.describe("delete_one_by_predicate, not through vector (async)")
+async def test_delete_one_by_predicate_novector(
+    async_empty_v_collection: AsyncAstraDBCollection,
+) -> None:
+    await async_empty_v_collection.insert_one({"k": "v1"})
+    await async_empty_v_collection.insert_one({"k": "v1"})
+    await async_empty_v_collection.insert_one({"k": "v1"})
+    await async_empty_v_collection.insert_one({"k": "v2"})
+    assert (await async_empty_v_collection.count_documents())["status"]["count"] == 4
+    assert (await async_empty_v_collection.count_documents({"k": "v1"}))["status"][
+        "count"
+    ] == 3
+
+    await async_empty_v_collection.delete_one_by_predicate({"k": "v1"})
+    await async_empty_v_collection.delete_one_by_predicate({"k": "zz"})
+
+    assert (await async_empty_v_collection.count_documents())["status"]["count"] == 3
+    assert (await async_empty_v_collection.count_documents({"k": "v1"}))["status"][
+        "count"
+    ] == 2
+
+
 @pytest.mark.describe("delete_many, not through vector (async)")
 async def test_delete_many_novector(
     async_disposable_v_collection: AsyncAstraDBCollection,
