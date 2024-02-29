@@ -45,6 +45,17 @@ class TestDDLSync:
         )
         assert del_res["status"]["ok"] == 1
 
+    @pytest.mark.describe("should get information about the database")
+    def test_db_info(self, sync_database: Database,) -> None:
+            name = sync_database.name
+            region = sync_database.region
+            id = sync_database.dbid
+            client_options = sync_database.client_options
+            assert name is not None
+            assert region is not None
+            assert id is not None
+            assert client_options is not None
+
 
     @pytest.mark.describe("test of Database list_collections, sync")
     def test_database_list_collections_sync(
@@ -53,6 +64,7 @@ class TestDDLSync:
         sync_collection: Collection,
     ) -> None:
         assert TEST_COLLECTION_NAME in sync_database.list_collection_names()
+
 
     @pytest.mark.describe("test of Database list_collections unsupported filter, sync")
     def test_database_list_collections_filter_sync(

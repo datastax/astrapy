@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional, Type, TypedDict, Union, TYPE_CHECK
 
 from astrapy.db import AstraDB, AsyncAstraDB
 from astrapy.idiomatic.utils import raise_unsupported_parameter, unsupported
+from astrapy.ops import AstraDBOps
 
 if TYPE_CHECKING:
     from astrapy.idiomatic.collection import AsyncCollection, Collection
@@ -91,6 +92,35 @@ class Database:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+        self.codec_options = []
+        self.read_preference = "NEAREST"
+
+        self.client_options = {
+            'token': "",
+            'api_endpoint': "",
+            'api_path': "",
+            'api_version': "",
+            'namespace': "",
+            'caller_name': "",
+            'caller_version': ""
+        }
+
+        astraDBOps = AstraDBOps(token=token)
+
+        # Get the database object and name
+        if "-" in api_endpoint:
+            self.dbid = api_endpoint.split('/')[2].split('.')[0][:36]
+            
+            details = astraDBOps.get_database(database=self.dbid)
+            self.name = details['info']['name']
+            self.region = details['info']['region']
+            self.database = {'id': self.dbid, 'name': self.name, 'region': self.region}
+
+        else:
+            self.name = ""
+            self.region = ""
+            self.database = ""
+            print("No database found")
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db={self._astra_db}"]'
