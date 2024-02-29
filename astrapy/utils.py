@@ -38,6 +38,19 @@ class http_methods:
 
 package_name = __name__.split(".")[0]
 
+user_agents = [f"{package_name}/{__version__}"]
+
+
+def detect_ragstack_user_agent() -> None:
+    from importlib import metadata
+    ragstack_meta = metadata.metadata("ragstack-ai")
+    if ragstack_meta:
+        ragstack_version = ragstack_meta["version"]
+        user_agents.append(f"ragstack-ai/{ragstack_version}")
+
+
+detect_ragstack_user_agent()
+
 
 def log_request(
     method: str,
@@ -83,12 +96,15 @@ def compose_user_agent(
     caller_name: Optional[str], caller_version: Optional[str]
 ) -> str:
     if caller_name:
+        all_user_agents = user_agents.copy()
         if caller_version:
-            return f"{caller_name}/{caller_version} {package_name}/{__version__}"
+            caller_full = f"{caller_name}/{caller_version}"
         else:
-            return f"{caller_name} {package_name}/{__version__}"
+            caller_full = f"{caller_name}"
+        all_user_agents.append(caller_full)
     else:
-        return f"{package_name}/{__version__}"
+        all_uuser_agents = user_agents
+    return all_user_agents.join(" ")
 
 
 def make_request(
