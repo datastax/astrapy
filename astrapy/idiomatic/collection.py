@@ -74,7 +74,9 @@ class Collection:
             return False
 
     def copy(self) -> Collection:
-        return Collection(**self._constructor_params)
+        return Collection(
+            **self._constructor_params,
+        )
 
     def to_async(self) -> AsyncCollection:
         return AsyncCollection(
@@ -93,6 +95,8 @@ class Collection:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+        self._constructor_params["caller_name"] = caller_name
+        self._constructor_params["caller_version"] = caller_version
 
     def insert_one(
         self,
@@ -303,7 +307,9 @@ class AsyncCollection:
             return False
 
     def copy(self) -> AsyncCollection:
-        return AsyncCollection(**self._constructor_params)
+        return AsyncCollection(
+            **self._constructor_params,
+        )
 
     def to_sync(self) -> Collection:
         return Collection(
@@ -322,6 +328,8 @@ class AsyncCollection:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+        self._constructor_params["caller_name"] = caller_name
+        self._constructor_params["caller_version"] = caller_version
 
     async def insert_one(
         self,
