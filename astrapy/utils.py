@@ -38,6 +38,25 @@ class http_methods:
 
 package_name = __name__.split(".")[0]
 
+user_agent_astrapy = f"{package_name}/{__version__}"
+
+
+def detect_ragstack_user_agent() -> Optional[str]:
+    from importlib import metadata
+    from importlib.metadata import PackageNotFoundError
+
+    try:
+        ragstack_meta = metadata.metadata("ragstack-ai")
+        if ragstack_meta:
+            ragstack_version = ragstack_meta["version"]
+            return f"ragstack-ai/{ragstack_version}"
+    except PackageNotFoundError:
+        pass
+    return None
+
+
+user_agent_rs = detect_ragstack_user_agent()
+
 
 def log_request(
     method: str,
@@ -82,13 +101,22 @@ def log_response(r: httpx.Response) -> None:
 def compose_user_agent(
     caller_name: Optional[str], caller_version: Optional[str]
 ) -> str:
+    user_agent_caller: Optional[str] = None
     if caller_name:
         if caller_version:
-            return f"{caller_name}/{caller_version} {package_name}/{__version__}"
+            user_agent_caller = f"{caller_name}/{caller_version}"
         else:
-            return f"{caller_name} {package_name}/{__version__}"
-    else:
-        return f"{package_name}/{__version__}"
+            user_agent_caller = f"{caller_name}"
+    all_user_agents = [
+        ua_block
+        for ua_block in [
+            user_agent_rs,
+            user_agent_caller,
+            user_agent_astrapy,
+        ]
+        if ua_block
+    ]
+    return " ".join(all_user_agents)
 
 
 def make_request(
