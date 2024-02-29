@@ -29,12 +29,32 @@ class TestDDLAsync:
         async_database: AsyncDatabase,
     ) -> None:
         TEST_LOCAL_COLLECTION_NAME = "test_local_coll"
+        TEST_LOCAL_COLLECTION_NAME_B = "test_local_coll_b"
         col1 = await async_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME,
             dimension=123,
             metric="euclidean",
             indexing={"deny": ["a", "b", "c"]},
         )
+        await async_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME_B,
+            indexing={"allow": ["z"]},
+        )
+        lc_response = await async_database.list_collections()
+        #
+        expected_coll_dict = {
+            "name": TEST_LOCAL_COLLECTION_NAME,
+            "dimension": 123,
+            "metric": "euclidean",
+            "indexing": {"deny": ["a", "b", "c"]},
+        }
+        expected_coll_dict_b = {
+            "name": TEST_LOCAL_COLLECTION_NAME_B,
+            "indexing": {"allow": ["z"]},
+        }
+        assert expected_coll_dict in lc_response
+        assert expected_coll_dict_b in lc_response
+        #
         col2 = await async_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
         assert col1 == col2
         dc_response = await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)

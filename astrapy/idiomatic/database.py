@@ -50,6 +50,32 @@ def _validate_create_collection_options(
             "create_collection method."
         )
 
+def _recast_api_collection_dict(api_coll_dict: Dict[str, Any]) -> Dict[str, Any]:
+    _name = api_coll_dict["name"]
+    _options = api_coll_dict.get("options") or {}
+    _v_options0 = _options.get("vector") or {}
+    _indexing = _options.get("indexing") or {}
+    _v_dimension = _v_options0.get("dimension")
+    _v_metric = _v_options0.get("metric")
+    _additional_options = {
+        k: v
+        for k, v in _options.items()
+        if k not in {"vector", "indexing"}
+    }
+    recast_dict0 = {
+        "name": _name,
+        "dimension": _v_dimension,
+        "metric": _v_metric,
+        "indexing": _indexing,
+        "additional_options": _additional_options,
+    }
+    recast_dict = {
+        k: v
+        for k, v in recast_dict0.items()
+        if v
+    }
+    return recast_dict
+
 
 class DatabaseConstructorParams(TypedDict):
     api_endpoint: str
@@ -186,6 +212,35 @@ class Database:
         else:
             dc_response = self._astra_db.delete_collection(name_or_collection)
             return dc_response.get("status", {})  # type: ignore[no-any-return]
+
+    def list_collections(
+        self,
+        *,
+        namespace: Optional[str] = None,
+        filter: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        if filter:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="list_collections",
+                parameter_name="filter",
+            )
+        if namespace:
+            _client = self._astra_db.copy(namespace=namespace)
+        else:
+            _client = self._astra_db
+        gc_response = _client.get_collections(options={'explain': True})
+        if "collections" not in gc_response.get("status", {}):
+            raise ValueError(
+                "Could not complete a get_collections operation. "
+                f"(gotten '${json.dumps(gc_response)}')"
+            )
+        else:
+            # we know this is a list of dicts which need a little adjusting
+            return [
+                _recast_api_collection_dict(col_dict)
+                for col_dict in gc_response["status"]["collections"]
+            ]
 
     def list_collection_names(
         self,
@@ -369,6 +424,35 @@ class AsyncDatabase:
         else:
             dc_response = await self._astra_db.delete_collection(name_or_collection)
             return dc_response.get("status", {})  # type: ignore[no-any-return]
+
+    async def list_collections(
+        self,
+        *,
+        namespace: Optional[str] = None,
+        filter: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        if filter:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="list_collections",
+                parameter_name="filter",
+            )
+        if namespace:
+            _client = await self._astra_db.copy(namespace=namespace)
+        else:
+            _client = self._astra_db
+        gc_response = await _client.get_collections(options={'explain': True})
+        if "collections" not in gc_response.get("status", {}):
+            raise ValueError(
+                "Could not complete a get_collections operation. "
+                f"(gotten '${json.dumps(gc_response)}')"
+            )
+        else:
+            # we know this is a list of dicts which need a little adjusting
+            return [
+                _recast_api_collection_dict(col_dict)
+                for col_dict in gc_response["status"]["collections"]
+            ]
 
     async def list_collection_names(
         self,
