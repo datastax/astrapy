@@ -14,7 +14,11 @@
 
 import pytest
 
-from ..conftest import ASTRA_DB_SECONDARY_KEYSPACE, TEST_COLLECTION_NAME
+from ..conftest import (
+    AstraDBCredentials,
+    ASTRA_DB_SECONDARY_KEYSPACE,
+    TEST_COLLECTION_NAME,
+)
 from astrapy import AsyncCollection, AsyncDatabase
 
 
@@ -65,4 +69,43 @@ class TestDDLAsync:
     ) -> None:
         assert TEST_COLLECTION_NAME not in await async_database.list_collection_names(
             namespace=ASTRA_DB_SECONDARY_KEYSPACE
+        )
+
+    @pytest.mark.skipif(
+        ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
+    )
+    @pytest.mark.describe("test of cross-namespace collection lifecycle, async")
+    async def test_collection_namespace_async(
+        self,
+        async_database: AsyncDatabase,
+        astra_db_credentials_kwargs: AstraDBCredentials,
+    ) -> None:
+        TEST_LOCAL_COLLECTION_NAME1 = "test_crossns_coll1"
+        TEST_LOCAL_COLLECTION_NAME2 = "test_crossns_coll2"
+        database_on_secondary = AsyncDatabase(
+            astra_db_credentials_kwargs["api_endpoint"],
+            astra_db_credentials_kwargs["token"],
+            namespace=ASTRA_DB_SECONDARY_KEYSPACE,
+        )
+        await async_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME1,
+            namespace=ASTRA_DB_SECONDARY_KEYSPACE,
+        )
+        col2_on_secondary = await async_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME2,
+            namespace=ASTRA_DB_SECONDARY_KEYSPACE,
+        )
+        assert (
+            TEST_LOCAL_COLLECTION_NAME1
+            in await database_on_secondary.list_collection_names()
+        )
+        await database_on_secondary.drop_collection(TEST_LOCAL_COLLECTION_NAME1)
+        await async_database.drop_collection(col2_on_secondary)
+        assert (
+            TEST_LOCAL_COLLECTION_NAME1
+            not in await database_on_secondary.list_collection_names()
+        )
+        assert (
+            TEST_LOCAL_COLLECTION_NAME2
+            not in await database_on_secondary.list_collection_names()
         )

@@ -14,7 +14,11 @@
 
 import pytest
 
-from ..conftest import ASTRA_DB_SECONDARY_KEYSPACE, TEST_COLLECTION_NAME
+from ..conftest import (
+    AstraDBCredentials,
+    ASTRA_DB_SECONDARY_KEYSPACE,
+    TEST_COLLECTION_NAME,
+)
 from astrapy import Collection, Database
 
 
@@ -63,4 +67,42 @@ class TestDDLSync:
     ) -> None:
         assert TEST_COLLECTION_NAME not in sync_database.list_collection_names(
             namespace=ASTRA_DB_SECONDARY_KEYSPACE
+        )
+
+    @pytest.mark.skipif(
+        ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
+    )
+    @pytest.mark.describe("test of cross-namespace collection lifecycle, sync")
+    def test_collection_namespace_sync(
+        self,
+        sync_database: Database,
+        astra_db_credentials_kwargs: AstraDBCredentials,
+    ) -> None:
+        TEST_LOCAL_COLLECTION_NAME1 = "test_crossns_coll1"
+        TEST_LOCAL_COLLECTION_NAME2 = "test_crossns_coll2"
+        database_on_secondary = Database(
+            astra_db_credentials_kwargs["api_endpoint"],
+            astra_db_credentials_kwargs["token"],
+            namespace=ASTRA_DB_SECONDARY_KEYSPACE,
+        )
+        sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME1,
+            namespace=ASTRA_DB_SECONDARY_KEYSPACE,
+        )
+        col2_on_secondary = sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME2,
+            namespace=ASTRA_DB_SECONDARY_KEYSPACE,
+        )
+        assert (
+            TEST_LOCAL_COLLECTION_NAME1 in database_on_secondary.list_collection_names()
+        )
+        database_on_secondary.drop_collection(TEST_LOCAL_COLLECTION_NAME1)
+        sync_database.drop_collection(col2_on_secondary)
+        assert (
+            TEST_LOCAL_COLLECTION_NAME1
+            not in database_on_secondary.list_collection_names()
+        )
+        assert (
+            TEST_LOCAL_COLLECTION_NAME2
+            not in database_on_secondary.list_collection_names()
         )

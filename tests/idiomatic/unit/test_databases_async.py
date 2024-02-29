@@ -14,7 +14,12 @@
 
 import pytest
 
-from ..conftest import AstraDBCredentials, TEST_COLLECTION_INSTANCE_NAME
+from ..conftest import (
+    AstraDBCredentials,
+    ASTRA_DB_SECONDARY_KEYSPACE,
+    TEST_COLLECTION_INSTANCE_NAME,
+)
+from astrapy.defaults import DEFAULT_KEYSPACE_NAME
 from astrapy import AsyncCollection, AsyncDatabase
 
 
@@ -125,3 +130,23 @@ class TestDatabasesAsync:
         )
         assert db1.to_sync().to_async() == db2
         assert db1.copy() == db2
+
+    @pytest.mark.skipif(
+        ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
+    )
+    @pytest.mark.describe("test database namespace property, async")
+    async def test_database_namespace_async(
+        self,
+        astra_db_credentials_kwargs: AstraDBCredentials,
+    ) -> None:
+        db1 = AsyncDatabase(
+            **astra_db_credentials_kwargs,
+        )
+        assert db1.namespace == DEFAULT_KEYSPACE_NAME
+
+        db2 = AsyncDatabase(
+            token=astra_db_credentials_kwargs["token"],
+            api_endpoint=astra_db_credentials_kwargs["api_endpoint"],
+            namespace=ASTRA_DB_SECONDARY_KEYSPACE,
+        )
+        assert db2.namespace == ASTRA_DB_SECONDARY_KEYSPACE
