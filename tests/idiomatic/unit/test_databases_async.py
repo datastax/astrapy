@@ -100,6 +100,11 @@ class TestDatabasesAsync:
         collection = await async_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)
         assert collection == async_collection_instance
 
+        assert (
+            await getattr(async_database, TEST_COLLECTION_INSTANCE_NAME) == collection
+        )
+        assert await async_database[TEST_COLLECTION_INSTANCE_NAME] == collection
+
         NAMESPACE_2 = "other_namespace"
         collection_ns2 = await async_database.get_collection(
             TEST_COLLECTION_INSTANCE_NAME, namespace=NAMESPACE_2

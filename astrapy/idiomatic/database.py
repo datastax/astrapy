@@ -113,9 +113,11 @@ class Database:
             caller_version=caller_version,
         )
 
-    @property
-    def namespace(self) -> str:
-        return self._astra_db.namespace
+    def __getattr__(self, collection_name: str) -> Collection:
+        return self.get_collection(name=collection_name)
+
+    def __getitem__(self, collection_name: str) -> Collection:
+        return self.get_collection(name=collection_name)
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db={self._astra_db}"]'
@@ -125,6 +127,10 @@ class Database:
             return self._astra_db == other._astra_db
         else:
             return False
+
+    @property
+    def namespace(self) -> str:
+        return self._astra_db.namespace
 
     def copy(self) -> Database:
         return Database(
@@ -324,9 +330,11 @@ class AsyncDatabase:
             caller_version=caller_version,
         )
 
-    @property
-    def namespace(self) -> str:
-        return self._astra_db.namespace
+    async def __getattr__(self, collection_name: str) -> AsyncCollection:
+        return await self.get_collection(name=collection_name)
+
+    async def __getitem__(self, collection_name: str) -> AsyncCollection:
+        return await self.get_collection(name=collection_name)
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db={self._astra_db}"]'
@@ -351,6 +359,10 @@ class AsyncDatabase:
             exc_value=exc_value,
             traceback=traceback,
         )
+
+    @property
+    def namespace(self) -> str:
+        return self._astra_db.namespace
 
     def copy(self) -> AsyncDatabase:
         return AsyncDatabase(
