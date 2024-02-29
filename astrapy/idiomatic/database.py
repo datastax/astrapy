@@ -175,12 +175,12 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import Collection
 
-        _name: str
         if isinstance(name_or_collection, Collection):
+            _namespace = name_or_collection.namespace
             _name = name_or_collection._astra_db_collection.collection_name
+            self._astra_db.copy(namespace=_namespace).delete_collection(_name)
         else:
-            _name = name_or_collection
-        self._astra_db.delete_collection(_name)
+            self._astra_db.delete_collection(name_or_collection)
 
     def list_collection_names(
         self,
@@ -355,12 +355,12 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import AsyncCollection
 
-        _name: str
         if isinstance(name_or_collection, AsyncCollection):
+            _namespace = name_or_collection.namespace
             _name = name_or_collection._astra_db_collection.collection_name
+            await self._astra_db.copy(namespace=_namespace).delete_collection(_name)
         else:
-            _name = name_or_collection
-        await self._astra_db.delete_collection(_name)
+            await self._astra_db.delete_collection(name_or_collection)
 
     async def list_collection_names(
         self,
