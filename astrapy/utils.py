@@ -38,10 +38,10 @@ class http_methods:
 
 package_name = __name__.split(".")[0]
 
-user_agents = [f"{package_name}/{__version__}"]
+user_agent_astrapy = f"{package_name}/{__version__}"
 
 
-def detect_ragstack_user_agent() -> None:
+def detect_ragstack_user_agent() -> Optional[str]:
     from importlib import metadata
     from importlib.metadata import PackageNotFoundError
 
@@ -49,12 +49,13 @@ def detect_ragstack_user_agent() -> None:
         ragstack_meta = metadata.metadata("ragstack-ai")
         if ragstack_meta:
             ragstack_version = ragstack_meta["version"]
-            user_agents.append(f"ragstack-ai/{ragstack_version}")
+            return f"ragstack-ai/{ragstack_version}"
     except PackageNotFoundError:
         pass
+    return None
 
 
-detect_ragstack_user_agent()
+user_agent_rs = detect_ragstack_user_agent()
 
 
 def log_request(
@@ -100,15 +101,21 @@ def log_response(r: httpx.Response) -> None:
 def compose_user_agent(
     caller_name: Optional[str], caller_version: Optional[str]
 ) -> str:
+    user_agent_caller: Optional[str] = None
     if caller_name:
-        all_user_agents = user_agents.copy()
         if caller_version:
-            caller_full = f"{caller_name}/{caller_version}"
+            user_agent_caller = f"{caller_name}/{caller_version}"
         else:
-            caller_full = f"{caller_name}"
-        all_user_agents = [caller_full] + all_user_agents
-    else:
-        all_user_agents = user_agents
+            user_agent_caller = f"{caller_name}"
+    all_user_agents = [
+        ua_block
+        for ua_block in [
+            user_agent_rs,
+            user_agent_caller,
+            user_agent_astrapy,
+        ]
+        if ua_block
+    ]
     return " ".join(all_user_agents)
 
 
