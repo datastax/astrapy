@@ -24,6 +24,11 @@ from astrapy.db import AstraDB, AstraDBCollection, AsyncAstraDB, AsyncAstraDBCol
 
 T = TypeVar("T")
 
+TEST_SKIP_COLLECTION_DELETE: bool
+if os.getenv("TEST_SKIP_COLLECTION_DELETE"):
+    TEST_SKIP_COLLECTION_DELETE = int(os.environ["TEST_SKIP_COLLECTION_DELETE"]) != 0
+else:
+    TEST_SKIP_COLLECTION_DELETE = False
 
 # fixed
 TEST_WRITABLE_VECTOR_COLLECTION = "writable_v_col"
@@ -139,7 +144,7 @@ def readonly_v_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
 
     yield collection
 
-    if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
+    if not TEST_SKIP_COLLECTION_DELETE:
         db.delete_collection(TEST_READONLY_VECTOR_COLLECTION)
 
 
@@ -156,7 +161,7 @@ def writable_v_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
 
     yield collection
 
-    if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
+    if not TEST_SKIP_COLLECTION_DELETE:
         db.delete_collection(TEST_WRITABLE_VECTOR_COLLECTION)
 
 
@@ -189,7 +194,7 @@ def writable_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
 
     yield collection
 
-    if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
+    if not TEST_SKIP_COLLECTION_DELETE:
         db.delete_collection(TEST_WRITABLE_NONVECTOR_COLLECTION)
 
 
@@ -214,7 +219,7 @@ def allowindex_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
 
     yield collection
 
-    if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
+    if not TEST_SKIP_COLLECTION_DELETE:
         db.delete_collection(TEST_WRITABLE_ALLOWINDEX_NONVECTOR_COLLECTION)
 
 
@@ -243,7 +248,7 @@ def denyindex_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
 
     yield collection
 
-    if int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 0:
+    if not TEST_SKIP_COLLECTION_DELETE:
         db.delete_collection(TEST_WRITABLE_DENYINDEX_NONVECTOR_COLLECTION)
 
 

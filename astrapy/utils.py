@@ -106,7 +106,7 @@ def compose_user_agent(
             caller_full = f"{caller_name}/{caller_version}"
         else:
             caller_full = f"{caller_name}"
-        all_user_agents.append(caller_full)
+        all_user_agents = [caller_full] + all_user_agents
     else:
         all_user_agents = user_agents
     return " ".join(all_user_agents)

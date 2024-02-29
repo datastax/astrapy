@@ -16,12 +16,12 @@
 Tests for the `db.py` parts related to DML & client creation
 """
 
-import os
 import logging
 
 import pytest
 
 from ..conftest import AstraDBCredentials
+from .conftest import TEST_SKIP_COLLECTION_DELETE
 from astrapy.db import AstraDB, AstraDBCollection
 from astrapy.defaults import DEFAULT_KEYSPACE_NAME
 
@@ -70,7 +70,7 @@ def test_path_handling(astra_db_credentials_kwargs: AstraDBCredentials) -> None:
 
 
 @pytest.mark.skipif(
-    int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 1,
+    TEST_SKIP_COLLECTION_DELETE,
     reason="collection-deletion tests are suppressed",
 )
 @pytest.mark.describe("should create, use and destroy a non-vector collection")
@@ -98,7 +98,7 @@ def test_create_use_destroy_nonvector_collection(db: AstraDB) -> None:
 
 
 @pytest.mark.skipif(
-    int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 1,
+    TEST_SKIP_COLLECTION_DELETE,
     reason="collection-deletion tests are suppressed",
 )
 @pytest.mark.describe("should create and destroy a vector collection")
