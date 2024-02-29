@@ -37,7 +37,10 @@ class TestDDLSync:
         )
         col2 = sync_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
         assert col1 == col2
-        sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
+        dc_response = sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
+        assert dc_response == {"ok": 1}
+        dc_response2 = sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
+        assert dc_response2 == {"ok": 1}
 
     @pytest.mark.describe("test of Database list_collections, sync")
     def test_database_list_collections_sync(

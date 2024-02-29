@@ -170,17 +170,22 @@ class Database:
             )
         return self.get_collection(name, namespace=namespace)
 
-    # TODO, the return type should be a Dict[str, Any] (investigate what)
-    def drop_collection(self, name_or_collection: Union[str, Collection]) -> None:
+    def drop_collection(
+        self, name_or_collection: Union[str, Collection]
+    ) -> Dict[str, Any]:
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import Collection
 
         if isinstance(name_or_collection, Collection):
             _namespace = name_or_collection.namespace
             _name = name_or_collection._astra_db_collection.collection_name
-            self._astra_db.copy(namespace=_namespace).delete_collection(_name)
+            dc_response = self._astra_db.copy(namespace=_namespace).delete_collection(
+                _name
+            )
+            return dc_response.get("status", {})  # type: ignore[no-any-return]
         else:
-            self._astra_db.delete_collection(name_or_collection)
+            dc_response = self._astra_db.delete_collection(name_or_collection)
+            return dc_response.get("status", {})  # type: ignore[no-any-return]
 
     def list_collection_names(
         self,
@@ -348,19 +353,22 @@ class AsyncDatabase:
             )
         return await self.get_collection(name, namespace=namespace)
 
-    # TODO, the return type should be a Dict[str, Any] (investigate what)
     async def drop_collection(
         self, name_or_collection: Union[str, AsyncCollection]
-    ) -> None:
+    ) -> Dict[str, Any]:
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import AsyncCollection
 
         if isinstance(name_or_collection, AsyncCollection):
             _namespace = name_or_collection.namespace
             _name = name_or_collection._astra_db_collection.collection_name
-            await self._astra_db.copy(namespace=_namespace).delete_collection(_name)
+            dc_response = await self._astra_db.copy(
+                namespace=_namespace
+            ).delete_collection(_name)
+            return dc_response.get("status", {})  # type: ignore[no-any-return]
         else:
-            await self._astra_db.delete_collection(name_or_collection)
+            dc_response = await self._astra_db.delete_collection(name_or_collection)
+            return dc_response.get("status", {})  # type: ignore[no-any-return]
 
     async def list_collection_names(
         self,
