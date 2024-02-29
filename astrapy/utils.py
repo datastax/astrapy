@@ -103,7 +103,7 @@ def compose_user_agent(
             caller_full = f"{caller_name}"
         all_user_agents.append(caller_full)
     else:
-        all_uuser_agents = user_agents
+        all_user_agents = user_agents
     return all_user_agents.join(" ")
 
 
