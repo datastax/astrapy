@@ -43,11 +43,15 @@ user_agents = [f"{package_name}/{__version__}"]
 
 def detect_ragstack_user_agent() -> None:
     from importlib import metadata
+    from importlib.metadata import PackageNotFoundError
 
-    ragstack_meta = metadata.metadata("ragstack-ai")
-    if ragstack_meta:
-        ragstack_version = ragstack_meta["version"]
-        user_agents.append(f"ragstack-ai/{ragstack_version}")
+    try:
+        ragstack_meta = metadata.metadata("ragstack-ai")
+        if ragstack_meta:
+            ragstack_version = ragstack_meta["version"]
+            user_agents.append(f"ragstack-ai/{ragstack_version}")
+    except PackageNotFoundError:
+        pass
 
 
 detect_ragstack_user_agent()
@@ -105,7 +109,7 @@ def compose_user_agent(
         all_user_agents.append(caller_full)
     else:
         all_user_agents = user_agents
-    return all_user_agents.join(" ")
+    return " ".join(all_user_agents)
 
 
 def make_request(
