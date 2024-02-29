@@ -19,6 +19,7 @@ from ..conftest import (
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
 )
+from astrapy.api import APIRequestError
 from astrapy import Collection, Database
 
 
@@ -62,6 +63,41 @@ class TestDDLSync:
         dc_response2 = sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         assert dc_response2 == {"ok": 1}
         sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
+
+    @pytest.mark.describe("test of check_exists for create_collection, sync")
+    def test_create_collection_check_exists_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        TEST_LOCAL_COLLECTION_NAME = "test_check_exists"
+        sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME,
+            dimension=3,
+        )
+
+        with pytest.raises(ValueError):
+            sync_database.create_collection(
+                TEST_LOCAL_COLLECTION_NAME,
+                dimension=3,
+            )
+        with pytest.raises(ValueError):
+            sync_database.create_collection(
+                TEST_LOCAL_COLLECTION_NAME,
+                indexing={"deny": ["a"]},
+            )
+        sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME,
+            dimension=3,
+            check_exists=False,
+        )
+        with pytest.raises(APIRequestError):
+            sync_database.create_collection(
+                TEST_LOCAL_COLLECTION_NAME,
+                indexing={"deny": ["a"]},
+                check_exists=False,
+            )
+
+        sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
 
     @pytest.mark.describe("test of Database list_collections, sync")
     def test_database_list_collections_sync(

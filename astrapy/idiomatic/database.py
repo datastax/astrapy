@@ -50,6 +50,7 @@ def _validate_create_collection_options(
             "create_collection method."
         )
 
+
 def _recast_api_collection_dict(api_coll_dict: Dict[str, Any]) -> Dict[str, Any]:
     _name = api_coll_dict["name"]
     _options = api_coll_dict.get("options") or {}
@@ -58,9 +59,7 @@ def _recast_api_collection_dict(api_coll_dict: Dict[str, Any]) -> Dict[str, Any]
     _v_dimension = _v_options0.get("dimension")
     _v_metric = _v_options0.get("metric")
     _additional_options = {
-        k: v
-        for k, v in _options.items()
-        if k not in {"vector", "indexing"}
+        k: v for k, v in _options.items() if k not in {"vector", "indexing"}
     }
     recast_dict0 = {
         "name": _name,
@@ -69,11 +68,7 @@ def _recast_api_collection_dict(api_coll_dict: Dict[str, Any]) -> Dict[str, Any]
         "indexing": _indexing,
         "additional_options": _additional_options,
     }
-    recast_dict = {
-        k: v
-        for k, v in recast_dict0.items()
-        if v
-    }
+    recast_dict = {k: v for k, v in recast_dict0.items() if v}
     return recast_dict
 
 
@@ -169,6 +164,7 @@ class Database:
         metric: Optional[str] = None,
         indexing: Optional[Dict[str, Any]] = None,
         additional_options: Optional[Dict[str, Any]] = None,
+        check_exists: Optional[bool] = None,
     ) -> Collection:
         _validate_create_collection_options(
             dimension=dimension,
@@ -180,6 +176,19 @@ class Database:
             **(additional_options or {}),
             **({"indexing": indexing} if indexing else {}),
         }
+
+        if check_exists is None:
+            _check_exists = True
+        else:
+            _check_exists = check_exists
+        existing_names: List[str]
+        if _check_exists:
+            existing_names = self.list_collection_names(namespace=namespace)
+        else:
+            existing_names = []
+        if name in existing_names:
+            raise ValueError(f"CollectionInvalid: collection {name} already exists")
+
         if namespace is not None:
             self._astra_db.copy(namespace=namespace).create_collection(
                 name,
@@ -229,7 +238,7 @@ class Database:
             _client = self._astra_db.copy(namespace=namespace)
         else:
             _client = self._astra_db
-        gc_response = _client.get_collections(options={'explain': True})
+        gc_response = _client.get_collections(options={"explain": True})
         if "collections" not in gc_response.get("status", {}):
             raise ValueError(
                 "Could not complete a get_collections operation. "
@@ -381,6 +390,7 @@ class AsyncDatabase:
         metric: Optional[str] = None,
         indexing: Optional[Dict[str, Any]] = None,
         additional_options: Optional[Dict[str, Any]] = None,
+        check_exists: Optional[bool] = None,
     ) -> AsyncCollection:
         _validate_create_collection_options(
             dimension=dimension,
@@ -392,6 +402,19 @@ class AsyncDatabase:
             **(additional_options or {}),
             **({"indexing": indexing} if indexing else {}),
         }
+
+        if check_exists is None:
+            _check_exists = True
+        else:
+            _check_exists = check_exists
+        existing_names: List[str]
+        if _check_exists:
+            existing_names = await self.list_collection_names(namespace=namespace)
+        else:
+            existing_names = []
+        if name in existing_names:
+            raise ValueError(f"CollectionInvalid: collection {name} already exists")
+
         if namespace is not None:
             await self._astra_db.copy(namespace=namespace).create_collection(
                 name,
@@ -437,11 +460,12 @@ class AsyncDatabase:
                 method_name="list_collections",
                 parameter_name="filter",
             )
+        _client: AsyncAstraDB
         if namespace:
-            _client = await self._astra_db.copy(namespace=namespace)
+            _client = self._astra_db.copy(namespace=namespace)
         else:
             _client = self._astra_db
-        gc_response = await _client.get_collections(options={'explain': True})
+        gc_response = await _client.get_collections(options={"explain": True})
         if "collections" not in gc_response.get("status", {}):
             raise ValueError(
                 "Could not complete a get_collections operation. "

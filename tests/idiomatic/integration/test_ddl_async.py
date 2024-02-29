@@ -19,6 +19,7 @@ from ..conftest import (
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
 )
+from astrapy.api import APIRequestError
 from astrapy import AsyncCollection, AsyncDatabase
 
 
@@ -61,6 +62,41 @@ class TestDDLAsync:
         assert dc_response == {"ok": 1}
         dc_response2 = await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         assert dc_response2 == {"ok": 1}
+
+    @pytest.mark.describe("test of check_exists for create_collection, async")
+    async def test_create_collection_check_exists_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        TEST_LOCAL_COLLECTION_NAME = "test_check_exists"
+        await async_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME,
+            dimension=3,
+        )
+
+        with pytest.raises(ValueError):
+            await async_database.create_collection(
+                TEST_LOCAL_COLLECTION_NAME,
+                dimension=3,
+            )
+        with pytest.raises(ValueError):
+            await async_database.create_collection(
+                TEST_LOCAL_COLLECTION_NAME,
+                indexing={"deny": ["a"]},
+            )
+        await async_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME,
+            dimension=3,
+            check_exists=False,
+        )
+        with pytest.raises(APIRequestError):
+            await async_database.create_collection(
+                TEST_LOCAL_COLLECTION_NAME,
+                indexing={"deny": ["a"]},
+                check_exists=False,
+            )
+
+        await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
 
     @pytest.mark.describe("test of Database list_collections, async")
     async def test_database_list_collections_async(
