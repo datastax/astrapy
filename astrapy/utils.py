@@ -43,6 +43,7 @@ user_agents = [f"{package_name}/{__version__}"]
 
 def detect_ragstack_user_agent() -> None:
     from importlib import metadata
+
     ragstack_meta = metadata.metadata("ragstack-ai")
     if ragstack_meta:
         ragstack_version = ragstack_meta["version"]
