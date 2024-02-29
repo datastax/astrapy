@@ -92,6 +92,10 @@ class Database:
             caller_version=caller_version,
         )
 
+    @property
+    def namespace(self) -> str:
+        return self._astra_db.namespace
+
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db={self._astra_db}"]'
 
@@ -102,10 +106,14 @@ class Database:
             return False
 
     def copy(self) -> Database:
-        return Database(**self._constructor_params)
+        return Database(
+            **self._constructor_params,
+        )
 
     def to_async(self) -> AsyncDatabase:
-        return AsyncDatabase(**self._constructor_params)
+        return AsyncDatabase(
+            **self._constructor_params,
+        )
 
     def set_caller(
         self,
@@ -114,6 +122,8 @@ class Database:
     ) -> None:
         self._astra_db.caller_name = caller_name
         self._astra_db.caller_version = caller_version
+        self._constructor_params["caller_name"] = caller_name
+        self._constructor_params["caller_version"] = caller_version
 
     def get_collection(
         self, name: str, *, namespace: Optional[str] = None
@@ -245,6 +255,10 @@ class AsyncDatabase:
             caller_version=caller_version,
         )
 
+    @property
+    def namespace(self) -> str:
+        return self._astra_db.namespace
+
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db={self._astra_db}"]'
 
@@ -270,10 +284,14 @@ class AsyncDatabase:
         )
 
     def copy(self) -> AsyncDatabase:
-        return AsyncDatabase(**self._constructor_params)
+        return AsyncDatabase(
+            **self._constructor_params,
+        )
 
     def to_sync(self) -> Database:
-        return Database(**self._constructor_params)
+        return Database(
+            **self._constructor_params,
+        )
 
     def set_caller(
         self,
@@ -282,6 +300,8 @@ class AsyncDatabase:
     ) -> None:
         self._astra_db.caller_name = caller_name
         self._astra_db.caller_version = caller_version
+        self._constructor_params["caller_name"] = caller_name
+        self._constructor_params["caller_version"] = caller_version
 
     async def get_collection(
         self, name: str, *, namespace: Optional[str] = None

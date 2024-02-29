@@ -104,3 +104,25 @@ class TestDatabasesSync:
             sync_database, TEST_COLLECTION_INSTANCE_NAME, namespace=NAMESPACE_2
         )
         assert collection_ns2._astra_db_collection.astra_db.namespace == NAMESPACE_2
+
+    @pytest.mark.describe("test database conversions with caller mutableness, sync")
+    def test_database_conversions_caller_mutableness_sync(
+        self,
+        astra_db_credentials_kwargs: AstraDBCredentials,
+    ) -> None:
+        db1 = Database(
+            caller_name="c_n1",
+            caller_version="c_v1",
+            **astra_db_credentials_kwargs,
+        )
+        db1.set_caller(
+            caller_name="c_n2",
+            caller_version="c_v2",
+        )
+        db2 = Database(
+            caller_name="c_n2",
+            caller_version="c_v2",
+            **astra_db_credentials_kwargs,
+        )
+        assert db1.to_async().to_sync() == db2
+        assert db1.copy() == db2

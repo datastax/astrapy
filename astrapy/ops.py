@@ -98,8 +98,8 @@ class AstraDBOps:
             dev_ops_url=dev_ops_url or self.constructor_params["dev_ops_url"],
             dev_ops_api_version=dev_ops_api_version
             or self.constructor_params["dev_ops_api_version"],
-            caller_name=caller_name or self.constructor_params["caller_name"],
-            caller_version=caller_version or self.constructor_params["caller_version"],
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
         )
 
     def set_caller(

@@ -113,3 +113,27 @@ class TestCollectionsSync:
             sync_collection_instance.update_search_index(1, "x")
         with pytest.raises(TypeError):
             sync_collection_instance.distinct(1, "x")
+
+    @pytest.mark.describe("test collection conversions with caller mutableness, sync")
+    def test_collection_conversions_caller_mutableness_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        col1 = Collection(
+            sync_database,
+            "id_test_collection",
+            caller_name="c_n1",
+            caller_version="c_v1",
+        )
+        col1.set_caller(
+            caller_name="c_n2",
+            caller_version="c_v2",
+        )
+        col2 = Collection(
+            sync_database,
+            "id_test_collection",
+            caller_name="c_n2",
+            caller_version="c_v2",
+        )
+        assert col1.copy() == col2
+        assert col1.to_async().to_sync() == col2
