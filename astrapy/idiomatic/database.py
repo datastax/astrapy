@@ -51,6 +51,27 @@ def _validate_create_collection_options(
         )
 
 
+def _recast_api_collection_dict(api_coll_dict: Dict[str, Any]) -> Dict[str, Any]:
+    _name = api_coll_dict["name"]
+    _options = api_coll_dict.get("options") or {}
+    _v_options0 = _options.get("vector") or {}
+    _indexing = _options.get("indexing") or {}
+    _v_dimension = _v_options0.get("dimension")
+    _v_metric = _v_options0.get("metric")
+    _additional_options = {
+        k: v for k, v in _options.items() if k not in {"vector", "indexing"}
+    }
+    recast_dict0 = {
+        "name": _name,
+        "dimension": _v_dimension,
+        "metric": _v_metric,
+        "indexing": _indexing,
+        "additional_options": _additional_options,
+    }
+    recast_dict = {k: v for k, v in recast_dict0.items() if v}
+    return recast_dict
+
+
 class DatabaseConstructorParams(TypedDict):
     api_endpoint: str
     token: str
@@ -92,9 +113,11 @@ class Database:
             caller_version=caller_version,
         )
 
-    @property
-    def namespace(self) -> str:
-        return self._astra_db.namespace
+    def __getattr__(self, collection_name: str) -> Collection:
+        return self.get_collection(name=collection_name)
+
+    def __getitem__(self, collection_name: str) -> Collection:
+        return self.get_collection(name=collection_name)
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db={self._astra_db}"]'
@@ -104,6 +127,10 @@ class Database:
             return self._astra_db == other._astra_db
         else:
             return False
+
+    @property
+    def namespace(self) -> str:
+        return self._astra_db.namespace
 
     def copy(self) -> Database:
         return Database(
@@ -143,6 +170,7 @@ class Database:
         metric: Optional[str] = None,
         indexing: Optional[Dict[str, Any]] = None,
         additional_options: Optional[Dict[str, Any]] = None,
+        check_exists: Optional[bool] = None,
     ) -> Collection:
         _validate_create_collection_options(
             dimension=dimension,
@@ -154,6 +182,19 @@ class Database:
             **(additional_options or {}),
             **({"indexing": indexing} if indexing else {}),
         }
+
+        if check_exists is None:
+            _check_exists = True
+        else:
+            _check_exists = check_exists
+        existing_names: List[str]
+        if _check_exists:
+            existing_names = self.list_collection_names(namespace=namespace)
+        else:
+            existing_names = []
+        if name in existing_names:
+            raise ValueError(f"CollectionInvalid: collection {name} already exists")
+
         if namespace is not None:
             self._astra_db.copy(namespace=namespace).create_collection(
                 name,
@@ -170,17 +211,51 @@ class Database:
             )
         return self.get_collection(name, namespace=namespace)
 
-    # TODO, the return type should be a Dict[str, Any] (investigate what)
-    def drop_collection(self, name_or_collection: Union[str, Collection]) -> None:
+    def drop_collection(
+        self, name_or_collection: Union[str, Collection]
+    ) -> Dict[str, Any]:
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import Collection
 
         if isinstance(name_or_collection, Collection):
             _namespace = name_or_collection.namespace
             _name = name_or_collection._astra_db_collection.collection_name
-            self._astra_db.copy(namespace=_namespace).delete_collection(_name)
+            dc_response = self._astra_db.copy(namespace=_namespace).delete_collection(
+                _name
+            )
+            return dc_response.get("status", {})  # type: ignore[no-any-return]
         else:
-            self._astra_db.delete_collection(name_or_collection)
+            dc_response = self._astra_db.delete_collection(name_or_collection)
+            return dc_response.get("status", {})  # type: ignore[no-any-return]
+
+    def list_collections(
+        self,
+        *,
+        namespace: Optional[str] = None,
+        filter: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        if filter:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="list_collections",
+                parameter_name="filter",
+            )
+        if namespace:
+            _client = self._astra_db.copy(namespace=namespace)
+        else:
+            _client = self._astra_db
+        gc_response = _client.get_collections(options={"explain": True})
+        if "collections" not in gc_response.get("status", {}):
+            raise ValueError(
+                "Could not complete a get_collections operation. "
+                f"(gotten '${json.dumps(gc_response)}')"
+            )
+        else:
+            # we know this is a list of dicts which need a little adjusting
+            return [
+                _recast_api_collection_dict(col_dict)
+                for col_dict in gc_response["status"]["collections"]
+            ]
 
     def list_collection_names(
         self,
@@ -255,9 +330,11 @@ class AsyncDatabase:
             caller_version=caller_version,
         )
 
-    @property
-    def namespace(self) -> str:
-        return self._astra_db.namespace
+    async def __getattr__(self, collection_name: str) -> AsyncCollection:
+        return await self.get_collection(name=collection_name)
+
+    async def __getitem__(self, collection_name: str) -> AsyncCollection:
+        return await self.get_collection(name=collection_name)
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db={self._astra_db}"]'
@@ -282,6 +359,10 @@ class AsyncDatabase:
             exc_value=exc_value,
             traceback=traceback,
         )
+
+    @property
+    def namespace(self) -> str:
+        return self._astra_db.namespace
 
     def copy(self) -> AsyncDatabase:
         return AsyncDatabase(
@@ -321,6 +402,7 @@ class AsyncDatabase:
         metric: Optional[str] = None,
         indexing: Optional[Dict[str, Any]] = None,
         additional_options: Optional[Dict[str, Any]] = None,
+        check_exists: Optional[bool] = None,
     ) -> AsyncCollection:
         _validate_create_collection_options(
             dimension=dimension,
@@ -332,6 +414,19 @@ class AsyncDatabase:
             **(additional_options or {}),
             **({"indexing": indexing} if indexing else {}),
         }
+
+        if check_exists is None:
+            _check_exists = True
+        else:
+            _check_exists = check_exists
+        existing_names: List[str]
+        if _check_exists:
+            existing_names = await self.list_collection_names(namespace=namespace)
+        else:
+            existing_names = []
+        if name in existing_names:
+            raise ValueError(f"CollectionInvalid: collection {name} already exists")
+
         if namespace is not None:
             await self._astra_db.copy(namespace=namespace).create_collection(
                 name,
@@ -348,19 +443,52 @@ class AsyncDatabase:
             )
         return await self.get_collection(name, namespace=namespace)
 
-    # TODO, the return type should be a Dict[str, Any] (investigate what)
     async def drop_collection(
         self, name_or_collection: Union[str, AsyncCollection]
-    ) -> None:
+    ) -> Dict[str, Any]:
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import AsyncCollection
 
         if isinstance(name_or_collection, AsyncCollection):
             _namespace = name_or_collection.namespace
             _name = name_or_collection._astra_db_collection.collection_name
-            await self._astra_db.copy(namespace=_namespace).delete_collection(_name)
+            dc_response = await self._astra_db.copy(
+                namespace=_namespace
+            ).delete_collection(_name)
+            return dc_response.get("status", {})  # type: ignore[no-any-return]
         else:
-            await self._astra_db.delete_collection(name_or_collection)
+            dc_response = await self._astra_db.delete_collection(name_or_collection)
+            return dc_response.get("status", {})  # type: ignore[no-any-return]
+
+    async def list_collections(
+        self,
+        *,
+        namespace: Optional[str] = None,
+        filter: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        if filter:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="list_collections",
+                parameter_name="filter",
+            )
+        _client: AsyncAstraDB
+        if namespace:
+            _client = self._astra_db.copy(namespace=namespace)
+        else:
+            _client = self._astra_db
+        gc_response = await _client.get_collections(options={"explain": True})
+        if "collections" not in gc_response.get("status", {}):
+            raise ValueError(
+                "Could not complete a get_collections operation. "
+                f"(gotten '${json.dumps(gc_response)}')"
+            )
+        else:
+            # we know this is a list of dicts which need a little adjusting
+            return [
+                _recast_api_collection_dict(col_dict)
+                for col_dict in gc_response["status"]["collections"]
+            ]
 
     async def list_collection_names(
         self,

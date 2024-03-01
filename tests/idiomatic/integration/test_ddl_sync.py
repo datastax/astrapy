@@ -19,6 +19,7 @@ from ..conftest import (
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
 )
+from astrapy.api import APIRequestError
 from astrapy import Collection, Database
 
 
@@ -29,14 +30,73 @@ class TestDDLSync:
         sync_database: Database,
     ) -> None:
         TEST_LOCAL_COLLECTION_NAME = "test_local_coll"
+        TEST_LOCAL_COLLECTION_NAME_B = "test_local_coll_b"
         col1 = sync_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME,
             dimension=123,
             metric="euclidean",
             indexing={"deny": ["a", "b", "c"]},
         )
+        sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME_B,
+            indexing={"allow": ["z"]},
+        )
+        lc_response = sync_database.list_collections()
+        #
+        expected_coll_dict = {
+            "name": TEST_LOCAL_COLLECTION_NAME,
+            "dimension": 123,
+            "metric": "euclidean",
+            "indexing": {"deny": ["a", "b", "c"]},
+        }
+        expected_coll_dict_b = {
+            "name": TEST_LOCAL_COLLECTION_NAME_B,
+            "indexing": {"allow": ["z"]},
+        }
+        assert expected_coll_dict in lc_response
+        assert expected_coll_dict_b in lc_response
+        #
         col2 = sync_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
         assert col1 == col2
+        dc_response = sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
+        assert dc_response == {"ok": 1}
+        dc_response2 = sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
+        assert dc_response2 == {"ok": 1}
+        sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
+
+    @pytest.mark.describe("test of check_exists for create_collection, sync")
+    def test_create_collection_check_exists_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        TEST_LOCAL_COLLECTION_NAME = "test_check_exists"
+        sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME,
+            dimension=3,
+        )
+
+        with pytest.raises(ValueError):
+            sync_database.create_collection(
+                TEST_LOCAL_COLLECTION_NAME,
+                dimension=3,
+            )
+        with pytest.raises(ValueError):
+            sync_database.create_collection(
+                TEST_LOCAL_COLLECTION_NAME,
+                indexing={"deny": ["a"]},
+            )
+        sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME,
+            dimension=3,
+            check_exists=False,
+        )
+        with pytest.raises(APIRequestError):
+            sync_database.create_collection(
+                TEST_LOCAL_COLLECTION_NAME,
+                indexing={"deny": ["a"]},
+                check_exists=False,
+            )
+
         sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
 
     @pytest.mark.describe("test of Database list_collections, sync")

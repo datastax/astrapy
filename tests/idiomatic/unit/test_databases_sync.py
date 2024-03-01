@@ -101,6 +101,9 @@ class TestDatabasesSync:
         collection = sync_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)
         assert collection == sync_collection_instance
 
+        assert getattr(sync_database, TEST_COLLECTION_INSTANCE_NAME) == collection
+        assert sync_database[TEST_COLLECTION_INSTANCE_NAME] == collection
+
         NAMESPACE_2 = "other_namespace"
         collection_ns2 = sync_database.get_collection(
             TEST_COLLECTION_INSTANCE_NAME, namespace=NAMESPACE_2
