@@ -49,7 +49,7 @@ def detect_ragstack_user_agent() -> Optional[str]:
         ragstack_meta = metadata.metadata("ragstack-ai")
         if ragstack_meta:
             ragstack_version = ragstack_meta["version"]
-            return f"ragstack-ai/{ragstack_version}"
+            return f"ragstack/{ragstack_version}"
     except PackageNotFoundError:
         pass
     return None
