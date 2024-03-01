@@ -62,6 +62,7 @@ class TestDDLAsync:
         assert dc_response == {"ok": 1}
         dc_response2 = await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         assert dc_response2 == {"ok": 1}
+        await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
 
     @pytest.mark.describe("test of check_exists for create_collection, async")
     async def test_create_collection_check_exists_async(
