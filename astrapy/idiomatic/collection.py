@@ -51,6 +51,10 @@ class Collection:
     def namespace(self) -> str:
         return self._astra_db_collection.astra_db.namespace
 
+    @property
+    def name(self) -> str:
+        return self._astra_db_collection.collection_name
+
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db_collection="{self._astra_db_collection}"]'
 
@@ -305,6 +309,10 @@ class AsyncCollection:
     @property
     def namespace(self) -> str:
         return self._astra_db_collection.astra_db.namespace
+
+    @property
+    def name(self) -> str:
+        return self._astra_db_collection.collection_name
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db_collection="{self._astra_db_collection}"]'

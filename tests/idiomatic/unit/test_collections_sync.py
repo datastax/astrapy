@@ -142,6 +142,14 @@ class TestCollectionsSync:
         assert col1.database == db1
         assert col2.database == db2
 
+    @pytest.mark.describe("test of Collection name property, sync")
+    def test_collection_name_property_sync(
+        self,
+    ) -> None:
+        db1 = Database("a", "t", namespace="ns1")
+        col1 = Collection(db1, "coll")
+        assert col1.name == "coll"
+
     @pytest.mark.describe("test of Collection set_caller, sync")
     def test_collection_set_caller_sync(
         self,

@@ -142,6 +142,14 @@ class TestCollectionsAsync:
         assert col1.database == db1
         assert col2.database == db2
 
+    @pytest.mark.describe("test of Collection name property, async")
+    async def test_collection_name_property_async(
+        self,
+    ) -> None:
+        db1 = AsyncDatabase("a", "t", namespace="ns1")
+        col1 = AsyncCollection(db1, "coll")
+        assert col1.name == "coll"
+
     @pytest.mark.describe("test of Collection set_caller, async")
     async def test_collection_set_caller_async(
         self,
