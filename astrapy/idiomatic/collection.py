@@ -15,28 +15,12 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Optional, TypedDict
+from typing import Any, Dict, Optional
 
 from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
 from astrapy.idiomatic.utils import raise_unsupported_parameter, unsupported
 from astrapy.idiomatic.database import AsyncDatabase, Database
 from astrapy.idiomatic.results import DeleteResult, InsertOneResult
-
-
-class CollectionConstructorParams(TypedDict):
-    database: Database
-    name: str
-    namespace: Optional[str]
-    caller_name: Optional[str]
-    caller_version: Optional[str]
-
-
-class AsyncCollectionConstructorParams(TypedDict):
-    database: AsyncDatabase
-    name: str
-    namespace: Optional[str]
-    caller_name: Optional[str]
-    caller_version: Optional[str]
 
 
 class Collection:
@@ -49,13 +33,6 @@ class Collection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        self._constructor_params: CollectionConstructorParams = {
-            "database": database,
-            "name": name,
-            "namespace": namespace,
-            "caller_name": caller_name,
-            "caller_version": caller_version,
-        }
         self._astra_db_collection = AstraDBCollection(
             collection_name=name,
             astra_db=database._astra_db,
@@ -63,6 +40,12 @@ class Collection:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+        # this comes after the above, lets AstraDBCollection resolve namespace
+        self._database = database.copy(namespace=self.namespace)
+
+    @property
+    def database(self) -> Database:
+        return self._database
 
     @property
     def namespace(self) -> str:
@@ -77,17 +60,38 @@ class Collection:
         else:
             return False
 
-    def copy(self) -> Collection:
+    def copy(
+        self,
+        *,
+        database: Optional[Database] = None,
+        name: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> Collection:
         return Collection(
-            **self._constructor_params,
+            database=database or self.database,
+            name=name or self._astra_db_collection.collection_name,
+            namespace=namespace or self.namespace,
+            caller_name=caller_name or self._astra_db_collection.caller_name,
+            caller_version=caller_version or self._astra_db_collection.caller_version,
         )
 
-    def to_async(self) -> AsyncCollection:
+    def to_async(
+        self,
+        *,
+        database: Optional[AsyncDatabase] = None,
+        name: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> AsyncCollection:
         return AsyncCollection(
-            **{  # type: ignore[arg-type]
-                **self._constructor_params,
-                **{"database": self._constructor_params["database"].to_async()},
-            }
+            database=database or self.database.to_async(),
+            name=name or self._astra_db_collection.collection_name,
+            namespace=namespace or self.namespace,
+            caller_name=caller_name or self._astra_db_collection.caller_name,
+            caller_version=caller_version or self._astra_db_collection.caller_version,
         )
 
     def set_caller(
@@ -99,8 +103,6 @@ class Collection:
             caller_name=caller_name,
             caller_version=caller_version,
         )
-        self._constructor_params["caller_name"] = caller_name
-        self._constructor_params["caller_version"] = caller_version
 
     def insert_one(
         self,
@@ -286,13 +288,6 @@ class AsyncCollection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        self._constructor_params: AsyncCollectionConstructorParams = {
-            "database": database,
-            "name": name,
-            "namespace": namespace,
-            "caller_name": caller_name,
-            "caller_version": caller_version,
-        }
         self._astra_db_collection = AsyncAstraDBCollection(
             collection_name=name,
             astra_db=database._astra_db,
@@ -300,6 +295,12 @@ class AsyncCollection:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+        # this comes after the above, lets AstraDBCollection resolve namespace
+        self._database = database.copy(namespace=self.namespace)
+
+    @property
+    def database(self) -> AsyncDatabase:
+        return self._database
 
     @property
     def namespace(self) -> str:
@@ -314,17 +315,38 @@ class AsyncCollection:
         else:
             return False
 
-    def copy(self) -> AsyncCollection:
+    def copy(
+        self,
+        *,
+        database: Optional[AsyncDatabase] = None,
+        name: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> AsyncCollection:
         return AsyncCollection(
-            **self._constructor_params,
+            database=database or self.database,
+            name=name or self._astra_db_collection.collection_name,
+            namespace=namespace or self.namespace,
+            caller_name=caller_name or self._astra_db_collection.caller_name,
+            caller_version=caller_version or self._astra_db_collection.caller_version,
         )
 
-    def to_sync(self) -> Collection:
+    def to_sync(
+        self,
+        *,
+        database: Optional[Database] = None,
+        name: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> Collection:
         return Collection(
-            **{  # type: ignore[arg-type]
-                **self._constructor_params,
-                **{"database": self._constructor_params["database"].to_sync()},
-            }
+            database=database or self.database.to_sync(),
+            name=name or self._astra_db_collection.collection_name,
+            namespace=namespace or self.namespace,
+            caller_name=caller_name or self._astra_db_collection.caller_name,
+            caller_version=caller_version or self._astra_db_collection.caller_version,
         )
 
     def set_caller(
@@ -336,8 +358,6 @@ class AsyncCollection:
             caller_name=caller_name,
             caller_version=caller_version,
         )
-        self._constructor_params["caller_name"] = caller_name
-        self._constructor_params["caller_version"] = caller_version
 
     async def insert_one(
         self,

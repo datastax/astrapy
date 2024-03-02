@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import json
 from types import TracebackType
-from typing import Any, Dict, List, Optional, Type, TypedDict, Union, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
 
 from astrapy.db import AstraDB, AsyncAstraDB
 from astrapy.idiomatic.utils import raise_unsupported_parameter, unsupported
@@ -72,16 +72,6 @@ def _recast_api_collection_dict(api_coll_dict: Dict[str, Any]) -> Dict[str, Any]
     return recast_dict
 
 
-class DatabaseConstructorParams(TypedDict):
-    api_endpoint: str
-    token: str
-    namespace: Optional[str]
-    caller_name: Optional[str]
-    caller_version: Optional[str]
-    api_path: Optional[str]
-    api_version: Optional[str]
-
-
 class Database:
     def __init__(
         self,
@@ -94,15 +84,6 @@ class Database:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> None:
-        self._constructor_params: DatabaseConstructorParams = {
-            "api_endpoint": api_endpoint,
-            "token": token,
-            "namespace": namespace,
-            "caller_name": caller_name,
-            "caller_version": caller_version,
-            "api_path": api_path,
-            "api_version": api_version,
-        }
         self._astra_db = AstraDB(
             token=token,
             api_endpoint=api_endpoint,
@@ -132,14 +113,46 @@ class Database:
     def namespace(self) -> str:
         return self._astra_db.namespace
 
-    def copy(self) -> Database:
+    def copy(
+        self,
+        *,
+        api_endpoint: Optional[str] = None,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> Database:
         return Database(
-            **self._constructor_params,
+            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            token=token or self._astra_db.token,
+            namespace=namespace or self._astra_db.namespace,
+            caller_name=caller_name or self._astra_db.caller_name,
+            caller_version=caller_version or self._astra_db.caller_version,
+            api_path=api_path or self._astra_db.api_path,
+            api_version=api_version or self._astra_db.api_version,
         )
 
-    def to_async(self) -> AsyncDatabase:
+    def to_async(
+        self,
+        *,
+        api_endpoint: Optional[str] = None,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> AsyncDatabase:
         return AsyncDatabase(
-            **self._constructor_params,
+            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            token=token or self._astra_db.token,
+            namespace=namespace or self._astra_db.namespace,
+            caller_name=caller_name or self._astra_db.caller_name,
+            caller_version=caller_version or self._astra_db.caller_version,
+            api_path=api_path or self._astra_db.api_path,
+            api_version=api_version or self._astra_db.api_version,
         )
 
     def set_caller(
@@ -147,10 +160,10 @@ class Database:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        self._astra_db.caller_name = caller_name
-        self._astra_db.caller_version = caller_version
-        self._constructor_params["caller_name"] = caller_name
-        self._constructor_params["caller_version"] = caller_version
+        self._astra_db.set_caller(
+            caller_name=caller_name,
+            caller_version=caller_version,
+        )
 
     def get_collection(
         self, name: str, *, namespace: Optional[str] = None
@@ -158,7 +171,7 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import Collection
 
-        _namespace = namespace or self._constructor_params["namespace"]
+        _namespace = namespace or self._astra_db.namespace
         return Collection(self, name, namespace=_namespace)
 
     def create_collection(
@@ -311,15 +324,6 @@ class AsyncDatabase:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> None:
-        self._constructor_params: DatabaseConstructorParams = {
-            "api_endpoint": api_endpoint,
-            "token": token,
-            "namespace": namespace,
-            "caller_name": caller_name,
-            "caller_version": caller_version,
-            "api_path": api_path,
-            "api_version": api_version,
-        }
         self._astra_db = AsyncAstraDB(
             token=token,
             api_endpoint=api_endpoint,
@@ -364,14 +368,46 @@ class AsyncDatabase:
     def namespace(self) -> str:
         return self._astra_db.namespace
 
-    def copy(self) -> AsyncDatabase:
+    def copy(
+        self,
+        *,
+        api_endpoint: Optional[str] = None,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> AsyncDatabase:
         return AsyncDatabase(
-            **self._constructor_params,
+            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            token=token or self._astra_db.token,
+            namespace=namespace or self._astra_db.namespace,
+            caller_name=caller_name or self._astra_db.caller_name,
+            caller_version=caller_version or self._astra_db.caller_version,
+            api_path=api_path or self._astra_db.api_path,
+            api_version=api_version or self._astra_db.api_version,
         )
 
-    def to_sync(self) -> Database:
+    def to_sync(
+        self,
+        *,
+        api_endpoint: Optional[str] = None,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> Database:
         return Database(
-            **self._constructor_params,
+            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            token=token or self._astra_db.token,
+            namespace=namespace or self._astra_db.namespace,
+            caller_name=caller_name or self._astra_db.caller_name,
+            caller_version=caller_version or self._astra_db.caller_version,
+            api_path=api_path or self._astra_db.api_path,
+            api_version=api_version or self._astra_db.api_version,
         )
 
     def set_caller(
@@ -379,10 +415,10 @@ class AsyncDatabase:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        self._astra_db.caller_name = caller_name
-        self._astra_db.caller_version = caller_version
-        self._constructor_params["caller_name"] = caller_name
-        self._constructor_params["caller_version"] = caller_version
+        self._astra_db.set_caller(
+            caller_name=caller_name,
+            caller_version=caller_version,
+        )
 
     async def get_collection(
         self, name: str, *, namespace: Optional[str] = None
@@ -390,7 +426,7 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import AsyncCollection
 
-        _namespace = namespace or self._constructor_params["namespace"]
+        _namespace = namespace or self._astra_db.namespace
         return AsyncCollection(self, name, namespace=_namespace)
 
     async def create_collection(

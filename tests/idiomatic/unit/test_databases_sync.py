@@ -54,6 +54,96 @@ class TestDatabasesSync:
         assert db1 == db1.copy()
         assert db1 == db1.to_async().to_sync()
 
+    @pytest.mark.describe("test of Database rich copy, sync")
+    def test_rich_copy_database_sync(
+        self,
+    ) -> None:
+        db1 = Database(
+            api_endpoint="api_endpoint",
+            token="token",
+            namespace="namespace",
+            caller_name="c_n",
+            caller_version="c_v",
+            api_path="api_path",
+            api_version="api_version",
+        )
+        assert db1 != db1.copy(api_endpoint="x")
+        assert db1 != db1.copy(token="x")
+        assert db1 != db1.copy(namespace="x")
+        assert db1 != db1.copy(caller_name="x")
+        assert db1 != db1.copy(caller_version="x")
+        assert db1 != db1.copy(api_path="x")
+        assert db1 != db1.copy(api_version="x")
+
+        db2 = db1.copy(
+            api_endpoint="x",
+            token="x",
+            namespace="x",
+            caller_name="x_n",
+            caller_version="x_v",
+            api_path="x",
+            api_version="x",
+        )
+        assert db2 != db1
+
+        db2.set_caller(
+            caller_name="c_n",
+            caller_version="c_v",
+        )
+        db3 = db2.copy(
+            api_endpoint="api_endpoint",
+            token="token",
+            namespace="namespace",
+            api_path="api_path",
+            api_version="api_version",
+        )
+        assert db3 == db1
+
+    @pytest.mark.describe("test of Database rich conversions, sync")
+    def test_rich_convert_database_sync(
+        self,
+    ) -> None:
+        db1 = Database(
+            api_endpoint="api_endpoint",
+            token="token",
+            namespace="namespace",
+            caller_name="c_n",
+            caller_version="c_v",
+            api_path="api_path",
+            api_version="api_version",
+        )
+        assert db1 != db1.to_async(api_endpoint="o").to_sync()
+        assert db1 != db1.to_async(token="o").to_sync()
+        assert db1 != db1.to_async(namespace="o").to_sync()
+        assert db1 != db1.to_async(caller_name="o").to_sync()
+        assert db1 != db1.to_async(caller_version="o").to_sync()
+        assert db1 != db1.to_async(api_path="o").to_sync()
+        assert db1 != db1.to_async(api_version="o").to_sync()
+
+        db2a = db1.to_async(
+            api_endpoint="x",
+            token="x",
+            namespace="x",
+            caller_name="x_n",
+            caller_version="x_v",
+            api_path="x",
+            api_version="x",
+        )
+        assert db2a.to_sync() != db1
+
+        db2a.set_caller(
+            caller_name="c_n",
+            caller_version="c_v",
+        )
+        db3 = db2a.to_sync(
+            api_endpoint="api_endpoint",
+            token="token",
+            namespace="namespace",
+            api_path="api_path",
+            api_version="api_version",
+        )
+        assert db3 == db1
+
     @pytest.mark.describe("test of Database set_caller, sync")
     def test_database_set_caller_sync(
         self,
