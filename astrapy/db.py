@@ -2128,8 +2128,10 @@ class AstraDB:
         # Store the API token
         self.token = token
 
+        self.api_endpoint = api_endpoint
+
         # Set the Base URL for the API calls
-        self.base_url = api_endpoint.strip("/")
+        self.base_url = self.api_endpoint.strip("/")
 
         # Set the API version and path from the call
         self.api_path = (api_path or DEFAULT_JSON_API_PATH).strip("/")
@@ -2413,8 +2415,10 @@ class AsyncAstraDB:
         # Store the API token
         self.token = token
 
+        self.api_endpoint = api_endpoint
+
         # Set the Base URL for the API calls
-        self.base_url = api_endpoint.strip("/")
+        self.base_url = self.api_endpoint.strip("/")
 
         # Set the API version and path from the call
         self.api_path = (api_path or DEFAULT_JSON_API_PATH).strip("/")

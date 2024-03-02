@@ -52,6 +52,104 @@ class TestCollectionsAsync:
         assert col1 == col1.copy()
         assert col1 == col1.to_sync().to_async()
 
+    @pytest.mark.describe("test of Collection rich copy, async")
+    async def test_rich_copy_collection_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        col1 = AsyncCollection(
+            async_database,
+            "id_test_collection",
+            caller_name="c_n",
+            caller_version="c_v",
+        )
+        assert col1 != col1.copy(database=async_database.copy(token="x_t"))
+        assert col1 != col1.copy(name="o")
+        assert col1 != col1.copy(namespace="o")
+        assert col1 != col1.copy(caller_name="o")
+        assert col1 != col1.copy(caller_version="o")
+
+        col2 = col1.copy(
+            database=async_database.copy(token="x_t"),
+            name="other_name",
+            namespace="other_namespace",
+            caller_name="x_n",
+            caller_version="x_v",
+        )
+        assert col2 != col1
+
+        col2.set_caller(
+            caller_name="c_n",
+            caller_version="c_v",
+        )
+        col3 = col2.copy(
+            database=async_database,
+            name="id_test_collection",
+            namespace=async_database.namespace,
+        )
+        assert col3 == col1
+
+    @pytest.mark.describe("test of Collection rich conversions, async")
+    async def test_rich_convert_collection_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        col1 = AsyncCollection(
+            async_database,
+            "id_test_collection",
+            caller_name="c_n",
+            caller_version="c_v",
+        )
+        assert (
+            col1
+            != col1.to_sync(
+                database=async_database.copy(token="x_t").to_sync()
+            ).to_async()
+        )
+        assert col1 != col1.to_sync(name="o").to_async()
+        assert col1 != col1.to_sync(namespace="o").to_async()
+        assert col1 != col1.to_sync(caller_name="o").to_async()
+        assert col1 != col1.to_sync(caller_version="o").to_async()
+
+        col2s = col1.to_sync(
+            database=async_database.copy(token="x_t").to_sync(),
+            name="other_name",
+            namespace="other_namespace",
+            caller_name="x_n",
+            caller_version="x_v",
+        )
+        assert col2s.to_async() != col1
+
+        col2s.set_caller(
+            caller_name="c_n",
+            caller_version="c_v",
+        )
+        col3 = col2s.to_async(
+            database=async_database,
+            name="id_test_collection",
+            namespace=async_database.namespace,
+        )
+        assert col3 == col1
+
+    @pytest.mark.describe("test of Collection database property, async")
+    async def test_collection_database_property_async(
+        self,
+    ) -> None:
+        db1 = AsyncDatabase("a", "t", namespace="ns1")
+        db2 = AsyncDatabase("a", "t", namespace="ns2")
+        col1 = AsyncCollection(db1, "coll")
+        col2 = AsyncCollection(db1, "coll", namespace="ns2")
+        assert col1.database == db1
+        assert col2.database == db2
+
+    @pytest.mark.describe("test of Collection name property, async")
+    async def test_collection_name_property_async(
+        self,
+    ) -> None:
+        db1 = AsyncDatabase("a", "t", namespace="ns1")
+        col1 = AsyncCollection(db1, "coll")
+        assert col1.name == "coll"
+
     @pytest.mark.describe("test of Collection set_caller, async")
     async def test_collection_set_caller_async(
         self,
