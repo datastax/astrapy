@@ -210,6 +210,16 @@ class Collection:
             .sort(sort)
         )
 
+    def distinct(
+        self,
+        key: str,
+        filter: Optional[Dict[str, Any]] = None,
+    ) -> List[Any]:
+        return self.find(
+            filter=filter,
+            projection={key: True},
+        ).distinct(key)
+
     def count_documents(
         self,
         filter: Dict[str, Any],
@@ -349,9 +359,6 @@ class Collection:
 
     @unsupported
     def update_search_index(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def distinct(*pargs: Any, **kwargs: Any) -> Any: ...
 
 
 class AsyncCollection:

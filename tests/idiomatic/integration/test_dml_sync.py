@@ -242,7 +242,26 @@ class TestDMLSync:
             == 20
         )  # NONPAGINATED
 
-        # rewinding and slicing
+    @pytest.mark.describe("test of cursors from collection.find, sync")
+    def test_collection_cursors_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        """
+        Functionalities of cursors from find, other than the various
+        combinations of skip/limit/sort/filter specified above.
+        """
+        sync_empty_collection.insert_many([{"seq": i, "ternary": (i % 3)} for i in range(10)])
+
+        # projection
+        cursor0 = sync_empty_collection.find(projection={"ternary": False})
+        document0 = cursor0.__next__()
+        assert "ternary" not in document0
+        cursor0b = sync_empty_collection.find(projection={"ternary": True})
+        document0b = cursor0b.__next__()
+        assert "ternary" in document0b
+
+        # rewinding, slicing and retrieved
         cursor1 = sync_empty_collection.find(sort={"seq": 1})
         cursor1.__next__()
         cursor1.__next__()
@@ -252,3 +271,54 @@ class TestDMLSync:
         )
         cursor1.rewind()
         assert items1 == list(cursor1[2:4])
+        assert cursor1.retrieved == 2
+
+        # address, cursor_id, collection
+        assert cursor1.address == sync_empty_collection._astra_db_collection.base_path
+        assert isinstance(cursor1.cursor_id, int)
+        assert cursor1.collection == sync_empty_collection
+
+        # clone, alive
+        cursor2 = sync_empty_collection.find()
+        assert cursor2.alive is True
+        for _ in range(8):
+            cursor2.__next__()
+        assert cursor2.alive is True
+        cursor3 = cursor2.clone()
+        assert len(list(cursor2)) == 2
+        assert len(list(cursor3)) == 10
+        assert cursor2.alive is False
+
+        # close
+        cursor4 = sync_empty_collection.find()
+        for _ in range(8):
+            cursor4.__next__()
+        cursor4.close()
+        assert cursor4.alive is False
+        with pytest.raises(StopIteration):
+            cursor4.__next__()
+
+        # distinct
+        cursor5 = sync_empty_collection.find()
+        dist5 = cursor5.distinct("ternary")
+        assert(len(list(cursor5))) == 10
+        assert set(dist5) == {0, 1, 2}
+        cursor6 = sync_empty_collection.find()
+        for _ in range(9):
+            cursor6.__next__()
+        dist6 = cursor6.distinct("ternary")
+        assert(len(list(cursor6))) == 1
+        assert set(dist6) == {0, 1, 2}
+
+        # distinct from collections
+        assert set(sync_empty_collection.distinct("ternary")) == {0, 1, 2}
+        assert set(sync_empty_collection.distinct("nonfield")) == set()
+
+        # indexing by integer
+        cursor7 = sync_empty_collection.find(sort={"seq": 1})
+        assert cursor7[5]["seq"] == 5
+
+        # indexing by wrong type
+        with pytest.raises(TypeError):
+            cursor7.rewind()
+            cursor7["wrong"]
