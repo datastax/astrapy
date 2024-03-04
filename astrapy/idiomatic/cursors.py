@@ -97,7 +97,9 @@ class Cursor:
         )
 
     def __next__(self) -> DocumentType:
-        self._ensure_alive()
+        if not self.alive:
+            # keep raising once exhausted:
+            raise StopIteration
         if self._iterator is None:
             self._iterator = self._create_iterator()
             self._started = True
