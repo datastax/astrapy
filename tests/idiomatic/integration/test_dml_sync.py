@@ -16,6 +16,7 @@ import pytest
 
 from astrapy import Collection
 from astrapy.results import DeleteResult, InsertOneResult
+from astrapy.api import APIRequestError
 
 
 class TestDMLSync:
@@ -251,7 +252,9 @@ class TestDMLSync:
         Functionalities of cursors from find, other than the various
         combinations of skip/limit/sort/filter specified above.
         """
-        sync_empty_collection.insert_many([{"seq": i, "ternary": (i % 3)} for i in range(10)])
+        sync_empty_collection.insert_many(
+            [{"seq": i, "ternary": (i % 3)} for i in range(10)]
+        )
 
         # projection
         cursor0 = sync_empty_collection.find(projection={"ternary": False})
@@ -301,13 +304,13 @@ class TestDMLSync:
         # distinct
         cursor5 = sync_empty_collection.find()
         dist5 = cursor5.distinct("ternary")
-        assert(len(list(cursor5))) == 10
+        assert (len(list(cursor5))) == 10
         assert set(dist5) == {0, 1, 2}
         cursor6 = sync_empty_collection.find()
         for _ in range(9):
             cursor6.__next__()
         dist6 = cursor6.distinct("ternary")
-        assert(len(list(cursor6))) == 1
+        assert (len(list(cursor6))) == 1
         assert set(dist6) == {0, 1, 2}
 
         # distinct from collections
@@ -322,3 +325,29 @@ class TestDMLSync:
         with pytest.raises(TypeError):
             cursor7.rewind()
             cursor7["wrong"]
+
+    @pytest.mark.describe("test of collection insert_many, sync")
+    def test_collection_insert_many_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+
+        ins_result1 = col.insert_many([{"_id": "a"}, {"_id": "b"}])
+        assert set(ins_result1.inserted_ids) == {"a", "b"}
+        assert {doc["_id"] for doc in col.find()} == {"a", "b"}
+
+        with pytest.raises(APIRequestError):
+            col.insert_many([{"_id": "a"}, {"_id": "c"}])
+        assert {doc["_id"] for doc in col.find()} == {"a", "b"}
+
+        with pytest.raises(APIRequestError):
+            col.insert_many([{"_id": "c"}, {"_id": "a"}, {"_id": "d"}])
+        assert {doc["_id"] for doc in col.find()} == {"a", "b", "c"}
+
+        with pytest.raises(ValueError):
+            col.insert_many(
+                [{"_id": "c"}, {"_id": "d"}, {"_id": "e"}],
+                ordered=False,
+            )
+        assert {doc["_id"] for doc in col.find()} == {"a", "b", "c", "d", "e"}

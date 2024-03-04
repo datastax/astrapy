@@ -18,6 +18,7 @@ from collections.abc import Iterator
 from typing import (
     Any,
     Dict,
+    List,
     Optional,
     Union,
     TYPE_CHECKING,
@@ -79,7 +80,9 @@ class Cursor:
             _limit = stop - start
             return self.limit(_limit).skip(_skip)
         else:
-            raise TypeError(f"cursor indices must be integers or slices, not {type(index).__name__}")
+            raise TypeError(
+                f"cursor indices must be integers or slices, not {type(index).__name__}"
+            )
 
     def __repr__(self) -> str:
         _state_desc: str
@@ -111,11 +114,11 @@ class Cursor:
             self._alive = False
             raise
 
-    def _ensure_alive(self):
+    def _ensure_alive(self) -> None:
         if not self._alive:
             raise ValueError("Cursor is closed.")
 
-    def _ensure_not_started(self):
+    def _ensure_not_started(self) -> None:
         if self._started:
             raise ValueError("Cursor has already been used")
 
@@ -210,11 +213,9 @@ class Cursor:
         This works on a fresh pristine copy of the cursor
         and never touches self in any way.
         """
-        return list({
-            document[key]
-            for document in self._copy(started=False)
-            if key in document
-        })
+        return list(
+            {document[key] for document in self._copy(started=False) if key in document}
+        )
 
     def limit(self, limit: Optional[int]) -> Cursor:
         self._ensure_not_started()

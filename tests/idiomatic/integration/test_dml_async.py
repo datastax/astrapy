@@ -16,6 +16,7 @@ import pytest
 
 from astrapy import AsyncCollection
 from astrapy.results import DeleteResult, InsertOneResult
+from astrapy.api import APIRequestError
 
 
 class TestDMLAsync:
@@ -74,3 +75,30 @@ class TestDMLAsync:
         assert do_result1.acknowledged is True
         assert do_result1.deleted_count == 2
         assert await async_empty_collection.count_documents(filter={}) == 1
+
+    @pytest.mark.describe("test of collection insert_many, async")
+    async def test_collection_insert_many_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+        col = acol.to_sync()  # TODO: replace with async find once implemented
+
+        ins_result1 = await acol.insert_many([{"_id": "a"}, {"_id": "b"}])
+        assert set(ins_result1.inserted_ids) == {"a", "b"}
+        assert {doc["_id"] for doc in col.find()} == {"a", "b"}
+
+        with pytest.raises(APIRequestError):
+            await acol.insert_many([{"_id": "a"}, {"_id": "c"}])
+        assert {doc["_id"] for doc in col.find()} == {"a", "b"}
+
+        with pytest.raises(APIRequestError):
+            await acol.insert_many([{"_id": "c"}, {"_id": "a"}, {"_id": "d"}])
+        assert {doc["_id"] for doc in col.find()} == {"a", "b", "c"}
+
+        with pytest.raises(ValueError):
+            await acol.insert_many(
+                [{"_id": "c"}, {"_id": "d"}, {"_id": "e"}],
+                ordered=False,
+            )
+        assert {doc["_id"] for doc in col.find()} == {"a", "b", "c", "d", "e"}
