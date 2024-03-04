@@ -18,9 +18,11 @@ import json
 from typing import Any, Dict, Optional
 
 from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
+from astrapy.idiomatic.types import DocumentType, ProjectionType
 from astrapy.idiomatic.utils import raise_unsupported_parameter, unsupported
 from astrapy.idiomatic.database import AsyncDatabase, Database
 from astrapy.idiomatic.results import DeleteResult, InsertOneResult
+from astrapy.idiomatic.cursors import Cursor
 
 
 class Collection:
@@ -110,7 +112,7 @@ class Collection:
 
     def insert_one(
         self,
-        document: Dict[str, Any],
+        document: DocumentType,
         *,
         bypass_document_validation: Optional[bool] = None,
     ) -> InsertOneResult:
@@ -137,6 +139,26 @@ class Collection:
                 "Could not complete a insert_one operation. "
                 f"(gotten '${json.dumps(io_response)}')"
             )
+
+    def find(
+        self,
+        filter: Optional[Dict[str, Any]] = None,
+        *,
+        projection: Optional[ProjectionType] = None,
+        skip: Optional[int] = None,
+        limit: Optional[int] = None,
+        sort: Optional[Dict[str, Any]] = None,
+    ) -> Cursor:
+        return (
+            Cursor(
+                collection=self,
+                filter=filter,
+                projection=projection,
+            )
+            .skip(skip)
+            .limit(limit)
+            .sort(sort)
+        )
 
     def count_documents(
         self,
@@ -369,7 +391,7 @@ class AsyncCollection:
 
     async def insert_one(
         self,
-        document: Dict[str, Any],
+        document: DocumentType,
         *,
         bypass_document_validation: Optional[bool] = None,
     ) -> InsertOneResult:
