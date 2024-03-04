@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -28,4 +28,10 @@ class DeleteResult:
 @dataclass
 class InsertOneResult:
     inserted_id: Any
+    acknowledged: bool = True
+
+
+@dataclass
+class InsertManyResult:
+    inserted_ids: List[Any]
     acknowledged: bool = True

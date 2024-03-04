@@ -15,14 +15,16 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Iterable, Optional
 
 from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
 from astrapy.idiomatic.types import DocumentType, ProjectionType
 from astrapy.idiomatic.utils import raise_unsupported_parameter, unsupported
 from astrapy.idiomatic.database import AsyncDatabase, Database
-from astrapy.idiomatic.results import DeleteResult, InsertOneResult
+from astrapy.idiomatic.results import DeleteResult, InsertManyResult, InsertOneResult
 from astrapy.idiomatic.cursors import Cursor
+
+INSERT_MANY_CONCURRENCY = 20
 
 
 class Collection:
@@ -139,6 +141,54 @@ class Collection:
                 "Could not complete a insert_one operation. "
                 f"(gotten '${json.dumps(io_response)}')"
             )
+
+    def insert_many(
+        self,
+        documents: Iterable[DocumentType],
+        *,
+        ordered: bool = True,
+        bypass_document_validation: Optional[bool] = None,
+    ) -> InsertManyResult:
+        if bypass_document_validation:
+            raise_unsupported_parameter(
+                class_name=self.__class__.__name__,
+                method_name="insert_many",
+                parameter_name="bypass_document_validation",
+            )
+        if ordered:
+            cim_responses = self._astra_db_collection.chunked_insert_many(
+                documents=list(documents),
+                options={"ordered": True},
+                partial_failures_allowed=False,
+                concurrency=1,
+            )
+        else:
+            # unordered insertion: can do chunks concurrently
+            cim_responses = self._astra_db_collection.chunked_insert_many(
+                documents=list(documents),
+                options={"ordered": False},
+                partial_failures_allowed=True,
+                concurrency=INSERT_MANY_CONCURRENCY,
+            )
+        _exceptions = [cim_r for cim_r in cim_responses if isinstance(cim_r, Exception)]
+        _errors_in_response = [
+            err
+            for response in cim_responses
+            if isinstance(response, dict)
+            for err in (response.get("errors") or [])
+        ]
+        if _exceptions:
+            raise _exceptions[0]
+        elif _errors_in_response:
+            raise ValueError(str(_errors_in_response[0]))
+        else:
+            inserted_ids = [
+                ins_id
+                for response in cim_responses
+                if isinstance(response, dict)
+                for ins_id in (response.get("status") or {}).get("insertedIds", [])
+            ]
+            return InsertManyResult(inserted_ids=inserted_ids)
 
     def find(
         self,
