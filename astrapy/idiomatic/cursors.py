@@ -94,7 +94,7 @@ class Cursor:
         else:
             _state_desc = "new"
         return (
-            f'Cursor("{self._collection.name}", '
+            f'{self.__class__.__name__}("{self._collection.name}", '
             f"{_state_desc}, "
             f"retrieved: {self.retrieved})"
         )
