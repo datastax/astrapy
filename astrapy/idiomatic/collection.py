@@ -216,8 +216,9 @@ class Collection:
                 f"(gotten '${json.dumps(dm_response)}')"
             )
 
-    def drop(self, name_or_collection: Union[str, AsyncCollection]) -> None:
-        return self._astra_db_collection.astra_db.delete_collection(name_or_collection)
+    def drop(self) -> None:
+        name = self._astra_db_collection.collection_name
+        return self._astra_db_collection.astra_db.delete_collection(name)
 
     @unsupported
     def find_raw_batches(*pargs: Any, **kwargs: Any) -> Any: ...

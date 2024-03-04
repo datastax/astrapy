@@ -40,9 +40,7 @@ class TestDDLSync:
             name="TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME", dimension=2
         )
         assert isinstance(col, Collection)
-        del_res = col.drop(
-            TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME
-        )
+        del_res = col.drop()
         assert del_res["status"]["ok"] == 1
 
     @pytest.mark.describe("should get information about the database")

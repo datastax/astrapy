@@ -275,19 +275,6 @@ class AsyncDatabase:
             caller_version=caller_version,
         )
 
-        self.codec_options = []
-        self.read_preference = "NEAREST"
-
-        self.client_options = {
-            'token': "",
-            'api_endpoint': "",
-            'api_path': "",
-            'api_version': "",
-            'namespace': "",
-            'caller_name': "",
-            'caller_version': ""
-        }
-
         astraDBOps = AstraDBOps(token=token)
 
         # Get the database object and name
@@ -295,14 +282,15 @@ class AsyncDatabase:
             self.dbid = api_endpoint.split('/')[2].split('.')[0][:36]
             
             details = astraDBOps.get_database(database=self.dbid)
+            self.info = details['info']
             self.name = details['info']['name']
             self.region = details['info']['region']
             self.database = {'id': self.dbid, 'name': self.name, 'region': self.region}
 
         else:
-            self.name = ""
-            self.region = ""
-            self.database = ""
+            self.database: Optional[Dict[str, Any]] = {}
+            self.region: Optional[str] = None
+            self.database = Optional[str] = None
             print("No database found")
 
 
