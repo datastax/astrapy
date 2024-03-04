@@ -52,18 +52,15 @@ class Cursor:
         self._iterator: Optional[Iterator[DocumentType]] = None
 
     def __iter__(self) -> Cursor:
-        if not self._alive:
-            raise ValueError("Cursor is closed.")
+        self._ensure_alive()
         if self._iterator is None:
             self._iterator = self._create_iterator()
             self._started = True
         return self
 
     def __getitem__(self, index: Union[int, slice]) -> Union[Cursor, DocumentType]:
-        if self._started:
-            raise ValueError("Cursor has already been used")
-        if not self._alive:
-            raise ValueError("Cursor is closed.")
+        self._ensure_not_started()
+        self._ensure_alive()
         if isinstance(index, int):
             # In this case, a separate cursor is run
             finder_cursor = self._copy().skip(index).limit(1)
@@ -77,7 +74,6 @@ class Cursor:
             stop = index.stop
             step = index.step
             if step is not None and step != 1:
-                print(step, str(step), type(step))
                 raise ValueError("Cursor slicing cannot have arbitrary step")
             _skip = start
             _limit = stop - start
@@ -101,8 +97,7 @@ class Cursor:
         )
 
     def __next__(self) -> DocumentType:
-        if not self._alive:
-            raise ValueError("Cursor is closed.")
+        self._ensure_alive()
         if self._iterator is None:
             self._iterator = self._create_iterator()
             self._started = True
@@ -114,11 +109,17 @@ class Cursor:
             self._alive = False
             raise
 
-    def _create_iterator(self) -> Iterator[DocumentType]:
-        if self._started:
-            raise ValueError("Cursor has already been used")
+    def _ensure_alive(self):
         if not self._alive:
             raise ValueError("Cursor is closed.")
+
+    def _ensure_not_started(self):
+        if self._started:
+            raise ValueError("Cursor has already been used")
+
+    def _create_iterator(self) -> Iterator[DocumentType]:
+        self._ensure_not_started()
+        self._ensure_alive()
         _options = {
             k: v
             for k, v in {
@@ -206,10 +207,8 @@ class Cursor:
         raise NotImplementedError
 
     def limit(self, limit: Optional[int]) -> Cursor:
-        if self._started:
-            raise ValueError("Cursor has already been used")
-        if not self._alive:
-            raise ValueError("Cursor is closed.")
+        self._ensure_not_started()
+        self._ensure_alive()
         self._limit = limit if limit != 0 else None
         return self
 
@@ -225,10 +224,8 @@ class Cursor:
         return self
 
     def skip(self, skip: Optional[int]) -> Cursor:
-        if self._started:
-            raise ValueError("Cursor has already been used")
-        if not self._alive:
-            raise ValueError("Cursor is closed.")
+        self._ensure_not_started()
+        self._ensure_alive()
         self._skip = skip
         return self
 
@@ -236,9 +233,7 @@ class Cursor:
         self,
         sort: Optional[Dict[str, Any]],
     ) -> Cursor:
-        if self._started:
-            raise ValueError("Cursor has already been used")
-        if not self._alive:
-            raise ValueError("Cursor is closed.")
+        self._ensure_not_started()
+        self._ensure_alive()
         self._sort = sort
         return self
