@@ -570,6 +570,7 @@ class AstraDBCollection:
         sort: Optional[Dict[str, Any]] = {},
         filter: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
         Find a single document and update it.
@@ -587,6 +588,7 @@ class AstraDBCollection:
             update=update,
             options=options,
             sort=sort,
+            projection=projection,
         )
 
         response = self._request(
@@ -617,7 +619,7 @@ class AstraDBCollection:
                 update operation, or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._recast_as_sort_projection(
+        sort, projection = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -627,6 +629,7 @@ class AstraDBCollection:
             update=update,
             filter=filter,
             sort=sort,
+            projection=projection,
         )
 
         return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
@@ -1624,6 +1627,7 @@ class AsyncAstraDBCollection:
         sort: Optional[Dict[str, Any]] = {},
         filter: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
         Find a single document and update it.
@@ -1641,6 +1645,7 @@ class AsyncAstraDBCollection:
             update=update,
             options=options,
             sort=sort,
+            projection=projection,
         )
 
         response = await self._request(
@@ -1671,7 +1676,7 @@ class AsyncAstraDBCollection:
                 update operation, or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._recast_as_sort_projection(
+        sort, projection = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )
@@ -1681,6 +1686,7 @@ class AsyncAstraDBCollection:
             update=update,
             filter=filter,
             sort=sort,
+            projection=projection,
         )
 
         return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
