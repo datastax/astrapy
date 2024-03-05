@@ -14,24 +14,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, Union
 
 
-@dataclass
-class DeleteResult:
-    deleted_count: Optional[int]
-    raw_result: Dict[str, Any]
-    acknowledged: bool = True
-
-
-@dataclass
-class InsertOneResult:
-    inserted_id: Any
-    acknowledged: bool = True
-
-
-@dataclass
-class InsertManyResult:
-    inserted_ids: List[Any]
-    acknowledged: bool = True
+DocumentType = Dict[str, Any]
+ProjectionType = Union[Iterable[str], Dict[str, bool]]

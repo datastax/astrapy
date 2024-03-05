@@ -20,6 +20,12 @@ import logging
 import json
 import threading
 
+from collections.abc import (
+    AsyncGenerator,
+    AsyncIterator,
+    Generator,
+    Iterator,
+)
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from queue import Queue
@@ -28,14 +34,11 @@ from typing import (
     Any,
     cast,
     Dict,
-    Iterable,
     List,
     Optional,
     Tuple,
     Union,
     Type,
-    AsyncIterable,
-    AsyncGenerator,
 )
 
 from astrapy import __version__
@@ -119,7 +122,7 @@ class AstraDBCollection:
         self.caller_name = self.astra_db.caller_name
         self.caller_version = self.astra_db.caller_version
         self.collection_name = collection_name
-        self.base_path = f"{self.astra_db.base_path}/{self.collection_name}"
+        self.base_path: str = f"{self.astra_db.base_path}/{self.collection_name}"
 
     def __repr__(self) -> str:
         return f'AstraDBCollection[astra_db="{self.astra_db}", collection_name="{self.collection_name}"]'
@@ -280,7 +283,7 @@ class AstraDBCollection:
         self,
         filter: Optional[Dict[str, Any]] = None,
         projection: Optional[Dict[str, Any]] = None,
-        sort: Optional[Dict[str, Any]] = {},
+        sort: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
@@ -356,7 +359,7 @@ class AstraDBCollection:
         request_method: PaginableRequestMethod,
         options: Optional[Dict[str, Any]],
         prefetched: Optional[int] = None,
-    ) -> Iterable[API_DOC]:
+    ) -> Generator[API_DOC, None, None]:
         """
         Generate paginated results for a given database query method.
         Args:
@@ -415,7 +418,7 @@ class AstraDBCollection:
         sort: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
         prefetched: Optional[int] = None,
-    ) -> Iterable[API_DOC]:
+    ) -> Iterator[API_DOC]:
         """
         Perform a paginated search in the collection.
         Args:
@@ -1156,7 +1159,7 @@ class AsyncAstraDBCollection:
         self.caller_version = self.astra_db.caller_version
         self.client = astra_db.client
         self.collection_name = collection_name
-        self.base_path = f"{self.astra_db.base_path}/{self.collection_name}"
+        self.base_path: str = f"{self.astra_db.base_path}/{self.collection_name}"
 
     def __repr__(self) -> str:
         return f'AsyncAstraDBCollection[astra_db="{self.astra_db}", collection_name="{self.collection_name}"]'
@@ -1318,7 +1321,7 @@ class AsyncAstraDBCollection:
         self,
         filter: Optional[Dict[str, Any]] = None,
         projection: Optional[Dict[str, Any]] = None,
-        sort: Optional[Dict[str, Any]] = {},
+        sort: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
@@ -1449,7 +1452,7 @@ class AsyncAstraDBCollection:
         sort: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
         prefetched: Optional[int] = None,
-    ) -> AsyncIterable[API_DOC]:
+    ) -> AsyncIterator[API_DOC]:
         """
         Perform a paginated search in the collection.
         Args:
@@ -2141,7 +2144,7 @@ class AstraDB:
         self.namespace = namespace
 
         # Finally, construct the full base path
-        self.base_path = f"/{self.api_path}/{self.api_version}/{self.namespace}"
+        self.base_path: str = f"/{self.api_path}/{self.api_version}/{self.namespace}"
 
     def __repr__(self) -> str:
         return f'AstraDB[endpoint="{self.base_url}", keyspace="{self.namespace}"]'
@@ -2428,7 +2431,7 @@ class AsyncAstraDB:
         self.namespace = namespace
 
         # Finally, construct the full base path
-        self.base_path = f"/{self.api_path}/{self.api_version}/{self.namespace}"
+        self.base_path: str = f"/{self.api_path}/{self.api_version}/{self.namespace}"
 
     def __repr__(self) -> str:
         return f'AsyncAstraDB[endpoint="{self.base_url}", keyspace="{self.namespace}"]'
