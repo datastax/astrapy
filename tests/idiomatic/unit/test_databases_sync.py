@@ -165,22 +165,6 @@ class TestDatabasesSync:
         )
         assert db1 == db2
 
-    @pytest.mark.describe("test errors for unsupported Database methods, sync")
-    def test_database_unsupported_methods_sync(
-        self,
-        sync_database: Database,
-    ) -> None:
-        with pytest.raises(TypeError):
-            sync_database.aggregate(1, "x")
-        with pytest.raises(TypeError):
-            sync_database.cursor_command(1, "x")
-        with pytest.raises(TypeError):
-            sync_database.dereference(1, "x")
-        with pytest.raises(TypeError):
-            sync_database.watch(1, "x")
-        with pytest.raises(TypeError):
-            sync_database.validate_collection(1, "x")
-
     @pytest.mark.describe("test get_collection method, sync")
     def test_database_get_collection_sync(
         self,

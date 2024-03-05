@@ -165,22 +165,6 @@ class TestDatabasesAsync:
         )
         assert db1 == db2
 
-    @pytest.mark.describe("test errors for unsupported Database methods, async")
-    async def test_database_unsupported_methods_async(
-        self,
-        async_database: AsyncDatabase,
-    ) -> None:
-        with pytest.raises(TypeError):
-            await async_database.aggregate(1, "x")
-        with pytest.raises(TypeError):
-            await async_database.cursor_command(1, "x")
-        with pytest.raises(TypeError):
-            await async_database.dereference(1, "x")
-        with pytest.raises(TypeError):
-            await async_database.watch(1, "x")
-        with pytest.raises(TypeError):
-            await async_database.validate_collection(1, "x")
-
     @pytest.mark.describe("test get_collection method, async")
     async def test_database_get_collection_async(
         self,

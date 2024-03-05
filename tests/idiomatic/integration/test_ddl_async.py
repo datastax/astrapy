@@ -107,15 +107,6 @@ class TestDDLAsync:
     ) -> None:
         assert TEST_COLLECTION_NAME in await async_database.list_collection_names()
 
-    @pytest.mark.describe("test of Database list_collections unsupported filter, async")
-    async def test_database_list_collections_filter_async(
-        self,
-        async_database: AsyncDatabase,
-        async_collection: AsyncCollection,
-    ) -> None:
-        with pytest.raises(TypeError):
-            await async_database.list_collection_names(filter={"k": "v"})
-
     @pytest.mark.skipif(
         ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
     )

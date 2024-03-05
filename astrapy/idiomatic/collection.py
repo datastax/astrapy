@@ -15,14 +15,14 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
 from astrapy.idiomatic.types import DocumentType, ProjectionType
-from astrapy.idiomatic.utils import raise_unsupported_parameter, unsupported
 from astrapy.idiomatic.database import AsyncDatabase, Database
 from astrapy.idiomatic.results import DeleteResult, InsertManyResult, InsertOneResult
 from astrapy.idiomatic.cursors import AsyncCursor, Cursor
+
 
 INSERT_MANY_CONCURRENCY = 20
 
@@ -115,15 +115,7 @@ class Collection:
     def insert_one(
         self,
         document: DocumentType,
-        *,
-        bypass_document_validation: Optional[bool] = None,
     ) -> InsertOneResult:
-        if bypass_document_validation:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="insert_one",
-                parameter_name="bypass_document_validation",
-            )
         io_response = self._astra_db_collection.insert_one(document)
         if "insertedIds" in io_response.get("status", {}):
             if io_response["status"]["insertedIds"]:
@@ -147,14 +139,7 @@ class Collection:
         documents: Iterable[DocumentType],
         *,
         ordered: bool = True,
-        bypass_document_validation: Optional[bool] = None,
     ) -> InsertManyResult:
-        if bypass_document_validation:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="insert_many",
-                parameter_name="bypass_document_validation",
-            )
         if ordered:
             cim_responses = self._astra_db_collection.chunked_insert_many(
                 documents=list(documents),
@@ -210,6 +195,28 @@ class Collection:
             .sort(sort)
         )
 
+    def find_one(
+        self,
+        filter: Optional[Dict[str, Any]] = None,
+        *,
+        projection: Optional[ProjectionType] = None,
+        skip: Optional[int] = None,
+        limit: Optional[int] = None,
+        sort: Optional[Dict[str, Any]] = None,
+    ) -> Union[DocumentType, None]:
+        fo_cursor = self.find(
+            filter=filter,
+            projection=projection,
+            skip=skip,
+            limit=limit,
+            sort=sort,
+        )
+        try:
+            document = fo_cursor.__next__()
+            return document
+        except StopIteration:
+            return None
+
     def distinct(
         self,
         key: str,
@@ -223,22 +230,7 @@ class Collection:
     def count_documents(
         self,
         filter: Dict[str, Any],
-        *,
-        skip: Optional[int] = None,
-        limit: Optional[int] = None,
     ) -> int:
-        if skip:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="count_documents",
-                parameter_name="skip",
-            )
-        if limit:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="count_documents",
-                parameter_name="limit",
-            )
         cd_response = self._astra_db_collection.count_documents(filter=filter)
         if "count" in cd_response.get("status", {}):
             return cd_response["status"]["count"]  # type: ignore[no-any-return]
@@ -251,15 +243,7 @@ class Collection:
     def delete_one(
         self,
         filter: Dict[str, Any],
-        *,
-        let: Optional[int] = None,
     ) -> DeleteResult:
-        if let:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="delete_one",
-                parameter_name="let",
-            )
         do_response = self._astra_db_collection.delete_one_by_predicate(filter=filter)
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
@@ -283,15 +267,7 @@ class Collection:
     def delete_many(
         self,
         filter: Dict[str, Any],
-        *,
-        let: Optional[int] = None,
     ) -> DeleteResult:
-        if let:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="delete_many",
-                parameter_name="let",
-            )
         dm_response = self._astra_db_collection.delete_many(filter=filter)
         if "deletedCount" in dm_response.get("status", {}):
             deleted_count = dm_response["status"]["deletedCount"]
@@ -311,54 +287,6 @@ class Collection:
                 "Could not complete a delete_many operation. "
                 f"(gotten '${json.dumps(dm_response)}')"
             )
-
-    @unsupported
-    def find_raw_batches(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def aggregate(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def aggregate_raw_batches(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def watch(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def rename(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def create_index(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def create_indexes(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def drop_index(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def drop_indexes(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def list_indexes(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def index_information(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def create_search_index(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def create_search_indexes(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def drop_search_index(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def list_search_indexes(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def update_search_index(*pargs: Any, **kwargs: Any) -> Any: ...
 
 
 class AsyncCollection:
@@ -449,15 +377,7 @@ class AsyncCollection:
     async def insert_one(
         self,
         document: DocumentType,
-        *,
-        bypass_document_validation: Optional[bool] = None,
     ) -> InsertOneResult:
-        if bypass_document_validation:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="insert_one",
-                parameter_name="bypass_document_validation",
-            )
         io_response = await self._astra_db_collection.insert_one(document)
         if "insertedIds" in io_response.get("status", {}):
             if io_response["status"]["insertedIds"]:
@@ -481,14 +401,7 @@ class AsyncCollection:
         documents: Iterable[DocumentType],
         *,
         ordered: bool = True,
-        bypass_document_validation: Optional[bool] = None,
     ) -> InsertManyResult:
-        if bypass_document_validation:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="insert_many",
-                parameter_name="bypass_document_validation",
-            )
         if ordered:
             cim_responses = await self._astra_db_collection.chunked_insert_many(
                 documents=list(documents),
@@ -544,6 +457,28 @@ class AsyncCollection:
             .sort(sort)
         )
 
+    async def find_one(
+        self,
+        filter: Optional[Dict[str, Any]] = None,
+        *,
+        projection: Optional[ProjectionType] = None,
+        skip: Optional[int] = None,
+        limit: Optional[int] = None,
+        sort: Optional[Dict[str, Any]] = None,
+    ) -> Union[DocumentType, None]:
+        fo_cursor = self.find(
+            filter=filter,
+            projection=projection,
+            skip=skip,
+            limit=limit,
+            sort=sort,
+        )
+        try:
+            document = await fo_cursor.__anext__()
+            return document
+        except StopAsyncIteration:
+            return None
+
     async def distinct(
         self,
         key: str,
@@ -558,22 +493,7 @@ class AsyncCollection:
     async def count_documents(
         self,
         filter: Dict[str, Any],
-        *,
-        skip: Optional[int] = None,
-        limit: Optional[int] = None,
     ) -> int:
-        if skip:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="count_documents",
-                parameter_name="skip",
-            )
-        if limit:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="count_documents",
-                parameter_name="limit",
-            )
         cd_response = await self._astra_db_collection.count_documents(filter=filter)
         if "count" in cd_response.get("status", {}):
             return cd_response["status"]["count"]  # type: ignore[no-any-return]
@@ -586,15 +506,7 @@ class AsyncCollection:
     async def delete_one(
         self,
         filter: Dict[str, Any],
-        *,
-        let: Optional[int] = None,
     ) -> DeleteResult:
-        if let:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="delete_one",
-                parameter_name="let",
-            )
         do_response = await self._astra_db_collection.delete_one_by_predicate(
             filter=filter
         )
@@ -623,12 +535,6 @@ class AsyncCollection:
         *,
         let: Optional[int] = None,
     ) -> DeleteResult:
-        if let:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="delete_many",
-                parameter_name="let",
-            )
         dm_response = await self._astra_db_collection.delete_many(filter=filter)
         if "deletedCount" in dm_response.get("status", {}):
             deleted_count = dm_response["status"]["deletedCount"]
@@ -648,51 +554,3 @@ class AsyncCollection:
                 "Could not complete a delete_many operation. "
                 f"(gotten '${json.dumps(dm_response)}')"
             )
-
-    @unsupported
-    async def find_raw_batches(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def aggregate(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def aggregate_raw_batches(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def watch(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def rename(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def create_index(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def create_indexes(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def drop_index(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def drop_indexes(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def list_indexes(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def index_information(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def create_search_index(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def create_search_indexes(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def drop_search_index(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def list_search_indexes(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def update_search_index(*pargs: Any, **kwargs: Any) -> Any: ...

@@ -107,15 +107,6 @@ class TestDDLSync:
     ) -> None:
         assert TEST_COLLECTION_NAME in sync_database.list_collection_names()
 
-    @pytest.mark.describe("test of Database list_collections unsupported filter, sync")
-    def test_database_list_collections_filter_sync(
-        self,
-        sync_database: Database,
-        sync_collection: Collection,
-    ) -> None:
-        with pytest.raises(TypeError):
-            sync_database.list_collection_names(filter={"k": "v"})
-
     @pytest.mark.skipif(
         ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
     )
