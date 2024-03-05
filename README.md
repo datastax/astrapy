@@ -384,18 +384,19 @@ poetry run black --check tests && poetry run ruff tests && poetry run mypy tests
 
 ### Testing
 
-Ensure you provide all required environment variables (you can do so by editing `tests/.env` after `tests/.env.template`):
+Ensure you provide all required environment variables (you can start from `tests/.env.template`):
 
 ```bash
 export ASTRA_DB_APPLICATION_TOKEN="..."
 export ASTRA_DB_API_ENDPOINT="..."
 export ASTRA_DB_KEYSPACE="..."              # Optional
+export ASTRA_DB_SECONDARY_KEYSPACE="..."    # Optional, enables cross-ns testing
 
 export ASTRA_DB_ID="..."                    # For the Ops testing only
 export ASTRA_DB_OPS_APPLICATION_TOKEN="..." # Ops-only, falls back to the other token
 ```
 
-then you can run:
+then you can source the `.env` you created and finally run:
 
 ```bash
 poetry run pytest
