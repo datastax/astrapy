@@ -104,21 +104,42 @@ class Database:
             "caller_version": "",
         }
 
+    @property
+    def dbid(self) -> str:
+        if self._metadata_info is None:
+            self._load_metadata()
+        return self._metadata_info["dbid"]
+    
+    @property
+    def region(self) -> str:
+        if self._metadata_info is None:
+            self._load_metadata()
+        return self._metadata_info["region"]
+    
+    @property
+    def info(self) -> str:
+        if self._metadata_info is None:
+            self._load_metadata()
+        return self._metadata_info["info"]
+    
+    @property
+    def name(self) -> str:
+        if self._metadata_info is None:
+            self._load_metadata()
+        return self._metadata_info["name"]
+
+    def _load_metadata(self):
         astraDBOps = AstraDBOps(token=token)
+        self.dbid = api_endpoint.split("/")[2].split(".")[0][:36]
+        details = astraDBOps.get_database(database=self.dbid)
+        response = details["info"]
 
-        # Get the database object and name
-        if "-" in api_endpoint:
-            self.dbid = api_endpoint.split("/")[2].split(".")[0][:36]
-
-            details = astraDBOps.get_database(database=self.dbid)
-            self.info: Optional[Dict[str, Any]] = details["info"]
-            self.name: Optional[str] = details["info"]["name"]
-            self.region: Optional[str] = details["info"]["region"]
-            self.database: Optional[Dict[str, Any]] = {
-                "id": self.dbid,
-                "name": self.name,
-                "region": self.region,
-            }
+        self._metadata_info = {
+            "dbid": details["dbid"],
+            "name": response["name"],
+            "region": response["region"],
+            "info":response["info"]
+        }
 
     def __getattr__(self, collection_name: str) -> Collection:
         return self.get_collection(name=collection_name)
@@ -332,22 +353,43 @@ class AsyncDatabase:
             caller_version=caller_version,
         )
 
+    @property
+    async def dbid(self) -> str:
+        if self._metadata_info is None:
+            self._load_metadata()
+        return self._metadata_info["dbid"]
+    
+    @property
+    async def region(self) -> str:
+        if self._metadata_info is None:
+            await self._load_metadata()
+        return self._metadata_info["region"]
+    
+    @property
+    async def info(self) -> str:
+        if self._metadata_info is None:
+            await self._load_metadata()
+        return self._metadata_info["info"]
+    
+    @property
+    async def name(self) -> str:
+        if self._metadata_info is None:
+            await self._load_metadata()
+        return self._metadata_info["name"]
+
+    async def _load_metadata(self):
         astraDBOps = AstraDBOps(token=token)
+        self.dbid = api_endpoint.split("/")[2].split(".")[0][:36]
+        details = await astraDBOps.get_database(database=self.dbid)
+        response = details["info"]
+        print (response)
 
-        if "-" in api_endpoint:
-            self.dbid = api_endpoint.split("/")[2].split(".")[0][:36]
-
-            details = astraDBOps.get_database(database=self.dbid)
-            self.info: Optional[Dict[str, Any]] = details["info"]
-            self.name: Optional[str] = details["info"]["name"]
-            self.region: Optional[str] = details["info"]["region"]
-            self.database: Optional[Dict[str, Any]] = {
-                "id": self.dbid,
-                "name": self.name,
-                "region": self.region,
-            }
-
-        astraDBOps = AstraDBOps(token=token)
+        self._metadata_info = {
+            "dbid": details["dbid"],
+            "name": response["name"],
+            "region": response["region"],
+            "info":response["info"]
+        }
 
     async def __getattr__(self, collection_name: str) -> AsyncCollection:
         return await self.get_collection(name=collection_name)

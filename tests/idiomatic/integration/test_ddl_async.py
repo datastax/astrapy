@@ -76,6 +76,16 @@ class TestDDLAsync:
         del_res = await col.drop()
         assert del_res["status"]["ok"] == 1
 
+    @pytest.mark.describe(
+        "should give database metainformation, including region (async)"
+    )
+    async def test_get_database_info_async(
+        self, async_database: AsyncDatabase
+    ) -> None:
+        assert await async_database.region is not None
+        assert await async_database.name is not None
+        assert await async_database.dbid is not None
+
     @pytest.mark.describe("test of check_exists for create_collection, async")
     async def test_create_collection_check_exists_async(
         self,
