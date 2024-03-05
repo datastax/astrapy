@@ -500,8 +500,9 @@ class AstraDBCollection:
         self,
         replacement: Dict[str, Any],
         *,
-        sort: Optional[Dict[str, Any]] = {},
         filter: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
+        sort: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
@@ -517,6 +518,7 @@ class AstraDBCollection:
         json_query = make_payload(
             top_level="findOneAndReplace",
             filter=filter,
+            projection=projection,
             replacement=replacement,
             options=options,
             sort=sort,
@@ -547,7 +549,7 @@ class AstraDBCollection:
             dict or None: either the matched document or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._recast_as_sort_projection(
+        sort, projection = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -556,6 +558,7 @@ class AstraDBCollection:
         raw_find_result = self.find_one_and_replace(
             replacement=replacement,
             filter=filter,
+            projection=projection,
             sort=sort,
         )
 
@@ -1551,8 +1554,9 @@ class AsyncAstraDBCollection:
         self,
         replacement: Dict[str, Any],
         *,
-        sort: Optional[Dict[str, Any]] = {},
         filter: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
+        sort: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
@@ -1568,6 +1572,7 @@ class AsyncAstraDBCollection:
         json_query = make_payload(
             top_level="findOneAndReplace",
             filter=filter,
+            projection=projection,
             replacement=replacement,
             options=options,
             sort=sort,
@@ -1598,7 +1603,7 @@ class AsyncAstraDBCollection:
             dict or None: either the matched document or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._recast_as_sort_projection(
+        sort, projection = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )
@@ -1607,6 +1612,7 @@ class AsyncAstraDBCollection:
         raw_find_result = await self.find_one_and_replace(
             replacement=replacement,
             filter=filter,
+            projection=projection,
             sort=sort,
         )
 
