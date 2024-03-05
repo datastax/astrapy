@@ -18,7 +18,12 @@ import json
 from typing import Any, Dict, Iterable, List, Optional, Union
 
 from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
-from astrapy.idiomatic.types import DocumentType, ProjectionType
+from astrapy.idiomatic.types import (
+    DocumentType,
+    ProjectionType,
+    ReturnDocument,
+    normalize_optional_projection,
+)
 from astrapy.idiomatic.database import AsyncDatabase, Database
 from astrapy.idiomatic.results import DeleteResult, InsertManyResult, InsertOneResult
 from astrapy.idiomatic.cursors import AsyncCursor, Cursor
@@ -220,6 +225,7 @@ class Collection:
     def distinct(
         self,
         key: str,
+        *,
         filter: Optional[Dict[str, Any]] = None,
     ) -> List[Any]:
         return self.find(
@@ -238,6 +244,39 @@ class Collection:
             raise ValueError(
                 "Could not complete a count_documents operation. "
                 f"(gotten '${json.dumps(cd_response)}')"
+            )
+
+    def find_one_and_replace(
+        self,
+        filter: Dict[str, Any],
+        replacement: DocumentType,
+        *,
+        projection: Optional[ProjectionType] = None,
+        sort: Optional[Dict[str, Any]] = None,
+        upsert: bool = False,
+        return_document: ReturnDocument = ReturnDocument.BEFORE,
+    ) -> Union[DocumentType, None]:
+        options = {
+            "returnDocument": return_document.value,
+            "upsert": upsert,
+        }
+        fo_response = self._astra_db_collection.find_one_and_replace(
+            replacement=replacement,
+            filter=filter,
+            projection=normalize_optional_projection(projection),
+            sort=sort,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            ret_document = fo_response.get("data", {}).get("document")
+            if ret_document is None:
+                return None
+            else:
+                return ret_document  # type: ignore[no-any-return]
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_replace operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
             )
 
     def delete_one(
@@ -488,6 +527,7 @@ class AsyncCollection:
     async def distinct(
         self,
         key: str,
+        *,
         filter: Optional[Dict[str, Any]] = None,
     ) -> List[Any]:
         cursor = self.find(
@@ -507,6 +547,39 @@ class AsyncCollection:
             raise ValueError(
                 "Could not complete a count_documents operation. "
                 f"(gotten '${json.dumps(cd_response)}')"
+            )
+
+    async def find_one_and_replace(
+        self,
+        filter: Dict[str, Any],
+        replacement: DocumentType,
+        *,
+        projection: Optional[ProjectionType] = None,
+        sort: Optional[Dict[str, Any]] = None,
+        upsert: bool = False,
+        return_document: ReturnDocument = ReturnDocument.BEFORE,
+    ) -> Union[DocumentType, None]:
+        options = {
+            "returnDocument": return_document.value,
+            "upsert": upsert,
+        }
+        fo_response = await self._astra_db_collection.find_one_and_replace(
+            replacement=replacement,
+            filter=filter,
+            projection=normalize_optional_projection(projection),
+            sort=sort,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            ret_document = fo_response.get("data", {}).get("document")
+            if ret_document is None:
+                return None
+            else:
+                return ret_document  # type: ignore[no-any-return]
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_replace operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
             )
 
     async def delete_one(

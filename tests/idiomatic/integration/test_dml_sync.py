@@ -17,6 +17,7 @@ import pytest
 from astrapy import Collection
 from astrapy.results import DeleteResult, InsertOneResult
 from astrapy.api import APIRequestError
+from astrapy.idiomatic.types import ReturnDocument
 
 
 class TestDMLSync:
@@ -482,3 +483,152 @@ class TestDMLSync:
         )
         assert doc_proj == {"_id": "b", "kind": "letter"}
         assert doc_full == {"_id": "b", "seq": 2, "kind": "letter"}
+
+    @pytest.mark.describe("test of find_one_and_replace, sync")
+    def test_collection_find_one_and_replace_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+
+        resp0000 = col.find_one_and_replace({"f": 0}, {"r": 1})
+        assert resp0000 is None
+        assert col.count_documents({}) == 0
+
+        resp0001 = col.find_one_and_replace({"f": 0}, {"r": 1}, sort={"x": 1})
+        assert resp0001 is None
+        assert col.count_documents({}) == 0
+
+        resp0010 = col.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
+        assert resp0010 is None
+        assert col.count_documents({}) == 1
+        col.delete_many({})
+
+        resp0011 = col.find_one_and_replace(
+            {"f": 0}, {"r": 1}, upsert=True, sort={"x": 1}
+        )
+        assert resp0011 is None
+        assert col.count_documents({}) == 1
+        col.delete_many({})
+
+        col.insert_one({"f": 0})
+        resp0100 = col.find_one_and_replace({"f": 0}, {"r": 1})
+        assert resp0100 is not None
+        assert resp0100["f"] == 0
+        assert col.count_documents({}) == 1
+        col.delete_many({})
+
+        col.insert_one({"f": 0})
+        resp0101 = col.find_one_and_replace({"f": 0}, {"r": 1}, sort={"x": 1})
+        assert resp0101 is not None
+        assert resp0101["f"] == 0
+        assert col.count_documents({}) == 1
+        col.delete_many({})
+
+        col.insert_one({"f": 0})
+        resp0110 = col.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
+        assert resp0110 is not None
+        assert resp0110["f"] == 0
+        assert col.count_documents({}) == 1
+        col.delete_many({})
+
+        col.insert_one({"f": 0})
+        resp0111 = col.find_one_and_replace(
+            {"f": 0}, {"r": 1}, upsert=True, sort={"x": 1}
+        )
+        assert resp0111 is not None
+        assert resp0111["f"] == 0
+        assert col.count_documents({}) == 1
+        col.delete_many({})
+
+        resp1000 = col.find_one_and_replace(
+            {"f": 0}, {"r": 1}, return_document=ReturnDocument.AFTER
+        )
+        assert resp1000 is None
+        assert col.count_documents({}) == 0
+
+        resp1001 = col.find_one_and_replace(
+            {"f": 0}, {"r": 1}, sort={"x": 1}, return_document=ReturnDocument.AFTER
+        )
+        assert resp1001 is None
+        assert col.count_documents({}) == 0
+
+        resp1010 = col.find_one_and_replace(
+            {"f": 0}, {"r": 1}, upsert=True, return_document=ReturnDocument.AFTER
+        )
+        assert resp1010 is not None
+        assert resp1010["r"] == 1
+        assert col.count_documents({}) == 1
+        col.delete_many({})
+
+        resp1011 = col.find_one_and_replace(
+            {"f": 0},
+            {"r": 1},
+            upsert=True,
+            sort={"x": 1},
+            return_document=ReturnDocument.AFTER,
+        )
+        assert resp1011 is not None
+        assert resp1011["r"] == 1
+        assert col.count_documents({}) == 1
+        col.delete_many({})
+
+        col.insert_one({"f": 0})
+        resp1100 = col.find_one_and_replace(
+            {"f": 0}, {"r": 1}, return_document=ReturnDocument.AFTER
+        )
+        assert resp1100 is not None
+        assert resp1100["r"] == 1
+        assert col.count_documents({}) == 1
+        col.delete_many({})
+
+        col.insert_one({"f": 0})
+        resp1101 = col.find_one_and_replace(
+            {"f": 0}, {"r": 1}, sort={"x": 1}, return_document=ReturnDocument.AFTER
+        )
+        assert resp1101 is not None
+        assert resp1101["r"] == 1
+        assert col.count_documents({}) == 1
+        col.delete_many({})
+
+        col.insert_one({"f": 0})
+        resp1110 = col.find_one_and_replace(
+            {"f": 0}, {"r": 1}, upsert=True, return_document=ReturnDocument.AFTER
+        )
+        assert resp1110 is not None
+        assert resp1110["r"] == 1
+        assert col.count_documents({}) == 1
+        col.delete_many({})
+
+        col.insert_one({"f": 0})
+        resp1111 = col.find_one_and_replace(
+            {"f": 0},
+            {"r": 1},
+            upsert=True,
+            sort={"x": 1},
+            return_document=ReturnDocument.AFTER,
+        )
+        assert resp1111 is not None
+        assert resp1111["r"] == 1
+        assert col.count_documents({}) == 1
+        col.delete_many({})
+
+        # projection
+        col.insert_one({"f": 100, "name": "apple", "mode": "old"})
+        resp_pr1 = col.find_one_and_replace(
+            {"f": 100},
+            {"f": 100, "name": "carrot", "mode": "replaced"},
+            projection=["mode"],
+            return_document=ReturnDocument.AFTER,
+        )
+        assert resp_pr1 is not None
+        assert set(resp_pr1.keys()) == {"_id", "mode"}
+        resp_pr2 = col.find_one_and_replace(
+            {"f": 100},
+            {"f": 100, "name": "turnip", "mode": "re-replaced"},
+            projection={"name": False, "f": False, "_id": False},
+            return_document=ReturnDocument.BEFORE,
+        )
+        assert resp_pr2 is not None
+        assert set(resp_pr2.keys()) == {"mode"}
+        col.delete_many({})

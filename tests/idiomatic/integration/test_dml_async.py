@@ -21,6 +21,7 @@ from astrapy.results import DeleteResult, InsertOneResult
 from astrapy.api import APIRequestError
 from astrapy.idiomatic.types import DocumentType
 from astrapy.idiomatic.cursors import AsyncCursor
+from astrapy.idiomatic.types import ReturnDocument
 
 
 class TestDMLAsync:
@@ -375,26 +376,25 @@ class TestDMLAsync:
         async_empty_collection: AsyncCollection,
     ) -> None:
         acol = async_empty_collection
-        col = acol.to_sync()  # TODO: replace with async find once implemented
 
         ins_result1 = await acol.insert_many([{"_id": "a"}, {"_id": "b"}])
         assert set(ins_result1.inserted_ids) == {"a", "b"}
-        assert {doc["_id"] for doc in col.find()} == {"a", "b"}
+        assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
         with pytest.raises(APIRequestError):
             await acol.insert_many([{"_id": "a"}, {"_id": "c"}])
-        assert {doc["_id"] for doc in col.find()} == {"a", "b"}
+        assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
         with pytest.raises(APIRequestError):
             await acol.insert_many([{"_id": "c"}, {"_id": "a"}, {"_id": "d"}])
-        assert {doc["_id"] for doc in col.find()} == {"a", "b", "c"}
+        assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "c"}
 
         with pytest.raises(ValueError):
             await acol.insert_many(
                 [{"_id": "c"}, {"_id": "d"}, {"_id": "e"}],
                 ordered=False,
             )
-        assert {doc["_id"] for doc in col.find()} == {"a", "b", "c", "d", "e"}
+        assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "c", "d", "e"}
 
     @pytest.mark.describe("test of collection find_one, async")
     async def test_collection_find_one_async(
@@ -497,3 +497,152 @@ class TestDMLAsync:
         )
         assert doc_proj == {"_id": "b", "kind": "letter"}
         assert doc_full == {"_id": "b", "seq": 2, "kind": "letter"}
+
+    @pytest.mark.describe("test of find_one_and_replace, async")
+    async def test_collection_find_one_and_replace_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+
+        resp0000 = await acol.find_one_and_replace({"f": 0}, {"r": 1})
+        assert resp0000 is None
+        assert await acol.count_documents({}) == 0
+
+        resp0001 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, sort={"x": 1})
+        assert resp0001 is None
+        assert await acol.count_documents({}) == 0
+
+        resp0010 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
+        assert resp0010 is None
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        resp0011 = await acol.find_one_and_replace(
+            {"f": 0}, {"r": 1}, upsert=True, sort={"x": 1}
+        )
+        assert resp0011 is None
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp0100 = await acol.find_one_and_replace({"f": 0}, {"r": 1})
+        assert resp0100 is not None
+        assert resp0100["f"] == 0
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp0101 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, sort={"x": 1})
+        assert resp0101 is not None
+        assert resp0101["f"] == 0
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp0110 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
+        assert resp0110 is not None
+        assert resp0110["f"] == 0
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp0111 = await acol.find_one_and_replace(
+            {"f": 0}, {"r": 1}, upsert=True, sort={"x": 1}
+        )
+        assert resp0111 is not None
+        assert resp0111["f"] == 0
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        resp1000 = await acol.find_one_and_replace(
+            {"f": 0}, {"r": 1}, return_document=ReturnDocument.AFTER
+        )
+        assert resp1000 is None
+        assert await acol.count_documents({}) == 0
+
+        resp1001 = await acol.find_one_and_replace(
+            {"f": 0}, {"r": 1}, sort={"x": 1}, return_document=ReturnDocument.AFTER
+        )
+        assert resp1001 is None
+        assert await acol.count_documents({}) == 0
+
+        resp1010 = await acol.find_one_and_replace(
+            {"f": 0}, {"r": 1}, upsert=True, return_document=ReturnDocument.AFTER
+        )
+        assert resp1010 is not None
+        assert resp1010["r"] == 1
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        resp1011 = await acol.find_one_and_replace(
+            {"f": 0},
+            {"r": 1},
+            upsert=True,
+            sort={"x": 1},
+            return_document=ReturnDocument.AFTER,
+        )
+        assert resp1011 is not None
+        assert resp1011["r"] == 1
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp1100 = await acol.find_one_and_replace(
+            {"f": 0}, {"r": 1}, return_document=ReturnDocument.AFTER
+        )
+        assert resp1100 is not None
+        assert resp1100["r"] == 1
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp1101 = await acol.find_one_and_replace(
+            {"f": 0}, {"r": 1}, sort={"x": 1}, return_document=ReturnDocument.AFTER
+        )
+        assert resp1101 is not None
+        assert resp1101["r"] == 1
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp1110 = await acol.find_one_and_replace(
+            {"f": 0}, {"r": 1}, upsert=True, return_document=ReturnDocument.AFTER
+        )
+        assert resp1110 is not None
+        assert resp1110["r"] == 1
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp1111 = await acol.find_one_and_replace(
+            {"f": 0},
+            {"r": 1},
+            upsert=True,
+            sort={"x": 1},
+            return_document=ReturnDocument.AFTER,
+        )
+        assert resp1111 is not None
+        assert resp1111["r"] == 1
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        # projection
+        await acol.insert_one({"f": 100, "name": "apple", "mode": "old"})
+        resp_pr1 = await acol.find_one_and_replace(
+            {"f": 100},
+            {"f": 100, "name": "carrot", "mode": "replaced"},
+            projection=["mode"],
+            return_document=ReturnDocument.AFTER,
+        )
+        assert resp_pr1 is not None
+        assert set(resp_pr1.keys()) == {"_id", "mode"}
+        resp_pr2 = await acol.find_one_and_replace(
+            {"f": 100},
+            {"f": 100, "name": "turnip", "mode": "re-replaced"},
+            projection={"name": False, "f": False, "_id": False},
+            return_document=ReturnDocument.BEFORE,
+        )
+        assert resp_pr2 is not None
+        assert set(resp_pr2.keys()) == {"mode"}
+        await acol.delete_many({})
