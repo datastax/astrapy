@@ -973,6 +973,23 @@ class AstraDBCollection:
 
         return response
 
+    def chunked_delete_many(self, filter: Dict[str, Any]) -> List[API_RESPONSE]:
+        """
+        Delete many documents from the collection based on a filter condition,
+        chaining several API calls until exhaustion of the documents to delete.
+        Args:
+            filter (dict): Criteria to identify the documents to delete.
+        Returns:
+            List[dict]: The responses from the database from all the calls
+        """
+        responses = []
+        must_proceed = True
+        while must_proceed:
+            dm_response = self.delete_many(filter=filter)
+            responses.append(dm_response)
+            must_proceed = dm_response.get("status", {}).get("moreData", False)
+        return responses
+
     def clear(self) -> API_RESPONSE:
         """
         Clear the collection, deleting all documents
@@ -1971,6 +1988,23 @@ class AsyncAstraDBCollection:
         )
 
         return response
+
+    async def chunked_delete_many(self, filter: Dict[str, Any]) -> List[API_RESPONSE]:
+        """
+        Delete many documents from the collection based on a filter condition,
+        chaining several API calls until exhaustion of the documents to delete.
+        Args:
+            filter (dict): Criteria to identify the documents to delete.
+        Returns:
+            List[dict]: The responses from the database from all the calls
+        """
+        responses = []
+        must_proceed = True
+        while must_proceed:
+            dm_response = await self.delete_many(filter=filter)
+            responses.append(dm_response)
+            must_proceed = dm_response.get("status", {}).get("moreData", False)
+        return responses
 
     async def clear(self) -> API_RESPONSE:
         """
