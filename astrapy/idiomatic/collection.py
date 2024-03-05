@@ -22,7 +22,7 @@ from astrapy.idiomatic.types import DocumentType, ProjectionType
 from astrapy.idiomatic.utils import raise_unsupported_parameter, unsupported
 from astrapy.idiomatic.database import AsyncDatabase, Database
 from astrapy.idiomatic.results import DeleteResult, InsertManyResult, InsertOneResult
-from astrapy.idiomatic.cursors import Cursor
+from astrapy.idiomatic.cursors import AsyncCursor, Cursor
 
 INSERT_MANY_CONCURRENCY = 20
 
@@ -524,6 +524,37 @@ class AsyncCollection:
             ]
             return InsertManyResult(inserted_ids=inserted_ids)
 
+    def find(
+        self,
+        filter: Optional[Dict[str, Any]] = None,
+        *,
+        projection: Optional[ProjectionType] = None,
+        skip: Optional[int] = None,
+        limit: Optional[int] = None,
+        sort: Optional[Dict[str, Any]] = None,
+    ) -> AsyncCursor:
+        return (
+            AsyncCursor(
+                collection=self,
+                filter=filter,
+                projection=projection,
+            )
+            .skip(skip)
+            .limit(limit)
+            .sort(sort)
+        )
+
+    async def distinct(
+        self,
+        key: str,
+        filter: Optional[Dict[str, Any]] = None,
+    ) -> List[Any]:
+        cursor = self.find(
+            filter=filter,
+            projection={key: True},
+        )
+        return await cursor.distinct(key)
+
     async def count_documents(
         self,
         filter: Dict[str, Any],
@@ -665,6 +696,3 @@ class AsyncCollection:
 
     @unsupported
     async def update_search_index(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def distinct(*pargs: Any, **kwargs: Any) -> Any: ...

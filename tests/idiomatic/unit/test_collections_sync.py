@@ -210,8 +210,6 @@ class TestCollectionsSync:
             sync_collection_instance.list_search_indexes(1, "x")
         with pytest.raises(TypeError):
             sync_collection_instance.update_search_index(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.distinct(1, "x")
 
     @pytest.mark.describe("test collection conversions with caller mutableness, sync")
     def test_collection_conversions_caller_mutableness_sync(

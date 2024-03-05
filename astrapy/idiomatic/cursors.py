@@ -312,7 +312,7 @@ class AsyncCursor(BaseCursor):
     async def __anext__(self) -> DocumentType:
         if not self.alive:
             # keep raising once exhausted:
-            raise StopIteration
+            raise StopAsyncIteration
         if self._iterator is None:
             self._iterator = self._create_iterator()
             self._started = True
