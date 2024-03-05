@@ -279,6 +279,39 @@ class Collection:
                 f"(gotten '${json.dumps(fo_response)}')"
             )
 
+    def find_one_and_update(
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        *,
+        projection: Optional[ProjectionType] = None,
+        sort: Optional[Dict[str, Any]] = None,
+        upsert: bool = False,
+        return_document: ReturnDocument = ReturnDocument.BEFORE,
+    ) -> Union[DocumentType, None]:
+        options = {
+            "returnDocument": return_document.value,
+            "upsert": upsert,
+        }
+        fo_response = self._astra_db_collection.find_one_and_update(
+            update=update,
+            filter=filter,
+            projection=normalize_optional_projection(projection),
+            sort=sort,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            ret_document = fo_response.get("data", {}).get("document")
+            if ret_document is None:
+                return None
+            else:
+                return ret_document  # type: ignore[no-any-return]
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_update operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
+            )
+
     def find_one_and_delete(
         self,
         filter: Dict[str, Any],
@@ -602,6 +635,39 @@ class AsyncCollection:
         else:
             raise ValueError(
                 "Could not complete a find_one_and_replace operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
+            )
+
+    async def find_one_and_update(
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        *,
+        projection: Optional[ProjectionType] = None,
+        sort: Optional[Dict[str, Any]] = None,
+        upsert: bool = False,
+        return_document: ReturnDocument = ReturnDocument.BEFORE,
+    ) -> Union[DocumentType, None]:
+        options = {
+            "returnDocument": return_document.value,
+            "upsert": upsert,
+        }
+        fo_response = await self._astra_db_collection.find_one_and_update(
+            update=update,
+            filter=filter,
+            projection=normalize_optional_projection(projection),
+            sort=sort,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            ret_document = fo_response.get("data", {}).get("document")
+            if ret_document is None:
+                return None
+            else:
+                return ret_document  # type: ignore[no-any-return]
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_update operation. "
                 f"(gotten '${json.dumps(fo_response)}')"
             )
 

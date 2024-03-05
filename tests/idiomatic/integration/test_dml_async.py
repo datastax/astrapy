@@ -678,3 +678,176 @@ class TestDMLAsync:
 
         fo_result4 = await async_empty_collection.find_one_and_delete({}, sort={"f": 1})
         assert fo_result4 is None
+
+    @pytest.mark.describe("test of find_one_and_update, async")
+    async def test_collection_find_one_and_update_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+
+        resp0000 = await acol.find_one_and_update({"f": 0}, {"$set": {"n": 1}})
+        assert resp0000 is None
+        assert await acol.count_documents({}) == 0
+
+        resp0001 = await acol.find_one_and_update(
+            {"f": 0}, {"$set": {"n": 1}}, sort={"x": 1}
+        )
+        assert resp0001 is None
+        assert await acol.count_documents({}) == 0
+
+        resp0010 = await acol.find_one_and_update(
+            {"f": 0}, {"$set": {"n": 1}}, upsert=True
+        )
+        assert resp0010 is None
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        resp0011 = await acol.find_one_and_update(
+            {"f": 0}, {"$set": {"n": 1}}, upsert=True, sort={"x": 1}
+        )
+        assert resp0011 is None
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp0100 = await acol.find_one_and_update({"f": 0}, {"$set": {"n": 1}})
+        assert resp0100 is not None
+        assert resp0100["f"] == 0
+        assert "n" not in resp0100
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp0101 = await acol.find_one_and_update(
+            {"f": 0}, {"$set": {"n": 1}}, sort={"x": 1}
+        )
+        assert resp0101 is not None
+        assert resp0101["f"] == 0
+        assert "n" not in resp0101
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp0110 = await acol.find_one_and_update(
+            {"f": 0}, {"$set": {"n": 1}}, upsert=True
+        )
+        assert resp0110 is not None
+        assert resp0110["f"] == 0
+        assert "n" not in resp0110
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp0111 = await acol.find_one_and_update(
+            {"f": 0}, {"$set": {"n": 1}}, upsert=True, sort={"x": 1}
+        )
+        assert resp0111 is not None
+        assert resp0111["f"] == 0
+        assert "n" not in resp0111
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        resp1000 = await acol.find_one_and_update(
+            {"f": 0}, {"$set": {"n": 1}}, return_document=ReturnDocument.AFTER
+        )
+        assert resp1000 is None
+        assert await acol.count_documents({}) == 0
+
+        resp1001 = await acol.find_one_and_update(
+            {"f": 0},
+            {"$set": {"n": 1}},
+            sort={"x": 1},
+            return_document=ReturnDocument.AFTER,
+        )
+        assert resp1001 is None
+        assert await acol.count_documents({}) == 0
+
+        resp1010 = await acol.find_one_and_update(
+            {"f": 0},
+            {"$set": {"n": 1}},
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+        )
+        assert resp1010 is not None
+        assert resp1010["n"] == 1
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        resp1011 = await acol.find_one_and_update(
+            {"f": 0},
+            {"$set": {"n": 1}},
+            upsert=True,
+            sort={"x": 1},
+            return_document=ReturnDocument.AFTER,
+        )
+        assert resp1011 is not None
+        assert resp1011["n"] == 1
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp1100 = await acol.find_one_and_update(
+            {"f": 0}, {"$set": {"n": 1}}, return_document=ReturnDocument.AFTER
+        )
+        assert resp1100 is not None
+        assert resp1100["n"] == 1
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp1101 = await acol.find_one_and_update(
+            {"f": 0},
+            {"$set": {"n": 1}},
+            sort={"x": 1},
+            return_document=ReturnDocument.AFTER,
+        )
+        assert resp1101 is not None
+        assert resp1101["n"] == 1
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp1110 = await acol.find_one_and_update(
+            {"f": 0},
+            {"$set": {"n": 1}},
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+        )
+        assert resp1110 is not None
+        assert resp1110["n"] == 1
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        await acol.insert_one({"f": 0})
+        resp1111 = await acol.find_one_and_update(
+            {"f": 0},
+            {"$set": {"n": 1}},
+            upsert=True,
+            sort={"x": 1},
+            return_document=ReturnDocument.AFTER,
+        )
+        assert resp1111 is not None
+        assert resp1111["n"] == 1
+        assert await acol.count_documents({}) == 1
+        await acol.delete_many({})
+
+        # projection
+        await acol.insert_one({"f": 100, "name": "apple", "mode": "old"})
+        resp_pr1 = await acol.find_one_and_update(
+            {"f": 100},
+            {"$unset": {"mode": ""}},
+            projection=["mode", "f"],
+            return_document=ReturnDocument.AFTER,
+        )
+        assert resp_pr1 is not None
+        assert set(resp_pr1.keys()) == {"_id", "f"}
+        resp_pr2 = await acol.find_one_and_update(
+            {"f": 100},
+            {"$set": {"mode": "re-replaced"}},
+            projection={"name": False, "_id": False},
+            return_document=ReturnDocument.BEFORE,
+        )
+        assert resp_pr2 is not None
+        assert set(resp_pr2.keys()) == {"f"}
+        await acol.delete_many({})
