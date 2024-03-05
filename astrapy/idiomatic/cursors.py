@@ -28,7 +28,7 @@ from typing import (
 from astrapy.idiomatic.types import DocumentType, ProjectionType
 
 if TYPE_CHECKING:
-    from astrapy.idiomatic.collection import Collection
+    from astrapy.idiomatic.collection import AsyncCollection, Collection
 
 
 BC = TypeVar("BC", bound="BaseCursor")
@@ -37,25 +37,26 @@ FIND_PREFETCH = 20
 
 
 class BaseCursor:
+    _collection: Union[Collection, AsyncCollection]
+    _filter: Optional[Dict[str, Any]]
+    _projection: Optional[ProjectionType]
+    _limit: Optional[int]
+    _skip: Optional[int]
+    _sort: Optional[Dict[str, Any]]
+    _started: bool
+    _retrieved: int
+    _alive: bool
+    _iterator: Optional[Union[Iterator[DocumentType], AsyncIterator[DocumentType]]] = (
+        None
+    )
+
     def __init__(
         self,
-        collection: Collection,
+        collection: Union[Collection, AsyncCollection],
         filter: Optional[Dict[str, Any]],
         projection: Optional[ProjectionType],
     ) -> None:
-        self._collection = collection
-        self._filter = filter
-        self._projection = projection
-        self._limit: Optional[int] = None
-        self._skip: Optional[int] = None
-        self._sort: Optional[Dict[str, Any]] = None
-        self._started = False
-        self._retrieved = 0
-        self._alive = True
-        #
-        self._iterator: Optional[
-            Union[Iterator[DocumentType], AsyncIterator[DocumentType]]
-        ] = None
+        raise NotImplementedError
 
     def __getitem__(self: BC, index: Union[int, slice]) -> Union[BC, DocumentType]:
         self._ensure_not_started()
@@ -146,10 +147,6 @@ class BaseCursor:
         self._alive = False
 
     @property
-    def collection(self) -> Collection:
-        return self._collection
-
-    @property
     def cursor_id(self) -> int:
         return id(self)
 
@@ -193,12 +190,16 @@ class Cursor(BaseCursor):
         filter: Optional[Dict[str, Any]],
         projection: Optional[ProjectionType],
     ) -> None:
-        super().__init__(
-            collection=collection,
-            filter=filter,
-            projection=projection,
-        )
-        # mutable field; and never cloned
+        self._collection: Collection = collection
+        self._filter = filter
+        self._projection = projection
+        self._limit: Optional[int] = None
+        self._skip: Optional[int] = None
+        self._sort: Optional[Dict[str, Any]] = None
+        self._started = False
+        self._retrieved = 0
+        self._alive = True
+        #
         self._iterator: Optional[Iterator[DocumentType]] = None
 
     def __iter__(self) -> Cursor:
@@ -268,6 +269,10 @@ class Cursor(BaseCursor):
         )
         return iterator
 
+    @property
+    def collection(self) -> Collection:
+        return self._collection
+
     def distinct(self, key: str) -> List[Any]:
         """
         This works on a fresh pristine copy of the cursor
@@ -275,4 +280,134 @@ class Cursor(BaseCursor):
         """
         return list(
             {document[key] for document in self._copy(started=False) if key in document}
+        )
+
+
+class AsyncCursor(BaseCursor):
+    def __init__(
+        self,
+        collection: AsyncCollection,
+        filter: Optional[Dict[str, Any]],
+        projection: Optional[ProjectionType],
+    ) -> None:
+        self._collection: AsyncCollection = collection
+        self._filter = filter
+        self._projection = projection
+        self._limit: Optional[int] = None
+        self._skip: Optional[int] = None
+        self._sort: Optional[Dict[str, Any]] = None
+        self._started = False
+        self._retrieved = 0
+        self._alive = True
+        #
+        self._iterator: Optional[AsyncIterator[DocumentType]] = None
+
+    def __aiter__(self) -> AsyncCursor:
+        self._ensure_alive()
+        if self._iterator is None:
+            self._iterator = self._create_iterator()
+            self._started = True
+        return self
+
+    async def __anext__(self) -> DocumentType:
+        if not self.alive:
+            # keep raising once exhausted:
+            raise StopIteration
+        if self._iterator is None:
+            self._iterator = self._create_iterator()
+            self._started = True
+        try:
+            next_item = await self._iterator.__anext__()
+            self._retrieved = self._retrieved + 1
+            return next_item
+        except StopAsyncIteration:
+            self._alive = False
+            raise
+
+    def _item_at_index(self, index: int) -> DocumentType:
+        finder_cursor = self._to_sync().skip(index).limit(1)
+        items = list(finder_cursor)
+        if items:
+            return items[0]
+        else:
+            raise IndexError("no such item for AsyncCursor instance")
+
+    def _create_iterator(self) -> AsyncIterator[DocumentType]:
+        self._ensure_not_started()
+        self._ensure_alive()
+        _options = {
+            k: v
+            for k, v in {
+                "limit": self._limit,
+                "skip": self._skip,
+            }.items()
+            if v is not None
+        }
+
+        # recast parameters for paginated_find call
+        pf_projection: Optional[Dict[str, bool]]
+        if self._projection:
+            if isinstance(self._projection, dict):
+                pf_projection = self._projection
+            else:
+                # an iterable over strings
+                pf_projection = {field: True for field in self._projection}
+        else:
+            pf_projection = None
+        pf_sort: Optional[Dict[str, int]]
+        if self._sort:
+            pf_sort = dict(self._sort)
+        else:
+            pf_sort = None
+
+        iterator = self._collection._astra_db_collection.paginated_find(
+            filter=self._filter,
+            projection=pf_projection,
+            sort=pf_sort,
+            options=_options,
+            prefetched=FIND_PREFETCH,
+        )
+        return iterator
+
+    def _to_sync(
+        self: AsyncCursor,
+        *,
+        limit: Optional[int] = None,
+        skip: Optional[int] = None,
+        started: Optional[bool] = None,
+        sort: Optional[Dict[str, Any]] = None,
+    ) -> Cursor:
+        new_cursor = Cursor(
+            collection=self._collection.to_sync(),
+            filter=self._filter,
+            projection=self._projection,
+        )
+        # Cursor treated as mutable within this function scope:
+        new_cursor._limit = limit if limit is not None else self._limit
+        new_cursor._skip = skip if skip is not None else self._skip
+        new_cursor._started = started if started is not None else self._started
+        new_cursor._sort = sort if sort is not None else self._sort
+        if started is False:
+            new_cursor._retrieved = 0
+            new_cursor._alive = True
+        else:
+            new_cursor._retrieved = self._retrieved
+            new_cursor._alive = self._alive
+        return new_cursor
+
+    @property
+    def collection(self) -> AsyncCollection:
+        return self._collection
+
+    async def distinct(self, key: str) -> List[Any]:
+        """
+        This works on a fresh pristine copy of the cursor
+        and never touches self in any way.
+        """
+        return list(
+            {
+                document[key]
+                async for document in self._copy(started=False)
+                if key in document
+            }
         )
