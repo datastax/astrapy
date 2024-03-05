@@ -16,10 +16,9 @@ from __future__ import annotations
 
 import json
 from types import TracebackType
-from typing import Any, Dict, List, Optional, Type, TypedDict, Union, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
 
 from astrapy.db import AstraDB, AsyncAstraDB
-from astrapy.idiomatic.utils import raise_unsupported_parameter, unsupported
 from astrapy.ops import AstraDBOps
 
 if TYPE_CHECKING:
@@ -52,15 +51,25 @@ def _validate_create_collection_options(
         )
 
 
-class DatabaseConstructorParams(TypedDict):
-    api_endpoint: str
-    token: str
-    namespace: Optional[str]
-    caller_name: Optional[str]
-    caller_version: Optional[str]
-    api_path: Optional[str]
-    api_version: Optional[str]
-
+def _recast_api_collection_dict(api_coll_dict: Dict[str, Any]) -> Dict[str, Any]:
+    _name = api_coll_dict["name"]
+    _options = api_coll_dict.get("options") or {}
+    _v_options0 = _options.get("vector") or {}
+    _indexing = _options.get("indexing") or {}
+    _v_dimension = _v_options0.get("dimension")
+    _v_metric = _v_options0.get("metric")
+    _additional_options = {
+        k: v for k, v in _options.items() if k not in {"vector", "indexing"}
+    }
+    recast_dict0 = {
+        "name": _name,
+        "dimension": _v_dimension,
+        "metric": _v_metric,
+        "indexing": _indexing,
+        "additional_options": _additional_options,
+    }
+    recast_dict = {k: v for k, v in recast_dict0.items() if v}
+    return recast_dict
 
 class Database:
     def __init__(
@@ -74,15 +83,6 @@ class Database:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> None:
-        self._constructor_params: DatabaseConstructorParams = {
-            "api_endpoint": api_endpoint,
-            "token": token,
-            "namespace": namespace,
-            "caller_name": caller_name,
-            "caller_version": caller_version,
-            "api_path": api_path,
-            "api_version": api_version,
-        }
         self._astra_db = AstraDB(
             token=token,
             api_endpoint=api_endpoint,
@@ -122,6 +122,12 @@ class Database:
             self.database = ""
             print("No database found")
 
+    def __getattr__(self, collection_name: str) -> Collection:
+        return self.get_collection(name=collection_name)
+
+    def __getitem__(self, collection_name: str) -> Collection:
+        return self.get_collection(name=collection_name)
+
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db={self._astra_db}"]'
 
@@ -131,19 +137,61 @@ class Database:
         else:
             return False
 
-    def copy(self) -> Database:
-        return Database(**self._constructor_params)
+    @property
+    def namespace(self) -> str:
+        return self._astra_db.namespace
 
-    def to_async(self) -> AsyncDatabase:
-        return AsyncDatabase(**self._constructor_params)
+    def copy(
+        self,
+        *,
+        api_endpoint: Optional[str] = None,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> Database:
+        return Database(
+            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            token=token or self._astra_db.token,
+            namespace=namespace or self._astra_db.namespace,
+            caller_name=caller_name or self._astra_db.caller_name,
+            caller_version=caller_version or self._astra_db.caller_version,
+            api_path=api_path or self._astra_db.api_path,
+            api_version=api_version or self._astra_db.api_version,
+        )
+
+    def to_async(
+        self,
+        *,
+        api_endpoint: Optional[str] = None,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> AsyncDatabase:
+        return AsyncDatabase(
+            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            token=token or self._astra_db.token,
+            namespace=namespace or self._astra_db.namespace,
+            caller_name=caller_name or self._astra_db.caller_name,
+            caller_version=caller_version or self._astra_db.caller_version,
+            api_path=api_path or self._astra_db.api_path,
+            api_version=api_version or self._astra_db.api_version,
+        )
 
     def set_caller(
         self,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        self._astra_db.caller_name = caller_name
-        self._astra_db.caller_version = caller_version
+        self._astra_db.set_caller(
+            caller_name=caller_name,
+            caller_version=caller_version,
+        )
 
     def get_collection(
         self, name: str, *, namespace: Optional[str] = None
@@ -151,7 +199,7 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import Collection
 
-        _namespace = namespace or self._constructor_params["namespace"]
+        _namespace = namespace or self._astra_db.namespace
         return Collection(self, name, namespace=_namespace)
 
     def create_collection(
@@ -163,6 +211,7 @@ class Database:
         metric: Optional[str] = None,
         indexing: Optional[Dict[str, Any]] = None,
         additional_options: Optional[Dict[str, Any]] = None,
+        check_exists: Optional[bool] = None,
     ) -> Collection:
         _validate_create_collection_options(
             dimension=dimension,
@@ -174,6 +223,19 @@ class Database:
             **(additional_options or {}),
             **({"indexing": indexing} if indexing else {}),
         }
+
+        if check_exists is None:
+            _check_exists = True
+        else:
+            _check_exists = check_exists
+        existing_names: List[str]
+        if _check_exists:
+            existing_names = self.list_collection_names(namespace=namespace)
+        else:
+            existing_names = []
+        if name in existing_names:
+            raise ValueError(f"CollectionInvalid: collection {name} already exists")
+
         if namespace is not None:
             self._astra_db.copy(namespace=namespace).create_collection(
                 name,
@@ -190,30 +252,50 @@ class Database:
             )
         return self.get_collection(name, namespace=namespace)
 
-    # TODO, the return type should be a Dict[str, Any] (investigate what)
-    def drop_collection(self, name_or_collection: Union[str, Collection]) -> None:
+    def drop_collection(
+        self, name_or_collection: Union[str, Collection]
+    ) -> Dict[str, Any]:
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import Collection
 
-        _name: str
         if isinstance(name_or_collection, Collection):
+            _namespace = name_or_collection.namespace
             _name = name_or_collection._astra_db_collection.collection_name
+            dc_response = self._astra_db.copy(namespace=_namespace).delete_collection(
+                _name
+            )
+            return dc_response.get("status", {})  # type: ignore[no-any-return]
         else:
-            _name = name_or_collection
-        self._astra_db.delete_collection(_name)
+            dc_response = self._astra_db.delete_collection(name_or_collection)
+            return dc_response.get("status", {})  # type: ignore[no-any-return]
+
+    def list_collections(
+        self,
+        *,
+        namespace: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        if namespace:
+            _client = self._astra_db.copy(namespace=namespace)
+        else:
+            _client = self._astra_db
+        gc_response = _client.get_collections(options={"explain": True})
+        if "collections" not in gc_response.get("status", {}):
+            raise ValueError(
+                "Could not complete a get_collections operation. "
+                f"(gotten '${json.dumps(gc_response)}')"
+            )
+        else:
+            # we know this is a list of dicts which need a little adjusting
+            return [
+                _recast_api_collection_dict(col_dict)
+                for col_dict in gc_response["status"]["collections"]
+            ]
 
     def list_collection_names(
         self,
         *,
         namespace: Optional[str] = None,
-        filter: Optional[Dict[str, Any]] = None,
     ) -> List[str]:
-        if filter:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="list_collection_names",
-                parameter_name="filter",
-            )
         if namespace:
             _client = self._astra_db.copy(namespace=namespace)
         else:
@@ -228,21 +310,6 @@ class Database:
             # we know this is a list of strings
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
-    @unsupported
-    def aggregate(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def cursor_command(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def dereference(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def watch(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def validate_collection(*pargs: Any, **kwargs: Any) -> Any: ...
-
 
 class AsyncDatabase:
     def __init__(
@@ -256,15 +323,6 @@ class AsyncDatabase:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> None:
-        self._constructor_params: DatabaseConstructorParams = {
-            "api_endpoint": api_endpoint,
-            "token": token,
-            "namespace": namespace,
-            "caller_name": caller_name,
-            "caller_version": caller_version,
-            "api_path": api_path,
-            "api_version": api_version,
-        }
         self._astra_db = AsyncAstraDB(
             token=token,
             api_endpoint=api_endpoint,
@@ -294,6 +352,30 @@ class AsyncDatabase:
             print("No database found")
 
 
+        astraDBOps = AstraDBOps(token=token)
+
+        # Get the database object and name
+        if "-" in api_endpoint:
+            self.dbid = api_endpoint.split('/')[2].split('.')[0][:36]
+            
+            details = astraDBOps.get_database(database=self.dbid)
+            self.info = details['info']
+            self.name = details['info']['name']
+            self.region = details['info']['region']
+            self.database = {'id': self.dbid, 'name': self.name, 'region': self.region}
+
+        else:
+            self.database: Optional[Dict[str, Any]] = {}
+            self.region: Optional[str] = None
+            self.database = Optional[str] = None
+            print("No database found")
+
+    async def __getattr__(self, collection_name: str) -> AsyncCollection:
+        return await self.get_collection(name=collection_name)
+
+    async def __getitem__(self, collection_name: str) -> AsyncCollection:
+        return await self.get_collection(name=collection_name)
+
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db={self._astra_db}"]'
 
@@ -318,19 +400,61 @@ class AsyncDatabase:
             traceback=traceback,
         )
 
-    def copy(self) -> AsyncDatabase:
-        return AsyncDatabase(**self._constructor_params)
+    @property
+    def namespace(self) -> str:
+        return self._astra_db.namespace
 
-    def to_sync(self) -> Database:
-        return Database(**self._constructor_params)
+    def copy(
+        self,
+        *,
+        api_endpoint: Optional[str] = None,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> AsyncDatabase:
+        return AsyncDatabase(
+            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            token=token or self._astra_db.token,
+            namespace=namespace or self._astra_db.namespace,
+            caller_name=caller_name or self._astra_db.caller_name,
+            caller_version=caller_version or self._astra_db.caller_version,
+            api_path=api_path or self._astra_db.api_path,
+            api_version=api_version or self._astra_db.api_version,
+        )
+
+    def to_sync(
+        self,
+        *,
+        api_endpoint: Optional[str] = None,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> Database:
+        return Database(
+            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            token=token or self._astra_db.token,
+            namespace=namespace or self._astra_db.namespace,
+            caller_name=caller_name or self._astra_db.caller_name,
+            caller_version=caller_version or self._astra_db.caller_version,
+            api_path=api_path or self._astra_db.api_path,
+            api_version=api_version or self._astra_db.api_version,
+        )
 
     def set_caller(
         self,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        self._astra_db.caller_name = caller_name
-        self._astra_db.caller_version = caller_version
+        self._astra_db.set_caller(
+            caller_name=caller_name,
+            caller_version=caller_version,
+        )
 
     async def get_collection(
         self, name: str, *, namespace: Optional[str] = None
@@ -338,7 +462,7 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import AsyncCollection
 
-        _namespace = namespace or self._constructor_params["namespace"]
+        _namespace = namespace or self._astra_db.namespace
         return AsyncCollection(self, name, namespace=_namespace)
 
     async def create_collection(
@@ -350,6 +474,7 @@ class AsyncDatabase:
         metric: Optional[str] = None,
         indexing: Optional[Dict[str, Any]] = None,
         additional_options: Optional[Dict[str, Any]] = None,
+        check_exists: Optional[bool] = None,
     ) -> AsyncCollection:
         _validate_create_collection_options(
             dimension=dimension,
@@ -361,6 +486,19 @@ class AsyncDatabase:
             **(additional_options or {}),
             **({"indexing": indexing} if indexing else {}),
         }
+
+        if check_exists is None:
+            _check_exists = True
+        else:
+            _check_exists = check_exists
+        existing_names: List[str]
+        if _check_exists:
+            existing_names = await self.list_collection_names(namespace=namespace)
+        else:
+            existing_names = []
+        if name in existing_names:
+            raise ValueError(f"CollectionInvalid: collection {name} already exists")
+
         if namespace is not None:
             await self._astra_db.copy(namespace=namespace).create_collection(
                 name,
@@ -377,32 +515,51 @@ class AsyncDatabase:
             )
         return await self.get_collection(name, namespace=namespace)
 
-    # TODO, the return type should be a Dict[str, Any] (investigate what)
     async def drop_collection(
         self, name_or_collection: Union[str, AsyncCollection]
-    ) -> None:
+    ) -> Dict[str, Any]:
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import AsyncCollection
 
-        _name: str
         if isinstance(name_or_collection, AsyncCollection):
+            _namespace = name_or_collection.namespace
             _name = name_or_collection._astra_db_collection.collection_name
+            dc_response = await self._astra_db.copy(
+                namespace=_namespace
+            ).delete_collection(_name)
+            return dc_response.get("status", {})  # type: ignore[no-any-return]
         else:
-            _name = name_or_collection
-        await self._astra_db.delete_collection(_name)
+            dc_response = await self._astra_db.delete_collection(name_or_collection)
+            return dc_response.get("status", {})  # type: ignore[no-any-return]
+
+    async def list_collections(
+        self,
+        *,
+        namespace: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        _client: AsyncAstraDB
+        if namespace:
+            _client = self._astra_db.copy(namespace=namespace)
+        else:
+            _client = self._astra_db
+        gc_response = await _client.get_collections(options={"explain": True})
+        if "collections" not in gc_response.get("status", {}):
+            raise ValueError(
+                "Could not complete a get_collections operation. "
+                f"(gotten '${json.dumps(gc_response)}')"
+            )
+        else:
+            # we know this is a list of dicts which need a little adjusting
+            return [
+                _recast_api_collection_dict(col_dict)
+                for col_dict in gc_response["status"]["collections"]
+            ]
 
     async def list_collection_names(
         self,
         *,
         namespace: Optional[str] = None,
-        filter: Optional[Dict[str, Any]] = None,
     ) -> List[str]:
-        if filter:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="list_collection_names",
-                parameter_name="filter",
-            )
         gc_response = await self._astra_db.copy(namespace=namespace).get_collections()
         if "collections" not in gc_response.get("status", {}):
             raise ValueError(
@@ -412,18 +569,3 @@ class AsyncDatabase:
         else:
             # we know this is a list of strings
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
-
-    @unsupported
-    async def aggregate(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def cursor_command(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def dereference(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def watch(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def validate_collection(*pargs: Any, **kwargs: Any) -> Any: ...

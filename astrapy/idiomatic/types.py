@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
+from __future__ import annotations
+
+from typing import Any, Dict, Iterable, Union
 
 
-class TestDatabasesUnit:
-    @pytest.mark.describe("test placeholder, unit tests on Database")
-    def test_database_unit_placeholder(self) -> None:
-        assert True
+DocumentType = Dict[str, Any]
+ProjectionType = Union[Iterable[str], Dict[str, bool]]

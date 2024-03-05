@@ -174,6 +174,113 @@ def test_copy_methods() -> None:
     assert c_adb_ops is not adb_ops
 
 
+@pytest.mark.describe("test copy methods respect mutable caller identity")
+def test_copy_methods_mutable_caller() -> None:
+    sync_astradb = AstraDB(
+        token="token",
+        api_endpoint="api_endpoint",
+        api_path="api_path",
+        api_version="api_version",
+        namespace="namespace",
+        caller_name="caller_name",
+        caller_version="caller_version",
+    )
+    sync_astradb.set_caller(
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    sync_astradb2 = AstraDB(
+        token="token",
+        api_endpoint="api_endpoint",
+        api_path="api_path",
+        api_version="api_version",
+        namespace="namespace",
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    assert sync_astradb.copy() == sync_astradb2
+
+    async_astradb = AsyncAstraDB(
+        token="token",
+        api_endpoint="api_endpoint",
+        api_path="api_path",
+        api_version="api_version",
+        namespace="namespace",
+        caller_name="caller_name",
+        caller_version="caller_version",
+    )
+    async_astradb.set_caller(
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    async_astradb2 = AsyncAstraDB(
+        token="token",
+        api_endpoint="api_endpoint",
+        api_path="api_path",
+        api_version="api_version",
+        namespace="namespace",
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    assert async_astradb.copy() == async_astradb2
+
+    sync_adbcollection = AstraDBCollection(
+        collection_name="collection_name",
+        astra_db=sync_astradb,
+        caller_name="caller_name",
+        caller_version="caller_version",
+    )
+    sync_adbcollection.set_caller(
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    sync_adbcollection2 = AstraDBCollection(
+        collection_name="collection_name",
+        astra_db=sync_astradb,
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    assert sync_adbcollection.copy() == sync_adbcollection2
+
+    async_adbcollection = AsyncAstraDBCollection(
+        collection_name="collection_name",
+        astra_db=async_astradb,
+        caller_name="caller_name",
+        caller_version="caller_version",
+    )
+    async_adbcollection.set_caller(
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    async_adbcollection2 = AsyncAstraDBCollection(
+        collection_name="collection_name",
+        astra_db=async_astradb,
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    assert async_adbcollection.copy() == async_adbcollection2
+
+    adb_ops = AstraDBOps(
+        token="token",
+        dev_ops_url="dev_ops_url",
+        dev_ops_api_version="dev_ops_api_version",
+        caller_name="caller_name",
+        caller_version="caller_version",
+    )
+    adb_ops.set_caller(
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    adb_ops2 = AstraDBOps(
+        token="token",
+        dev_ops_url="dev_ops_url",
+        dev_ops_api_version="dev_ops_api_version",
+        caller_name="caller_name2",
+        caller_version="caller_version2",
+    )
+    assert adb_ops.copy() == adb_ops2
+
+
 @pytest.mark.describe("test parameter override in copy methods")
 def test_parameter_override_copy_methods() -> None:
     sync_astradb = AstraDB(

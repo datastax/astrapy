@@ -1074,6 +1074,24 @@ def test_delete_one_novector(disposable_v_collection: AstraDBCollection) -> None
     assert delete_response_no["status"]["deletedCount"] == 0
 
 
+@pytest.mark.describe("delete_one_by_predicate, not through vector")
+def test_delete_one_by_predicate_novector(
+    empty_v_collection: AstraDBCollection,
+) -> None:
+    empty_v_collection.insert_one({"k": "v1"})
+    empty_v_collection.insert_one({"k": "v1"})
+    empty_v_collection.insert_one({"k": "v1"})
+    empty_v_collection.insert_one({"k": "v2"})
+    assert empty_v_collection.count_documents()["status"]["count"] == 4
+    assert empty_v_collection.count_documents({"k": "v1"})["status"]["count"] == 3
+
+    empty_v_collection.delete_one_by_predicate({"k": "v1"})
+    empty_v_collection.delete_one_by_predicate({"k": "zz"})
+
+    assert empty_v_collection.count_documents()["status"]["count"] == 3
+    assert empty_v_collection.count_documents({"k": "v1"})["status"]["count"] == 2
+
+
 @pytest.mark.describe("delete_many, not through vector")
 def test_delete_many_novector(disposable_v_collection: AstraDBCollection) -> None:
     delete_response = disposable_v_collection.delete_many(

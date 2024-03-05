@@ -1,7 +1,7 @@
 """Fixtures specific to the idiomatic-side testing, if any."""
 
 import os
-from typing import AsyncIterable, Iterable
+from typing import Iterable
 import pytest
 
 from ..conftest import AstraDBCredentials
@@ -21,11 +21,11 @@ def sync_database(
     yield Database(**astra_db_credentials_kwargs)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def async_database(
-    astra_db_credentials_kwargs: AstraDBCredentials,
+    sync_database: Database,
 ) -> Iterable[AsyncDatabase]:
-    yield AsyncDatabase(**astra_db_credentials_kwargs)
+    yield sync_database.to_async()
 
 
 @pytest.fixture(scope="session")
@@ -37,21 +37,15 @@ def sync_collection_instance(
     yield Collection(
         sync_database,
         TEST_COLLECTION_INSTANCE_NAME,
-        # namespace=astra_db_credentials_kwargs["namespace"],
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def async_collection_instance(
-    astra_db_credentials_kwargs: AstraDBCredentials,
-    async_database: AsyncDatabase,
+    sync_collection_instance: Collection,
 ) -> Iterable[AsyncCollection]:
     """Just an instance of the class, no DB-level stuff."""
-    yield AsyncCollection(
-        async_database,
-        TEST_COLLECTION_INSTANCE_NAME,
-        # namespace=astra_db_credentials_kwargs["namespace"],
-    )
+    yield sync_collection_instance.to_async()
 
 
 @pytest.fixture(scope="session")
@@ -78,7 +72,7 @@ def sync_empty_collection(sync_collection: Collection) -> Iterable[Collection]:
     yield sync_collection
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def async_collection(
     sync_collection: Collection,
 ) -> Iterable[AsyncCollection]:
@@ -87,9 +81,9 @@ def async_collection(
 
 
 @pytest.fixture(scope="function")
-async def async_empty_collection(
+def async_empty_collection(
     sync_empty_collection: Collection,
-) -> AsyncIterable[AsyncCollection]:
+) -> Iterable[AsyncCollection]:
     """Emptied for each test function"""
     yield sync_empty_collection.to_async()
 
