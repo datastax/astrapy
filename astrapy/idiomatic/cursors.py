@@ -14,12 +14,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterator, AsyncIterator
 from typing import (
     Any,
     Dict,
     List,
     Optional,
+    TypeVar,
     Union,
     TYPE_CHECKING,
 )
@@ -30,10 +31,12 @@ if TYPE_CHECKING:
     from astrapy.idiomatic.collection import Collection
 
 
+BC = TypeVar("BC", bound="BaseCursor")
+
 FIND_PREFETCH = 20
 
 
-class Cursor:
+class BaseCursor:
     def __init__(
         self,
         collection: Collection,
@@ -49,27 +52,17 @@ class Cursor:
         self._started = False
         self._retrieved = 0
         self._alive = True
-        # mutable field; and never cloned
-        self._iterator: Optional[Iterator[DocumentType]] = None
+        #
+        self._iterator: Optional[
+            Union[Iterator[DocumentType], AsyncIterator[DocumentType]]
+        ] = None
 
-    def __iter__(self) -> Cursor:
-        self._ensure_alive()
-        if self._iterator is None:
-            self._iterator = self._create_iterator()
-            self._started = True
-        return self
-
-    def __getitem__(self, index: Union[int, slice]) -> Union[Cursor, DocumentType]:
+    def __getitem__(self: BC, index: Union[int, slice]) -> Union[BC, DocumentType]:
         self._ensure_not_started()
         self._ensure_alive()
         if isinstance(index, int):
-            # In this case, a separate cursor is run
-            finder_cursor = self._copy().skip(index).limit(1)
-            items = list(finder_cursor)
-            if items:
-                return items[0]
-            else:
-                raise IndexError
+            # In this case, a separate cursor is run, not touching self
+            return self._item_at_index(index)
         elif isinstance(index, slice):
             start = index.start
             stop = index.stop
@@ -99,6 +92,122 @@ class Cursor:
             f"retrieved: {self.retrieved})"
         )
 
+    def _item_at_index(self, index: int) -> DocumentType:
+        # subclasses must implement this
+        raise NotImplementedError
+
+    def _ensure_alive(self) -> None:
+        if not self._alive:
+            raise ValueError("Cursor is closed.")
+
+    def _ensure_not_started(self) -> None:
+        if self._started:
+            raise ValueError("Cursor has already been used")
+
+    def _copy(
+        self: BC,
+        *,
+        limit: Optional[int] = None,
+        skip: Optional[int] = None,
+        started: Optional[bool] = None,
+        sort: Optional[Dict[str, Any]] = None,
+    ) -> BC:
+        new_cursor = self.__class__(
+            collection=self._collection,
+            filter=self._filter,
+            projection=self._projection,
+        )
+        # Cursor treated as mutable within this function scope:
+        new_cursor._limit = limit if limit is not None else self._limit
+        new_cursor._skip = skip if skip is not None else self._skip
+        new_cursor._started = started if started is not None else self._started
+        new_cursor._sort = sort if sort is not None else self._sort
+        if started is False:
+            new_cursor._retrieved = 0
+            new_cursor._alive = True
+        else:
+            new_cursor._retrieved = self._retrieved
+            new_cursor._alive = self._alive
+        return new_cursor
+
+    @property
+    def address(self) -> str:
+        """Return the api_endpoint used by this cursor."""
+        return self._collection._astra_db_collection.base_path
+
+    @property
+    def alive(self) -> bool:
+        return self._alive
+
+    def clone(self: BC) -> BC:
+        return self._copy(started=False)
+
+    def close(self) -> None:
+        self._alive = False
+
+    @property
+    def collection(self) -> Collection:
+        return self._collection
+
+    @property
+    def cursor_id(self) -> int:
+        return id(self)
+
+    def limit(self: BC, limit: Optional[int]) -> BC:
+        self._ensure_not_started()
+        self._ensure_alive()
+        self._limit = limit if limit != 0 else None
+        return self
+
+    @property
+    def retrieved(self) -> int:
+        return self._retrieved
+
+    def rewind(self: BC) -> BC:
+        self._started = False
+        self._retrieved = 0
+        self._alive = True
+        self._iterator = None
+        return self
+
+    def skip(self: BC, skip: Optional[int]) -> BC:
+        self._ensure_not_started()
+        self._ensure_alive()
+        self._skip = skip
+        return self
+
+    def sort(
+        self: BC,
+        sort: Optional[Dict[str, Any]],
+    ) -> BC:
+        self._ensure_not_started()
+        self._ensure_alive()
+        self._sort = sort
+        return self
+
+
+class Cursor(BaseCursor):
+    def __init__(
+        self,
+        collection: Collection,
+        filter: Optional[Dict[str, Any]],
+        projection: Optional[ProjectionType],
+    ) -> None:
+        super().__init__(
+            collection=collection,
+            filter=filter,
+            projection=projection,
+        )
+        # mutable field; and never cloned
+        self._iterator: Optional[Iterator[DocumentType]] = None
+
+    def __iter__(self) -> Cursor:
+        self._ensure_alive()
+        if self._iterator is None:
+            self._iterator = self._create_iterator()
+            self._started = True
+        return self
+
     def __next__(self) -> DocumentType:
         if not self.alive:
             # keep raising once exhausted:
@@ -114,13 +223,13 @@ class Cursor:
             self._alive = False
             raise
 
-    def _ensure_alive(self) -> None:
-        if not self._alive:
-            raise ValueError("Cursor is closed.")
-
-    def _ensure_not_started(self) -> None:
-        if self._started:
-            raise ValueError("Cursor has already been used")
+    def _item_at_index(self, index: int) -> DocumentType:
+        finder_cursor = self._copy().skip(index).limit(1)
+        items = list(finder_cursor)
+        if items:
+            return items[0]
+        else:
+            raise IndexError("no such item for Cursor instance")
 
     def _create_iterator(self) -> Iterator[DocumentType]:
         self._ensure_not_started()
@@ -159,55 +268,6 @@ class Cursor:
         )
         return iterator
 
-    def _copy(
-        self,
-        *,
-        limit: Optional[int] = None,
-        skip: Optional[int] = None,
-        started: Optional[bool] = None,
-        sort: Optional[Dict[str, Any]] = None,
-    ) -> Cursor:
-        new_cursor = Cursor(
-            collection=self._collection,
-            filter=self._filter,
-            projection=self._projection,
-        )
-        # Cursor treated as mutable within this function scope:
-        new_cursor._limit = limit if limit is not None else self._limit
-        new_cursor._skip = skip if skip is not None else self._skip
-        new_cursor._started = started if started is not None else self._started
-        new_cursor._sort = sort if sort is not None else self._sort
-        if started is False:
-            new_cursor._retrieved = 0
-            new_cursor._alive = True
-        else:
-            new_cursor._retrieved = self._retrieved
-            new_cursor._alive = self._alive
-        return new_cursor
-
-    @property
-    def address(self) -> str:
-        """Return the api_endpoint used by this cursor."""
-        return self._collection._astra_db_collection.base_path
-
-    @property
-    def alive(self) -> bool:
-        return self._alive
-
-    def clone(self) -> Cursor:
-        return self._copy(started=False)
-
-    def close(self) -> None:
-        self._alive = False
-
-    @property
-    def collection(self) -> Collection:
-        return self._collection
-
-    @property
-    def cursor_id(self) -> int:
-        return id(self)
-
     def distinct(self, key: str) -> List[Any]:
         """
         This works on a fresh pristine copy of the cursor
@@ -216,35 +276,3 @@ class Cursor:
         return list(
             {document[key] for document in self._copy(started=False) if key in document}
         )
-
-    def limit(self, limit: Optional[int]) -> Cursor:
-        self._ensure_not_started()
-        self._ensure_alive()
-        self._limit = limit if limit != 0 else None
-        return self
-
-    @property
-    def retrieved(self) -> int:
-        return self._retrieved
-
-    def rewind(self) -> Cursor:
-        self._started = False
-        self._retrieved = 0
-        self._alive = True
-        self._iterator = None
-        return self
-
-    def skip(self, skip: Optional[int]) -> Cursor:
-        self._ensure_not_started()
-        self._ensure_alive()
-        self._skip = skip
-        return self
-
-    def sort(
-        self,
-        sort: Optional[Dict[str, Any]],
-    ) -> Cursor:
-        self._ensure_not_started()
-        self._ensure_alive()
-        self._sort = sort
-        return self
