@@ -173,44 +173,6 @@ class TestCollectionsSync:
         )
         assert col1 == col2
 
-    @pytest.mark.describe("test errors for unsupported Collection methods, sync")
-    def test_collection_unsupported_methods_sync(
-        self,
-        sync_collection_instance: Collection,
-    ) -> None:
-        with pytest.raises(TypeError):
-            sync_collection_instance.find_raw_batches(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.aggregate(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.aggregate_raw_batches(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.watch(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.rename(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.create_index(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.create_indexes(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.drop_index(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.drop_indexes(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.list_indexes(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.index_information(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.create_search_index(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.create_search_indexes(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.drop_search_index(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.list_search_indexes(1, "x")
-        with pytest.raises(TypeError):
-            sync_collection_instance.update_search_index(1, "x")
-
     @pytest.mark.describe("test collection conversions with caller mutableness, sync")
     def test_collection_conversions_caller_mutableness_sync(
         self,

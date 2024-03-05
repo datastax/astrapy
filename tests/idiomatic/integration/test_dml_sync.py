@@ -351,3 +351,105 @@ class TestDMLSync:
                 ordered=False,
             )
         assert {doc["_id"] for doc in col.find()} == {"a", "b", "c", "d", "e"}
+
+    @pytest.mark.describe("test of collection find_one, sync")
+    def test_collection_find_one_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+        col.insert_many(
+            [
+                {"_id": "?", "seq": 0, "kind": "punctuation"},
+                {"_id": "a", "seq": 1, "kind": "letter"},
+                {"_id": "b", "seq": 2, "kind": "letter"},
+            ]
+        )
+
+        fo1 = col.find_one({"kind": "frog"})
+        assert fo1 is None
+
+        Nski = 1
+        Nlim = 10
+        Nsor = {"seq": 1}
+        Nfil = {"kind": "letter"}
+
+        # case 0000 of find-pattern matrix
+        doc0000 = col.find_one(skip=None, limit=None, sort=None, filter=None)
+        assert doc0000 is not None
+        assert doc0000["seq"] in {0, 1, 2}
+
+        # case 0001
+        doc0001 = col.find_one(skip=None, limit=None, sort=None, filter=Nfil)
+        assert doc0001 is not None
+        assert doc0001["seq"] in {1, 2}
+
+        # case 0010
+        doc0010 = col.find_one(skip=None, limit=None, sort=Nsor, filter=None)
+        assert doc0010 is not None
+        assert doc0010["seq"] == 0
+
+        # case 0011
+        doc0011 = col.find_one(skip=None, limit=None, sort=Nsor, filter=Nfil)
+        assert doc0011 is not None
+        assert doc0011["seq"] == 1
+
+        # case 0100
+        doc0100 = col.find_one(skip=None, limit=Nlim, sort=None, filter=None)
+        assert doc0100 is not None
+        assert doc0100["seq"] in {0, 1, 2}
+
+        # case 0101
+        doc0101 = col.find_one(skip=None, limit=Nlim, sort=None, filter=Nfil)
+        assert doc0101 is not None
+        assert doc0101["seq"] in {1, 2}
+
+        # case 0110
+        doc0110 = col.find_one(skip=None, limit=Nlim, sort=Nsor, filter=None)
+        assert doc0110 is not None
+        assert doc0110["seq"] == 0
+
+        # case 0111
+        doc0111 = col.find_one(skip=None, limit=Nlim, sort=Nsor, filter=Nfil)
+        assert doc0111 is not None
+        assert doc0111["seq"] == 1
+
+        # case 1000
+        # col.find_one(skip=Nski, limit=None, sort=None, filter=None) ...
+
+        # case 1001
+        # col.find_one(skip=Nski, limit=None, sort=None, filter=Nfil) ...
+
+        # case 1010
+        doc1010 = col.find_one(skip=Nski, limit=None, sort=Nsor, filter=None)
+        assert doc1010 is not None
+        assert doc1010["seq"] == 1
+
+        # case 1011
+        doc1011 = col.find_one(skip=Nski, limit=None, sort=Nsor, filter=Nfil)
+        assert doc1011 is not None
+        assert doc1011["seq"] == 2
+
+        # case 1100
+        # col.find_one(skip=Nski, limit=Nlim, sort=None, filter=None) ...
+
+        # case 1101
+        # col.find_one(skip=Nski, limit=Nlim, sort=None, filter=Nfil) ...
+
+        # case 1110
+        doc1110 = col.find_one(skip=Nski, limit=Nlim, sort=Nsor, filter=None)
+        assert doc1110 is not None
+        assert doc1110["seq"] == 1
+
+        # case 1111
+        doc1111 = col.find_one(skip=Nski, limit=Nlim, sort=Nsor, filter=Nfil)
+        assert doc1111 is not None
+        assert doc1111["seq"] == 2
+
+        # projection
+        doc_full = col.find_one(skip=Nski, limit=Nlim, sort=Nsor, filter=Nfil)
+        doc_proj = col.find_one(
+            skip=Nski, limit=Nlim, sort=Nsor, filter=Nfil, projection={"kind": True}
+        )
+        assert doc_proj == {"_id": "b", "kind": "letter"}
+        assert doc_full == {"_id": "b", "seq": 2, "kind": "letter"}

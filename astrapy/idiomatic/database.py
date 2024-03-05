@@ -19,7 +19,7 @@ from types import TracebackType
 from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
 
 from astrapy.db import AstraDB, AsyncAstraDB
-from astrapy.idiomatic.utils import raise_unsupported_parameter, unsupported
+
 
 if TYPE_CHECKING:
     from astrapy.idiomatic.collection import AsyncCollection, Collection
@@ -245,14 +245,7 @@ class Database:
         self,
         *,
         namespace: Optional[str] = None,
-        filter: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
-        if filter:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="list_collections",
-                parameter_name="filter",
-            )
         if namespace:
             _client = self._astra_db.copy(namespace=namespace)
         else:
@@ -274,14 +267,7 @@ class Database:
         self,
         *,
         namespace: Optional[str] = None,
-        filter: Optional[Dict[str, Any]] = None,
     ) -> List[str]:
-        if filter:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="list_collection_names",
-                parameter_name="filter",
-            )
         if namespace:
             _client = self._astra_db.copy(namespace=namespace)
         else:
@@ -295,21 +281,6 @@ class Database:
         else:
             # we know this is a list of strings
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
-
-    @unsupported
-    def aggregate(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def cursor_command(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def dereference(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def watch(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    def validate_collection(*pargs: Any, **kwargs: Any) -> Any: ...
 
 
 class AsyncDatabase:
@@ -500,14 +471,7 @@ class AsyncDatabase:
         self,
         *,
         namespace: Optional[str] = None,
-        filter: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
-        if filter:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="list_collections",
-                parameter_name="filter",
-            )
         _client: AsyncAstraDB
         if namespace:
             _client = self._astra_db.copy(namespace=namespace)
@@ -530,14 +494,7 @@ class AsyncDatabase:
         self,
         *,
         namespace: Optional[str] = None,
-        filter: Optional[Dict[str, Any]] = None,
     ) -> List[str]:
-        if filter:
-            raise_unsupported_parameter(
-                class_name=self.__class__.__name__,
-                method_name="list_collection_names",
-                parameter_name="filter",
-            )
         gc_response = await self._astra_db.copy(namespace=namespace).get_collections()
         if "collections" not in gc_response.get("status", {}):
             raise ValueError(
@@ -547,18 +504,3 @@ class AsyncDatabase:
         else:
             # we know this is a list of strings
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
-
-    @unsupported
-    async def aggregate(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def cursor_command(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def dereference(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def watch(*pargs: Any, **kwargs: Any) -> Any: ...
-
-    @unsupported
-    async def validate_collection(*pargs: Any, **kwargs: Any) -> Any: ...
