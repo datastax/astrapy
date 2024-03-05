@@ -646,3 +646,35 @@ class TestDMLAsync:
         assert resp_pr2 is not None
         assert set(resp_pr2.keys()) == {"mode"}
         await acol.delete_many({})
+
+    @pytest.mark.describe("test of collection find_one_and_delete, async")
+    async def test_collection_find_one_and_delete_sync(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        await async_empty_collection.insert_one({"doc": 1, "group": "A"})
+        await async_empty_collection.insert_one({"doc": 2, "group": "B"})
+        await async_empty_collection.insert_one({"doc": 3, "group": "A"})
+        assert await async_empty_collection.count_documents(filter={}) == 3
+
+        fo_result1 = await async_empty_collection.find_one_and_delete({"group": "A"})
+        assert fo_result1 is not None
+        assert set(fo_result1.keys()) == {"_id", "doc", "group"}
+        assert await async_empty_collection.count_documents(filter={}) == 2
+
+        fo_result2 = await async_empty_collection.find_one_and_delete(
+            {"group": "B"}, projection=["doc"]
+        )
+        assert fo_result2 is not None
+        assert set(fo_result2.keys()) == {"_id", "doc"}
+        assert await async_empty_collection.count_documents(filter={}) == 1
+
+        fo_result3 = await async_empty_collection.find_one_and_delete(
+            {"group": "A"}, projection={"_id": False, "group": False}
+        )
+        assert fo_result3 is not None
+        assert set(fo_result3.keys()) == {"_id", "doc"}
+        assert await async_empty_collection.count_documents(filter={}) == 0
+
+        fo_result4 = await async_empty_collection.find_one_and_delete({}, sort={"f": 1})
+        assert fo_result4 is None

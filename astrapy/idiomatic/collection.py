@@ -279,6 +279,29 @@ class Collection:
                 f"(gotten '${json.dumps(fo_response)}')"
             )
 
+    def find_one_and_delete(
+        self,
+        filter: Dict[str, Any],
+        *,
+        projection: Optional[ProjectionType] = None,
+        sort: Optional[Dict[str, Any]] = None,
+    ) -> Union[DocumentType, None]:
+        _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
+        target_document = self.find_one(
+            filter=filter, projection=_projection, sort=sort
+        )
+        if target_document is not None:
+            target_id = target_document["_id"]
+            self.delete_one({"_id": target_id})
+            # this is not an API atomic operation.
+            # If someone deletes the document between the find and the delete,
+            # this delete would silently be a no-op and we'd be returning the
+            # document. By a 'infinitesimal' shift-backward of the time of this
+            # operation, we recover a non-surprising behaviour. So:
+            return target_document
+        else:
+            return target_document
+
     def delete_one(
         self,
         filter: Dict[str, Any],
@@ -581,6 +604,29 @@ class AsyncCollection:
                 "Could not complete a find_one_and_replace operation. "
                 f"(gotten '${json.dumps(fo_response)}')"
             )
+
+    async def find_one_and_delete(
+        self,
+        filter: Dict[str, Any],
+        *,
+        projection: Optional[ProjectionType] = None,
+        sort: Optional[Dict[str, Any]] = None,
+    ) -> Union[DocumentType, None]:
+        _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
+        target_document = await self.find_one(
+            filter=filter, projection=_projection, sort=sort
+        )
+        if target_document is not None:
+            target_id = target_document["_id"]
+            await self.delete_one({"_id": target_id})
+            # this is not an API atomic operation.
+            # If someone deletes the document between the find and the delete,
+            # this delete would silently be a no-op and we'd be returning the
+            # document. By a 'infinitesimal' shift-backward of the time of this
+            # operation, we recover a non-surprising behaviour. So:
+            return target_document
+        else:
+            return target_document
 
     async def delete_one(
         self,

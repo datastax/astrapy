@@ -632,3 +632,35 @@ class TestDMLSync:
         assert resp_pr2 is not None
         assert set(resp_pr2.keys()) == {"mode"}
         col.delete_many({})
+
+    @pytest.mark.describe("test of collection find_one_and_delete, sync")
+    def test_collection_find_one_and_delete_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        sync_empty_collection.insert_one({"doc": 1, "group": "A"})
+        sync_empty_collection.insert_one({"doc": 2, "group": "B"})
+        sync_empty_collection.insert_one({"doc": 3, "group": "A"})
+        assert sync_empty_collection.count_documents(filter={}) == 3
+
+        fo_result1 = sync_empty_collection.find_one_and_delete({"group": "A"})
+        assert fo_result1 is not None
+        assert set(fo_result1.keys()) == {"_id", "doc", "group"}
+        assert sync_empty_collection.count_documents(filter={}) == 2
+
+        fo_result2 = sync_empty_collection.find_one_and_delete(
+            {"group": "B"}, projection=["doc"]
+        )
+        assert fo_result2 is not None
+        assert set(fo_result2.keys()) == {"_id", "doc"}
+        assert sync_empty_collection.count_documents(filter={}) == 1
+
+        fo_result3 = sync_empty_collection.find_one_and_delete(
+            {"group": "A"}, projection={"_id": False, "group": False}
+        )
+        assert fo_result3 is not None
+        assert set(fo_result3.keys()) == {"_id", "doc"}
+        assert sync_empty_collection.count_documents(filter={}) == 0
+
+        fo_result4 = sync_empty_collection.find_one_and_delete({}, sort={"f": 1})
+        assert fo_result4 is None
