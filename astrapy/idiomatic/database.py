@@ -71,6 +71,7 @@ def _recast_api_collection_dict(api_coll_dict: Dict[str, Any]) -> Dict[str, Any]
     recast_dict = {k: v for k, v in recast_dict0.items() if v}
     return recast_dict
 
+
 class Database:
     def __init__(
         self,
@@ -92,35 +93,32 @@ class Database:
             caller_name=caller_name,
             caller_version=caller_version,
         )
-        self.codec_options = []
-        self.read_preference = "NEAREST"
 
         self.client_options = {
-            'token': "",
-            'api_endpoint': "",
-            'api_path': "",
-            'api_version': "",
-            'namespace': "",
-            'caller_name': "",
-            'caller_version': ""
+            "token": "",
+            "api_endpoint": "",
+            "api_path": "",
+            "api_version": "",
+            "namespace": "",
+            "caller_name": "",
+            "caller_version": "",
         }
 
         astraDBOps = AstraDBOps(token=token)
 
         # Get the database object and name
         if "-" in api_endpoint:
-            self.dbid = api_endpoint.split('/')[2].split('.')[0][:36]
-            
-            details = astraDBOps.get_database(database=self.dbid)
-            self.name = details['info']['name']
-            self.region = details['info']['region']
-            self.database = {'id': self.dbid, 'name': self.name, 'region': self.region}
+            self.dbid = api_endpoint.split("/")[2].split(".")[0][:36]
 
-        else:
-            self.name = ""
-            self.region = ""
-            self.database = ""
-            print("No database found")
+            details = astraDBOps.get_database(database=self.dbid)
+            self.info: Optional[Dict[str, Any]] = details["info"]
+            self.name: Optional[str] = details["info"]["name"]
+            self.region: Optional[str] = details["info"]["region"]
+            self.database: Optional[Dict[str, Any]] = {
+                "id": self.dbid,
+                "name": self.name,
+                "region": self.region,
+            }
 
     def __getattr__(self, collection_name: str) -> Collection:
         return self.get_collection(name=collection_name)
@@ -255,12 +253,13 @@ class Database:
     def drop_collection(
         self, name_or_collection: Union[str, Collection]
     ) -> Dict[str, Any]:
+        
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import Collection
 
         if isinstance(name_or_collection, Collection):
             _namespace = name_or_collection.namespace
-            _name = name_or_collection._astra_db_collection.collection_name
+            _name: str = name_or_collection._astra_db_collection.collection_name
             dc_response = self._astra_db.copy(namespace=_namespace).delete_collection(
                 _name
             )
@@ -335,40 +334,20 @@ class AsyncDatabase:
 
         astraDBOps = AstraDBOps(token=token)
 
-        # Get the database object and name
         if "-" in api_endpoint:
-            self.dbid = api_endpoint.split('/')[2].split('.')[0][:36]
-            
+            self.dbid = api_endpoint.split("/")[2].split(".")[0][:36]
+
             details = astraDBOps.get_database(database=self.dbid)
-            self.info = details['info']
-            self.name = details['info']['name']
-            self.region = details['info']['region']
-            self.database = {'id': self.dbid, 'name': self.name, 'region': self.region}
-
-        else:
-            self.database: Optional[Dict[str, Any]] = {}
-            self.region: Optional[str] = None
-            self.database = Optional[str] = None
-            print("No database found")
-
+            self.info: Optional[Dict[str, Any]] = details["info"]
+            self.name: Optional[str] = details["info"]["name"]
+            self.region: Optional[str] = details["info"]["region"]
+            self.database: Optional[Dict[str, Any]] = {
+                "id": self.dbid,
+                "name": self.name,
+                "region": self.region,
+            }
 
         astraDBOps = AstraDBOps(token=token)
-
-        # Get the database object and name
-        if "-" in api_endpoint:
-            self.dbid = api_endpoint.split('/')[2].split('.')[0][:36]
-            
-            details = astraDBOps.get_database(database=self.dbid)
-            self.info = details['info']
-            self.name = details['info']['name']
-            self.region = details['info']['region']
-            self.database = {'id': self.dbid, 'name': self.name, 'region': self.region}
-
-        else:
-            self.database: Optional[Dict[str, Any]] = {}
-            self.region: Optional[str] = None
-            self.database = Optional[str] = None
-            print("No database found")
 
     async def __getattr__(self, collection_name: str) -> AsyncCollection:
         return await self.get_collection(name=collection_name)

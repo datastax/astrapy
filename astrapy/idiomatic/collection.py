@@ -288,7 +288,7 @@ class Collection:
                 f"(gotten '${json.dumps(dm_response)}')"
             )
 
-    def drop(self) -> None:
+    def drop(self)  -> Dict[str, Any]:
         name = self._astra_db_collection.collection_name
         return self._astra_db_collection.astra_db.delete_collection(name)
 
@@ -559,8 +559,6 @@ class AsyncCollection:
                 f"(gotten '${json.dumps(dm_response)}')"
             )
 
-    async def drop(self) -> None:
+    async def drop(self) -> Dict[str, Any]:
         name = self._astra_db_collection.collection_name
         return await self._astra_db_collection.astra_db.delete_collection(name)
-
-

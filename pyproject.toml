@@ -31,6 +31,7 @@ cassio = "~0.1.4"
 deprecation = "~2.1.0"
 toml = "^0.10.2"
 httpx = { version=">=0.25.2,<1", extras=["http2"] }
+black = "^24.2.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "~24.2.0"

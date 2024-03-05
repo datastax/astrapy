@@ -64,8 +64,12 @@ class TestDDLAsync:
         assert dc_response2 == {"ok": 1}
         await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
 
-    @pytest.mark.describe("should create and destroy an async vector collection using collection drop ")
-    async def test_create_destroy_collection(self, async_database: AsyncDatabase) -> None:
+    @pytest.mark.describe(
+        "should create and destroy an async vector collection using collection drop "
+    )
+    async def test_create_destroy_collection(
+        self, async_database: AsyncDatabase
+    ) -> None:
         col = await async_database.create_collection(
             name="async_collection_to_drop", dimension=2
         )
@@ -106,7 +110,6 @@ class TestDDLAsync:
             )
 
         await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
-
 
     @pytest.mark.describe("test of Database list_collections, async")
     async def test_database_list_collections_async(

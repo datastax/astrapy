@@ -16,6 +16,7 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
 
+
 class TestCollectionsAsync:
     @pytest.mark.describe("test of instantiating Collection, async")
     async def test_instantiate_collection_async(
@@ -72,4 +73,3 @@ class TestCollectionsAsync:
             caller_version="c_v1",
         )
         assert col1 == col2
-

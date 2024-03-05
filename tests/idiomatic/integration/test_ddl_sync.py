@@ -22,6 +22,7 @@ from ..conftest import (
 from astrapy.api import APIRequestError
 from astrapy import Collection, Database
 
+
 class TestDDLSync:
     @pytest.mark.describe("test of collection creation, get, and then drop, sync")
     def test_collection_lifecycle_sync(
@@ -98,7 +99,9 @@ class TestDDLSync:
 
         sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
 
-    @pytest.mark.describe("should create and destroy a vector collection using collection drop ")
+    @pytest.mark.describe(
+        "should create and destroy a vector collection using collection drop "
+    )
     def test_create_destroy_collection(self, sync_database: Database) -> None:
         col = sync_database.create_collection(
             name="sync_collection_to_drop", dimension=2
@@ -107,16 +110,18 @@ class TestDDLSync:
         assert del_res["status"]["ok"] == 1
 
     @pytest.mark.describe("should get information about the database")
-    def test_db_info(self, sync_database: Database,) -> None:
-            name = sync_database.name
-            region = sync_database.region
-            id = sync_database.dbid
-            client_options = sync_database.client_options
-            assert name is not None
-            assert region is not None
-            assert id is not None
-            assert client_options is not None
-
+    def test_db_info(
+        self,
+        sync_database: Database,
+    ) -> None:
+        name = sync_database.name
+        region = sync_database.region
+        id = sync_database.dbid
+        client_options = sync_database.client_options
+        assert name is not None
+        assert region is not None
+        assert id is not None
+        assert client_options is not None
 
     @pytest.mark.describe("test of Database list_collections, sync")
     def test_database_list_collections_sync(
@@ -125,7 +130,6 @@ class TestDDLSync:
         sync_collection: Collection,
     ) -> None:
         assert TEST_COLLECTION_NAME in sync_database.list_collection_names()
-
 
     @pytest.mark.describe("test of Database list_collections unsupported filter, sync")
     def test_database_list_collections_filter_sync(
