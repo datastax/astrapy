@@ -268,24 +268,30 @@ class Collection:
         self,
         filter: Dict[str, Any],
     ) -> DeleteResult:
-        dm_response = self._astra_db_collection.delete_many(filter=filter)
-        if "deletedCount" in dm_response.get("status", {}):
-            deleted_count = dm_response["status"]["deletedCount"]
+        dm_responses = self._astra_db_collection.chunked_delete_many(filter=filter)
+        deleted_counts = [
+            resp["status"]["deletedCount"]
+            for resp in dm_responses
+            if "deletedCount" in resp.get("status", {})
+        ]
+        if deleted_counts:
+            # the "-1" occurs when len(deleted_counts) == 1 only
+            deleted_count = sum(deleted_counts)
             if deleted_count == -1:
                 return DeleteResult(
                     deleted_count=None,
-                    raw_result=dm_response,
+                    raw_result=dm_responses,
                 )
             else:
-                # expected a non-negative integer:
+                # expected a non-negative integer (None :
                 return DeleteResult(
                     deleted_count=deleted_count,
-                    raw_result=dm_response,
+                    raw_result=dm_responses,
                 )
         else:
             raise ValueError(
-                "Could not complete a delete_many operation. "
-                f"(gotten '${json.dumps(dm_response)}')"
+                "Could not complete a chunked_delete_many operation. "
+                f"(gotten '${json.dumps(dm_responses)}')"
             )
 
 
@@ -535,22 +541,30 @@ class AsyncCollection:
         *,
         let: Optional[int] = None,
     ) -> DeleteResult:
-        dm_response = await self._astra_db_collection.delete_many(filter=filter)
-        if "deletedCount" in dm_response.get("status", {}):
-            deleted_count = dm_response["status"]["deletedCount"]
+        dm_responses = await self._astra_db_collection.chunked_delete_many(
+            filter=filter
+        )
+        deleted_counts = [
+            resp["status"]["deletedCount"]
+            for resp in dm_responses
+            if "deletedCount" in resp.get("status", {})
+        ]
+        if deleted_counts:
+            # the "-1" occurs when len(deleted_counts) == 1 only
+            deleted_count = sum(deleted_counts)
             if deleted_count == -1:
                 return DeleteResult(
                     deleted_count=None,
-                    raw_result=dm_response,
+                    raw_result=dm_responses,
                 )
             else:
-                # expected a non-negative integer:
+                # expected a non-negative integer (None :
                 return DeleteResult(
                     deleted_count=deleted_count,
-                    raw_result=dm_response,
+                    raw_result=dm_responses,
                 )
         else:
             raise ValueError(
-                "Could not complete a delete_many operation. "
-                f"(gotten '${json.dumps(dm_response)}')"
+                "Could not complete a chunked_delete_many operation. "
+                f"(gotten '${json.dumps(dm_responses)}')"
             )

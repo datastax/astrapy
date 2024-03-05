@@ -80,6 +80,39 @@ class TestDMLAsync:
         assert do_result1.deleted_count == 2
         assert await async_empty_collection.count_documents(filter={}) == 1
 
+    @pytest.mark.describe("test of collection truncating delete_many, async")
+    async def test_collection_truncating_delete_many_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        await async_empty_collection.insert_one({"doc": 1, "group": "A"})
+        await async_empty_collection.insert_one({"doc": 2, "group": "B"})
+        await async_empty_collection.insert_one({"doc": 3, "group": "A"})
+        assert (await async_empty_collection.count_documents(filter={})) == 3
+        do_result1 = await async_empty_collection.delete_many({})
+        assert isinstance(do_result1, DeleteResult)
+        assert do_result1.acknowledged is True
+        assert do_result1.deleted_count is None
+        assert (await async_empty_collection.count_documents(filter={})) == 0
+
+    @pytest.mark.describe("test of collection chunk-requiring delete_many, async")
+    async def test_collection_chunked_delete_many_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        await async_empty_collection.insert_many(
+            [{"doc": i, "group": "A"} for i in range(50)]
+        )
+        await async_empty_collection.insert_many(
+            [{"doc": i, "group": "B"} for i in range(10)]
+        )
+        assert (await async_empty_collection.count_documents(filter={})) == 60
+        do_result1 = await async_empty_collection.delete_many({"group": "A"})
+        assert isinstance(do_result1, DeleteResult)
+        assert do_result1.acknowledged is True
+        assert do_result1.deleted_count == 50
+        assert (await async_empty_collection.count_documents(filter={})) == 10
+
     @pytest.mark.describe("test of collection find, async")
     async def test_collection_find_async(
         self,

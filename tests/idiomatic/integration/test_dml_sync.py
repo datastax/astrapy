@@ -76,6 +76,35 @@ class TestDMLSync:
         assert do_result1.deleted_count == 2
         assert sync_empty_collection.count_documents(filter={}) == 1
 
+    @pytest.mark.describe("test of collection truncating delete_many, sync")
+    def test_collection_truncating_delete_many_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        sync_empty_collection.insert_one({"doc": 1, "group": "A"})
+        sync_empty_collection.insert_one({"doc": 2, "group": "B"})
+        sync_empty_collection.insert_one({"doc": 3, "group": "A"})
+        assert sync_empty_collection.count_documents(filter={}) == 3
+        do_result1 = sync_empty_collection.delete_many({})
+        assert isinstance(do_result1, DeleteResult)
+        assert do_result1.acknowledged is True
+        assert do_result1.deleted_count is None
+        assert sync_empty_collection.count_documents(filter={}) == 0
+
+    @pytest.mark.describe("test of collection chunk-requiring delete_many, sync")
+    def test_collection_chunked_delete_many_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        sync_empty_collection.insert_many([{"doc": i, "group": "A"} for i in range(50)])
+        sync_empty_collection.insert_many([{"doc": i, "group": "B"} for i in range(10)])
+        assert sync_empty_collection.count_documents(filter={}) == 60
+        do_result1 = sync_empty_collection.delete_many({"group": "A"})
+        assert isinstance(do_result1, DeleteResult)
+        assert do_result1.acknowledged is True
+        assert do_result1.deleted_count == 50
+        assert sync_empty_collection.count_documents(filter={}) == 10
+
     @pytest.mark.describe("test of collection find, sync")
     def test_collection_find_sync(
         self,
