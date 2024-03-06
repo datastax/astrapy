@@ -98,6 +98,14 @@ class Collection:
         else:
             return False
 
+    def __call__(self, *pargs: Any, **kwargs: Any) -> None:
+        raise TypeError(
+            f"'{self.__class__.__name__}' object is not callable. If you "
+            f"meant to call the '{self.name}' method on a "
+            f"'{self.database.__class__.__name__}' object "
+            "it is failing because no such method exists."
+        )
+
     def copy(
         self,
         *,
@@ -569,6 +577,14 @@ class AsyncCollection:
             return self._astra_db_collection == other._astra_db_collection
         else:
             return False
+
+    def __call__(self, *pargs: Any, **kwargs: Any) -> None:
+        raise TypeError(
+            f"'{self.__class__.__name__}' object is not callable. If you "
+            f"meant to call the '{self.name}' method on a "
+            f"'{self.database.__class__.__name__}' object "
+            "it is failing because no such method exists."
+        )
 
     def copy(
         self,

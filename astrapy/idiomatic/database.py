@@ -305,11 +305,11 @@ class AsyncDatabase:
             caller_version=caller_version,
         )
 
-    async def __getattr__(self, collection_name: str) -> AsyncCollection:
-        return await self.get_collection(name=collection_name)
+    def __getattr__(self, collection_name: str) -> AsyncCollection:
+        return self.to_sync().get_collection(name=collection_name).to_async()
 
-    async def __getitem__(self, collection_name: str) -> AsyncCollection:
-        return await self.get_collection(name=collection_name)
+    def __getitem__(self, collection_name: str) -> AsyncCollection:
+        return self.to_sync().get_collection(name=collection_name).to_async()
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db={self._astra_db}"]'
