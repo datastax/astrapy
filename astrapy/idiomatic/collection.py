@@ -37,6 +37,18 @@ from astrapy.idiomatic.cursors import AsyncCursor, Cursor
 INSERT_MANY_CONCURRENCY = 20
 
 
+def _prepare_update_info(status: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        **{
+            "n": status.get("matchedCount") + (1 if "upsertedId" in status else 0),  # type: ignore[operator]
+            "updatedExisting": (status.get("modifiedCount") or 0) > 0,
+            "ok": 1.0,
+            "nModified": status.get("modifiedCount"),
+        },
+        **({"upserted": status["upsertedId"]} if "upsertedId" in status else {}),
+    }
+
+
 class Collection:
     def __init__(
         self,
@@ -301,20 +313,7 @@ class Collection:
         )
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
-            _update_info = {
-                **{
-                    "n": fo_status.get("matchedCount")
-                    + (1 if "upsertedId" in fo_status else 0),
-                    "updatedExisting": (fo_status.get("modifiedCount") or 0) > 0,
-                    "ok": 1.0,
-                    "nModified": fo_status.get("modifiedCount"),
-                },
-                **(
-                    {"upserted": fo_status["upsertedId"]}
-                    if "upsertedId" in fo_status
-                    else {}
-                ),
-            }
+            _update_info = _prepare_update_info(fo_status)
             return UpdateResult(
                 raw_result=fo_status,
                 update_info=_update_info,
@@ -352,6 +351,34 @@ class Collection:
                 return None
             else:
                 return ret_document  # type: ignore[no-any-return]
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_update operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
+            )
+
+    def update_one(
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        *,
+        upsert: bool = False,
+    ) -> UpdateResult:
+        options = {
+            "upsert": upsert,
+        }
+        fo_response = self._astra_db_collection.find_one_and_update(
+            update=update,
+            filter=filter,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            fo_status = fo_response.get("status") or {}
+            _update_info = _prepare_update_info(fo_status)
+            return UpdateResult(
+                raw_result=fo_status,
+                update_info=_update_info,
+            )
         else:
             raise ValueError(
                 "Could not complete a find_one_and_update operation. "
@@ -701,20 +728,7 @@ class AsyncCollection:
         )
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
-            _update_info = {
-                **{
-                    "n": fo_status.get("matchedCount")
-                    + (1 if "upsertedId" in fo_status else 0),
-                    "updatedExisting": (fo_status.get("modifiedCount") or 0) > 0,
-                    "ok": 1.0,
-                    "nModified": fo_status.get("modifiedCount"),
-                },
-                **(
-                    {"upserted": fo_status["upsertedId"]}
-                    if "upsertedId" in fo_status
-                    else {}
-                ),
-            }
+            _update_info = _prepare_update_info(fo_status)
             return UpdateResult(
                 raw_result=fo_status,
                 update_info=_update_info,
@@ -752,6 +766,34 @@ class AsyncCollection:
                 return None
             else:
                 return ret_document  # type: ignore[no-any-return]
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_update operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
+            )
+
+    async def update_one(
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        *,
+        upsert: bool = False,
+    ) -> UpdateResult:
+        options = {
+            "upsert": upsert,
+        }
+        fo_response = await self._astra_db_collection.find_one_and_update(
+            update=update,
+            filter=filter,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            fo_status = fo_response.get("status") or {}
+            _update_info = _prepare_update_info(fo_status)
+            return UpdateResult(
+                raw_result=fo_status,
+                update_info=_update_info,
+            )
         else:
             raise ValueError(
                 "Could not complete a find_one_and_update operation. "

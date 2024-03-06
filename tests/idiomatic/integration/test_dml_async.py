@@ -682,8 +682,43 @@ class TestDMLAsync:
         assert result4.update_info["nModified"] == 1
         assert "upserted" not in result4.update_info
 
+    @pytest.mark.describe("test of update_one, async")
+    async def test_collection_update_one_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+
+        result1 = await acol.update_one(filter={"a": 1}, update={"$set": {"b": 2}})
+        assert result1.update_info["n"] == 0
+        assert result1.update_info["updatedExisting"] is False
+        assert result1.update_info["nModified"] == 0
+        assert "upserted" not in result1.update_info
+
+        result2 = await acol.update_one(
+            filter={"a": 1}, update={"$set": {"b": 2}}, upsert=True
+        )
+        assert result2.update_info["n"] == 1
+        assert result2.update_info["updatedExisting"] is False
+        assert result2.update_info["nModified"] == 0
+        assert "upserted" in result2.update_info
+
+        result3 = await acol.update_one(filter={"b": 2}, update={"$set": {"c": 3}})
+        assert result3.update_info["n"] == 1
+        assert result3.update_info["updatedExisting"] is True
+        assert result3.update_info["nModified"] == 1
+        assert "upserted" not in result3.update_info
+
+        result4 = await acol.update_one(
+            filter={"c": 3}, update={"$set": {"d": 4}}, upsert=True
+        )
+        assert result4.update_info["n"] == 1
+        assert result4.update_info["updatedExisting"] is True
+        assert result4.update_info["nModified"] == 1
+        assert "upserted" not in result4.update_info
+
     @pytest.mark.describe("test of collection find_one_and_delete, async")
-    async def test_collection_find_one_and_delete_sync(
+    async def test_collection_find_one_and_delete_async(
         self,
         async_empty_collection: AsyncCollection,
     ) -> None:
