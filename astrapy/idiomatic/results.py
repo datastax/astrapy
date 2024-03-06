@@ -27,12 +27,14 @@ class DeleteResult:
 
 @dataclass
 class InsertOneResult:
+    raw_result: Dict[str, Any]
     inserted_id: Any
     acknowledged: bool = True
 
 
 @dataclass
 class InsertManyResult:
+    raw_result: List[Dict[str, Any]]
     inserted_ids: List[Any]
     acknowledged: bool = True
 
@@ -41,4 +43,16 @@ class InsertManyResult:
 class UpdateResult:
     raw_result: Dict[str, Any]
     update_info: Dict[str, Any]
+    acknowledged: bool = True
+
+
+@dataclass
+class BulkWriteResult:
+    bulk_api_results: Dict[int, Union[Dict[str, Any], List[Dict[str, Any]]]]
+    deleted_count: Optional[int]
+    inserted_count: int
+    matched_count: int
+    modified_count: int
+    upserted_count: int
+    upserted_ids: Dict[int, Any]
     acknowledged: bool = True

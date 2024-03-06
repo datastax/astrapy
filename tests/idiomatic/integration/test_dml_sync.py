@@ -18,6 +18,15 @@ from astrapy import Collection
 from astrapy.results import DeleteResult, InsertOneResult
 from astrapy.api import APIRequestError
 from astrapy.idiomatic.types import ReturnDocument
+from astrapy.idiomatic.operations import (
+    InsertOne,
+    InsertMany,
+    UpdateOne,
+    UpdateMany,
+    ReplaceOne,
+    DeleteOne,
+    DeleteMany,
+)
 
 
 class TestDMLSync:
@@ -928,3 +937,73 @@ class TestDMLSync:
         assert resp_pr2 is not None
         assert set(resp_pr2.keys()) == {"f"}
         col.delete_many({})
+
+    @pytest.mark.describe("test of ordered bulk_write, sync")
+    def test_collection_ordered_bulk_write_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+
+        bw_ops = [
+            InsertOne({"seq": 0}),
+            InsertMany([{"seq": 1}, {"seq": 2}, {"seq": 3}]),
+            UpdateOne({"seq": 0}, {"$set": {"edited": 1}}),
+            UpdateMany({"seq": {"$gt": 0}}, {"$set": {"positive": True}}),
+            ReplaceOne({"edited": 1}, {"seq": 0, "edited": 2}),
+            DeleteOne({"seq": 1}),
+            DeleteMany({"seq": {"$gt": 1}}),
+            ReplaceOne(
+                {"no": "matches"}, {"_id": "seq4", "from_upsert": True}, upsert=True
+            ),
+        ]
+
+        bw_result = col.bulk_write(bw_ops)
+
+        assert bw_result.deleted_count == 3
+        assert bw_result.inserted_count == 5
+        assert bw_result.matched_count == 5
+        assert bw_result.modified_count == 5
+        assert bw_result.upserted_count == 1
+        assert set(bw_result.upserted_ids.keys()) == {7}
+
+        found_docs = sorted(
+            col.find({}),
+            key=lambda doc: doc.get("seq", 10),
+        )
+        assert len(found_docs) == 2
+        assert found_docs[0]["seq"] == 0
+        assert found_docs[0]["edited"] == 2
+        assert "_id" in found_docs[0]
+        assert len(found_docs[0]) == 3
+        assert found_docs[1] == {"_id": "seq4", "from_upsert": True}
+
+    @pytest.mark.describe("test of unordered bulk_write, sync")
+    def test_collection_unordered_bulk_write_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+
+        bw_u_ops = [
+            InsertOne({"a": 1}),
+            UpdateOne({"b": 1}, {"$set": {"newfield": True}}, upsert=True),
+            DeleteMany({"x": 100}),
+        ]
+
+        bw_u_result = col.bulk_write(bw_u_ops, ordered=False)
+
+        assert bw_u_result.deleted_count == 0
+        assert bw_u_result.inserted_count == 2
+        assert bw_u_result.matched_count == 0
+        assert bw_u_result.modified_count == 0
+        assert bw_u_result.upserted_count == 1
+        assert set(bw_u_result.upserted_ids.keys()) == {1}
+
+        found_docs = list(col.find({}))
+        no_id_found_docs = [
+            {k: v for k, v in doc.items() if k != "_id"} for doc in found_docs
+        ]
+        assert len(no_id_found_docs) == 2
+        assert {"a": 1} in no_id_found_docs
+        assert {"b": 1, "newfield": True} in no_id_found_docs

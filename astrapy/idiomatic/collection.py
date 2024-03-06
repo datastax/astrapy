@@ -14,8 +14,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
-from typing import Any, Dict, Iterable, List, Optional, Union
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict, Iterable, List, Optional, Union, TYPE_CHECKING
 
 from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
 from astrapy.idiomatic.types import (
@@ -30,11 +32,17 @@ from astrapy.idiomatic.results import (
     InsertManyResult,
     InsertOneResult,
     UpdateResult,
+    BulkWriteResult,
 )
 from astrapy.idiomatic.cursors import AsyncCursor, Cursor
 
 
+if TYPE_CHECKING:
+    from astrapy.idiomatic.operations import AsyncBaseOperation, BaseOperation
+
+
 INSERT_MANY_CONCURRENCY = 20
+BULK_WRITE_CONCURRENCY = 10
 
 
 def _prepare_update_info(status: Dict[str, Any]) -> Dict[str, Any]:
@@ -143,6 +151,7 @@ class Collection:
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
                 return InsertOneResult(
+                    raw_result=io_response,
                     inserted_id=inserted_id,
                 )
             else:
@@ -195,7 +204,11 @@ class Collection:
                 if isinstance(response, dict)
                 for ins_id in (response.get("status") or {}).get("insertedIds", [])
             ]
-            return InsertManyResult(inserted_ids=inserted_ids)
+            return InsertManyResult(
+                # if we are here, cim_responses are all dicts (no exceptions)
+                raw_result=cim_responses,  # type: ignore[arg-type]
+                inserted_ids=inserted_ids,
+            )
 
     def find(
         self,
@@ -473,7 +486,7 @@ class Collection:
                     raw_result=dm_responses,
                 )
             else:
-                # expected a non-negative integer (None :
+                # per API specs, deleted_count has to be a non-negative integer.
                 return DeleteResult(
                     deleted_count=deleted_count,
                     raw_result=dm_responses,
@@ -483,6 +496,37 @@ class Collection:
                 "Could not complete a chunked_delete_many operation. "
                 f"(gotten '${json.dumps(dm_responses)}')"
             )
+
+    def bulk_write(
+        self,
+        requests: Iterable[BaseOperation],
+        *,
+        ordered: bool = True,
+    ) -> BulkWriteResult:
+        # lazy importing here against circular-import error
+        from astrapy.idiomatic.operations import reduce_bulk_write_results
+
+        if ordered:
+            bulk_write_results = [
+                operation.execute(self, operation_i)
+                for operation_i, operation in enumerate(requests)
+            ]
+            return reduce_bulk_write_results(bulk_write_results)
+        else:
+            with ThreadPoolExecutor(max_workers=BULK_WRITE_CONCURRENCY) as executor:
+                bulk_write_futures = [
+                    executor.submit(
+                        operation.execute,
+                        self,
+                        operation_i,
+                    )
+                    for operation_i, operation in enumerate(requests)
+                ]
+                bulk_write_results = [
+                    bulk_write_future.result()
+                    for bulk_write_future in bulk_write_futures
+                ]
+                return reduce_bulk_write_results(bulk_write_results)
 
 
 class AsyncCollection:
@@ -579,6 +623,7 @@ class AsyncCollection:
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
                 return InsertOneResult(
+                    raw_result=io_response,
                     inserted_id=inserted_id,
                 )
             else:
@@ -631,7 +676,11 @@ class AsyncCollection:
                 if isinstance(response, dict)
                 for ins_id in (response.get("status") or {}).get("insertedIds", [])
             ]
-            return InsertManyResult(inserted_ids=inserted_ids)
+            return InsertManyResult(
+                # if we are here, cim_responses are all dicts (no exceptions)
+                raw_result=cim_responses,  # type: ignore[arg-type]
+                inserted_ids=inserted_ids,
+            )
 
     def find(
         self,
@@ -916,7 +965,7 @@ class AsyncCollection:
                     raw_result=dm_responses,
                 )
             else:
-                # expected a non-negative integer (None :
+                # per API specs, deleted_count has to be a non-negative integer.
                 return DeleteResult(
                     deleted_count=deleted_count,
                     raw_result=dm_responses,
@@ -926,3 +975,40 @@ class AsyncCollection:
                 "Could not complete a chunked_delete_many operation. "
                 f"(gotten '${json.dumps(dm_responses)}')"
             )
+
+    async def bulk_write(
+        self,
+        requests: Iterable[AsyncBaseOperation],
+        *,
+        ordered: bool = True,
+    ) -> BulkWriteResult:
+        # lazy importing here against circular-import error
+        from astrapy.idiomatic.operations import reduce_bulk_write_results
+
+        if ordered:
+            bulk_write_results = [
+                await operation.execute(self, operation_i)
+                for operation_i, operation in enumerate(requests)
+            ]
+            return reduce_bulk_write_results(bulk_write_results)
+        else:
+            sem = asyncio.Semaphore(BULK_WRITE_CONCURRENCY)
+
+            async def concurrent_execute_operation(
+                operation: AsyncBaseOperation,
+                collection: AsyncCollection,
+                index_in_bulk_write: int,
+            ) -> BulkWriteResult:
+                async with sem:
+                    return await operation.execute(
+                        collection=collection, index_in_bulk_write=index_in_bulk_write
+                    )
+
+            tasks = [
+                asyncio.create_task(
+                    concurrent_execute_operation(operation, self, operation_i)
+                )
+                for operation_i, operation in enumerate(requests)
+            ]
+            bulk_write_results = await asyncio.gather(*tasks)
+            return reduce_bulk_write_results(bulk_write_results)
