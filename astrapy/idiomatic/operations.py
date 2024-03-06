@@ -26,7 +26,7 @@ from typing import (
 
 from astrapy.idiomatic.types import DocumentType
 from astrapy.idiomatic.results import BulkWriteResult
-from astrapy.idiomatic.collection import Collection
+from astrapy.idiomatic.collection import AsyncCollection, Collection
 
 
 def reduce_bulk_write_results(results: List[BulkWriteResult]) -> BulkWriteResult:
@@ -292,6 +292,245 @@ class DeleteMany(BaseOperation):
         self, collection: Collection, index_in_bulk_write: int
     ) -> BulkWriteResult:
         op_result = collection.delete_many(filter=self.filter)
+        return BulkWriteResult(
+            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            deleted_count=op_result.deleted_count,
+            inserted_count=0,
+            matched_count=0,
+            modified_count=0,
+            upserted_count=0,
+            upserted_ids={},
+        )
+
+
+class AsyncBaseOperation(ABC):
+    @abstractmethod
+    async def execute(
+        self, collection: AsyncCollection, index_in_bulk_write: int
+    ) -> BulkWriteResult: ...
+
+
+@dataclass
+class AsyncInsertOne(AsyncBaseOperation):
+    document: DocumentType
+
+    def __init__(
+        self,
+        document: DocumentType,
+    ) -> None:
+        self.document = document
+
+    async def execute(
+        self, collection: AsyncCollection, index_in_bulk_write: int
+    ) -> BulkWriteResult:
+        op_result = await collection.insert_one(document=self.document)
+        return BulkWriteResult(
+            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            deleted_count=0,
+            inserted_count=1,
+            matched_count=0,
+            modified_count=0,
+            upserted_count=0,
+            upserted_ids={},
+        )
+
+
+@dataclass
+class AsyncInsertMany(AsyncBaseOperation):
+    documents: Iterable[DocumentType]
+    ordered: bool
+
+    def __init__(
+        self,
+        documents: Iterable[DocumentType],
+        ordered: bool = True,
+    ) -> None:
+        self.documents = documents
+        self.ordered = ordered
+
+    async def execute(
+        self, collection: AsyncCollection, index_in_bulk_write: int
+    ) -> BulkWriteResult:
+        op_result = await collection.insert_many(
+            documents=self.documents,
+            ordered=self.ordered,
+        )
+        return BulkWriteResult(
+            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            deleted_count=0,
+            inserted_count=len(op_result.inserted_ids),
+            matched_count=0,
+            modified_count=0,
+            upserted_count=0,
+            upserted_ids={},
+        )
+
+
+@dataclass
+class AsyncUpdateOne(AsyncBaseOperation):
+    filter: Dict[str, Any]
+    update: Dict[str, Any]
+    upsert: bool
+
+    def __init__(
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        *,
+        upsert: bool = False,
+    ) -> None:
+        self.filter = filter
+        self.update = update
+        self.upsert = upsert
+
+    async def execute(
+        self, collection: AsyncCollection, index_in_bulk_write: int
+    ) -> BulkWriteResult:
+        op_result = await collection.update_one(
+            filter=self.filter,
+            update=self.update,
+            upsert=self.upsert,
+        )
+        inserted_count = 1 if "upserted" in op_result.update_info else 0
+        matched_count = (op_result.update_info.get("n") or 0) - inserted_count
+        if "upserted" in op_result.update_info:
+            upserted_ids = {index_in_bulk_write: op_result.update_info["upserted"]}
+        else:
+            upserted_ids = {}
+        return BulkWriteResult(
+            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            deleted_count=0,
+            inserted_count=inserted_count,
+            matched_count=matched_count,
+            modified_count=op_result.update_info.get("nModified") or 0,
+            upserted_count=1 if "upserted" in op_result.update_info else 0,
+            upserted_ids=upserted_ids,
+        )
+
+
+@dataclass
+class AsyncUpdateMany(AsyncBaseOperation):
+    filter: Dict[str, Any]
+    update: Dict[str, Any]
+    upsert: bool
+
+    def __init__(
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        *,
+        upsert: bool = False,
+    ) -> None:
+        self.filter = filter
+        self.update = update
+        self.upsert = upsert
+
+    async def execute(
+        self, collection: AsyncCollection, index_in_bulk_write: int
+    ) -> BulkWriteResult:
+        op_result = await collection.update_many(
+            filter=self.filter,
+            update=self.update,
+            upsert=self.upsert,
+        )
+        inserted_count = 1 if "upserted" in op_result.update_info else 0
+        matched_count = (op_result.update_info.get("n") or 0) - inserted_count
+        if "upserted" in op_result.update_info:
+            upserted_ids = {index_in_bulk_write: op_result.update_info["upserted"]}
+        else:
+            upserted_ids = {}
+        return BulkWriteResult(
+            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            deleted_count=0,
+            inserted_count=inserted_count,
+            matched_count=matched_count,
+            modified_count=op_result.update_info.get("nModified") or 0,
+            upserted_count=1 if "upserted" in op_result.update_info else 0,
+            upserted_ids=upserted_ids,
+        )
+
+
+@dataclass
+class AsyncReplaceOne(AsyncBaseOperation):
+    filter: Dict[str, Any]
+    replacement: DocumentType
+    upsert: bool
+
+    def __init__(
+        self,
+        filter: Dict[str, Any],
+        replacement: DocumentType,
+        *,
+        upsert: bool = False,
+    ) -> None:
+        self.filter = filter
+        self.replacement = replacement
+        self.upsert = upsert
+
+    async def execute(
+        self, collection: AsyncCollection, index_in_bulk_write: int
+    ) -> BulkWriteResult:
+        op_result = await collection.replace_one(
+            filter=self.filter,
+            replacement=self.replacement,
+            upsert=self.upsert,
+        )
+        inserted_count = 1 if "upserted" in op_result.update_info else 0
+        matched_count = (op_result.update_info.get("n") or 0) - inserted_count
+        if "upserted" in op_result.update_info:
+            upserted_ids = {index_in_bulk_write: op_result.update_info["upserted"]}
+        else:
+            upserted_ids = {}
+        return BulkWriteResult(
+            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            deleted_count=0,
+            inserted_count=inserted_count,
+            matched_count=matched_count,
+            modified_count=op_result.update_info.get("nModified") or 0,
+            upserted_count=1 if "upserted" in op_result.update_info else 0,
+            upserted_ids=upserted_ids,
+        )
+
+
+@dataclass
+class AsyncDeleteOne(AsyncBaseOperation):
+    filter: Dict[str, Any]
+
+    def __init__(
+        self,
+        filter: Dict[str, Any],
+    ) -> None:
+        self.filter = filter
+
+    async def execute(
+        self, collection: AsyncCollection, index_in_bulk_write: int
+    ) -> BulkWriteResult:
+        op_result = await collection.delete_one(filter=self.filter)
+        return BulkWriteResult(
+            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            deleted_count=op_result.deleted_count,
+            inserted_count=0,
+            matched_count=0,
+            modified_count=0,
+            upserted_count=0,
+            upserted_ids={},
+        )
+
+
+@dataclass
+class AsyncDeleteMany(AsyncBaseOperation):
+    filter: Dict[str, Any]
+
+    def __init__(
+        self,
+        filter: Dict[str, Any],
+    ) -> None:
+        self.filter = filter
+
+    async def execute(
+        self, collection: AsyncCollection, index_in_bulk_write: int
+    ) -> BulkWriteResult:
+        op_result = await collection.delete_many(filter=self.filter)
         return BulkWriteResult(
             bulk_api_results={index_in_bulk_write: op_result.raw_result},
             deleted_count=op_result.deleted_count,

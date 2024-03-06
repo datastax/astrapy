@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Iterable, List, Optional, Union, TYPE_CHECKING
@@ -37,7 +38,7 @@ from astrapy.idiomatic.cursors import AsyncCursor, Cursor
 
 
 if TYPE_CHECKING:
-    from astrapy.idiomatic.operations import BaseOperation
+    from astrapy.idiomatic.operations import AsyncBaseOperation, BaseOperation
 
 
 INSERT_MANY_CONCURRENCY = 20
@@ -485,7 +486,7 @@ class Collection:
                     raw_result=dm_responses,
                 )
             else:
-                # expected a non-negative integer (None :
+                # per API specs, deleted_count has to be a non-negative integer.
                 return DeleteResult(
                     deleted_count=deleted_count,
                     raw_result=dm_responses,
@@ -964,7 +965,7 @@ class AsyncCollection:
                     raw_result=dm_responses,
                 )
             else:
-                # expected a non-negative integer (None :
+                # per API specs, deleted_count has to be a non-negative integer.
                 return DeleteResult(
                     deleted_count=deleted_count,
                     raw_result=dm_responses,
@@ -974,3 +975,40 @@ class AsyncCollection:
                 "Could not complete a chunked_delete_many operation. "
                 f"(gotten '${json.dumps(dm_responses)}')"
             )
+
+    async def bulk_write(
+        self,
+        requests: Iterable[AsyncBaseOperation],
+        *,
+        ordered: bool = True,
+    ) -> BulkWriteResult:
+        # lazy importing here against circular-import error
+        from astrapy.idiomatic.operations import reduce_bulk_write_results
+
+        if ordered:
+            bulk_write_results = [
+                await operation.execute(self, operation_i)
+                for operation_i, operation in enumerate(requests)
+            ]
+            return reduce_bulk_write_results(bulk_write_results)
+        else:
+            sem = asyncio.Semaphore(BULK_WRITE_CONCURRENCY)
+
+            async def concurrent_execute_operation(
+                operation: AsyncBaseOperation,
+                collection: AsyncCollection,
+                index_in_bulk_write: int,
+            ) -> BulkWriteResult:
+                async with sem:
+                    return await operation.execute(
+                        collection=collection, index_in_bulk_write=index_in_bulk_write
+                    )
+
+            tasks = [
+                asyncio.create_task(
+                    concurrent_execute_operation(operation, self, operation_i)
+                )
+                for operation_i, operation in enumerate(requests)
+            ]
+            bulk_write_results = await asyncio.gather(*tasks)
+            return reduce_bulk_write_results(bulk_write_results)
