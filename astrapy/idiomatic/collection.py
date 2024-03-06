@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union, TYPE_CHECKING
 
 from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
 from astrapy.idiomatic.types import (
@@ -30,8 +30,13 @@ from astrapy.idiomatic.results import (
     InsertManyResult,
     InsertOneResult,
     UpdateResult,
+    BulkWriteResult,
 )
 from astrapy.idiomatic.cursors import AsyncCursor, Cursor
+
+
+if TYPE_CHECKING:
+    from astrapy.idiomatic.operations import BaseOperation
 
 
 INSERT_MANY_CONCURRENCY = 20
@@ -143,6 +148,7 @@ class Collection:
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
                 return InsertOneResult(
+                    raw_result=io_response,
                     inserted_id=inserted_id,
                 )
             else:
@@ -195,7 +201,11 @@ class Collection:
                 if isinstance(response, dict)
                 for ins_id in (response.get("status") or {}).get("insertedIds", [])
             ]
-            return InsertManyResult(inserted_ids=inserted_ids)
+            return InsertManyResult(
+                # if we are here, cim_responses are all dicts (no exceptions)
+                raw_result=cim_responses,  # type: ignore[arg-type]
+                inserted_ids=inserted_ids,
+            )
 
     def find(
         self,
@@ -484,6 +494,24 @@ class Collection:
                 f"(gotten '${json.dumps(dm_responses)}')"
             )
 
+    def bulk_write(
+        self,
+        requests: Iterable[BaseOperation],
+        *,
+        ordered: bool = True,
+    ) -> BulkWriteResult:
+        # lazy importing here against circular-import error
+        from astrapy.idiomatic.operations import reduce_bulk_write_results
+
+        if ordered:
+            bulk_write_results = [
+                operation.execute(self, operation_i)
+                for operation_i, operation in enumerate(requests)
+            ]
+            return reduce_bulk_write_results(bulk_write_results)
+        else:
+            raise NotImplementedError
+
 
 class AsyncCollection:
     def __init__(
@@ -579,6 +607,7 @@ class AsyncCollection:
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
                 return InsertOneResult(
+                    raw_result=io_response,
                     inserted_id=inserted_id,
                 )
             else:
@@ -631,7 +660,11 @@ class AsyncCollection:
                 if isinstance(response, dict)
                 for ins_id in (response.get("status") or {}).get("insertedIds", [])
             ]
-            return InsertManyResult(inserted_ids=inserted_ids)
+            return InsertManyResult(
+                # if we are here, cim_responses are all dicts (no exceptions)
+                raw_result=cim_responses,  # type: ignore[arg-type]
+                inserted_ids=inserted_ids,
+            )
 
     def find(
         self,
