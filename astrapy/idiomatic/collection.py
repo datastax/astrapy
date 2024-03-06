@@ -18,13 +18,35 @@ import json
 from typing import Any, Dict, Iterable, List, Optional, Union
 
 from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
-from astrapy.idiomatic.types import DocumentType, ProjectionType
+from astrapy.idiomatic.types import (
+    DocumentType,
+    ProjectionType,
+    ReturnDocument,
+    normalize_optional_projection,
+)
 from astrapy.idiomatic.database import AsyncDatabase, Database
-from astrapy.idiomatic.results import DeleteResult, InsertManyResult, InsertOneResult
+from astrapy.idiomatic.results import (
+    DeleteResult,
+    InsertManyResult,
+    InsertOneResult,
+    UpdateResult,
+)
 from astrapy.idiomatic.cursors import AsyncCursor, Cursor
 
 
 INSERT_MANY_CONCURRENCY = 20
+
+
+def _prepare_update_info(status: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        **{
+            "n": status.get("matchedCount") + (1 if "upsertedId" in status else 0),  # type: ignore[operator]
+            "updatedExisting": (status.get("modifiedCount") or 0) > 0,
+            "ok": 1.0,
+            "nModified": status.get("modifiedCount"),
+        },
+        **({"upserted": status["upsertedId"]} if "upsertedId" in status else {}),
+    }
 
 
 class Collection:
@@ -220,6 +242,7 @@ class Collection:
     def distinct(
         self,
         key: str,
+        *,
         filter: Optional[Dict[str, Any]] = None,
     ) -> List[Any]:
         return self.find(
@@ -239,6 +262,173 @@ class Collection:
                 "Could not complete a count_documents operation. "
                 f"(gotten '${json.dumps(cd_response)}')"
             )
+
+    def find_one_and_replace(
+        self,
+        filter: Dict[str, Any],
+        replacement: DocumentType,
+        *,
+        projection: Optional[ProjectionType] = None,
+        sort: Optional[Dict[str, Any]] = None,
+        upsert: bool = False,
+        return_document: ReturnDocument = ReturnDocument.BEFORE,
+    ) -> Union[DocumentType, None]:
+        options = {
+            "returnDocument": return_document.value,
+            "upsert": upsert,
+        }
+        fo_response = self._astra_db_collection.find_one_and_replace(
+            replacement=replacement,
+            filter=filter,
+            projection=normalize_optional_projection(projection),
+            sort=sort,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            ret_document = fo_response.get("data", {}).get("document")
+            if ret_document is None:
+                return None
+            else:
+                return ret_document  # type: ignore[no-any-return]
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_replace operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
+            )
+
+    def replace_one(
+        self,
+        filter: Dict[str, Any],
+        replacement: DocumentType,
+        *,
+        upsert: bool = False,
+    ) -> UpdateResult:
+        options = {
+            "upsert": upsert,
+        }
+        fo_response = self._astra_db_collection.find_one_and_replace(
+            replacement=replacement,
+            filter=filter,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            fo_status = fo_response.get("status") or {}
+            _update_info = _prepare_update_info(fo_status)
+            return UpdateResult(
+                raw_result=fo_status,
+                update_info=_update_info,
+            )
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_replace operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
+            )
+
+    def find_one_and_update(
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        *,
+        projection: Optional[ProjectionType] = None,
+        sort: Optional[Dict[str, Any]] = None,
+        upsert: bool = False,
+        return_document: ReturnDocument = ReturnDocument.BEFORE,
+    ) -> Union[DocumentType, None]:
+        options = {
+            "returnDocument": return_document.value,
+            "upsert": upsert,
+        }
+        fo_response = self._astra_db_collection.find_one_and_update(
+            update=update,
+            filter=filter,
+            projection=normalize_optional_projection(projection),
+            sort=sort,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            ret_document = fo_response.get("data", {}).get("document")
+            if ret_document is None:
+                return None
+            else:
+                return ret_document  # type: ignore[no-any-return]
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_update operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
+            )
+
+    def update_one(
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        *,
+        upsert: bool = False,
+    ) -> UpdateResult:
+        options = {
+            "upsert": upsert,
+        }
+        fo_response = self._astra_db_collection.find_one_and_update(
+            update=update,
+            filter=filter,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            fo_status = fo_response.get("status") or {}
+            _update_info = _prepare_update_info(fo_status)
+            return UpdateResult(
+                raw_result=fo_status,
+                update_info=_update_info,
+            )
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_update operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
+            )
+
+    def update_many(
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        *,
+        upsert: bool = False,
+    ) -> UpdateResult:
+        options = {
+            "upsert": upsert,
+        }
+        um_response = self._astra_db_collection.update_many(
+            update=update,
+            filter=filter,
+            options=options,
+        )
+        um_status = um_response.get("status") or {}
+        _update_info = _prepare_update_info(um_status)
+        return UpdateResult(
+            raw_result=um_status,
+            update_info=_update_info,
+        )
+
+    def find_one_and_delete(
+        self,
+        filter: Dict[str, Any],
+        *,
+        projection: Optional[ProjectionType] = None,
+        sort: Optional[Dict[str, Any]] = None,
+    ) -> Union[DocumentType, None]:
+        _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
+        target_document = self.find_one(
+            filter=filter, projection=_projection, sort=sort
+        )
+        if target_document is not None:
+            target_id = target_document["_id"]
+            self.delete_one({"_id": target_id})
+            # this is not an API atomic operation.
+            # If someone deletes the document between the find and the delete,
+            # this delete would silently be a no-op and we'd be returning the
+            # document. By a 'infinitesimal' shift-backward of the time of this
+            # operation, we recover a non-surprising behaviour. So:
+            return target_document
+        else:
+            return target_document
 
     def delete_one(
         self,
@@ -268,24 +458,30 @@ class Collection:
         self,
         filter: Dict[str, Any],
     ) -> DeleteResult:
-        dm_response = self._astra_db_collection.delete_many(filter=filter)
-        if "deletedCount" in dm_response.get("status", {}):
-            deleted_count = dm_response["status"]["deletedCount"]
+        dm_responses = self._astra_db_collection.chunked_delete_many(filter=filter)
+        deleted_counts = [
+            resp["status"]["deletedCount"]
+            for resp in dm_responses
+            if "deletedCount" in resp.get("status", {})
+        ]
+        if deleted_counts:
+            # the "-1" occurs when len(deleted_counts) == 1 only
+            deleted_count = sum(deleted_counts)
             if deleted_count == -1:
                 return DeleteResult(
                     deleted_count=None,
-                    raw_result=dm_response,
+                    raw_result=dm_responses,
                 )
             else:
-                # expected a non-negative integer:
+                # expected a non-negative integer (None :
                 return DeleteResult(
                     deleted_count=deleted_count,
-                    raw_result=dm_response,
+                    raw_result=dm_responses,
                 )
         else:
             raise ValueError(
-                "Could not complete a delete_many operation. "
-                f"(gotten '${json.dumps(dm_response)}')"
+                "Could not complete a chunked_delete_many operation. "
+                f"(gotten '${json.dumps(dm_responses)}')"
             )
 
 
@@ -482,6 +678,7 @@ class AsyncCollection:
     async def distinct(
         self,
         key: str,
+        *,
         filter: Optional[Dict[str, Any]] = None,
     ) -> List[Any]:
         cursor = self.find(
@@ -502,6 +699,173 @@ class AsyncCollection:
                 "Could not complete a count_documents operation. "
                 f"(gotten '${json.dumps(cd_response)}')"
             )
+
+    async def find_one_and_replace(
+        self,
+        filter: Dict[str, Any],
+        replacement: DocumentType,
+        *,
+        projection: Optional[ProjectionType] = None,
+        sort: Optional[Dict[str, Any]] = None,
+        upsert: bool = False,
+        return_document: ReturnDocument = ReturnDocument.BEFORE,
+    ) -> Union[DocumentType, None]:
+        options = {
+            "returnDocument": return_document.value,
+            "upsert": upsert,
+        }
+        fo_response = await self._astra_db_collection.find_one_and_replace(
+            replacement=replacement,
+            filter=filter,
+            projection=normalize_optional_projection(projection),
+            sort=sort,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            ret_document = fo_response.get("data", {}).get("document")
+            if ret_document is None:
+                return None
+            else:
+                return ret_document  # type: ignore[no-any-return]
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_replace operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
+            )
+
+    async def replace_one(
+        self,
+        filter: Dict[str, Any],
+        replacement: DocumentType,
+        *,
+        upsert: bool = False,
+    ) -> UpdateResult:
+        options = {
+            "upsert": upsert,
+        }
+        fo_response = await self._astra_db_collection.find_one_and_replace(
+            replacement=replacement,
+            filter=filter,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            fo_status = fo_response.get("status") or {}
+            _update_info = _prepare_update_info(fo_status)
+            return UpdateResult(
+                raw_result=fo_status,
+                update_info=_update_info,
+            )
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_replace operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
+            )
+
+    async def find_one_and_update(
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        *,
+        projection: Optional[ProjectionType] = None,
+        sort: Optional[Dict[str, Any]] = None,
+        upsert: bool = False,
+        return_document: ReturnDocument = ReturnDocument.BEFORE,
+    ) -> Union[DocumentType, None]:
+        options = {
+            "returnDocument": return_document.value,
+            "upsert": upsert,
+        }
+        fo_response = await self._astra_db_collection.find_one_and_update(
+            update=update,
+            filter=filter,
+            projection=normalize_optional_projection(projection),
+            sort=sort,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            ret_document = fo_response.get("data", {}).get("document")
+            if ret_document is None:
+                return None
+            else:
+                return ret_document  # type: ignore[no-any-return]
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_update operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
+            )
+
+    async def update_one(
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        *,
+        upsert: bool = False,
+    ) -> UpdateResult:
+        options = {
+            "upsert": upsert,
+        }
+        fo_response = await self._astra_db_collection.find_one_and_update(
+            update=update,
+            filter=filter,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            fo_status = fo_response.get("status") or {}
+            _update_info = _prepare_update_info(fo_status)
+            return UpdateResult(
+                raw_result=fo_status,
+                update_info=_update_info,
+            )
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_update operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
+            )
+
+    async def update_many(
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        *,
+        upsert: bool = False,
+    ) -> UpdateResult:
+        options = {
+            "upsert": upsert,
+        }
+        um_response = await self._astra_db_collection.update_many(
+            update=update,
+            filter=filter,
+            options=options,
+        )
+        um_status = um_response.get("status") or {}
+        _update_info = _prepare_update_info(um_status)
+        return UpdateResult(
+            raw_result=um_status,
+            update_info=_update_info,
+        )
+
+    async def find_one_and_delete(
+        self,
+        filter: Dict[str, Any],
+        *,
+        projection: Optional[ProjectionType] = None,
+        sort: Optional[Dict[str, Any]] = None,
+    ) -> Union[DocumentType, None]:
+        _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
+        target_document = await self.find_one(
+            filter=filter, projection=_projection, sort=sort
+        )
+        if target_document is not None:
+            target_id = target_document["_id"]
+            await self.delete_one({"_id": target_id})
+            # this is not an API atomic operation.
+            # If someone deletes the document between the find and the delete,
+            # this delete would silently be a no-op and we'd be returning the
+            # document. By a 'infinitesimal' shift-backward of the time of this
+            # operation, we recover a non-surprising behaviour. So:
+            return target_document
+        else:
+            return target_document
 
     async def delete_one(
         self,
@@ -535,22 +899,30 @@ class AsyncCollection:
         *,
         let: Optional[int] = None,
     ) -> DeleteResult:
-        dm_response = await self._astra_db_collection.delete_many(filter=filter)
-        if "deletedCount" in dm_response.get("status", {}):
-            deleted_count = dm_response["status"]["deletedCount"]
+        dm_responses = await self._astra_db_collection.chunked_delete_many(
+            filter=filter
+        )
+        deleted_counts = [
+            resp["status"]["deletedCount"]
+            for resp in dm_responses
+            if "deletedCount" in resp.get("status", {})
+        ]
+        if deleted_counts:
+            # the "-1" occurs when len(deleted_counts) == 1 only
+            deleted_count = sum(deleted_counts)
             if deleted_count == -1:
                 return DeleteResult(
                     deleted_count=None,
-                    raw_result=dm_response,
+                    raw_result=dm_responses,
                 )
             else:
-                # expected a non-negative integer:
+                # expected a non-negative integer (None :
                 return DeleteResult(
                     deleted_count=deleted_count,
-                    raw_result=dm_response,
+                    raw_result=dm_responses,
                 )
         else:
             raise ValueError(
-                "Could not complete a delete_many operation. "
-                f"(gotten '${json.dumps(dm_response)}')"
+                "Could not complete a chunked_delete_many operation. "
+                f"(gotten '${json.dumps(dm_responses)}')"
             )

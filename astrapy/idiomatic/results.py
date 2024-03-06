@@ -15,13 +15,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 
 @dataclass
 class DeleteResult:
     deleted_count: Optional[int]
-    raw_result: Dict[str, Any]
+    raw_result: Union[Dict[str, Any], List[Dict[str, Any]]]
     acknowledged: bool = True
 
 
@@ -34,4 +34,11 @@ class InsertOneResult:
 @dataclass
 class InsertManyResult:
     inserted_ids: List[Any]
+    acknowledged: bool = True
+
+
+@dataclass
+class UpdateResult:
+    raw_result: Dict[str, Any]
+    update_info: Dict[str, Any]
     acknowledged: bool = True
