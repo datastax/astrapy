@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Iterable, List, Optional, Union, TYPE_CHECKING
 
 from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
 
 
 INSERT_MANY_CONCURRENCY = 20
+BULK_WRITE_CONCURRENCY = 10
 
 
 def _prepare_update_info(status: Dict[str, Any]) -> Dict[str, Any]:
@@ -510,7 +512,20 @@ class Collection:
             ]
             return reduce_bulk_write_results(bulk_write_results)
         else:
-            raise NotImplementedError
+            with ThreadPoolExecutor(max_workers=BULK_WRITE_CONCURRENCY) as executor:
+                bulk_write_futures = [
+                    executor.submit(
+                        operation.execute,
+                        self,
+                        operation_i,
+                    )
+                    for operation_i, operation in enumerate(requests)
+                ]
+                bulk_write_results = [
+                    bulk_write_future.result()
+                    for bulk_write_future in bulk_write_futures
+                ]
+                return reduce_bulk_write_results(bulk_write_results)
 
 
 class AsyncCollection:
