@@ -103,6 +103,8 @@ class Database:
             "caller_name": "",
             "caller_version": "",
         }
+        self._metadata_info = None
+        self.astraDBOps = AstraDBOps(token=token)
 
     @property
     def dbid(self) -> str:
@@ -112,6 +114,7 @@ class Database:
     
     @property
     def region(self) -> str:
+        print (self._metadata_info)
         if self._metadata_info is None:
             self._load_metadata()
         return self._metadata_info["region"]
@@ -129,9 +132,9 @@ class Database:
         return self._metadata_info["name"]
 
     def _load_metadata(self):
-        astraDBOps = AstraDBOps(token=token)
-        self.dbid = api_endpoint.split("/")[2].split(".")[0][:36]
-        details = astraDBOps.get_database(database=self.dbid)
+        
+        self.dbid = self.astra_db.api_endpoint.split("/")[2].split(".")[0][:36]
+        details = self.astraDBOps.get_database(database=self.dbid)
         response = details["info"]
 
         self._metadata_info = {
@@ -352,37 +355,34 @@ class AsyncDatabase:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+        self._metadata_info = None
+        self.astraDBOps = AstraDBOps(token=token)
 
-    @property
+  
     async def dbid(self) -> str:
         if self._metadata_info is None:
-            self._load_metadata()
+            await self._load_metadata()
         return self._metadata_info["dbid"]
     
-    @property
     async def region(self) -> str:
         if self._metadata_info is None:
             await self._load_metadata()
         return self._metadata_info["region"]
     
-    @property
     async def info(self) -> str:
         if self._metadata_info is None:
-            await self._load_metadata()
+           await self._load_metadata()
         return self._metadata_info["info"]
     
-    @property
     async def name(self) -> str:
         if self._metadata_info is None:
             await self._load_metadata()
         return self._metadata_info["name"]
 
     async def _load_metadata(self):
-        astraDBOps = AstraDBOps(token=token)
-        self.dbid = api_endpoint.split("/")[2].split(".")[0][:36]
-        details = await astraDBOps.get_database(database=self.dbid)
+        self.dbid = self.astra_db.api_endpoint.split("/")[2].split(".")[0][:36]
+        details = await self.astraDBOps.get_database(database=self.dbid)
         response = details["info"]
-        print (response)
 
         self._metadata_info = {
             "dbid": details["dbid"],

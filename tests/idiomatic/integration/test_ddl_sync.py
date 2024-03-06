@@ -110,7 +110,7 @@ class TestDDLSync:
         assert del_res["status"]["ok"] == 1
 
     @pytest.mark.describe(
-        "should give database metainformation, including region (sync)"
+        "should give database metainformation, including region, name and ID (sync)"
     )
     def test_get_database_info_sync(
         self, sync_database: Database
@@ -118,20 +118,6 @@ class TestDDLSync:
         assert sync_database.region is not None
         assert sync_database.name is not None
         assert sync_database.dbid is not None
-
-    @pytest.mark.describe("should get information about the database")
-    def test_db_info(
-        self,
-        sync_database: Database,
-    ) -> None:
-        name = sync_database.name
-        region = sync_database.region
-        id = sync_database.dbid
-        client_options = sync_database.client_options
-        assert name is not None
-        assert region is not None
-        assert id is not None
-        assert client_options is not None
 
     @pytest.mark.describe("test of Database list_collections, sync")
     def test_database_list_collections_sync(
