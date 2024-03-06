@@ -385,6 +385,28 @@ class Collection:
                 f"(gotten '${json.dumps(fo_response)}')"
             )
 
+    def update_many(
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        *,
+        upsert: bool = False,
+    ) -> UpdateResult:
+        options = {
+            "upsert": upsert,
+        }
+        um_response = self._astra_db_collection.update_many(
+            update=update,
+            filter=filter,
+            options=options,
+        )
+        um_status = um_response.get("status") or {}
+        _update_info = _prepare_update_info(um_status)
+        return UpdateResult(
+            raw_result=um_status,
+            update_info=_update_info,
+        )
+
     def find_one_and_delete(
         self,
         filter: Dict[str, Any],
@@ -799,6 +821,28 @@ class AsyncCollection:
                 "Could not complete a find_one_and_update operation. "
                 f"(gotten '${json.dumps(fo_response)}')"
             )
+
+    async def update_many(
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        *,
+        upsert: bool = False,
+    ) -> UpdateResult:
+        options = {
+            "upsert": upsert,
+        }
+        um_response = await self._astra_db_collection.update_many(
+            update=update,
+            filter=filter,
+            options=options,
+        )
+        um_status = um_response.get("status") or {}
+        _update_info = _prepare_update_info(um_status)
+        return UpdateResult(
+            raw_result=um_status,
+            update_info=_update_info,
+        )
 
     async def find_one_and_delete(
         self,

@@ -699,6 +699,39 @@ class TestDMLSync:
         assert result4.update_info["nModified"] == 1
         assert "upserted" not in result4.update_info
 
+    @pytest.mark.describe("test of update_many, sync")
+    def test_collection_update_many_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+        col.insert_many([{"a": 1, "seq": i} for i in range(4)])
+        col.insert_many([{"a": 2, "seq": i} for i in range(2)])
+
+        resp1 = col.update_many({"a": 1}, {"$set": {"n": 1}})
+        assert resp1.update_info["n"] == 4
+        assert resp1.update_info["updatedExisting"] is True
+        assert resp1.update_info["nModified"] == 4
+        assert "upserted" not in resp1.update_info
+
+        resp2 = col.update_many({"a": 1}, {"$set": {"n": 2}}, upsert=True)
+        assert resp2.update_info["n"] == 4
+        assert resp2.update_info["updatedExisting"] is True
+        assert resp2.update_info["nModified"] == 4
+        assert "upserted" not in resp2.update_info
+
+        resp3 = col.update_many({"a": 3}, {"$set": {"n": 3}})
+        assert resp3.update_info["n"] == 0
+        assert resp3.update_info["updatedExisting"] is False
+        assert resp3.update_info["nModified"] == 0
+        assert "upserted" not in resp3.update_info
+
+        resp4 = col.update_many({"a": 3}, {"$set": {"n": 4}}, upsert=True)
+        assert resp4.update_info["n"] == 1
+        assert resp4.update_info["updatedExisting"] is False
+        assert resp4.update_info["nModified"] == 0
+        assert "upserted" in resp4.update_info
+
     @pytest.mark.describe("test of collection find_one_and_delete, sync")
     def test_collection_find_one_and_delete_sync(
         self,

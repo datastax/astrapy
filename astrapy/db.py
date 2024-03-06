@@ -879,7 +879,10 @@ class AstraDBCollection:
         return response
 
     def update_many(
-        self, filter: Dict[str, Any], update: Dict[str, Any]
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
         Updates multiple documents in the collection.
@@ -889,7 +892,12 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the update operation.
         """
-        json_query = make_payload(top_level="updateMany", filter=filter, update=update)
+        json_query = make_payload(
+            top_level="updateMany",
+            filter=filter,
+            update=update,
+            options=options,
+        )
 
         response = self._request(
             method=http_methods.POST,
@@ -1910,7 +1918,10 @@ class AsyncAstraDBCollection:
         return response
 
     async def update_many(
-        self, filter: Dict[str, Any], update: Dict[str, Any]
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
         Updates multiple documents in the collection.
@@ -1920,7 +1931,12 @@ class AsyncAstraDBCollection:
         Returns:
             dict: The response from the database after the update operation.
         """
-        json_query = make_payload(top_level="updateMany", filter=filter, update=update)
+        json_query = make_payload(
+            top_level="updateMany",
+            filter=filter,
+            update=update,
+            options=options,
+        )
 
         response = await self._request(
             method=http_methods.POST,
