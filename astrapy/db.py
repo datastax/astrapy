@@ -211,6 +211,13 @@ class AstraDBCollection:
         response = restore_from_api(direct_response)
         return response
 
+    def post_raw_request(self, body: Dict[str, Any]) -> API_RESPONSE:
+        return self._request(
+            method=http_methods.POST,
+            path=self.base_path,
+            json_data=body,
+        )
+
     def _get(
         self, path: Optional[str] = None, options: Optional[Dict[str, Any]] = None
     ) -> Optional[API_RESPONSE]:
@@ -1280,6 +1287,13 @@ class AsyncAstraDBCollection:
         response = restore_from_api(adirect_response)
         return response
 
+    async def post_raw_request(self, body: Dict[str, Any]) -> API_RESPONSE:
+        return await self._request(
+            method=http_methods.POST,
+            path=self.base_path,
+            json_data=body,
+        )
+
     async def _get(
         self, path: Optional[str] = None, options: Optional[Dict[str, Any]] = None
     ) -> Optional[API_RESPONSE]:
@@ -2290,6 +2304,13 @@ class AstraDB:
         response = restore_from_api(direct_response)
         return response
 
+    def post_raw_request(self, body: Dict[str, Any]) -> API_RESPONSE:
+        return self._request(
+            method=http_methods.POST,
+            path=self.base_path,
+            json_data=body,
+        )
+
     def collection(self, collection_name: str) -> AstraDBCollection:
         """
         Retrieve a collection from the database.
@@ -2587,6 +2608,13 @@ class AsyncAstraDB:
         )
         response = restore_from_api(adirect_response)
         return response
+
+    async def post_raw_request(self, body: Dict[str, Any]) -> API_RESPONSE:
+        return await self._request(
+            method=http_methods.POST,
+            path=self.base_path,
+            json_data=body,
+        )
 
     async def collection(self, collection_name: str) -> AsyncAstraDBCollection:
         """

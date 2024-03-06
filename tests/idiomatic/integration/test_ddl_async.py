@@ -160,3 +160,34 @@ class TestDDLAsync:
             TEST_LOCAL_COLLECTION_NAME2
             not in await database_on_secondary.list_collection_names()
         )
+
+    @pytest.mark.describe("test of collection command, async")
+    async def test_collection_command_async(
+        self,
+        async_database: AsyncDatabase,
+        async_collection: AsyncCollection,
+    ) -> None:
+        cmd1 = await async_database.command(
+            {"countDocuments": {}}, collection_name=async_collection.name
+        )
+        assert isinstance(cmd1, dict)
+        assert isinstance(cmd1["status"]["count"], int)
+        cmd2 = await async_database.copy(namespace="...").command(
+            {"countDocuments": {}},
+            namespace=async_collection.namespace,
+            collection_name=async_collection.name,
+        )
+        assert cmd2 == cmd1
+
+    @pytest.mark.describe("test of database command, async")
+    async def test_database_command_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        cmd1 = await async_database.command({"findCollections": {}})
+        assert isinstance(cmd1, dict)
+        assert isinstance(cmd1["status"]["collections"], list)
+        cmd2 = await async_database.copy(namespace="...").command(
+            {"findCollections": {}}, namespace=async_database.namespace
+        )
+        assert cmd2 == cmd1

@@ -157,3 +157,34 @@ class TestDDLSync:
             TEST_LOCAL_COLLECTION_NAME2
             not in database_on_secondary.list_collection_names()
         )
+
+    @pytest.mark.describe("test of collection command, sync")
+    def test_collection_command_sync(
+        self,
+        sync_database: Database,
+        sync_collection: Collection,
+    ) -> None:
+        cmd1 = sync_database.command(
+            {"countDocuments": {}}, collection_name=sync_collection.name
+        )
+        assert isinstance(cmd1, dict)
+        assert isinstance(cmd1["status"]["count"], int)
+        cmd2 = sync_database.copy(namespace="...").command(
+            {"countDocuments": {}},
+            namespace=sync_collection.namespace,
+            collection_name=sync_collection.name,
+        )
+        assert cmd2 == cmd1
+
+    @pytest.mark.describe("test of database command, sync")
+    def test_database_command_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        cmd1 = sync_database.command({"findCollections": {}})
+        assert isinstance(cmd1, dict)
+        assert isinstance(cmd1["status"]["collections"], list)
+        cmd2 = sync_database.copy(namespace="...").command(
+            {"findCollections": {}}, namespace=sync_database.namespace
+        )
+        assert cmd2 == cmd1
