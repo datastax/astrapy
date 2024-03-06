@@ -25,7 +25,12 @@ from astrapy.idiomatic.types import (
     normalize_optional_projection,
 )
 from astrapy.idiomatic.database import AsyncDatabase, Database
-from astrapy.idiomatic.results import DeleteResult, InsertManyResult, InsertOneResult
+from astrapy.idiomatic.results import (
+    DeleteResult,
+    InsertManyResult,
+    InsertOneResult,
+    UpdateResult,
+)
 from astrapy.idiomatic.cursors import AsyncCursor, Cursor
 
 
@@ -273,6 +278,47 @@ class Collection:
                 return None
             else:
                 return ret_document  # type: ignore[no-any-return]
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_replace operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
+            )
+
+    def replace_one(
+        self,
+        filter: Dict[str, Any],
+        replacement: DocumentType,
+        *,
+        upsert: bool = False,
+    ) -> UpdateResult:
+        options = {
+            "upsert": upsert,
+        }
+        fo_response = self._astra_db_collection.find_one_and_replace(
+            replacement=replacement,
+            filter=filter,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            fo_status = fo_response.get("status") or {}
+            _update_info = {
+                **{
+                    "n": fo_status.get("matchedCount")
+                    + (1 if "upsertedId" in fo_status else 0),
+                    "updatedExisting": (fo_status.get("modifiedCount") or 0) > 0,
+                    "ok": 1.0,
+                    "nModified": fo_status.get("modifiedCount"),
+                },
+                **(
+                    {"upserted": fo_status["upsertedId"]}
+                    if "upsertedId" in fo_status
+                    else {}
+                ),
+            }
+            return UpdateResult(
+                raw_result=fo_status,
+                update_info=_update_info,
+            )
         else:
             raise ValueError(
                 "Could not complete a find_one_and_replace operation. "
@@ -632,6 +678,47 @@ class AsyncCollection:
                 return None
             else:
                 return ret_document  # type: ignore[no-any-return]
+        else:
+            raise ValueError(
+                "Could not complete a find_one_and_replace operation. "
+                f"(gotten '${json.dumps(fo_response)}')"
+            )
+
+    async def replace_one(
+        self,
+        filter: Dict[str, Any],
+        replacement: DocumentType,
+        *,
+        upsert: bool = False,
+    ) -> UpdateResult:
+        options = {
+            "upsert": upsert,
+        }
+        fo_response = await self._astra_db_collection.find_one_and_replace(
+            replacement=replacement,
+            filter=filter,
+            options=options,
+        )
+        if "document" in fo_response.get("data", {}):
+            fo_status = fo_response.get("status") or {}
+            _update_info = {
+                **{
+                    "n": fo_status.get("matchedCount")
+                    + (1 if "upsertedId" in fo_status else 0),
+                    "updatedExisting": (fo_status.get("modifiedCount") or 0) > 0,
+                    "ok": 1.0,
+                    "nModified": fo_status.get("modifiedCount"),
+                },
+                **(
+                    {"upserted": fo_status["upsertedId"]}
+                    if "upsertedId" in fo_status
+                    else {}
+                ),
+            }
+            return UpdateResult(
+                raw_result=fo_status,
+                update_info=_update_info,
+            )
         else:
             raise ValueError(
                 "Could not complete a find_one_and_replace operation. "

@@ -35,3 +35,10 @@ class InsertOneResult:
 class InsertManyResult:
     inserted_ids: List[Any]
     acknowledged: bool = True
+
+
+@dataclass
+class UpdateResult:
+    raw_result: Dict[str, Any]
+    update_info: Dict[str, Any]
+    acknowledged: bool = True
