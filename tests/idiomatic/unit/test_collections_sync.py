@@ -50,6 +50,7 @@ class TestCollectionsSync:
             caller_version="c_v",
         )
         assert col1 == col1.copy()
+        assert col1 == col1.with_options()
         assert col1 == col1.to_async().to_sync()
 
     @pytest.mark.describe("test of Collection rich copy, sync")
@@ -88,6 +89,20 @@ class TestCollectionsSync:
             namespace=sync_database.namespace,
         )
         assert col3 == col1
+
+        assert col1.with_options(name="x") != col1
+        assert (
+            col1.with_options(name="x").with_options(name="id_test_collection") == col1
+        )
+        assert col1.with_options(caller_name="x") != col1
+        assert (
+            col1.with_options(caller_name="x").with_options(caller_name="c_n") == col1
+        )
+        assert col1.with_options(caller_version="x") != col1
+        assert (
+            col1.with_options(caller_version="x").with_options(caller_version="c_v")
+            == col1
+        )
 
     @pytest.mark.describe("test of Collection rich conversions, sync")
     def test_rich_convert_collection_sync(

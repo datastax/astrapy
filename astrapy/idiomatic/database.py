@@ -134,6 +134,19 @@ class Database:
             api_version=api_version or self._astra_db.api_version,
         )
 
+    def with_options(
+        self,
+        *,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> Database:
+        return self.copy(
+            namespace=namespace,
+            caller_name=caller_name,
+            caller_version=caller_version,
+        )
+
     def to_async(
         self,
         *,
@@ -375,6 +388,19 @@ class AsyncDatabase:
             caller_version=caller_version or self._astra_db.caller_version,
             api_path=api_path or self._astra_db.api_path,
             api_version=api_version or self._astra_db.api_version,
+        )
+
+    def with_options(
+        self,
+        *,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> AsyncDatabase:
+        return self.copy(
+            namespace=namespace,
+            caller_name=caller_name,
+            caller_version=caller_version,
         )
 
     def to_sync(

@@ -123,6 +123,19 @@ class Collection:
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )
 
+    def with_options(
+        self,
+        *,
+        name: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> Collection:
+        return self.copy(
+            name=name,
+            caller_name=caller_name,
+            caller_version=caller_version,
+        )
+
     def to_async(
         self,
         *,
@@ -601,6 +614,19 @@ class AsyncCollection:
             namespace=namespace or self.namespace,
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
+        )
+
+    def with_options(
+        self,
+        *,
+        name: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> AsyncCollection:
+        return self.copy(
+            name=name,
+            caller_name=caller_name,
+            caller_version=caller_version,
         )
 
     def to_sync(
