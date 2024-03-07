@@ -41,7 +41,7 @@ class TestDDLSync:
             TEST_LOCAL_COLLECTION_NAME_B,
             indexing={"allow": ["z"]},
         )
-        lc_response = sync_database.list_collections()
+        lc_response = list(sync_database.list_collections())
         #
         expected_coll_dict = {
             "name": TEST_LOCAL_COLLECTION_NAME,
