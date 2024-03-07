@@ -23,6 +23,11 @@ ProjectionType = Union[Iterable[str], Dict[str, bool]]
 
 
 class ReturnDocument(Enum):
+    """
+    Admitted values for the `return_document` parameter in 
+    `find_one_and_replace` and `find_one_and_update` collection
+    methods.
+    """
     BEFORE = "before"
     AFTER = "after"
 

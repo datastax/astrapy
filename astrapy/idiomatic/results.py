@@ -20,6 +20,16 @@ from typing import Any, Dict, List, Optional, Union
 
 @dataclass
 class DeleteResult:
+    """
+    Class that represents the result of delete operations.
+
+    Attributes:
+        deleted_count: number of deleted documents
+        raw_result: response/responses from the Data API call.
+            Depending on the exact delete method being used, this
+            can be a list of raw responses or a single raw response.
+        acknowledged: whether the server acknowledged the write operation
+    """
     deleted_count: Optional[int]
     raw_result: Union[Dict[str, Any], List[Dict[str, Any]]]
     acknowledged: bool = True
@@ -27,6 +37,14 @@ class DeleteResult:
 
 @dataclass
 class InsertOneResult:
+    """
+    Class that represents the result of insert_one operations.
+
+    Attributes:
+        raw_result: response from the Data API call
+        inserted_id: the ID of the inserted document
+        acknowledged: whether the server acknowledged the write operation
+    """
     raw_result: Dict[str, Any]
     inserted_id: Any
     acknowledged: bool = True
@@ -34,6 +52,14 @@ class InsertOneResult:
 
 @dataclass
 class InsertManyResult:
+    """
+    Class that represents the result of insert_many operations.
+
+    Attributes:
+        raw_result: response from the Data API call
+        inserted_ids: list of the IDs of the inserted documents
+        acknowledged: whether the server acknowledged the write operation
+    """
     raw_result: List[Dict[str, Any]]
     inserted_ids: List[Any]
     acknowledged: bool = True
@@ -41,6 +67,20 @@ class InsertManyResult:
 
 @dataclass
 class UpdateResult:
+    """
+    Class that represents the result of any update operation.
+
+    Attributes:
+        raw_result: response from the Data API call
+        update_info: a dictionary reporting about the update
+        acknowledged: whether the server acknowledged the write operation
+
+    Note:
+        the "update_info" field has the following fields: "n" (int),
+        "updatedExisting" (bool), "ok" (float), "nModified" (int)
+        and optionally "upserted" containing the ID of an upserted document.
+
+    """
     raw_result: Dict[str, Any]
     update_info: Dict[str, Any]
     acknowledged: bool = True
@@ -48,6 +88,24 @@ class UpdateResult:
 
 @dataclass
 class BulkWriteResult:
+    """
+    Class that represents the result of a bulk write operations.
+
+    Indices in the maps below refer to the position of each write operation
+    in the list of operations passed to the bulk_write command.
+
+    The numeric counts refer to the whole of the bulk write.
+
+    Attributes:
+        bulk_api_results: a map from indices to the corresponding raw responses
+        deleted_count: number of deleted documents
+        inserted_count: number of inserted documents
+        matched_count: number of matched documents
+        modified_count: number of modified documents
+        upserted_count: number of upserted documents
+        upserted_ids: a (sparse) map from indices to ID of the upserted document
+        acknowledged: whether the server acknowledged the write operation
+    """
     bulk_api_results: Dict[int, Union[Dict[str, Any], List[Dict[str, Any]]]]
     deleted_count: Optional[int]
     inserted_count: int
