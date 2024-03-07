@@ -290,7 +290,6 @@ class Database:
     def drop_collection(
         self, name_or_collection: Union[str, Collection]
     ) -> Dict[str, Any]:
-
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import Collection
 
