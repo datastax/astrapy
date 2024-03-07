@@ -107,6 +107,14 @@ class TestDDLAsync:
     ) -> None:
         assert TEST_COLLECTION_NAME in await async_database.list_collection_names()
 
+    @pytest.mark.describe("test of Collection options, async")
+    async def test_collection_options_async(
+        self,
+        async_collection: AsyncCollection,
+    ) -> None:
+        options = await async_collection.options()
+        assert options["name"] == async_collection.name
+
     @pytest.mark.skipif(
         ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
     )

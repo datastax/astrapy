@@ -107,6 +107,14 @@ class TestDDLSync:
     ) -> None:
         assert TEST_COLLECTION_NAME in sync_database.list_collection_names()
 
+    @pytest.mark.describe("test of Collection options, sync")
+    def test_collection_options_sync(
+        self,
+        sync_collection: Collection,
+    ) -> None:
+        options = sync_collection.options()
+        assert options["name"] == sync_collection.name
+
     @pytest.mark.skipif(
         ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
     )
