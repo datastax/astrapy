@@ -42,6 +42,17 @@ class TestDMLSync:
         assert sync_empty_collection.count_documents(filter={}) == 3
         assert sync_empty_collection.count_documents(filter={"group": "A"}) == 2
 
+    @pytest.mark.describe("test of overflowing collection count_documents, sync")
+    def test_collection_overflowing_count_documents_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        sync_empty_collection.insert_many([{"a": i} for i in range(999)])
+        assert sync_empty_collection.count_documents(filter={}) == 999
+        sync_empty_collection.insert_many([{"b": i} for i in range(2)])
+        with pytest.raises(ValueError):
+            assert sync_empty_collection.count_documents(filter={})
+
     @pytest.mark.describe("test of collection insert_one, sync")
     def test_collection_insert_one_sync(
         self,

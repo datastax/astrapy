@@ -303,7 +303,11 @@ class Collection:
     ) -> int:
         cd_response = self._astra_db_collection.count_documents(filter=filter)
         if "count" in cd_response.get("status", {}):
-            return cd_response["status"]["count"]  # type: ignore[no-any-return]
+            count: int = cd_response["status"]["count"]
+            if cd_response["status"].get("moreData", False):
+                raise ValueError(f"Document count exceeds {count}")
+            else:
+                return count
         else:
             raise ValueError(
                 "Could not complete a count_documents operation. "
@@ -810,7 +814,11 @@ class AsyncCollection:
     ) -> int:
         cd_response = await self._astra_db_collection.count_documents(filter=filter)
         if "count" in cd_response.get("status", {}):
-            return cd_response["status"]["count"]  # type: ignore[no-any-return]
+            count: int = cd_response["status"]["count"]
+            if cd_response["status"].get("moreData", False):
+                raise ValueError(f"Document count exceeds {count}")
+            else:
+                return count
         else:
             raise ValueError(
                 "Could not complete a count_documents operation. "
