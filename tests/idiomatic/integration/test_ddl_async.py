@@ -64,24 +64,19 @@ class TestDDLAsync:
         assert dc_response2 == {"ok": 1}
         await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
 
-    @pytest.mark.describe(
-        "should create and destroy an async vector collection using collection drop "
-    )
-    async def test_create_destroy_collection(
-        self, async_database: AsyncDatabase
-    ) -> None:
+    @pytest.mark.describe("test of collection drop, async")
+    async def test_collection_drop_async(self, async_database: AsyncDatabase) -> None:
         col = await async_database.create_collection(
             name="async_collection_to_drop", dimension=2
         )
         del_res = await col.drop()
-        assert del_res["status"]["ok"] == 1
+        assert del_res["ok"] == 1
+        assert "async_collection_to_drop" not in (
+            await async_database.list_collection_names()
+        )
 
-    @pytest.mark.describe(
-        "should give database metainformation, including region (async)"
-    )
-    def test_get_database_info_async(
-        self, async_database: AsyncDatabase
-    ) -> None:
+    @pytest.mark.describe("test of database metainformation, async")
+    async def test_get_database_info_async(self, async_database: AsyncDatabase) -> None:
         assert async_database.region is not None
         assert async_database.name is not None
         assert async_database.dbid is not None
@@ -182,3 +177,34 @@ class TestDDLAsync:
             TEST_LOCAL_COLLECTION_NAME2
             not in await database_on_secondary.list_collection_names()
         )
+
+    @pytest.mark.describe("test of collection command, async")
+    async def test_collection_command_async(
+        self,
+        async_database: AsyncDatabase,
+        async_collection: AsyncCollection,
+    ) -> None:
+        cmd1 = await async_database.command(
+            {"countDocuments": {}}, collection_name=async_collection.name
+        )
+        assert isinstance(cmd1, dict)
+        assert isinstance(cmd1["status"]["count"], int)
+        cmd2 = await async_database.copy(namespace="...").command(
+            {"countDocuments": {}},
+            namespace=async_collection.namespace,
+            collection_name=async_collection.name,
+        )
+        assert cmd2 == cmd1
+
+    @pytest.mark.describe("test of database command, async")
+    async def test_database_command_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        cmd1 = await async_database.command({"findCollections": {}})
+        assert isinstance(cmd1, dict)
+        assert isinstance(cmd1["status"]["collections"], list)
+        cmd2 = await async_database.copy(namespace="...").command(
+            {"findCollections": {}}, namespace=async_database.namespace
+        )
+        assert cmd2 == cmd1

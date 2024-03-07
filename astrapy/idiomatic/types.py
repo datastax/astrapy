@@ -14,8 +14,37 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Union
+from enum import Enum
+from typing import Any, Dict, Iterable, Optional, Union
 
 
 DocumentType = Dict[str, Any]
 ProjectionType = Union[Iterable[str], Dict[str, bool]]
+
+
+class ReturnDocument(Enum):
+    BEFORE = "before"
+    AFTER = "after"
+
+
+def normalize_optional_projection(
+    projection: Optional[ProjectionType],
+    ensure_fields: Iterable[str] = set(),
+) -> Optional[Dict[str, bool]]:
+    _ensure_fields = set(ensure_fields)
+    if projection:
+        if isinstance(projection, dict):
+            if any(bool(v) for v in projection.values()):
+                # positive projection: {a: True, b: True ...}
+                return {
+                    k: projection.get(k, True)
+                    for k in list(projection.keys()) + list(_ensure_fields)
+                }
+            else:
+                # negative projection: {x: False, y: False, ...}
+                return {k: v for k, v in projection.items() if k not in _ensure_fields}
+        else:
+            # an iterable over strings
+            return {field: True for field in list(projection) + list(_ensure_fields)}
+    else:
+        return None

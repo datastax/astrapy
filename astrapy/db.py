@@ -211,6 +211,13 @@ class AstraDBCollection:
         response = restore_from_api(direct_response)
         return response
 
+    def post_raw_request(self, body: Dict[str, Any]) -> API_RESPONSE:
+        return self._request(
+            method=http_methods.POST,
+            path=self.base_path,
+            json_data=body,
+        )
+
     def _get(
         self, path: Optional[str] = None, options: Optional[Dict[str, Any]] = None
     ) -> Optional[API_RESPONSE]:
@@ -500,8 +507,9 @@ class AstraDBCollection:
         self,
         replacement: Dict[str, Any],
         *,
-        sort: Optional[Dict[str, Any]] = {},
         filter: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
+        sort: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
@@ -517,6 +525,7 @@ class AstraDBCollection:
         json_query = make_payload(
             top_level="findOneAndReplace",
             filter=filter,
+            projection=projection,
             replacement=replacement,
             options=options,
             sort=sort,
@@ -547,7 +556,7 @@ class AstraDBCollection:
             dict or None: either the matched document or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._recast_as_sort_projection(
+        sort, projection = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -556,6 +565,7 @@ class AstraDBCollection:
         raw_find_result = self.find_one_and_replace(
             replacement=replacement,
             filter=filter,
+            projection=projection,
             sort=sort,
         )
 
@@ -567,6 +577,7 @@ class AstraDBCollection:
         sort: Optional[Dict[str, Any]] = {},
         filter: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
         Find a single document and update it.
@@ -584,6 +595,7 @@ class AstraDBCollection:
             update=update,
             options=options,
             sort=sort,
+            projection=projection,
         )
 
         response = self._request(
@@ -614,7 +626,7 @@ class AstraDBCollection:
                 update operation, or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._recast_as_sort_projection(
+        sort, projection = self._recast_as_sort_projection(
             convert_vector_to_floats(vector),
             fields=fields,
         )
@@ -624,6 +636,7 @@ class AstraDBCollection:
             update=update,
             filter=filter,
             sort=sort,
+            projection=projection,
         )
 
         return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
@@ -873,7 +886,10 @@ class AstraDBCollection:
         return response
 
     def update_many(
-        self, filter: Dict[str, Any], update: Dict[str, Any]
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
         Updates multiple documents in the collection.
@@ -883,7 +899,12 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the update operation.
         """
-        json_query = make_payload(top_level="updateMany", filter=filter, update=update)
+        json_query = make_payload(
+            top_level="updateMany",
+            filter=filter,
+            update=update,
+            options=options,
+        )
 
         response = self._request(
             method=http_methods.POST,
@@ -972,6 +993,23 @@ class AstraDBCollection:
         )
 
         return response
+
+    def chunked_delete_many(self, filter: Dict[str, Any]) -> List[API_RESPONSE]:
+        """
+        Delete many documents from the collection based on a filter condition,
+        chaining several API calls until exhaustion of the documents to delete.
+        Args:
+            filter (dict): Criteria to identify the documents to delete.
+        Returns:
+            List[dict]: The responses from the database from all the calls
+        """
+        responses = []
+        must_proceed = True
+        while must_proceed:
+            dm_response = self.delete_many(filter=filter)
+            responses.append(dm_response)
+            must_proceed = dm_response.get("status", {}).get("moreData", False)
+        return responses
 
     def clear(self) -> API_RESPONSE:
         """
@@ -1248,6 +1286,13 @@ class AsyncAstraDBCollection:
         )
         response = restore_from_api(adirect_response)
         return response
+
+    async def post_raw_request(self, body: Dict[str, Any]) -> API_RESPONSE:
+        return await self._request(
+            method=http_methods.POST,
+            path=self.base_path,
+            json_data=body,
+        )
 
     async def _get(
         self, path: Optional[str] = None, options: Optional[Dict[str, Any]] = None
@@ -1534,8 +1579,9 @@ class AsyncAstraDBCollection:
         self,
         replacement: Dict[str, Any],
         *,
-        sort: Optional[Dict[str, Any]] = {},
         filter: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
+        sort: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
@@ -1551,6 +1597,7 @@ class AsyncAstraDBCollection:
         json_query = make_payload(
             top_level="findOneAndReplace",
             filter=filter,
+            projection=projection,
             replacement=replacement,
             options=options,
             sort=sort,
@@ -1581,7 +1628,7 @@ class AsyncAstraDBCollection:
             dict or None: either the matched document or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._recast_as_sort_projection(
+        sort, projection = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )
@@ -1590,6 +1637,7 @@ class AsyncAstraDBCollection:
         raw_find_result = await self.find_one_and_replace(
             replacement=replacement,
             filter=filter,
+            projection=projection,
             sort=sort,
         )
 
@@ -1601,6 +1649,7 @@ class AsyncAstraDBCollection:
         sort: Optional[Dict[str, Any]] = {},
         filter: Optional[Dict[str, Any]] = None,
         options: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
         Find a single document and update it.
@@ -1618,6 +1667,7 @@ class AsyncAstraDBCollection:
             update=update,
             options=options,
             sort=sort,
+            projection=projection,
         )
 
         response = await self._request(
@@ -1648,7 +1698,7 @@ class AsyncAstraDBCollection:
                 update operation, or None if nothing found
         """
         # Pre-process the included arguments
-        sort, _ = self._recast_as_sort_projection(
+        sort, projection = self._recast_as_sort_projection(
             vector,
             fields=fields,
         )
@@ -1658,6 +1708,7 @@ class AsyncAstraDBCollection:
             update=update,
             filter=filter,
             sort=sort,
+            projection=projection,
         )
 
         return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
@@ -1881,7 +1932,10 @@ class AsyncAstraDBCollection:
         return response
 
     async def update_many(
-        self, filter: Dict[str, Any], update: Dict[str, Any]
+        self,
+        filter: Dict[str, Any],
+        update: Dict[str, Any],
+        options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
         Updates multiple documents in the collection.
@@ -1891,7 +1945,12 @@ class AsyncAstraDBCollection:
         Returns:
             dict: The response from the database after the update operation.
         """
-        json_query = make_payload(top_level="updateMany", filter=filter, update=update)
+        json_query = make_payload(
+            top_level="updateMany",
+            filter=filter,
+            update=update,
+            options=options,
+        )
 
         response = await self._request(
             method=http_methods.POST,
@@ -1971,6 +2030,23 @@ class AsyncAstraDBCollection:
         )
 
         return response
+
+    async def chunked_delete_many(self, filter: Dict[str, Any]) -> List[API_RESPONSE]:
+        """
+        Delete many documents from the collection based on a filter condition,
+        chaining several API calls until exhaustion of the documents to delete.
+        Args:
+            filter (dict): Criteria to identify the documents to delete.
+        Returns:
+            List[dict]: The responses from the database from all the calls
+        """
+        responses = []
+        must_proceed = True
+        while must_proceed:
+            dm_response = await self.delete_many(filter=filter)
+            responses.append(dm_response)
+            must_proceed = dm_response.get("status", {}).get("moreData", False)
+        return responses
 
     async def clear(self) -> API_RESPONSE:
         """
@@ -2227,6 +2303,13 @@ class AstraDB:
         )
         response = restore_from_api(direct_response)
         return response
+
+    def post_raw_request(self, body: Dict[str, Any]) -> API_RESPONSE:
+        return self._request(
+            method=http_methods.POST,
+            path=self.base_path,
+            json_data=body,
+        )
 
     def collection(self, collection_name: str) -> AstraDBCollection:
         """
@@ -2525,6 +2608,13 @@ class AsyncAstraDB:
         )
         response = restore_from_api(adirect_response)
         return response
+
+    async def post_raw_request(self, body: Dict[str, Any]) -> API_RESPONSE:
+        return await self._request(
+            method=http_methods.POST,
+            path=self.base_path,
+            json_data=body,
+        )
 
     async def collection(self, collection_name: str) -> AsyncAstraDBCollection:
         """

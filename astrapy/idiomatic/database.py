@@ -111,20 +111,20 @@ class Database:
         if self._metadata_info is None:
             self._load_metadata()
         return self._metadata_info["dbid"]
-    
+
     @property
     def region(self) -> str:
-        print (self._metadata_info)
+        print(self._metadata_info)
         if self._metadata_info is None:
             self._load_metadata()
         return self._metadata_info["region"]
-    
+
     @property
     def info(self) -> str:
         if self._metadata_info is None:
             self._load_metadata()
         return self._metadata_info["info"]
-    
+
     @property
     def name(self) -> str:
         if self._metadata_info is None:
@@ -132,7 +132,7 @@ class Database:
         return self._metadata_info["name"]
 
     def _load_metadata(self):
-        
+
         self.dbid = self.astra_db.api_endpoint.split("/")[2].split(".")[0][:36]
         details = self.astraDBOps.get_database(database=self.dbid)
         response = details["info"]
@@ -141,7 +141,7 @@ class Database:
             "dbid": details["dbid"],
             "name": response["name"],
             "region": response["region"],
-            "info":response["info"]
+            "info": response["info"],
         }
 
     def __getattr__(self, collection_name: str) -> Collection:
@@ -182,6 +182,19 @@ class Database:
             caller_version=caller_version or self._astra_db.caller_version,
             api_path=api_path or self._astra_db.api_path,
             api_version=api_version or self._astra_db.api_version,
+        )
+
+    def with_options(
+        self,
+        *,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> Database:
+        return self.copy(
+            namespace=namespace,
+            caller_name=caller_name,
+            caller_version=caller_version,
         )
 
     def to_async(
@@ -277,7 +290,7 @@ class Database:
     def drop_collection(
         self, name_or_collection: Union[str, Collection]
     ) -> Dict[str, Any]:
-        
+
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import Collection
 
@@ -333,6 +346,23 @@ class Database:
             # we know this is a list of strings
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
+    def command(
+        self,
+        body: Dict[str, Any],
+        *,
+        namespace: Optional[str] = None,
+        collection_name: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        if namespace:
+            _client = self._astra_db.copy(namespace=namespace)
+        else:
+            _client = self._astra_db
+        if collection_name:
+            _collection = _client.collection(collection_name)
+            return _collection.post_raw_request(body=body)
+        else:
+            return _client.post_raw_request(body=body)
+
 
 class AsyncDatabase:
     def __init__(
@@ -358,22 +388,21 @@ class AsyncDatabase:
         self._metadata_info = None
         self.astraDBOps = AstraDBOps(token=token)
 
-  
     async def dbid(self) -> str:
         if self._metadata_info is None:
             await self._load_metadata()
         return self._metadata_info["dbid"]
-    
+
     async def region(self) -> str:
         if self._metadata_info is None:
             await self._load_metadata()
         return self._metadata_info["region"]
-    
+
     async def info(self) -> str:
         if self._metadata_info is None:
-           await self._load_metadata()
+            await self._load_metadata()
         return self._metadata_info["info"]
-    
+
     async def name(self) -> str:
         if self._metadata_info is None:
             await self._load_metadata()
@@ -388,14 +417,14 @@ class AsyncDatabase:
             "dbid": details["dbid"],
             "name": response["name"],
             "region": response["region"],
-            "info":response["info"]
+            "info": response["info"],
         }
 
-    async def __getattr__(self, collection_name: str) -> AsyncCollection:
-        return await self.get_collection(name=collection_name)
+    def __getattr__(self, collection_name: str) -> AsyncCollection:
+        return self.to_sync().get_collection(name=collection_name).to_async()
 
-    async def __getitem__(self, collection_name: str) -> AsyncCollection:
-        return await self.get_collection(name=collection_name)
+    def __getitem__(self, collection_name: str) -> AsyncCollection:
+        return self.to_sync().get_collection(name=collection_name).to_async()
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db={self._astra_db}"]'
@@ -444,6 +473,19 @@ class AsyncDatabase:
             caller_version=caller_version or self._astra_db.caller_version,
             api_path=api_path or self._astra_db.api_path,
             api_version=api_version or self._astra_db.api_version,
+        )
+
+    def with_options(
+        self,
+        *,
+        namespace: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> AsyncDatabase:
+        return self.copy(
+            namespace=namespace,
+            caller_name=caller_name,
+            caller_version=caller_version,
         )
 
     def to_sync(
@@ -590,3 +632,20 @@ class AsyncDatabase:
         else:
             # we know this is a list of strings
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
+
+    async def command(
+        self,
+        body: Dict[str, Any],
+        *,
+        namespace: Optional[str] = None,
+        collection_name: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        if namespace:
+            _client = self._astra_db.copy(namespace=namespace)
+        else:
+            _client = self._astra_db
+        if collection_name:
+            _collection = await _client.collection(collection_name)
+            return await _collection.post_raw_request(body=body)
+        else:
+            return await _client.post_raw_request(body=body)

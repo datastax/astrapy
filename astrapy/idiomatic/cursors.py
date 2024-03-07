@@ -25,7 +25,11 @@ from typing import (
     TYPE_CHECKING,
 )
 
-from astrapy.idiomatic.types import DocumentType, ProjectionType
+from astrapy.idiomatic.types import (
+    DocumentType,
+    ProjectionType,
+    normalize_optional_projection,
+)
 
 if TYPE_CHECKING:
     from astrapy.idiomatic.collection import AsyncCollection, Collection
@@ -245,15 +249,9 @@ class Cursor(BaseCursor):
         }
 
         # recast parameters for paginated_find call
-        pf_projection: Optional[Dict[str, bool]]
-        if self._projection:
-            if isinstance(self._projection, dict):
-                pf_projection = self._projection
-            else:
-                # an iterable over strings
-                pf_projection = {field: True for field in self._projection}
-        else:
-            pf_projection = None
+        pf_projection: Optional[Dict[str, bool]] = normalize_optional_projection(
+            self._projection
+        )
         pf_sort: Optional[Dict[str, int]]
         if self._sort:
             pf_sort = dict(self._sort)
@@ -345,15 +343,9 @@ class AsyncCursor(BaseCursor):
         }
 
         # recast parameters for paginated_find call
-        pf_projection: Optional[Dict[str, bool]]
-        if self._projection:
-            if isinstance(self._projection, dict):
-                pf_projection = self._projection
-            else:
-                # an iterable over strings
-                pf_projection = {field: True for field in self._projection}
-        else:
-            pf_projection = None
+        pf_projection: Optional[Dict[str, bool]] = normalize_optional_projection(
+            self._projection
+        )
         pf_sort: Optional[Dict[str, int]]
         if self._sort:
             pf_sort = dict(self._sort)

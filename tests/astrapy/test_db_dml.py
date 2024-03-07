@@ -1108,6 +1108,22 @@ def test_delete_many_novector(disposable_v_collection: AstraDBCollection) -> Non
     assert delete_response_no["status"]["deletedCount"] == 0
 
 
+@pytest.mark.describe("chunked delete_many, not through vector")
+def test_chunked_delete_many_novector(empty_v_collection: AstraDBCollection) -> None:
+    empty_v_collection.chunked_insert_many([{"seq": i, "kind": "a"} for i in range(50)])
+    empty_v_collection.chunked_insert_many([{"seq": i, "kind": "b"} for i in range(10)])
+    response_a = empty_v_collection.chunked_delete_many({"kind": "a"})
+    assert sum(rsp["status"]["deletedCount"] for rsp in response_a) == 50
+    response_b = empty_v_collection.chunked_delete_many({"kind": "b"})
+    assert len(response_b) == 1
+    assert response_b[0]["status"]["deletedCount"] == 10
+    empty_v_collection.chunked_insert_many([{"seq": i, "kind": "x"} for i in range(25)])
+    response_x = empty_v_collection.chunked_delete_many({})
+    assert len(response_x) == 1
+    assert response_x[0]["status"]["deletedCount"] == -1
+    assert empty_v_collection.count_documents()["status"]["count"] == 0
+
+
 @pytest.mark.describe("pop, push functions, not through vector")
 def test_pop_push_novector(empty_v_collection: AstraDBCollection) -> None:
     user_id = str(uuid.uuid4())

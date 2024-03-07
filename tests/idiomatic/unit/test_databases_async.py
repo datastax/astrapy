@@ -52,6 +52,7 @@ class TestDatabasesAsync:
             **astra_db_credentials_kwargs,
         )
         assert db1 == db1.copy()
+        assert db1 == db1.with_options()
         assert db1 == db1.to_sync().to_async()
 
     @pytest.mark.describe("test of Database rich copy, async")
@@ -98,6 +99,18 @@ class TestDatabasesAsync:
             api_version="api_version",
         )
         assert db3 == db1
+
+        assert db1.with_options(namespace="x") != db1
+        assert (
+            db1.with_options(namespace="x").with_options(namespace="namespace") == db1
+        )
+        assert db1.with_options(caller_name="x") != db1
+        assert db1.with_options(caller_name="x").with_options(caller_name="c_n") == db1
+        assert db1.with_options(caller_version="x") != db1
+        assert (
+            db1.with_options(caller_version="x").with_options(caller_version="c_v")
+            == db1
+        )
 
     @pytest.mark.describe("test of Database rich conversions, async")
     async def test_rich_convert_database_async(
@@ -174,10 +187,8 @@ class TestDatabasesAsync:
         collection = await async_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)
         assert collection == async_collection_instance
 
-        assert (
-            await getattr(async_database, TEST_COLLECTION_INSTANCE_NAME) == collection
-        )
-        assert await async_database[TEST_COLLECTION_INSTANCE_NAME] == collection
+        assert getattr(async_database, TEST_COLLECTION_INSTANCE_NAME) == collection
+        assert async_database[TEST_COLLECTION_INSTANCE_NAME] == collection
 
         NAMESPACE_2 = "other_namespace"
         collection_ns2 = await async_database.get_collection(

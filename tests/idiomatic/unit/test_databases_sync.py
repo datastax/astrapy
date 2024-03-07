@@ -52,6 +52,7 @@ class TestDatabasesSync:
             **astra_db_credentials_kwargs,
         )
         assert db1 == db1.copy()
+        assert db1 == db1.with_options()
         assert db1 == db1.to_async().to_sync()
 
     @pytest.mark.describe("test of Database rich copy, sync")
@@ -98,6 +99,18 @@ class TestDatabasesSync:
             api_version="api_version",
         )
         assert db3 == db1
+
+        assert db1.with_options(namespace="x") != db1
+        assert (
+            db1.with_options(namespace="x").with_options(namespace="namespace") == db1
+        )
+        assert db1.with_options(caller_name="x") != db1
+        assert db1.with_options(caller_name="x").with_options(caller_name="c_n") == db1
+        assert db1.with_options(caller_version="x") != db1
+        assert (
+            db1.with_options(caller_version="x").with_options(caller_version="c_v")
+            == db1
+        )
 
     @pytest.mark.describe("test of Database rich conversions, sync")
     def test_rich_convert_database_sync(

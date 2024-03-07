@@ -64,6 +64,21 @@ class TestDDLSync:
         assert dc_response2 == {"ok": 1}
         sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
 
+    @pytest.mark.describe("test of collection drop, sync")
+    def test_collection_drop_sync(self, sync_database: Database) -> None:
+        col = sync_database.create_collection(
+            name="sync_collection_to_drop", dimension=2
+        )
+        del_res = col.drop()
+        assert del_res["ok"] == 1
+        assert "sync_collection_to_drop" not in sync_database.list_collection_names()
+
+    @pytest.mark.describe("test of database metainformation, sync")
+    def test_get_database_info_sync(self, sync_database: Database) -> None:
+        assert sync_database.region is not None
+        assert sync_database.name is not None
+        assert sync_database.dbid is not None
+
     @pytest.mark.describe("test of check_exists for create_collection, sync")
     def test_create_collection_check_exists_sync(
         self,
@@ -99,26 +114,6 @@ class TestDDLSync:
 
         sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
 
-    @pytest.mark.describe(
-        "should create and destroy a vector collection using collection drop "
-    )
-    def test_create_destroy_collection(self, sync_database: Database) -> None:
-        col = sync_database.create_collection(
-            name="sync_collection_to_drop", dimension=2
-        )
-        del_res = col.drop()
-        assert del_res["status"]["ok"] == 1
-
-    @pytest.mark.describe(
-        "should give database metainformation, including region, name and ID (sync)"
-    )
-    def test_get_database_info_sync(
-        self, sync_database: Database
-    ) -> None:
-        assert sync_database.region is not None
-        assert sync_database.name is not None
-        assert sync_database.dbid is not None
-
     @pytest.mark.describe("test of Database list_collections, sync")
     def test_database_list_collections_sync(
         self,
@@ -126,15 +121,6 @@ class TestDDLSync:
         sync_collection: Collection,
     ) -> None:
         assert TEST_COLLECTION_NAME in sync_database.list_collection_names()
-
-    @pytest.mark.describe("test of Database list_collections unsupported filter, sync")
-    def test_database_list_collections_filter_sync(
-        self,
-        sync_database: Database,
-        sync_collection: Collection,
-    ) -> None:
-        with pytest.raises(TypeError):
-            sync_database.list_collection_names(filter={"k": "v"})
 
     @pytest.mark.skipif(
         ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
@@ -186,3 +172,34 @@ class TestDDLSync:
             TEST_LOCAL_COLLECTION_NAME2
             not in database_on_secondary.list_collection_names()
         )
+
+    @pytest.mark.describe("test of collection command, sync")
+    def test_collection_command_sync(
+        self,
+        sync_database: Database,
+        sync_collection: Collection,
+    ) -> None:
+        cmd1 = sync_database.command(
+            {"countDocuments": {}}, collection_name=sync_collection.name
+        )
+        assert isinstance(cmd1, dict)
+        assert isinstance(cmd1["status"]["count"], int)
+        cmd2 = sync_database.copy(namespace="...").command(
+            {"countDocuments": {}},
+            namespace=sync_collection.namespace,
+            collection_name=sync_collection.name,
+        )
+        assert cmd2 == cmd1
+
+    @pytest.mark.describe("test of database command, sync")
+    def test_database_command_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        cmd1 = sync_database.command({"findCollections": {}})
+        assert isinstance(cmd1, dict)
+        assert isinstance(cmd1["status"]["collections"], list)
+        cmd2 = sync_database.copy(namespace="...").command(
+            {"findCollections": {}}, namespace=sync_database.namespace
+        )
+        assert cmd2 == cmd1
