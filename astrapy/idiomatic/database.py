@@ -282,6 +282,23 @@ class Database:
             # we know this is a list of strings
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
+    def command(
+        self,
+        body: Dict[str, Any],
+        *,
+        namespace: Optional[str] = None,
+        collection_name: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        if namespace:
+            _client = self._astra_db.copy(namespace=namespace)
+        else:
+            _client = self._astra_db
+        if collection_name:
+            _collection = _client.collection(collection_name)
+            return _collection.post_raw_request(body=body)
+        else:
+            return _client.post_raw_request(body=body)
+
 
 class AsyncDatabase:
     def __init__(
@@ -305,11 +322,11 @@ class AsyncDatabase:
             caller_version=caller_version,
         )
 
-    async def __getattr__(self, collection_name: str) -> AsyncCollection:
-        return await self.get_collection(name=collection_name)
+    def __getattr__(self, collection_name: str) -> AsyncCollection:
+        return self.to_sync().get_collection(name=collection_name).to_async()
 
-    async def __getitem__(self, collection_name: str) -> AsyncCollection:
-        return await self.get_collection(name=collection_name)
+    def __getitem__(self, collection_name: str) -> AsyncCollection:
+        return self.to_sync().get_collection(name=collection_name).to_async()
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db={self._astra_db}"]'
@@ -504,3 +521,20 @@ class AsyncDatabase:
         else:
             # we know this is a list of strings
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
+
+    async def command(
+        self,
+        body: Dict[str, Any],
+        *,
+        namespace: Optional[str] = None,
+        collection_name: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        if namespace:
+            _client = self._astra_db.copy(namespace=namespace)
+        else:
+            _client = self._astra_db
+        if collection_name:
+            _collection = await _client.collection(collection_name)
+            return await _collection.post_raw_request(body=body)
+        else:
+            return await _client.post_raw_request(body=body)
