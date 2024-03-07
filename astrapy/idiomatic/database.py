@@ -19,6 +19,7 @@ from types import TracebackType
 from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
 
 from astrapy.db import AstraDB, AsyncAstraDB
+from astrapy.idiomatic.cursors import AsyncCommandCursor, CommandCursor
 
 
 if TYPE_CHECKING:
@@ -258,7 +259,7 @@ class Database:
         self,
         *,
         namespace: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> CommandCursor[Dict[str, Any]]:
         if namespace:
             _client = self._astra_db.copy(namespace=namespace)
         else:
@@ -271,10 +272,13 @@ class Database:
             )
         else:
             # we know this is a list of dicts which need a little adjusting
-            return [
-                _recast_api_collection_dict(col_dict)
-                for col_dict in gc_response["status"]["collections"]
-            ]
+            return CommandCursor(
+                address=self._astra_db.base_url,
+                items=[
+                    _recast_api_collection_dict(col_dict)
+                    for col_dict in gc_response["status"]["collections"]
+                ],
+            )
 
     def list_collection_names(
         self,
@@ -510,17 +514,17 @@ class AsyncDatabase:
             dc_response = await self._astra_db.delete_collection(name_or_collection)
             return dc_response.get("status", {})  # type: ignore[no-any-return]
 
-    async def list_collections(
+    def list_collections(
         self,
         *,
         namespace: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> AsyncCommandCursor[Dict[str, Any]]:
         _client: AsyncAstraDB
         if namespace:
             _client = self._astra_db.copy(namespace=namespace)
         else:
             _client = self._astra_db
-        gc_response = await _client.get_collections(options={"explain": True})
+        gc_response = _client.to_sync().get_collections(options={"explain": True})
         if "collections" not in gc_response.get("status", {}):
             raise ValueError(
                 "Could not complete a get_collections operation. "
@@ -528,10 +532,13 @@ class AsyncDatabase:
             )
         else:
             # we know this is a list of dicts which need a little adjusting
-            return [
-                _recast_api_collection_dict(col_dict)
-                for col_dict in gc_response["status"]["collections"]
-            ]
+            return AsyncCommandCursor(
+                address=self._astra_db.base_url,
+                items=[
+                    _recast_api_collection_dict(col_dict)
+                    for col_dict in gc_response["status"]["collections"]
+                ],
+            )
 
     async def list_collection_names(
         self,

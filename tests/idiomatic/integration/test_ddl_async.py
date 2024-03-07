@@ -41,7 +41,7 @@ class TestDDLAsync:
             TEST_LOCAL_COLLECTION_NAME_B,
             indexing={"allow": ["z"]},
         )
-        lc_response = await async_database.list_collections()
+        lc_response = [col async for col in async_database.list_collections()]
         #
         expected_coll_dict = {
             "name": TEST_LOCAL_COLLECTION_NAME,
