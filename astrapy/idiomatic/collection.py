@@ -75,7 +75,9 @@ class Collection:
             caller_version=caller_version,
         )
         # this comes after the above, lets AstraDBCollection resolve namespace
-        self._database = database.copy(namespace=self.namespace)
+        self._database = database.copy(
+            namespace=self._astra_db_collection.astra_db.namespace
+        )
 
     @property
     def database(self) -> Database:
@@ -83,7 +85,7 @@ class Collection:
 
     @property
     def namespace(self) -> str:
-        return self._astra_db_collection.astra_db.namespace
+        return self.database.namespace
 
     @property
     def name(self) -> str:
@@ -162,6 +164,17 @@ class Collection:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+
+    def options(self) -> Dict[str, Any]:
+        self_dicts = [
+            coll_dict
+            for coll_dict in self.database.list_collections()
+            if coll_dict["name"] == self.name
+        ]
+        if self_dicts:
+            return self_dicts[0]
+        else:
+            raise ValueError(f"Collection {self.namespace}.{self.name} not found.")
 
     def insert_one(
         self,
@@ -290,7 +303,11 @@ class Collection:
     ) -> int:
         cd_response = self._astra_db_collection.count_documents(filter=filter)
         if "count" in cd_response.get("status", {}):
-            return cd_response["status"]["count"]  # type: ignore[no-any-return]
+            count: int = cd_response["status"]["count"]
+            if cd_response["status"].get("moreData", False):
+                raise ValueError(f"Document count exceeds {count}")
+            else:
+                return count
         else:
             raise ValueError(
                 "Could not complete a count_documents operation. "
@@ -571,7 +588,9 @@ class AsyncCollection:
             caller_version=caller_version,
         )
         # this comes after the above, lets AstraDBCollection resolve namespace
-        self._database = database.copy(namespace=self.namespace)
+        self._database = database.copy(
+            namespace=self._astra_db_collection.astra_db.namespace
+        )
 
     @property
     def database(self) -> AsyncDatabase:
@@ -579,7 +598,7 @@ class AsyncCollection:
 
     @property
     def namespace(self) -> str:
-        return self._astra_db_collection.astra_db.namespace
+        return self.database.namespace
 
     @property
     def name(self) -> str:
@@ -658,6 +677,17 @@ class AsyncCollection:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+
+    async def options(self) -> Dict[str, Any]:
+        self_dicts = [
+            coll_dict
+            async for coll_dict in self.database.list_collections()
+            if coll_dict["name"] == self.name
+        ]
+        if self_dicts:
+            return self_dicts[0]
+        else:
+            raise ValueError(f"Collection {self.namespace}.{self.name} not found.")
 
     async def insert_one(
         self,
@@ -787,7 +817,11 @@ class AsyncCollection:
     ) -> int:
         cd_response = await self._astra_db_collection.count_documents(filter=filter)
         if "count" in cd_response.get("status", {}):
-            return cd_response["status"]["count"]  # type: ignore[no-any-return]
+            count: int = cd_response["status"]["count"]
+            if cd_response["status"].get("moreData", False):
+                raise ValueError(f"Document count exceeds {count}")
+            else:
+                return count
         else:
             raise ValueError(
                 "Could not complete a count_documents operation. "

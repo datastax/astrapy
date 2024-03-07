@@ -18,6 +18,7 @@ from collections.abc import Iterator, AsyncIterator
 from typing import (
     Any,
     Dict,
+    Generic,
     List,
     Optional,
     TypeVar,
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
 
 
 BC = TypeVar("BC", bound="BaseCursor")
+T = TypeVar("T")
 
 FIND_PREFETCH = 20
 
@@ -403,3 +405,87 @@ class AsyncCursor(BaseCursor):
                 if key in document
             }
         )
+
+
+class CommandCursor(Generic[T]):
+    def __init__(self, address: str, items: List[T]) -> None:
+        self._address = address
+        self.items = items
+        self.iterable = items.__iter__()
+        self._alive = True
+
+    def __iter__(self) -> CommandCursor[T]:
+        self._ensure_alive()
+        return self
+
+    def __next__(self) -> T:
+        try:
+            item = self.iterable.__next__()
+            return item
+        except StopIteration:
+            self._alive = False
+            raise
+
+    @property
+    def address(self) -> str:
+        return self._address
+
+    @property
+    def alive(self) -> bool:
+        return self._alive
+
+    @property
+    def cursor_id(self) -> int:
+        return id(self)
+
+    def _ensure_alive(self) -> None:
+        if not self._alive:
+            raise ValueError("Cursor is closed.")
+
+    def try_next(self) -> T:
+        return self.__next__()
+
+    def close(self) -> None:
+        self._alive = False
+
+
+class AsyncCommandCursor(Generic[T]):
+    def __init__(self, address: str, items: List[T]) -> None:
+        self._address = address
+        self.items = items
+        self.iterable = items.__iter__()
+        self._alive = True
+
+    def __aiter__(self) -> AsyncCommandCursor[T]:
+        self._ensure_alive()
+        return self
+
+    async def __anext__(self) -> T:
+        try:
+            item = self.iterable.__next__()
+            return item
+        except StopIteration:
+            self._alive = False
+            raise StopAsyncIteration
+
+    @property
+    def address(self) -> str:
+        return self._address
+
+    @property
+    def alive(self) -> bool:
+        return self._alive
+
+    @property
+    def cursor_id(self) -> int:
+        return id(self)
+
+    def _ensure_alive(self) -> None:
+        if not self._alive:
+            raise ValueError("Cursor is closed.")
+
+    async def try_next(self) -> T:
+        return await self.__anext__()
+
+    def close(self) -> None:
+        self._alive = False

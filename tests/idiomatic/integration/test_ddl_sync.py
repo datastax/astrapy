@@ -41,7 +41,7 @@ class TestDDLSync:
             TEST_LOCAL_COLLECTION_NAME_B,
             indexing={"allow": ["z"]},
         )
-        lc_response = sync_database.list_collections()
+        lc_response = list(sync_database.list_collections())
         #
         expected_coll_dict = {
             "name": TEST_LOCAL_COLLECTION_NAME,
@@ -121,6 +121,14 @@ class TestDDLSync:
         sync_collection: Collection,
     ) -> None:
         assert TEST_COLLECTION_NAME in sync_database.list_collection_names()
+
+    @pytest.mark.describe("test of Collection options, sync")
+    def test_collection_options_sync(
+        self,
+        sync_collection: Collection,
+    ) -> None:
+        options = sync_collection.options()
+        assert options["name"] == sync_collection.name
 
     @pytest.mark.skipif(
         ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"

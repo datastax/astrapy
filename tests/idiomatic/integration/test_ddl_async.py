@@ -41,7 +41,7 @@ class TestDDLAsync:
             TEST_LOCAL_COLLECTION_NAME_B,
             indexing={"allow": ["z"]},
         )
-        lc_response = await async_database.list_collections()
+        lc_response = [col async for col in async_database.list_collections()]
         #
         expected_coll_dict = {
             "name": TEST_LOCAL_COLLECTION_NAME,
@@ -123,6 +123,14 @@ class TestDDLAsync:
         async_collection: AsyncCollection,
     ) -> None:
         assert TEST_COLLECTION_NAME in await async_database.list_collection_names()
+
+    @pytest.mark.describe("test of Collection options, async")
+    async def test_collection_options_async(
+        self,
+        async_collection: AsyncCollection,
+    ) -> None:
+        options = await async_collection.options()
+        assert options["name"] == async_collection.name
 
     @pytest.mark.skipif(
         ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
