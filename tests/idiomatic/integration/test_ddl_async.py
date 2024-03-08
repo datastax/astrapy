@@ -20,6 +20,7 @@ from ..conftest import (
     TEST_COLLECTION_NAME,
 )
 from astrapy.api import APIRequestError
+from astrapy.idiomatic.info import DatabaseInfo
 from astrapy import AsyncCollection, AsyncDatabase
 
 
@@ -76,10 +77,27 @@ class TestDDLAsync:
         )
 
     @pytest.mark.describe("test of database metainformation, async")
-    async def test_get_database_info_async(self, async_database: AsyncDatabase) -> None:
-        assert async_database.region is not None
-        assert async_database.name is not None
-        assert async_database.dbid is not None
+    async def test_get_database_info_async(
+        self,
+        async_database: AsyncDatabase,
+        astra_db_credentials_kwargs: AstraDBCredentials,
+    ) -> None:
+        assert isinstance(async_database.id, str)
+        assert isinstance(async_database.name, str)
+        assert async_database.namespace == astra_db_credentials_kwargs["namespace"]
+        assert isinstance(async_database.info, DatabaseInfo)
+        assert isinstance(async_database.info.raw_info, dict)
+
+    @pytest.mark.describe("test of collection metainformation, async")
+    async def test_get_collection_info_async(
+        self,
+        async_collection: AsyncCollection,
+    ) -> None:
+        info = async_collection.info
+        assert info.namespace == async_collection.namespace
+        assert (
+            info.namespace == async_collection._astra_db_collection.astra_db.namespace
+        )
 
     @pytest.mark.describe("test of check_exists for create_collection, async")
     async def test_create_collection_check_exists_async(

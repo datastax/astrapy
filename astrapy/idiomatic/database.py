@@ -19,9 +19,8 @@ from types import TracebackType
 from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
 
 from astrapy.db import AstraDB, AsyncAstraDB
-from astrapy.ops import AstraDBOps
 from astrapy.idiomatic.cursors import AsyncCommandCursor, CommandCursor
-
+from astrapy.idiomatic.info import DatabaseInfo, get_database_info
 
 if TYPE_CHECKING:
     from astrapy.idiomatic.collection import AsyncCollection, Collection
@@ -95,56 +94,7 @@ class Database:
             caller_name=caller_name,
             caller_version=caller_version,
         )
-
-        self.client_options = {
-            "token": "",
-            "api_endpoint": "",
-            "api_path": "",
-            "api_version": "",
-            "namespace": "",
-            "caller_name": "",
-            "caller_version": "",
-        }
-        self._metadata_info = None
-        self.astraDBOps = AstraDBOps(token=token)
-
-    @property
-    def dbid(self) -> str:
-        if self._metadata_info is None:
-            self._load_metadata()
-        return self._metadata_info["dbid"]
-
-    @property
-    def region(self) -> str:
-        print(self._metadata_info)
-        if self._metadata_info is None:
-            self._load_metadata()
-        return self._metadata_info["region"]
-
-    @property
-    def info(self) -> str:
-        if self._metadata_info is None:
-            self._load_metadata()
-        return self._metadata_info["info"]
-
-    @property
-    def name(self) -> str:
-        if self._metadata_info is None:
-            self._load_metadata()
-        return self._metadata_info["name"]
-
-    def _load_metadata(self):
-
-        self.dbid = self.astra_db.api_endpoint.split("/")[2].split(".")[0][:36]
-        details = self.astraDBOps.get_database(database=self.dbid)
-        response = details["info"]
-
-        self._metadata_info = {
-            "dbid": details["dbid"],
-            "name": response["name"],
-            "region": response["region"],
-            "info": response["info"],
-        }
+        self._database_info: Optional[DatabaseInfo] = None
 
     def __getattr__(self, collection_name: str) -> Collection:
         return self.get_collection(name=collection_name)
@@ -160,10 +110,6 @@ class Database:
             return self._astra_db == other._astra_db
         else:
             return False
-
-    @property
-    def namespace(self) -> str:
-        return self._astra_db.namespace
 
     def copy(
         self,
@@ -229,6 +175,28 @@ class Database:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+
+    @property
+    def info(self) -> DatabaseInfo:
+        if self._database_info is None:
+            self._database_info = get_database_info(
+                self._astra_db.api_endpoint,
+                token=self._astra_db.token,
+                namespace=self.namespace,
+            )
+        return self._database_info
+
+    @property
+    def id(self) -> Optional[str]:
+        return self.info.id
+
+    @property
+    def name(self) -> Optional[str]:
+        return self.info.name
+
+    @property
+    def namespace(self) -> str:
+        return self._astra_db.namespace
 
     def get_collection(
         self, name: str, *, namespace: Optional[str] = None
@@ -389,40 +357,7 @@ class AsyncDatabase:
             caller_name=caller_name,
             caller_version=caller_version,
         )
-        self._metadata_info = None
-        self.astraDBOps = AstraDBOps(token=token)
-
-    async def dbid(self) -> str:
-        if self._metadata_info is None:
-            await self._load_metadata()
-        return self._metadata_info["dbid"]
-
-    async def region(self) -> str:
-        if self._metadata_info is None:
-            await self._load_metadata()
-        return self._metadata_info["region"]
-
-    async def info(self) -> str:
-        if self._metadata_info is None:
-            await self._load_metadata()
-        return self._metadata_info["info"]
-
-    async def name(self) -> str:
-        if self._metadata_info is None:
-            await self._load_metadata()
-        return self._metadata_info["name"]
-
-    async def _load_metadata(self):
-        self.dbid = self.astra_db.api_endpoint.split("/")[2].split(".")[0][:36]
-        details = await self.astraDBOps.get_database(database=self.dbid)
-        response = details["info"]
-
-        self._metadata_info = {
-            "dbid": details["dbid"],
-            "name": response["name"],
-            "region": response["region"],
-            "info": response["info"],
-        }
+        self._database_info: Optional[DatabaseInfo] = None
 
     def __getattr__(self, collection_name: str) -> AsyncCollection:
         return self.to_sync().get_collection(name=collection_name).to_async()
@@ -453,10 +388,6 @@ class AsyncDatabase:
             exc_value=exc_value,
             traceback=traceback,
         )
-
-    @property
-    def namespace(self) -> str:
-        return self._astra_db.namespace
 
     def copy(
         self,
@@ -522,6 +453,28 @@ class AsyncDatabase:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+
+    @property
+    def info(self) -> DatabaseInfo:
+        if self._database_info is None:
+            self._database_info = get_database_info(
+                self._astra_db.api_endpoint,
+                token=self._astra_db.token,
+                namespace=self.namespace,
+            )
+        return self._database_info
+
+    @property
+    def id(self) -> Optional[str]:
+        return self.info.id
+
+    @property
+    def name(self) -> Optional[str]:
+        return self.info.name
+
+    @property
+    def namespace(self) -> str:
+        return self._astra_db.namespace
 
     async def get_collection(
         self, name: str, *, namespace: Optional[str] = None
