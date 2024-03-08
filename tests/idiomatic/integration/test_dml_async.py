@@ -21,7 +21,7 @@ from astrapy.results import DeleteResult, InsertOneResult
 from astrapy.api import APIRequestError
 from astrapy.idiomatic.types import DocumentType
 from astrapy.idiomatic.cursors import AsyncCursor
-from astrapy.idiomatic.types import ReturnDocument
+from astrapy.idiomatic.types import ReturnDocument, SortDocuments
 from astrapy.idiomatic.operations import (
     AsyncInsertOne,
     AsyncInsertMany,
@@ -190,7 +190,7 @@ class TestDMLAsync:
         await async_empty_collection.insert_many([{"seq": i} for i in range(30)])
         Nski = 1
         Nlim = 28
-        Nsor = {"seq": -1}
+        Nsor = {"seq": SortDocuments.DESCENDING}
         Nfil = {"seq": {"$exists": True}}
 
         async def _alist(acursor: AsyncCursor) -> List[DocumentType]:

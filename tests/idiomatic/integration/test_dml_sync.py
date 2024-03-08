@@ -17,7 +17,7 @@ import pytest
 from astrapy import Collection
 from astrapy.results import DeleteResult, InsertOneResult
 from astrapy.api import APIRequestError
-from astrapy.idiomatic.types import ReturnDocument
+from astrapy.idiomatic.types import ReturnDocument, SortDocuments
 from astrapy.idiomatic.operations import (
     InsertOne,
     InsertMany,
@@ -144,7 +144,7 @@ class TestDMLSync:
         sync_empty_collection.insert_many([{"seq": i} for i in range(30)])
         Nski = 1
         Nlim = 28
-        Nsor = {"seq": -1}
+        Nsor = {"seq": SortDocuments.DESCENDING}
         Nfil = {"seq": {"$exists": True}}
 
         # case 0000 of find-pattern matrix

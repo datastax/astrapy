@@ -342,10 +342,10 @@ class Collection:
         projection: Optional[ProjectionType] = None,
         sort: Optional[Dict[str, Any]] = None,
         upsert: bool = False,
-        return_document: ReturnDocument = ReturnDocument.BEFORE,
+        return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
         options = {
-            "returnDocument": return_document.value,
+            "returnDocument": return_document,
             "upsert": upsert,
         }
         fo_response = self._astra_db_collection.find_one_and_replace(
@@ -403,10 +403,10 @@ class Collection:
         projection: Optional[ProjectionType] = None,
         sort: Optional[Dict[str, Any]] = None,
         upsert: bool = False,
-        return_document: ReturnDocument = ReturnDocument.BEFORE,
+        return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
         options = {
-            "returnDocument": return_document.value,
+            "returnDocument": return_document,
             "upsert": upsert,
         }
         fo_response = self._astra_db_collection.find_one_and_update(
@@ -875,10 +875,10 @@ class AsyncCollection:
         projection: Optional[ProjectionType] = None,
         sort: Optional[Dict[str, Any]] = None,
         upsert: bool = False,
-        return_document: ReturnDocument = ReturnDocument.BEFORE,
+        return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
         options = {
-            "returnDocument": return_document.value,
+            "returnDocument": return_document,
             "upsert": upsert,
         }
         fo_response = await self._astra_db_collection.find_one_and_replace(
@@ -936,10 +936,10 @@ class AsyncCollection:
         projection: Optional[ProjectionType] = None,
         sort: Optional[Dict[str, Any]] = None,
         upsert: bool = False,
-        return_document: ReturnDocument = ReturnDocument.BEFORE,
+        return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
         options = {
-            "returnDocument": return_document.value,
+            "returnDocument": return_document,
             "upsert": upsert,
         }
         fo_response = await self._astra_db_collection.find_one_and_update(
