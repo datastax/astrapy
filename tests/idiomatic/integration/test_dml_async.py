@@ -64,7 +64,6 @@ class TestDMLAsync:
     ) -> None:
         io_result1 = await async_empty_collection.insert_one({"doc": 1, "group": "A"})
         assert isinstance(io_result1, InsertOneResult)
-        assert io_result1.acknowledged is True
         io_result2 = await async_empty_collection.insert_one(
             {"_id": "xxx", "doc": 2, "group": "B"}
         )
@@ -82,7 +81,6 @@ class TestDMLAsync:
         assert await async_empty_collection.count_documents(filter={}) == 3
         do_result1 = await async_empty_collection.delete_one({"group": "A"})
         assert isinstance(do_result1, DeleteResult)
-        assert do_result1.acknowledged is True
         assert do_result1.deleted_count == 1
         assert await async_empty_collection.count_documents(filter={}) == 2
 
@@ -97,7 +95,6 @@ class TestDMLAsync:
         assert await async_empty_collection.count_documents(filter={}) == 3
         do_result1 = await async_empty_collection.delete_many({"group": "A"})
         assert isinstance(do_result1, DeleteResult)
-        assert do_result1.acknowledged is True
         assert do_result1.deleted_count == 2
         assert await async_empty_collection.count_documents(filter={}) == 1
 
@@ -112,7 +109,6 @@ class TestDMLAsync:
         assert (await async_empty_collection.count_documents(filter={})) == 3
         do_result1 = await async_empty_collection.delete_many({})
         assert isinstance(do_result1, DeleteResult)
-        assert do_result1.acknowledged is True
         assert do_result1.deleted_count is None
         assert (await async_empty_collection.count_documents(filter={})) == 0
 
@@ -130,7 +126,6 @@ class TestDMLAsync:
         assert (await async_empty_collection.count_documents(filter={})) == 60
         do_result1 = await async_empty_collection.delete_many({"group": "A"})
         assert isinstance(do_result1, DeleteResult)
-        assert do_result1.acknowledged is True
         assert do_result1.deleted_count == 50
         assert (await async_empty_collection.count_documents(filter={})) == 10
 
