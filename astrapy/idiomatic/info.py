@@ -27,6 +27,16 @@ database_id_finder = re.compile(
 
 
 def find_database_id(api_endpoint: str) -> Optional[str]:
+    """
+    Parse an API Endpoint into a database ID.
+
+    Args:
+        api_endpoint: a full API endpoint for the Data Api.
+
+    Returns:
+        the database ID. If parsing fails, return None.
+    """
+
     match = database_id_finder.match(api_endpoint)
     if match and match.groups():
         return match.groups()[0]
@@ -36,6 +46,19 @@ def find_database_id(api_endpoint: str) -> Optional[str]:
 
 @dataclass
 class DatabaseInfo:
+    """
+    Represents the identifying information for a database,
+    including the region the connection is established to.
+
+    Attributes:
+        id: the database ID.
+        region: the ID of the region through which the connection to DB is done.
+        namespace: the namespace this DB is set to work with.
+        name: the database name. Not necessarily unique: there can be multiple
+            databases with the same name.
+        raw_info: the full response from the DevOPS API call to get this info.
+    """
+
     id: Optional[str]
     region: Optional[str]
     namespace: str
@@ -45,6 +68,18 @@ class DatabaseInfo:
 
 @dataclass
 class CollectionInfo:
+    """
+    Represents the identifying information for a collection,
+    including the information about the database the collection belongs to.
+
+    Attributes:
+        database_info: a DatabaseInfo instance for the underlying database.
+        namespace: the namespace where the collection is located.
+        name: collection name. Unique within a namespace.
+        full_name: identifier for the collection within the database,
+            in the form "namespace.collection_name".
+    """
+
     database_info: DatabaseInfo
     namespace: str
     name: str
@@ -52,6 +87,22 @@ class CollectionInfo:
 
 
 def get_database_info(api_endpoint: str, token: str, namespace: str) -> DatabaseInfo:
+    """
+    Fetch the relevant information through the DevOps API.
+
+    Args:
+        api_endpoint: a full API endpoint for the Data Api.
+        token: a valid token to access the database.
+        namespace: the desired namespace that will be used in the result.
+
+    Returns:
+        A DatabaseInfo object.
+
+    Note:
+        If the API endpoint does not allow to extract a database_id, or other
+        exceptions occur, the return value will have most fields set to None.
+    """
+
     try:
         astra_db_ops = AstraDBOps(token=token)
         database_id = find_database_id(api_endpoint)
