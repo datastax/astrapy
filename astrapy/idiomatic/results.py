@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -25,12 +25,13 @@ class DeleteResult:
 
     Attributes:
         deleted_count: number of deleted documents
-        raw_result: response/responses from the Data API call.
+        raw_results: response/responses from the Data API call.
             Depending on the exact delete method being used, this
             can be a list of raw responses or a single raw response.
     """
+
     deleted_count: Optional[int]
-    raw_result: Union[Dict[str, Any], List[Dict[str, Any]]]
+    raw_results: List[Dict[str, Any]]
 
 
 @dataclass
@@ -42,6 +43,7 @@ class InsertOneResult:
         raw_result: response from the Data API call
         inserted_id: the ID of the inserted document
     """
+
     raw_result: Dict[str, Any]
     inserted_id: Any
 
@@ -52,10 +54,11 @@ class InsertManyResult:
     Class that represents the result of insert_many operations.
 
     Attributes:
-        raw_result: response from the Data API call
+        raw_results: response from the Data API call
         inserted_ids: list of the IDs of the inserted documents
     """
-    raw_result: List[Dict[str, Any]]
+
+    raw_results: List[Dict[str, Any]]
     inserted_ids: List[Any]
 
 
@@ -74,6 +77,7 @@ class UpdateResult:
         and optionally "upserted" containing the ID of an upserted document.
 
     """
+
     raw_result: Dict[str, Any]
     update_info: Dict[str, Any]
 
@@ -97,7 +101,8 @@ class BulkWriteResult:
         upserted_count: number of upserted documents
         upserted_ids: a (sparse) map from indices to ID of the upserted document
     """
-    bulk_api_results: Dict[int, Union[Dict[str, Any], List[Dict[str, Any]]]]
+
+    bulk_api_results: Dict[int, List[Dict[str, Any]]]
     deleted_count: Optional[int]
     inserted_count: int
     matched_count: int

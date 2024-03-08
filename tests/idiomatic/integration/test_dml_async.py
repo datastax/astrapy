@@ -39,23 +39,51 @@ class TestDMLAsync:
         self,
         async_empty_collection: AsyncCollection,
     ) -> None:
-        assert await async_empty_collection.count_documents(filter={}) == 0
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+            == 0
+        )
         await async_empty_collection.insert_one({"doc": 1, "group": "A"})
         await async_empty_collection.insert_one({"doc": 2, "group": "B"})
         await async_empty_collection.insert_one({"doc": 3, "group": "A"})
-        assert await async_empty_collection.count_documents(filter={}) == 3
-        assert await async_empty_collection.count_documents(filter={"group": "A"}) == 2
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+            == 3
+        )
+        assert (
+            await async_empty_collection.count_documents(
+                filter={"group": "A"}, upper_bound=100
+            )
+            == 2
+        )
 
     @pytest.mark.describe("test of overflowing collection count_documents, async")
     async def test_collection_overflowing_count_documents_async(
         self,
         async_empty_collection: AsyncCollection,
     ) -> None:
-        await async_empty_collection.insert_many([{"a": i} for i in range(999)])
-        assert await async_empty_collection.count_documents(filter={}) == 999
-        await async_empty_collection.insert_many([{"b": i} for i in range(2)])
+        await async_empty_collection.insert_many([{"a": i} for i in range(900)])
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=950)
+            == 900
+        )
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=2000)
+            == 900
+        )
         with pytest.raises(ValueError):
-            assert await async_empty_collection.count_documents(filter={})
+            await async_empty_collection.count_documents(
+                filter={}, upper_bound=100
+            ) == 900
+        await async_empty_collection.insert_many([{"b": i} for i in range(200)])
+        with pytest.raises(ValueError):
+            assert await async_empty_collection.count_documents(
+                filter={}, upper_bound=100
+            )
+        with pytest.raises(ValueError):
+            assert await async_empty_collection.count_documents(
+                filter={}, upper_bound=2000
+            )
 
     @pytest.mark.describe("test of collection insert_one, async")
     async def test_collection_insert_one_async(
@@ -68,7 +96,12 @@ class TestDMLAsync:
             {"_id": "xxx", "doc": 2, "group": "B"}
         )
         assert io_result2.inserted_id == "xxx"
-        assert await async_empty_collection.count_documents(filter={"group": "A"}) == 1
+        assert (
+            await async_empty_collection.count_documents(
+                filter={"group": "A"}, upper_bound=100
+            )
+            == 1
+        )
 
     @pytest.mark.describe("test of collection delete_one, async")
     async def test_collection_delete_one_async(
@@ -78,11 +111,17 @@ class TestDMLAsync:
         await async_empty_collection.insert_one({"doc": 1, "group": "A"})
         await async_empty_collection.insert_one({"doc": 2, "group": "B"})
         await async_empty_collection.insert_one({"doc": 3, "group": "A"})
-        assert await async_empty_collection.count_documents(filter={}) == 3
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+            == 3
+        )
         do_result1 = await async_empty_collection.delete_one({"group": "A"})
         assert isinstance(do_result1, DeleteResult)
         assert do_result1.deleted_count == 1
-        assert await async_empty_collection.count_documents(filter={}) == 2
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+            == 2
+        )
 
     @pytest.mark.describe("test of collection delete_many, async")
     async def test_collection_delete_many_async(
@@ -92,11 +131,17 @@ class TestDMLAsync:
         await async_empty_collection.insert_one({"doc": 1, "group": "A"})
         await async_empty_collection.insert_one({"doc": 2, "group": "B"})
         await async_empty_collection.insert_one({"doc": 3, "group": "A"})
-        assert await async_empty_collection.count_documents(filter={}) == 3
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+            == 3
+        )
         do_result1 = await async_empty_collection.delete_many({"group": "A"})
         assert isinstance(do_result1, DeleteResult)
         assert do_result1.deleted_count == 2
-        assert await async_empty_collection.count_documents(filter={}) == 1
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+            == 1
+        )
 
     @pytest.mark.describe("test of collection truncating delete_many, async")
     async def test_collection_truncating_delete_many_async(
@@ -106,11 +151,15 @@ class TestDMLAsync:
         await async_empty_collection.insert_one({"doc": 1, "group": "A"})
         await async_empty_collection.insert_one({"doc": 2, "group": "B"})
         await async_empty_collection.insert_one({"doc": 3, "group": "A"})
-        assert (await async_empty_collection.count_documents(filter={})) == 3
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+        ) == 3
         do_result1 = await async_empty_collection.delete_many({})
         assert isinstance(do_result1, DeleteResult)
         assert do_result1.deleted_count is None
-        assert (await async_empty_collection.count_documents(filter={})) == 0
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+        ) == 0
 
     @pytest.mark.describe("test of collection chunk-requiring delete_many, async")
     async def test_collection_chunked_delete_many_async(
@@ -123,11 +172,15 @@ class TestDMLAsync:
         await async_empty_collection.insert_many(
             [{"doc": i, "group": "B"} for i in range(10)]
         )
-        assert (await async_empty_collection.count_documents(filter={})) == 60
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+        ) == 60
         do_result1 = await async_empty_collection.delete_many({"group": "A"})
         assert isinstance(do_result1, DeleteResult)
         assert do_result1.deleted_count == 50
-        assert (await async_empty_collection.count_documents(filter={})) == 10
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+        ) == 10
 
     @pytest.mark.describe("test of collection find, async")
     async def test_collection_find_async(
@@ -522,43 +575,43 @@ class TestDMLAsync:
 
         resp0000 = await acol.find_one_and_replace({"f": 0}, {"r": 1})
         assert resp0000 is None
-        assert await acol.count_documents({}) == 0
+        assert await acol.count_documents({}, upper_bound=100) == 0
 
         resp0001 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, sort={"x": 1})
         assert resp0001 is None
-        assert await acol.count_documents({}) == 0
+        assert await acol.count_documents({}, upper_bound=100) == 0
 
         resp0010 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
         assert resp0010 is None
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         resp0011 = await acol.find_one_and_replace(
             {"f": 0}, {"r": 1}, upsert=True, sort={"x": 1}
         )
         assert resp0011 is None
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0100 = await acol.find_one_and_replace({"f": 0}, {"r": 1})
         assert resp0100 is not None
         assert resp0100["f"] == 0
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0101 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, sort={"x": 1})
         assert resp0101 is not None
         assert resp0101["f"] == 0
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0110 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
         assert resp0110 is not None
         assert resp0110["f"] == 0
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
@@ -567,27 +620,27 @@ class TestDMLAsync:
         )
         assert resp0111 is not None
         assert resp0111["f"] == 0
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         resp1000 = await acol.find_one_and_replace(
             {"f": 0}, {"r": 1}, return_document=ReturnDocument.AFTER
         )
         assert resp1000 is None
-        assert await acol.count_documents({}) == 0
+        assert await acol.count_documents({}, upper_bound=100) == 0
 
         resp1001 = await acol.find_one_and_replace(
             {"f": 0}, {"r": 1}, sort={"x": 1}, return_document=ReturnDocument.AFTER
         )
         assert resp1001 is None
-        assert await acol.count_documents({}) == 0
+        assert await acol.count_documents({}, upper_bound=100) == 0
 
         resp1010 = await acol.find_one_and_replace(
             {"f": 0}, {"r": 1}, upsert=True, return_document=ReturnDocument.AFTER
         )
         assert resp1010 is not None
         assert resp1010["r"] == 1
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         resp1011 = await acol.find_one_and_replace(
@@ -599,7 +652,7 @@ class TestDMLAsync:
         )
         assert resp1011 is not None
         assert resp1011["r"] == 1
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
@@ -608,7 +661,7 @@ class TestDMLAsync:
         )
         assert resp1100 is not None
         assert resp1100["r"] == 1
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
@@ -617,7 +670,7 @@ class TestDMLAsync:
         )
         assert resp1101 is not None
         assert resp1101["r"] == 1
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
@@ -626,7 +679,7 @@ class TestDMLAsync:
         )
         assert resp1110 is not None
         assert resp1110["r"] == 1
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
@@ -639,7 +692,7 @@ class TestDMLAsync:
         )
         assert resp1111 is not None
         assert resp1111["r"] == 1
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         # projection
@@ -773,26 +826,38 @@ class TestDMLAsync:
         await async_empty_collection.insert_one({"doc": 1, "group": "A"})
         await async_empty_collection.insert_one({"doc": 2, "group": "B"})
         await async_empty_collection.insert_one({"doc": 3, "group": "A"})
-        assert await async_empty_collection.count_documents(filter={}) == 3
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+            == 3
+        )
 
         fo_result1 = await async_empty_collection.find_one_and_delete({"group": "A"})
         assert fo_result1 is not None
         assert set(fo_result1.keys()) == {"_id", "doc", "group"}
-        assert await async_empty_collection.count_documents(filter={}) == 2
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+            == 2
+        )
 
         fo_result2 = await async_empty_collection.find_one_and_delete(
             {"group": "B"}, projection=["doc"]
         )
         assert fo_result2 is not None
         assert set(fo_result2.keys()) == {"_id", "doc"}
-        assert await async_empty_collection.count_documents(filter={}) == 1
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+            == 1
+        )
 
         fo_result3 = await async_empty_collection.find_one_and_delete(
             {"group": "A"}, projection={"_id": False, "group": False}
         )
         assert fo_result3 is not None
         assert set(fo_result3.keys()) == {"_id", "doc"}
-        assert await async_empty_collection.count_documents(filter={}) == 0
+        assert (
+            await async_empty_collection.count_documents(filter={}, upper_bound=100)
+            == 0
+        )
 
         fo_result4 = await async_empty_collection.find_one_and_delete({}, sort={"f": 1})
         assert fo_result4 is None
@@ -806,26 +871,26 @@ class TestDMLAsync:
 
         resp0000 = await acol.find_one_and_update({"f": 0}, {"$set": {"n": 1}})
         assert resp0000 is None
-        assert await acol.count_documents({}) == 0
+        assert await acol.count_documents({}, upper_bound=100) == 0
 
         resp0001 = await acol.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, sort={"x": 1}
         )
         assert resp0001 is None
-        assert await acol.count_documents({}) == 0
+        assert await acol.count_documents({}, upper_bound=100) == 0
 
         resp0010 = await acol.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, upsert=True
         )
         assert resp0010 is None
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         resp0011 = await acol.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, upsert=True, sort={"x": 1}
         )
         assert resp0011 is None
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
@@ -833,7 +898,7 @@ class TestDMLAsync:
         assert resp0100 is not None
         assert resp0100["f"] == 0
         assert "n" not in resp0100
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
@@ -843,7 +908,7 @@ class TestDMLAsync:
         assert resp0101 is not None
         assert resp0101["f"] == 0
         assert "n" not in resp0101
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
@@ -853,7 +918,7 @@ class TestDMLAsync:
         assert resp0110 is not None
         assert resp0110["f"] == 0
         assert "n" not in resp0110
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
@@ -863,14 +928,14 @@ class TestDMLAsync:
         assert resp0111 is not None
         assert resp0111["f"] == 0
         assert "n" not in resp0111
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         resp1000 = await acol.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, return_document=ReturnDocument.AFTER
         )
         assert resp1000 is None
-        assert await acol.count_documents({}) == 0
+        assert await acol.count_documents({}, upper_bound=100) == 0
 
         resp1001 = await acol.find_one_and_update(
             {"f": 0},
@@ -879,7 +944,7 @@ class TestDMLAsync:
             return_document=ReturnDocument.AFTER,
         )
         assert resp1001 is None
-        assert await acol.count_documents({}) == 0
+        assert await acol.count_documents({}, upper_bound=100) == 0
 
         resp1010 = await acol.find_one_and_update(
             {"f": 0},
@@ -889,7 +954,7 @@ class TestDMLAsync:
         )
         assert resp1010 is not None
         assert resp1010["n"] == 1
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         resp1011 = await acol.find_one_and_update(
@@ -901,7 +966,7 @@ class TestDMLAsync:
         )
         assert resp1011 is not None
         assert resp1011["n"] == 1
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
@@ -910,7 +975,7 @@ class TestDMLAsync:
         )
         assert resp1100 is not None
         assert resp1100["n"] == 1
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
@@ -922,7 +987,7 @@ class TestDMLAsync:
         )
         assert resp1101 is not None
         assert resp1101["n"] == 1
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
@@ -934,7 +999,7 @@ class TestDMLAsync:
         )
         assert resp1110 is not None
         assert resp1110["n"] == 1
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
@@ -947,7 +1012,7 @@ class TestDMLAsync:
         )
         assert resp1111 is not None
         assert resp1111["n"] == 1
-        assert await acol.count_documents({}) == 1
+        assert await acol.count_documents({}, upper_bound=100) == 1
         await acol.delete_many({})
 
         # projection

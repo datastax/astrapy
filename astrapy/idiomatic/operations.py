@@ -86,7 +86,7 @@ class InsertOne(BaseOperation):
     ) -> BulkWriteResult:
         op_result = collection.insert_one(document=self.document)
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            bulk_api_results={index_in_bulk_write: [op_result.raw_result]},
             deleted_count=0,
             inserted_count=1,
             matched_count=0,
@@ -117,7 +117,7 @@ class InsertMany(BaseOperation):
             ordered=self.ordered,
         )
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            bulk_api_results={index_in_bulk_write: op_result.raw_results},
             deleted_count=0,
             inserted_count=len(op_result.inserted_ids),
             matched_count=0,
@@ -159,7 +159,7 @@ class UpdateOne(BaseOperation):
         else:
             upserted_ids = {}
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            bulk_api_results={index_in_bulk_write: [op_result.raw_result]},
             deleted_count=0,
             inserted_count=inserted_count,
             matched_count=matched_count,
@@ -201,7 +201,7 @@ class UpdateMany(BaseOperation):
         else:
             upserted_ids = {}
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            bulk_api_results={index_in_bulk_write: [op_result.raw_result]},
             deleted_count=0,
             inserted_count=inserted_count,
             matched_count=matched_count,
@@ -243,7 +243,7 @@ class ReplaceOne(BaseOperation):
         else:
             upserted_ids = {}
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            bulk_api_results={index_in_bulk_write: [op_result.raw_result]},
             deleted_count=0,
             inserted_count=inserted_count,
             matched_count=matched_count,
@@ -268,7 +268,7 @@ class DeleteOne(BaseOperation):
     ) -> BulkWriteResult:
         op_result = collection.delete_one(filter=self.filter)
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            bulk_api_results={index_in_bulk_write: op_result.raw_results},
             deleted_count=op_result.deleted_count,
             inserted_count=0,
             matched_count=0,
@@ -293,7 +293,7 @@ class DeleteMany(BaseOperation):
     ) -> BulkWriteResult:
         op_result = collection.delete_many(filter=self.filter)
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            bulk_api_results={index_in_bulk_write: op_result.raw_results},
             deleted_count=op_result.deleted_count,
             inserted_count=0,
             matched_count=0,
@@ -325,7 +325,7 @@ class AsyncInsertOne(AsyncBaseOperation):
     ) -> BulkWriteResult:
         op_result = await collection.insert_one(document=self.document)
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            bulk_api_results={index_in_bulk_write: [op_result.raw_result]},
             deleted_count=0,
             inserted_count=1,
             matched_count=0,
@@ -356,7 +356,7 @@ class AsyncInsertMany(AsyncBaseOperation):
             ordered=self.ordered,
         )
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            bulk_api_results={index_in_bulk_write: op_result.raw_results},
             deleted_count=0,
             inserted_count=len(op_result.inserted_ids),
             matched_count=0,
@@ -398,7 +398,7 @@ class AsyncUpdateOne(AsyncBaseOperation):
         else:
             upserted_ids = {}
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            bulk_api_results={index_in_bulk_write: [op_result.raw_result]},
             deleted_count=0,
             inserted_count=inserted_count,
             matched_count=matched_count,
@@ -440,7 +440,7 @@ class AsyncUpdateMany(AsyncBaseOperation):
         else:
             upserted_ids = {}
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            bulk_api_results={index_in_bulk_write: [op_result.raw_result]},
             deleted_count=0,
             inserted_count=inserted_count,
             matched_count=matched_count,
@@ -482,7 +482,7 @@ class AsyncReplaceOne(AsyncBaseOperation):
         else:
             upserted_ids = {}
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            bulk_api_results={index_in_bulk_write: [op_result.raw_result]},
             deleted_count=0,
             inserted_count=inserted_count,
             matched_count=matched_count,
@@ -507,7 +507,7 @@ class AsyncDeleteOne(AsyncBaseOperation):
     ) -> BulkWriteResult:
         op_result = await collection.delete_one(filter=self.filter)
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            bulk_api_results={index_in_bulk_write: op_result.raw_results},
             deleted_count=op_result.deleted_count,
             inserted_count=0,
             matched_count=0,
@@ -532,7 +532,7 @@ class AsyncDeleteMany(AsyncBaseOperation):
     ) -> BulkWriteResult:
         op_result = await collection.delete_many(filter=self.filter)
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_result},
+            bulk_api_results={index_in_bulk_write: op_result.raw_results},
             deleted_count=op_result.deleted_count,
             inserted_count=0,
             matched_count=0,

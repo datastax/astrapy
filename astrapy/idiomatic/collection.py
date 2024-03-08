@@ -254,7 +254,7 @@ class Collection:
             ]
             return InsertManyResult(
                 # if we are here, cim_responses are all dicts (no exceptions)
-                raw_result=cim_responses,  # type: ignore[arg-type]
+                raw_results=cim_responses,  # type: ignore[arg-type]
                 inserted_ids=inserted_ids,
             )
 
@@ -314,14 +314,20 @@ class Collection:
     def count_documents(
         self,
         filter: Dict[str, Any],
+        upper_bound: int,
     ) -> int:
         cd_response = self._astra_db_collection.count_documents(filter=filter)
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
             if cd_response["status"].get("moreData", False):
-                raise ValueError(f"Document count exceeds {count}")
+                raise ValueError(
+                    f"Document count exceeds {count}, the maximum allowed by the server"
+                )
             else:
-                return count
+                if count > upper_bound:
+                    raise ValueError("Document count exceeds required upper bound")
+                else:
+                    return count
         else:
             raise ValueError(
                 "Could not complete a count_documents operation. "
@@ -505,13 +511,13 @@ class Collection:
             if deleted_count == -1:
                 return DeleteResult(
                     deleted_count=None,
-                    raw_result=do_response,
+                    raw_results=[do_response],
                 )
             else:
                 # expected a non-negative integer:
                 return DeleteResult(
                     deleted_count=deleted_count,
-                    raw_result=do_response,
+                    raw_results=[do_response],
                 )
         else:
             raise ValueError(
@@ -535,13 +541,13 @@ class Collection:
             if deleted_count == -1:
                 return DeleteResult(
                     deleted_count=None,
-                    raw_result=dm_responses,
+                    raw_results=dm_responses,
                 )
             else:
                 # per API specs, deleted_count has to be a non-negative integer.
                 return DeleteResult(
                     deleted_count=deleted_count,
-                    raw_result=dm_responses,
+                    raw_results=dm_responses,
                 )
         else:
             raise ValueError(
@@ -780,7 +786,7 @@ class AsyncCollection:
             ]
             return InsertManyResult(
                 # if we are here, cim_responses are all dicts (no exceptions)
-                raw_result=cim_responses,  # type: ignore[arg-type]
+                raw_results=cim_responses,  # type: ignore[arg-type]
                 inserted_ids=inserted_ids,
             )
 
@@ -841,14 +847,20 @@ class AsyncCollection:
     async def count_documents(
         self,
         filter: Dict[str, Any],
+        upper_bound: int,
     ) -> int:
         cd_response = await self._astra_db_collection.count_documents(filter=filter)
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
             if cd_response["status"].get("moreData", False):
-                raise ValueError(f"Document count exceeds {count}")
+                raise ValueError(
+                    f"Document count exceeds {count}, the maximum allowed by the server"
+                )
             else:
-                return count
+                if count > upper_bound:
+                    raise ValueError("Document count exceeds required upper bound")
+                else:
+                    return count
         else:
             raise ValueError(
                 "Could not complete a count_documents operation. "
@@ -1034,13 +1046,13 @@ class AsyncCollection:
             if deleted_count == -1:
                 return DeleteResult(
                     deleted_count=None,
-                    raw_result=do_response,
+                    raw_results=[do_response],
                 )
             else:
                 # expected a non-negative integer:
                 return DeleteResult(
                     deleted_count=deleted_count,
-                    raw_result=do_response,
+                    raw_results=[do_response],
                 )
         else:
             raise ValueError(
@@ -1068,13 +1080,13 @@ class AsyncCollection:
             if deleted_count == -1:
                 return DeleteResult(
                     deleted_count=None,
-                    raw_result=dm_responses,
+                    raw_results=dm_responses,
                 )
             else:
                 # per API specs, deleted_count has to be a non-negative integer.
                 return DeleteResult(
                     deleted_count=deleted_count,
-                    raw_result=dm_responses,
+                    raw_results=dm_responses,
                 )
         else:
             raise ValueError(
