@@ -22,7 +22,7 @@ class TestBulkWriteResults:
     @pytest.mark.describe("test of reduction of bulk write results")
     def test_reduce_bulk_write_results(self) -> None:
         bwr1 = BulkWriteResult(
-            bulk_api_results={1: {"seq1": 1}},
+            bulk_api_results={1: [{"seq1": 1}]},
             deleted_count=100,
             inserted_count=200,
             matched_count=300,
@@ -40,7 +40,7 @@ class TestBulkWriteResults:
             upserted_ids={2: {"useq2": 2}},
         )
         bwr3 = BulkWriteResult(
-            bulk_api_results={3: {"seq3": 3}},
+            bulk_api_results={3: [{"seq3": 3}]},
             deleted_count=1,
             inserted_count=2,
             matched_count=3,
@@ -51,7 +51,7 @@ class TestBulkWriteResults:
 
         reduced_a = reduce_bulk_write_results([bwr1, bwr2, bwr3])
         expected_a = BulkWriteResult(
-            bulk_api_results={1: {"seq1": 1}, 3: {"seq3": 3}},
+            bulk_api_results={1: [{"seq1": 1}], 3: [{"seq3": 3}]},
             deleted_count=111,
             inserted_count=222,
             matched_count=333,

@@ -14,17 +14,40 @@
 
 from __future__ import annotations
 
-from enum import Enum
 from typing import Any, Dict, Iterable, Optional, Union
 
 
 DocumentType = Dict[str, Any]
 ProjectionType = Union[Iterable[str], Dict[str, bool]]
+SortType = Dict[str, Any]
+FilterType = Dict[str, Any]
 
 
-class ReturnDocument(Enum):
+class ReturnDocument:
+    """
+    Admitted values for the `return_document` parameter in
+    `find_one_and_replace` and `find_one_and_update` collection
+    methods.
+    """
+
+    def __init__(self) -> None:
+        raise NotImplementedError
+
     BEFORE = "before"
     AFTER = "after"
+
+
+class SortDocuments:
+    """
+    Admitted values for the `sort` parameter in the find collection methods,
+    e.g. `sort={"field": SortDocuments.ASCENDING}`.
+    """
+
+    def __init__(self) -> None:
+        raise NotImplementedError
+
+    ASCENDING = 1
+    DESCENDING = -1
 
 
 def normalize_optional_projection(

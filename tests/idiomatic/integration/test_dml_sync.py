@@ -17,7 +17,7 @@ import pytest
 from astrapy import Collection
 from astrapy.results import DeleteResult, InsertOneResult
 from astrapy.api import APIRequestError
-from astrapy.idiomatic.types import ReturnDocument
+from astrapy.idiomatic.types import ReturnDocument, SortDocuments
 from astrapy.idiomatic.operations import (
     InsertOne,
     InsertMany,
@@ -35,23 +35,33 @@ class TestDMLSync:
         self,
         sync_empty_collection: Collection,
     ) -> None:
-        assert sync_empty_collection.count_documents(filter={}) == 0
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 0
         sync_empty_collection.insert_one({"doc": 1, "group": "A"})
         sync_empty_collection.insert_one({"doc": 2, "group": "B"})
         sync_empty_collection.insert_one({"doc": 3, "group": "A"})
-        assert sync_empty_collection.count_documents(filter={}) == 3
-        assert sync_empty_collection.count_documents(filter={"group": "A"}) == 2
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 3
+        assert (
+            sync_empty_collection.count_documents(
+                filter={"group": "A"}, upper_bound=100
+            )
+            == 2
+        )
 
     @pytest.mark.describe("test of overflowing collection count_documents, sync")
     def test_collection_overflowing_count_documents_sync(
         self,
         sync_empty_collection: Collection,
     ) -> None:
-        sync_empty_collection.insert_many([{"a": i} for i in range(999)])
-        assert sync_empty_collection.count_documents(filter={}) == 999
-        sync_empty_collection.insert_many([{"b": i} for i in range(2)])
+        sync_empty_collection.insert_many([{"a": i} for i in range(900)])
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=950) == 900
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=2000) == 900
         with pytest.raises(ValueError):
-            assert sync_empty_collection.count_documents(filter={})
+            sync_empty_collection.count_documents(filter={}, upper_bound=100) == 900
+        sync_empty_collection.insert_many([{"b": i} for i in range(200)])
+        with pytest.raises(ValueError):
+            assert sync_empty_collection.count_documents(filter={}, upper_bound=100)
+        with pytest.raises(ValueError):
+            assert sync_empty_collection.count_documents(filter={}, upper_bound=2000)
 
     @pytest.mark.describe("test of collection insert_one, sync")
     def test_collection_insert_one_sync(
@@ -60,12 +70,16 @@ class TestDMLSync:
     ) -> None:
         io_result1 = sync_empty_collection.insert_one({"doc": 1, "group": "A"})
         assert isinstance(io_result1, InsertOneResult)
-        assert io_result1.acknowledged is True
         io_result2 = sync_empty_collection.insert_one(
             {"_id": "xxx", "doc": 2, "group": "B"}
         )
         assert io_result2.inserted_id == "xxx"
-        assert sync_empty_collection.count_documents(filter={"group": "A"}) == 1
+        assert (
+            sync_empty_collection.count_documents(
+                filter={"group": "A"}, upper_bound=100
+            )
+            == 1
+        )
 
     @pytest.mark.describe("test of collection delete_one, sync")
     def test_collection_delete_one_sync(
@@ -75,12 +89,11 @@ class TestDMLSync:
         sync_empty_collection.insert_one({"doc": 1, "group": "A"})
         sync_empty_collection.insert_one({"doc": 2, "group": "B"})
         sync_empty_collection.insert_one({"doc": 3, "group": "A"})
-        assert sync_empty_collection.count_documents(filter={}) == 3
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 3
         do_result1 = sync_empty_collection.delete_one({"group": "A"})
         assert isinstance(do_result1, DeleteResult)
-        assert do_result1.acknowledged is True
         assert do_result1.deleted_count == 1
-        assert sync_empty_collection.count_documents(filter={}) == 2
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 2
 
     @pytest.mark.describe("test of collection delete_many, sync")
     def test_collection_delete_many_sync(
@@ -90,12 +103,11 @@ class TestDMLSync:
         sync_empty_collection.insert_one({"doc": 1, "group": "A"})
         sync_empty_collection.insert_one({"doc": 2, "group": "B"})
         sync_empty_collection.insert_one({"doc": 3, "group": "A"})
-        assert sync_empty_collection.count_documents(filter={}) == 3
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 3
         do_result1 = sync_empty_collection.delete_many({"group": "A"})
         assert isinstance(do_result1, DeleteResult)
-        assert do_result1.acknowledged is True
         assert do_result1.deleted_count == 2
-        assert sync_empty_collection.count_documents(filter={}) == 1
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 1
 
     @pytest.mark.describe("test of collection truncating delete_many, sync")
     def test_collection_truncating_delete_many_sync(
@@ -105,12 +117,11 @@ class TestDMLSync:
         sync_empty_collection.insert_one({"doc": 1, "group": "A"})
         sync_empty_collection.insert_one({"doc": 2, "group": "B"})
         sync_empty_collection.insert_one({"doc": 3, "group": "A"})
-        assert sync_empty_collection.count_documents(filter={}) == 3
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 3
         do_result1 = sync_empty_collection.delete_many({})
         assert isinstance(do_result1, DeleteResult)
-        assert do_result1.acknowledged is True
         assert do_result1.deleted_count is None
-        assert sync_empty_collection.count_documents(filter={}) == 0
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 0
 
     @pytest.mark.describe("test of collection chunk-requiring delete_many, sync")
     def test_collection_chunked_delete_many_sync(
@@ -119,12 +130,11 @@ class TestDMLSync:
     ) -> None:
         sync_empty_collection.insert_many([{"doc": i, "group": "A"} for i in range(50)])
         sync_empty_collection.insert_many([{"doc": i, "group": "B"} for i in range(10)])
-        assert sync_empty_collection.count_documents(filter={}) == 60
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 60
         do_result1 = sync_empty_collection.delete_many({"group": "A"})
         assert isinstance(do_result1, DeleteResult)
-        assert do_result1.acknowledged is True
         assert do_result1.deleted_count == 50
-        assert sync_empty_collection.count_documents(filter={}) == 10
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 10
 
     @pytest.mark.describe("test of collection find, sync")
     def test_collection_find_sync(
@@ -134,7 +144,7 @@ class TestDMLSync:
         sync_empty_collection.insert_many([{"seq": i} for i in range(30)])
         Nski = 1
         Nlim = 28
-        Nsor = {"seq": -1}
+        Nsor = {"seq": SortDocuments.DESCENDING}
         Nfil = {"seq": {"$exists": True}}
 
         # case 0000 of find-pattern matrix
@@ -513,43 +523,43 @@ class TestDMLSync:
 
         resp0000 = col.find_one_and_replace({"f": 0}, {"r": 1})
         assert resp0000 is None
-        assert col.count_documents({}) == 0
+        assert col.count_documents({}, upper_bound=100) == 0
 
         resp0001 = col.find_one_and_replace({"f": 0}, {"r": 1}, sort={"x": 1})
         assert resp0001 is None
-        assert col.count_documents({}) == 0
+        assert col.count_documents({}, upper_bound=100) == 0
 
         resp0010 = col.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
         assert resp0010 is None
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         resp0011 = col.find_one_and_replace(
             {"f": 0}, {"r": 1}, upsert=True, sort={"x": 1}
         )
         assert resp0011 is None
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
         resp0100 = col.find_one_and_replace({"f": 0}, {"r": 1})
         assert resp0100 is not None
         assert resp0100["f"] == 0
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
         resp0101 = col.find_one_and_replace({"f": 0}, {"r": 1}, sort={"x": 1})
         assert resp0101 is not None
         assert resp0101["f"] == 0
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
         resp0110 = col.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
         assert resp0110 is not None
         assert resp0110["f"] == 0
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
@@ -558,27 +568,27 @@ class TestDMLSync:
         )
         assert resp0111 is not None
         assert resp0111["f"] == 0
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         resp1000 = col.find_one_and_replace(
             {"f": 0}, {"r": 1}, return_document=ReturnDocument.AFTER
         )
         assert resp1000 is None
-        assert col.count_documents({}) == 0
+        assert col.count_documents({}, upper_bound=100) == 0
 
         resp1001 = col.find_one_and_replace(
             {"f": 0}, {"r": 1}, sort={"x": 1}, return_document=ReturnDocument.AFTER
         )
         assert resp1001 is None
-        assert col.count_documents({}) == 0
+        assert col.count_documents({}, upper_bound=100) == 0
 
         resp1010 = col.find_one_and_replace(
             {"f": 0}, {"r": 1}, upsert=True, return_document=ReturnDocument.AFTER
         )
         assert resp1010 is not None
         assert resp1010["r"] == 1
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         resp1011 = col.find_one_and_replace(
@@ -590,7 +600,7 @@ class TestDMLSync:
         )
         assert resp1011 is not None
         assert resp1011["r"] == 1
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
@@ -599,7 +609,7 @@ class TestDMLSync:
         )
         assert resp1100 is not None
         assert resp1100["r"] == 1
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
@@ -608,7 +618,7 @@ class TestDMLSync:
         )
         assert resp1101 is not None
         assert resp1101["r"] == 1
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
@@ -617,7 +627,7 @@ class TestDMLSync:
         )
         assert resp1110 is not None
         assert resp1110["r"] == 1
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
@@ -630,7 +640,7 @@ class TestDMLSync:
         )
         assert resp1111 is not None
         assert resp1111["r"] == 1
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         # projection
@@ -760,26 +770,26 @@ class TestDMLSync:
         sync_empty_collection.insert_one({"doc": 1, "group": "A"})
         sync_empty_collection.insert_one({"doc": 2, "group": "B"})
         sync_empty_collection.insert_one({"doc": 3, "group": "A"})
-        assert sync_empty_collection.count_documents(filter={}) == 3
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 3
 
         fo_result1 = sync_empty_collection.find_one_and_delete({"group": "A"})
         assert fo_result1 is not None
         assert set(fo_result1.keys()) == {"_id", "doc", "group"}
-        assert sync_empty_collection.count_documents(filter={}) == 2
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 2
 
         fo_result2 = sync_empty_collection.find_one_and_delete(
             {"group": "B"}, projection=["doc"]
         )
         assert fo_result2 is not None
         assert set(fo_result2.keys()) == {"_id", "doc"}
-        assert sync_empty_collection.count_documents(filter={}) == 1
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 1
 
         fo_result3 = sync_empty_collection.find_one_and_delete(
             {"group": "A"}, projection={"_id": False, "group": False}
         )
         assert fo_result3 is not None
         assert set(fo_result3.keys()) == {"_id", "doc"}
-        assert sync_empty_collection.count_documents(filter={}) == 0
+        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 0
 
         fo_result4 = sync_empty_collection.find_one_and_delete({}, sort={"f": 1})
         assert fo_result4 is None
@@ -793,22 +803,22 @@ class TestDMLSync:
 
         resp0000 = col.find_one_and_update({"f": 0}, {"$set": {"n": 1}})
         assert resp0000 is None
-        assert col.count_documents({}) == 0
+        assert col.count_documents({}, upper_bound=100) == 0
 
         resp0001 = col.find_one_and_update({"f": 0}, {"$set": {"n": 1}}, sort={"x": 1})
         assert resp0001 is None
-        assert col.count_documents({}) == 0
+        assert col.count_documents({}, upper_bound=100) == 0
 
         resp0010 = col.find_one_and_update({"f": 0}, {"$set": {"n": 1}}, upsert=True)
         assert resp0010 is None
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         resp0011 = col.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, upsert=True, sort={"x": 1}
         )
         assert resp0011 is None
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
@@ -816,7 +826,7 @@ class TestDMLSync:
         assert resp0100 is not None
         assert resp0100["f"] == 0
         assert "n" not in resp0100
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
@@ -824,7 +834,7 @@ class TestDMLSync:
         assert resp0101 is not None
         assert resp0101["f"] == 0
         assert "n" not in resp0101
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
@@ -832,7 +842,7 @@ class TestDMLSync:
         assert resp0110 is not None
         assert resp0110["f"] == 0
         assert "n" not in resp0110
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
@@ -842,14 +852,14 @@ class TestDMLSync:
         assert resp0111 is not None
         assert resp0111["f"] == 0
         assert "n" not in resp0111
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         resp1000 = col.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, return_document=ReturnDocument.AFTER
         )
         assert resp1000 is None
-        assert col.count_documents({}) == 0
+        assert col.count_documents({}, upper_bound=100) == 0
 
         resp1001 = col.find_one_and_update(
             {"f": 0},
@@ -858,7 +868,7 @@ class TestDMLSync:
             return_document=ReturnDocument.AFTER,
         )
         assert resp1001 is None
-        assert col.count_documents({}) == 0
+        assert col.count_documents({}, upper_bound=100) == 0
 
         resp1010 = col.find_one_and_update(
             {"f": 0},
@@ -868,7 +878,7 @@ class TestDMLSync:
         )
         assert resp1010 is not None
         assert resp1010["n"] == 1
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         resp1011 = col.find_one_and_update(
@@ -880,7 +890,7 @@ class TestDMLSync:
         )
         assert resp1011 is not None
         assert resp1011["n"] == 1
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
@@ -889,7 +899,7 @@ class TestDMLSync:
         )
         assert resp1100 is not None
         assert resp1100["n"] == 1
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
@@ -901,7 +911,7 @@ class TestDMLSync:
         )
         assert resp1101 is not None
         assert resp1101["n"] == 1
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
@@ -913,7 +923,7 @@ class TestDMLSync:
         )
         assert resp1110 is not None
         assert resp1110["n"] == 1
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         col.insert_one({"f": 0})
@@ -926,7 +936,7 @@ class TestDMLSync:
         )
         assert resp1111 is not None
         assert resp1111["n"] == 1
-        assert col.count_documents({}) == 1
+        assert col.count_documents({}, upper_bound=100) == 1
         col.delete_many({})
 
         # projection

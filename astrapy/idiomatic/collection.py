@@ -22,8 +22,10 @@ from typing import Any, Dict, Iterable, List, Optional, Union, TYPE_CHECKING
 from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
 from astrapy.idiomatic.types import (
     DocumentType,
+    FilterType,
     ProjectionType,
     ReturnDocument,
+    SortType,
     normalize_optional_projection,
 )
 from astrapy.idiomatic.database import AsyncDatabase, Database
@@ -254,18 +256,18 @@ class Collection:
             ]
             return InsertManyResult(
                 # if we are here, cim_responses are all dicts (no exceptions)
-                raw_result=cim_responses,  # type: ignore[arg-type]
+                raw_results=cim_responses,  # type: ignore[arg-type]
                 inserted_ids=inserted_ids,
             )
 
     def find(
         self,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[FilterType] = None,
         *,
         projection: Optional[ProjectionType] = None,
         skip: Optional[int] = None,
         limit: Optional[int] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
     ) -> Cursor:
         return (
             Cursor(
@@ -280,12 +282,12 @@ class Collection:
 
     def find_one(
         self,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[FilterType] = None,
         *,
         projection: Optional[ProjectionType] = None,
         skip: Optional[int] = None,
         limit: Optional[int] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
     ) -> Union[DocumentType, None]:
         fo_cursor = self.find(
             filter=filter,
@@ -304,7 +306,7 @@ class Collection:
         self,
         key: str,
         *,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[FilterType] = None,
     ) -> List[Any]:
         return self.find(
             filter=filter,
@@ -314,14 +316,20 @@ class Collection:
     def count_documents(
         self,
         filter: Dict[str, Any],
+        upper_bound: int,
     ) -> int:
         cd_response = self._astra_db_collection.count_documents(filter=filter)
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
             if cd_response["status"].get("moreData", False):
-                raise ValueError(f"Document count exceeds {count}")
+                raise ValueError(
+                    f"Document count exceeds {count}, the maximum allowed by the server"
+                )
             else:
-                return count
+                if count > upper_bound:
+                    raise ValueError("Document count exceeds required upper bound")
+                else:
+                    return count
         else:
             raise ValueError(
                 "Could not complete a count_documents operation. "
@@ -334,12 +342,12 @@ class Collection:
         replacement: DocumentType,
         *,
         projection: Optional[ProjectionType] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
-        return_document: ReturnDocument = ReturnDocument.BEFORE,
+        return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
         options = {
-            "returnDocument": return_document.value,
+            "returnDocument": return_document,
             "upsert": upsert,
         }
         fo_response = self._astra_db_collection.find_one_and_replace(
@@ -395,12 +403,12 @@ class Collection:
         update: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
-        return_document: ReturnDocument = ReturnDocument.BEFORE,
+        return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
         options = {
-            "returnDocument": return_document.value,
+            "returnDocument": return_document,
             "upsert": upsert,
         }
         fo_response = self._astra_db_collection.find_one_and_update(
@@ -477,7 +485,7 @@ class Collection:
         filter: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
     ) -> Union[DocumentType, None]:
         _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
         target_document = self.find_one(
@@ -505,13 +513,13 @@ class Collection:
             if deleted_count == -1:
                 return DeleteResult(
                     deleted_count=None,
-                    raw_result=do_response,
+                    raw_results=[do_response],
                 )
             else:
                 # expected a non-negative integer:
                 return DeleteResult(
                     deleted_count=deleted_count,
-                    raw_result=do_response,
+                    raw_results=[do_response],
                 )
         else:
             raise ValueError(
@@ -535,13 +543,13 @@ class Collection:
             if deleted_count == -1:
                 return DeleteResult(
                     deleted_count=None,
-                    raw_result=dm_responses,
+                    raw_results=dm_responses,
                 )
             else:
                 # per API specs, deleted_count has to be a non-negative integer.
                 return DeleteResult(
                     deleted_count=deleted_count,
-                    raw_result=dm_responses,
+                    raw_results=dm_responses,
                 )
         else:
             raise ValueError(
@@ -780,18 +788,18 @@ class AsyncCollection:
             ]
             return InsertManyResult(
                 # if we are here, cim_responses are all dicts (no exceptions)
-                raw_result=cim_responses,  # type: ignore[arg-type]
+                raw_results=cim_responses,  # type: ignore[arg-type]
                 inserted_ids=inserted_ids,
             )
 
     def find(
         self,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[FilterType] = None,
         *,
         projection: Optional[ProjectionType] = None,
         skip: Optional[int] = None,
         limit: Optional[int] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
     ) -> AsyncCursor:
         return (
             AsyncCursor(
@@ -806,12 +814,12 @@ class AsyncCollection:
 
     async def find_one(
         self,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[FilterType] = None,
         *,
         projection: Optional[ProjectionType] = None,
         skip: Optional[int] = None,
         limit: Optional[int] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
     ) -> Union[DocumentType, None]:
         fo_cursor = self.find(
             filter=filter,
@@ -830,7 +838,7 @@ class AsyncCollection:
         self,
         key: str,
         *,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[FilterType] = None,
     ) -> List[Any]:
         cursor = self.find(
             filter=filter,
@@ -841,14 +849,20 @@ class AsyncCollection:
     async def count_documents(
         self,
         filter: Dict[str, Any],
+        upper_bound: int,
     ) -> int:
         cd_response = await self._astra_db_collection.count_documents(filter=filter)
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
             if cd_response["status"].get("moreData", False):
-                raise ValueError(f"Document count exceeds {count}")
+                raise ValueError(
+                    f"Document count exceeds {count}, the maximum allowed by the server"
+                )
             else:
-                return count
+                if count > upper_bound:
+                    raise ValueError("Document count exceeds required upper bound")
+                else:
+                    return count
         else:
             raise ValueError(
                 "Could not complete a count_documents operation. "
@@ -861,12 +875,12 @@ class AsyncCollection:
         replacement: DocumentType,
         *,
         projection: Optional[ProjectionType] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
-        return_document: ReturnDocument = ReturnDocument.BEFORE,
+        return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
         options = {
-            "returnDocument": return_document.value,
+            "returnDocument": return_document,
             "upsert": upsert,
         }
         fo_response = await self._astra_db_collection.find_one_and_replace(
@@ -922,12 +936,12 @@ class AsyncCollection:
         update: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
-        return_document: ReturnDocument = ReturnDocument.BEFORE,
+        return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
         options = {
-            "returnDocument": return_document.value,
+            "returnDocument": return_document,
             "upsert": upsert,
         }
         fo_response = await self._astra_db_collection.find_one_and_update(
@@ -1004,7 +1018,7 @@ class AsyncCollection:
         filter: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
     ) -> Union[DocumentType, None]:
         _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
         target_document = await self.find_one(
@@ -1034,13 +1048,13 @@ class AsyncCollection:
             if deleted_count == -1:
                 return DeleteResult(
                     deleted_count=None,
-                    raw_result=do_response,
+                    raw_results=[do_response],
                 )
             else:
                 # expected a non-negative integer:
                 return DeleteResult(
                     deleted_count=deleted_count,
-                    raw_result=do_response,
+                    raw_results=[do_response],
                 )
         else:
             raise ValueError(
@@ -1068,13 +1082,13 @@ class AsyncCollection:
             if deleted_count == -1:
                 return DeleteResult(
                     deleted_count=None,
-                    raw_result=dm_responses,
+                    raw_results=dm_responses,
                 )
             else:
                 # per API specs, deleted_count has to be a non-negative integer.
                 return DeleteResult(
                     deleted_count=deleted_count,
-                    raw_result=dm_responses,
+                    raw_results=dm_responses,
                 )
         else:
             raise ValueError(
