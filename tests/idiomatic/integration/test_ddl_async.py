@@ -20,6 +20,7 @@ from ..conftest import (
     TEST_COLLECTION_NAME,
 )
 from astrapy.api import APIRequestError
+from astrapy.idiomatic.info import DatabaseInfo
 from astrapy import AsyncCollection, AsyncDatabase
 
 
@@ -63,6 +64,40 @@ class TestDDLAsync:
         dc_response2 = await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         assert dc_response2 == {"ok": 1}
         await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
+
+    @pytest.mark.describe("test of collection drop, async")
+    async def test_collection_drop_async(self, async_database: AsyncDatabase) -> None:
+        col = await async_database.create_collection(
+            name="async_collection_to_drop", dimension=2
+        )
+        del_res = await col.drop()
+        assert del_res["ok"] == 1
+        assert "async_collection_to_drop" not in (
+            await async_database.list_collection_names()
+        )
+
+    @pytest.mark.describe("test of database metainformation, async")
+    async def test_get_database_info_async(
+        self,
+        async_database: AsyncDatabase,
+        astra_db_credentials_kwargs: AstraDBCredentials,
+    ) -> None:
+        assert isinstance(async_database.id, str)
+        assert isinstance(async_database.name, str)
+        assert async_database.namespace == astra_db_credentials_kwargs["namespace"]
+        assert isinstance(async_database.info, DatabaseInfo)
+        assert isinstance(async_database.info.raw_info, dict)
+
+    @pytest.mark.describe("test of collection metainformation, async")
+    async def test_get_collection_info_async(
+        self,
+        async_collection: AsyncCollection,
+    ) -> None:
+        info = async_collection.info
+        assert info.namespace == async_collection.namespace
+        assert (
+            info.namespace == async_collection._astra_db_collection.astra_db.namespace
+        )
 
     @pytest.mark.describe("test of check_exists for create_collection, async")
     async def test_create_collection_check_exists_async(

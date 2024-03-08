@@ -35,6 +35,7 @@ from astrapy.idiomatic.results import (
     BulkWriteResult,
 )
 from astrapy.idiomatic.cursors import AsyncCursor, Cursor
+from astrapy.idiomatic.info import CollectionInfo
 
 
 if TYPE_CHECKING:
@@ -78,18 +79,6 @@ class Collection:
         self._database = database.copy(
             namespace=self._astra_db_collection.astra_db.namespace
         )
-
-    @property
-    def database(self) -> Database:
-        return self._database
-
-    @property
-    def namespace(self) -> str:
-        return self.database.namespace
-
-    @property
-    def name(self) -> str:
-        return self._astra_db_collection.collection_name
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db_collection="{self._astra_db_collection}"]'
@@ -175,6 +164,31 @@ class Collection:
             return self_dicts[0]
         else:
             raise ValueError(f"Collection {self.namespace}.{self.name} not found.")
+
+    @property
+    def info(self) -> CollectionInfo:
+        return CollectionInfo(
+            database_info=self.database.info,
+            namespace=self.namespace,
+            name=self.name,
+            full_name=self.full_name,
+        )
+
+    @property
+    def database(self) -> Database:
+        return self._database
+
+    @property
+    def namespace(self) -> str:
+        return self.database.namespace
+
+    @property
+    def name(self) -> str:
+        return self._astra_db_collection.collection_name
+
+    @property
+    def full_name(self) -> str:
+        return f"{self.namespace}.{self.name}"
 
     def insert_one(
         self,
@@ -566,6 +580,9 @@ class Collection:
                 ]
                 return reduce_bulk_write_results(bulk_write_results)
 
+    def drop(self) -> Dict[str, Any]:
+        return self.database.drop_collection(self)
+
 
 class AsyncCollection:
     def __init__(
@@ -588,18 +605,6 @@ class AsyncCollection:
         self._database = database.copy(
             namespace=self._astra_db_collection.astra_db.namespace
         )
-
-    @property
-    def database(self) -> AsyncDatabase:
-        return self._database
-
-    @property
-    def namespace(self) -> str:
-        return self.database.namespace
-
-    @property
-    def name(self) -> str:
-        return self._astra_db_collection.collection_name
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}[_astra_db_collection="{self._astra_db_collection}"]'
@@ -685,6 +690,31 @@ class AsyncCollection:
             return self_dicts[0]
         else:
             raise ValueError(f"Collection {self.namespace}.{self.name} not found.")
+
+    @property
+    def info(self) -> CollectionInfo:
+        return CollectionInfo(
+            database_info=self.database.info,
+            namespace=self.namespace,
+            name=self.name,
+            full_name=self.full_name,
+        )
+
+    @property
+    def database(self) -> AsyncDatabase:
+        return self._database
+
+    @property
+    def namespace(self) -> str:
+        return self.database.namespace
+
+    @property
+    def name(self) -> str:
+        return self._astra_db_collection.collection_name
+
+    @property
+    def full_name(self) -> str:
+        return f"{self.namespace}.{self.name}"
 
     async def insert_one(
         self,
@@ -1088,3 +1118,6 @@ class AsyncCollection:
             ]
             bulk_write_results = await asyncio.gather(*tasks)
             return reduce_bulk_write_results(bulk_write_results)
+
+    async def drop(self) -> Dict[str, Any]:
+        return await self.database.drop_collection(self)

@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
 
 from astrapy.db import AstraDB, AsyncAstraDB
 from astrapy.idiomatic.cursors import AsyncCommandCursor, CommandCursor
-
+from astrapy.idiomatic.info import DatabaseInfo, get_database_info
 
 if TYPE_CHECKING:
     from astrapy.idiomatic.collection import AsyncCollection, Collection
@@ -94,6 +94,7 @@ class Database:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+        self._database_info: Optional[DatabaseInfo] = None
 
     def __getattr__(self, collection_name: str) -> Collection:
         return self.get_collection(name=collection_name)
@@ -109,10 +110,6 @@ class Database:
             return self._astra_db == other._astra_db
         else:
             return False
-
-    @property
-    def namespace(self) -> str:
-        return self._astra_db.namespace
 
     def copy(
         self,
@@ -178,6 +175,28 @@ class Database:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+
+    @property
+    def info(self) -> DatabaseInfo:
+        if self._database_info is None:
+            self._database_info = get_database_info(
+                self._astra_db.api_endpoint,
+                token=self._astra_db.token,
+                namespace=self.namespace,
+            )
+        return self._database_info
+
+    @property
+    def id(self) -> Optional[str]:
+        return self.info.id
+
+    @property
+    def name(self) -> Optional[str]:
+        return self.info.name
+
+    @property
+    def namespace(self) -> str:
+        return self._astra_db.namespace
 
     def get_collection(
         self, name: str, *, namespace: Optional[str] = None
@@ -338,6 +357,7 @@ class AsyncDatabase:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+        self._database_info: Optional[DatabaseInfo] = None
 
     def __getattr__(self, collection_name: str) -> AsyncCollection:
         return self.to_sync().get_collection(name=collection_name).to_async()
@@ -368,10 +388,6 @@ class AsyncDatabase:
             exc_value=exc_value,
             traceback=traceback,
         )
-
-    @property
-    def namespace(self) -> str:
-        return self._astra_db.namespace
 
     def copy(
         self,
@@ -437,6 +453,28 @@ class AsyncDatabase:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+
+    @property
+    def info(self) -> DatabaseInfo:
+        if self._database_info is None:
+            self._database_info = get_database_info(
+                self._astra_db.api_endpoint,
+                token=self._astra_db.token,
+                namespace=self.namespace,
+            )
+        return self._database_info
+
+    @property
+    def id(self) -> Optional[str]:
+        return self.info.id
+
+    @property
+    def name(self) -> Optional[str]:
+        return self.info.name
+
+    @property
+    def namespace(self) -> str:
+        return self._astra_db.namespace
 
     async def get_collection(
         self, name: str, *, namespace: Optional[str] = None

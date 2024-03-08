@@ -20,6 +20,7 @@ from ..conftest import (
     TEST_COLLECTION_NAME,
 )
 from astrapy.api import APIRequestError
+from astrapy.idiomatic.info import DatabaseInfo
 from astrapy import Collection, Database
 
 
@@ -63,6 +64,36 @@ class TestDDLSync:
         dc_response2 = sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         assert dc_response2 == {"ok": 1}
         sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
+
+    @pytest.mark.describe("test of collection drop, sync")
+    def test_collection_drop_sync(self, sync_database: Database) -> None:
+        col = sync_database.create_collection(
+            name="sync_collection_to_drop", dimension=2
+        )
+        del_res = col.drop()
+        assert del_res["ok"] == 1
+        assert "sync_collection_to_drop" not in sync_database.list_collection_names()
+
+    @pytest.mark.describe("test of database metainformation, sync")
+    def test_get_database_info_sync(
+        self,
+        sync_database: Database,
+        astra_db_credentials_kwargs: AstraDBCredentials,
+    ) -> None:
+        assert isinstance(sync_database.id, str)
+        assert isinstance(sync_database.name, str)
+        assert sync_database.namespace == astra_db_credentials_kwargs["namespace"]
+        assert isinstance(sync_database.info, DatabaseInfo)
+        assert isinstance(sync_database.info.raw_info, dict)
+
+    @pytest.mark.describe("test of collection metainformation, sync")
+    def test_get_collection_info_sync(
+        self,
+        sync_collection: Collection,
+    ) -> None:
+        info = sync_collection.info
+        assert info.namespace == sync_collection.namespace
+        assert info.namespace == sync_collection._astra_db_collection.astra_db.namespace
 
     @pytest.mark.describe("test of check_exists for create_collection, sync")
     def test_create_collection_check_exists_sync(
