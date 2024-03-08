@@ -43,6 +43,11 @@ FIND_PREFETCH = 20
 
 
 class BaseCursor:
+    """
+    Represents a generic Cursor over query results, regardless of whether
+    synchronous or asynchronous. It cannot be instantiated.
+    """
+
     _collection: Union[Collection, AsyncCollection]
     _filter: Optional[Dict[str, Any]]
     _projection: Optional[ProjectionType]
@@ -100,7 +105,7 @@ class BaseCursor:
         )
 
     def _item_at_index(self, index: int) -> DocumentType:
-        # subclasses must implement this
+        # deferred to subclasses
         raise NotImplementedError
 
     def _ensure_alive(self) -> None:
@@ -139,24 +144,58 @@ class BaseCursor:
 
     @property
     def address(self) -> str:
-        """Return the api_endpoint used by this cursor."""
+        """
+        The API endpoint used by this cursor when issuing
+        requests to the database.
+        """
+
         return self._collection._astra_db_collection.base_path
 
     @property
     def alive(self) -> bool:
+        """
+        Whether the cursor has the potential to yield more data.
+        """
+
         return self._alive
 
     def clone(self: BC) -> BC:
+        """
+        Clone the cursor into a new, fresh one.
+
+        Returns:
+            a copy of this cursor, reset to its pristine state,
+            i.e. fully un-consumed.
+        """
+
         return self._copy(started=False)
 
     def close(self) -> None:
+        """
+        Stop/kill the cursor, regardless of its status.
+        """
+
         self._alive = False
 
     @property
     def cursor_id(self) -> int:
+        """
+        An integer uniquely identifying this cursor.
+        """
+
         return id(self)
 
     def limit(self: BC, limit: Optional[int]) -> BC:
+        """
+        Set a new `limit` value for this cursor.
+
+        Args:
+            limit: the new value to set
+
+        Returns:
+            this cursor itself.
+        """
+
         self._ensure_not_started()
         self._ensure_alive()
         self._limit = limit if limit != 0 else None
@@ -164,9 +203,20 @@ class BaseCursor:
 
     @property
     def retrieved(self) -> int:
+        """
+        The number of documents retrieved so far.
+        """
+
         return self._retrieved
 
     def rewind(self: BC) -> BC:
+        """
+        Reset the cursor to its pristine state, i.e. fully unconsumed.
+
+        Returns:
+            this cursor itself.
+        """
+
         self._started = False
         self._retrieved = 0
         self._alive = True
@@ -174,6 +224,15 @@ class BaseCursor:
         return self
 
     def skip(self: BC, skip: Optional[int]) -> BC:
+        """
+        Set a new `skip` value for this cursor.
+
+        Args:
+            skip: the new value to set
+
+        Returns:
+            this cursor itself.
+        """
         self._ensure_not_started()
         self._ensure_alive()
         self._skip = skip
@@ -183,6 +242,16 @@ class BaseCursor:
         self: BC,
         sort: Optional[Dict[str, Any]],
     ) -> BC:
+        """
+        Set a new `sort` value for this cursor.
+
+        Args:
+            sort: the new sorting prescription to set
+
+        Returns:
+            this cursor itself.
+        """
+
         self._ensure_not_started()
         self._ensure_alive()
         self._sort = sort
@@ -190,6 +259,15 @@ class BaseCursor:
 
 
 class Cursor(BaseCursor):
+    """
+    Represents a (synchronous) cursor over documents in a collection.
+    A cursor is iterated over, e.g. with a for loop, and keeps track of
+    its progress.
+
+    Generally cursors are not supposed to be instantiated directly,
+    rather they are obtained by invoking the `find` method on a collection.
+    """
+
     def __init__(
         self,
         collection: Collection,
@@ -271,19 +349,43 @@ class Cursor(BaseCursor):
 
     @property
     def collection(self) -> Collection:
+        """
+        The (synchronous) collection this cursor is targeting.
+        """
+
         return self._collection
 
     def distinct(self, key: str) -> List[Any]:
         """
-        This works on a fresh pristine copy of the cursor
-        and never touches self in any way.
+        Compute a list of unique values for a specific field across all
+        documents the cursor iterates through.
+
+        Invoking this method has no effect on the cursor state, i.e.
+        the position of the cursor is unchanged.
+
+        Note:
+            this operation works at client-side by scrolling through all
+            documents matching the cursor parameters (such as `filter`).
+            Please be aware of this fact, especially for a very large
+            amount of documents, for this may have implications on latency,
+            network traffic and possibly billing.
         """
+
         return list(
             {document[key] for document in self._copy(started=False) if key in document}
         )
 
 
 class AsyncCursor(BaseCursor):
+    """
+    Represents a (asynchronous) cursor over documents in a collection.
+    An asynchronous cursor is iterated over, e.g. with a for loop,
+    and keeps track of its progress.
+
+    Generally cursors are not supposed to be instantiated directly,
+    rather they are obtained by invoking the `find` method on a collection.
+    """
+
     def __init__(
         self,
         collection: AsyncCollection,
@@ -391,13 +493,28 @@ class AsyncCursor(BaseCursor):
 
     @property
     def collection(self) -> AsyncCollection:
+        """
+        The (asynchronous) collection this cursor is targeting.
+        """
+
         return self._collection
 
     async def distinct(self, key: str) -> List[Any]:
         """
-        This works on a fresh pristine copy of the cursor
-        and never touches self in any way.
+        Compute a list of unique values for a specific field across all
+        documents the cursor iterates through.
+
+        Invoking this method has no effect on the cursor state, i.e.
+        the position of the cursor is unchanged.
+
+        Note:
+            this operation works at client-side by scrolling through all
+            documents matching the cursor parameters (such as `filter`).
+            Please be aware of this fact, especially for a very large
+            amount of documents, for this may have implications on latency,
+            network traffic and possibly billing.
         """
+
         return list(
             {
                 document[key]
@@ -408,6 +525,17 @@ class AsyncCursor(BaseCursor):
 
 
 class CommandCursor(Generic[T]):
+    """
+    A (synchronous) cursor over the results of a Data API command
+    (as opposed to a cursor over data as one would get with a `find` method).
+
+    Command cursors are iterated over, e.g. with a for loop.
+
+    Generally command cursors are not supposed to be instantiated directly,
+    rather they are obtained by invoking methods on a collection/database
+    (such as the database `list_collections` method).
+    """
+
     def __init__(self, address: str, items: List[T]) -> None:
         self._address = address
         self.items = items
@@ -428,14 +556,27 @@ class CommandCursor(Generic[T]):
 
     @property
     def address(self) -> str:
+        """
+        The API endpoint used by this cursor when issuing
+        requests to the database.
+        """
+
         return self._address
 
     @property
     def alive(self) -> bool:
+        """
+        Whether the cursor has the potential to yield more data.
+        """
+
         return self._alive
 
     @property
     def cursor_id(self) -> int:
+        """
+        An integer uniquely identifying this cursor.
+        """
+
         return id(self)
 
     def _ensure_alive(self) -> None:
@@ -443,13 +584,32 @@ class CommandCursor(Generic[T]):
             raise ValueError("Cursor is closed.")
 
     def try_next(self) -> T:
+        """
+        An alias for the `__next__` method, used by the iterator protocol.
+        """
+
         return self.__next__()
 
     def close(self) -> None:
+        """
+        Stop/kill the cursor, regardless of its status.
+        """
+
         self._alive = False
 
 
 class AsyncCommandCursor(Generic[T]):
+    """
+    A (asynchronous) cursor over the results of a Data API command
+    (as opposed to a cursor over data as one would get with a `find` method).
+
+    Asynchronous command cursors are iterated over, e.g. with an async for loop.
+
+    Generally command cursors are not supposed to be instantiated directly,
+    rather they are obtained by invoking methods on a collection/database
+    (such as the database `list_collections` method).
+    """
+
     def __init__(self, address: str, items: List[T]) -> None:
         self._address = address
         self.items = items
@@ -470,14 +630,27 @@ class AsyncCommandCursor(Generic[T]):
 
     @property
     def address(self) -> str:
+        """
+        The API endpoint used by this cursor when issuing
+        requests to the database.
+        """
+
         return self._address
 
     @property
     def alive(self) -> bool:
+        """
+        Whether the cursor has the potential to yield more data.
+        """
+
         return self._alive
 
     @property
     def cursor_id(self) -> int:
+        """
+        An integer uniquely identifying this cursor.
+        """
+
         return id(self)
 
     def _ensure_alive(self) -> None:
@@ -485,7 +658,15 @@ class AsyncCommandCursor(Generic[T]):
             raise ValueError("Cursor is closed.")
 
     async def try_next(self) -> T:
+        """
+        An alias for the `__next__` method, used by the iterator protocol.
+        """
+
         return await self.__anext__()
 
     def close(self) -> None:
+        """
+        Stop/kill the cursor, regardless of its status.
+        """
+
         self._alive = False
