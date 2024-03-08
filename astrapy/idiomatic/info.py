@@ -14,10 +14,24 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from astrapy.ops import AstraDBOps
+
+
+database_id_finder = re.compile(
+    "https://([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
+)
+
+
+def find_database_id(api_endpoint: str) -> Optional[str]:
+    match = database_id_finder.match(api_endpoint)
+    if match and match.groups():
+        return match.groups()[0]
+    else:
+        return None
 
 
 @dataclass
@@ -40,16 +54,25 @@ class CollectionInfo:
 def get_database_info(api_endpoint: str, token: str, namespace: str) -> DatabaseInfo:
     try:
         astra_db_ops = AstraDBOps(token=token)
-        database_id = api_endpoint.split("/")[2].split(".")[0][:36]
-        gd_response = astra_db_ops.get_database(database=database_id)
-        raw_info = gd_response["info"]
-        return DatabaseInfo(
-            id=database_id,
-            region=raw_info["region"],
-            namespace=namespace,
-            name=raw_info["name"],
-            raw_info=raw_info,
-        )
+        database_id = find_database_id(api_endpoint)
+        if database_id:
+            gd_response = astra_db_ops.get_database(database=database_id)
+            raw_info = gd_response["info"]
+            return DatabaseInfo(
+                id=database_id,
+                region=raw_info["region"],
+                namespace=namespace,
+                name=raw_info["name"],
+                raw_info=raw_info,
+            )
+        else:
+            return DatabaseInfo(
+                id=None,
+                region=None,
+                namespace=namespace,
+                name=None,
+                raw_info=None,
+            )
     except Exception:
         return DatabaseInfo(
             id=None,
