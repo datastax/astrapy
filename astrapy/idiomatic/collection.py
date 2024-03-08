@@ -22,8 +22,10 @@ from typing import Any, Dict, Iterable, List, Optional, Union, TYPE_CHECKING
 from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
 from astrapy.idiomatic.types import (
     DocumentType,
+    FilterType,
     ProjectionType,
     ReturnDocument,
+    SortType,
     normalize_optional_projection,
 )
 from astrapy.idiomatic.database import AsyncDatabase, Database
@@ -260,12 +262,12 @@ class Collection:
 
     def find(
         self,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[FilterType] = None,
         *,
         projection: Optional[ProjectionType] = None,
         skip: Optional[int] = None,
         limit: Optional[int] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
     ) -> Cursor:
         return (
             Cursor(
@@ -280,12 +282,12 @@ class Collection:
 
     def find_one(
         self,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[FilterType] = None,
         *,
         projection: Optional[ProjectionType] = None,
         skip: Optional[int] = None,
         limit: Optional[int] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
     ) -> Union[DocumentType, None]:
         fo_cursor = self.find(
             filter=filter,
@@ -304,7 +306,7 @@ class Collection:
         self,
         key: str,
         *,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[FilterType] = None,
     ) -> List[Any]:
         return self.find(
             filter=filter,
@@ -340,7 +342,7 @@ class Collection:
         replacement: DocumentType,
         *,
         projection: Optional[ProjectionType] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
@@ -401,7 +403,7 @@ class Collection:
         update: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
@@ -483,7 +485,7 @@ class Collection:
         filter: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
     ) -> Union[DocumentType, None]:
         _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
         target_document = self.find_one(
@@ -792,12 +794,12 @@ class AsyncCollection:
 
     def find(
         self,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[FilterType] = None,
         *,
         projection: Optional[ProjectionType] = None,
         skip: Optional[int] = None,
         limit: Optional[int] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
     ) -> AsyncCursor:
         return (
             AsyncCursor(
@@ -812,12 +814,12 @@ class AsyncCollection:
 
     async def find_one(
         self,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[FilterType] = None,
         *,
         projection: Optional[ProjectionType] = None,
         skip: Optional[int] = None,
         limit: Optional[int] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
     ) -> Union[DocumentType, None]:
         fo_cursor = self.find(
             filter=filter,
@@ -836,7 +838,7 @@ class AsyncCollection:
         self,
         key: str,
         *,
-        filter: Optional[Dict[str, Any]] = None,
+        filter: Optional[FilterType] = None,
     ) -> List[Any]:
         cursor = self.find(
             filter=filter,
@@ -873,7 +875,7 @@ class AsyncCollection:
         replacement: DocumentType,
         *,
         projection: Optional[ProjectionType] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
@@ -934,7 +936,7 @@ class AsyncCollection:
         update: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
@@ -1016,7 +1018,7 @@ class AsyncCollection:
         filter: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: Optional[SortType] = None,
     ) -> Union[DocumentType, None]:
         _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
         target_document = await self.find_one(

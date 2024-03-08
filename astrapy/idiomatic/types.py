@@ -19,6 +19,8 @@ from typing import Any, Dict, Iterable, Optional, Union
 
 DocumentType = Dict[str, Any]
 ProjectionType = Union[Iterable[str], Dict[str, bool]]
+SortType = Dict[str, Any]
+FilterType = Dict[str, Any]
 
 
 class ReturnDocument:
