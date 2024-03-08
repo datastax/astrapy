@@ -51,11 +51,11 @@ class TestDatabasesAsync:
             caller_version="c_v",
             **astra_db_credentials_kwargs,
         )
-        assert db1 == db1.copy()
+        assert db1 == db1._copy()
         assert db1 == db1.with_options()
         assert db1 == db1.to_sync().to_async()
 
-    @pytest.mark.describe("test of Database rich copy, async")
+    @pytest.mark.describe("test of Database rich _copy, async")
     async def test_rich_copy_database_async(
         self,
     ) -> None:
@@ -68,15 +68,15 @@ class TestDatabasesAsync:
             api_path="api_path",
             api_version="api_version",
         )
-        assert db1 != db1.copy(api_endpoint="x")
-        assert db1 != db1.copy(token="x")
-        assert db1 != db1.copy(namespace="x")
-        assert db1 != db1.copy(caller_name="x")
-        assert db1 != db1.copy(caller_version="x")
-        assert db1 != db1.copy(api_path="x")
-        assert db1 != db1.copy(api_version="x")
+        assert db1 != db1._copy(api_endpoint="x")
+        assert db1 != db1._copy(token="x")
+        assert db1 != db1._copy(namespace="x")
+        assert db1 != db1._copy(caller_name="x")
+        assert db1 != db1._copy(caller_version="x")
+        assert db1 != db1._copy(api_path="x")
+        assert db1 != db1._copy(api_version="x")
 
-        db2 = db1.copy(
+        db2 = db1._copy(
             api_endpoint="x",
             token="x",
             namespace="x",
@@ -91,7 +91,7 @@ class TestDatabasesAsync:
             caller_name="c_n",
             caller_version="c_v",
         )
-        db3 = db2.copy(
+        db3 = db2._copy(
             api_endpoint="api_endpoint",
             token="token",
             namespace="namespace",
@@ -219,7 +219,7 @@ class TestDatabasesAsync:
             **astra_db_credentials_kwargs,
         )
         assert db1.to_sync().to_async() == db2
-        assert db1.copy() == db2
+        assert db1._copy() == db2
 
     @pytest.mark.skipif(
         ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"

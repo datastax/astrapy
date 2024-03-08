@@ -208,7 +208,7 @@ class TestDDLSync:
         )
         assert isinstance(cmd1, dict)
         assert isinstance(cmd1["status"]["count"], int)
-        cmd2 = sync_database.copy(namespace="...").command(
+        cmd2 = sync_database._copy(namespace="...").command(
             {"countDocuments": {}},
             namespace=sync_collection.namespace,
             collection_name=sync_collection.name,
@@ -223,7 +223,7 @@ class TestDDLSync:
         cmd1 = sync_database.command({"findCollections": {}})
         assert isinstance(cmd1, dict)
         assert isinstance(cmd1["status"]["collections"], list)
-        cmd2 = sync_database.copy(namespace="...").command(
+        cmd2 = sync_database._copy(namespace="...").command(
             {"findCollections": {}}, namespace=sync_database.namespace
         )
         assert cmd2 == cmd1

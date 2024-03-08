@@ -74,6 +74,35 @@ def _recast_api_collection_dict(api_coll_dict: Dict[str, Any]) -> Dict[str, Any]
 
 
 class Database:
+    """
+    A Data API database. This is the entry-point object for doing database-level
+    DML, such as creating/deleting collections, and for obtaining Collection
+    objects themselves. This class has a synchronous interface.
+
+    A Database comes with an "API Endpoint", which implies a Database object
+    instance reaches a specific region (relevant point in case of multi-region
+    databases).
+
+    Args:
+        api_endpoint: the full "API Endpoint" string used to reach the Data API.
+            Example: "https://<database_id>-<region>.apps.astra.datastax.com"
+        token: an Access Token to the database. Example: "AstraCS:xyz..."
+        namespace: this is the namespace all method calls will target, unless
+            one is explicitly specified in the call. If no namespace is supplied
+            when creating a Database, the name "default_namespace" is set.
+        caller_name: name of the application, or framework, on behalf of which
+            the Data API calls are performed. This ends up in the request user-agent.
+        caller_version: version of the caller.
+        api_path: path to append to the API Endpoint. In typical usage, this
+            should be left to its default of "/api/json".
+        api_version: version specifier to append to the API path. In typical
+            usage, this should be left to its default of "v1".
+
+    Note:
+        creating an instance of Database does not trigger actual creation
+        of the database itself, which should exist beforehand.
+    """
+
     def __init__(
         self,
         api_endpoint: str,
@@ -111,7 +140,7 @@ class Database:
         else:
             return False
 
-    def copy(
+    def _copy(
         self,
         *,
         api_endpoint: Optional[str] = None,
@@ -139,7 +168,7 @@ class Database:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Database:
-        return self.copy(
+        return self._copy(
             namespace=namespace,
             caller_name=caller_name,
             caller_version=caller_version,
@@ -337,6 +366,35 @@ class Database:
 
 
 class AsyncDatabase:
+    """
+    A Data API database. This is the entry-point object for doing database-level
+    DML, such as creating/deleting collections, and for obtaining Collection
+    objects themselves. This class has an asynchronous interface.
+
+    A Database comes with an "API Endpoint", which implies a Database object
+    instance reaches a specific region (relevant point in case of multi-region
+    databases).
+
+    Args:
+        api_endpoint: the full "API Endpoint" string used to reach the Data API.
+            Example: "https://<database_id>-<region>.apps.astra.datastax.com"
+        token: an Access Token to the database. Example: "AstraCS:xyz..."
+        namespace: this is the namespace all method calls will target, unless
+            one is explicitly specified in the call. If no namespace is supplied
+            when creating a Database, the name "default_namespace" is set.
+        caller_name: name of the application, or framework, on behalf of which
+            the Data API calls are performed. This ends up in the request user-agent.
+        caller_version: version of the caller.
+        api_path: path to append to the API Endpoint. In typical usage, this
+            should be left to its default of "/api/json".
+        api_version: version specifier to append to the API path. In typical
+            usage, this should be left to its default of "v1".
+
+    Note:
+        creating an instance of Database does not trigger actual creation
+        of the database itself, which should exist beforehand.
+    """
+
     def __init__(
         self,
         api_endpoint: str,
@@ -389,7 +447,7 @@ class AsyncDatabase:
             traceback=traceback,
         )
 
-    def copy(
+    def _copy(
         self,
         *,
         api_endpoint: Optional[str] = None,
@@ -417,7 +475,7 @@ class AsyncDatabase:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncDatabase:
-        return self.copy(
+        return self._copy(
             namespace=namespace,
             caller_name=caller_name,
             caller_version=caller_version,

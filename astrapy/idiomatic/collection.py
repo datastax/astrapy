@@ -78,7 +78,7 @@ class Collection:
             caller_version=caller_version,
         )
         # this comes after the above, lets AstraDBCollection resolve namespace
-        self._database = database.copy(
+        self._database = database._copy(
             namespace=self._astra_db_collection.astra_db.namespace
         )
 
@@ -99,7 +99,7 @@ class Collection:
             "it is failing because no such method exists."
         )
 
-    def copy(
+    def _copy(
         self,
         *,
         database: Optional[Database] = None,
@@ -123,7 +123,7 @@ class Collection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
-        return self.copy(
+        return self._copy(
             name=name,
             caller_name=caller_name,
             caller_version=caller_version,
@@ -610,7 +610,7 @@ class AsyncCollection:
             caller_version=caller_version,
         )
         # this comes after the above, lets AstraDBCollection resolve namespace
-        self._database = database.copy(
+        self._database = database._copy(
             namespace=self._astra_db_collection.astra_db.namespace
         )
 
@@ -631,7 +631,7 @@ class AsyncCollection:
             "it is failing because no such method exists."
         )
 
-    def copy(
+    def _copy(
         self,
         *,
         database: Optional[AsyncDatabase] = None,
@@ -655,7 +655,7 @@ class AsyncCollection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
-        return self.copy(
+        return self._copy(
             name=name,
             caller_name=caller_name,
             caller_version=caller_version,
