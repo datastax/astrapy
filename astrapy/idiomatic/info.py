@@ -57,6 +57,11 @@ class DatabaseInfo:
         name: the database name. Not necessarily unique: there can be multiple
             databases with the same name.
         raw_info: the full response from the DevOPS API call to get this info.
+
+    Note:
+        Most members of this object can be None. This happens when errors occur
+        during DevOps API calls and usually signals that the Data API server
+        is a deploy where concepts such as "region" or "database ID" do not apply.
     """
 
     id: Optional[str]

@@ -6,6 +6,7 @@ import pytest
 
 from ..conftest import AstraDBCredentials
 from astrapy import AsyncCollection, AsyncDatabase, Collection, Database
+from astrapy.idiomatic.types import VectorMetric
 
 TEST_COLLECTION_INSTANCE_NAME = "test_coll_instance"
 TEST_COLLECTION_NAME = "id_test_collection"
@@ -56,7 +57,7 @@ def sync_collection(
     collection = sync_database.create_collection(
         TEST_COLLECTION_NAME,
         dimension=2,
-        metric="dot_product",
+        metric=VectorMetric.DOT_PRODUCT,
         indexing={"deny": ["not_indexed"]},
     )
     yield collection

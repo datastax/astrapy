@@ -50,6 +50,20 @@ class SortDocuments:
     DESCENDING = -1
 
 
+class VectorMetric:
+    """
+    Admitted values for the "metric" parameter when creating vector collections
+    through the database `create_collection` method.
+    """
+
+    def __init__(self) -> None:
+        raise NotImplementedError
+
+    DOT_PRODUCT = "dot_product"
+    EUCLIDEAN = "euclidean"
+    COSINE = "cosine"
+
+
 def normalize_optional_projection(
     projection: Optional[ProjectionType],
     ensure_fields: Iterable[str] = set(),

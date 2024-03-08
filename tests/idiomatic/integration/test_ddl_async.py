@@ -21,6 +21,7 @@ from ..conftest import (
 )
 from astrapy.api import APIRequestError
 from astrapy.idiomatic.info import DatabaseInfo
+from astrapy.idiomatic.types import VectorMetric
 from astrapy import AsyncCollection, AsyncDatabase
 
 
@@ -35,7 +36,7 @@ class TestDDLAsync:
         col1 = await async_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME,
             dimension=123,
-            metric="euclidean",
+            metric=VectorMetric.EUCLIDEAN,
             indexing={"deny": ["a", "b", "c"]},
         )
         await async_database.create_collection(
