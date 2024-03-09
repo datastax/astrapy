@@ -61,6 +61,32 @@ def _prepare_update_info(status: Dict[str, Any]) -> Dict[str, Any]:
 
 
 class Collection:
+    """
+    A Data API collection, the main object to interact with the Data API,
+    especially for DDL operations.
+    This class has a synchronous interface.
+
+    A Collection is spawned from a Database object, from which it inherits
+    the details on how to reach the API server (endpoint, authentication token).
+
+    Args:
+        database: a Database object, instantiated earlier. This represents
+            the database the collection belongs to.
+        name: the collection name. This parameter should match an existing
+            collection on the database.
+        namespace: this is the namespace to which the collection belongs.
+            This is generally not specified, in which case the general setting
+            for the provided Database is used.
+        caller_name: name of the application, or framework, on behalf of which
+            the Data API calls are performed. This ends up in the request user-agent.
+        caller_version: version of the caller.
+
+    Note:
+        creating an instance of Collection does not trigger actual creation
+        of the collection on the database. The latter should have been created
+        beforehand, e.g. through the `create_collection` method of a Database.
+    """
+
     def __init__(
         self,
         database: Database,
@@ -123,6 +149,21 @@ class Collection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
+        """
+        Create a clone of this collections with some changed attributes.
+
+        Args:
+            name: the name of the collection. This parameter is useful to
+                quickly spawn Collection instances each pointing to a different
+                collection existing in the same namespace.
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+
+        Returns:
+            a new Collection instance.
+        """
+
         return self._copy(
             name=name,
             caller_name=caller_name,
@@ -138,6 +179,28 @@ class Collection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
+        """
+        Create an AsyncCollection from this one. Save for the arguments
+        explicitly provided as overrides, everything else is kept identical
+        to this collection in the copy (the database is converted into
+        an async object).
+
+        Args:
+            database: an AsyncDatabase object, instantiated earlier.
+                This represents the database the new collection belongs to.
+            name: the collection name. This parameter should match an existing
+                collection on the database.
+            namespace: this is the namespace to which the collection belongs.
+                This is generally not specified, in which case the general setting
+                for the provided Database is used.
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+
+        Returns:
+            the new copy, an AsyncCollection instance.
+        """
+
         return AsyncCollection(
             database=database or self.database.to_async(),
             name=name or self._astra_db_collection.collection_name,
@@ -151,12 +214,35 @@ class Collection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
+        """
+        Set a new identity for the application/framework on behalf of which
+        the Data API calls are performed (the "caller").
+
+        Args:
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+        """
+
         self._astra_db_collection.set_caller(
             caller_name=caller_name,
             caller_version=caller_version,
         )
 
     def options(self) -> Dict[str, Any]:
+        """
+        Get the collection options, i.e. its configuration as read from the database.
+
+        The method issues a request to the Data API each time is invoked,
+        without caching mechanisms: this ensures up-to-date information
+        for usages such as real-time collection validation by the application.
+
+        Returns:
+            a dictionary expressing the collection as a set of key-value pairs
+            matching the arguments of a `create_collection` call.
+            (See also the database `list_collections` method.)
+        """
+
         self_dicts = [
             coll_dict
             for coll_dict in self.database.list_collections()
@@ -169,6 +255,14 @@ class Collection:
 
     @property
     def info(self) -> CollectionInfo:
+        """
+        Information on the collection (name, location, database), in the
+        form of a CollectionInfo object.
+
+        Not to be confused with the collection `options` method (related
+        to the collection internal configuration).
+        """
+
         return CollectionInfo(
             database_info=self.database.info,
             namespace=self.namespace,
@@ -178,24 +272,75 @@ class Collection:
 
     @property
     def database(self) -> Database:
+        """
+        a Database object, the database this collection belongs to.
+        """
+
         return self._database
 
     @property
     def namespace(self) -> str:
+        """
+        The namespace this collection is in.
+        """
+
         return self.database.namespace
 
     @property
     def name(self) -> str:
+        """
+        The name of this collection.
+        """
+
         return self._astra_db_collection.collection_name
 
     @property
     def full_name(self) -> str:
+        """
+        The fully-qualified collection name within the database,
+        in the form "namespace.collection_name".
+        """
+
         return f"{self.namespace}.{self.name}"
 
     def insert_one(
         self,
         document: DocumentType,
     ) -> InsertOneResult:
+        """
+        Insert a single document in the collection in an atomic operation.
+
+        Args:
+            document: the dictionary expressing the document to insert.
+                The `_id` field of the document can be left out, in which
+                case it will be created automatically.
+
+        Returns:
+            an InsertOneResult object.
+
+        Note:
+            If an `_id` is explicitly provided, which corresponds to a document
+            that exists already in the collection, an error is raised and
+            the insertion fails.
+        """
+
+        """
+        Insert a single document in the collection in an atomic operation.
+
+        Args:
+            document: the dictionary expressing the document to insert.
+                The `_id` field of the document can be left out, in which
+                case it will be created automatically.
+
+        Returns:
+            an InsertOneResult object.
+
+        Note:
+            If an `_id` is explicitly provided, which corresponds to a document
+            that exists already in the collection, an error is raised and
+            the insertion fails.
+        """
+
         io_response = self._astra_db_collection.insert_one(document)
         if "insertedIds" in io_response.get("status", {}):
             if io_response["status"]["insertedIds"]:
@@ -221,6 +366,47 @@ class Collection:
         *,
         ordered: bool = True,
     ) -> InsertManyResult:
+        """
+        Insert a list of documents into the collection.
+        This is not an atomic operation.
+
+        Args:
+            documents: an iterable of dictionaries, each a document to insert.
+                Documents may specify their `_id` field or leave it out, in which
+                case it will be added automatically.
+            ordered: if True (default), the insertions are processed sequentially.
+                If False, they can occur in arbitrary order and possibly concurrently.
+
+        Returns:
+            an InsertManyResult object.
+
+        Note:
+            Unordered insertions are executed with some degree of concurrency,
+            so it is usually better to prefer this mode unless the order in the
+            document sequence is important.
+
+        Note:
+            A failure mode for this command is related to certain faulty documents
+            found among those to insert: a document may have the an `_id` already
+            present on the collection, or its vector dimension may not
+            match the collection setting.
+
+            For an ordered insertion, the method will raise an exception at
+            the first such faulty document -- nevertheless, all documents processed
+            until then will end up being written to the database.
+
+            For unordered insertions, if the error stems from faulty documents
+            the insertion proceeds until exhausting the input documents: then,
+            an exception is raised -- and all insertable documents will have been
+            written to the database, including those "after" the troublesome ones.
+
+            If, on the other hand, there are errors not related to individual
+            documents (such as a network connectivity error), the whole
+            `insert_many` operation will stop in mid-way, an exception will be raised,
+            and only a certain amount of the input documents will
+            have made their way to the database.
+        """
+
         if ordered:
             cim_responses = self._astra_db_collection.chunked_insert_many(
                 documents=list(documents),
@@ -269,6 +455,56 @@ class Collection:
         limit: Optional[int] = None,
         sort: Optional[SortType] = None,
     ) -> Cursor:
+        """
+        Find documents on the collection, matching a certain provided filter.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            projection: used to select a subset of fields in the documents being
+                returned. The projection can be: an iterable over the field names
+                to return; a dictionary {field_name: True} to positively select
+                certain fields; or a dictionary {field_name: False} if one wants
+                to discard some fields from the response.
+                The default is to return the whole documents.
+            skip: with this integer parameter, what would be the first `skip`
+                documents returned by the query are discarded, and the results
+                start from the (skip+1)-th document.
+            limit: this (integer) parameter sets a limit over how many documents
+                are returned. Once `limit` is reached (or the cursor is exhausted
+                for lack of matching documents), nothing more is returned.
+            sort: with this dictionary parameter one can control the order
+                the documents are returned. See the Note about sorting for details.
+
+        Returns:
+            a Cursor object representing iterations over the matching documents
+            (see the Cursor object for how to use it. The simplest thing is to
+            run a for loop: `for document in collection.sort(...):`).
+
+        Note:
+            The following are example values for the `sort` parameter.
+            When no particular order is required:
+                sort={}
+            When sorting by a certain value in ascending/descending order:
+                sort={"field": SortDocuments.ASCENDING}
+                sort={"field": SortDocuments.DESCENDING}
+            When sorting first by "field" and then by "subfield"
+            (while modern Python versions preserve the order of dictionaries,
+            it is suggested for clarity to employ a `collections.OrderedDict`
+            in these cases):
+                sort={
+                    "field": SortDocuments.ASCENDING,
+                    "subfield": SortDocuments.ASCENDING,
+                }
+            When running a vector similarity (ANN) search:
+                sort={"$vector": [0.4, 0.15, -0.5]}
+        """
+
         return (
             Cursor(
                 collection=self,
@@ -289,6 +525,10 @@ class Collection:
         limit: Optional[int] = None,
         sort: Optional[SortType] = None,
     ) -> Union[DocumentType, None]:
+        """
+        DOCS TO DO
+        """
+
         fo_cursor = self.find(
             filter=filter,
             projection=projection,
@@ -308,6 +548,10 @@ class Collection:
         *,
         filter: Optional[FilterType] = None,
     ) -> List[Any]:
+        """
+        DOCS TO DO
+        """
+
         return self.find(
             filter=filter,
             projection={key: True},
@@ -318,6 +562,10 @@ class Collection:
         filter: Dict[str, Any],
         upper_bound: int,
     ) -> int:
+        """
+        DOCS TO DO
+        """
+
         cd_response = self._astra_db_collection.count_documents(filter=filter)
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
@@ -346,6 +594,10 @@ class Collection:
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
+        """
+        DOCS TO DO
+        """
+
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -376,6 +628,10 @@ class Collection:
         *,
         upsert: bool = False,
     ) -> UpdateResult:
+        """
+        DOCS TO DO
+        """
+
         options = {
             "upsert": upsert,
         }
@@ -407,6 +663,10 @@ class Collection:
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
+        """
+        DOCS TO DO
+        """
+
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -437,6 +697,10 @@ class Collection:
         *,
         upsert: bool = False,
     ) -> UpdateResult:
+        """
+        DOCS TO DO
+        """
+
         options = {
             "upsert": upsert,
         }
@@ -465,6 +729,10 @@ class Collection:
         *,
         upsert: bool = False,
     ) -> UpdateResult:
+        """
+        DOCS TO DO
+        """
+
         options = {
             "upsert": upsert,
         }
@@ -487,6 +755,10 @@ class Collection:
         projection: Optional[ProjectionType] = None,
         sort: Optional[SortType] = None,
     ) -> Union[DocumentType, None]:
+        """
+        DOCS TO DO
+        """
+
         _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
         target_document = self.find_one(
             filter=filter, projection=_projection, sort=sort
@@ -507,6 +779,10 @@ class Collection:
         self,
         filter: Dict[str, Any],
     ) -> DeleteResult:
+        """
+        DOCS TO DO
+        """
+
         do_response = self._astra_db_collection.delete_one_by_predicate(filter=filter)
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
@@ -531,6 +807,10 @@ class Collection:
         self,
         filter: Dict[str, Any],
     ) -> DeleteResult:
+        """
+        DOCS TO DO
+        """
+
         dm_responses = self._astra_db_collection.chunked_delete_many(filter=filter)
         deleted_counts = [
             resp["status"]["deletedCount"]
@@ -563,6 +843,10 @@ class Collection:
         *,
         ordered: bool = True,
     ) -> BulkWriteResult:
+        """
+        DOCS TO DO
+        """
+
         # lazy importing here against circular-import error
         from astrapy.idiomatic.operations import reduce_bulk_write_results
 
@@ -589,10 +873,40 @@ class Collection:
                 return reduce_bulk_write_results(bulk_write_results)
 
     def drop(self) -> Dict[str, Any]:
+        """
+        DOCS TO DO
+        """
+
         return self.database.drop_collection(self)
 
 
 class AsyncCollection:
+    """
+    A Data API collection, the main object to interact with the Data API,
+    especially for DDL operations.
+    This class has a synchronous interface.
+
+    A Collection is spawned from a Database object, from which it inherits
+    the details on how to reach the API server (endpoint, authentication token).
+
+    Args:
+        database: a Database object, instantiated earlier. This represents
+            the database the collection belongs to.
+        name: the collection name. This parameter should match an existing
+            collection on the database.
+        namespace: this is the namespace to which the collection belongs.
+            This is generally not specified, in which case the general setting
+            for the provided Database is used.
+        caller_name: name of the application, or framework, on behalf of which
+            the Data API calls are performed. This ends up in the request user-agent.
+        caller_version: version of the caller.
+
+    Note:
+        creating an instance of Collection does not trigger actual creation
+        of the collection on the database. The latter should have been created
+        beforehand, e.g. through the `create_collection` method of a Database.
+    """
+
     def __init__(
         self,
         database: AsyncDatabase,
@@ -655,6 +969,21 @@ class AsyncCollection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
+        """
+        Create a clone of this collections with some changed attributes.
+
+        Args:
+            name: the name of the collection. This parameter is useful to
+                quickly spawn AsyncCollection instances each pointing to a different
+                collection existing in the same namespace.
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+
+        Returns:
+            a new AsyncCollection instance.
+        """
+
         return self._copy(
             name=name,
             caller_name=caller_name,
@@ -670,6 +999,28 @@ class AsyncCollection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
+        """
+        Create an Collection from this one. Save for the arguments
+        explicitly provided as overrides, everything else is kept identical
+        to this collection in the copy (the database is converted into
+        a sync object).
+
+        Args:
+            database: a Database object, instantiated earlier.
+                This represents the database the new collection belongs to.
+            name: the collection name. This parameter should match an existing
+                collection on the database.
+            namespace: this is the namespace to which the collection belongs.
+                This is generally not specified, in which case the general setting
+                for the provided Database is used.
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+
+        Returns:
+            the new copy, a Collection instance.
+        """
+
         return Collection(
             database=database or self.database.to_sync(),
             name=name or self._astra_db_collection.collection_name,
@@ -683,12 +1034,35 @@ class AsyncCollection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
+        """
+        Set a new identity for the application/framework on behalf of which
+        the Data API calls are performed (the "caller").
+
+        Args:
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+        """
+
         self._astra_db_collection.set_caller(
             caller_name=caller_name,
             caller_version=caller_version,
         )
 
     async def options(self) -> Dict[str, Any]:
+        """
+        Get the collection options, i.e. its configuration as read from the database.
+
+        The method issues a request to the Data API each time is invoked,
+        without caching mechanisms: this ensures up-to-date information
+        for usages such as real-time collection validation by the application.
+
+        Returns:
+            a dictionary expressing the collection as a set of key-value pairs
+            matching the arguments of a `create_collection` call.
+            (See also the database `list_collections` method.)
+        """
+
         self_dicts = [
             coll_dict
             async for coll_dict in self.database.list_collections()
@@ -701,6 +1075,14 @@ class AsyncCollection:
 
     @property
     def info(self) -> CollectionInfo:
+        """
+        Information on the collection (name, location, database), in the
+        form of a CollectionInfo object.
+
+        Not to be confused with the collection `options` method (related
+        to the collection internal configuration).
+        """
+
         return CollectionInfo(
             database_info=self.database.info,
             namespace=self.namespace,
@@ -710,24 +1092,58 @@ class AsyncCollection:
 
     @property
     def database(self) -> AsyncDatabase:
+        """
+        a Database object, the database this collection belongs to.
+        """
+
         return self._database
 
     @property
     def namespace(self) -> str:
+        """
+        The namespace this collection is in.
+        """
+
         return self.database.namespace
 
     @property
     def name(self) -> str:
+        """
+        The name of this collection.
+        """
+
         return self._astra_db_collection.collection_name
 
     @property
     def full_name(self) -> str:
+        """
+        The fully-qualified collection name within the database,
+        in the form "namespace.collection_name".
+        """
+
         return f"{self.namespace}.{self.name}"
 
     async def insert_one(
         self,
         document: DocumentType,
     ) -> InsertOneResult:
+        """
+        Insert a single document in the collection in an atomic operation.
+
+        Args:
+            document: the dictionary expressing the document to insert.
+                The `_id` field of the document can be left out, in which
+                case it will be created automatically.
+
+        Returns:
+            an InsertOneResult object.
+
+        Note:
+            If an `_id` is explicitly provided, which corresponds to a document
+            that exists already in the collection, an error is raised and
+            the insertion fails.
+        """
+
         io_response = await self._astra_db_collection.insert_one(document)
         if "insertedIds" in io_response.get("status", {}):
             if io_response["status"]["insertedIds"]:
@@ -753,6 +1169,47 @@ class AsyncCollection:
         *,
         ordered: bool = True,
     ) -> InsertManyResult:
+        """
+        Insert a list of documents into the collection.
+        This is not an atomic operation.
+
+        Args:
+            documents: an iterable of dictionaries, each a document to insert.
+                Documents may specify their `_id` field or leave it out, in which
+                case it will be added automatically.
+            ordered: if True (default), the insertions are processed sequentially.
+                If False, they can occur in arbitrary order and possibly concurrently.
+
+        Returns:
+            an InsertManyResult object.
+
+        Note:
+            Unordered insertions are executed with some degree of concurrency,
+            so it is usually better to prefer this mode unless the order in the
+            document sequence is important.
+
+        Note:
+            A failure mode for this command is related to certain faulty documents
+            found among those to insert: a document may have the an `_id` already
+            present on the collection, or its vector dimension may not
+            match the collection setting.
+
+            For an ordered insertion, the method will raise an exception at
+            the first such faulty document -- nevertheless, all documents processed
+            until then will end up being written to the database.
+
+            For unordered insertions, if the error stems from faulty documents
+            the insertion proceeds until exhausting the input documents: then,
+            an exception is raised -- and all insertable documents will have been
+            written to the database, including those "after" the troublesome ones.
+
+            If, on the other hand, there are errors not related to individual
+            documents (such as a network connectivity error), the whole
+            `insert_many` operation will stop in mid-way, an exception will be raised,
+            and only a certain amount of the input documents will
+            have made their way to the database.
+        """
+
         if ordered:
             cim_responses = await self._astra_db_collection.chunked_insert_many(
                 documents=list(documents),
@@ -801,6 +1258,56 @@ class AsyncCollection:
         limit: Optional[int] = None,
         sort: Optional[SortType] = None,
     ) -> AsyncCursor:
+        """
+        Find documents on the collection, matching a certain provided filter.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            projection: used to select a subset of fields in the documents being
+                returned. The projection can be: an iterable over the field names
+                to return; a dictionary {field_name: True} to positively select
+                certain fields; or a dictionary {field_name: False} if one wants
+                to discard some fields from the response.
+                The default is to return the whole documents.
+            skip: with this integer parameter, what would be the first `skip`
+                documents returned by the query are discarded, and the results
+                start from the (skip+1)-th document.
+            limit: this (integer) parameter sets a limit over how many documents
+                are returned. Once `limit` is reached (or the cursor is exhausted
+                for lack of matching documents), nothing more is returned.
+            sort: with this dictionary parameter one can control the order
+                the documents are returned. See the Note about sorting for details.
+
+        Returns:
+            an AsyncCursor object representing iterations over the matching documents
+            (see the AsyncCursor object for how to use it. The simplest thing is to
+            run a for loop: `for document in collection.sort(...):`).
+
+        Note:
+            The following are example values for the `sort` parameter.
+            When no particular order is required:
+                sort={}
+            When sorting by a certain value in ascending/descending order:
+                sort={"field": SortDocuments.ASCENDING}
+                sort={"field": SortDocuments.DESCENDING}
+            When sorting first by "field" and then by "subfield"
+            (while modern Python versions preserve the order of dictionaries,
+            it is suggested for clarity to employ a `collections.OrderedDict`
+            in these cases):
+                sort={
+                    "field": SortDocuments.ASCENDING,
+                    "subfield": SortDocuments.ASCENDING,
+                }
+            When running a vector similarity (ANN) search:
+                sort={"$vector": [0.4, 0.15, -0.5]}
+        """
+
         return (
             AsyncCursor(
                 collection=self,
