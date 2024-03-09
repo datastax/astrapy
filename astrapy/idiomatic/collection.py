@@ -489,7 +489,7 @@ class Collection:
         Note:
             The following are example values for the `sort` parameter.
             When no particular order is required:
-                sort={}
+                sort={}  # (default when parameter not provided)
             When sorting by a certain value in ascending/descending order:
                 sort={"field": SortDocuments.ASCENDING}
                 sort={"field": SortDocuments.DESCENDING}
@@ -521,19 +521,42 @@ class Collection:
         filter: Optional[FilterType] = None,
         *,
         projection: Optional[ProjectionType] = None,
-        skip: Optional[int] = None,
-        limit: Optional[int] = None,
         sort: Optional[SortType] = None,
     ) -> Union[DocumentType, None]:
         """
-        DOCS TO DO
+        Run a search, returning the first document in the collection that matches
+        provided filters, if any is found.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            projection: used to select a subset of fields in the documents being
+                returned. The projection can be: an iterable over the field names
+                to return; a dictionary {field_name: True} to positively select
+                certain fields; or a dictionary {field_name: False} if one wants
+                to discard some fields from the response.
+                The default is to return the whole documents.
+            sort: with this dictionary parameter one can control the order
+                the documents are returned. See the Note about sorting for details.
+
+        Returns:
+            a dictionary expressing the required document, otherwise None.
+
+        Note:
+            See the `find` method for more details on the accepted parameters
+            (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
         fo_cursor = self.find(
             filter=filter,
             projection=projection,
-            skip=skip,
-            limit=limit,
+            skip=0,
+            limit=1,
             sort=sort,
         )
         try:
@@ -549,7 +572,29 @@ class Collection:
         filter: Optional[FilterType] = None,
     ) -> List[Any]:
         """
-        DOCS TO DO
+        Return a list of the unique values of `key` across the documents
+        in the collection that match the provided filter.
+
+        Args:
+            key: the name of the field whose value is inspected across documents.
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+
+        Returns:
+            a list of all different values for `key` found across the documents
+            that match the filter. The result list has no repeated items.
+
+        Note:
+            It must be kept in mind that `distinct` is a client-side operation,
+            which effectively browses all required documents using the logic
+            of the `find` method and collects the unique values found for `key`.
+            As such, there may be performance, latency and ultimately
+            billing implications if the amount of matching documents is large.
         """
 
         return self.find(
@@ -563,7 +608,35 @@ class Collection:
         upper_bound: int,
     ) -> int:
         """
-        DOCS TO DO
+        Count the documents in the collection matching the specified filter.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            upper_bound: a required ceiling on the result of the count operation.
+                If the actual number of documents exceeds this value,
+                an exception will be raised.
+                Furthermore, if the actual number of documents exceeds the maximum
+                count that the Data API can reach (regardless of upper_bound),
+                an exception will be raised.
+
+        Returns:
+            the exact count of matching documents.
+
+        Note:
+            Count operations are expensive: for this reason, the best practice
+            is to provide a reasonable `upper_bound` according to the caller
+            expectations. Moreover, indiscriminate usage of count operations
+            for sizeable amounts of documents (i.e. in the thousands and more)
+            is discouraged in favor of alternative application-specific solutions.
+            Keep in mind that the Data API has a hard upper limit on the amount
+            of documents it will count, and that an exception will be thrown
+            by this method if this limit is encountered.
         """
 
         cd_response = self._astra_db_collection.count_documents(filter=filter)
@@ -595,7 +668,44 @@ class Collection:
         return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
         """
-        DOCS TO DO
+        Find a document on the collection and replace it entirely with a new one,
+        optionally inserting a new document if no match is found.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            replacement: the new document to write into the collection.
+            projection: used to select a subset of fields in the document being
+                returned. The projection can be: an iterable over the field names
+                to return; a dictionary {field_name: True} to positively select
+                certain fields; or a dictionary {field_name: False} if one wants
+                to discard some fields from the response.
+                The default is to return the whole documents.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                replaced one. See the `find` method for more on sorting.
+            upsert: this parameter controls the behavior in absence of matches.
+                If True, `replacement` is inserted as a new document
+                if no matches are found on the collection. If False,
+                the operation silently does nothing in case of no matches.
+            return_document: a flag controlling what document is returned:
+                if set to `ReturnDocument.BEFORE`, or the string "before",
+                the document found on database is returned; if set to
+                `ReturnDocument.AFTER`, or the string "after", the new
+                document is returned. The default is "before".
+
+        Returns:
+            A document (or a projection thereof, as required), either the one
+            before the replace operation or the one after that.
+            Alternatively, the method returns None to represent
+            that no matching document was found, or that no replacement
+            was inserted (depending on the `return_document` parameter).
         """
 
         options = {
@@ -629,7 +739,25 @@ class Collection:
         upsert: bool = False,
     ) -> UpdateResult:
         """
-        DOCS TO DO
+        Replace a single document on the collection with a new one,
+        optionally inserting a new document if no match is found.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            replacement: the new document to write into the collection.
+            upsert: this parameter controls the behavior in absence of matches.
+                If True, `replacement` is inserted as a new document
+                if no matches are found on the collection. If False,
+                the operation silently does nothing in case of no matches.
+
+        Returns:
+            an UpdateResult object summarizing the outcome of the replace operation.
         """
 
         options = {
@@ -664,7 +792,50 @@ class Collection:
         return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
         """
-        DOCS TO DO
+        Find a document on the collection and update it as requested,
+        optionally inserting a new document if no match is found.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            update: the update prescription to apply to the document, expressed
+                as a dictionary as per Data API syntax. Examples are:
+                    {"$set": {"field": "value}}
+                    {"$inc": {"counter": 10}}
+                    {"$unset": {"field": ""}}
+                See the Data API documentation for the full syntax.
+            projection: used to select a subset of fields in the document being
+                returned. The projection can be: an iterable over the field names
+                to return; a dictionary {field_name: True} to positively select
+                certain fields; or a dictionary {field_name: False} if one wants
+                to discard some fields from the response.
+                The default is to return the whole documents.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                updated one. See the `find` method for more on sorting.
+            upsert: this parameter controls the behavior in absence of matches.
+                If True, a new document (resulting from applying the `update`
+                to an empty document) is inserted if no matches are found on
+                the collection. If False, the operation silently does nothing
+                in case of no matches.
+            return_document: a flag controlling what document is returned:
+                if set to `ReturnDocument.BEFORE`, or the string "before",
+                the document found on database is returned; if set to
+                `ReturnDocument.AFTER`, or the string "after", the new
+                document is returned. The default is "before".
+
+        Returns:
+            A document (or a projection thereof, as required), either the one
+            before the replace operation or the one after that.
+            Alternatively, the method returns None to represent
+            that no matching document was found, or that no update
+            was applied (depending on the `return_document` parameter).
         """
 
         options = {
@@ -698,7 +869,31 @@ class Collection:
         upsert: bool = False,
     ) -> UpdateResult:
         """
-        DOCS TO DO
+        Update a single document on the collection as requested,
+        optionally inserting a new document if no match is found.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            update: the update prescription to apply to the document, expressed
+                as a dictionary as per Data API syntax. Examples are:
+                    {"$set": {"field": "value}}
+                    {"$inc": {"counter": 10}}
+                    {"$unset": {"field": ""}}
+                See the Data API documentation for the full syntax.
+            upsert: this parameter controls the behavior in absence of matches.
+                If True, a new document (resulting from applying the `update`
+                to an empty document) is inserted if no matches are found on
+                the collection. If False, the operation silently does nothing
+                in case of no matches.
+
+        Returns:
+            an UpdateResult object summarizing the outcome of the update operation.
         """
 
         options = {
@@ -730,7 +925,31 @@ class Collection:
         upsert: bool = False,
     ) -> UpdateResult:
         """
-        DOCS TO DO
+        Apply an update operations to all documents matching a condition,
+        optionally inserting one documents in absence of matches.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            update: the update prescription to apply to the documents, expressed
+                as a dictionary as per Data API syntax. Examples are:
+                    {"$set": {"field": "value}}
+                    {"$inc": {"counter": 10}}
+                    {"$unset": {"field": ""}}
+                See the Data API documentation for the full syntax.
+            upsert: this parameter controls the behavior in absence of matches.
+                If True, a single new document (resulting from applying `update`
+                to an empty document) is inserted if no matches are found on
+                the collection. If False, the operation silently does nothing
+                in case of no matches.
+
+        Returns:
+            an UpdateResult object summarizing the outcome of the update operation.
         """
 
         options = {
@@ -756,7 +975,37 @@ class Collection:
         sort: Optional[SortType] = None,
     ) -> Union[DocumentType, None]:
         """
-        DOCS TO DO
+        Find a document in the collection and delete it. The deleted document,
+        however, is the return value of the method.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            projection: used to select a subset of fields in the document being
+                returned. The projection can be: an iterable over the field names
+                to return; a dictionary {field_name: True} to positively select
+                certain fields; or a dictionary {field_name: False} if one wants
+                to discard some fields from the response.
+                Note that the `_id` field will be returned with the document
+                in any case, regardless of what the provided `projection` requires.
+                The default is to return the whole documents.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                deleted one. See the `find` method for more on sorting.
+
+        Returns:
+            Either the document (or a projection thereof, as requested), or None
+            if no matches were found in the first place.
+
+        Note:
+            This operation is not atomic on the database.
+            Internally, this method runs a `find_one` followed by a `delete_one`.
         """
 
         _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
@@ -780,7 +1029,21 @@ class Collection:
         filter: Dict[str, Any],
     ) -> DeleteResult:
         """
-        DOCS TO DO
+        Delete one document matching a provided filter.
+        This method never deletes more than a single document, regardless
+        of the number of matches to the provided filters.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+
+        Returns:
+            a DeleteResult object summarizing the outcome of the delete operation.
         """
 
         do_response = self._astra_db_collection.delete_one_by_predicate(filter=filter)
@@ -808,7 +1071,26 @@ class Collection:
         filter: Dict[str, Any],
     ) -> DeleteResult:
         """
-        DOCS TO DO
+        Delete all documents matching a provided filter.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+
+        Returns:
+            a DeleteResult object summarizing the outcome of the delete operation.
+
+        Note:
+            This operation is not atomic. Depending on the amount of matching
+            documents, it can keep running (in a blocking way) for a macroscopic
+            time. In that case, new documents that are meanwhile inserted
+            (e.g. from another process/application) will be deleted during
+            the execution of this method call.
         """
 
         dm_responses = self._astra_db_collection.chunked_delete_many(filter=filter)
@@ -844,7 +1126,29 @@ class Collection:
         ordered: bool = True,
     ) -> BulkWriteResult:
         """
-        DOCS TO DO
+        Execute an arbitrary amount of operations such as inserts, updates, deletes
+        either sequentially or concurrently.
+
+        This method does not execute atomically, i.e. individual operations are
+        each performed in the same way as the corresponding collection method,
+        and certainly each one is a different and unrelated database mutation.
+
+        Args:
+            requests: an iterable over concrete subclasses of `BaseOperation`,
+                such as `InsertMany` or `ReplaceOne`. Each such object
+                represents an operation ready to be executed on a collection,
+                and is instantiated by passing the same parameters as one
+                would the corresponding collection method.
+            ordered: whether to launch the `requests` one after the other or
+                in arbitrary order, possibly in a concurrent fashion. For
+                performance reasons, `ordered=False` should be preferred
+                when compatible with the needs of the application flow.
+
+        Returns:
+            A single BulkWriteResult summarizing the whole list of requested
+            operations. The keys in the map attributes of BulkWriteResult
+            (when present) are the integer indices of the corresponding operation
+            in the `requests` iterable.
         """
 
         # lazy importing here against circular-import error
@@ -874,7 +1178,14 @@ class Collection:
 
     def drop(self) -> Dict[str, Any]:
         """
-        DOCS TO DO
+        Drop the collection, i.e. delete it from the database along with
+        all the documents it contains.
+
+        Returns:
+            a dictionary of the form {"ok": 1} to signal successful deletion.
+
+        Note:
+            Use with caution.
         """
 
         return self.database.drop_collection(self)
@@ -1324,15 +1635,42 @@ class AsyncCollection:
         filter: Optional[FilterType] = None,
         *,
         projection: Optional[ProjectionType] = None,
-        skip: Optional[int] = None,
-        limit: Optional[int] = None,
         sort: Optional[SortType] = None,
     ) -> Union[DocumentType, None]:
+        """
+        Run a search, returning the first document in the collection that matches
+        provided filters, if any is found.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            projection: used to select a subset of fields in the documents being
+                returned. The projection can be: an iterable over the field names
+                to return; a dictionary {field_name: True} to positively select
+                certain fields; or a dictionary {field_name: False} if one wants
+                to discard some fields from the response.
+                The default is to return the whole documents.
+            sort: with this dictionary parameter one can control the order
+                the documents are returned. See the Note about sorting for details.
+
+        Returns:
+            a dictionary expressing the required document, otherwise None.
+
+        Note:
+            See the `find` method for more details on the accepted parameters
+            (whereas `skip` and `limit` are not valid parameters for `find_one`).
+        """
+
         fo_cursor = self.find(
             filter=filter,
             projection=projection,
-            skip=skip,
-            limit=limit,
+            skip=0,
+            limit=1,
             sort=sort,
         )
         try:
@@ -1347,6 +1685,32 @@ class AsyncCollection:
         *,
         filter: Optional[FilterType] = None,
     ) -> List[Any]:
+        """
+        Return a list of the unique values of `key` across the documents
+        in the collection that match the provided filter.
+
+        Args:
+            key: the name of the field whose value is inspected across documents.
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+
+        Returns:
+            a list of all different values for `key` found across the documents
+            that match the filter. The result list has no repeated items.
+
+        Note:
+            It must be kept in mind that `distinct` is a client-side operation,
+            which effectively browses all required documents using the logic
+            of the `find` method and collects the unique values found for `key`.
+            As such, there may be performance, latency and ultimately
+            billing implications if the amount of matching documents is large.
+        """
+
         cursor = self.find(
             filter=filter,
             projection={key: True},
@@ -1358,6 +1722,38 @@ class AsyncCollection:
         filter: Dict[str, Any],
         upper_bound: int,
     ) -> int:
+        """
+        Count the documents in the collection matching the specified filter.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            upper_bound: a required ceiling on the result of the count operation.
+                If the actual number of documents exceeds this value,
+                an exception will be raised.
+                Furthermore, if the actual number of documents exceeds the maximum
+                count that the Data API can reach (regardless of upper_bound),
+                an exception will be raised.
+
+        Returns:
+            the exact count of matching documents.
+
+        Note:
+            Count operations are expensive: for this reason, the best practice
+            is to provide a reasonable `upper_bound` according to the caller
+            expectations. Moreover, indiscriminate usage of count operations
+            for sizeable amounts of documents (i.e. in the thousands and more)
+            is discouraged in favor of alternative application-specific solutions.
+            Keep in mind that the Data API has a hard upper limit on the amount
+            of documents it will count, and that an exception will be thrown
+            by this method if this limit is encountered.
+        """
+
         cd_response = await self._astra_db_collection.count_documents(filter=filter)
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
@@ -1386,6 +1782,47 @@ class AsyncCollection:
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
+        """
+        Find a document on the collection and replace it entirely with a new one,
+        optionally inserting a new document if no match is found.
+
+        Args:
+
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            replacement: the new document to write into the collection.
+            projection: used to select a subset of fields in the document being
+                returned. The projection can be: an iterable over the field names
+                to return; a dictionary {field_name: True} to positively select
+                certain fields; or a dictionary {field_name: False} if one wants
+                to discard some fields from the response.
+                The default is to return the whole documents.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                replaced one. See the `find` method for more on sorting.
+            upsert: this parameter controls the behavior in absence of matches.
+                If True, `replacement` is inserted as a new document
+                if no matches are found on the collection. If False,
+                the operation silently does nothing in case of no matches.
+            return_document: a flag controlling what document is returned:
+                if set to `ReturnDocument.BEFORE`, or the string "before",
+                the document found on database is returned; if set to
+                `ReturnDocument.AFTER`, or the string "after", the new
+                document is returned. The default is "before".
+
+        Returns:
+            A document, either the one before the replace operation or the
+            one after that. Alternatively, the method returns None to represent
+            that no matching document was found, or that no replacement
+            was inserted (depending on the `return_document` parameter).
+        """
+
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -1416,6 +1853,28 @@ class AsyncCollection:
         *,
         upsert: bool = False,
     ) -> UpdateResult:
+        """
+        Replace a single document on the collection with a new one,
+        optionally inserting a new document if no match is found.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            replacement: the new document to write into the collection.
+            upsert: this parameter controls the behavior in absence of matches.
+                If True, `replacement` is inserted as a new document
+                if no matches are found on the collection. If False,
+                the operation silently does nothing in case of no matches.
+
+        Returns:
+            an UpdateResult object summarizing the outcome of the replace operation.
+        """
+
         options = {
             "upsert": upsert,
         }
@@ -1447,6 +1906,53 @@ class AsyncCollection:
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
     ) -> Union[DocumentType, None]:
+        """
+        Find a document on the collection and update it as requested,
+        optionally inserting a new document if no match is found.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            update: the update prescription to apply to the document, expressed
+                as a dictionary as per Data API syntax. Examples are:
+                    {"$set": {"field": "value}}
+                    {"$inc": {"counter": 10}}
+                    {"$unset": {"field": ""}}
+                See the Data API documentation for the full syntax.
+            projection: used to select a subset of fields in the document being
+                returned. The projection can be: an iterable over the field names
+                to return; a dictionary {field_name: True} to positively select
+                certain fields; or a dictionary {field_name: False} if one wants
+                to discard some fields from the response.
+                The default is to return the whole documents.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                updated one. See the `find` method for more on sorting.
+            upsert: this parameter controls the behavior in absence of matches.
+                If True, a new document (resulting from applying the `update`
+                to an empty document) is inserted if no matches are found on
+                the collection. If False, the operation silently does nothing
+                in case of no matches.
+            return_document: a flag controlling what document is returned:
+                if set to `ReturnDocument.BEFORE`, or the string "before",
+                the document found on database is returned; if set to
+                `ReturnDocument.AFTER`, or the string "after", the new
+                document is returned. The default is "before".
+
+        Returns:
+            A document (or a projection thereof, as required), either the one
+            before the replace operation or the one after that.
+            Alternatively, the method returns None to represent
+            that no matching document was found, or that no update
+            was applied (depending on the `return_document` parameter).
+        """
+
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -1477,6 +1983,34 @@ class AsyncCollection:
         *,
         upsert: bool = False,
     ) -> UpdateResult:
+        """
+        Update a single document on the collection as requested,
+        optionally inserting a new document if no match is found.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            update: the update prescription to apply to the document, expressed
+                as a dictionary as per Data API syntax. Examples are:
+                    {"$set": {"field": "value}}
+                    {"$inc": {"counter": 10}}
+                    {"$unset": {"field": ""}}
+                See the Data API documentation for the full syntax.
+            upsert: this parameter controls the behavior in absence of matches.
+                If True, a new document (resulting from applying the `update`
+                to an empty document) is inserted if no matches are found on
+                the collection. If False, the operation silently does nothing
+                in case of no matches.
+
+        Returns:
+            an UpdateResult object summarizing the outcome of the update operation.
+        """
+
         options = {
             "upsert": upsert,
         }
@@ -1505,6 +2039,34 @@ class AsyncCollection:
         *,
         upsert: bool = False,
     ) -> UpdateResult:
+        """
+        Apply an update operations to all documents matching a condition,
+        optionally inserting one documents in absence of matches.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            update: the update prescription to apply to the documents, expressed
+                as a dictionary as per Data API syntax. Examples are:
+                    {"$set": {"field": "value}}
+                    {"$inc": {"counter": 10}}
+                    {"$unset": {"field": ""}}
+                See the Data API documentation for the full syntax.
+            upsert: this parameter controls the behavior in absence of matches.
+                If True, a single new document (resulting from applying `update`
+                to an empty document) is inserted if no matches are found on
+                the collection. If False, the operation silently does nothing
+                in case of no matches.
+
+        Returns:
+            an UpdateResult object summarizing the outcome of the update operation.
+        """
+
         options = {
             "upsert": upsert,
         }
@@ -1527,6 +2089,40 @@ class AsyncCollection:
         projection: Optional[ProjectionType] = None,
         sort: Optional[SortType] = None,
     ) -> Union[DocumentType, None]:
+        """
+        Find a document in the collection and delete it. The deleted document,
+        however, is the return value of the method.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            projection: used to select a subset of fields in the document being
+                returned. The projection can be: an iterable over the field names
+                to return; a dictionary {field_name: True} to positively select
+                certain fields; or a dictionary {field_name: False} if one wants
+                to discard some fields from the response.
+                Note that the `_id` field will be returned with the document
+                in any case, regardless of what the provided `projection` requires.
+                The default is to return the whole documents.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                deleted one. See the `find` method for more on sorting.
+
+        Returns:
+            Either the document (or a projection thereof, as requested), or None
+            if no matches were found in the first place.
+
+        Note:
+            This operation is not atomic on the database.
+            Internally, this method runs a `find_one` followed by a `delete_one`.
+        """
+
         _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
         target_document = await self.find_one(
             filter=filter, projection=_projection, sort=sort
@@ -1547,6 +2143,24 @@ class AsyncCollection:
         self,
         filter: Dict[str, Any],
     ) -> DeleteResult:
+        """
+        Delete one document matching a provided filter.
+        This method never deletes more than a single document, regardless
+        of the number of matches to the provided filters.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+
+        Returns:
+            a DeleteResult object summarizing the outcome of the delete operation.
+        """
+
         do_response = await self._astra_db_collection.delete_one_by_predicate(
             filter=filter
         )
@@ -1575,6 +2189,29 @@ class AsyncCollection:
         *,
         let: Optional[int] = None,
     ) -> DeleteResult:
+        """
+        Delete all documents matching a provided filter.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+
+        Returns:
+            a DeleteResult object summarizing the outcome of the delete operation.
+
+        Note:
+            This operation is not atomic. Depending on the amount of matching
+            documents, it can keep running (in a blocking way) for a macroscopic
+            time. In that case, new documents that are meanwhile inserted
+            (e.g. from another process/application) will be deleted during
+            the execution of this method call.
+        """
+
         dm_responses = await self._astra_db_collection.chunked_delete_many(
             filter=filter
         )
@@ -1609,6 +2246,32 @@ class AsyncCollection:
         *,
         ordered: bool = True,
     ) -> BulkWriteResult:
+        """
+        Execute an arbitrary amount of operations such as inserts, updates, deletes
+        either sequentially or concurrently.
+
+        This method does not execute atomically, i.e. individual operations are
+        each performed in the same way as the corresponding collection method,
+        and certainly each one is a different and unrelated database mutation.
+
+        Args:
+            requests: an iterable over concrete subclasses of `BaseOperation`,
+                such as `InsertMany` or `ReplaceOne`. Each such object
+                represents an operation ready to be executed on a collection,
+                and is instantiated by passing the same parameters as one
+                would the corresponding collection method.
+            ordered: whether to launch the `requests` one after the other or
+                in arbitrary order, possibly in a concurrent fashion. For
+                performance reasons, `ordered=False` should be preferred
+                when compatible with the needs of the application flow.
+
+        Returns:
+            A single BulkWriteResult summarizing the whole list of requested
+            operations. The keys in the map attributes of BulkWriteResult
+            (when present) are the integer indices of the corresponding operation
+            in the `requests` iterable.
+        """
+
         # lazy importing here against circular-import error
         from astrapy.idiomatic.operations import reduce_bulk_write_results
 
@@ -1641,4 +2304,15 @@ class AsyncCollection:
             return reduce_bulk_write_results(bulk_write_results)
 
     async def drop(self) -> Dict[str, Any]:
+        """
+        Drop the collection, i.e. delete it from the database along with
+        all the documents it contains.
+
+        Returns:
+            a dictionary of the form {"ok": 1} to signal successful deletion.
+
+        Note:
+            Use with caution.
+        """
+
         return await self.database.drop_collection(self)
