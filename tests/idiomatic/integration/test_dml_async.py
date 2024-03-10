@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
+import datetime
+
+from typing import Any, Dict, List
 
 import pytest
 
@@ -437,6 +439,32 @@ class TestDMLAsync:
         with pytest.raises(TypeError):
             cursor7.rewind()
             cursor7["wrong"]
+
+    @pytest.mark.describe("test of distinct with non-hashable items, async")
+    async def test_collection_distinct_nonhashable_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+        documents: List[Dict[str, Any]] = [
+            {},
+            {"f": 1},
+            {"f": "a"},
+            {"f": {"subf": 99}},
+            {"f": {"subf": 99, "another": {"subsubf": [True, False]}}},
+            {"f": [10, 11]},
+            {"f": [11, 10]},
+            {"f": [10]},
+            {"f": datetime.datetime(2000, 1, 1, 12, 00, 00)},
+            {"f": None},
+        ]
+        await acol.insert_many(documents * 2)
+
+        d_items = await acol.distinct("f")
+        assert len(d_items) == len([doc for doc in documents if "f" in doc])
+        for doc in documents:
+            if "f" in doc:
+                assert doc["f"] in d_items
 
     @pytest.mark.describe("test of collection insert_many, async")
     async def test_collection_insert_many_async(

@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
+
 import pytest
+from typing import Any, Dict, List
 
 from astrapy import Collection
 from astrapy.results import DeleteResult, InsertOneResult
@@ -383,6 +386,32 @@ class TestDMLSync:
         with pytest.raises(TypeError):
             cursor7.rewind()
             cursor7["wrong"]
+
+    @pytest.mark.describe("test of distinct with non-hashable items, sync")
+    def test_collection_distinct_nonhashable_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+        documents: List[Dict[str, Any]] = [
+            {},
+            {"f": 1},
+            {"f": "a"},
+            {"f": {"subf": 99}},
+            {"f": {"subf": 99, "another": {"subsubf": [True, False]}}},
+            {"f": [10, 11]},
+            {"f": [11, 10]},
+            {"f": [10]},
+            {"f": datetime.datetime(2000, 1, 1, 12, 00, 00)},
+            {"f": None},
+        ]
+        col.insert_many(documents)
+
+        d_items = col.distinct("f")
+        assert len(d_items) == len([doc for doc in documents if "f" in doc])
+        for doc in documents:
+            if "f" in doc:
+                assert doc["f"] in d_items
 
     @pytest.mark.describe("test of collection insert_many, sync")
     def test_collection_insert_many_sync(

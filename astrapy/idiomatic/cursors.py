@@ -14,11 +14,15 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Iterator, AsyncIterator
 from typing import (
     Any,
+    Callable,
     Dict,
     Generic,
+    Iterable,
     List,
     Optional,
     TypeVar,
@@ -26,6 +30,7 @@ from typing import (
     TYPE_CHECKING,
 )
 
+from astrapy.utils import _normalize_payload_value
 from astrapy.idiomatic.types import (
     DocumentType,
     ProjectionType,
@@ -40,6 +45,20 @@ BC = TypeVar("BC", bound="BaseCursor")
 T = TypeVar("T")
 
 FIND_PREFETCH = 20
+
+
+def _create_document_key_extractor(
+    key: str,
+) -> Callable[[Dict[str, Any]], Iterable[Any]]:
+    if "." in key:
+        raise NotImplementedError
+
+    def _item_extractor(document: Dict[str, Any]) -> Any:
+        # TEMPORARY
+        if key in document:
+            yield document[key]
+
+    return _item_extractor
 
 
 class BaseCursor:
@@ -119,6 +138,7 @@ class BaseCursor:
     def _copy(
         self: BC,
         *,
+        projection: Optional[ProjectionType] = None,
         limit: Optional[int] = None,
         skip: Optional[int] = None,
         started: Optional[bool] = None,
@@ -127,7 +147,7 @@ class BaseCursor:
         new_cursor = self.__class__(
             collection=self._collection,
             filter=self._filter,
-            projection=self._projection,
+            projection=projection or self._projection,
         )
         # Cursor treated as mutable within this function scope:
         new_cursor._limit = limit if limit is not None else self._limit
@@ -371,9 +391,22 @@ class Cursor(BaseCursor):
             network traffic and possibly billing.
         """
 
-        return list(
-            {document[key] for document in self._copy(started=False) if key in document}
-        )
+        _item_hashes = set()
+        distinct_items = []
+
+        _extractor = _create_document_key_extractor(key)
+
+        d_cursor = self._copy(projection={key: True}, started=False)
+        for document in d_cursor:
+            for item in _extractor(document):
+                _normalized_item = _normalize_payload_value(path=[], value=item)
+                _normalized_json = json.dumps(_normalized_item, separators=(",", ":"))
+                _item_hash = hashlib.md5(_normalized_json.encode()).hexdigest()
+                if _item_hash not in _item_hashes:
+                    _item_hashes.add(_item_hash)
+                    distinct_items.append(item)
+
+        return distinct_items
 
 
 class AsyncCursor(BaseCursor):
@@ -515,13 +548,22 @@ class AsyncCursor(BaseCursor):
             network traffic and possibly billing.
         """
 
-        return list(
-            {
-                document[key]
-                async for document in self._copy(started=False)
-                if key in document
-            }
-        )
+        _item_hashes = set()
+        distinct_items = []
+
+        _extractor = _create_document_key_extractor(key)
+
+        d_cursor = self._copy(projection={key: True}, started=False)
+        async for document in d_cursor:
+            for item in _extractor(document):
+                _normalized_item = _normalize_payload_value(path=[], value=item)
+                _normalized_json = json.dumps(_normalized_item, separators=(",", ":"))
+                _item_hash = hashlib.md5(_normalized_json.encode()).hexdigest()
+                if _item_hash not in _item_hashes:
+                    _item_hashes.add(_item_hash)
+                    distinct_items.append(item)
+
+        return distinct_items
 
 
 class CommandCursor(Generic[T]):
