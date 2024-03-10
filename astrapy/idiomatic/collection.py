@@ -1349,7 +1349,7 @@ class AsyncCollection:
         caller_version: Optional[str] = None,
     ) -> Collection:
         """
-        Create an Collection from this one. Save for the arguments
+        Create a Collection from this one. Save for the arguments
         explicitly provided as overrides, everything else is kept identical
         to this collection in the copy (the database is converted into
         a sync object).
