@@ -408,10 +408,52 @@ class TestDMLSync:
         col.insert_many(documents)
 
         d_items = col.distinct("f")
-        assert len(d_items) == len([doc for doc in documents if "f" in doc])
+        expected = [
+            1,
+            "a",
+            {"subf": 99},
+            {"subf": 99, "another": {"subsubf": [True, False]}},
+            10,
+            11,
+            datetime.datetime(2000, 1, 1, 12, 0),
+            None,
+        ]
+        assert len(d_items) == len(expected)
         for doc in documents:
             if "f" in doc:
-                assert doc["f"] in d_items
+                if isinstance(doc["f"], list):
+                    for item in doc["f"]:
+                        assert item in d_items
+                else:
+                    assert doc["f"] in d_items
+
+    @pytest.mark.describe("test of usage of projection in distinct, sync")
+    def test_collection_projections_distinct_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+        col.insert_one({"x": [{"y": "Y", "0": "ZERO"}]})
+
+        assert col.distinct("x.y") == ["Y"]
+        # the one below shows that if index-in-list, then browse-whole-list is off
+        assert col.distinct("x.0") == [{"y": "Y", "0": "ZERO"}]
+        assert col.distinct("x.0.y") == ["Y"]
+        assert col.distinct("x.0.0") == ["ZERO"]
+
+    @pytest.mark.describe("test of unacceptable paths for distinct, sync")
+    def test_collection_wrong_paths_distinc_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        with pytest.raises(ValueError):
+            sync_empty_collection.distinct("root.1..subf")
+        with pytest.raises(ValueError):
+            sync_empty_collection.distinct("root..1.subf")
+        with pytest.raises(ValueError):
+            sync_empty_collection.distinct("root..subf.subsubf")
+        with pytest.raises(ValueError):
+            sync_empty_collection.distinct("root.subf..subsubf")
 
     @pytest.mark.describe("test of collection insert_many, sync")
     def test_collection_insert_many_sync(
