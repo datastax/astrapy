@@ -16,12 +16,12 @@
 Tests for the `db.py` parts related to DML & client creation
 """
 
-import os
 import logging
 
 import pytest
 
 from ..conftest import AstraDBCredentials
+from .conftest import TEST_SKIP_COLLECTION_DELETE
 from astrapy.db import AsyncAstraDB, AsyncAstraDBCollection
 from astrapy.defaults import DEFAULT_KEYSPACE_NAME
 
@@ -74,7 +74,7 @@ async def test_path_handling(
 
 
 @pytest.mark.skipif(
-    int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 1,
+    TEST_SKIP_COLLECTION_DELETE,
     reason="collection-deletion tests are suppressed",
 )
 @pytest.mark.describe("should create, use and destroy a non-vector collection (async)")
@@ -104,7 +104,7 @@ async def test_create_use_destroy_nonvector_collection(async_db: AsyncAstraDB) -
 
 
 @pytest.mark.skipif(
-    int(os.getenv("TEST_SKIP_COLLECTION_DELETE", "0")) == 1,
+    TEST_SKIP_COLLECTION_DELETE,
     reason="collection-deletion tests are suppressed",
 )
 @pytest.mark.describe("should create and destroy a vector collection (async)")

@@ -105,7 +105,7 @@ collection = astra_db.create_collection(
     collection_name="collection_test", dimension=5
 )
 
-# Or you can connect to an existing connection directly
+# Or you can connect to an existing collection directly
 collection = AstraDBCollection(
     collection_name="collection_test", astra_db=astra_db
 )
