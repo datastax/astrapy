@@ -49,11 +49,11 @@ class TestCollectionsAsync:
             caller_name="c_n",
             caller_version="c_v",
         )
-        assert col1 == col1.copy()
+        assert col1 == col1._copy()
         assert col1 == col1.with_options()
         assert col1 == col1.to_sync().to_async()
 
-    @pytest.mark.describe("test of Collection rich copy, async")
+    @pytest.mark.describe("test of Collection rich _copy, async")
     async def test_rich_copy_collection_async(
         self,
         async_database: AsyncDatabase,
@@ -64,14 +64,14 @@ class TestCollectionsAsync:
             caller_name="c_n",
             caller_version="c_v",
         )
-        assert col1 != col1.copy(database=async_database.copy(token="x_t"))
-        assert col1 != col1.copy(name="o")
-        assert col1 != col1.copy(namespace="o")
-        assert col1 != col1.copy(caller_name="o")
-        assert col1 != col1.copy(caller_version="o")
+        assert col1 != col1._copy(database=async_database._copy(token="x_t"))
+        assert col1 != col1._copy(name="o")
+        assert col1 != col1._copy(namespace="o")
+        assert col1 != col1._copy(caller_name="o")
+        assert col1 != col1._copy(caller_version="o")
 
-        col2 = col1.copy(
-            database=async_database.copy(token="x_t"),
+        col2 = col1._copy(
+            database=async_database._copy(token="x_t"),
             name="other_name",
             namespace="other_namespace",
             caller_name="x_n",
@@ -83,7 +83,7 @@ class TestCollectionsAsync:
             caller_name="c_n",
             caller_version="c_v",
         )
-        col3 = col2.copy(
+        col3 = col2._copy(
             database=async_database,
             name="id_test_collection",
             namespace=async_database.namespace,
@@ -118,7 +118,7 @@ class TestCollectionsAsync:
         assert (
             col1
             != col1.to_sync(
-                database=async_database.copy(token="x_t").to_sync()
+                database=async_database._copy(token="x_t").to_sync()
             ).to_async()
         )
         assert col1 != col1.to_sync(name="o").to_async()
@@ -127,7 +127,7 @@ class TestCollectionsAsync:
         assert col1 != col1.to_sync(caller_version="o").to_async()
 
         col2s = col1.to_sync(
-            database=async_database.copy(token="x_t").to_sync(),
+            database=async_database._copy(token="x_t").to_sync(),
             name="other_name",
             namespace="other_namespace",
             caller_name="x_n",
@@ -209,7 +209,7 @@ class TestCollectionsAsync:
             caller_name="c_n2",
             caller_version="c_v2",
         )
-        assert col1.copy() == col2
+        assert col1._copy() == col2
         assert col1.to_sync().to_async() == col2
 
     @pytest.mark.skipif(

@@ -23,6 +23,29 @@ SortType = Dict[str, Any]
 FilterType = Dict[str, Any]
 
 
+def normalize_optional_projection(
+    projection: Optional[ProjectionType],
+    ensure_fields: Iterable[str] = set(),
+) -> Optional[Dict[str, bool]]:
+    _ensure_fields = set(ensure_fields)
+    if projection:
+        if isinstance(projection, dict):
+            if any(bool(v) for v in projection.values()):
+                # positive projection: {a: True, b: True ...}
+                return {
+                    k: projection.get(k, True)
+                    for k in list(projection.keys()) + list(_ensure_fields)
+                }
+            else:
+                # negative projection: {x: False, y: False, ...}
+                return {k: v for k, v in projection.items() if k not in _ensure_fields}
+        else:
+            # an iterable over strings
+            return {field: True for field in list(projection) + list(_ensure_fields)}
+    else:
+        return None
+
+
 class ReturnDocument:
     """
     Admitted values for the `return_document` parameter in
@@ -50,24 +73,15 @@ class SortDocuments:
     DESCENDING = -1
 
 
-def normalize_optional_projection(
-    projection: Optional[ProjectionType],
-    ensure_fields: Iterable[str] = set(),
-) -> Optional[Dict[str, bool]]:
-    _ensure_fields = set(ensure_fields)
-    if projection:
-        if isinstance(projection, dict):
-            if any(bool(v) for v in projection.values()):
-                # positive projection: {a: True, b: True ...}
-                return {
-                    k: projection.get(k, True)
-                    for k in list(projection.keys()) + list(_ensure_fields)
-                }
-            else:
-                # negative projection: {x: False, y: False, ...}
-                return {k: v for k, v in projection.items() if k not in _ensure_fields}
-        else:
-            # an iterable over strings
-            return {field: True for field in list(projection) + list(_ensure_fields)}
-    else:
-        return None
+class VectorMetric:
+    """
+    Admitted values for the "metric" parameter when creating vector collections
+    through the database `create_collection` method.
+    """
+
+    def __init__(self) -> None:
+        raise NotImplementedError
+
+    DOT_PRODUCT = "dot_product"
+    EUCLIDEAN = "euclidean"
+    COSINE = "cosine"

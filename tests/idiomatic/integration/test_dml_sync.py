@@ -108,19 +108,17 @@ class TestDMLSync:
         assert isinstance(do_result1, DeleteResult)
         assert do_result1.deleted_count == 2
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 1
+        with pytest.raises(ValueError):
+            sync_empty_collection.delete_many(filter={})
 
-    @pytest.mark.describe("test of collection truncating delete_many, sync")
-    def test_collection_truncating_delete_many_sync(
+    @pytest.mark.describe("test of collection delete_all, sync")
+    def test_collection_delete_all_sync(
         self,
         sync_empty_collection: Collection,
     ) -> None:
-        sync_empty_collection.insert_one({"doc": 1, "group": "A"})
-        sync_empty_collection.insert_one({"doc": 2, "group": "B"})
-        sync_empty_collection.insert_one({"doc": 3, "group": "A"})
+        sync_empty_collection.insert_many([{"a": 1}, {"a": 2}, {"a": 3}])
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 3
-        do_result1 = sync_empty_collection.delete_many({})
-        assert isinstance(do_result1, DeleteResult)
-        assert do_result1.deleted_count is None
+        sync_empty_collection.delete_all()
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 0
 
     @pytest.mark.describe("test of collection chunk-requiring delete_many, sync")
@@ -429,90 +427,34 @@ class TestDMLSync:
         fo1 = col.find_one({"kind": "frog"})
         assert fo1 is None
 
-        Nski = 1
-        Nlim = 10
         Nsor = {"seq": 1}
         Nfil = {"kind": "letter"}
 
-        # case 0000 of find-pattern matrix
-        doc0000 = col.find_one(skip=None, limit=None, sort=None, filter=None)
-        assert doc0000 is not None
-        assert doc0000["seq"] in {0, 1, 2}
+        # case 00 of find-pattern matrix
+        doc00 = col.find_one(sort=None, filter=None)
+        assert doc00 is not None
+        assert doc00["seq"] in {0, 1, 2}
 
-        # case 0001
-        doc0001 = col.find_one(skip=None, limit=None, sort=None, filter=Nfil)
-        assert doc0001 is not None
-        assert doc0001["seq"] in {1, 2}
+        # case 01
+        doc01 = col.find_one(sort=None, filter=Nfil)
+        assert doc01 is not None
+        assert doc01["seq"] in {1, 2}
 
-        # case 0010
-        doc0010 = col.find_one(skip=None, limit=None, sort=Nsor, filter=None)
-        assert doc0010 is not None
-        assert doc0010["seq"] == 0
+        # case 10
+        doc10 = col.find_one(sort=Nsor, filter=None)
+        assert doc10 is not None
+        assert doc10["seq"] == 0
 
-        # case 0011
-        doc0011 = col.find_one(skip=None, limit=None, sort=Nsor, filter=Nfil)
-        assert doc0011 is not None
-        assert doc0011["seq"] == 1
-
-        # case 0100
-        doc0100 = col.find_one(skip=None, limit=Nlim, sort=None, filter=None)
-        assert doc0100 is not None
-        assert doc0100["seq"] in {0, 1, 2}
-
-        # case 0101
-        doc0101 = col.find_one(skip=None, limit=Nlim, sort=None, filter=Nfil)
-        assert doc0101 is not None
-        assert doc0101["seq"] in {1, 2}
-
-        # case 0110
-        doc0110 = col.find_one(skip=None, limit=Nlim, sort=Nsor, filter=None)
-        assert doc0110 is not None
-        assert doc0110["seq"] == 0
-
-        # case 0111
-        doc0111 = col.find_one(skip=None, limit=Nlim, sort=Nsor, filter=Nfil)
-        assert doc0111 is not None
-        assert doc0111["seq"] == 1
-
-        # case 1000
-        # col.find_one(skip=Nski, limit=None, sort=None, filter=None) ...
-
-        # case 1001
-        # col.find_one(skip=Nski, limit=None, sort=None, filter=Nfil) ...
-
-        # case 1010
-        doc1010 = col.find_one(skip=Nski, limit=None, sort=Nsor, filter=None)
-        assert doc1010 is not None
-        assert doc1010["seq"] == 1
-
-        # case 1011
-        doc1011 = col.find_one(skip=Nski, limit=None, sort=Nsor, filter=Nfil)
-        assert doc1011 is not None
-        assert doc1011["seq"] == 2
-
-        # case 1100
-        # col.find_one(skip=Nski, limit=Nlim, sort=None, filter=None) ...
-
-        # case 1101
-        # col.find_one(skip=Nski, limit=Nlim, sort=None, filter=Nfil) ...
-
-        # case 1110
-        doc1110 = col.find_one(skip=Nski, limit=Nlim, sort=Nsor, filter=None)
-        assert doc1110 is not None
-        assert doc1110["seq"] == 1
-
-        # case 1111
-        doc1111 = col.find_one(skip=Nski, limit=Nlim, sort=Nsor, filter=Nfil)
-        assert doc1111 is not None
-        assert doc1111["seq"] == 2
+        # case 11
+        doc11 = col.find_one(sort=Nsor, filter=Nfil)
+        assert doc11 is not None
+        assert doc11["seq"] == 1
 
         # projection
-        doc_full = col.find_one(skip=Nski, limit=Nlim, sort=Nsor, filter=Nfil)
-        doc_proj = col.find_one(
-            skip=Nski, limit=Nlim, sort=Nsor, filter=Nfil, projection={"kind": True}
-        )
-        assert doc_proj == {"_id": "b", "kind": "letter"}
-        assert doc_full == {"_id": "b", "seq": 2, "kind": "letter"}
+        doc_full = col.find_one(sort=Nsor, filter=Nfil)
+        doc_proj = col.find_one(sort=Nsor, filter=Nfil, projection={"kind": True})
+        assert doc_proj == {"_id": "a", "kind": "letter"}
+        assert doc_full == {"_id": "a", "seq": 1, "kind": "letter"}
 
     @pytest.mark.describe("test of find_one_and_replace, sync")
     def test_collection_find_one_and_replace_sync(
@@ -532,35 +474,35 @@ class TestDMLSync:
         resp0010 = col.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
         assert resp0010 is None
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         resp0011 = col.find_one_and_replace(
             {"f": 0}, {"r": 1}, upsert=True, sort={"x": 1}
         )
         assert resp0011 is None
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp0100 = col.find_one_and_replace({"f": 0}, {"r": 1})
         assert resp0100 is not None
         assert resp0100["f"] == 0
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp0101 = col.find_one_and_replace({"f": 0}, {"r": 1}, sort={"x": 1})
         assert resp0101 is not None
         assert resp0101["f"] == 0
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp0110 = col.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
         assert resp0110 is not None
         assert resp0110["f"] == 0
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp0111 = col.find_one_and_replace(
@@ -569,7 +511,7 @@ class TestDMLSync:
         assert resp0111 is not None
         assert resp0111["f"] == 0
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         resp1000 = col.find_one_and_replace(
             {"f": 0}, {"r": 1}, return_document=ReturnDocument.AFTER
@@ -589,7 +531,7 @@ class TestDMLSync:
         assert resp1010 is not None
         assert resp1010["r"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         resp1011 = col.find_one_and_replace(
             {"f": 0},
@@ -601,7 +543,7 @@ class TestDMLSync:
         assert resp1011 is not None
         assert resp1011["r"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp1100 = col.find_one_and_replace(
@@ -610,7 +552,7 @@ class TestDMLSync:
         assert resp1100 is not None
         assert resp1100["r"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp1101 = col.find_one_and_replace(
@@ -619,7 +561,7 @@ class TestDMLSync:
         assert resp1101 is not None
         assert resp1101["r"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp1110 = col.find_one_and_replace(
@@ -628,7 +570,7 @@ class TestDMLSync:
         assert resp1110 is not None
         assert resp1110["r"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp1111 = col.find_one_and_replace(
@@ -641,7 +583,7 @@ class TestDMLSync:
         assert resp1111 is not None
         assert resp1111["r"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         # projection
         col.insert_one({"f": 100, "name": "apple", "mode": "old"})
@@ -661,7 +603,7 @@ class TestDMLSync:
         )
         assert resp_pr2 is not None
         assert set(resp_pr2.keys()) == {"mode"}
-        col.delete_many({})
+        col.delete_all()
 
     @pytest.mark.describe("test of replace_one, sync")
     def test_collection_replace_one_sync(
@@ -812,14 +754,14 @@ class TestDMLSync:
         resp0010 = col.find_one_and_update({"f": 0}, {"$set": {"n": 1}}, upsert=True)
         assert resp0010 is None
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         resp0011 = col.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, upsert=True, sort={"x": 1}
         )
         assert resp0011 is None
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp0100 = col.find_one_and_update({"f": 0}, {"$set": {"n": 1}})
@@ -827,7 +769,7 @@ class TestDMLSync:
         assert resp0100["f"] == 0
         assert "n" not in resp0100
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp0101 = col.find_one_and_update({"f": 0}, {"$set": {"n": 1}}, sort={"x": 1})
@@ -835,7 +777,7 @@ class TestDMLSync:
         assert resp0101["f"] == 0
         assert "n" not in resp0101
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp0110 = col.find_one_and_update({"f": 0}, {"$set": {"n": 1}}, upsert=True)
@@ -843,7 +785,7 @@ class TestDMLSync:
         assert resp0110["f"] == 0
         assert "n" not in resp0110
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp0111 = col.find_one_and_update(
@@ -853,7 +795,7 @@ class TestDMLSync:
         assert resp0111["f"] == 0
         assert "n" not in resp0111
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         resp1000 = col.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, return_document=ReturnDocument.AFTER
@@ -879,7 +821,7 @@ class TestDMLSync:
         assert resp1010 is not None
         assert resp1010["n"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         resp1011 = col.find_one_and_update(
             {"f": 0},
@@ -891,7 +833,7 @@ class TestDMLSync:
         assert resp1011 is not None
         assert resp1011["n"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp1100 = col.find_one_and_update(
@@ -900,7 +842,7 @@ class TestDMLSync:
         assert resp1100 is not None
         assert resp1100["n"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp1101 = col.find_one_and_update(
@@ -912,7 +854,7 @@ class TestDMLSync:
         assert resp1101 is not None
         assert resp1101["n"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp1110 = col.find_one_and_update(
@@ -924,7 +866,7 @@ class TestDMLSync:
         assert resp1110 is not None
         assert resp1110["n"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         col.insert_one({"f": 0})
         resp1111 = col.find_one_and_update(
@@ -937,7 +879,7 @@ class TestDMLSync:
         assert resp1111 is not None
         assert resp1111["n"] == 1
         assert col.count_documents({}, upper_bound=100) == 1
-        col.delete_many({})
+        col.delete_all()
 
         # projection
         col.insert_one({"f": 100, "name": "apple", "mode": "old"})
@@ -957,7 +899,7 @@ class TestDMLSync:
         )
         assert resp_pr2 is not None
         assert set(resp_pr2.keys()) == {"f"}
-        col.delete_many({})
+        col.delete_all()
 
     @pytest.mark.describe("test of ordered bulk_write, sync")
     def test_collection_ordered_bulk_write_sync(

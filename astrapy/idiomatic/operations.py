@@ -30,6 +30,16 @@ from astrapy.idiomatic.collection import AsyncCollection, Collection
 
 
 def reduce_bulk_write_results(results: List[BulkWriteResult]) -> BulkWriteResult:
+    """
+    Reduce a list of bulk write results into a single one.
+
+    Args:
+        results: a list of BulkWriteResult instances.
+
+    Returns:
+        A new BulkWRiteResult object which summarized the whole input list.
+    """
+
     zero = BulkWriteResult(
         bulk_api_results={},
         deleted_count=0,
@@ -65,6 +75,11 @@ def reduce_bulk_write_results(results: List[BulkWriteResult]) -> BulkWriteResult
 
 
 class BaseOperation(ABC):
+    """
+    Base class for all operations amenable to be used
+    in bulk writes on (sync) collections.
+    """
+
     @abstractmethod
     def execute(
         self, collection: Collection, index_in_bulk_write: int
@@ -73,6 +88,14 @@ class BaseOperation(ABC):
 
 @dataclass
 class InsertOne(BaseOperation):
+    """
+    Represents an `insert_one` operation on a (sync) collection.
+    See the documentation on the collection method for more information.
+
+    Attributes:
+        document: the document to insert.
+    """
+
     document: DocumentType
 
     def __init__(
@@ -84,6 +107,14 @@ class InsertOne(BaseOperation):
     def execute(
         self, collection: Collection, index_in_bulk_write: int
     ) -> BulkWriteResult:
+        """
+        Execute this operation against a collection as part of a bulk write.
+
+        Args:
+            collection: the collection this write targets.
+            insert_in_bulk_write: the index in the list of bulkoperations
+        """
+
         op_result = collection.insert_one(document=self.document)
         return BulkWriteResult(
             bulk_api_results={index_in_bulk_write: [op_result.raw_result]},
@@ -98,8 +129,16 @@ class InsertOne(BaseOperation):
 
 @dataclass
 class InsertMany(BaseOperation):
+    """
+    Represents an `insert_many` operation on a (sync) collection.
+    See the documentation on the collection method for more information.
+
+    Attributes:
+        documents: the list document to insert.
+        ordered: whether the inserts should be done in sequence.
+    """
+
     documents: Iterable[DocumentType]
-    ordered: bool
 
     def __init__(
         self,
@@ -112,6 +151,14 @@ class InsertMany(BaseOperation):
     def execute(
         self, collection: Collection, index_in_bulk_write: int
     ) -> BulkWriteResult:
+        """
+        Execute this operation against a collection as part of a bulk write.
+
+        Args:
+            collection: the collection this write targets.
+            insert_in_bulk_write: the index in the list of bulkoperations
+        """
+
         op_result = collection.insert_many(
             documents=self.documents,
             ordered=self.ordered,
@@ -129,6 +176,16 @@ class InsertMany(BaseOperation):
 
 @dataclass
 class UpdateOne(BaseOperation):
+    """
+    Represents an `update_one` operation on a (sync) collection.
+    See the documentation on the collection method for more information.
+
+    Attributes:
+        filter: a filter condition to select a target document.
+        update: an update prescription to apply to the document.
+        upsert: controls what to do when no documents are found.
+    """
+
     filter: Dict[str, Any]
     update: Dict[str, Any]
     upsert: bool
@@ -147,6 +204,14 @@ class UpdateOne(BaseOperation):
     def execute(
         self, collection: Collection, index_in_bulk_write: int
     ) -> BulkWriteResult:
+        """
+        Execute this operation against a collection as part of a bulk write.
+
+        Args:
+            collection: the collection this write targets.
+            insert_in_bulk_write: the index in the list of bulkoperations
+        """
+
         op_result = collection.update_one(
             filter=self.filter,
             update=self.update,
@@ -171,6 +236,16 @@ class UpdateOne(BaseOperation):
 
 @dataclass
 class UpdateMany(BaseOperation):
+    """
+    Represents an `update_many` operation on a (sync) collection.
+    See the documentation on the collection method for more information.
+
+    Attributes:
+        filter: a filter condition to select target documents.
+        update: an update prescription to apply to the documents.
+        upsert: controls what to do when no documents are found.
+    """
+
     filter: Dict[str, Any]
     update: Dict[str, Any]
     upsert: bool
@@ -189,6 +264,14 @@ class UpdateMany(BaseOperation):
     def execute(
         self, collection: Collection, index_in_bulk_write: int
     ) -> BulkWriteResult:
+        """
+        Execute this operation against a collection as part of a bulk write.
+
+        Args:
+            collection: the collection this write targets.
+            insert_in_bulk_write: the index in the list of bulkoperations
+        """
+
         op_result = collection.update_many(
             filter=self.filter,
             update=self.update,
@@ -213,6 +296,16 @@ class UpdateMany(BaseOperation):
 
 @dataclass
 class ReplaceOne(BaseOperation):
+    """
+    Represents a `replace_one` operation on a (sync) collection.
+    See the documentation on the collection method for more information.
+
+    Attributes:
+        filter: a filter condition to select a target document.
+        replacement: the replacement document.
+        upsert: controls what to do when no documents are found.
+    """
+
     filter: Dict[str, Any]
     replacement: DocumentType
     upsert: bool
@@ -231,6 +324,14 @@ class ReplaceOne(BaseOperation):
     def execute(
         self, collection: Collection, index_in_bulk_write: int
     ) -> BulkWriteResult:
+        """
+        Execute this operation against a collection as part of a bulk write.
+
+        Args:
+            collection: the collection this write targets.
+            insert_in_bulk_write: the index in the list of bulkoperations
+        """
+
         op_result = collection.replace_one(
             filter=self.filter,
             replacement=self.replacement,
@@ -255,6 +356,14 @@ class ReplaceOne(BaseOperation):
 
 @dataclass
 class DeleteOne(BaseOperation):
+    """
+    Represents a `delete_one` operation on a (sync) collection.
+    See the documentation on the collection method for more information.
+
+    Attributes:
+        filter: a filter condition to select a target document.
+    """
+
     filter: Dict[str, Any]
 
     def __init__(
@@ -266,6 +375,14 @@ class DeleteOne(BaseOperation):
     def execute(
         self, collection: Collection, index_in_bulk_write: int
     ) -> BulkWriteResult:
+        """
+        Execute this operation against a collection as part of a bulk write.
+
+        Args:
+            collection: the collection this write targets.
+            insert_in_bulk_write: the index in the list of bulkoperations
+        """
+
         op_result = collection.delete_one(filter=self.filter)
         return BulkWriteResult(
             bulk_api_results={index_in_bulk_write: op_result.raw_results},
@@ -280,6 +397,14 @@ class DeleteOne(BaseOperation):
 
 @dataclass
 class DeleteMany(BaseOperation):
+    """
+    Represents a `delete_many` operation on a (sync) collection.
+    See the documentation on the collection method for more information.
+
+    Attributes:
+        filter: a filter condition to select target documents.
+    """
+
     filter: Dict[str, Any]
 
     def __init__(
@@ -291,6 +416,14 @@ class DeleteMany(BaseOperation):
     def execute(
         self, collection: Collection, index_in_bulk_write: int
     ) -> BulkWriteResult:
+        """
+        Execute this operation against a collection as part of a bulk write.
+
+        Args:
+            collection: the collection this write targets.
+            insert_in_bulk_write: the index in the list of bulkoperations
+        """
+
         op_result = collection.delete_many(filter=self.filter)
         return BulkWriteResult(
             bulk_api_results={index_in_bulk_write: op_result.raw_results},
@@ -304,6 +437,11 @@ class DeleteMany(BaseOperation):
 
 
 class AsyncBaseOperation(ABC):
+    """
+    Base class for all operations amenable to be used
+    in bulk writes on (async) collections.
+    """
+
     @abstractmethod
     async def execute(
         self, collection: AsyncCollection, index_in_bulk_write: int
@@ -312,6 +450,14 @@ class AsyncBaseOperation(ABC):
 
 @dataclass
 class AsyncInsertOne(AsyncBaseOperation):
+    """
+    Represents an `insert_one` operation on a (async) collection.
+    See the documentation on the collection method for more information.
+
+    Attributes:
+        document: the document to insert.
+    """
+
     document: DocumentType
 
     def __init__(
@@ -323,6 +469,14 @@ class AsyncInsertOne(AsyncBaseOperation):
     async def execute(
         self, collection: AsyncCollection, index_in_bulk_write: int
     ) -> BulkWriteResult:
+        """
+        Execute this operation against a collection as part of a bulk write.
+
+        Args:
+            collection: the collection this write targets.
+            insert_in_bulk_write: the index in the list of bulkoperations
+        """
+
         op_result = await collection.insert_one(document=self.document)
         return BulkWriteResult(
             bulk_api_results={index_in_bulk_write: [op_result.raw_result]},
@@ -337,6 +491,15 @@ class AsyncInsertOne(AsyncBaseOperation):
 
 @dataclass
 class AsyncInsertMany(AsyncBaseOperation):
+    """
+    Represents an `insert_many` operation on a (async) collection.
+    See the documentation on the collection method for more information.
+
+    Attributes:
+        documents: the list document to insert.
+        ordered: whether the inserts should be done in sequence.
+    """
+
     documents: Iterable[DocumentType]
     ordered: bool
 
@@ -351,6 +514,14 @@ class AsyncInsertMany(AsyncBaseOperation):
     async def execute(
         self, collection: AsyncCollection, index_in_bulk_write: int
     ) -> BulkWriteResult:
+        """
+        Execute this operation against a collection as part of a bulk write.
+
+        Args:
+            collection: the collection this write targets.
+            insert_in_bulk_write: the index in the list of bulkoperations
+        """
+
         op_result = await collection.insert_many(
             documents=self.documents,
             ordered=self.ordered,
@@ -368,6 +539,16 @@ class AsyncInsertMany(AsyncBaseOperation):
 
 @dataclass
 class AsyncUpdateOne(AsyncBaseOperation):
+    """
+    Represents an `update_one` operation on a (async) collection.
+    See the documentation on the collection method for more information.
+
+    Attributes:
+        filter: a filter condition to select a target document.
+        update: an update prescription to apply to the document.
+        upsert: controls what to do when no documents are found.
+    """
+
     filter: Dict[str, Any]
     update: Dict[str, Any]
     upsert: bool
@@ -386,6 +567,14 @@ class AsyncUpdateOne(AsyncBaseOperation):
     async def execute(
         self, collection: AsyncCollection, index_in_bulk_write: int
     ) -> BulkWriteResult:
+        """
+        Execute this operation against a collection as part of a bulk write.
+
+        Args:
+            collection: the collection this write targets.
+            insert_in_bulk_write: the index in the list of bulkoperations
+        """
+
         op_result = await collection.update_one(
             filter=self.filter,
             update=self.update,
@@ -410,6 +599,16 @@ class AsyncUpdateOne(AsyncBaseOperation):
 
 @dataclass
 class AsyncUpdateMany(AsyncBaseOperation):
+    """
+    Represents an `update_many` operation on a (async) collection.
+    See the documentation on the collection method for more information.
+
+    Attributes:
+        filter: a filter condition to select target documents.
+        update: an update prescription to apply to the documents.
+        upsert: controls what to do when no documents are found.
+    """
+
     filter: Dict[str, Any]
     update: Dict[str, Any]
     upsert: bool
@@ -428,6 +627,14 @@ class AsyncUpdateMany(AsyncBaseOperation):
     async def execute(
         self, collection: AsyncCollection, index_in_bulk_write: int
     ) -> BulkWriteResult:
+        """
+        Execute this operation against a collection as part of a bulk write.
+
+        Args:
+            collection: the collection this write targets.
+            insert_in_bulk_write: the index in the list of bulkoperations
+        """
+
         op_result = await collection.update_many(
             filter=self.filter,
             update=self.update,
@@ -452,6 +659,16 @@ class AsyncUpdateMany(AsyncBaseOperation):
 
 @dataclass
 class AsyncReplaceOne(AsyncBaseOperation):
+    """
+    Represents a `replace_one` operation on a (async) collection.
+    See the documentation on the collection method for more information.
+
+    Attributes:
+        filter: a filter condition to select a target document.
+        replacement: the replacement document.
+        upsert: controls what to do when no documents are found.
+    """
+
     filter: Dict[str, Any]
     replacement: DocumentType
     upsert: bool
@@ -470,6 +687,14 @@ class AsyncReplaceOne(AsyncBaseOperation):
     async def execute(
         self, collection: AsyncCollection, index_in_bulk_write: int
     ) -> BulkWriteResult:
+        """
+        Execute this operation against a collection as part of a bulk write.
+
+        Args:
+            collection: the collection this write targets.
+            insert_in_bulk_write: the index in the list of bulkoperations
+        """
+
         op_result = await collection.replace_one(
             filter=self.filter,
             replacement=self.replacement,
@@ -494,6 +719,14 @@ class AsyncReplaceOne(AsyncBaseOperation):
 
 @dataclass
 class AsyncDeleteOne(AsyncBaseOperation):
+    """
+    Represents a `delete_one` operation on a (async) collection.
+    See the documentation on the collection method for more information.
+
+    Attributes:
+        filter: a filter condition to select a target document.
+    """
+
     filter: Dict[str, Any]
 
     def __init__(
@@ -505,6 +738,14 @@ class AsyncDeleteOne(AsyncBaseOperation):
     async def execute(
         self, collection: AsyncCollection, index_in_bulk_write: int
     ) -> BulkWriteResult:
+        """
+        Execute this operation against a collection as part of a bulk write.
+
+        Args:
+            collection: the collection this write targets.
+            insert_in_bulk_write: the index in the list of bulkoperations
+        """
+
         op_result = await collection.delete_one(filter=self.filter)
         return BulkWriteResult(
             bulk_api_results={index_in_bulk_write: op_result.raw_results},
@@ -519,6 +760,14 @@ class AsyncDeleteOne(AsyncBaseOperation):
 
 @dataclass
 class AsyncDeleteMany(AsyncBaseOperation):
+    """
+    Represents a `delete_many` operation on a (async) collection.
+    See the documentation on the collection method for more information.
+
+    Attributes:
+        filter: a filter condition to select target documents.
+    """
+
     filter: Dict[str, Any]
 
     def __init__(
@@ -530,6 +779,14 @@ class AsyncDeleteMany(AsyncBaseOperation):
     async def execute(
         self, collection: AsyncCollection, index_in_bulk_write: int
     ) -> BulkWriteResult:
+        """
+        Execute this operation against a collection as part of a bulk write.
+
+        Args:
+            collection: the collection this write targets.
+            insert_in_bulk_write: the index in the list of bulkoperations
+        """
+
         op_result = await collection.delete_many(filter=self.filter)
         return BulkWriteResult(
             bulk_api_results={index_in_bulk_write: op_result.raw_results},

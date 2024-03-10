@@ -1,3 +1,17 @@
+# Copyright DataStax, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Fixtures specific to the idiomatic-side testing, if any."""
 
 import os
@@ -6,6 +20,7 @@ import pytest
 
 from ..conftest import AstraDBCredentials
 from astrapy import AsyncCollection, AsyncDatabase, Collection, Database
+from astrapy.idiomatic.types import VectorMetric
 
 TEST_COLLECTION_INSTANCE_NAME = "test_coll_instance"
 TEST_COLLECTION_NAME = "id_test_collection"
@@ -56,7 +71,7 @@ def sync_collection(
     collection = sync_database.create_collection(
         TEST_COLLECTION_NAME,
         dimension=2,
-        metric="dot_product",
+        metric=VectorMetric.DOT_PRODUCT,
         indexing={"deny": ["not_indexed"]},
     )
     yield collection
@@ -67,7 +82,7 @@ def sync_collection(
 @pytest.fixture(scope="function")
 def sync_empty_collection(sync_collection: Collection) -> Iterable[Collection]:
     """Emptied for each test function"""
-    sync_collection.delete_many(filter={})
+    sync_collection.delete_all()
     yield sync_collection
 
 

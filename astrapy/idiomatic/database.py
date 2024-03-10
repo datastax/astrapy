@@ -74,6 +74,35 @@ def _recast_api_collection_dict(api_coll_dict: Dict[str, Any]) -> Dict[str, Any]
 
 
 class Database:
+    """
+    A Data API database. This is the entry-point object for doing database-level
+    DML, such as creating/deleting collections, and for obtaining Collection
+    objects themselves. This class has a synchronous interface.
+
+    A Database comes with an "API Endpoint", which implies a Database object
+    instance reaches a specific region (relevant point in case of multi-region
+    databases).
+
+    Args:
+        api_endpoint: the full "API Endpoint" string used to reach the Data API.
+            Example: "https://<database_id>-<region>.apps.astra.datastax.com"
+        token: an Access Token to the database. Example: "AstraCS:xyz..."
+        namespace: this is the namespace all method calls will target, unless
+            one is explicitly specified in the call. If no namespace is supplied
+            when creating a Database, the name "default_namespace" is set.
+        caller_name: name of the application, or framework, on behalf of which
+            the Data API calls are performed. This ends up in the request user-agent.
+        caller_version: version of the caller.
+        api_path: path to append to the API Endpoint. In typical usage, this
+            should be left to its default of "/api/json".
+        api_version: version specifier to append to the API path. In typical
+            usage, this should be left to its default of "v1".
+
+    Note:
+        creating an instance of Database does not trigger actual creation
+        of the database itself, which should exist beforehand.
+    """
+
     def __init__(
         self,
         api_endpoint: str,
@@ -111,7 +140,7 @@ class Database:
         else:
             return False
 
-    def copy(
+    def _copy(
         self,
         *,
         api_endpoint: Optional[str] = None,
@@ -139,7 +168,22 @@ class Database:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Database:
-        return self.copy(
+        """
+        Create a clone of this database with some changed attributes.
+
+        Args:
+            namespace: this is the namespace all method calls will target, unless
+                one is explicitly specified in the call. If no namespace is supplied
+                when creating a Database, the name "default_namespace" is set.
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+
+        Returns:
+            a new Database instance.
+        """
+
+        return self._copy(
             namespace=namespace,
             caller_name=caller_name,
             caller_version=caller_version,
@@ -156,6 +200,30 @@ class Database:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> AsyncDatabase:
+        """
+        Create an AsyncDatabase from this one. Save for the arguments
+        explicitly provided as overrides, everything else is kept identical
+        to this database in the copy.
+
+        Args:
+            api_endpoint: the full "API Endpoint" string used to reach the Data API.
+                Example: "https://<database_id>-<region>.apps.astra.datastax.com"
+            token: an Access Token to the database. Example: "AstraCS:xyz..."
+            namespace: this is the namespace all method calls will target, unless
+                one is explicitly specified in the call. If no namespace is supplied
+                when creating a Database, the name "default_namespace" is set.
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+            api_path: path to append to the API Endpoint. In typical usage, this
+                should be left to its default of "/api/json".
+            api_version: version specifier to append to the API path. In typical
+                usage, this should be left to its default of "v1".
+
+        Returns:
+            the new copy, an AsyncDatabase instance.
+        """
+
         return AsyncDatabase(
             api_endpoint=api_endpoint or self._astra_db.api_endpoint,
             token=token or self._astra_db.token,
@@ -171,6 +239,15 @@ class Database:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
+        """
+        Set a new identity for the application/framework on behalf of which
+        the Data API calls are performed (the "caller").
+
+        Args:
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+        """
         self._astra_db.set_caller(
             caller_name=caller_name,
             caller_version=caller_version,
@@ -178,6 +255,12 @@ class Database:
 
     @property
     def info(self) -> DatabaseInfo:
+        """
+        Additional information on the database as a DatabaseInfo instance.
+
+        On accessing this property the first time, a call to the DevOps API
+        is made; it is then cached for subsequent access.
+        """
         if self._database_info is None:
             self._database_info = get_database_info(
                 self._astra_db.api_endpoint,
@@ -188,19 +271,52 @@ class Database:
 
     @property
     def id(self) -> Optional[str]:
+        """
+        The ID of this database.
+        """
+
         return self.info.id
 
     @property
     def name(self) -> Optional[str]:
+        """
+        The name of this database. Note that this bears no unicity guarantees.
+        """
+
         return self.info.name
 
     @property
     def namespace(self) -> str:
+        """
+        The namespace this database uses as target for all commands when
+        no method-call-specific namespace is specified.
+        """
+
         return self._astra_db.namespace
 
     def get_collection(
         self, name: str, *, namespace: Optional[str] = None
     ) -> Collection:
+        """
+        Spawn a Collection object instance representing a collection
+        on this database.
+
+        Creating a Collection instance does not have any effect on the
+        actual state of the database: in other words, for the created
+        Collection instance to be used meaningfully, the collection
+        must exist already (for instance, it should have been created
+        previously by calling the `create_collection` method).
+
+        Args:
+            name: the name of the collection.
+            namespace: the namespace containing the collection. If no namespace
+                is specified, the general setting for this database is used.
+
+        Returns:
+            a Collection instance, representing the desired collection
+                (but without any form of validation).
+        """
+
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import Collection
 
@@ -218,6 +334,45 @@ class Database:
         additional_options: Optional[Dict[str, Any]] = None,
         check_exists: Optional[bool] = None,
     ) -> Collection:
+        """
+        Creates a collection on the database and return the Collection
+        instance that represents it.
+
+        This is a blocking operation: the method returns when the collection
+        is ready to be used. As opposed to the `get_collection` instance,
+        this method triggers causes the collection to be actually created on DB.
+
+        Args:
+            name: the name of the collection.
+            namespace: the namespace where the collection is to be created.
+                If not specified, the general setting for this database is used.
+            dimension: for vector collections, the dimension of the vectors
+                (i.e. the number of their components). If not specified, a
+                a non-vector collection is created.
+            metric: the metric used for similarity searches.
+                Allowed values are "dot_product", "euclidean" and "cosine"
+                (see the VectorMetric object).
+            indexing: optional specification of the indexing options for
+                the collection, in the form of a dictionary such as
+                    {"deny": [...]}
+                or
+                    {"allow": [...]}
+            additional_options: any further set of key-value pairs that will
+                be added to the "options" part of the payload when sending
+                the Data API command to create a collection.
+            check_exists: whether to run an existence check for the collection
+                name before attempting to create the collection:
+                If check_exists is True, an error is raised when creating
+                an existing collection.
+                If it is False, the creation is attempted. In this case, for
+                preexisting collections, the command will succeed or fail
+                depending on whether the options match or not.
+
+        Returns:
+            a (synchronous) Collection instance, representing the
+            newly-created collection.
+        """
+
         _validate_create_collection_options(
             dimension=dimension,
             metric=metric,
@@ -260,6 +415,21 @@ class Database:
     def drop_collection(
         self, name_or_collection: Union[str, Collection]
     ) -> Dict[str, Any]:
+        """
+        Drop a collection from the database, along with all documents therein.
+
+        Args:
+            name_or_collection: either the name of a collection or
+            a Collection instance.
+
+        Returns:
+            a dictionary in the form {"ok": 1} if the command succeeds.
+
+        Note:
+            when providing a collection name, it is assumed that the collection
+            is to be found in the namespace set at database instance level.
+        """
+
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import Collection
 
@@ -279,6 +449,19 @@ class Database:
         *,
         namespace: Optional[str] = None,
     ) -> CommandCursor[Dict[str, Any]]:
+        """
+        List all collections in a given namespace for this database.
+
+        Args:
+            namespace: the namespace to be inspected. If not specified,
+            the general setting for this database is assumed.
+
+        Returns:
+            a `CommandCursor` to iterate over dictionaries, each
+            expressing a collection as a set of key-value pairs
+            matching the arguments of a `create_collection` call.
+        """
+
         if namespace:
             _client = self._astra_db.copy(namespace=namespace)
         else:
@@ -304,6 +487,17 @@ class Database:
         *,
         namespace: Optional[str] = None,
     ) -> List[str]:
+        """
+        List the names of all collections in a given namespace of this database.
+
+        Args:
+            namespace: the namespace to be inspected. If not specified,
+            the general setting for this database is assumed.
+
+        Returns:
+            a list of the collection names as strings, in no particular order.
+        """
+
         if namespace:
             _client = self._astra_db.copy(namespace=namespace)
         else:
@@ -325,6 +519,23 @@ class Database:
         namespace: Optional[str] = None,
         collection_name: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """
+        Send a POST request to the Data API for this database with
+        an arbitrary, caller-provided payload.
+
+        Args:
+            body: a JSON-serializable dictionary, the payload of the request.
+        Args:
+            namespace: the namespace to use. Requests always target a namespace:
+            if not specified, the general setting for this database is assumed.
+        collection_name: if provided, the collection name is appended at the end
+            of the endpoint. In this way, this method allows collection-level
+            arbitrary POST requests as well.
+
+        Returns:
+            a dictionary with the response of the HTTP request.
+        """
+
         if namespace:
             _client = self._astra_db.copy(namespace=namespace)
         else:
@@ -337,6 +548,35 @@ class Database:
 
 
 class AsyncDatabase:
+    """
+    A Data API database. This is the entry-point object for doing database-level
+    DML, such as creating/deleting collections, and for obtaining Collection
+    objects themselves. This class has an asynchronous interface.
+
+    A Database comes with an "API Endpoint", which implies a Database object
+    instance reaches a specific region (relevant point in case of multi-region
+    databases).
+
+    Args:
+        api_endpoint: the full "API Endpoint" string used to reach the Data API.
+            Example: "https://<database_id>-<region>.apps.astra.datastax.com"
+        token: an Access Token to the database. Example: "AstraCS:xyz..."
+        namespace: this is the namespace all method calls will target, unless
+            one is explicitly specified in the call. If no namespace is supplied
+            when creating a Database, the name "default_namespace" is set.
+        caller_name: name of the application, or framework, on behalf of which
+            the Data API calls are performed. This ends up in the request user-agent.
+        caller_version: version of the caller.
+        api_path: path to append to the API Endpoint. In typical usage, this
+            should be left to its default of "/api/json".
+        api_version: version specifier to append to the API path. In typical
+            usage, this should be left to its default of "v1".
+
+    Note:
+        creating an instance of Database does not trigger actual creation
+        of the database itself, which should exist beforehand.
+    """
+
     def __init__(
         self,
         api_endpoint: str,
@@ -389,7 +629,7 @@ class AsyncDatabase:
             traceback=traceback,
         )
 
-    def copy(
+    def _copy(
         self,
         *,
         api_endpoint: Optional[str] = None,
@@ -417,7 +657,22 @@ class AsyncDatabase:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncDatabase:
-        return self.copy(
+        """
+        Create a clone of this database with some changed attributes.
+
+        Args:
+            namespace: this is the namespace all method calls will target, unless
+                one is explicitly specified in the call. If no namespace is supplied
+                when creating a Database, the name "default_namespace" is set.
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+
+        Returns:
+            a new AsyncDatabase instance.
+        """
+
+        return self._copy(
             namespace=namespace,
             caller_name=caller_name,
             caller_version=caller_version,
@@ -434,6 +689,30 @@ class AsyncDatabase:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> Database:
+        """
+        Create a (synchronous) Database from this one. Save for the arguments
+        explicitly provided as overrides, everything else is kept identical
+        to this database in the copy.
+
+        Args:
+            api_endpoint: the full "API Endpoint" string used to reach the Data API.
+                Example: "https://<database_id>-<region>.apps.astra.datastax.com"
+            token: an Access Token to the database. Example: "AstraCS:xyz..."
+            namespace: this is the namespace all method calls will target, unless
+                one is explicitly specified in the call. If no namespace is supplied
+                when creating a Database, the name "default_namespace" is set.
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+            api_path: path to append to the API Endpoint. In typical usage, this
+                should be left to its default of "/api/json".
+            api_version: version specifier to append to the API path. In typical
+                usage, this should be left to its default of "v1".
+
+        Returns:
+            the new copy, a Database instance.
+        """
+
         return Database(
             api_endpoint=api_endpoint or self._astra_db.api_endpoint,
             token=token or self._astra_db.token,
@@ -449,6 +728,16 @@ class AsyncDatabase:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
+        """
+        Set a new identity for the application/framework on behalf of which
+        the Data API calls are performed (the "caller").
+
+        Args:
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+        """
+
         self._astra_db.set_caller(
             caller_name=caller_name,
             caller_version=caller_version,
@@ -456,6 +745,13 @@ class AsyncDatabase:
 
     @property
     def info(self) -> DatabaseInfo:
+        """
+        Additional information on the database as a DatabaseInfo instance.
+
+        On accessing this property the first time, a call to the DevOps API
+        is made; it is then cached for subsequent access.
+        """
+
         if self._database_info is None:
             self._database_info = get_database_info(
                 self._astra_db.api_endpoint,
@@ -466,19 +762,52 @@ class AsyncDatabase:
 
     @property
     def id(self) -> Optional[str]:
+        """
+        The ID of this database.
+        """
+
         return self.info.id
 
     @property
     def name(self) -> Optional[str]:
+        """
+        The name of this database. Note that this bears no unicity guarantees.
+        """
+
         return self.info.name
 
     @property
     def namespace(self) -> str:
+        """
+        The namespace this database uses as target for all commands when
+        no method-call-specific namespace is specified.
+        """
+
         return self._astra_db.namespace
 
     async def get_collection(
         self, name: str, *, namespace: Optional[str] = None
     ) -> AsyncCollection:
+        """
+        Spawn an AsyncCollection object instance representing a collection
+        on this database.
+
+        Creating an AsyncCollection instance does not have any effect on the
+        actual state of the database: in other words, for the created
+        AsyncCollection instance to be used meaningfully, the collection
+        must exist already (for instance, it should have been created
+        previously by calling the `create_collection` method).
+
+        Args:
+            name: the name of the collection.
+            namespace: the namespace containing the collection. If no namespace
+                is specified, the setting for this database is used.
+
+        Returns:
+            an AsyncCollection instance, representing the desired collection
+                (but without any form of validation).
+        """
+
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import AsyncCollection
 
@@ -496,6 +825,44 @@ class AsyncDatabase:
         additional_options: Optional[Dict[str, Any]] = None,
         check_exists: Optional[bool] = None,
     ) -> AsyncCollection:
+        """
+        Creates a collection on the database and return the AsyncCollection
+        instance that represents it.
+
+        This is a blocking operation: the method returns when the collection
+        is ready to be used. As opposed to the `get_collection` instance,
+        this method triggers causes the collection to be actually created on DB.
+
+        Args:
+            name: the name of the collection.
+            namespace: the namespace where the collection is to be created.
+                If not specified, the general setting for this database is used.
+            dimension: for vector collections, the dimension of the vectors
+                (i.e. the number of their components). If not specified, a
+                a non-vector collection is created.
+            metric: the metric used for similarity searches.
+                Allowed values are "dot_product", "euclidean" and "cosine"
+                (see the VectorMetric object).
+            indexing: optional specification of the indexing options for
+                the collection, in the form of a dictionary such as
+                    {"deny": [...]}
+                or
+                    {"allow": [...]}
+            additional_options: any further set of key-value pairs that will
+                be added to the "options" part of the payload when sending
+                the Data API command to create a collection.
+            check_exists: whether to run an existence check for the collection
+                name before attempting to create the collection:
+                If check_exists is True, an error is raised when creating
+                an existing collection.
+                If it is False, the creation is attempted. In this case, for
+                preexisting collections, the command will succeed or fail
+                depending on whether the options match or not.
+
+        Returns:
+            an AsyncCollection instance, representing the newly-created collection.
+        """
+
         _validate_create_collection_options(
             dimension=dimension,
             metric=metric,
@@ -538,6 +905,21 @@ class AsyncDatabase:
     async def drop_collection(
         self, name_or_collection: Union[str, AsyncCollection]
     ) -> Dict[str, Any]:
+        """
+        Drop a collection from the database, along with all documents therein.
+
+        Args:
+            name_or_collection: either the name of a collection or
+            an AsyncCollection instance.
+
+        Returns:
+            a dictionary in the form {"ok": 1} if the command succeeds.
+
+        Note:
+            when providing a collection name, it is assumed that the collection
+            is to be found in the namespace set at database instance level.
+        """
+
         # lazy importing here against circular-import error
         from astrapy.idiomatic.collection import AsyncCollection
 
@@ -557,6 +939,19 @@ class AsyncDatabase:
         *,
         namespace: Optional[str] = None,
     ) -> AsyncCommandCursor[Dict[str, Any]]:
+        """
+        List all collections in a given namespace for this database.
+
+        Args:
+            namespace: the namespace to be inspected. If not specified,
+            the general setting for this database is assumed.
+
+        Returns:
+            an `AsyncCommandCursor` to iterate over dictionaries, each
+            expressing a collection as a set of key-value pairs
+            matching the arguments of a `create_collection` call.
+        """
+
         _client: AsyncAstraDB
         if namespace:
             _client = self._astra_db.copy(namespace=namespace)
@@ -583,6 +978,17 @@ class AsyncDatabase:
         *,
         namespace: Optional[str] = None,
     ) -> List[str]:
+        """
+        List the names of all collections in a given namespace of this database.
+
+        Args:
+            namespace: the namespace to be inspected. If not specified,
+            the general setting for this database is assumed.
+
+        Returns:
+            a list of the collection names as strings, in no particular order.
+        """
+
         gc_response = await self._astra_db.copy(namespace=namespace).get_collections()
         if "collections" not in gc_response.get("status", {}):
             raise ValueError(
@@ -600,6 +1006,23 @@ class AsyncDatabase:
         namespace: Optional[str] = None,
         collection_name: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """
+        Send a POST request to the Data API for this database with
+        an arbitrary, caller-provided payload.
+
+        Args:
+            body: a JSON-serializable dictionary, the payload of the request.
+        Args:
+            namespace: the namespace to use. Requests always target a namespace:
+            if not specified, the general setting for this database is assumed.
+        collection_name: if provided, the collection name is appended at the end
+            of the endpoint. In this way, this method allows collection-level
+            arbitrary POST requests as well.
+
+        Returns:
+            a dictionary with the response of the HTTP request.
+        """
+
         if namespace:
             _client = self._astra_db.copy(namespace=namespace)
         else:
