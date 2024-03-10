@@ -585,6 +585,22 @@ class Collection:
 
         Args:
             key: the name of the field whose value is inspected across documents.
+                Keys can use dot-notation to descend to deeper document levels.
+                Example of acceptable `key` values:
+                    "field"
+                    "field.subfield"
+                    "field.3"
+                    "field.3.subfield"
+                if lists are encountered and no numeric index is specified,
+                all items in the list are visited.
+                Keys can use dot-notation to descend to deeper document levels.
+                Example of acceptable `key` values:
+                    "field"
+                    "field.subfield"
+                    "field.3"
+                    "field.3.subfield"
+                if lists are encountered and no numeric index is specified,
+                all items in the list are visited.
             filter: a predicate expressed as a dictionary according to the
                 Data API filter syntax. Examples are:
                     {}
@@ -1737,6 +1753,14 @@ class AsyncCollection:
 
         Args:
             key: the name of the field whose value is inspected across documents.
+                Keys can use dot-notation to descend to deeper document levels.
+                Example of acceptable `key` values:
+                    "field"
+                    "field.subfield"
+                    "field.3"
+                    "field.3.subfield"
+                if lists are encountered and no numeric index is specified,
+                all items in the list are visited.
             filter: a predicate expressed as a dictionary according to the
                 Data API filter syntax. Examples are:
                     {}
