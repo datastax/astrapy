@@ -448,6 +448,17 @@ class Cursor(BaseCursor):
         Invoking this method has no effect on the cursor state, i.e.
         the position of the cursor is unchanged.
 
+        Args:
+            key: the name of the field whose value is inspected across documents.
+                Keys can use dot-notation to descend to deeper document levels.
+                Example of acceptable `key` values:
+                    "field"
+                    "field.subfield"
+                    "field.3"
+                    "field.3.subfield"
+                if lists are encountered and no numeric index is specified,
+                all items in the list are visited.
+
         Note:
             this operation works at client-side by scrolling through all
             documents matching the cursor parameters (such as `filter`).
@@ -605,6 +616,17 @@ class AsyncCursor(BaseCursor):
 
         Invoking this method has no effect on the cursor state, i.e.
         the position of the cursor is unchanged.
+
+        Args:
+            key: the name of the field whose value is inspected across documents.
+                Keys can use dot-notation to descend to deeper document levels.
+                Example of acceptable `key` values:
+                    "field"
+                    "field.subfield"
+                    "field.3"
+                    "field.3.subfield"
+                if lists are encountered and no numeric index is specified,
+                all items in the list are visited.
 
         Note:
             this operation works at client-side by scrolling through all
