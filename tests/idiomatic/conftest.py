@@ -82,7 +82,7 @@ def sync_collection(
 @pytest.fixture(scope="function")
 def sync_empty_collection(sync_collection: Collection) -> Iterable[Collection]:
     """Emptied for each test function"""
-    sync_collection.delete_many(filter={})
+    sync_collection.delete_all()
     yield sync_collection
 
 

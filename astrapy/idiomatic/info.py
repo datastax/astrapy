@@ -44,53 +44,6 @@ def find_database_id(api_endpoint: str) -> Optional[str]:
         return None
 
 
-@dataclass
-class DatabaseInfo:
-    """
-    Represents the identifying information for a database,
-    including the region the connection is established to.
-
-    Attributes:
-        id: the database ID.
-        region: the ID of the region through which the connection to DB is done.
-        namespace: the namespace this DB is set to work with.
-        name: the database name. Not necessarily unique: there can be multiple
-            databases with the same name.
-        raw_info: the full response from the DevOPS API call to get this info.
-
-    Note:
-        Most members of this object can be None. This happens when errors occur
-        during DevOps API calls and usually signals that the Data API server
-        is a deploy where concepts such as "region" or "database ID" do not apply.
-    """
-
-    id: Optional[str]
-    region: Optional[str]
-    namespace: str
-    name: Optional[str]
-    raw_info: Optional[Dict[str, Any]]
-
-
-@dataclass
-class CollectionInfo:
-    """
-    Represents the identifying information for a collection,
-    including the information about the database the collection belongs to.
-
-    Attributes:
-        database_info: a DatabaseInfo instance for the underlying database.
-        namespace: the namespace where the collection is located.
-        name: collection name. Unique within a namespace.
-        full_name: identifier for the collection within the database,
-            in the form "namespace.collection_name".
-    """
-
-    database_info: DatabaseInfo
-    namespace: str
-    name: str
-    full_name: str
-
-
 def get_database_info(api_endpoint: str, token: str, namespace: str) -> DatabaseInfo:
     """
     Fetch the relevant information through the DevOps API.
@@ -137,3 +90,50 @@ def get_database_info(api_endpoint: str, token: str, namespace: str) -> Database
             name=None,
             raw_info=None,
         )
+
+
+@dataclass
+class DatabaseInfo:
+    """
+    Represents the identifying information for a database,
+    including the region the connection is established to.
+
+    Attributes:
+        id: the database ID.
+        region: the ID of the region through which the connection to DB is done.
+        namespace: the namespace this DB is set to work with.
+        name: the database name. Not necessarily unique: there can be multiple
+            databases with the same name.
+        raw_info: the full response from the DevOPS API call to get this info.
+
+    Note:
+        Most members of this object can be None. This happens when errors occur
+        during DevOps API calls and usually signals that the Data API server
+        is a deploy where concepts such as "region" or "database ID" do not apply.
+    """
+
+    id: Optional[str]
+    region: Optional[str]
+    namespace: str
+    name: Optional[str]
+    raw_info: Optional[Dict[str, Any]]
+
+
+@dataclass
+class CollectionInfo:
+    """
+    Represents the identifying information for a collection,
+    including the information about the database the collection belongs to.
+
+    Attributes:
+        database_info: a DatabaseInfo instance for the underlying database.
+        namespace: the namespace where the collection is located.
+        name: collection name. Unique within a namespace.
+        full_name: identifier for the collection within the database,
+            in the form "namespace.collection_name".
+    """
+
+    database_info: DatabaseInfo
+    namespace: str
+    name: str
+    full_name: str

@@ -458,6 +458,14 @@ class Collection:
         """
         Find documents on the collection, matching a certain provided filter.
 
+        The method returns a Cursor that can then be iterated over. Depending
+        on the method call pattern, the iteration over all documents can reflect
+        collection mutations occurred since the `find` method was called, or not.
+        In cases where the cursor reflects mutations in real-time, it will iterate
+        over cursors in an approximate way (i.e. exhibiting occasional skipped
+        or duplicate documents). This happens when making use of the `sort`
+        option in a non-vector-search manner.
+
         Args:
             filter: a predicate expressed as a dictionary according to the
                 Data API filter syntax. Examples are:
@@ -555,7 +563,7 @@ class Collection:
         fo_cursor = self.find(
             filter=filter,
             projection=projection,
-            skip=0,
+            skip=None,
             limit=1,
             sort=sort,
         )
@@ -1081,6 +1089,8 @@ class Collection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
+            The `delete_many` method does not accept an empty filter: see
+            `delete_all` to completely erase all contents of a collection
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
@@ -1092,6 +1102,13 @@ class Collection:
             (e.g. from another process/application) will be deleted during
             the execution of this method call.
         """
+
+        if not filter:
+            raise ValueError(
+                "The `filter` parameter to method `delete_many` cannot be "
+                "empty. In order to completely clear the contents of a "
+                "collection, please use the `delete_all` method."
+            )
 
         dm_responses = self._astra_db_collection.chunked_delete_many(filter=filter)
         deleted_counts = [
@@ -1117,6 +1134,27 @@ class Collection:
             raise ValueError(
                 "Could not complete a chunked_delete_many operation. "
                 f"(gotten '${json.dumps(dm_responses)}')"
+            )
+
+    def delete_all(self) -> Dict[str, Any]:
+        """
+        Delete all documents in a collection.
+
+        Returns:
+            a dictionary of the form {"ok": 1} to signal successful deletion.
+
+        Note:
+            Use with caution.
+        """
+
+        dm_response = self._astra_db_collection.delete_many(filter={})
+        deleted_count = dm_response["status"]["deletedCount"]
+        if deleted_count == -1:
+            return {"ok": 1}
+        else:
+            raise ValueError(
+                "Could not complete a delete_many operation. "
+                f"(gotten '${json.dumps(dm_response)}')"
             )
 
     def bulk_write(
@@ -1572,6 +1610,14 @@ class AsyncCollection:
         """
         Find documents on the collection, matching a certain provided filter.
 
+        The method returns a Cursor that can then be iterated over. Depending
+        on the method call pattern, the iteration over all documents can reflect
+        collection mutations occurred since the `find` method was called, or not.
+        In cases where the cursor reflects mutations in real-time, it will iterate
+        over cursors in an approximate way (i.e. exhibiting occasional skipped
+        or duplicate documents). This happens when making use of the `sort`
+        option in a non-vector-search manner.
+
         Args:
             filter: a predicate expressed as a dictionary according to the
                 Data API filter syntax. Examples are:
@@ -1669,7 +1715,7 @@ class AsyncCollection:
         fo_cursor = self.find(
             filter=filter,
             projection=projection,
-            skip=0,
+            skip=None,
             limit=1,
             sort=sort,
         )
@@ -2200,6 +2246,8 @@ class AsyncCollection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
+            The `delete_many` method does not accept an empty filter: see
+            `delete_all` to completely erase all contents of a collection
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
@@ -2211,6 +2259,13 @@ class AsyncCollection:
             (e.g. from another process/application) will be deleted during
             the execution of this method call.
         """
+
+        if not filter:
+            raise ValueError(
+                "The `filter` parameter to method `delete_many` cannot be "
+                "empty. In order to completely clear the contents of a "
+                "collection, please use the `delete_all` method."
+            )
 
         dm_responses = await self._astra_db_collection.chunked_delete_many(
             filter=filter
@@ -2238,6 +2293,27 @@ class AsyncCollection:
             raise ValueError(
                 "Could not complete a chunked_delete_many operation. "
                 f"(gotten '${json.dumps(dm_responses)}')"
+            )
+
+    async def delete_all(self) -> Dict[str, Any]:
+        """
+        Delete all documents in a collection.
+
+        Returns:
+            a dictionary of the form {"ok": 1} to signal successful deletion.
+
+        Note:
+            Use with caution.
+        """
+
+        dm_response = await self._astra_db_collection.delete_many(filter={})
+        deleted_count = dm_response["status"]["deletedCount"]
+        if deleted_count == -1:
+            return {"ok": 1}
+        else:
+            raise ValueError(
+                "Could not complete a delete_many operation. "
+                f"(gotten '${json.dumps(dm_response)}')"
             )
 
     async def bulk_write(
