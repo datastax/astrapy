@@ -3,7 +3,7 @@ import os
 import pytest
 from typing import Optional, TypedDict
 
-from astrapy.defaults import DEFAULT_KEYSPACE_NAME
+from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
 
 
 class AstraDBCredentials(TypedDict):

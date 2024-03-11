@@ -17,15 +17,15 @@ import logging
 from typing import Any, cast, Dict, Optional, TypedDict
 
 import httpx
-from astrapy.api import api_request, raw_api_request
+from astrapy.core.api import api_request, raw_api_request
 
-from astrapy.utils import http_methods
-from astrapy.defaults import (
+from astrapy.core.utils import http_methods
+from astrapy.core.defaults import (
     DEFAULT_DEV_OPS_AUTH_HEADER,
     DEFAULT_DEV_OPS_API_VERSION,
     DEFAULT_DEV_OPS_URL,
 )
-from astrapy.types import API_RESPONSE, OPS_API_RESPONSE
+from astrapy.core.core_types import API_RESPONSE, OPS_API_RESPONSE
 
 
 logger = logging.getLogger(__name__)

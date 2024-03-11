@@ -42,22 +42,22 @@ from typing import (
 )
 
 from astrapy import __version__
-from astrapy.api import api_request, async_api_request
-from astrapy.defaults import (
+from astrapy.core.api import api_request, async_api_request
+from astrapy.core.defaults import (
     DEFAULT_AUTH_HEADER,
     DEFAULT_JSON_API_PATH,
     DEFAULT_JSON_API_VERSION,
     DEFAULT_KEYSPACE_NAME,
     MAX_INSERT_NUM_DOCUMENTS,
 )
-from astrapy.utils import (
+from astrapy.core.utils import (
     convert_vector_to_floats,
     make_payload,
     http_methods,
     normalize_for_api,
     restore_from_api,
 )
-from astrapy.types import (
+from astrapy.core.core_types import (
     API_DOC,
     API_RESPONSE,
     PaginableRequestMethod,
@@ -119,8 +119,8 @@ class AstraDBCollection:
 
         # Set the remaining instance attributes
         self.astra_db = astra_db
-        self.caller_name = self.astra_db.caller_name
-        self.caller_version = self.astra_db.caller_version
+        self.caller_name: Optional[str] = self.astra_db.caller_name
+        self.caller_version: Optional[str] = self.astra_db.caller_version
         self.collection_name = collection_name
         self.base_path: str = f"{self.astra_db.base_path}/{self.collection_name}"
 
@@ -1193,8 +1193,8 @@ class AsyncAstraDBCollection:
 
         # Set the remaining instance attributes
         self.astra_db: AsyncAstraDB = astra_db
-        self.caller_name = self.astra_db.caller_name
-        self.caller_version = self.astra_db.caller_version
+        self.caller_name: Optional[str] = self.astra_db.caller_name
+        self.caller_version: Optional[str] = self.astra_db.caller_version
         self.client = astra_db.client
         self.collection_name = collection_name
         self.base_path: str = f"{self.astra_db.base_path}/{self.collection_name}"

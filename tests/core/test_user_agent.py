@@ -21,14 +21,14 @@ import pytest
 from pytest_httpserver import HTTPServer
 
 from astrapy import __version__
-from astrapy.utils import compose_user_agent, package_name
-from astrapy.db import (
+from astrapy.core.utils import compose_user_agent, package_name
+from astrapy.core.db import (
     AstraDB,
     AstraDBCollection,
     AsyncAstraDB,
     AsyncAstraDBCollection,
 )
-from astrapy.ops import AstraDBOps
+from astrapy.core.ops import AstraDBOps
 
 
 logger = logging.getLogger(__name__)

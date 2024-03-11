@@ -45,12 +45,15 @@ def get_version() -> str:
 
 __version__: str = get_version()
 
-# There's a circular-import issue to heal here to bring this to top
-from astrapy.idiomatic import (  # noqa: E402
-    AsyncCollection,
+
+# A circular-import issue requires this to happen at the end of this module:
+from astrapy.database import (  # noqa: E402
     AsyncDatabase,
-    Collection,
     Database,
+)
+from astrapy.collection import (  # noqa: E402
+    AsyncCollection,
+    Collection,
 )
 
 __all__ = [

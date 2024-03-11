@@ -18,7 +18,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-from astrapy.ops import AstraDBOps
+from astrapy.core.ops import AstraDBOps
 
 
 database_id_finder = re.compile(

@@ -19,7 +19,12 @@ from typing import (
 import pytest_asyncio
 
 from ..conftest import AstraDBCredentials
-from astrapy.db import AstraDB, AstraDBCollection, AsyncAstraDB, AsyncAstraDBCollection
+from astrapy.core.db import (
+    AstraDB,
+    AstraDBCollection,
+    AsyncAstraDB,
+    AsyncAstraDBCollection,
+)
 
 
 T = TypeVar("T")

@@ -20,7 +20,8 @@ import logging
 from typing import Optional
 import pytest
 
-from astrapy.db import AsyncAstraDBCollection
+from astrapy.core.db import AstraDBCollection
+
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ PREFETCHED = 42  # Keep this > 20 and <= FIND_LIMIT to actually trigger prefetch
 
 
 @pytest.mark.describe(
-    "should retrieve the required amount of documents, all different, through pagination (async)"
+    "should retrieve the required amount of documents, all different, through pagination"
 )
 @pytest.mark.parametrize(
     "prefetched",
@@ -39,17 +40,16 @@ PREFETCHED = 42  # Keep this > 20 and <= FIND_LIMIT to actually trigger prefetch
         pytest.param(PREFETCHED, id="with pre-fetching"),
     ],
 )
-async def test_find_paginated(
-    prefetched: Optional[int],
-    async_pagination_v_collection: AsyncAstraDBCollection,
+def test_find_paginated(
+    prefetched: Optional[int], pagination_v_collection: AstraDBCollection
 ) -> None:
     options = {"limit": FIND_LIMIT}
     projection = {"$vector": 0}
 
-    paginated_documents_agen = async_pagination_v_collection.paginated_find(
+    paginated_documents_gen = pagination_v_collection.paginated_find(
         projection=projection, options=options, prefetched=prefetched
     )
-    paginated_documents = [doc async for doc in paginated_documents_agen]
+    paginated_documents = list(paginated_documents_gen)
     paginated_ids = [doc["_id"] for doc in paginated_documents]
     assert all(["$vector" not in doc for doc in paginated_documents])
     assert len(paginated_ids) == FIND_LIMIT

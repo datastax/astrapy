@@ -21,8 +21,8 @@ from typing import cast, Iterable, List
 
 import pytest
 
-from astrapy.db import AstraDBCollection
-from astrapy.types import API_DOC
+from astrapy.core.db import AstraDBCollection
+from astrapy.core.core_types import API_DOC
 
 logger = logging.getLogger(__name__)
 

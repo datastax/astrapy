@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Fixtures specific to the idiomatic-side testing, if any."""
+"""Fixtures specific to the non-core-side testing."""
 
 import os
 from typing import Iterable
@@ -20,7 +20,7 @@ import pytest
 
 from ..conftest import AstraDBCredentials
 from astrapy import AsyncCollection, AsyncDatabase, Collection, Database
-from astrapy.idiomatic.types import VectorMetric
+from astrapy.constants import VectorMetric
 
 TEST_COLLECTION_INSTANCE_NAME = "test_coll_instance"
 TEST_COLLECTION_NAME = "id_test_collection"

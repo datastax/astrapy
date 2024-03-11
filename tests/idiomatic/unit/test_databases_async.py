@@ -19,7 +19,7 @@ from ..conftest import (
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_INSTANCE_NAME,
 )
-from astrapy.defaults import DEFAULT_KEYSPACE_NAME
+from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
 from astrapy import AsyncCollection, AsyncDatabase
 
 

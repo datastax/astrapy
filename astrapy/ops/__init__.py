@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.idiomatic.collection import AsyncCollection, Collection
-from astrapy.idiomatic.database import AsyncDatabase, Database
+"""Core "ops" subpackage, exported here to preserve import patterns."""
+
+from astrapy.core.ops import AstraDBOps
+
 
 __all__ = [
-    "AsyncCollection",
-    "AsyncDatabase",
-    "Collection",
-    "Database",
+    "AstraDBOps",
 ]

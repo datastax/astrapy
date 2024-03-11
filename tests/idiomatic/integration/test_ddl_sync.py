@@ -20,8 +20,8 @@ from ..conftest import (
     TEST_COLLECTION_NAME,
 )
 from astrapy.api import APIRequestError
-from astrapy.idiomatic.info import DatabaseInfo
-from astrapy.idiomatic.types import VectorMetric
+from astrapy.info import DatabaseInfo
+from astrapy.constants import VectorMetric
 from astrapy import Collection, Database
 
 
