@@ -405,7 +405,7 @@ class TestDMLSync:
             {"f": datetime.datetime(2000, 1, 1, 12, 00, 00)},
             {"f": None},
         ]
-        col.insert_many(documents)
+        col.insert_many(documents * 2)
 
         d_items = col.distinct("f")
         expected = [
