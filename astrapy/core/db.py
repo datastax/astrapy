@@ -42,7 +42,7 @@ from typing import (
 )
 
 from astrapy import __version__
-from astrapy.core.api import api_request, async_api_request
+from astrapy.core.api import APIRequestError, api_request, async_api_request
 from astrapy.core.defaults import (
     DEFAULT_AUTH_HEADER,
     DEFAULT_JSON_API_PATH,
@@ -832,7 +832,7 @@ class AstraDBCollection:
                             partial_failures_allowed,
                         )
                     )
-                except Exception as e:
+                except APIRequestError as e:
                     if partial_failures_allowed:
                         results.append(e)
                     else:
@@ -856,7 +856,7 @@ class AstraDBCollection:
             for future in futures:
                 try:
                     results.append(future.result())
-                except Exception as e:
+                except APIRequestError as e:
                     if partial_failures_allowed:
                         results.append(e)
                     else:
@@ -1886,29 +1886,34 @@ class AsyncAstraDBCollection:
         sem = asyncio.Semaphore(concurrency)
 
         async def concurrent_insert_many(
-            docs: List[API_DOC], index: int
-        ) -> API_RESPONSE:
+            docs: List[API_DOC],
+            index: int,
+            partial_failures_allowed: bool,
+        ) -> Union[API_RESPONSE, Exception]:
             async with sem:
                 logger.debug(f"Processing chunk #{index + 1} of size {len(docs)}")
-                return await self.insert_many(
-                    documents=docs,
-                    options=options,
-                    partial_failures_allowed=partial_failures_allowed,
-                )
+                try:
+                    return await self.insert_many(
+                        documents=docs,
+                        options=options,
+                        partial_failures_allowed=partial_failures_allowed,
+                    )
+                except APIRequestError as e:
+                    if partial_failures_allowed:
+                        return e
+                    else:
+                        raise e
 
         tasks = [
             asyncio.create_task(
-                concurrent_insert_many(documents[i : i + chunk_size], i)
+                concurrent_insert_many(
+                    documents[i : i + chunk_size], i, partial_failures_allowed
+                )
             )
             for i in range(0, len(documents), chunk_size)
         ]
-        results = await asyncio.gather(
-            *tasks, return_exceptions=partial_failures_allowed
-        )
-        for result in results:
-            if isinstance(result, BaseException) and not isinstance(result, Exception):
-                raise result
-        return results  # type: ignore
+        results = await asyncio.gather(*tasks, return_exceptions=False)
+        return results
 
     async def update_one(
         self, filter: Dict[str, Any], update: Dict[str, Any]

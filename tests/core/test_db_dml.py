@@ -405,7 +405,7 @@ def test_chunked_insert_many(
         for doc_idx, _id in enumerate(_ids1)
     ]
 
-    with pytest.raises(ValueError):
+    with pytest.raises(APIRequestError):
         _ = writable_v_collection.chunked_insert_many(
             documents1,
             chunk_size=3,
@@ -488,7 +488,7 @@ def test_concurrent_chunked_insert_many(
         for doc_idx, _id in enumerate(_ids1)
     ]
 
-    with pytest.raises(ValueError):
+    with pytest.raises(APIRequestError):
         # the first doc must be pre-existing
         # and the doc array size must be <= chunk size
         # for this not to spoil the rest of the test
