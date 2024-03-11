@@ -126,6 +126,15 @@ def _reduce_distinct_key_to_safe(distinct_key: str) -> str:
     return distinct_key.split(".")[0]
 
 
+def _hash_document(document: Dict[str, Any]) -> str:
+    _normalized_item = _normalize_payload_value(path=[], value=document)
+    _normalized_json = json.dumps(
+        _normalized_item, sort_keys=True, separators=(",", ":")
+    )
+    _item_hash = hashlib.md5(_normalized_json.encode()).hexdigest()
+    return _item_hash
+
+
 class BaseCursor:
     """
     Represents a generic Cursor over query results, regardless of whether
@@ -476,9 +485,7 @@ class Cursor(BaseCursor):
         d_cursor = self._copy(projection={_key: True}, started=False)
         for document in d_cursor:
             for item in _extractor(document):
-                _normalized_item = _normalize_payload_value(path=[], value=item)
-                _normalized_json = json.dumps(_normalized_item, separators=(",", ":"))
-                _item_hash = hashlib.md5(_normalized_json.encode()).hexdigest()
+                _item_hash = _hash_document(item)
                 if _item_hash not in _item_hashes:
                     _item_hashes.add(_item_hash)
                     distinct_items.append(item)
@@ -645,9 +652,7 @@ class AsyncCursor(BaseCursor):
         d_cursor = self._copy(projection={_key: True}, started=False)
         async for document in d_cursor:
             for item in _extractor(document):
-                _normalized_item = _normalize_payload_value(path=[], value=item)
-                _normalized_json = json.dumps(_normalized_item, separators=(",", ":"))
-                _item_hash = hashlib.md5(_normalized_json.encode()).hexdigest()
+                _item_hash = _hash_document(item)
                 if _item_hash not in _item_hashes:
                     _item_hashes.add(_item_hash)
                     distinct_items.append(item)
