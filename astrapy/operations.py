@@ -24,9 +24,9 @@ from typing import (
     List,
 )
 
-from astrapy.idiomatic.types import DocumentType
-from astrapy.idiomatic.results import BulkWriteResult
-from astrapy.idiomatic.collection import AsyncCollection, Collection
+from astrapy.constants import DocumentType
+from astrapy.results import BulkWriteResult
+from astrapy.collection import AsyncCollection, Collection
 
 
 def reduce_bulk_write_results(results: List[BulkWriteResult]) -> BulkWriteResult:

@@ -20,8 +20,8 @@ from typing import Any, cast, Dict, List
 
 from dotenv import load_dotenv
 
-from astrapy.ops import AstraDBOps
-from astrapy.defaults import DEFAULT_KEYSPACE_NAME, DEFAULT_REGION
+from astrapy.core.ops import AstraDBOps
+from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME, DEFAULT_REGION
 
 
 logger = logging.getLogger(__name__)

@@ -21,10 +21,9 @@ import pytest
 from astrapy import AsyncCollection
 from astrapy.results import DeleteResult, InsertOneResult
 from astrapy.api import APIRequestError
-from astrapy.idiomatic.types import DocumentType
-from astrapy.idiomatic.cursors import AsyncCursor
-from astrapy.idiomatic.types import ReturnDocument, SortDocuments
-from astrapy.idiomatic.operations import (
+from astrapy.constants import DocumentType, ReturnDocument, SortDocuments
+from astrapy.cursors import AsyncCursor
+from astrapy.operations import (
     AsyncInsertOne,
     AsyncInsertMany,
     AsyncUpdateOne,

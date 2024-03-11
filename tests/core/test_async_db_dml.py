@@ -24,9 +24,9 @@ from typing import cast, Any, Dict, Iterable, List, Literal, Optional, Union
 
 import pytest
 
-from astrapy.api import APIRequestError
-from astrapy.types import API_DOC
-from astrapy.db import AsyncAstraDB, AsyncAstraDBCollection
+from astrapy.core.api import APIRequestError
+from astrapy.core.core_types import API_DOC
+from astrapy.core.db import AsyncAstraDB, AsyncAstraDBCollection
 
 
 logger = logging.getLogger(__name__)

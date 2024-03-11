@@ -15,17 +15,16 @@
 import pytest
 
 
-@pytest.mark.describe("test of idiomatic imports")
+@pytest.mark.describe("test imports")
 def test_imports() -> None:
-    from astrapy import (  # noqa: F401
-        AsyncCollection,
-        AsyncDatabase,
-        Collection,
-        Database,
+    from astrapy.results import (  # noqa: F401
+        DeleteResult,
+        InsertOneResult,
+        InsertManyResult,
+        UpdateResult,
+        BulkWriteResult,
     )
-    from astrapy.idiomatic.cursors import AsyncCursor, BaseCursor, Cursor  # noqa: F401
-    from astrapy.idiomatic.info import CollectionInfo, DatabaseInfo  # noqa: F401
-    from astrapy.idiomatic.operations import (  # noqa: F401
+    from astrapy.operations import (  # noqa: F401
         BaseOperation,
         InsertOne,
         InsertMany,
@@ -43,15 +42,33 @@ def test_imports() -> None:
         AsyncDeleteOne,
         AsyncDeleteMany,
     )
-    from astrapy.idiomatic.results import (  # noqa: F401
-        DeleteResult,
-        InsertOneResult,
-        InsertManyResult,
-        UpdateResult,
-        BulkWriteResult,
-    )
-    from astrapy.idiomatic.types import (  # noqa: F401
+    from astrapy.constants import (  # noqa: F401
         ReturnDocument,
         SortDocuments,
         VectorMetric,
+    )
+    from astrapy.info import (  # noqa: F401
+        DatabaseInfo,
+        CollectionInfo,
+    )
+    from astrapy.cursors import (  # noqa: F401
+        BaseCursor,
+        Cursor,
+        AsyncCursor,
+    )
+    from astrapy import (  # noqa: F401
+        Database,
+        AsyncDatabase,
+        Collection,
+        AsyncCollection,
+    )
+
+    # The import pattern above for database and collection is to be preferred.
+    from astrapy.database import (  # noqa: F401
+        Database as Database2,
+        AsyncDatabase as AsyncDatabase2,
+    )
+    from astrapy.collection import (  # noqa: F401
+        Collection as Collection2,
+        AsyncCollection as AsyncCollection2,
     )

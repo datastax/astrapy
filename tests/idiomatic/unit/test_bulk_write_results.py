@@ -14,8 +14,8 @@
 
 import pytest
 
-from astrapy.idiomatic.results import BulkWriteResult
-from astrapy.idiomatic.operations import reduce_bulk_write_results
+from astrapy.results import BulkWriteResult
+from astrapy.operations import reduce_bulk_write_results
 
 
 class TestBulkWriteResults:

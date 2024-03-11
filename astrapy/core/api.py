@@ -2,8 +2,8 @@ import logging
 import httpx
 from typing import Any, Dict, Optional, cast
 
-from astrapy.types import API_RESPONSE
-from astrapy.utils import amake_request, make_request
+from astrapy.core.core_types import API_RESPONSE
+from astrapy.core.utils import amake_request, make_request
 
 logger = logging.getLogger(__name__)
 

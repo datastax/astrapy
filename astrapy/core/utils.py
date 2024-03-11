@@ -8,8 +8,8 @@ import copy
 import httpx
 
 from astrapy import __version__
-from astrapy.defaults import DEFAULT_AUTH_HEADER, DEFAULT_TIMEOUT
-from astrapy.types import API_RESPONSE
+from astrapy.core.defaults import DEFAULT_AUTH_HEADER, DEFAULT_TIMEOUT
+from astrapy.core.core_types import API_RESPONSE
 
 
 class CustomLogger(logging.Logger):

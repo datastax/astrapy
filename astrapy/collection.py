@@ -19,8 +19,13 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Iterable, List, Optional, Union, TYPE_CHECKING
 
-from astrapy.db import AstraDBCollection, AsyncAstraDBCollection
-from astrapy.idiomatic.types import (
+from astrapy.core.db import (
+    # AstraDB,
+    AstraDBCollection,
+    # AsyncAstraDB,
+    AsyncAstraDBCollection,
+)
+from astrapy.constants import (
     DocumentType,
     FilterType,
     ProjectionType,
@@ -28,20 +33,20 @@ from astrapy.idiomatic.types import (
     SortType,
     normalize_optional_projection,
 )
-from astrapy.idiomatic.database import AsyncDatabase, Database
-from astrapy.idiomatic.results import (
+from astrapy.database import AsyncDatabase, Database
+from astrapy.results import (
     DeleteResult,
     InsertManyResult,
     InsertOneResult,
     UpdateResult,
     BulkWriteResult,
 )
-from astrapy.idiomatic.cursors import AsyncCursor, Cursor
-from astrapy.idiomatic.info import CollectionInfo
+from astrapy.cursors import AsyncCursor, Cursor
+from astrapy.info import CollectionInfo
 
 
 if TYPE_CHECKING:
-    from astrapy.idiomatic.operations import AsyncBaseOperation, BaseOperation
+    from astrapy.operations import AsyncBaseOperation, BaseOperation
 
 
 INSERT_MANY_CONCURRENCY = 20
@@ -96,7 +101,7 @@ class Collection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        self._astra_db_collection = AstraDBCollection(
+        self._astra_db_collection: AstraDBCollection = AstraDBCollection(
             collection_name=name,
             astra_db=database._astra_db,
             namespace=namespace,
@@ -136,7 +141,7 @@ class Collection:
     ) -> Collection:
         return Collection(
             database=database or self.database,
-            name=name or self._astra_db_collection.collection_name,
+            name=name or self.name,
             namespace=namespace or self.namespace,
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
@@ -203,7 +208,7 @@ class Collection:
 
         return AsyncCollection(
             database=database or self.database.to_async(),
-            name=name or self._astra_db_collection.collection_name,
+            name=name or self.name,
             namespace=namespace or self.namespace,
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
@@ -292,7 +297,8 @@ class Collection:
         The name of this collection.
         """
 
-        return self._astra_db_collection.collection_name
+        # type hint added as for some reason the typechecker gets lost
+        return self._astra_db_collection.collection_name  # type: ignore[no-any-return, has-type]
 
     @property
     def full_name(self) -> str:
@@ -1206,7 +1212,7 @@ class Collection:
         """
 
         # lazy importing here against circular-import error
-        from astrapy.idiomatic.operations import reduce_bulk_write_results
+        from astrapy.operations import reduce_bulk_write_results
 
         if ordered:
             bulk_write_results = [
@@ -1281,7 +1287,7 @@ class AsyncCollection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        self._astra_db_collection = AsyncAstraDBCollection(
+        self._astra_db_collection: AsyncAstraDBCollection = AsyncAstraDBCollection(
             collection_name=name,
             astra_db=database._astra_db,
             namespace=namespace,
@@ -1321,7 +1327,7 @@ class AsyncCollection:
     ) -> AsyncCollection:
         return AsyncCollection(
             database=database or self.database,
-            name=name or self._astra_db_collection.collection_name,
+            name=name or self.name,
             namespace=namespace or self.namespace,
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
@@ -1388,7 +1394,7 @@ class AsyncCollection:
 
         return Collection(
             database=database or self.database.to_sync(),
-            name=name or self._astra_db_collection.collection_name,
+            name=name or self.name,
             namespace=namespace or self.namespace,
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
@@ -1477,7 +1483,8 @@ class AsyncCollection:
         The name of this collection.
         """
 
-        return self._astra_db_collection.collection_name
+        # type hint added as for some reason the typechecker gets lost
+        return self._astra_db_collection.collection_name  # type: ignore[no-any-return, has-type]
 
     @property
     def full_name(self) -> str:
@@ -2373,7 +2380,7 @@ class AsyncCollection:
         """
 
         # lazy importing here against circular-import error
-        from astrapy.idiomatic.operations import reduce_bulk_write_results
+        from astrapy.operations import reduce_bulk_write_results
 
         if ordered:
             bulk_write_results = [

@@ -21,7 +21,7 @@ import logging
 import pytest
 
 from ..conftest import AstraDBCredentials
-from astrapy.db import AstraDB
+from astrapy.core.db import AstraDB
 
 
 logger = logging.getLogger(__name__)

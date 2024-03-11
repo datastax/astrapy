@@ -20,8 +20,8 @@ from typing import Any, Dict, List
 from astrapy import Collection
 from astrapy.results import DeleteResult, InsertOneResult
 from astrapy.api import APIRequestError
-from astrapy.idiomatic.types import ReturnDocument, SortDocuments
-from astrapy.idiomatic.operations import (
+from astrapy.constants import ReturnDocument, SortDocuments
+from astrapy.operations import (
     InsertOne,
     InsertMany,
     UpdateOne,

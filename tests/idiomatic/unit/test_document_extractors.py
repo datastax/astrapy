@@ -16,7 +16,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from astrapy.idiomatic.cursors import _create_document_key_extractor
+from astrapy.cursors import _create_document_key_extractor
 
 
 class TestDocumentExtractors:

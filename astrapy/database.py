@@ -18,12 +18,12 @@ import json
 from types import TracebackType
 from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
 
-from astrapy.db import AstraDB, AsyncAstraDB
-from astrapy.idiomatic.cursors import AsyncCommandCursor, CommandCursor
-from astrapy.idiomatic.info import DatabaseInfo, get_database_info
+from astrapy.core.db import AstraDB, AsyncAstraDB
+from astrapy.cursors import AsyncCommandCursor, CommandCursor
+from astrapy.info import DatabaseInfo, get_database_info
 
 if TYPE_CHECKING:
-    from astrapy.idiomatic.collection import AsyncCollection, Collection
+    from astrapy.collection import AsyncCollection, Collection
 
 
 def _validate_create_collection_options(
@@ -318,7 +318,7 @@ class Database:
         """
 
         # lazy importing here against circular-import error
-        from astrapy.idiomatic.collection import Collection
+        from astrapy.collection import Collection
 
         _namespace = namespace or self._astra_db.namespace
         return Collection(self, name, namespace=_namespace)
@@ -431,11 +431,11 @@ class Database:
         """
 
         # lazy importing here against circular-import error
-        from astrapy.idiomatic.collection import Collection
+        from astrapy.collection import Collection
 
         if isinstance(name_or_collection, Collection):
             _namespace = name_or_collection.namespace
-            _name = name_or_collection._astra_db_collection.collection_name
+            _name: str = name_or_collection.name
             dc_response = self._astra_db.copy(namespace=_namespace).delete_collection(
                 _name
             )
@@ -809,7 +809,7 @@ class AsyncDatabase:
         """
 
         # lazy importing here against circular-import error
-        from astrapy.idiomatic.collection import AsyncCollection
+        from astrapy.collection import AsyncCollection
 
         _namespace = namespace or self._astra_db.namespace
         return AsyncCollection(self, name, namespace=_namespace)
@@ -921,11 +921,11 @@ class AsyncDatabase:
         """
 
         # lazy importing here against circular-import error
-        from astrapy.idiomatic.collection import AsyncCollection
+        from astrapy.collection import AsyncCollection
 
         if isinstance(name_or_collection, AsyncCollection):
             _namespace = name_or_collection.namespace
-            _name = name_or_collection._astra_db_collection.collection_name
+            _name = name_or_collection.name
             dc_response = await self._astra_db.copy(
                 namespace=_namespace
             ).delete_collection(_name)

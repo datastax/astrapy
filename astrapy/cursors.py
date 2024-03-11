@@ -31,15 +31,15 @@ from typing import (
     TYPE_CHECKING,
 )
 
-from astrapy.utils import _normalize_payload_value
-from astrapy.idiomatic.types import (
+from astrapy.core.utils import _normalize_payload_value
+from astrapy.constants import (
     DocumentType,
     ProjectionType,
     normalize_optional_projection,
 )
 
 if TYPE_CHECKING:
-    from astrapy.idiomatic.collection import AsyncCollection, Collection
+    from astrapy.collection import AsyncCollection, Collection
 
 
 BC = TypeVar("BC", bound="BaseCursor")
