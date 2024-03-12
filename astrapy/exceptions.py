@@ -40,7 +40,7 @@ class DataAPIErrorDescriptor:
 @dataclass
 class DataAPIDetailedErrorDescriptor:
     error_descriptors: List[DataAPIErrorDescriptor]
-    command: Dict[str, Any]
+    command: Optional[Dict[str, Any]]
     raw_response: Dict[str, Any]
 
 
@@ -85,7 +85,7 @@ class DataAPIResponseException(DataAPIException):
     @classmethod
     def from_response(
         cls,
-        command: Dict[str, Any],
+        command: Optional[Dict[str, Any]],
         raw_response: Dict[str, Any],
         **kwargs: Any,
     ) -> DataAPIException:
@@ -98,7 +98,7 @@ class DataAPIResponseException(DataAPIException):
     @classmethod
     def from_responses(
         cls,
-        commands: List[Dict[str, Any]],
+        commands: List[Optional[Dict[str, Any]]],
         raw_responses: List[Dict[str, Any]],
         **kwargs: Any,
     ) -> DataAPIException:
@@ -149,7 +149,7 @@ def recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
             return method(*pargs, **kwargs)
         except APIRequestError as exc:
             raise DataAPIResponseException.from_response(
-                command={"temporary TODO": True}, raw_response=exc.response.json()
+                command=exc.payload, raw_response=exc.response.json()
             )
 
     return _wrapped_sync
@@ -165,7 +165,7 @@ def recast_method_async(
             return await method(*pargs, **kwargs)
         except APIRequestError as exc:
             raise DataAPIResponseException.from_response(
-                command={"temporary TODO": True}, raw_response=exc.response.json()
+                command=exc.payload, raw_response=exc.response.json()
             )
 
     return _wrapped_async

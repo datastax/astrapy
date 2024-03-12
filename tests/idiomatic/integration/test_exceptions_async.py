@@ -122,3 +122,4 @@ class TestExceptionsAsync:
         assert len(exc.value.error_descriptors) == 1
         assert len(exc.value.detailed_error_descriptors) == 1
         assert len(exc.value.detailed_error_descriptors[0].error_descriptors) == 1
+        assert isinstance(exc.value.detailed_error_descriptors[0].command, dict)

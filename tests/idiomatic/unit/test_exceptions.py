@@ -25,7 +25,7 @@ from astrapy.results import InsertManyResult
 
 @pytest.mark.describe("test DataAPIException")
 def test_dataapiexception() -> None:
-    da_e1 = DataAPIException.from_responses(
+    da_e1 = DataAPIException.from_responses(  # type: ignore[attr-defined]
         commands=[{"cmd": "C1"}],
         raw_responses=[
             {"errors": [{"errorCode": "C", "message": "Aaa", "field": "value"}]}
@@ -56,15 +56,15 @@ def test_dataapiexception() -> None:
 @pytest.mark.describe("test InsertManyException")
 def test_insertmanyexception() -> None:
     im_result = InsertManyResult(raw_results=[{"a": 1}], inserted_ids=["a", "b"])
-    im_e1 = InsertManyException.from_responses(
+    # mypy thinks im_e1 is a DataAPIException for some reason...
+    im_e1: InsertManyException = InsertManyException.from_responses(  # type: ignore[assignment]
         commands=[{"cmd": "C1"}],
         raw_responses=[{"errors": [{"errorCode": "C", "message": "Aaa"}]}],
         partial_result=im_result,
     )
     the_daed = DataAPIErrorDescriptor({"errorCode": "C", "message": "Aaa"})
 
-    # mypy thinks im_e1 is a DataAPIException for some reason...
-    assert im_e1.partial_result == im_result  # type: ignore[attr-defined]
+    assert im_e1.partial_result == im_result
     assert im_e1.text == "Aaa"
     assert im_e1.error_descriptors == [the_daed]
     assert im_e1.detailed_error_descriptors == [

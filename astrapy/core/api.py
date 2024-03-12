@@ -9,10 +9,13 @@ logger = logging.getLogger(__name__)
 
 
 class APIRequestError(ValueError):
-    def __init__(self, response: httpx.Response) -> None:
+    def __init__(
+        self, response: httpx.Response, payload: Optional[Dict[str, Any]]
+    ) -> None:
         super().__init__(response.text)
 
         self.response = response
+        self.payload = payload
 
     def __repr__(self) -> str:
         return f"{self.response}"
@@ -45,7 +48,9 @@ def raw_api_request(
 
 
 def process_raw_api_response(
-    raw_response: httpx.Response, skip_error_check: bool
+    raw_response: httpx.Response,
+    skip_error_check: bool,
+    json_data: Optional[Dict[str, Any]],
 ) -> API_RESPONSE:
     # In case of other successful responses, parse the JSON body.
     try:
@@ -56,13 +61,13 @@ def process_raw_api_response(
         if "errors" in response_body and not skip_error_check:
             logger.debug(response_body["errors"])
 
-            raise APIRequestError(raw_response)
+            raise APIRequestError(raw_response, payload=json_data)
 
         # Otherwise, set the response body
         return response_body
     except ValueError:
         # Handle cases where json() parsing fails (e.g., empty body)
-        raise APIRequestError(raw_response)
+        raise APIRequestError(raw_response, payload=json_data)
 
 
 def api_request(
@@ -91,7 +96,9 @@ def api_request(
         caller_version=caller_version,
     )
     raw_response.raise_for_status()
-    return process_raw_api_response(raw_response, skip_error_check=skip_error_check)
+    return process_raw_api_response(
+        raw_response, skip_error_check=skip_error_check, json_data=json_data
+    )
 
 
 ###
@@ -122,7 +129,9 @@ async def async_raw_api_request(
 
 
 async def async_process_raw_api_response(
-    raw_response: httpx.Response, skip_error_check: bool
+    raw_response: httpx.Response,
+    skip_error_check: bool,
+    json_data: Optional[Dict[str, Any]],
 ) -> API_RESPONSE:
     # In case of other successful responses, parse the JSON body.
     try:
@@ -133,13 +142,13 @@ async def async_process_raw_api_response(
         if "errors" in response_body and not skip_error_check:
             logger.debug(response_body["errors"])
 
-            raise APIRequestError(raw_response)
+            raise APIRequestError(raw_response, payload=json_data)
 
         # Otherwise, set the response body
         return response_body
     except ValueError:
         # Handle cases where json() parsing fails (e.g., empty body)
-        raise APIRequestError(raw_response)
+        raise APIRequestError(raw_response, payload=json_data)
 
 
 async def async_api_request(
@@ -169,5 +178,7 @@ async def async_api_request(
     )
     raw_response.raise_for_status()
     return await async_process_raw_api_response(
-        raw_response, skip_error_check=skip_error_check
+        raw_response,
+        skip_error_check=skip_error_check,
+        json_data=json_data,
     )

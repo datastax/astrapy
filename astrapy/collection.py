@@ -460,7 +460,7 @@ class Collection:
                         inserted_ids=inserted_ids,
                     )
                     raise InsertManyException.from_response(
-                        command={"temporary TODO": True},
+                        command=None,
                         raw_response=chunk_response,
                         partial_result=partial_result,
                     )
@@ -518,7 +518,7 @@ class Collection:
                     inserted_ids=inserted_ids,
                 )
                 raise InsertManyException.from_responses(
-                    commands=[{"temporary TODO": True} for _ in raw_results],
+                    commands=[None for _ in raw_results],
                     raw_responses=raw_results,
                     partial_result=partial_result,
                 )
@@ -1701,7 +1701,7 @@ class AsyncCollection:
                         inserted_ids=inserted_ids,
                     )
                     raise InsertManyException.from_response(
-                        command={"temporary TODO": True},
+                        command=None,
                         raw_response=chunk_response,
                         partial_result=partial_result,
                     )
@@ -1761,7 +1761,7 @@ class AsyncCollection:
                     inserted_ids=inserted_ids,
                 )
                 raise InsertManyException.from_responses(
-                    commands=[{"temporary TODO": True} for _ in raw_results],
+                    commands=[None for _ in raw_results],
                     raw_responses=raw_results,
                     partial_result=partial_result,
                 )
