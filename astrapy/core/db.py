@@ -641,6 +641,36 @@ class AstraDBCollection:
 
         return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
 
+    def find_one_and_delete(
+        self,
+        sort: Optional[Dict[str, Any]] = {},
+        filter: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
+    ) -> API_RESPONSE:
+        """
+        Find a single document and delete it.
+        Args:
+            sort (dict, optional): Specifies the order in which to find the document.
+            filter (dict, optional): Criteria to filter documents.
+            projection (dict, optional): Specifies the fields to return.
+        Returns:
+            dict: The result of the find and delete operation.
+        """
+        json_query = make_payload(
+            top_level="findOneAndDelete",
+            filter=filter,
+            sort=sort,
+            projection=projection,
+        )
+
+        response = self._request(
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data=json_query,
+        )
+
+        return response
+
     def count_documents(
         self,
         filter: Dict[str, Any] = {},
@@ -1712,6 +1742,36 @@ class AsyncAstraDBCollection:
         )
 
         return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
+
+    async def find_one_and_delete(
+        self,
+        sort: Optional[Dict[str, Any]] = {},
+        filter: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
+    ) -> API_RESPONSE:
+        """
+        Find a single document and delete it.
+        Args:
+            sort (dict, optional): Specifies the order in which to find the document.
+            filter (dict, optional): Criteria to filter documents.
+            projection (dict, optional): Specifies the fields to return.
+        Returns:
+            dict: The result of the find and delete operation.
+        """
+        json_query = make_payload(
+            top_level="findOneAndDelete",
+            filter=filter,
+            sort=sort,
+            projection=projection,
+        )
+
+        response = await self._request(
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data=json_query,
+        )
+
+        return response
 
     async def count_documents(
         self,

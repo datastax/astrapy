@@ -172,6 +172,8 @@ class TestExceptionsAsync:
         with pytest.raises(DataAPIResponseException):
             await acol.find_one_and_update({"a": 1}, {"$set": {"a": -1}})
         with pytest.raises(DataAPIResponseException):
+            await acol.find_one_and_delete({"a": 1})
+        with pytest.raises(DataAPIResponseException):
             await acol.replace_one({"a": 1}, {"a": -1})
         with pytest.raises(DataAPIResponseException):
             await acol.update_one({"a": 1}, {"$set": {"a": -1}})

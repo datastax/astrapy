@@ -163,6 +163,8 @@ class TestExceptionsSync:
         with pytest.raises(DataAPIResponseException):
             col.find_one_and_update({"a": 1}, {"$set": {"a": -1}})
         with pytest.raises(DataAPIResponseException):
+            col.find_one_and_delete({"a": 1})
+        with pytest.raises(DataAPIResponseException):
             col.replace_one({"a": 1}, {"a": -1})
         with pytest.raises(DataAPIResponseException):
             col.update_one({"a": 1}, {"$set": {"a": -1}})

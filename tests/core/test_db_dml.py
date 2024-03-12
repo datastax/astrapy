@@ -978,6 +978,35 @@ def test_find_one_and_update_vector(
     assert update_response2["status"]["modifiedCount"] == 0
 
 
+@pytest.mark.describe("find_one_and_delete, through vector")
+def test_find_one_and_delete_vector(
+    empty_v_collection: AstraDBCollection,
+) -> None:
+    empty_v_collection.insert_many(
+        [
+            {"a": "A", "seq": 1},
+            {"a": "A", "seq": 3},
+            {"a": "A", "seq": 2},
+            {"a": "Z", "seq": 4},
+        ]
+    )
+    del_ok = empty_v_collection.find_one_and_delete(
+        sort={"seq": -1},
+        filter={"a": "A"},
+        projection={"_id": False, "a": False},
+    )
+    assert del_ok["data"]["document"] == {"seq": 3}
+    assert del_ok["status"]["deletedCount"] == 1
+
+    del_no = empty_v_collection.find_one_and_delete(
+        sort={"seq": -1},
+        filter={"a": "X"},
+        projection={"_id": False},
+    )
+    assert "data" not in del_no
+    assert del_no["status"]["deletedCount"] == 0
+
+
 @pytest.mark.describe("find_one_and_update, not through vector")
 def test_find_one_and_update_novector(
     disposable_v_collection: AstraDBCollection,

@@ -801,7 +801,7 @@ class TestDMLSync:
             {"group": "A"}, projection={"_id": False, "group": False}
         )
         assert fo_result3 is not None
-        assert set(fo_result3.keys()) == {"_id", "doc"}
+        assert set(fo_result3.keys()) == {"doc"}
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 0
 
         fo_result4 = sync_empty_collection.find_one_and_delete({}, sort={"f": 1})

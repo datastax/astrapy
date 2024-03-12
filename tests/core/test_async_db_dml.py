@@ -953,6 +953,35 @@ async def test_find_one_and_update_vector(
     assert update_response2["status"]["modifiedCount"] == 0
 
 
+@pytest.mark.describe("find_one_and_delete, through vector (async)")
+async def test_find_one_and_delete_vector(
+    async_empty_v_collection: AsyncAstraDBCollection,
+) -> None:
+    await async_empty_v_collection.insert_many(
+        [
+            {"a": "A", "seq": 1},
+            {"a": "A", "seq": 3},
+            {"a": "A", "seq": 2},
+            {"a": "Z", "seq": 4},
+        ]
+    )
+    del_ok = await async_empty_v_collection.find_one_and_delete(
+        sort={"seq": -1},
+        filter={"a": "A"},
+        projection={"_id": False, "a": False},
+    )
+    assert del_ok["data"]["document"] == {"seq": 3}
+    assert del_ok["status"]["deletedCount"] == 1
+
+    del_no = await async_empty_v_collection.find_one_and_delete(
+        sort={"seq": -1},
+        filter={"a": "X"},
+        projection={"_id": False},
+    )
+    assert "data" not in del_no
+    assert del_no["status"]["deletedCount"] == 0
+
+
 @pytest.mark.describe("find_one_and_update, not through vector (async)")
 async def test_find_one_and_update_novector(
     async_disposable_v_collection: AsyncAstraDBCollection,

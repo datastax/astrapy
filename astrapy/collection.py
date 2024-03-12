@@ -1090,6 +1090,7 @@ class Collection:
             update_info=_update_info,
         )
 
+    @recast_method_sync
     def find_one_and_delete(
         self,
         filter: Dict[str, Any],
@@ -1125,27 +1126,26 @@ class Collection:
         Returns:
             Either the document (or a projection thereof, as requested), or None
             if no matches were found in the first place.
-
-        Note:
-            This operation is not atomic on the database.
-            Internally, this method runs a `find_one` followed by a `delete_one`.
         """
 
-        _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
-        target_document = self.find_one(
-            filter=filter, projection=_projection, sort=sort
+        _projection = normalize_optional_projection(projection)
+        fo_response = self._astra_db_collection.find_one_and_delete(
+            sort=sort,
+            filter=filter,
+            projection=_projection,
         )
-        if target_document is not None:
-            target_id = target_document["_id"]
-            self.delete_one({"_id": target_id})
-            # this is not an API atomic operation.
-            # If someone deletes the document between the find and the delete,
-            # this delete would silently be a no-op and we'd be returning the
-            # document. By a 'infinitesimal' shift-backward of the time of this
-            # operation, we recover a non-surprising behaviour. So:
-            return target_document
+        if "document" in fo_response.get("data", {}):
+            document = fo_response["data"]["document"]
+            return document  # type: ignore[no-any-return]
         else:
-            return target_document
+            deleted_count = fo_response.get("status", {}).get("deletedCount")
+            if deleted_count == 0:
+                return None
+            else:
+                raise DataAPIFaultyResponseException(
+                    text="Faulty response from find_one_and_delete API command.",
+                    response=fo_response,
+                )
 
     @recast_method_sync
     def delete_one(
@@ -2382,6 +2382,7 @@ class AsyncCollection:
             update_info=_update_info,
         )
 
+    @recast_method_async
     async def find_one_and_delete(
         self,
         filter: Dict[str, Any],
@@ -2417,27 +2418,26 @@ class AsyncCollection:
         Returns:
             Either the document (or a projection thereof, as requested), or None
             if no matches were found in the first place.
-
-        Note:
-            This operation is not atomic on the database.
-            Internally, this method runs a `find_one` followed by a `delete_one`.
         """
 
-        _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
-        target_document = await self.find_one(
-            filter=filter, projection=_projection, sort=sort
+        _projection = normalize_optional_projection(projection)
+        fo_response = await self._astra_db_collection.find_one_and_delete(
+            sort=sort,
+            filter=filter,
+            projection=_projection,
         )
-        if target_document is not None:
-            target_id = target_document["_id"]
-            await self.delete_one({"_id": target_id})
-            # this is not an API atomic operation.
-            # If someone deletes the document between the find and the delete,
-            # this delete would silently be a no-op and we'd be returning the
-            # document. By a 'infinitesimal' shift-backward of the time of this
-            # operation, we recover a non-surprising behaviour. So:
-            return target_document
+        if "document" in fo_response.get("data", {}):
+            document = fo_response["data"]["document"]
+            return document  # type: ignore[no-any-return]
         else:
-            return target_document
+            deleted_count = fo_response.get("status", {}).get("deletedCount")
+            if deleted_count == 0:
+                return None
+            else:
+                raise DataAPIFaultyResponseException(
+                    text="Faulty response from find_one_and_delete API command.",
+                    response=fo_response,
+                )
 
     @recast_method_async
     async def delete_one(
