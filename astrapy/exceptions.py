@@ -21,84 +21,99 @@ from astrapy.results import InsertManyResult
 
 
 @dataclass
-class DataAPIErrorDescriptor():
+class DataAPIErrorDescriptor:
     error_code: Optional[str]
     message: Optional[str]
+    attributes: Dict[str, Any]
+
     def __init__(self, error_dict: Dict[str, str]) -> None:
         self.error_code = error_dict.get("errorCode")
         self.message = error_dict.get("message")
+        self.attributes = {
+            k: v for k, v in error_dict.items() if k not in {"errorCode", "message"}
+        }
 
 
+@dataclass
+class DataAPIDetailedErrorDescriptor:
+    error_descriptors: List[DataAPIErrorDescriptor]
+    command: Dict[str, Any]
+    raw_response: Dict[str, Any]
+
+
+@dataclass
 class DataAPIException(ValueError):
+
     text: Optional[str]
     error_descriptors: List[DataAPIErrorDescriptor]
-    raw_responses: List[Dict[str, Any]]
+    detailed_error_descriptors: List[DataAPIDetailedErrorDescriptor]
+
     def __init__(
         self,
         text: Optional[str],
         *,
         error_descriptors: List[DataAPIErrorDescriptor],
-        raw_responses: List[Dict[str, Any]],
+        detailed_error_descriptors: List[DataAPIDetailedErrorDescriptor],
     ) -> None:
         super().__init__(text)
         self.text = text
-        self.error_descriptors = error_descriptors        
-        self.raw_responses = raw_responses
+        self.error_descriptors = error_descriptors
+        self.detailed_error_descriptors = detailed_error_descriptors
 
-    @staticmethod
+    @classmethod
     def from_response(
+        cls,
+        command: Dict[str, Any],
         raw_response: Dict[str, Any],
+        **kwargs: Any,
     ) -> DataAPIException:
-        return DataAPIException.from_responses(raw_responses=[raw_response])
-
-    @staticmethod
-    def from_responses(
-        raw_responses: List[Dict[str, Any]],
-    ) -> DataAPIException:
-        err_dicts = [
-            err_dict
-            for raw_response in raw_responses
-            for err_dict in raw_response.get("errors", [])
-        ]
-        error_descriptors = [
-            DataAPIErrorDescriptor(err_dict)
-            for err_dict in err_dicts
-        ]
-        return DataAPIException(
-            text=error_descriptors[0].message,
-            error_descriptors=error_descriptors,
-            raw_responses=raw_responses,
+        return cls.from_responses(
+            commands=[command],
+            raw_responses=[raw_response],
+            **kwargs,
         )
-        
+
+    @classmethod
+    def from_responses(
+        cls,
+        commands: List[Dict[str, Any]],
+        raw_responses: List[Dict[str, Any]],
+        **kwargs: Any,
+    ) -> DataAPIException:
+        detailed_error_descriptors: List[DataAPIDetailedErrorDescriptor] = []
+        for command, raw_response in zip(commands, raw_responses):
+            if raw_response.get("errors", []):
+                error_descriptors = [
+                    DataAPIErrorDescriptor(error_dict)
+                    for error_dict in raw_response["errors"]
+                ]
+                detailed_error_descriptor = DataAPIDetailedErrorDescriptor(
+                    error_descriptors=error_descriptors,
+                    command=command,
+                    raw_response=raw_response,
+                )
+                detailed_error_descriptors.append(detailed_error_descriptor)
+
+        # flatten
+        error_descriptors = [
+            error_descriptor
+            for d_e_d in detailed_error_descriptors
+            for error_descriptor in d_e_d.error_descriptors
+        ]
+
+        if error_descriptors:
+            text = error_descriptors[0].message
+        else:
+            text = ""
+
+        return cls(
+            text,
+            error_descriptors=error_descriptors,
+            detailed_error_descriptors=detailed_error_descriptors,
+            **kwargs,
+        )
+
 
 @dataclass
-class InsertManyException(Exception):
-    base_exception: DataAPIException
+class InsertManyException(DataAPIException):
     partial_result: InsertManyResult
-
-
-# class PaginatedOperationException(DataAPIException):
-#     previous_responses: List[Dict[str, Any]]
-#     def __init__(self, text: str, *, raw_errors: List[Dict[str, Any]], previous_responses: List[Dict[str, Any]]) -> None:
-#         super().__init__(text, raw_errors=raw_errors)
-#         self.previous_responses = previous_responses
-
-
-# # some of these
-# class InsertManyException(PaginatedOperationException):
-#     partial_result: InsertManyResult
-#     def __init__(self, text: str, *, raw_errors: List[Dict[str, Any]], previous_responses: List[Dict[str, Any]], partial_result: InsertManyResult) -> None:
-#         super().__init__(text, raw_errors=raw_errors, previous_responses=previous_responses)
-#         self.partial_result = partial_result
-
-
-# """
-# e = DataAPIException("boo", [{'a':1}])
-
-# """
-
-
-# @dataclass
-# class InsertManyException(Exception):
-#     base_errors: List[List[Dict[str, Any]]]
-#     result: InsertManyResult
