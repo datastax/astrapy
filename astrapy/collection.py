@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from typing import Any, Dict, Iterable, List, Optional, Union, TYPE_CHECKING
 
 from astrapy.core.db import (
@@ -25,6 +26,9 @@ from astrapy.core.db import (
     # AsyncAstraDB,
     AsyncAstraDBCollection,
 )
+from astrapy.core.api import APIRequestError, api_request, async_api_request
+from astrapy.core.defaults import MAX_INSERT_NUM_DOCUMENTS
+from astrapy.exceptions import DataAPIException, InsertManyException
 from astrapy.constants import (
     DocumentType,
     FilterType,
@@ -298,7 +302,7 @@ class Collection:
         """
 
         # type hint added as for some reason the typechecker gets lost
-        return self._astra_db_collection.collection_name  # type: ignore[no-any-return, has-type]
+        return self._astra_db_collection.collection_name
 
     @property
     def full_name(self) -> str:
@@ -366,7 +370,107 @@ class Collection:
                 f"(gotten '${json.dumps(io_response)}')"
             )
 
+    # WIP
     def insert_many(
+        self,
+        documents: Iterable[DocumentType],
+        *,
+        ordered: bool = True,
+    ) -> InsertManyResult:
+        """
+        DOCSTRING TO MOVE
+        """
+
+        chunk_size = MAX_INSERT_NUM_DOCUMENTS
+        _documents = list(documents)  # TODO make this a chunked iterator
+        # TODO handle the auto-inserted-ids here (chunk-wise better)
+        raw_results: List[Dict[str, Any]] = []
+        if ordered:
+            options = {"ordered": True}
+            inserted_ids: List[Any] = []
+            for i in range(0, len(_documents), chunk_size):
+                chunk_response = self._astra_db_collection.insert_many(
+                    documents=_documents[i : i + chunk_size],
+                    options=options,
+                    partial_failures_allowed=True,
+                )
+                # accumulate the results in this call
+                chunk_inserted_ids = (chunk_response.get("status") or {}).get("insertedIds", [])
+                inserted_ids += chunk_inserted_ids
+                raw_results += [chunk_response]
+                # if errors, quit early
+                if chunk_response.get("errors", []):
+                    base_exception = DataAPIException.from_response(chunk_response)
+                    partial_result = InsertManyResult(
+                        raw_results=raw_results,
+                        inserted_ids=inserted_ids,
+                    )
+                    raise InsertManyException(
+                        base_exception=base_exception,
+                        partial_result=partial_result,
+                    )
+
+            # return
+            full_result = InsertManyResult(
+                raw_results=raw_results,
+                inserted_ids=inserted_ids,
+            )
+            return full_result
+
+        else:
+            # unordered: concurrent or not, do all of them and parse the results
+            options = {"ordered": False}
+            concurrency = INSERT_MANY_CONCURRENCY
+            if concurrency > 1:
+                with ThreadPoolExecutor(max_workers=concurrency) as executor:
+                    _chunk_insertor = partial(
+                        self._astra_db_collection.insert_many,
+                        options=options,
+                        partial_failures_allowed=True,
+                    )
+                    raw_results = list(executor.map(
+                        _chunk_insertor,
+                        (
+                            _documents[i : i + chunk_size]
+                            for i in range(0, len(_documents), chunk_size)
+                        ),
+                    ))
+            else:
+                raw_results = [
+                    self._astra_db_collection.insert_many(
+                        _documents[i : i + chunk_size],
+                        options=options,
+                        partial_failures_allowed=True,
+                    )
+                    for i in range(0, len(_documents), chunk_size)
+                ]
+            # recast raw_results
+            inserted_ids = [
+                inserted_id
+                for chunk_response in raw_results
+                for inserted_id in (chunk_response.get("status") or {}).get("insertedIds", [])
+            ]
+
+            # check-raise
+            if any([chunk_response.get("errors", []) for chunk_response in raw_results]):
+                base_exception = DataAPIException.from_responses(raw_results)
+                partial_result = InsertManyResult(
+                    raw_results=raw_results,
+                    inserted_ids=inserted_ids,
+                )
+                raise InsertManyException(
+                    base_exception=base_exception,
+                    partial_result=partial_result,
+                )
+
+            # return
+            full_result = InsertManyResult(
+                raw_results=raw_results,
+                inserted_ids=inserted_ids,
+            )
+            return full_result
+
+    def OLD_insert_many(
         self,
         documents: Iterable[DocumentType],
         *,
@@ -1484,7 +1588,7 @@ class AsyncCollection:
         """
 
         # type hint added as for some reason the typechecker gets lost
-        return self._astra_db_collection.collection_name  # type: ignore[no-any-return, has-type]
+        return self._astra_db_collection.collection_name
 
     @property
     def full_name(self) -> str:

@@ -19,7 +19,7 @@ from typing import Any, Dict, List
 
 from astrapy import Collection
 from astrapy.results import DeleteResult, InsertOneResult
-from astrapy.api import APIRequestError
+from astrapy.exceptions import DataAPIException, InsertManyException
 from astrapy.constants import ReturnDocument, SortDocuments
 from astrapy.operations import (
     InsertOne,
@@ -466,15 +466,15 @@ class TestDMLSync:
         assert set(ins_result1.inserted_ids) == {"a", "b"}
         assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
-        with pytest.raises(APIRequestError):
+        with pytest.raises(InsertManyException):
             col.insert_many([{"_id": "a"}, {"_id": "c"}])
         assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
-        with pytest.raises(APIRequestError):
+        with pytest.raises(InsertManyException):
             col.insert_many([{"_id": "c"}, {"_id": "a"}, {"_id": "d"}])
         assert {doc["_id"] for doc in col.find()} == {"a", "b", "c"}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(InsertManyException):
             col.insert_many(
                 [{"_id": "c"}, {"_id": "d"}, {"_id": "e"}],
                 ordered=False,
