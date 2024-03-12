@@ -19,7 +19,7 @@ from typing import Any, Dict, List
 
 from astrapy import Collection
 from astrapy.results import DeleteResult, InsertOneResult
-from astrapy.exceptions import DataAPIException, InsertManyException
+from astrapy.exceptions import InsertManyException
 from astrapy.constants import ReturnDocument, SortDocuments
 from astrapy.operations import (
     InsertOne,

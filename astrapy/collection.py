@@ -1612,6 +1612,8 @@ class AsyncCollection:
         documents: Iterable[DocumentType],
         *,
         ordered: bool = True,
+        chunk_size: Optional[int] = None,
+        concurrency: Optional[int] = None,
     ) -> InsertManyResult:
         """
         Insert a list of documents into the collection.
@@ -1654,6 +1656,117 @@ class AsyncCollection:
             have made their way to the database.
         """
 
+        if concurrency is None:
+            if ordered:
+                _concurrency = 1
+            else:
+                _concurrency = INSERT_MANY_CONCURRENCY
+        else:
+            _concurrency = concurrency
+        if _concurrency > 1 and ordered:
+            raise ValueError("Cannot run ordered insert_many concurrently.")
+        if chunk_size is None:
+            _chunk_size = MAX_INSERT_NUM_DOCUMENTS
+        else:
+            _chunk_size = chunk_size
+        _documents = list(documents)  # TODO make this a chunked iterator
+        # TODO handle the auto-inserted-ids here (chunk-wise better)
+        raw_results: List[Dict[str, Any]] = []
+        if ordered:
+            options = {"ordered": True}
+            inserted_ids: List[Any] = []
+            for i in range(0, len(_documents), _chunk_size):
+                chunk_response = await self._astra_db_collection.insert_many(
+                    documents=_documents[i : i + _chunk_size],
+                    options=options,
+                    partial_failures_allowed=True,
+                )
+                # accumulate the results in this call
+                chunk_inserted_ids = (chunk_response.get("status") or {}).get(
+                    "insertedIds", []
+                )
+                inserted_ids += chunk_inserted_ids
+                raw_results += [chunk_response]
+                # if errors, quit early
+                if chunk_response.get("errors", []):
+                    partial_result = InsertManyResult(
+                        raw_results=raw_results,
+                        inserted_ids=inserted_ids,
+                    )
+                    raise InsertManyException.from_response(
+                        command={"temporary TODO": True},
+                        raw_response=chunk_response,
+                        partial_result=partial_result,
+                    )
+
+            # return
+            full_result = InsertManyResult(
+                raw_results=raw_results,
+                inserted_ids=inserted_ids,
+            )
+            return full_result
+
+        else:
+            # unordered: concurrent or not, do all of them and parse the results
+            options = {"ordered": False}
+
+            sem = asyncio.Semaphore(_concurrency)
+
+            async def concurrent_insert_chunk(
+                document_chunk: List[DocumentType],
+            ) -> Dict[str, Any]:
+                async with sem:
+                    return await self._astra_db_collection.insert_many(
+                        document_chunk,
+                        options=options,
+                        partial_failures_allowed=True,
+                    )
+
+            if _concurrency > 1:
+                tasks = [
+                    asyncio.create_task(
+                        concurrent_insert_chunk(_documents[i : i + _chunk_size])
+                    )
+                    for i in range(0, len(_documents), _chunk_size)
+                ]
+                raw_results = await asyncio.gather(*tasks)
+            else:
+                raw_results = [
+                    await concurrent_insert_chunk(_documents[i : i + _chunk_size])
+                    for i in range(0, len(_documents), _chunk_size)
+                ]
+
+            # recast raw_results
+            inserted_ids = [
+                inserted_id
+                for chunk_response in raw_results
+                for inserted_id in (chunk_response.get("status") or {}).get(
+                    "insertedIds", []
+                )
+            ]
+
+            # check-raise
+            if any(
+                [chunk_response.get("errors", []) for chunk_response in raw_results]
+            ):
+                partial_result = InsertManyResult(
+                    raw_results=raw_results,
+                    inserted_ids=inserted_ids,
+                )
+                raise InsertManyException.from_responses(
+                    commands=[{"temporary TODO": True} for _ in raw_results],
+                    raw_responses=raw_results,
+                    partial_result=partial_result,
+                )
+
+            # return
+            full_result = InsertManyResult(
+                raw_results=raw_results,
+                inserted_ids=inserted_ids,
+            )
+            return full_result
+
+        """
         if ordered:
             cim_responses = await self._astra_db_collection.chunked_insert_many(
                 documents=list(documents),
@@ -1692,6 +1805,7 @@ class AsyncCollection:
                 raw_results=cim_responses,  # type: ignore[arg-type]
                 inserted_ids=inserted_ids,
             )
+        """
 
     def find(
         self,

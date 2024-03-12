@@ -20,7 +20,7 @@ import pytest
 
 from astrapy import AsyncCollection
 from astrapy.results import DeleteResult, InsertOneResult
-from astrapy.api import APIRequestError
+from astrapy.exceptions import InsertManyException
 from astrapy.constants import DocumentType, ReturnDocument, SortDocuments
 from astrapy.cursors import AsyncCursor
 from astrapy.operations import (
@@ -518,20 +518,101 @@ class TestDMLAsync:
         assert set(ins_result1.inserted_ids) == {"a", "b"}
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
-        with pytest.raises(APIRequestError):
+        with pytest.raises(InsertManyException):
             await acol.insert_many([{"_id": "a"}, {"_id": "c"}])
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
-        with pytest.raises(APIRequestError):
+        with pytest.raises(InsertManyException):
             await acol.insert_many([{"_id": "c"}, {"_id": "a"}, {"_id": "d"}])
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "c"}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(InsertManyException):
             await acol.insert_many(
                 [{"_id": "c"}, {"_id": "d"}, {"_id": "e"}],
                 ordered=False,
             )
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "c", "d", "e"}
+
+    @pytest.mark.describe("test of collection insert_many failure modes, async")
+    async def test_collection_insert_many_failures_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+
+        async def _alist(acursor: AsyncCursor) -> List[DocumentType]:
+            return [doc async for doc in acursor]
+
+        acol = async_empty_collection
+        bad_docs = [{"_id": tid} for tid in ["a", "b", "c", ValueError, "e", "f"]]
+        dup_docs = [{"_id": tid} for tid in ["a", "b", "b", "d", "a", "b", "e", "f"]]
+        ok_docs = [{"_id": tid} for tid in ["a", "b", "c", "d", "e", "f"]]
+
+        with pytest.raises(ValueError):
+            await acol.insert_many([], ordered=True, concurrency=2)
+
+        with pytest.raises(TypeError):
+            await acol.insert_many(bad_docs, ordered=True, chunk_size=2)
+
+        with pytest.raises(TypeError):
+            await acol.insert_many(bad_docs, ordered=False, chunk_size=2, concurrency=1)
+
+        with pytest.raises(TypeError):
+            await acol.insert_many(bad_docs, ordered=False, chunk_size=2, concurrency=2)
+
+        await acol.delete_all()
+        im_result1 = await acol.insert_many(
+            ok_docs, ordered=True, chunk_size=2, concurrency=1
+        )
+        assert len(im_result1.inserted_ids) == 6
+        assert len(await _alist(acol.find({}))) == 6
+
+        await acol.delete_all()
+        im_result2 = await acol.insert_many(
+            ok_docs, ordered=False, chunk_size=2, concurrency=1
+        )
+        assert len(im_result2.inserted_ids) == 6
+        assert len(await _alist(acol.find({}))) == 6
+
+        await acol.delete_all()
+        im_result3 = await acol.insert_many(
+            ok_docs, ordered=False, chunk_size=2, concurrency=2
+        )
+        assert len(im_result3.inserted_ids) == 6
+        assert len(await _alist(acol.find({}))) == 6
+
+        await acol.delete_all()
+        with pytest.raises(InsertManyException) as exc:
+            await acol.insert_many(dup_docs, ordered=True, chunk_size=2, concurrency=1)
+        assert len(exc.value.error_descriptors) == 1
+        assert len(exc.value.detailed_error_descriptors) == 1
+        assert len(exc.value.detailed_error_descriptors[0].error_descriptors) == 1
+        assert exc.value.partial_result.inserted_ids == ["a", "b"]
+        assert len(exc.value.partial_result.raw_results) == 2
+        assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
+
+        await acol.delete_all()
+        with pytest.raises(InsertManyException) as exc:
+            await acol.insert_many(dup_docs, ordered=False, chunk_size=2, concurrency=1)
+        assert len(exc.value.error_descriptors) == 3
+        assert len(exc.value.detailed_error_descriptors) == 2
+        assert len(exc.value.detailed_error_descriptors[0].error_descriptors) == 1
+        assert len(exc.value.detailed_error_descriptors[1].error_descriptors) == 2
+        assert set(exc.value.partial_result.inserted_ids) == {"a", "b", "d", "e", "f"}
+        assert len(exc.value.partial_result.raw_results) == 4
+        assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "d", "e", "f"}
+
+        await acol.delete_all()
+        with pytest.raises(InsertManyException) as exc:
+            im_result3 = await acol.insert_many(
+                dup_docs, ordered=False, chunk_size=2, concurrency=2
+            )
+        assert len(exc.value.error_descriptors) == 3
+        assert len(exc.value.detailed_error_descriptors) == 2
+        assert len(exc.value.detailed_error_descriptors[0].error_descriptors) == 1
+        assert len(exc.value.detailed_error_descriptors[1].error_descriptors) == 2
+        assert set(exc.value.partial_result.inserted_ids) == {"a", "b", "d", "e", "f"}
+        assert len(exc.value.partial_result.raw_results) == 4
+        assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "d", "e", "f"}
 
     @pytest.mark.describe("test of collection find_one, async")
     async def test_collection_find_one_async(
