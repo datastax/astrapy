@@ -1904,15 +1904,25 @@ class AsyncAstraDBCollection:
                     else:
                         raise e
 
-        tasks = [
-            asyncio.create_task(
-                concurrent_insert_many(
+        if concurrency > 1:
+            tasks = [
+                asyncio.create_task(
+                    concurrent_insert_many(
+                        documents[i : i + chunk_size], i, partial_failures_allowed
+                    )
+                )
+                for i in range(0, len(documents), chunk_size)
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=False)
+        else:
+            # this ensures the expectation of
+            # "sequential strictly obeys fail-fast if ordered and concurrency==1"
+            results = [
+                await concurrent_insert_many(
                     documents[i : i + chunk_size], i, partial_failures_allowed
                 )
-            )
-            for i in range(0, len(documents), chunk_size)
-        ]
-        results = await asyncio.gather(*tasks, return_exceptions=False)
+                for i in range(0, len(documents), chunk_size)
+            ]
         return results
 
     async def update_one(

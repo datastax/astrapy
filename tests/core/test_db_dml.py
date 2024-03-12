@@ -527,6 +527,96 @@ def test_concurrent_chunked_insert_many(
     assert len(set(_ids0) & set(_ids1)) == len(errors1)
 
 
+@pytest.mark.describe("chunked_insert_many, failure modes")
+def test_chunked_insert_many_failures(
+    empty_v_collection: AstraDBCollection,
+) -> None:
+    bad_docs = [{"_id": tid} for tid in ["a", "b", "c", ValueError, "e", "f"]]
+    dup_docs = [{"_id": tid} for tid in ["a", "b", "b", "d", "e", "f"]]
+
+    empty_v_collection.delete_many({})
+    with pytest.raises(TypeError):
+        empty_v_collection.chunked_insert_many(
+            bad_docs,
+            options={"ordered": True},
+            partial_failures_allowed=False,
+            chunk_size=2,
+            concurrency=1,
+        )
+    assert len(empty_v_collection.find({})["data"]["documents"]) == 2
+
+    empty_v_collection.delete_many({})
+    with pytest.raises(TypeError):
+        empty_v_collection.chunked_insert_many(
+            bad_docs,
+            options={"ordered": True},
+            partial_failures_allowed=False,
+            chunk_size=2,
+            concurrency=2,
+        )
+    assert len(empty_v_collection.find({})["data"]["documents"]) >= 2
+
+    empty_v_collection.delete_many({})
+    with pytest.raises(TypeError):
+        empty_v_collection.chunked_insert_many(
+            bad_docs,
+            options={"ordered": False},
+            partial_failures_allowed=True,
+            chunk_size=2,
+            concurrency=1,
+        )
+    assert len(empty_v_collection.find({})["data"]["documents"]) >= 2
+
+    empty_v_collection.delete_many({})
+    with pytest.raises(TypeError):
+        empty_v_collection.chunked_insert_many(
+            bad_docs,
+            options={"ordered": False},
+            partial_failures_allowed=True,
+            chunk_size=2,
+            concurrency=2,
+        )
+    assert len(empty_v_collection.find({})["data"]["documents"]) >= 2
+
+    empty_v_collection.delete_many({})
+    with pytest.raises(APIRequestError):
+        empty_v_collection.chunked_insert_many(
+            dup_docs,
+            options={"ordered": True},
+            partial_failures_allowed=False,
+            chunk_size=2,
+            concurrency=1,
+        )
+    assert len(empty_v_collection.find({})["data"]["documents"]) == 2
+
+    empty_v_collection.delete_many({})
+    with pytest.raises(APIRequestError):
+        empty_v_collection.chunked_insert_many(
+            dup_docs,
+            options={"ordered": True},
+            partial_failures_allowed=False,
+            chunk_size=2,
+            concurrency=2,
+        )
+    assert len(empty_v_collection.find({})["data"]["documents"]) >= 2
+
+    empty_v_collection.delete_many({})
+    ins_result = empty_v_collection.chunked_insert_many(
+        dup_docs,
+        options={"ordered": False},
+        partial_failures_allowed=True,
+        chunk_size=2,
+        concurrency=1,
+    )
+    assert isinstance(ins_result[0], dict)
+    assert set(ins_result[0].keys()) == {"status"}
+    assert isinstance(ins_result[1], dict)
+    assert set(ins_result[1].keys()) == {"errors", "status"}
+    assert isinstance(ins_result[2], dict)
+    assert set(ins_result[2].keys()) == {"status"}
+    assert len(empty_v_collection.find({})["data"]["documents"]) == 5
+
+
 @pytest.mark.describe("insert_many with 'ordered' set to True")
 def test_insert_many_ordered_true(
     writable_v_collection: AstraDBCollection,

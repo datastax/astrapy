@@ -556,6 +556,96 @@ async def test_concurrent_chunked_insert_many(
     assert len(set(_ids0) & set(_ids1)) == len(errors1)
 
 
+@pytest.mark.describe("chunked_insert_many, failure modes (async)")
+async def test_chunked_insert_many_failures(
+    async_empty_v_collection: AsyncAstraDBCollection,
+) -> None:
+    bad_docs = [{"_id": tid} for tid in ["a", "b", "c", ValueError, "e", "f"]]
+    dup_docs = [{"_id": tid} for tid in ["a", "b", "b", "d", "e", "f"]]
+
+    await async_empty_v_collection.delete_many({})
+    with pytest.raises(TypeError):
+        await async_empty_v_collection.chunked_insert_many(
+            bad_docs,
+            options={"ordered": True},
+            partial_failures_allowed=False,
+            chunk_size=2,
+            concurrency=1,
+        )
+    assert len((await async_empty_v_collection.find({}))["data"]["documents"]) == 2
+
+    await async_empty_v_collection.delete_many({})
+    with pytest.raises(TypeError):
+        await async_empty_v_collection.chunked_insert_many(
+            bad_docs,
+            options={"ordered": True},
+            partial_failures_allowed=False,
+            chunk_size=2,
+            concurrency=2,
+        )
+    assert len((await async_empty_v_collection.find({}))["data"]["documents"]) >= 2
+
+    await async_empty_v_collection.delete_many({})
+    with pytest.raises(TypeError):
+        await async_empty_v_collection.chunked_insert_many(
+            bad_docs,
+            options={"ordered": False},
+            partial_failures_allowed=True,
+            chunk_size=2,
+            concurrency=1,
+        )
+    assert len((await async_empty_v_collection.find({}))["data"]["documents"]) >= 2
+
+    await async_empty_v_collection.delete_many({})
+    with pytest.raises(TypeError):
+        await async_empty_v_collection.chunked_insert_many(
+            bad_docs,
+            options={"ordered": False},
+            partial_failures_allowed=True,
+            chunk_size=2,
+            concurrency=2,
+        )
+    assert len((await async_empty_v_collection.find({}))["data"]["documents"]) >= 2
+
+    await async_empty_v_collection.delete_many({})
+    with pytest.raises(APIRequestError):
+        await async_empty_v_collection.chunked_insert_many(
+            dup_docs,
+            options={"ordered": True},
+            partial_failures_allowed=False,
+            chunk_size=2,
+            concurrency=1,
+        )
+    assert len((await async_empty_v_collection.find({}))["data"]["documents"]) == 2
+
+    await async_empty_v_collection.delete_many({})
+    with pytest.raises(APIRequestError):
+        await async_empty_v_collection.chunked_insert_many(
+            dup_docs,
+            options={"ordered": True},
+            partial_failures_allowed=False,
+            chunk_size=2,
+            concurrency=2,
+        )
+    assert len((await async_empty_v_collection.find({}))["data"]["documents"]) >= 2
+
+    await async_empty_v_collection.delete_many({})
+    ins_result = await async_empty_v_collection.chunked_insert_many(
+        dup_docs,
+        options={"ordered": False},
+        partial_failures_allowed=True,
+        chunk_size=2,
+        concurrency=1,
+    )
+    assert isinstance(ins_result[0], dict)
+    assert set(ins_result[0].keys()) == {"status"}
+    assert isinstance(ins_result[1], dict)
+    assert set(ins_result[1].keys()) == {"errors", "status"}
+    assert isinstance(ins_result[2], dict)
+    assert set(ins_result[2].keys()) == {"status"}
+    assert len((await async_empty_v_collection.find({}))["data"]["documents"]) == 5
+
+
 @pytest.mark.describe("insert_many with 'ordered' set to True (async)")
 async def test_insert_many_ordered_true(
     async_writable_v_collection: AsyncAstraDBCollection,
