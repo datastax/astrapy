@@ -49,10 +49,16 @@ class DataAPIException(ValueError):
 
 
 @dataclass
-class DataAPICollectionNotFoundException(DataAPIException):
+class CollectionNotFoundException(DataAPIException):
     text: str
     namespace: str
     collection_name: str
+
+
+@dataclass
+class TooManyDocumentsToCountException(DataAPIException):
+    text: str
+    server_max_count_exceeded: bool
 
 
 @dataclass

@@ -16,9 +16,10 @@ import pytest
 
 from astrapy import Collection
 from astrapy.exceptions import (
-    DataAPICollectionNotFoundException,
+    CollectionNotFoundException,
     DataAPIResponseException,
     InsertManyException,
+    TooManyDocumentsToCountException,
 )
 
 
@@ -121,8 +122,26 @@ class TestExceptionsSync:
         sync_empty_collection: Collection,
     ) -> None:
         col = sync_empty_collection._copy()
-        col._astra_db_collection.collection_name = "hacked"
-        with pytest.raises(DataAPICollectionNotFoundException) as exc:
+        col._astra_db_collection.collection_name += "_hacked"
+        col._astra_db_collection.base_path += "_hacked"
+        with pytest.raises(CollectionNotFoundException) as exc:
             col.options()
-        assert exc.value.collection_name == "hacked"
+        assert exc.value.collection_name == col._astra_db_collection.collection_name
         assert exc.value.namespace == sync_empty_collection.namespace
+
+    @pytest.mark.describe("test of collection count_documents failure modes, sync")
+    def test_collection_count_documents_failures_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection._copy()
+        col._astra_db_collection.collection_name += "_hacked"
+        col._astra_db_collection.base_path += "_hacked"
+        with pytest.raises(DataAPIResponseException):
+            col.count_documents({}, upper_bound=1)
+        sync_empty_collection.insert_one({"a": 1})
+        sync_empty_collection.insert_one({"b": 2})
+        assert sync_empty_collection.count_documents({}, upper_bound=3) == 2
+        with pytest.raises(TooManyDocumentsToCountException) as exc:
+            sync_empty_collection.count_documents({}, upper_bound=1)
+        assert not exc.value.server_max_count_exceeded

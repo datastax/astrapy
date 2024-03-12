@@ -26,9 +26,10 @@ from astrapy.core.db import (
 )
 from astrapy.core.defaults import MAX_INSERT_NUM_DOCUMENTS
 from astrapy.exceptions import (
-    DataAPICollectionNotFoundException,
+    CollectionNotFoundException,
     DataAPIFaultyResponseException,
     InsertManyException,
+    TooManyDocumentsToCountException,
     recast_method_sync,
     recast_method_async,
 )
@@ -147,7 +148,7 @@ class Collection:
         caller_version: Optional[str] = None,
     ) -> Collection:
         return Collection(
-            database=database or self.database,
+            database=database or self.database._copy(),
             name=name or self.name,
             namespace=namespace or self.namespace,
             caller_name=caller_name or self._astra_db_collection.caller_name,
@@ -263,7 +264,7 @@ class Collection:
         if self_dicts:
             return self_dicts[0]
         else:
-            raise DataAPICollectionNotFoundException(
+            raise CollectionNotFoundException(
                 text=f"Collection {self.namespace}.{self.name} not found.",
                 namespace=self.namespace,
                 collection_name=self.name,
@@ -715,6 +716,7 @@ class Collection:
             projection={key: True},
         ).distinct(key)
 
+    @recast_method_sync
     def count_documents(
         self,
         filter: Dict[str, Any],
@@ -756,18 +758,22 @@ class Collection:
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
             if cd_response["status"].get("moreData", False):
-                raise ValueError(
-                    f"Document count exceeds {count}, the maximum allowed by the server"
+                raise TooManyDocumentsToCountException(
+                    text=f"Document count exceeds {count}, the maximum allowed by the server",
+                    server_max_count_exceeded=True,
                 )
             else:
                 if count > upper_bound:
-                    raise ValueError("Document count exceeds required upper bound")
+                    raise TooManyDocumentsToCountException(
+                        text="Document count exceeds required upper bound",
+                        server_max_count_exceeded=False,
+                    )
                 else:
                     return count
         else:
-            raise ValueError(
-                "Could not complete a count_documents operation. "
-                f"(gotten '${json.dumps(cd_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from count_documents API command.",
+                response=cd_response,
             )
 
     def find_one_and_replace(
@@ -1409,7 +1415,7 @@ class AsyncCollection:
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
         return AsyncCollection(
-            database=database or self.database,
+            database=database or self.database._copy(),
             name=name or self.name,
             namespace=namespace or self.namespace,
             caller_name=caller_name or self._astra_db_collection.caller_name,
@@ -1525,7 +1531,7 @@ class AsyncCollection:
         if self_dicts:
             return self_dicts[0]
         else:
-            raise DataAPICollectionNotFoundException(
+            raise CollectionNotFoundException(
                 text=f"Collection {self.namespace}.{self.name} not found.",
                 namespace=self.namespace,
                 collection_name=self.name,
@@ -1996,6 +2002,7 @@ class AsyncCollection:
         )
         return await cursor.distinct(key)
 
+    @recast_method_async
     async def count_documents(
         self,
         filter: Dict[str, Any],
@@ -2037,18 +2044,22 @@ class AsyncCollection:
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
             if cd_response["status"].get("moreData", False):
-                raise ValueError(
-                    f"Document count exceeds {count}, the maximum allowed by the server"
+                raise TooManyDocumentsToCountException(
+                    text=f"Document count exceeds {count}, the maximum allowed by the server",
+                    server_max_count_exceeded=True,
                 )
             else:
                 if count > upper_bound:
-                    raise ValueError("Document count exceeds required upper bound")
+                    raise TooManyDocumentsToCountException(
+                        text="Document count exceeds required upper bound",
+                        server_max_count_exceeded=False,
+                    )
                 else:
                     return count
         else:
-            raise ValueError(
-                "Could not complete a count_documents operation. "
-                f"(gotten '${json.dumps(cd_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from count_documents API command.",
+                response=cd_response,
             )
 
     async def find_one_and_replace(

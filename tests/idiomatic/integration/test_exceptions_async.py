@@ -18,9 +18,10 @@ import pytest
 
 from astrapy import AsyncCollection
 from astrapy.exceptions import (
-    DataAPICollectionNotFoundException,
+    CollectionNotFoundException,
     DataAPIResponseException,
     InsertManyException,
+    TooManyDocumentsToCountException,
 )
 from astrapy.constants import DocumentType
 from astrapy.cursors import AsyncCursor
@@ -132,7 +133,24 @@ class TestExceptionsAsync:
     ) -> None:
         acol = async_empty_collection._copy()
         acol._astra_db_collection.collection_name = "hacked"
-        with pytest.raises(DataAPICollectionNotFoundException) as exc:
+        with pytest.raises(CollectionNotFoundException) as exc:
             await acol.options()
         assert exc.value.collection_name == "hacked"
         assert exc.value.namespace == async_empty_collection.namespace
+
+    @pytest.mark.describe("test of collection count_documents failure modes, async")
+    async def test_collection_count_documents_failures_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection._copy()
+        acol._astra_db_collection.collection_name += "_hacked"
+        acol._astra_db_collection.base_path += "_hacked"
+        with pytest.raises(DataAPIResponseException):
+            await acol.count_documents({}, upper_bound=1)
+        await async_empty_collection.insert_one({"a": 1})
+        await async_empty_collection.insert_one({"b": 2})
+        assert await async_empty_collection.count_documents({}, upper_bound=3) == 2
+        with pytest.raises(TooManyDocumentsToCountException) as exc:
+            await async_empty_collection.count_documents({}, upper_bound=1)
+        assert not exc.value.server_max_count_exceeded
