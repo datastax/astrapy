@@ -154,3 +154,24 @@ class TestExceptionsAsync:
         with pytest.raises(TooManyDocumentsToCountException) as exc:
             await async_empty_collection.count_documents({}, upper_bound=1)
         assert not exc.value.server_max_count_exceeded
+
+    @pytest.mark.describe("test of collection one-doc DML failure modes, async")
+    async def test_collection_monodoc_dml_failures_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection._copy()
+        acol._astra_db_collection.collection_name += "_hacked"
+        acol._astra_db_collection.base_path += "_hacked"
+        with pytest.raises(DataAPIResponseException):
+            await acol.delete_all()
+        with pytest.raises(DataAPIResponseException):
+            await acol.delete_one({"a": 1})
+        with pytest.raises(DataAPIResponseException):
+            await acol.find_one_and_replace({"a": 1}, {"a": -1})
+        with pytest.raises(DataAPIResponseException):
+            await acol.find_one_and_update({"a": 1}, {"$set": {"a": -1}})
+        with pytest.raises(DataAPIResponseException):
+            await acol.replace_one({"a": 1}, {"a": -1})
+        with pytest.raises(DataAPIResponseException):
+            await acol.update_one({"a": 1}, {"$set": {"a": -1}})

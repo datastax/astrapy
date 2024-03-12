@@ -145,3 +145,24 @@ class TestExceptionsSync:
         with pytest.raises(TooManyDocumentsToCountException) as exc:
             sync_empty_collection.count_documents({}, upper_bound=1)
         assert not exc.value.server_max_count_exceeded
+
+    @pytest.mark.describe("test of collection one-doc DML failure modes, sync")
+    def test_collection_monodoc_dml_failures_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection._copy()
+        col._astra_db_collection.collection_name += "_hacked"
+        col._astra_db_collection.base_path += "_hacked"
+        with pytest.raises(DataAPIResponseException):
+            col.delete_all()
+        with pytest.raises(DataAPIResponseException):
+            col.delete_one({"a": 1})
+        with pytest.raises(DataAPIResponseException):
+            col.find_one_and_replace({"a": 1}, {"a": -1})
+        with pytest.raises(DataAPIResponseException):
+            col.find_one_and_update({"a": 1}, {"$set": {"a": -1}})
+        with pytest.raises(DataAPIResponseException):
+            col.replace_one({"a": 1}, {"a": -1})
+        with pytest.raises(DataAPIResponseException):
+            col.update_one({"a": 1}, {"$set": {"a": -1}})

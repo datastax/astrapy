@@ -776,6 +776,7 @@ class Collection:
                 response=cd_response,
             )
 
+    @recast_method_sync
     def find_one_and_replace(
         self,
         filter: Dict[str, Any],
@@ -845,11 +846,12 @@ class Collection:
             else:
                 return ret_document  # type: ignore[no-any-return]
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_replace operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_replace API command.",
+                response=fo_response,
             )
 
+    @recast_method_sync
     def replace_one(
         self,
         filter: Dict[str, Any],
@@ -895,11 +897,12 @@ class Collection:
                 update_info=_update_info,
             )
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_replace operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_replace API command.",
+                response=fo_response,
             )
 
+    @recast_method_sync
     def find_one_and_update(
         self,
         filter: Dict[str, Any],
@@ -975,11 +978,12 @@ class Collection:
             else:
                 return ret_document  # type: ignore[no-any-return]
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_update operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_update API command.",
+                response=fo_response,
             )
 
+    @recast_method_sync
     def update_one(
         self,
         filter: Dict[str, Any],
@@ -1031,9 +1035,9 @@ class Collection:
                 update_info=_update_info,
             )
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_update operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_update API command.",
+                response=fo_response,
             )
 
     def update_many(
@@ -1143,6 +1147,7 @@ class Collection:
         else:
             return target_document
 
+    @recast_method_sync
     def delete_one(
         self,
         filter: Dict[str, Any],
@@ -1180,9 +1185,9 @@ class Collection:
                     raw_results=[do_response],
                 )
         else:
-            raise ValueError(
-                "Could not complete a delete_one operation. "
-                f"(gotten '${json.dumps(do_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from delete_one API command.",
+                response=do_response,
             )
 
     def delete_many(
@@ -1247,6 +1252,7 @@ class Collection:
                 f"(gotten '${json.dumps(dm_responses)}')"
             )
 
+    @recast_method_sync
     def delete_all(self) -> Dict[str, Any]:
         """
         Delete all documents in a collection.
@@ -1263,9 +1269,9 @@ class Collection:
         if deleted_count == -1:
             return {"ok": 1}
         else:
-            raise ValueError(
-                "Could not complete a delete_many operation. "
-                f"(gotten '${json.dumps(dm_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from delete_many API command.",
+                response=dm_response,
             )
 
     def bulk_write(
@@ -2062,6 +2068,7 @@ class AsyncCollection:
                 response=cd_response,
             )
 
+    @recast_method_async
     async def find_one_and_replace(
         self,
         filter: Dict[str, Any],
@@ -2131,11 +2138,12 @@ class AsyncCollection:
             else:
                 return ret_document  # type: ignore[no-any-return]
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_replace operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_replace API command.",
+                response=fo_response,
             )
 
+    @recast_method_async
     async def replace_one(
         self,
         filter: Dict[str, Any],
@@ -2181,11 +2189,12 @@ class AsyncCollection:
                 update_info=_update_info,
             )
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_replace operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_replace API command.",
+                response=fo_response,
             )
 
+    @recast_method_async
     async def find_one_and_update(
         self,
         filter: Dict[str, Any],
@@ -2261,11 +2270,12 @@ class AsyncCollection:
             else:
                 return ret_document  # type: ignore[no-any-return]
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_update operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_update API command.",
+                response=fo_response,
             )
 
+    @recast_method_async
     async def update_one(
         self,
         filter: Dict[str, Any],
@@ -2317,9 +2327,9 @@ class AsyncCollection:
                 update_info=_update_info,
             )
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_update operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_update API command.",
+                response=fo_response,
             )
 
     async def update_many(
@@ -2429,6 +2439,7 @@ class AsyncCollection:
         else:
             return target_document
 
+    @recast_method_async
     async def delete_one(
         self,
         filter: Dict[str, Any],
@@ -2468,9 +2479,9 @@ class AsyncCollection:
                     raw_results=[do_response],
                 )
         else:
-            raise ValueError(
-                "Could not complete a delete_one operation. "
-                f"(gotten '${json.dumps(do_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from delete_one API command.",
+                response=do_response,
             )
 
     async def delete_many(
@@ -2539,6 +2550,7 @@ class AsyncCollection:
                 f"(gotten '${json.dumps(dm_responses)}')"
             )
 
+    @recast_method_async
     async def delete_all(self) -> Dict[str, Any]:
         """
         Delete all documents in a collection.
@@ -2555,9 +2567,9 @@ class AsyncCollection:
         if deleted_count == -1:
             return {"ok": 1}
         else:
-            raise ValueError(
-                "Could not complete a delete_many operation. "
-                f"(gotten '${json.dumps(dm_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from delete_many API command.",
+                response=dm_response,
             )
 
     async def bulk_write(
