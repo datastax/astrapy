@@ -18,6 +18,7 @@ import pytest
 
 from astrapy import AsyncCollection
 from astrapy.exceptions import (
+    DataAPICollectionNotFoundException,
     DataAPIResponseException,
     InsertManyException,
 )
@@ -123,3 +124,15 @@ class TestExceptionsAsync:
         assert len(exc.value.detailed_error_descriptors) == 1
         assert len(exc.value.detailed_error_descriptors[0].error_descriptors) == 1
         assert isinstance(exc.value.detailed_error_descriptors[0].command, dict)
+
+    @pytest.mark.describe("test of collection options failure modes, async")
+    async def test_collection_options_failures_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection._copy()
+        acol._astra_db_collection.collection_name = "hacked"
+        with pytest.raises(DataAPICollectionNotFoundException) as exc:
+            await acol.options()
+        assert exc.value.collection_name == "hacked"
+        assert exc.value.namespace == async_empty_collection.namespace

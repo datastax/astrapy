@@ -16,6 +16,7 @@ import pytest
 
 from astrapy import Collection
 from astrapy.exceptions import (
+    DataAPICollectionNotFoundException,
     DataAPIResponseException,
     InsertManyException,
 )
@@ -113,3 +114,15 @@ class TestExceptionsSync:
         assert len(exc.value.detailed_error_descriptors) == 1
         assert len(exc.value.detailed_error_descriptors[0].error_descriptors) == 1
         assert isinstance(exc.value.detailed_error_descriptors[0].command, dict)
+
+    @pytest.mark.describe("test of collection options failure modes, sync")
+    def test_collection_options_failures_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection._copy()
+        col._astra_db_collection.collection_name = "hacked"
+        with pytest.raises(DataAPICollectionNotFoundException) as exc:
+            col.options()
+        assert exc.value.collection_name == "hacked"
+        assert exc.value.namespace == sync_empty_collection.namespace

@@ -49,6 +49,13 @@ class DataAPIException(ValueError):
 
 
 @dataclass
+class DataAPICollectionNotFoundException(DataAPIException):
+    text: str
+    namespace: str
+    collection_name: str
+
+
+@dataclass
 class DataAPIFaultyResponseException(DataAPIException):
     text: str
     response: Optional[Dict[str, Any]]

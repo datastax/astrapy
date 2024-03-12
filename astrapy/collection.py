@@ -26,6 +26,7 @@ from astrapy.core.db import (
 )
 from astrapy.core.defaults import MAX_INSERT_NUM_DOCUMENTS
 from astrapy.exceptions import (
+    DataAPICollectionNotFoundException,
     DataAPIFaultyResponseException,
     InsertManyException,
     recast_method_sync,
@@ -262,7 +263,11 @@ class Collection:
         if self_dicts:
             return self_dicts[0]
         else:
-            raise ValueError(f"Collection {self.namespace}.{self.name} not found.")
+            raise DataAPICollectionNotFoundException(
+                text=f"Collection {self.namespace}.{self.name} not found.",
+                namespace=self.namespace,
+                collection_name=self.name,
+            )
 
     @property
     def info(self) -> CollectionInfo:
@@ -1520,7 +1525,11 @@ class AsyncCollection:
         if self_dicts:
             return self_dicts[0]
         else:
-            raise ValueError(f"Collection {self.namespace}.{self.name} not found.")
+            raise DataAPICollectionNotFoundException(
+                text=f"Collection {self.namespace}.{self.name} not found.",
+                namespace=self.namespace,
+                collection_name=self.name,
+            )
 
     @property
     def info(self) -> CollectionInfo:
