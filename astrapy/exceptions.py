@@ -14,9 +14,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from functools import wraps
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 from dataclasses import dataclass
 
+
+from astrapy.core.api import APIRequestError
 from astrapy.results import InsertManyResult
 
 
@@ -41,8 +44,27 @@ class DataAPIDetailedErrorDescriptor:
     raw_response: Dict[str, Any]
 
 
-@dataclass
 class DataAPIException(ValueError):
+    pass
+
+
+@dataclass
+class DataAPIFaultyResponseException(DataAPIException):
+    text: str
+    response: Optional[Dict[str, Any]]
+
+    def __init__(
+        self,
+        text: str,
+        response: Optional[Dict[str, Any]],
+    ) -> None:
+        super().__init__(text)
+        self.text = text
+        self.response = response
+
+
+@dataclass
+class DataAPIResponseException(DataAPIException):
 
     text: Optional[str]
     error_descriptors: List[DataAPIErrorDescriptor]
@@ -115,5 +137,35 @@ class DataAPIException(ValueError):
 
 
 @dataclass
-class InsertManyException(DataAPIException):
+class InsertManyException(DataAPIResponseException):
     partial_result: InsertManyResult
+
+
+def recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
+
+    @wraps(method)
+    def _wrapped_sync(*pargs: Any, **kwargs: Any) -> Any:
+        try:
+            return method(*pargs, **kwargs)
+        except APIRequestError as exc:
+            raise DataAPIResponseException.from_response(
+                command={"temporary TODO": True}, raw_response=exc.response.json()
+            )
+
+    return _wrapped_sync
+
+
+def recast_method_async(
+    method: Callable[..., Awaitable[Any]]
+) -> Callable[..., Awaitable[Any]]:
+
+    @wraps(method)
+    async def _wrapped_async(*pargs: Any, **kwargs: Any) -> Any:
+        try:
+            return await method(*pargs, **kwargs)
+        except APIRequestError as exc:
+            raise DataAPIResponseException.from_response(
+                command={"temporary TODO": True}, raw_response=exc.response.json()
+            )
+
+    return _wrapped_async

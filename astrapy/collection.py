@@ -25,7 +25,12 @@ from astrapy.core.db import (
     AsyncAstraDBCollection,
 )
 from astrapy.core.defaults import MAX_INSERT_NUM_DOCUMENTS
-from astrapy.exceptions import InsertManyException
+from astrapy.exceptions import (
+    DataAPIFaultyResponseException,
+    InsertManyException,
+    recast_method_sync,
+    recast_method_async,
+)
 from astrapy.constants import (
     DocumentType,
     FilterType,
@@ -310,6 +315,7 @@ class Collection:
 
         return f"{self.namespace}.{self.name}"
 
+    @recast_method_sync
     def insert_one(
         self,
         document: DocumentType,
@@ -357,14 +363,14 @@ class Collection:
                     inserted_id=inserted_id,
                 )
             else:
-                raise ValueError(
-                    "Could not complete a insert_one operation. "
-                    f"(gotten '${json.dumps(io_response)}')"
+                raise DataAPIFaultyResponseException(
+                    text="Faulty response from insert_one API command.",
+                    response=io_response,
                 )
         else:
-            raise ValueError(
-                "Could not complete a insert_one operation. "
-                f"(gotten '${json.dumps(io_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from insert_one API command.",
+                response=io_response,
             )
 
     def insert_many(
@@ -1567,6 +1573,7 @@ class AsyncCollection:
 
         return f"{self.namespace}.{self.name}"
 
+    @recast_method_async
     async def insert_one(
         self,
         document: DocumentType,

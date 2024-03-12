@@ -15,7 +15,10 @@
 import pytest
 
 from astrapy import Collection
-from astrapy.exceptions import InsertManyException
+from astrapy.exceptions import (
+    DataAPIResponseException,
+    InsertManyException,
+)
 
 
 class TestExceptionsSync:
@@ -93,3 +96,19 @@ class TestExceptionsSync:
         assert set(exc.value.partial_result.inserted_ids) == {"a", "b", "d", "e", "f"}
         assert len(exc.value.partial_result.raw_results) == 4
         assert {doc["_id"] for doc in col.find()} == {"a", "b", "d", "e", "f"}
+
+    @pytest.mark.describe("test of collection insert_one failure modes, sync")
+    def test_collection_insert_one_failures_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+        with pytest.raises(TypeError):
+            col.insert_one({"a": ValueError})
+
+        col.insert_one({"_id": "a"})
+        with pytest.raises(DataAPIResponseException) as exc:
+            col.insert_one({"_id": "a"})
+        assert len(exc.value.error_descriptors) == 1
+        assert len(exc.value.detailed_error_descriptors) == 1
+        assert len(exc.value.detailed_error_descriptors[0].error_descriptors) == 1

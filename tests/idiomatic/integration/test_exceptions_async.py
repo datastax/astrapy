@@ -17,7 +17,10 @@ from typing import List
 import pytest
 
 from astrapy import AsyncCollection
-from astrapy.exceptions import InsertManyException
+from astrapy.exceptions import (
+    DataAPIResponseException,
+    InsertManyException,
+)
 from astrapy.constants import DocumentType
 from astrapy.cursors import AsyncCursor
 
@@ -103,3 +106,19 @@ class TestExceptionsAsync:
         assert set(exc.value.partial_result.inserted_ids) == {"a", "b", "d", "e", "f"}
         assert len(exc.value.partial_result.raw_results) == 4
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "d", "e", "f"}
+
+    @pytest.mark.describe("test of collection insert_one failure modes, async")
+    async def test_collection_insert_one_failures_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+        with pytest.raises(TypeError):
+            await acol.insert_one({"a": ValueError})
+
+        await acol.insert_one({"_id": "a"})
+        with pytest.raises(DataAPIResponseException) as exc:
+            await acol.insert_one({"_id": "a"})
+        assert len(exc.value.error_descriptors) == 1
+        assert len(exc.value.detailed_error_descriptors) == 1
+        assert len(exc.value.detailed_error_descriptors[0].error_descriptors) == 1
