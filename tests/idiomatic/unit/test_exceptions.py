@@ -16,16 +16,16 @@ import pytest
 
 from astrapy.exceptions import (
     InsertManyException,
-    DataAPIException,
+    DataAPIResponseException,
     DataAPIErrorDescriptor,
     DataAPIDetailedErrorDescriptor,
 )
 from astrapy.results import InsertManyResult
 
 
-@pytest.mark.describe("test DataAPIException")
-def test_dataapiexception() -> None:
-    da_e1 = DataAPIException.from_responses(  # type: ignore[attr-defined]
+@pytest.mark.describe("test DataAPIResponseException")
+def test_dataapiresponseexception() -> None:
+    da_e1 = DataAPIResponseException.from_responses(  # type: ignore[attr-defined]
         commands=[{"cmd": "C1"}],
         raw_responses=[
             {"errors": [{"errorCode": "C", "message": "Aaa", "field": "value"}]}
