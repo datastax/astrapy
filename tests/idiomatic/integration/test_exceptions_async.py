@@ -179,8 +179,8 @@ class TestExceptionsAsync:
         with pytest.raises(DataAPIResponseException):
             await acol.update_one({"a": 1}, {"$set": {"a": -1}})
 
-    @pytest.mark.describe("test of check_exists for create_collection, async")
-    async def test_create_collection_check_exists_async(
+    @pytest.mark.describe("test of check_exists for database create_collection, async")
+    async def test_database_create_collection_check_exists_async(
         self,
         async_database: AsyncDatabase,
     ) -> None:
@@ -213,3 +213,24 @@ class TestExceptionsAsync:
             )
 
         await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
+
+    @pytest.mark.describe("test of database drop_collection failures, async")
+    async def test_database_drop_collection_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        f_database = async_database._copy(namespace="nonexisting")
+        with pytest.raises(DataAPIResponseException):
+            await f_database.drop_collection("nonexisting")
+        with pytest.raises(DataAPIResponseException):
+            await async_database.command(body={"myCommand": {"k": "v"}})
+        with pytest.raises(DataAPIResponseException):
+            await async_database.command(body={"myCommand": {"k": "v"}}, namespace="ns")
+        with pytest.raises(DataAPIResponseException):
+            await async_database.command(
+                body={"myCommand": {"k": "v"}}, namespace="ns", collection_name="coll"
+            )
+        with pytest.raises(DataAPIResponseException):
+            await async_database.list_collections(namespace="nonexisting")
+        with pytest.raises(DataAPIResponseException):
+            await async_database.list_collection_names(namespace="nonexisting")

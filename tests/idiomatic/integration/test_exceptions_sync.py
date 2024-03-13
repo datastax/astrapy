@@ -170,8 +170,8 @@ class TestExceptionsSync:
         with pytest.raises(DataAPIResponseException):
             col.update_one({"a": 1}, {"$set": {"a": -1}})
 
-    @pytest.mark.describe("test of check_exists for create_collection, sync")
-    def test_create_collection_check_exists_sync(
+    @pytest.mark.describe("test of check_exists for database create_collection, sync")
+    def test_database_create_collection_check_exists_sync(
         self,
         sync_database: Database,
     ) -> None:
@@ -204,3 +204,24 @@ class TestExceptionsSync:
             )
 
         sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
+
+    @pytest.mark.describe("test of database one-request method failures, sync")
+    def test_database_method_failures_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        f_database = sync_database._copy(namespace="nonexisting")
+        with pytest.raises(DataAPIResponseException):
+            f_database.drop_collection("nonexisting")
+        with pytest.raises(DataAPIResponseException):
+            sync_database.command(body={"myCommand": {"k": "v"}})
+        with pytest.raises(DataAPIResponseException):
+            sync_database.command(body={"myCommand": {"k": "v"}}, namespace="ns")
+        with pytest.raises(DataAPIResponseException):
+            sync_database.command(
+                body={"myCommand": {"k": "v"}}, namespace="ns", collection_name="coll"
+            )
+        with pytest.raises(DataAPIResponseException):
+            sync_database.list_collections(namespace="nonexisting")
+        with pytest.raises(DataAPIResponseException):
+            sync_database.list_collection_names(namespace="nonexisting")

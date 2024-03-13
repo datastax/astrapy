@@ -262,7 +262,7 @@ class Collection:
             if coll_dict["name"] == self.name
         ]
         if self_dicts:
-            return self_dicts[0]
+            return self_dicts[0]  # type: ignore[no-any-return]
         else:
             raise CollectionNotFoundException(
                 text=f"Collection {self.namespace}.{self.name} not found.",
@@ -1348,7 +1348,7 @@ class Collection:
             Use with caution.
         """
 
-        return self.database.drop_collection(self)
+        return self.database.drop_collection(self)  # type: ignore[no-any-return]
 
 
 class AsyncCollection:
@@ -1540,7 +1540,7 @@ class AsyncCollection:
             if coll_dict["name"] == self.name
         ]
         if self_dicts:
-            return self_dicts[0]
+            return self_dicts[0]  # type: ignore[no-any-return]
         else:
             raise CollectionNotFoundException(
                 text=f"Collection {self.namespace}.{self.name} not found.",
@@ -2657,4 +2657,4 @@ class AsyncCollection:
             Use with caution.
         """
 
-        return await self.database.drop_collection(self)
+        return await self.database.drop_collection(self)  # type: ignore[no-any-return]
