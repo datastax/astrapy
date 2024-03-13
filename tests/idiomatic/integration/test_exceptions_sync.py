@@ -294,6 +294,9 @@ class TestExceptionsSync:
         with pytest.raises(DataAPIResponseException):
             wcol.distinct("f")
 
+        with pytest.raises(DataAPIResponseException):
+            wcol.find_one({})
+
     @pytest.mark.describe("test of exceptions in command-cursors, sync")
     def test_commandcursor_hard_exceptions_sync(
         self,

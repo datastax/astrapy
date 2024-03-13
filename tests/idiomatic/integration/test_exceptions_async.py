@@ -303,6 +303,9 @@ class TestExceptionsAsync:
         with pytest.raises(DataAPIResponseException):
             await awcol.distinct("f")
 
+        with pytest.raises(DataAPIResponseException):
+            await awcol.find_one({})
+
     @pytest.mark.describe("test of exceptions in command-cursors, async")
     async def test_commandcursor_hard_exceptions_async(
         self,
