@@ -19,9 +19,12 @@ from astrapy.exceptions import (
     CollectionAlreadyExistsException,
     CollectionNotFoundException,
     DataAPIResponseException,
+    DevOpsAPIException,
     InsertManyException,
     TooManyDocumentsToCountException,
 )
+
+from ..conftest import AstraDBCredentials
 
 
 class TestExceptionsSync:
@@ -225,3 +228,13 @@ class TestExceptionsSync:
             sync_database.list_collections(namespace="nonexisting")
         with pytest.raises(DataAPIResponseException):
             sync_database.list_collection_names(namespace="nonexisting")
+
+    @pytest.mark.describe("test of database info failures, sync")
+    def test_get_database_info_failures_sync(
+        self,
+        sync_database: Database,
+        astra_db_credentials_kwargs: AstraDBCredentials,
+    ) -> None:
+        hacked_ns = (astra_db_credentials_kwargs["namespace"] or "") + "_hacked"
+        with pytest.raises(DevOpsAPIException):
+            sync_database._copy(namespace=hacked_ns).info

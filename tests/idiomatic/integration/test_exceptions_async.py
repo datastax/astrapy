@@ -21,11 +21,14 @@ from astrapy.exceptions import (
     CollectionAlreadyExistsException,
     CollectionNotFoundException,
     DataAPIResponseException,
+    DevOpsAPIException,
     InsertManyException,
     TooManyDocumentsToCountException,
 )
 from astrapy.constants import DocumentType
 from astrapy.cursors import AsyncCursor
+
+from ..conftest import AstraDBCredentials
 
 
 class TestExceptionsAsync:
@@ -234,3 +237,13 @@ class TestExceptionsAsync:
             await async_database.list_collections(namespace="nonexisting")
         with pytest.raises(DataAPIResponseException):
             await async_database.list_collection_names(namespace="nonexisting")
+
+    @pytest.mark.describe("test of database info failures, async")
+    async def test_get_database_info_failures_async(
+        self,
+        async_database: AsyncDatabase,
+        astra_db_credentials_kwargs: AstraDBCredentials,
+    ) -> None:
+        hacked_ns = (astra_db_credentials_kwargs["namespace"] or "") + "_hacked"
+        with pytest.raises(DevOpsAPIException):
+            async_database._copy(namespace=hacked_ns).info

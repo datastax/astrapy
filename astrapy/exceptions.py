@@ -23,6 +23,10 @@ from astrapy.core.api import APIRequestError
 from astrapy.results import InsertManyResult
 
 
+class DevOpsAPIException(ValueError):
+    pass
+
+
 @dataclass
 class DataAPIErrorDescriptor:
     error_code: Optional[str]
