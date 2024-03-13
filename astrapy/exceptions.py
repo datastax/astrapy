@@ -53,6 +53,12 @@ class DataAPIException(ValueError):
 
 
 @dataclass
+class CursorIsStartedException(DataAPIException):
+    text: str
+    cursor_state: str
+
+
+@dataclass
 class CollectionNotFoundException(DataAPIException):
     text: str
     namespace: str

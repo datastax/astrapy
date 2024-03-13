@@ -684,7 +684,7 @@ class Collection:
         )
         try:
             document = fo_cursor.__next__()
-            return document
+            return document  # type: ignore[no-any-return]
         except StopIteration:
             return None
 
@@ -736,7 +736,7 @@ class Collection:
             billing implications if the amount of matching documents is large.
         """
 
-        return self.find(
+        return self.find(  # type: ignore[no-any-return]
             filter=filter,
             projection={key: True},
         ).distinct(key)
@@ -1993,7 +1993,7 @@ class AsyncCollection:
         )
         try:
             document = await fo_cursor.__anext__()
-            return document
+            return document  # type: ignore[no-any-return]
         except StopAsyncIteration:
             return None
 
@@ -2041,7 +2041,7 @@ class AsyncCollection:
             filter=filter,
             projection={key: True},
         )
-        return await cursor.distinct(key)
+        return await cursor.distinct(key)  # type: ignore[no-any-return]
 
     @recast_method_async
     async def count_documents(
