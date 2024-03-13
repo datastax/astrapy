@@ -1004,11 +1004,17 @@ class AstraDBCollection:
 
         return response
 
-    def delete_many(self, filter: Dict[str, Any]) -> API_RESPONSE:
+    def delete_many(
+        self,
+        filter: Dict[str, Any],
+        skip_error_check: bool = False,
+    ) -> API_RESPONSE:
         """
         Delete many documents from the collection based on a filter condition
         Args:
             filter (dict): Criteria to identify the documents to delete.
+            skip_error_check (bool): whether to ignore the check for API error
+                and return the response untouched. Default is False.
         Returns:
             dict: The response from the database after the delete operation.
         """
@@ -1019,7 +1025,10 @@ class AstraDBCollection:
         }
 
         response = self._request(
-            method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data=json_query,
+            skip_error_check=skip_error_check,
         )
 
         return response
@@ -2086,11 +2095,17 @@ class AsyncAstraDBCollection:
 
         return response
 
-    async def delete_many(self, filter: Dict[str, Any]) -> API_RESPONSE:
+    async def delete_many(
+        self,
+        filter: Dict[str, Any],
+        skip_error_check: bool = False,
+    ) -> API_RESPONSE:
         """
         Delete many documents from the collection based on a filter condition
         Args:
             filter (dict): Criteria to identify the documents to delete.
+            skip_error_check (bool): whether to ignore the check for API error
+                and return the response untouched. Default is False.
         Returns:
             dict: The response from the database after the delete operation.
         """
@@ -2101,7 +2116,10 @@ class AsyncAstraDBCollection:
         }
 
         response = await self._request(
-            method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data=json_query,
+            skip_error_check=skip_error_check,
         )
 
         return response

@@ -15,12 +15,13 @@
 import pytest
 
 from astrapy.exceptions import (
+    DeleteManyException,
     InsertManyException,
     DataAPIResponseException,
     DataAPIErrorDescriptor,
     DataAPIDetailedErrorDescriptor,
 )
-from astrapy.results import InsertManyResult
+from astrapy.results import DeleteResult, InsertManyResult
 
 
 @pytest.mark.describe("test DataAPIResponseException")
@@ -68,6 +69,29 @@ def test_insertmanyexception() -> None:
     assert im_e1.text == "Aaa"
     assert im_e1.error_descriptors == [the_daed]
     assert im_e1.detailed_error_descriptors == [
+        DataAPIDetailedErrorDescriptor(
+            error_descriptors=[the_daed],
+            command={"cmd": "C1"},
+            raw_response={"errors": [{"errorCode": "C", "message": "Aaa"}]},
+        )
+    ]
+
+
+@pytest.mark.describe("test DeleteManyException")
+def test_deletemanyexception() -> None:
+    dm_result = DeleteResult(deleted_count=123, raw_results=[{"a": 1}])
+    # mypy thinks dm_e1 is a DataAPIException for some reason...
+    dm_e1: DeleteManyException = DeleteManyException.from_responses(  # type: ignore[assignment]
+        commands=[{"cmd": "C1"}],
+        raw_responses=[{"errors": [{"errorCode": "C", "message": "Aaa"}]}],
+        partial_result=dm_result,
+    )
+    the_daed = DataAPIErrorDescriptor({"errorCode": "C", "message": "Aaa"})
+
+    assert dm_e1.partial_result == dm_result
+    assert dm_e1.text == "Aaa"
+    assert dm_e1.error_descriptors == [the_daed]
+    assert dm_e1.detailed_error_descriptors == [
         DataAPIDetailedErrorDescriptor(
             error_descriptors=[the_daed],
             command={"cmd": "C1"},

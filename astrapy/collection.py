@@ -28,6 +28,7 @@ from astrapy.core.defaults import MAX_INSERT_NUM_DOCUMENTS
 from astrapy.exceptions import (
     CollectionNotFoundException,
     DataAPIFaultyResponseException,
+    DeleteManyException,
     InsertManyException,
     TooManyDocumentsToCountException,
     recast_method_sync,
@@ -1231,31 +1232,41 @@ class Collection:
                 "collection, please use the `delete_all` method."
             )
 
-        dm_responses = self._astra_db_collection.chunked_delete_many(filter=filter)
-        deleted_counts = [
-            resp["status"]["deletedCount"]
-            for resp in dm_responses
-            if "deletedCount" in resp.get("status", {})
-        ]
-        if deleted_counts:
-            # the "-1" occurs when len(deleted_counts) == 1 only
-            deleted_count = sum(deleted_counts)
-            if deleted_count == -1:
-                return DeleteResult(
-                    deleted_count=None,
-                    raw_results=dm_responses,
-                )
-            else:
-                # per API specs, deleted_count has to be a non-negative integer.
-                return DeleteResult(
+        dm_responses: List[Dict[str, Any]] = []
+        deleted_count = 0
+        must_proceed = True
+        while must_proceed:
+            this_dm_response = self._astra_db_collection.delete_many(
+                filter=filter,
+                skip_error_check=True,
+            )
+            # if errors, quit early
+            if this_dm_response.get("errors", []):
+                partial_result = DeleteResult(
                     deleted_count=deleted_count,
                     raw_results=dm_responses,
                 )
-        else:
-            raise ValueError(
-                "Could not complete a chunked_delete_many operation. "
-                f"(gotten '${json.dumps(dm_responses)}')"
-            )
+                all_dm_responses = dm_responses + [this_dm_response]
+                raise DeleteManyException.from_responses(
+                    commands=[None for _ in all_dm_responses],
+                    raw_responses=all_dm_responses,
+                    partial_result=partial_result,
+                )
+            else:
+                this_dc = this_dm_response.get("status", {}).get("deletedCount")
+                if this_dc is None or this_dc < 0:
+                    raise DataAPIFaultyResponseException(
+                        text="Faulty response from delete_many API command.",
+                        response=this_dm_response,
+                    )
+                dm_responses.append(this_dm_response)
+                deleted_count += this_dc
+                must_proceed = this_dm_response.get("status", {}).get("moreData", False)
+
+        return DeleteResult(
+            deleted_count=deleted_count,
+            raw_results=dm_responses,
+        )
 
     @recast_method_sync
     def delete_all(self) -> Dict[str, Any]:
@@ -1803,47 +1814,6 @@ class AsyncCollection:
                 inserted_ids=inserted_ids,
             )
             return full_result
-
-        """
-        if ordered:
-            cim_responses = await self._astra_db_collection.chunked_insert_many(
-                documents=list(documents),
-                options={"ordered": True},
-                partial_failures_allowed=False,
-                concurrency=1,
-            )
-        else:
-            # unordered insertion: can do chunks concurrently
-            cim_responses = await self._astra_db_collection.chunked_insert_many(
-                documents=list(documents),
-                options={"ordered": False},
-                partial_failures_allowed=True,
-                concurrency=INSERT_MANY_CONCURRENCY,
-            )
-        _exceptions = [cim_r for cim_r in cim_responses if isinstance(cim_r, Exception)]
-        _errors_in_response = [
-            err
-            for response in cim_responses
-            if isinstance(response, dict)
-            for err in (response.get("errors") or [])
-        ]
-        if _exceptions:
-            raise _exceptions[0]
-        elif _errors_in_response:
-            raise ValueError(str(_errors_in_response[0]))
-        else:
-            inserted_ids = [
-                ins_id
-                for response in cim_responses
-                if isinstance(response, dict)
-                for ins_id in (response.get("status") or {}).get("insertedIds", [])
-            ]
-            return InsertManyResult(
-                # if we are here, cim_responses are all dicts (no exceptions)
-                raw_results=cim_responses,  # type: ignore[arg-type]
-                inserted_ids=inserted_ids,
-            )
-        """
 
     def find(
         self,
@@ -2532,33 +2502,41 @@ class AsyncCollection:
                 "collection, please use the `delete_all` method."
             )
 
-        dm_responses = await self._astra_db_collection.chunked_delete_many(
-            filter=filter
-        )
-        deleted_counts = [
-            resp["status"]["deletedCount"]
-            for resp in dm_responses
-            if "deletedCount" in resp.get("status", {})
-        ]
-        if deleted_counts:
-            # the "-1" occurs when len(deleted_counts) == 1 only
-            deleted_count = sum(deleted_counts)
-            if deleted_count == -1:
-                return DeleteResult(
-                    deleted_count=None,
-                    raw_results=dm_responses,
-                )
-            else:
-                # per API specs, deleted_count has to be a non-negative integer.
-                return DeleteResult(
+        dm_responses: List[Dict[str, Any]] = []
+        deleted_count = 0
+        must_proceed = True
+        while must_proceed:
+            this_dm_response = await self._astra_db_collection.delete_many(
+                filter=filter,
+                skip_error_check=True,
+            )
+            # if errors, quit early
+            if this_dm_response.get("errors", []):
+                partial_result = DeleteResult(
                     deleted_count=deleted_count,
                     raw_results=dm_responses,
                 )
-        else:
-            raise ValueError(
-                "Could not complete a chunked_delete_many operation. "
-                f"(gotten '${json.dumps(dm_responses)}')"
-            )
+                all_dm_responses = dm_responses + [this_dm_response]
+                raise DeleteManyException.from_responses(
+                    commands=[None for _ in all_dm_responses],
+                    raw_responses=all_dm_responses,
+                    partial_result=partial_result,
+                )
+            else:
+                this_dc = this_dm_response.get("status", {}).get("deletedCount")
+                if this_dc is None or this_dc < 0:
+                    raise DataAPIFaultyResponseException(
+                        text="Faulty response from delete_many API command.",
+                        response=this_dm_response,
+                    )
+                dm_responses.append(this_dm_response)
+                deleted_count += this_dc
+                must_proceed = this_dm_response.get("status", {}).get("moreData", False)
+
+        return DeleteResult(
+            deleted_count=deleted_count,
+            raw_results=dm_responses,
+        )
 
     @recast_method_async
     async def delete_all(self) -> Dict[str, Any]:

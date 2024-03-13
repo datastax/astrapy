@@ -114,6 +114,12 @@ class TestDMLSync:
         with pytest.raises(ValueError):
             sync_empty_collection.delete_many(filter={})
 
+        sync_empty_collection.delete_all()
+        sync_empty_collection.insert_many([{"a": 1} for _ in range(50)])
+        do_result2 = sync_empty_collection.delete_many({"a": 1})
+        assert do_result2.deleted_count == 50
+        assert sync_empty_collection.count_documents({}, upper_bound=100) == 0
+
     @pytest.mark.describe("test of collection delete_all, sync")
     def test_collection_delete_all_sync(
         self,
