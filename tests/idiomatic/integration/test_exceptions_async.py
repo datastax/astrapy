@@ -302,3 +302,18 @@ class TestExceptionsAsync:
 
         with pytest.raises(DataAPIResponseException):
             await awcol.distinct("f")
+
+    @pytest.mark.describe("test of exceptions in command-cursors, async")
+    async def test_commandcursor_hard_exceptions_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        with pytest.raises(DataAPIResponseException):
+            async_database.list_collections(namespace="nonexisting")
+
+        cur1 = async_database.list_collections()
+        [doc async for doc in cur1]
+        with pytest.raises(CursorIsStartedException) as exc:
+            async for col in cur1:
+                pass
+        assert exc.value.cursor_state == "exhausted"

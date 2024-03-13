@@ -293,3 +293,18 @@ class TestExceptionsSync:
 
         with pytest.raises(DataAPIResponseException):
             wcol.distinct("f")
+
+    @pytest.mark.describe("test of exceptions in command-cursors, sync")
+    def test_commandcursor_hard_exceptions_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        with pytest.raises(DataAPIResponseException):
+            sync_database.list_collections(namespace="nonexisting")
+
+        cur1 = sync_database.list_collections()
+        list(cur1)
+        with pytest.raises(CursorIsStartedException) as exc:
+            for col in cur1:
+                pass
+        assert exc.value.cursor_state == "exhausted"
