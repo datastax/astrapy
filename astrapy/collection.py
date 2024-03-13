@@ -31,6 +31,7 @@ from astrapy.exceptions import (
     DeleteManyException,
     InsertManyException,
     TooManyDocumentsToCountException,
+    UpdateManyException,
     recast_method_sync,
     recast_method_async,
 )
@@ -917,7 +918,7 @@ class Collection:
             fo_status = fo_response.get("status") or {}
             _update_info = _prepare_update_info([fo_status])
             return UpdateResult(
-                raw_result=fo_status,
+                raw_results=[fo_response],
                 update_info=_update_info,
             )
         else:
@@ -1055,7 +1056,7 @@ class Collection:
             fo_status = fo_response.get("status") or {}
             _update_info = _prepare_update_info([fo_status])
             return UpdateResult(
-                raw_result=fo_status,
+                raw_results=[fo_response],
                 update_info=_update_info,
             )
         else:
@@ -1099,19 +1100,55 @@ class Collection:
             an UpdateResult object summarizing the outcome of the update operation.
         """
 
-        options = {
+        base_options = {
             "upsert": upsert,
         }
-        um_response = self._astra_db_collection.update_many(
-            update=update,
-            filter=filter,
-            options=options,
-        )
-        um_status = um_response.get("status") or {}
-        _update_info = _prepare_update_info([um_status])
+        page_state_options: Dict[str, str] = {}
+        um_responses: List[Dict[str, Any]] = []
+        um_statuses: List[Dict[str, Any]] = []
+        must_proceed = True
+        while must_proceed:
+            options = {**base_options, **page_state_options}
+            this_um_response = self._astra_db_collection.update_many(
+                update=update,
+                filter=filter,
+                options=options,
+            )
+            this_um_status = this_um_response.get("status") or {}
+            #
+            # if errors, quit early
+            if this_um_response.get("errors", []):
+                partial_update_info = _prepare_update_info(um_statuses)
+                partial_result = UpdateResult(
+                    raw_results=um_responses,
+                    update_info=partial_update_info,
+                )
+                all_um_responses = um_responses + [this_um_response]
+                raise UpdateManyException.from_responses(
+                    commands=[None for _ in all_um_responses],
+                    raw_responses=all_um_responses,
+                    partial_result=partial_result,
+                )
+            else:
+                if "status" not in this_um_response:
+                    raise DataAPIFaultyResponseException(
+                        text="Faulty response from update_many API command.",
+                        response=this_um_response,
+                    )
+                um_responses.append(this_um_response)
+                um_statuses.append(this_um_status)
+                next_page_state = this_um_status.get("nextPageState")
+                if next_page_state is not None:
+                    must_proceed = True
+                    page_state_options = {"pageState": next_page_state}
+                else:
+                    must_proceed = False
+                    page_state_options = {}
+
+        update_info = _prepare_update_info(um_statuses)
         return UpdateResult(
-            raw_result=um_status,
-            update_info=_update_info,
+            raw_results=um_responses,
+            update_info=update_info,
         )
 
     @recast_method_sync
@@ -2183,7 +2220,7 @@ class AsyncCollection:
             fo_status = fo_response.get("status") or {}
             _update_info = _prepare_update_info([fo_status])
             return UpdateResult(
-                raw_result=fo_status,
+                raw_results=[fo_response],
                 update_info=_update_info,
             )
         else:
@@ -2321,7 +2358,7 @@ class AsyncCollection:
             fo_status = fo_response.get("status") or {}
             _update_info = _prepare_update_info([fo_status])
             return UpdateResult(
-                raw_result=fo_status,
+                raw_results=[fo_response],
                 update_info=_update_info,
             )
         else:
@@ -2365,19 +2402,55 @@ class AsyncCollection:
             an UpdateResult object summarizing the outcome of the update operation.
         """
 
-        options = {
+        base_options = {
             "upsert": upsert,
         }
-        um_response = await self._astra_db_collection.update_many(
-            update=update,
-            filter=filter,
-            options=options,
-        )
-        um_status = um_response.get("status") or {}
-        _update_info = _prepare_update_info([um_status])
+        page_state_options: Dict[str, str] = {}
+        um_responses: List[Dict[str, Any]] = []
+        um_statuses: List[Dict[str, Any]] = []
+        must_proceed = True
+        while must_proceed:
+            options = {**base_options, **page_state_options}
+            this_um_response = await self._astra_db_collection.update_many(
+                update=update,
+                filter=filter,
+                options=options,
+            )
+            this_um_status = this_um_response.get("status") or {}
+            #
+            # if errors, quit early
+            if this_um_response.get("errors", []):
+                partial_update_info = _prepare_update_info(um_statuses)
+                partial_result = UpdateResult(
+                    raw_results=um_responses,
+                    update_info=partial_update_info,
+                )
+                all_um_responses = um_responses + [this_um_response]
+                raise UpdateManyException.from_responses(
+                    commands=[None for _ in all_um_responses],
+                    raw_responses=all_um_responses,
+                    partial_result=partial_result,
+                )
+            else:
+                if "status" not in this_um_response:
+                    raise DataAPIFaultyResponseException(
+                        text="Faulty response from update_many API command.",
+                        response=this_um_response,
+                    )
+                um_responses.append(this_um_response)
+                um_statuses.append(this_um_status)
+                next_page_state = this_um_status.get("nextPageState")
+                if next_page_state is not None:
+                    must_proceed = True
+                    page_state_options = {"pageState": next_page_state}
+                else:
+                    must_proceed = False
+                    page_state_options = {}
+
+        update_info = _prepare_update_info(um_statuses)
         return UpdateResult(
-            raw_result=um_status,
-            update_info=_update_info,
+            raw_results=um_responses,
+            update_info=update_info,
         )
 
     @recast_method_async

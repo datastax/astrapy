@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import datetime
 
 import pytest
@@ -780,6 +781,28 @@ class TestDMLSync:
         assert resp4.update_info["updatedExisting"] is False
         assert resp4.update_info["nModified"] == 0
         assert "upserted" in resp4.update_info
+
+    @pytest.mark.skipif(
+        ".astra-dev." not in os.environ["ASTRA_DB_API_ENDPOINT"],
+        reason="paginated update_many is in DEV only at the moment",
+    )
+    @pytest.mark.describe("test of update_many, sync")
+    def test_collection_paginated_update_many_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+        col.insert_many([{"a": 1} for _ in range(50)])
+        col.insert_many([{"a": 10} for _ in range(10)])
+
+        um_result = col.update_many({"a": 1}, {"$set": {"b": 2}})
+        assert um_result.update_info["n"] == 50
+        assert um_result.update_info["updatedExisting"] is True
+        assert um_result.update_info["nModified"] == 50
+        assert "upserted" not in um_result.update_info
+        assert "upsertedd" not in um_result.update_info
+        assert col.count_documents({"b": 2}, upper_bound=100) == 50
+        assert col.count_documents({}, upper_bound=100) == 60
 
     @pytest.mark.describe("test of collection find_one_and_delete, sync")
     def test_collection_find_one_and_delete_sync(

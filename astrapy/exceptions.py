@@ -20,7 +20,7 @@ from dataclasses import dataclass
 
 
 from astrapy.core.api import APIRequestError
-from astrapy.results import DeleteResult, InsertManyResult
+from astrapy.results import DeleteResult, InsertManyResult, UpdateResult
 
 
 class DevOpsAPIException(ValueError):
@@ -168,6 +168,11 @@ class InsertManyException(DataAPIResponseException):
 @dataclass
 class DeleteManyException(DataAPIResponseException):
     partial_result: DeleteResult
+
+
+@dataclass
+class UpdateManyException(DataAPIResponseException):
+    partial_result: UpdateResult
 
 
 def recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:

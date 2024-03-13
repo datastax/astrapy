@@ -78,7 +78,7 @@ class UpdateResult:
 
     """
 
-    raw_result: Dict[str, Any]
+    raw_results: List[Dict[str, Any]]
     update_info: Dict[str, Any]
 
 

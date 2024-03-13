@@ -284,7 +284,7 @@ class UpdateMany(BaseOperation):
         else:
             upserted_ids = {}
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: [op_result.raw_result]},
+            bulk_api_results={index_in_bulk_write: op_result.raw_results},
             deleted_count=0,
             inserted_count=inserted_count,
             matched_count=matched_count,
@@ -647,7 +647,7 @@ class AsyncUpdateMany(AsyncBaseOperation):
         else:
             upserted_ids = {}
         return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: [op_result.raw_result]},
+            bulk_api_results={index_in_bulk_write: op_result.raw_results},
             deleted_count=0,
             inserted_count=inserted_count,
             matched_count=matched_count,
