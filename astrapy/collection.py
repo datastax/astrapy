@@ -62,15 +62,33 @@ INSERT_MANY_CONCURRENCY = 20
 BULK_WRITE_CONCURRENCY = 10
 
 
-def _prepare_update_info(status: Dict[str, Any]) -> Dict[str, Any]:
+def _prepare_update_info(statuses: List[Dict[str, Any]]) -> Dict[str, Any]:
+    reduced_status = {
+        "matchedCount": sum(
+            status["matchedCount"] for status in statuses if "matchedCount" in status
+        ),
+        "modifiedCount": sum(
+            status["modifiedCount"] for status in statuses if "modifiedCount" in status
+        ),
+        "upsertedId": [
+            status["upsertedId"] for status in statuses if "upsertedId" in status
+        ],
+    }
+    if reduced_status["upsertedId"]:
+        if len(reduced_status["upsertedId"]) == 1:
+            ups_dict = {"upserted": reduced_status["upsertedId"][0]}
+        else:
+            ups_dict = {"upserteds": reduced_status["upsertedId"]}
+    else:
+        ups_dict = {}
     return {
         **{
-            "n": status.get("matchedCount") + (1 if "upsertedId" in status else 0),  # type: ignore[operator]
-            "updatedExisting": (status.get("modifiedCount") or 0) > 0,
+            "n": reduced_status["matchedCount"] + len(reduced_status["upsertedId"]),
+            "updatedExisting": reduced_status["modifiedCount"] > 0,
             "ok": 1.0,
-            "nModified": status.get("modifiedCount"),
+            "nModified": reduced_status["modifiedCount"],
         },
-        **({"upserted": status["upsertedId"]} if "upsertedId" in status else {}),
+        **ups_dict,
     }
 
 
@@ -897,7 +915,7 @@ class Collection:
         )
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
-            _update_info = _prepare_update_info(fo_status)
+            _update_info = _prepare_update_info([fo_status])
             return UpdateResult(
                 raw_result=fo_status,
                 update_info=_update_info,
@@ -1035,7 +1053,7 @@ class Collection:
         )
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
-            _update_info = _prepare_update_info(fo_status)
+            _update_info = _prepare_update_info([fo_status])
             return UpdateResult(
                 raw_result=fo_status,
                 update_info=_update_info,
@@ -1090,7 +1108,7 @@ class Collection:
             options=options,
         )
         um_status = um_response.get("status") or {}
-        _update_info = _prepare_update_info(um_status)
+        _update_info = _prepare_update_info([um_status])
         return UpdateResult(
             raw_result=um_status,
             update_info=_update_info,
@@ -2163,7 +2181,7 @@ class AsyncCollection:
         )
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
-            _update_info = _prepare_update_info(fo_status)
+            _update_info = _prepare_update_info([fo_status])
             return UpdateResult(
                 raw_result=fo_status,
                 update_info=_update_info,
@@ -2301,7 +2319,7 @@ class AsyncCollection:
         )
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
-            _update_info = _prepare_update_info(fo_status)
+            _update_info = _prepare_update_info([fo_status])
             return UpdateResult(
                 raw_result=fo_status,
                 update_info=_update_info,
@@ -2356,7 +2374,7 @@ class AsyncCollection:
             options=options,
         )
         um_status = um_response.get("status") or {}
-        _update_info = _prepare_update_info(um_status)
+        _update_info = _prepare_update_info([um_status])
         return UpdateResult(
             raw_result=um_status,
             update_info=_update_info,
