@@ -56,6 +56,13 @@ class CollectionNotFoundException(DataAPIException):
 
 
 @dataclass
+class CollectionAlreadyExistsException(DataAPIException):
+    text: str
+    namespace: str
+    collection_name: str
+
+
+@dataclass
 class TooManyDocumentsToCountException(DataAPIException):
     text: str
     server_max_count_exceeded: bool

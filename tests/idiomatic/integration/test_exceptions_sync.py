@@ -14,8 +14,9 @@
 
 import pytest
 
-from astrapy import Collection
+from astrapy import Collection, Database
 from astrapy.exceptions import (
+    CollectionAlreadyExistsException,
     CollectionNotFoundException,
     DataAPIResponseException,
     InsertManyException,
@@ -168,3 +169,38 @@ class TestExceptionsSync:
             col.replace_one({"a": 1}, {"a": -1})
         with pytest.raises(DataAPIResponseException):
             col.update_one({"a": 1}, {"$set": {"a": -1}})
+
+    @pytest.mark.describe("test of check_exists for create_collection, sync")
+    def test_create_collection_check_exists_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        TEST_LOCAL_COLLECTION_NAME = "test_check_exists"
+        sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME,
+            dimension=3,
+        )
+
+        with pytest.raises(CollectionAlreadyExistsException):
+            sync_database.create_collection(
+                TEST_LOCAL_COLLECTION_NAME,
+                dimension=3,
+            )
+        with pytest.raises(CollectionAlreadyExistsException):
+            sync_database.create_collection(
+                TEST_LOCAL_COLLECTION_NAME,
+                indexing={"deny": ["a"]},
+            )
+        sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME,
+            dimension=3,
+            check_exists=False,
+        )
+        with pytest.raises(DataAPIResponseException):
+            sync_database.create_collection(
+                TEST_LOCAL_COLLECTION_NAME,
+                indexing={"deny": ["a"]},
+                check_exists=False,
+            )
+
+        sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)

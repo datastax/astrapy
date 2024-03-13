@@ -397,6 +397,11 @@ class Collection:
                 case it will be added automatically.
             ordered: if True (default), the insertions are processed sequentially.
                 If False, they can occur in arbitrary order and possibly concurrently.
+            chunk_size: how many documents to include in a single API request.
+                Exceeding the server maximum allowed value results in an error.
+                Leave it unspecified (recommended) to use the system default.
+            concurrency: maximum number of concurrent requests to the API at
+                a given time. It cannot be more than one for ordered insertions.
 
         Returns:
             an InsertManyResult object.
@@ -1653,6 +1658,11 @@ class AsyncCollection:
                 case it will be added automatically.
             ordered: if True (default), the insertions are processed sequentially.
                 If False, they can occur in arbitrary order and possibly concurrently.
+            chunk_size: how many documents to include in a single API request.
+                Exceeding the server maximum allowed value results in an error.
+                Leave it unspecified (recommended) to use the system default.
+            concurrency: maximum number of concurrent requests to the API at
+                a given time. It cannot be more than one for ordered insertions.
 
         Returns:
             an InsertManyResult object.

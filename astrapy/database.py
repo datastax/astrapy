@@ -19,6 +19,11 @@ from types import TracebackType
 from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
 
 from astrapy.core.db import AstraDB, AsyncAstraDB
+from astrapy.exceptions import (
+    CollectionAlreadyExistsException,
+    recast_method_sync,
+    recast_method_async,
+)
 from astrapy.cursors import AsyncCommandCursor, CommandCursor
 from astrapy.info import DatabaseInfo, get_database_info
 
@@ -323,6 +328,7 @@ class Database:
         _namespace = namespace or self._astra_db.namespace
         return Collection(self, name, namespace=_namespace)
 
+    @recast_method_sync
     def create_collection(
         self,
         name: str,
@@ -393,23 +399,20 @@ class Database:
             existing_names = self.list_collection_names(namespace=namespace)
         else:
             existing_names = []
+        driver_db = self._astra_db.copy(namespace=namespace)
         if name in existing_names:
-            raise ValueError(f"CollectionInvalid: collection {name} already exists")
+            raise CollectionAlreadyExistsException(
+                text=f"CollectionInvalid: collection {name} already exists",
+                namespace=driver_db.namespace,
+                collection_name=name,
+            )
 
-        if namespace is not None:
-            self._astra_db.copy(namespace=namespace).create_collection(
-                name,
-                options=_options,
-                dimension=dimension,
-                metric=metric,
-            )
-        else:
-            self._astra_db.create_collection(
-                name,
-                options=_options,
-                dimension=dimension,
-                metric=metric,
-            )
+        driver_db.create_collection(
+            name,
+            options=_options,
+            dimension=dimension,
+            metric=metric,
+        )
         return self.get_collection(name, namespace=namespace)
 
     def drop_collection(
@@ -814,6 +817,7 @@ class AsyncDatabase:
         _namespace = namespace or self._astra_db.namespace
         return AsyncCollection(self, name, namespace=_namespace)
 
+    @recast_method_async
     async def create_collection(
         self,
         name: str,
@@ -883,23 +887,20 @@ class AsyncDatabase:
             existing_names = await self.list_collection_names(namespace=namespace)
         else:
             existing_names = []
+        driver_db = self._astra_db.copy(namespace=namespace)
         if name in existing_names:
-            raise ValueError(f"CollectionInvalid: collection {name} already exists")
+            raise CollectionAlreadyExistsException(
+                text=f"CollectionInvalid: collection {name} already exists",
+                namespace=driver_db.namespace,
+                collection_name=name,
+            )
 
-        if namespace is not None:
-            await self._astra_db.copy(namespace=namespace).create_collection(
-                name,
-                options=_options,
-                dimension=dimension,
-                metric=metric,
-            )
-        else:
-            await self._astra_db.create_collection(
-                name,
-                options=_options,
-                dimension=dimension,
-                metric=metric,
-            )
+        await driver_db.create_collection(
+            name,
+            options=_options,
+            dimension=dimension,
+            metric=metric,
+        )
         return await self.get_collection(name, namespace=namespace)
 
     async def drop_collection(
