@@ -18,11 +18,13 @@ from astrapy import Collection, Database
 from astrapy.exceptions import (
     CollectionAlreadyExistsException,
     CollectionNotFoundException,
+    CursorIsStartedException,
     DataAPIResponseException,
     DevOpsAPIException,
     InsertManyException,
     TooManyDocumentsToCountException,
 )
+from astrapy.constants import SortDocuments
 
 from ..conftest import AstraDBCredentials
 
@@ -238,3 +240,56 @@ class TestExceptionsSync:
         hacked_ns = (astra_db_credentials_kwargs["namespace"] or "") + "_hacked"
         with pytest.raises(DevOpsAPIException):
             sync_database._copy(namespace=hacked_ns).info
+
+    @pytest.mark.describe("test of hard exceptions in cursors, sync")
+    def test_cursor_hard_exceptions_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        with pytest.raises(IndexError):
+            sync_empty_collection.find(
+                {},
+                sort={"f": SortDocuments.ASCENDING},
+            )[100]
+
+    @pytest.mark.describe("test of custom exceptions in cursors, sync")
+    def test_cursor_custom_exceptions_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        sync_empty_collection.insert_many([{"a": 1}] * 4)
+        cur1 = sync_empty_collection.find({})
+        cur1.limit(10)
+
+        cur1.__next__()
+        with pytest.raises(CursorIsStartedException) as exc:
+            cur1.limit(1)
+        assert exc.value.cursor_state == "running"
+
+        list(cur1)
+        with pytest.raises(CursorIsStartedException) as exc:
+            cur1.limit(1)
+        assert exc.value.cursor_state == "exhausted"
+
+    @pytest.mark.describe("test of standard exceptions in cursors, sync")
+    def test_cursor_standard_exceptions_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        wcol = sync_empty_collection._copy(namespace="nonexisting")
+        cur1 = wcol.find({})
+        cur2 = wcol.find({})
+        cur3 = wcol.find({})
+
+        with pytest.raises(DataAPIResponseException):
+            for item in cur1:
+                pass
+
+        with pytest.raises(DataAPIResponseException):
+            cur2.__next__()
+
+        with pytest.raises(DataAPIResponseException):
+            cur3.distinct("f")
+
+        with pytest.raises(DataAPIResponseException):
+            wcol.distinct("f")

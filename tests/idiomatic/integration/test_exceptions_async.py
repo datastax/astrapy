@@ -20,11 +20,13 @@ from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.exceptions import (
     CollectionAlreadyExistsException,
     CollectionNotFoundException,
+    CursorIsStartedException,
     DataAPIResponseException,
     DevOpsAPIException,
     InsertManyException,
     TooManyDocumentsToCountException,
 )
+from astrapy.constants import SortDocuments
 from astrapy.constants import DocumentType
 from astrapy.cursors import AsyncCursor
 
@@ -247,3 +249,56 @@ class TestExceptionsAsync:
         hacked_ns = (astra_db_credentials_kwargs["namespace"] or "") + "_hacked"
         with pytest.raises(DevOpsAPIException):
             async_database._copy(namespace=hacked_ns).info
+
+    @pytest.mark.describe("test of hard exceptions in cursors, async")
+    async def test_cursor_hard_exceptions_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        with pytest.raises(IndexError):
+            async_empty_collection.find(
+                {},
+                sort={"f": SortDocuments.ASCENDING},
+            )[100]
+
+    @pytest.mark.describe("test of custom exceptions in cursors, async")
+    async def test_cursor_custom_exceptions_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        await async_empty_collection.insert_many([{"a": 1}] * 4)
+        cur1 = async_empty_collection.find({})
+        cur1.limit(10)
+
+        await cur1.__anext__()
+        with pytest.raises(CursorIsStartedException) as exc:
+            cur1.limit(1)
+        assert exc.value.cursor_state == "running"
+
+        [doc async for doc in cur1]
+        with pytest.raises(CursorIsStartedException) as exc:
+            cur1.limit(1)
+        assert exc.value.cursor_state == "exhausted"
+
+    @pytest.mark.describe("test of standard exceptions in cursors, async")
+    async def test_cursor_standard_exceptions_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        awcol = async_empty_collection._copy(namespace="nonexisting")
+        cur1 = awcol.find({})
+        cur2 = awcol.find({})
+        cur3 = awcol.find({})
+
+        with pytest.raises(DataAPIResponseException):
+            async for item in cur1:
+                pass
+
+        with pytest.raises(DataAPIResponseException):
+            await cur2.__anext__()
+
+        with pytest.raises(DataAPIResponseException):
+            await cur3.distinct("f")
+
+        with pytest.raises(DataAPIResponseException):
+            await awcol.distinct("f")
