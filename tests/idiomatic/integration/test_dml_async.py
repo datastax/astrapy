@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import datetime
 
 from typing import Any, Dict, List
@@ -20,7 +21,7 @@ import pytest
 
 from astrapy import AsyncCollection
 from astrapy.results import DeleteResult, InsertOneResult
-from astrapy.api import APIRequestError
+from astrapy.exceptions import InsertManyException
 from astrapy.constants import DocumentType, ReturnDocument, SortDocuments
 from astrapy.cursors import AsyncCursor
 from astrapy.operations import (
@@ -145,6 +146,20 @@ class TestDMLAsync:
         )
         with pytest.raises(ValueError):
             await async_empty_collection.delete_many(filter={})
+
+        await async_empty_collection.delete_all()
+        await async_empty_collection.insert_many([{"a": 1} for _ in range(50)])
+        do_result2 = await async_empty_collection.delete_many({"a": 1})
+        assert do_result2.deleted_count == 50
+        assert await async_empty_collection.count_documents({}, upper_bound=100) == 0
+        with pytest.raises(ValueError):
+            await async_empty_collection.delete_many(filter={})
+
+        await async_empty_collection.delete_all()
+        await async_empty_collection.insert_many([{"a": 1} for _ in range(50)])
+        do_result2 = await async_empty_collection.delete_many({"a": 1})
+        assert do_result2.deleted_count == 50
+        assert await async_empty_collection.count_documents({}, upper_bound=100) == 0
 
     @pytest.mark.describe("test of collection delete_all, async")
     async def test_collection_delete_all_async(
@@ -518,15 +533,15 @@ class TestDMLAsync:
         assert set(ins_result1.inserted_ids) == {"a", "b"}
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
-        with pytest.raises(APIRequestError):
+        with pytest.raises(InsertManyException):
             await acol.insert_many([{"_id": "a"}, {"_id": "c"}])
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
-        with pytest.raises(APIRequestError):
+        with pytest.raises(InsertManyException):
             await acol.insert_many([{"_id": "c"}, {"_id": "a"}, {"_id": "d"}])
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "c"}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(InsertManyException):
             await acol.insert_many(
                 [{"_id": "c"}, {"_id": "d"}, {"_id": "e"}],
                 ordered=False,
@@ -831,6 +846,28 @@ class TestDMLAsync:
         assert resp4.update_info["nModified"] == 0
         assert "upserted" in resp4.update_info
 
+    @pytest.mark.skipif(
+        ".astra-dev." not in os.environ["ASTRA_DB_API_ENDPOINT"],
+        reason="paginated update_many is in DEV only at the moment",
+    )
+    @pytest.mark.describe("test of update_many, async")
+    async def test_collection_paginated_update_many_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+        await acol.insert_many([{"a": 1} for _ in range(50)])
+        await acol.insert_many([{"a": 10} for _ in range(10)])
+
+        um_result = await acol.update_many({"a": 1}, {"$set": {"b": 2}})
+        assert um_result.update_info["n"] == 50
+        assert um_result.update_info["updatedExisting"] is True
+        assert um_result.update_info["nModified"] == 50
+        assert "upserted" not in um_result.update_info
+        assert "upsertedd" not in um_result.update_info
+        assert await acol.count_documents({"b": 2}, upper_bound=100) == 50
+        assert await acol.count_documents({}, upper_bound=100) == 60
+
     @pytest.mark.describe("test of collection find_one_and_delete, async")
     async def test_collection_find_one_and_delete_async(
         self,
@@ -866,7 +903,7 @@ class TestDMLAsync:
             {"group": "A"}, projection={"_id": False, "group": False}
         )
         assert fo_result3 is not None
-        assert set(fo_result3.keys()) == {"_id", "doc"}
+        assert set(fo_result3.keys()) == {"doc"}
         assert (
             await async_empty_collection.count_documents(filter={}, upper_bound=100)
             == 0

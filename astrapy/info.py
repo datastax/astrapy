@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from astrapy.core.ops import AstraDBOps
+from astrapy.exceptions import DevOpsAPIException
 
 
 database_id_finder = re.compile(
@@ -57,16 +58,19 @@ def get_database_info(api_endpoint: str, token: str, namespace: str) -> Database
         A DatabaseInfo object.
 
     Note:
-        If the API endpoint does not allow to extract a database_id, or other
-        exceptions occur, the return value will have most fields set to None.
+        If the API endpoint does not allow to extract a database_id,
+        namespace validation is skipped and the returned info will have
+        most fields set to None.
     """
 
-    try:
-        astra_db_ops = AstraDBOps(token=token)
-        database_id = find_database_id(api_endpoint)
-        if database_id:
-            gd_response = astra_db_ops.get_database(database=database_id)
-            raw_info = gd_response["info"]
+    astra_db_ops = AstraDBOps(token=token)
+    database_id = find_database_id(api_endpoint)
+    if database_id:
+        gd_response = astra_db_ops.get_database(database=database_id)
+        raw_info = gd_response["info"]
+        if namespace not in raw_info["keyspaces"]:
+            raise DevOpsAPIException(f"Namespace {namespace} not found on DB.")
+        else:
             return DatabaseInfo(
                 id=database_id,
                 region=raw_info["region"],
@@ -74,15 +78,7 @@ def get_database_info(api_endpoint: str, token: str, namespace: str) -> Database
                 name=raw_info["name"],
                 raw_info=raw_info,
             )
-        else:
-            return DatabaseInfo(
-                id=None,
-                region=None,
-                namespace=namespace,
-                name=None,
-                raw_info=None,
-            )
-    except Exception:
+    else:
         return DatabaseInfo(
             id=None,
             region=None,

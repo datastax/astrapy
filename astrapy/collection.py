@@ -17,13 +17,26 @@ from __future__ import annotations
 import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, Iterable, List, Optional, Union, TYPE_CHECKING
+from functools import partial
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 
 from astrapy.core.db import (
-    # AstraDB,
     AstraDBCollection,
-    # AsyncAstraDB,
     AsyncAstraDBCollection,
+)
+from astrapy.core.defaults import MAX_INSERT_NUM_DOCUMENTS
+from astrapy.exceptions import (
+    BulkWriteException,
+    CollectionNotFoundException,
+    CumulativeOperationException,
+    DataAPIFaultyResponseException,
+    DataAPIResponseException,
+    DeleteManyException,
+    InsertManyException,
+    TooManyDocumentsToCountException,
+    UpdateManyException,
+    recast_method_sync,
+    recast_method_async,
 )
 from astrapy.constants import (
     DocumentType,
@@ -53,15 +66,33 @@ INSERT_MANY_CONCURRENCY = 20
 BULK_WRITE_CONCURRENCY = 10
 
 
-def _prepare_update_info(status: Dict[str, Any]) -> Dict[str, Any]:
+def _prepare_update_info(statuses: List[Dict[str, Any]]) -> Dict[str, Any]:
+    reduced_status = {
+        "matchedCount": sum(
+            status["matchedCount"] for status in statuses if "matchedCount" in status
+        ),
+        "modifiedCount": sum(
+            status["modifiedCount"] for status in statuses if "modifiedCount" in status
+        ),
+        "upsertedId": [
+            status["upsertedId"] for status in statuses if "upsertedId" in status
+        ],
+    }
+    if reduced_status["upsertedId"]:
+        if len(reduced_status["upsertedId"]) == 1:
+            ups_dict = {"upserted": reduced_status["upsertedId"][0]}
+        else:
+            ups_dict = {"upserteds": reduced_status["upsertedId"]}
+    else:
+        ups_dict = {}
     return {
         **{
-            "n": status.get("matchedCount") + (1 if "upsertedId" in status else 0),  # type: ignore[operator]
-            "updatedExisting": (status.get("modifiedCount") or 0) > 0,
+            "n": reduced_status["matchedCount"] + len(reduced_status["upsertedId"]),
+            "updatedExisting": reduced_status["modifiedCount"] > 0,
             "ok": 1.0,
-            "nModified": status.get("modifiedCount"),
+            "nModified": reduced_status["modifiedCount"],
         },
-        **({"upserted": status["upsertedId"]} if "upsertedId" in status else {}),
+        **ups_dict,
     }
 
 
@@ -140,7 +171,7 @@ class Collection:
         caller_version: Optional[str] = None,
     ) -> Collection:
         return Collection(
-            database=database or self.database,
+            database=database or self.database._copy(),
             name=name or self.name,
             namespace=namespace or self.namespace,
             caller_name=caller_name or self._astra_db_collection.caller_name,
@@ -254,9 +285,13 @@ class Collection:
             if coll_dict["name"] == self.name
         ]
         if self_dicts:
-            return self_dicts[0]
+            return self_dicts[0]  # type: ignore[no-any-return]
         else:
-            raise ValueError(f"Collection {self.namespace}.{self.name} not found.")
+            raise CollectionNotFoundException(
+                text=f"Collection {self.namespace}.{self.name} not found.",
+                namespace=self.namespace,
+                collection_name=self.name,
+            )
 
     @property
     def info(self) -> CollectionInfo:
@@ -309,6 +344,7 @@ class Collection:
 
         return f"{self.namespace}.{self.name}"
 
+    @recast_method_sync
     def insert_one(
         self,
         document: DocumentType,
@@ -352,18 +388,18 @@ class Collection:
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
                 return InsertOneResult(
-                    raw_result=io_response,
+                    raw_results=[io_response],
                     inserted_id=inserted_id,
                 )
             else:
-                raise ValueError(
-                    "Could not complete a insert_one operation. "
-                    f"(gotten '${json.dumps(io_response)}')"
+                raise DataAPIFaultyResponseException(
+                    text="Faulty response from insert_one API command.",
+                    response=io_response,
                 )
         else:
-            raise ValueError(
-                "Could not complete a insert_one operation. "
-                f"(gotten '${json.dumps(io_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from insert_one API command.",
+                response=io_response,
             )
 
     def insert_many(
@@ -371,6 +407,8 @@ class Collection:
         documents: Iterable[DocumentType],
         *,
         ordered: bool = True,
+        chunk_size: Optional[int] = None,
+        concurrency: Optional[int] = None,
     ) -> InsertManyResult:
         """
         Insert a list of documents into the collection.
@@ -382,6 +420,11 @@ class Collection:
                 case it will be added automatically.
             ordered: if True (default), the insertions are processed sequentially.
                 If False, they can occur in arbitrary order and possibly concurrently.
+            chunk_size: how many documents to include in a single API request.
+                Exceeding the server maximum allowed value results in an error.
+                Leave it unspecified (recommended) to use the system default.
+            concurrency: maximum number of concurrent requests to the API at
+                a given time. It cannot be more than one for ordered insertions.
 
         Returns:
             an InsertManyResult object.
@@ -413,44 +456,113 @@ class Collection:
             have made their way to the database.
         """
 
+        if concurrency is None:
+            if ordered:
+                _concurrency = 1
+            else:
+                _concurrency = INSERT_MANY_CONCURRENCY
+        else:
+            _concurrency = concurrency
+        if _concurrency > 1 and ordered:
+            raise ValueError("Cannot run ordered insert_many concurrently.")
+        if chunk_size is None:
+            _chunk_size = MAX_INSERT_NUM_DOCUMENTS
+        else:
+            _chunk_size = chunk_size
+        _documents = list(documents)  # TODO make this a chunked iterator
+        # TODO handle the auto-inserted-ids here (chunk-wise better)
+        raw_results: List[Dict[str, Any]] = []
         if ordered:
-            cim_responses = self._astra_db_collection.chunked_insert_many(
-                documents=list(documents),
-                options={"ordered": True},
-                partial_failures_allowed=False,
-                concurrency=1,
-            )
-        else:
-            # unordered insertion: can do chunks concurrently
-            cim_responses = self._astra_db_collection.chunked_insert_many(
-                documents=list(documents),
-                options={"ordered": False},
-                partial_failures_allowed=True,
-                concurrency=INSERT_MANY_CONCURRENCY,
-            )
-        _exceptions = [cim_r for cim_r in cim_responses if isinstance(cim_r, Exception)]
-        _errors_in_response = [
-            err
-            for response in cim_responses
-            if isinstance(response, dict)
-            for err in (response.get("errors") or [])
-        ]
-        if _exceptions:
-            raise _exceptions[0]
-        elif _errors_in_response:
-            raise ValueError(str(_errors_in_response[0]))
-        else:
-            inserted_ids = [
-                ins_id
-                for response in cim_responses
-                if isinstance(response, dict)
-                for ins_id in (response.get("status") or {}).get("insertedIds", [])
-            ]
-            return InsertManyResult(
-                # if we are here, cim_responses are all dicts (no exceptions)
-                raw_results=cim_responses,  # type: ignore[arg-type]
+            options = {"ordered": True}
+            inserted_ids: List[Any] = []
+            for i in range(0, len(_documents), _chunk_size):
+                chunk_response = self._astra_db_collection.insert_many(
+                    documents=_documents[i : i + _chunk_size],
+                    options=options,
+                    partial_failures_allowed=True,
+                )
+                # accumulate the results in this call
+                chunk_inserted_ids = (chunk_response.get("status") or {}).get(
+                    "insertedIds", []
+                )
+                inserted_ids += chunk_inserted_ids
+                raw_results += [chunk_response]
+                # if errors, quit early
+                if chunk_response.get("errors", []):
+                    partial_result = InsertManyResult(
+                        raw_results=raw_results,
+                        inserted_ids=inserted_ids,
+                    )
+                    raise InsertManyException.from_response(
+                        command=None,
+                        raw_response=chunk_response,
+                        partial_result=partial_result,
+                    )
+
+            # return
+            full_result = InsertManyResult(
+                raw_results=raw_results,
                 inserted_ids=inserted_ids,
             )
+            return full_result
+
+        else:
+            # unordered: concurrent or not, do all of them and parse the results
+            options = {"ordered": False}
+            if _concurrency > 1:
+                with ThreadPoolExecutor(max_workers=_concurrency) as executor:
+                    _chunk_insertor = partial(
+                        self._astra_db_collection.insert_many,
+                        options=options,
+                        partial_failures_allowed=True,
+                    )
+                    raw_results = list(
+                        executor.map(
+                            _chunk_insertor,
+                            (
+                                _documents[i : i + _chunk_size]
+                                for i in range(0, len(_documents), _chunk_size)
+                            ),
+                        )
+                    )
+            else:
+                raw_results = [
+                    self._astra_db_collection.insert_many(
+                        _documents[i : i + _chunk_size],
+                        options=options,
+                        partial_failures_allowed=True,
+                    )
+                    for i in range(0, len(_documents), _chunk_size)
+                ]
+            # recast raw_results
+            inserted_ids = [
+                inserted_id
+                for chunk_response in raw_results
+                for inserted_id in (chunk_response.get("status") or {}).get(
+                    "insertedIds", []
+                )
+            ]
+
+            # check-raise
+            if any(
+                [chunk_response.get("errors", []) for chunk_response in raw_results]
+            ):
+                partial_result = InsertManyResult(
+                    raw_results=raw_results,
+                    inserted_ids=inserted_ids,
+                )
+                raise InsertManyException.from_responses(
+                    commands=[None for _ in raw_results],
+                    raw_responses=raw_results,
+                    partial_result=partial_result,
+                )
+
+            # return
+            full_result = InsertManyResult(
+                raw_results=raw_results,
+                inserted_ids=inserted_ids,
+            )
+            return full_result
 
     def find(
         self,
@@ -575,7 +687,7 @@ class Collection:
         )
         try:
             document = fo_cursor.__next__()
-            return document
+            return document  # type: ignore[no-any-return]
         except StopIteration:
             return None
 
@@ -627,11 +739,12 @@ class Collection:
             billing implications if the amount of matching documents is large.
         """
 
-        return self.find(
+        return self.find(  # type: ignore[no-any-return]
             filter=filter,
             projection={key: True},
         ).distinct(key)
 
+    @recast_method_sync
     def count_documents(
         self,
         filter: Dict[str, Any],
@@ -673,20 +786,25 @@ class Collection:
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
             if cd_response["status"].get("moreData", False):
-                raise ValueError(
-                    f"Document count exceeds {count}, the maximum allowed by the server"
+                raise TooManyDocumentsToCountException(
+                    text=f"Document count exceeds {count}, the maximum allowed by the server",
+                    server_max_count_exceeded=True,
                 )
             else:
                 if count > upper_bound:
-                    raise ValueError("Document count exceeds required upper bound")
+                    raise TooManyDocumentsToCountException(
+                        text="Document count exceeds required upper bound",
+                        server_max_count_exceeded=False,
+                    )
                 else:
                     return count
         else:
-            raise ValueError(
-                "Could not complete a count_documents operation. "
-                f"(gotten '${json.dumps(cd_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from count_documents API command.",
+                response=cd_response,
             )
 
+    @recast_method_sync
     def find_one_and_replace(
         self,
         filter: Dict[str, Any],
@@ -756,11 +874,12 @@ class Collection:
             else:
                 return ret_document  # type: ignore[no-any-return]
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_replace operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_replace API command.",
+                response=fo_response,
             )
 
+    @recast_method_sync
     def replace_one(
         self,
         filter: Dict[str, Any],
@@ -800,17 +919,18 @@ class Collection:
         )
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
-            _update_info = _prepare_update_info(fo_status)
+            _update_info = _prepare_update_info([fo_status])
             return UpdateResult(
-                raw_result=fo_status,
+                raw_results=[fo_response],
                 update_info=_update_info,
             )
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_replace operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_replace API command.",
+                response=fo_response,
             )
 
+    @recast_method_sync
     def find_one_and_update(
         self,
         filter: Dict[str, Any],
@@ -886,11 +1006,12 @@ class Collection:
             else:
                 return ret_document  # type: ignore[no-any-return]
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_update operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_update API command.",
+                response=fo_response,
             )
 
+    @recast_method_sync
     def update_one(
         self,
         filter: Dict[str, Any],
@@ -936,15 +1057,15 @@ class Collection:
         )
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
-            _update_info = _prepare_update_info(fo_status)
+            _update_info = _prepare_update_info([fo_status])
             return UpdateResult(
-                raw_result=fo_status,
+                raw_results=[fo_response],
                 update_info=_update_info,
             )
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_update operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_update API command.",
+                response=fo_response,
             )
 
     def update_many(
@@ -982,21 +1103,58 @@ class Collection:
             an UpdateResult object summarizing the outcome of the update operation.
         """
 
-        options = {
+        base_options = {
             "upsert": upsert,
         }
-        um_response = self._astra_db_collection.update_many(
-            update=update,
-            filter=filter,
-            options=options,
-        )
-        um_status = um_response.get("status") or {}
-        _update_info = _prepare_update_info(um_status)
+        page_state_options: Dict[str, str] = {}
+        um_responses: List[Dict[str, Any]] = []
+        um_statuses: List[Dict[str, Any]] = []
+        must_proceed = True
+        while must_proceed:
+            options = {**base_options, **page_state_options}
+            this_um_response = self._astra_db_collection.update_many(
+                update=update,
+                filter=filter,
+                options=options,
+            )
+            this_um_status = this_um_response.get("status") or {}
+            #
+            # if errors, quit early
+            if this_um_response.get("errors", []):
+                partial_update_info = _prepare_update_info(um_statuses)
+                partial_result = UpdateResult(
+                    raw_results=um_responses,
+                    update_info=partial_update_info,
+                )
+                all_um_responses = um_responses + [this_um_response]
+                raise UpdateManyException.from_responses(
+                    commands=[None for _ in all_um_responses],
+                    raw_responses=all_um_responses,
+                    partial_result=partial_result,
+                )
+            else:
+                if "status" not in this_um_response:
+                    raise DataAPIFaultyResponseException(
+                        text="Faulty response from update_many API command.",
+                        response=this_um_response,
+                    )
+                um_responses.append(this_um_response)
+                um_statuses.append(this_um_status)
+                next_page_state = this_um_status.get("nextPageState")
+                if next_page_state is not None:
+                    must_proceed = True
+                    page_state_options = {"pageState": next_page_state}
+                else:
+                    must_proceed = False
+                    page_state_options = {}
+
+        update_info = _prepare_update_info(um_statuses)
         return UpdateResult(
-            raw_result=um_status,
-            update_info=_update_info,
+            raw_results=um_responses,
+            update_info=update_info,
         )
 
+    @recast_method_sync
     def find_one_and_delete(
         self,
         filter: Dict[str, Any],
@@ -1032,28 +1190,28 @@ class Collection:
         Returns:
             Either the document (or a projection thereof, as requested), or None
             if no matches were found in the first place.
-
-        Note:
-            This operation is not atomic on the database.
-            Internally, this method runs a `find_one` followed by a `delete_one`.
         """
 
-        _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
-        target_document = self.find_one(
-            filter=filter, projection=_projection, sort=sort
+        _projection = normalize_optional_projection(projection)
+        fo_response = self._astra_db_collection.find_one_and_delete(
+            sort=sort,
+            filter=filter,
+            projection=_projection,
         )
-        if target_document is not None:
-            target_id = target_document["_id"]
-            self.delete_one({"_id": target_id})
-            # this is not an API atomic operation.
-            # If someone deletes the document between the find and the delete,
-            # this delete would silently be a no-op and we'd be returning the
-            # document. By a 'infinitesimal' shift-backward of the time of this
-            # operation, we recover a non-surprising behaviour. So:
-            return target_document
+        if "document" in fo_response.get("data", {}):
+            document = fo_response["data"]["document"]
+            return document  # type: ignore[no-any-return]
         else:
-            return target_document
+            deleted_count = fo_response.get("status", {}).get("deletedCount")
+            if deleted_count == 0:
+                return None
+            else:
+                raise DataAPIFaultyResponseException(
+                    text="Faulty response from find_one_and_delete API command.",
+                    response=fo_response,
+                )
 
+    @recast_method_sync
     def delete_one(
         self,
         filter: Dict[str, Any],
@@ -1091,9 +1249,9 @@ class Collection:
                     raw_results=[do_response],
                 )
         else:
-            raise ValueError(
-                "Could not complete a delete_one operation. "
-                f"(gotten '${json.dumps(do_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from delete_one API command.",
+                response=do_response,
             )
 
     def delete_many(
@@ -1132,32 +1290,43 @@ class Collection:
                 "collection, please use the `delete_all` method."
             )
 
-        dm_responses = self._astra_db_collection.chunked_delete_many(filter=filter)
-        deleted_counts = [
-            resp["status"]["deletedCount"]
-            for resp in dm_responses
-            if "deletedCount" in resp.get("status", {})
-        ]
-        if deleted_counts:
-            # the "-1" occurs when len(deleted_counts) == 1 only
-            deleted_count = sum(deleted_counts)
-            if deleted_count == -1:
-                return DeleteResult(
-                    deleted_count=None,
-                    raw_results=dm_responses,
-                )
-            else:
-                # per API specs, deleted_count has to be a non-negative integer.
-                return DeleteResult(
+        dm_responses: List[Dict[str, Any]] = []
+        deleted_count = 0
+        must_proceed = True
+        while must_proceed:
+            this_dm_response = self._astra_db_collection.delete_many(
+                filter=filter,
+                skip_error_check=True,
+            )
+            # if errors, quit early
+            if this_dm_response.get("errors", []):
+                partial_result = DeleteResult(
                     deleted_count=deleted_count,
                     raw_results=dm_responses,
                 )
-        else:
-            raise ValueError(
-                "Could not complete a chunked_delete_many operation. "
-                f"(gotten '${json.dumps(dm_responses)}')"
-            )
+                all_dm_responses = dm_responses + [this_dm_response]
+                raise DeleteManyException.from_responses(
+                    commands=[None for _ in all_dm_responses],
+                    raw_responses=all_dm_responses,
+                    partial_result=partial_result,
+                )
+            else:
+                this_dc = this_dm_response.get("status", {}).get("deletedCount")
+                if this_dc is None or this_dc < 0:
+                    raise DataAPIFaultyResponseException(
+                        text="Faulty response from delete_many API command.",
+                        response=this_dm_response,
+                    )
+                dm_responses.append(this_dm_response)
+                deleted_count += this_dc
+                must_proceed = this_dm_response.get("status", {}).get("moreData", False)
 
+        return DeleteResult(
+            deleted_count=deleted_count,
+            raw_results=dm_responses,
+        )
+
+    @recast_method_sync
     def delete_all(self) -> Dict[str, Any]:
         """
         Delete all documents in a collection.
@@ -1174,9 +1343,9 @@ class Collection:
         if deleted_count == -1:
             return {"ok": 1}
         else:
-            raise ValueError(
-                "Could not complete a delete_many operation. "
-                f"(gotten '${json.dumps(dm_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from delete_many API command.",
+                response=dm_response,
             )
 
     def bulk_write(
@@ -1215,26 +1384,95 @@ class Collection:
         from astrapy.operations import reduce_bulk_write_results
 
         if ordered:
-            bulk_write_results = [
-                operation.execute(self, operation_i)
-                for operation_i, operation in enumerate(requests)
-            ]
-            return reduce_bulk_write_results(bulk_write_results)
+            bulk_write_results: List[BulkWriteResult] = []
+            for operation_i, operation in enumerate(requests):
+                try:
+                    this_bw_result = operation.execute(self, operation_i)
+                    bulk_write_results.append(this_bw_result)
+                except CumulativeOperationException as exc:
+                    partial_result = exc.partial_result
+                    partial_bw_result = reduce_bulk_write_results(
+                        bulk_write_results
+                        + [
+                            partial_result.to_bulk_write_result(
+                                index_in_bulk_write=operation_i
+                            )
+                        ]
+                    )
+                    dar_exception = exc.data_api_response_exception()
+                    raise BulkWriteException(
+                        text=dar_exception.text,
+                        error_descriptors=dar_exception.error_descriptors,
+                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
+                        partial_result=partial_bw_result,
+                    )
+                except DataAPIResponseException as exc:
+                    # the cumulative exceptions, with their
+                    # partially-done-info, are handled above:
+                    # here it's just one-shot d.a.r. exceptions
+                    partial_bw_result = reduce_bulk_write_results(bulk_write_results)
+                    dar_exception = exc.data_api_response_exception()
+                    raise BulkWriteException(
+                        text=dar_exception.text,
+                        error_descriptors=dar_exception.error_descriptors,
+                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
+                        partial_result=partial_bw_result,
+                    )
+            full_bw_result = reduce_bulk_write_results(bulk_write_results)
+            return full_bw_result
         else:
+
+            def _execute_as_either(
+                operation: BaseOperation, operation_i: int
+            ) -> Tuple[Optional[BulkWriteResult], Optional[DataAPIResponseException]]:
+                try:
+                    ex_result = operation.execute(self, operation_i)
+                    return (ex_result, None)
+                except DataAPIResponseException as exc:
+                    return (None, exc)
+
             with ThreadPoolExecutor(max_workers=BULK_WRITE_CONCURRENCY) as executor:
-                bulk_write_futures = [
+                bulk_write_either_futures = [
                     executor.submit(
-                        operation.execute,
-                        self,
+                        _execute_as_either,
+                        operation,
                         operation_i,
                     )
                     for operation_i, operation in enumerate(requests)
                 ]
-                bulk_write_results = [
-                    bulk_write_future.result()
-                    for bulk_write_future in bulk_write_futures
+                bulk_write_either_results = [
+                    bulk_write_either_future.result()
+                    for bulk_write_either_future in bulk_write_either_futures
                 ]
-                return reduce_bulk_write_results(bulk_write_results)
+                # regroup
+                bulk_write_successes = [
+                    bwr for bwr, _ in bulk_write_either_results if bwr
+                ]
+                bulk_write_failures = [
+                    bwf for _, bwf in bulk_write_either_results if bwf
+                ]
+                if bulk_write_failures:
+                    # extract and cumulate
+                    partial_results_from_failures = [
+                        failure.partial_result.to_bulk_write_result(
+                            index_in_bulk_write=operation_i
+                        )
+                        for failure in bulk_write_failures
+                        if isinstance(failure, CumulativeOperationException)
+                    ]
+                    partial_bw_result = reduce_bulk_write_results(
+                        bulk_write_successes + partial_results_from_failures
+                    )
+                    # raise and recast the first exception
+                    dar_exception = bulk_write_failures[0].data_api_response_exception()
+                    raise BulkWriteException(
+                        text=dar_exception.text,
+                        error_descriptors=dar_exception.error_descriptors,
+                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
+                        partial_result=partial_bw_result,
+                    )
+                else:
+                    return reduce_bulk_write_results(bulk_write_successes)
 
     def drop(self) -> Dict[str, Any]:
         """
@@ -1248,7 +1486,7 @@ class Collection:
             Use with caution.
         """
 
-        return self.database.drop_collection(self)
+        return self.database.drop_collection(self)  # type: ignore[no-any-return]
 
 
 class AsyncCollection:
@@ -1326,7 +1564,7 @@ class AsyncCollection:
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
         return AsyncCollection(
-            database=database or self.database,
+            database=database or self.database._copy(),
             name=name or self.name,
             namespace=namespace or self.namespace,
             caller_name=caller_name or self._astra_db_collection.caller_name,
@@ -1440,9 +1678,13 @@ class AsyncCollection:
             if coll_dict["name"] == self.name
         ]
         if self_dicts:
-            return self_dicts[0]
+            return self_dicts[0]  # type: ignore[no-any-return]
         else:
-            raise ValueError(f"Collection {self.namespace}.{self.name} not found.")
+            raise CollectionNotFoundException(
+                text=f"Collection {self.namespace}.{self.name} not found.",
+                namespace=self.namespace,
+                collection_name=self.name,
+            )
 
     @property
     def info(self) -> CollectionInfo:
@@ -1495,6 +1737,7 @@ class AsyncCollection:
 
         return f"{self.namespace}.{self.name}"
 
+    @recast_method_async
     async def insert_one(
         self,
         document: DocumentType,
@@ -1521,7 +1764,7 @@ class AsyncCollection:
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
                 return InsertOneResult(
-                    raw_result=io_response,
+                    raw_results=[io_response],
                     inserted_id=inserted_id,
                 )
             else:
@@ -1540,6 +1783,8 @@ class AsyncCollection:
         documents: Iterable[DocumentType],
         *,
         ordered: bool = True,
+        chunk_size: Optional[int] = None,
+        concurrency: Optional[int] = None,
     ) -> InsertManyResult:
         """
         Insert a list of documents into the collection.
@@ -1551,6 +1796,11 @@ class AsyncCollection:
                 case it will be added automatically.
             ordered: if True (default), the insertions are processed sequentially.
                 If False, they can occur in arbitrary order and possibly concurrently.
+            chunk_size: how many documents to include in a single API request.
+                Exceeding the server maximum allowed value results in an error.
+                Leave it unspecified (recommended) to use the system default.
+            concurrency: maximum number of concurrent requests to the API at
+                a given time. It cannot be more than one for ordered insertions.
 
         Returns:
             an InsertManyResult object.
@@ -1582,44 +1832,115 @@ class AsyncCollection:
             have made their way to the database.
         """
 
+        if concurrency is None:
+            if ordered:
+                _concurrency = 1
+            else:
+                _concurrency = INSERT_MANY_CONCURRENCY
+        else:
+            _concurrency = concurrency
+        if _concurrency > 1 and ordered:
+            raise ValueError("Cannot run ordered insert_many concurrently.")
+        if chunk_size is None:
+            _chunk_size = MAX_INSERT_NUM_DOCUMENTS
+        else:
+            _chunk_size = chunk_size
+        _documents = list(documents)  # TODO make this a chunked iterator
+        # TODO handle the auto-inserted-ids here (chunk-wise better)
+        raw_results: List[Dict[str, Any]] = []
         if ordered:
-            cim_responses = await self._astra_db_collection.chunked_insert_many(
-                documents=list(documents),
-                options={"ordered": True},
-                partial_failures_allowed=False,
-                concurrency=1,
-            )
-        else:
-            # unordered insertion: can do chunks concurrently
-            cim_responses = await self._astra_db_collection.chunked_insert_many(
-                documents=list(documents),
-                options={"ordered": False},
-                partial_failures_allowed=True,
-                concurrency=INSERT_MANY_CONCURRENCY,
-            )
-        _exceptions = [cim_r for cim_r in cim_responses if isinstance(cim_r, Exception)]
-        _errors_in_response = [
-            err
-            for response in cim_responses
-            if isinstance(response, dict)
-            for err in (response.get("errors") or [])
-        ]
-        if _exceptions:
-            raise _exceptions[0]
-        elif _errors_in_response:
-            raise ValueError(str(_errors_in_response[0]))
-        else:
-            inserted_ids = [
-                ins_id
-                for response in cim_responses
-                if isinstance(response, dict)
-                for ins_id in (response.get("status") or {}).get("insertedIds", [])
-            ]
-            return InsertManyResult(
-                # if we are here, cim_responses are all dicts (no exceptions)
-                raw_results=cim_responses,  # type: ignore[arg-type]
+            options = {"ordered": True}
+            inserted_ids: List[Any] = []
+            for i in range(0, len(_documents), _chunk_size):
+                chunk_response = await self._astra_db_collection.insert_many(
+                    documents=_documents[i : i + _chunk_size],
+                    options=options,
+                    partial_failures_allowed=True,
+                )
+                # accumulate the results in this call
+                chunk_inserted_ids = (chunk_response.get("status") or {}).get(
+                    "insertedIds", []
+                )
+                inserted_ids += chunk_inserted_ids
+                raw_results += [chunk_response]
+                # if errors, quit early
+                if chunk_response.get("errors", []):
+                    partial_result = InsertManyResult(
+                        raw_results=raw_results,
+                        inserted_ids=inserted_ids,
+                    )
+                    raise InsertManyException.from_response(
+                        command=None,
+                        raw_response=chunk_response,
+                        partial_result=partial_result,
+                    )
+
+            # return
+            full_result = InsertManyResult(
+                raw_results=raw_results,
                 inserted_ids=inserted_ids,
             )
+            return full_result
+
+        else:
+            # unordered: concurrent or not, do all of them and parse the results
+            options = {"ordered": False}
+
+            sem = asyncio.Semaphore(_concurrency)
+
+            async def concurrent_insert_chunk(
+                document_chunk: List[DocumentType],
+            ) -> Dict[str, Any]:
+                async with sem:
+                    return await self._astra_db_collection.insert_many(
+                        document_chunk,
+                        options=options,
+                        partial_failures_allowed=True,
+                    )
+
+            if _concurrency > 1:
+                tasks = [
+                    asyncio.create_task(
+                        concurrent_insert_chunk(_documents[i : i + _chunk_size])
+                    )
+                    for i in range(0, len(_documents), _chunk_size)
+                ]
+                raw_results = await asyncio.gather(*tasks)
+            else:
+                raw_results = [
+                    await concurrent_insert_chunk(_documents[i : i + _chunk_size])
+                    for i in range(0, len(_documents), _chunk_size)
+                ]
+
+            # recast raw_results
+            inserted_ids = [
+                inserted_id
+                for chunk_response in raw_results
+                for inserted_id in (chunk_response.get("status") or {}).get(
+                    "insertedIds", []
+                )
+            ]
+
+            # check-raise
+            if any(
+                [chunk_response.get("errors", []) for chunk_response in raw_results]
+            ):
+                partial_result = InsertManyResult(
+                    raw_results=raw_results,
+                    inserted_ids=inserted_ids,
+                )
+                raise InsertManyException.from_responses(
+                    commands=[None for _ in raw_results],
+                    raw_responses=raw_results,
+                    partial_result=partial_result,
+                )
+
+            # return
+            full_result = InsertManyResult(
+                raw_results=raw_results,
+                inserted_ids=inserted_ids,
+            )
+            return full_result
 
     def find(
         self,
@@ -1744,7 +2065,7 @@ class AsyncCollection:
         )
         try:
             document = await fo_cursor.__anext__()
-            return document
+            return document  # type: ignore[no-any-return]
         except StopAsyncIteration:
             return None
 
@@ -1792,8 +2113,9 @@ class AsyncCollection:
             filter=filter,
             projection={key: True},
         )
-        return await cursor.distinct(key)
+        return await cursor.distinct(key)  # type: ignore[no-any-return]
 
+    @recast_method_async
     async def count_documents(
         self,
         filter: Dict[str, Any],
@@ -1835,20 +2157,25 @@ class AsyncCollection:
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
             if cd_response["status"].get("moreData", False):
-                raise ValueError(
-                    f"Document count exceeds {count}, the maximum allowed by the server"
+                raise TooManyDocumentsToCountException(
+                    text=f"Document count exceeds {count}, the maximum allowed by the server",
+                    server_max_count_exceeded=True,
                 )
             else:
                 if count > upper_bound:
-                    raise ValueError("Document count exceeds required upper bound")
+                    raise TooManyDocumentsToCountException(
+                        text="Document count exceeds required upper bound",
+                        server_max_count_exceeded=False,
+                    )
                 else:
                     return count
         else:
-            raise ValueError(
-                "Could not complete a count_documents operation. "
-                f"(gotten '${json.dumps(cd_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from count_documents API command.",
+                response=cd_response,
             )
 
+    @recast_method_async
     async def find_one_and_replace(
         self,
         filter: Dict[str, Any],
@@ -1918,11 +2245,12 @@ class AsyncCollection:
             else:
                 return ret_document  # type: ignore[no-any-return]
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_replace operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_replace API command.",
+                response=fo_response,
             )
 
+    @recast_method_async
     async def replace_one(
         self,
         filter: Dict[str, Any],
@@ -1962,17 +2290,18 @@ class AsyncCollection:
         )
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
-            _update_info = _prepare_update_info(fo_status)
+            _update_info = _prepare_update_info([fo_status])
             return UpdateResult(
-                raw_result=fo_status,
+                raw_results=[fo_response],
                 update_info=_update_info,
             )
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_replace operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_replace API command.",
+                response=fo_response,
             )
 
+    @recast_method_async
     async def find_one_and_update(
         self,
         filter: Dict[str, Any],
@@ -2048,11 +2377,12 @@ class AsyncCollection:
             else:
                 return ret_document  # type: ignore[no-any-return]
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_update operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_update API command.",
+                response=fo_response,
             )
 
+    @recast_method_async
     async def update_one(
         self,
         filter: Dict[str, Any],
@@ -2098,15 +2428,15 @@ class AsyncCollection:
         )
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
-            _update_info = _prepare_update_info(fo_status)
+            _update_info = _prepare_update_info([fo_status])
             return UpdateResult(
-                raw_result=fo_status,
+                raw_results=[fo_response],
                 update_info=_update_info,
             )
         else:
-            raise ValueError(
-                "Could not complete a find_one_and_update operation. "
-                f"(gotten '${json.dumps(fo_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find_one_and_update API command.",
+                response=fo_response,
             )
 
     async def update_many(
@@ -2144,21 +2474,58 @@ class AsyncCollection:
             an UpdateResult object summarizing the outcome of the update operation.
         """
 
-        options = {
+        base_options = {
             "upsert": upsert,
         }
-        um_response = await self._astra_db_collection.update_many(
-            update=update,
-            filter=filter,
-            options=options,
-        )
-        um_status = um_response.get("status") or {}
-        _update_info = _prepare_update_info(um_status)
+        page_state_options: Dict[str, str] = {}
+        um_responses: List[Dict[str, Any]] = []
+        um_statuses: List[Dict[str, Any]] = []
+        must_proceed = True
+        while must_proceed:
+            options = {**base_options, **page_state_options}
+            this_um_response = await self._astra_db_collection.update_many(
+                update=update,
+                filter=filter,
+                options=options,
+            )
+            this_um_status = this_um_response.get("status") or {}
+            #
+            # if errors, quit early
+            if this_um_response.get("errors", []):
+                partial_update_info = _prepare_update_info(um_statuses)
+                partial_result = UpdateResult(
+                    raw_results=um_responses,
+                    update_info=partial_update_info,
+                )
+                all_um_responses = um_responses + [this_um_response]
+                raise UpdateManyException.from_responses(
+                    commands=[None for _ in all_um_responses],
+                    raw_responses=all_um_responses,
+                    partial_result=partial_result,
+                )
+            else:
+                if "status" not in this_um_response:
+                    raise DataAPIFaultyResponseException(
+                        text="Faulty response from update_many API command.",
+                        response=this_um_response,
+                    )
+                um_responses.append(this_um_response)
+                um_statuses.append(this_um_status)
+                next_page_state = this_um_status.get("nextPageState")
+                if next_page_state is not None:
+                    must_proceed = True
+                    page_state_options = {"pageState": next_page_state}
+                else:
+                    must_proceed = False
+                    page_state_options = {}
+
+        update_info = _prepare_update_info(um_statuses)
         return UpdateResult(
-            raw_result=um_status,
-            update_info=_update_info,
+            raw_results=um_responses,
+            update_info=update_info,
         )
 
+    @recast_method_async
     async def find_one_and_delete(
         self,
         filter: Dict[str, Any],
@@ -2194,28 +2561,28 @@ class AsyncCollection:
         Returns:
             Either the document (or a projection thereof, as requested), or None
             if no matches were found in the first place.
-
-        Note:
-            This operation is not atomic on the database.
-            Internally, this method runs a `find_one` followed by a `delete_one`.
         """
 
-        _projection = normalize_optional_projection(projection, ensure_fields={"_id"})
-        target_document = await self.find_one(
-            filter=filter, projection=_projection, sort=sort
+        _projection = normalize_optional_projection(projection)
+        fo_response = await self._astra_db_collection.find_one_and_delete(
+            sort=sort,
+            filter=filter,
+            projection=_projection,
         )
-        if target_document is not None:
-            target_id = target_document["_id"]
-            await self.delete_one({"_id": target_id})
-            # this is not an API atomic operation.
-            # If someone deletes the document between the find and the delete,
-            # this delete would silently be a no-op and we'd be returning the
-            # document. By a 'infinitesimal' shift-backward of the time of this
-            # operation, we recover a non-surprising behaviour. So:
-            return target_document
+        if "document" in fo_response.get("data", {}):
+            document = fo_response["data"]["document"]
+            return document  # type: ignore[no-any-return]
         else:
-            return target_document
+            deleted_count = fo_response.get("status", {}).get("deletedCount")
+            if deleted_count == 0:
+                return None
+            else:
+                raise DataAPIFaultyResponseException(
+                    text="Faulty response from find_one_and_delete API command.",
+                    response=fo_response,
+                )
 
+    @recast_method_async
     async def delete_one(
         self,
         filter: Dict[str, Any],
@@ -2255,9 +2622,9 @@ class AsyncCollection:
                     raw_results=[do_response],
                 )
         else:
-            raise ValueError(
-                "Could not complete a delete_one operation. "
-                f"(gotten '${json.dumps(do_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from delete_one API command.",
+                response=do_response,
             )
 
     async def delete_many(
@@ -2298,34 +2665,43 @@ class AsyncCollection:
                 "collection, please use the `delete_all` method."
             )
 
-        dm_responses = await self._astra_db_collection.chunked_delete_many(
-            filter=filter
-        )
-        deleted_counts = [
-            resp["status"]["deletedCount"]
-            for resp in dm_responses
-            if "deletedCount" in resp.get("status", {})
-        ]
-        if deleted_counts:
-            # the "-1" occurs when len(deleted_counts) == 1 only
-            deleted_count = sum(deleted_counts)
-            if deleted_count == -1:
-                return DeleteResult(
-                    deleted_count=None,
-                    raw_results=dm_responses,
-                )
-            else:
-                # per API specs, deleted_count has to be a non-negative integer.
-                return DeleteResult(
+        dm_responses: List[Dict[str, Any]] = []
+        deleted_count = 0
+        must_proceed = True
+        while must_proceed:
+            this_dm_response = await self._astra_db_collection.delete_many(
+                filter=filter,
+                skip_error_check=True,
+            )
+            # if errors, quit early
+            if this_dm_response.get("errors", []):
+                partial_result = DeleteResult(
                     deleted_count=deleted_count,
                     raw_results=dm_responses,
                 )
-        else:
-            raise ValueError(
-                "Could not complete a chunked_delete_many operation. "
-                f"(gotten '${json.dumps(dm_responses)}')"
-            )
+                all_dm_responses = dm_responses + [this_dm_response]
+                raise DeleteManyException.from_responses(
+                    commands=[None for _ in all_dm_responses],
+                    raw_responses=all_dm_responses,
+                    partial_result=partial_result,
+                )
+            else:
+                this_dc = this_dm_response.get("status", {}).get("deletedCount")
+                if this_dc is None or this_dc < 0:
+                    raise DataAPIFaultyResponseException(
+                        text="Faulty response from delete_many API command.",
+                        response=this_dm_response,
+                    )
+                dm_responses.append(this_dm_response)
+                deleted_count += this_dc
+                must_proceed = this_dm_response.get("status", {}).get("moreData", False)
 
+        return DeleteResult(
+            deleted_count=deleted_count,
+            raw_results=dm_responses,
+        )
+
+    @recast_method_async
     async def delete_all(self) -> Dict[str, Any]:
         """
         Delete all documents in a collection.
@@ -2342,9 +2718,9 @@ class AsyncCollection:
         if deleted_count == -1:
             return {"ok": 1}
         else:
-            raise ValueError(
-                "Could not complete a delete_many operation. "
-                f"(gotten '${json.dumps(dm_response)}')"
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from delete_many API command.",
+                response=dm_response,
             )
 
     async def bulk_write(
@@ -2383,32 +2759,88 @@ class AsyncCollection:
         from astrapy.operations import reduce_bulk_write_results
 
         if ordered:
-            bulk_write_results = [
-                await operation.execute(self, operation_i)
-                for operation_i, operation in enumerate(requests)
-            ]
-            return reduce_bulk_write_results(bulk_write_results)
+            bulk_write_results: List[BulkWriteResult] = []
+            for operation_i, operation in enumerate(requests):
+                try:
+                    this_bw_result = await operation.execute(self, operation_i)
+                    bulk_write_results.append(this_bw_result)
+                except CumulativeOperationException as exc:
+                    partial_result = exc.partial_result
+                    partial_bw_result = reduce_bulk_write_results(
+                        bulk_write_results
+                        + [
+                            partial_result.to_bulk_write_result(
+                                index_in_bulk_write=operation_i
+                            )
+                        ]
+                    )
+                    dar_exception = exc.data_api_response_exception()
+                    raise BulkWriteException(
+                        text=dar_exception.text,
+                        error_descriptors=dar_exception.error_descriptors,
+                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
+                        partial_result=partial_bw_result,
+                    )
+                except DataAPIResponseException as exc:
+                    # the cumulative exceptions, with their
+                    # partially-done-info, are handled above:
+                    # here it's just one-shot d.a.r. exceptions
+                    partial_bw_result = reduce_bulk_write_results(bulk_write_results)
+                    dar_exception = exc.data_api_response_exception()
+                    raise BulkWriteException(
+                        text=dar_exception.text,
+                        error_descriptors=dar_exception.error_descriptors,
+                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
+                        partial_result=partial_bw_result,
+                    )
+            full_bw_result = reduce_bulk_write_results(bulk_write_results)
+            return full_bw_result
         else:
+
             sem = asyncio.Semaphore(BULK_WRITE_CONCURRENCY)
 
-            async def concurrent_execute_operation(
-                operation: AsyncBaseOperation,
-                collection: AsyncCollection,
-                index_in_bulk_write: int,
-            ) -> BulkWriteResult:
+            async def _concurrent_execute_as_either(
+                operation: AsyncBaseOperation, operation_i: int
+            ) -> Tuple[Optional[BulkWriteResult], Optional[DataAPIResponseException]]:
                 async with sem:
-                    return await operation.execute(
-                        collection=collection, index_in_bulk_write=index_in_bulk_write
-                    )
+                    try:
+                        ex_result = await operation.execute(self, operation_i)
+                        return (ex_result, None)
+                    except DataAPIResponseException as exc:
+                        return (None, exc)
 
             tasks = [
                 asyncio.create_task(
-                    concurrent_execute_operation(operation, self, operation_i)
+                    _concurrent_execute_as_either(operation, operation_i)
                 )
                 for operation_i, operation in enumerate(requests)
             ]
-            bulk_write_results = await asyncio.gather(*tasks)
-            return reduce_bulk_write_results(bulk_write_results)
+            bulk_write_either_results = await asyncio.gather(*tasks)
+            # regroup
+            bulk_write_successes = [bwr for bwr, _ in bulk_write_either_results if bwr]
+            bulk_write_failures = [bwf for _, bwf in bulk_write_either_results if bwf]
+            if bulk_write_failures:
+                # extract and cumulate
+                partial_results_from_failures = [
+                    failure.partial_result.to_bulk_write_result(
+                        index_in_bulk_write=operation_i
+                    )
+                    for failure in bulk_write_failures
+                    if isinstance(failure, CumulativeOperationException)
+                ]
+                partial_bw_result = reduce_bulk_write_results(
+                    bulk_write_successes + partial_results_from_failures
+                )
+                # raise and recast the first exception
+                dar_exception = bulk_write_failures[0].data_api_response_exception()
+                raise BulkWriteException(
+                    text=dar_exception.text,
+                    error_descriptors=dar_exception.error_descriptors,
+                    detailed_error_descriptors=dar_exception.detailed_error_descriptors,
+                    partial_result=partial_bw_result,
+                )
+            else:
+                return reduce_bulk_write_results(bulk_write_successes)
 
     async def drop(self) -> Dict[str, Any]:
         """
@@ -2422,4 +2854,4 @@ class AsyncCollection:
             Use with caution.
         """
 
-        return await self.database.drop_collection(self)
+        return await self.database.drop_collection(self)  # type: ignore[no-any-return]

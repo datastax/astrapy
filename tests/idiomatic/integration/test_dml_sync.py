@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import datetime
 
 import pytest
@@ -19,7 +20,7 @@ from typing import Any, Dict, List
 
 from astrapy import Collection
 from astrapy.results import DeleteResult, InsertOneResult
-from astrapy.api import APIRequestError
+from astrapy.exceptions import InsertManyException
 from astrapy.constants import ReturnDocument, SortDocuments
 from astrapy.operations import (
     InsertOne,
@@ -113,6 +114,12 @@ class TestDMLSync:
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 1
         with pytest.raises(ValueError):
             sync_empty_collection.delete_many(filter={})
+
+        sync_empty_collection.delete_all()
+        sync_empty_collection.insert_many([{"a": 1} for _ in range(50)])
+        do_result2 = sync_empty_collection.delete_many({"a": 1})
+        assert do_result2.deleted_count == 50
+        assert sync_empty_collection.count_documents({}, upper_bound=100) == 0
 
     @pytest.mark.describe("test of collection delete_all, sync")
     def test_collection_delete_all_sync(
@@ -466,15 +473,15 @@ class TestDMLSync:
         assert set(ins_result1.inserted_ids) == {"a", "b"}
         assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
-        with pytest.raises(APIRequestError):
+        with pytest.raises(InsertManyException):
             col.insert_many([{"_id": "a"}, {"_id": "c"}])
         assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
-        with pytest.raises(APIRequestError):
+        with pytest.raises(InsertManyException):
             col.insert_many([{"_id": "c"}, {"_id": "a"}, {"_id": "d"}])
         assert {doc["_id"] for doc in col.find()} == {"a", "b", "c"}
 
-        with pytest.raises(ValueError):
+        with pytest.raises(InsertManyException):
             col.insert_many(
                 [{"_id": "c"}, {"_id": "d"}, {"_id": "e"}],
                 ordered=False,
@@ -775,6 +782,28 @@ class TestDMLSync:
         assert resp4.update_info["nModified"] == 0
         assert "upserted" in resp4.update_info
 
+    @pytest.mark.skipif(
+        ".astra-dev." not in os.environ["ASTRA_DB_API_ENDPOINT"],
+        reason="paginated update_many is in DEV only at the moment",
+    )
+    @pytest.mark.describe("test of update_many, sync")
+    def test_collection_paginated_update_many_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+        col.insert_many([{"a": 1} for _ in range(50)])
+        col.insert_many([{"a": 10} for _ in range(10)])
+
+        um_result = col.update_many({"a": 1}, {"$set": {"b": 2}})
+        assert um_result.update_info["n"] == 50
+        assert um_result.update_info["updatedExisting"] is True
+        assert um_result.update_info["nModified"] == 50
+        assert "upserted" not in um_result.update_info
+        assert "upsertedd" not in um_result.update_info
+        assert col.count_documents({"b": 2}, upper_bound=100) == 50
+        assert col.count_documents({}, upper_bound=100) == 60
+
     @pytest.mark.describe("test of collection find_one_and_delete, sync")
     def test_collection_find_one_and_delete_sync(
         self,
@@ -801,7 +830,7 @@ class TestDMLSync:
             {"group": "A"}, projection={"_id": False, "group": False}
         )
         assert fo_result3 is not None
-        assert set(fo_result3.keys()) == {"_id", "doc"}
+        assert set(fo_result3.keys()) == {"doc"}
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 0
 
         fo_result4 = sync_empty_collection.find_one_and_delete({}, sort={"f": 1})

@@ -42,7 +42,7 @@ from typing import (
 )
 
 from astrapy import __version__
-from astrapy.core.api import api_request, async_api_request
+from astrapy.core.api import APIRequestError, api_request, async_api_request
 from astrapy.core.defaults import (
     DEFAULT_AUTH_HEADER,
     DEFAULT_JSON_API_PATH,
@@ -641,6 +641,36 @@ class AstraDBCollection:
 
         return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
 
+    def find_one_and_delete(
+        self,
+        sort: Optional[Dict[str, Any]] = {},
+        filter: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
+    ) -> API_RESPONSE:
+        """
+        Find a single document and delete it.
+        Args:
+            sort (dict, optional): Specifies the order in which to find the document.
+            filter (dict, optional): Criteria to filter documents.
+            projection (dict, optional): Specifies the fields to return.
+        Returns:
+            dict: The result of the find and delete operation.
+        """
+        json_query = make_payload(
+            top_level="findOneAndDelete",
+            filter=filter,
+            sort=sort,
+            projection=projection,
+        )
+
+        response = self._request(
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data=json_query,
+        )
+
+        return response
+
     def count_documents(
         self,
         filter: Dict[str, Any] = {},
@@ -832,7 +862,7 @@ class AstraDBCollection:
                             partial_failures_allowed,
                         )
                     )
-                except Exception as e:
+                except APIRequestError as e:
                     if partial_failures_allowed:
                         results.append(e)
                     else:
@@ -856,7 +886,7 @@ class AstraDBCollection:
             for future in futures:
                 try:
                     results.append(future.result())
-                except Exception as e:
+                except APIRequestError as e:
                     if partial_failures_allowed:
                         results.append(e)
                     else:
@@ -974,11 +1004,17 @@ class AstraDBCollection:
 
         return response
 
-    def delete_many(self, filter: Dict[str, Any]) -> API_RESPONSE:
+    def delete_many(
+        self,
+        filter: Dict[str, Any],
+        skip_error_check: bool = False,
+    ) -> API_RESPONSE:
         """
         Delete many documents from the collection based on a filter condition
         Args:
             filter (dict): Criteria to identify the documents to delete.
+            skip_error_check (bool): whether to ignore the check for API error
+                and return the response untouched. Default is False.
         Returns:
             dict: The response from the database after the delete operation.
         """
@@ -989,7 +1025,10 @@ class AstraDBCollection:
         }
 
         response = self._request(
-            method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data=json_query,
+            skip_error_check=skip_error_check,
         )
 
         return response
@@ -1713,6 +1752,36 @@ class AsyncAstraDBCollection:
 
         return cast(Union[API_DOC, None], raw_find_result["data"]["document"])
 
+    async def find_one_and_delete(
+        self,
+        sort: Optional[Dict[str, Any]] = {},
+        filter: Optional[Dict[str, Any]] = None,
+        projection: Optional[Dict[str, Any]] = None,
+    ) -> API_RESPONSE:
+        """
+        Find a single document and delete it.
+        Args:
+            sort (dict, optional): Specifies the order in which to find the document.
+            filter (dict, optional): Criteria to filter documents.
+            projection (dict, optional): Specifies the fields to return.
+        Returns:
+            dict: The result of the find and delete operation.
+        """
+        json_query = make_payload(
+            top_level="findOneAndDelete",
+            filter=filter,
+            sort=sort,
+            projection=projection,
+        )
+
+        response = await self._request(
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data=json_query,
+        )
+
+        return response
+
     async def count_documents(
         self,
         filter: Dict[str, Any] = {},
@@ -1886,29 +1955,44 @@ class AsyncAstraDBCollection:
         sem = asyncio.Semaphore(concurrency)
 
         async def concurrent_insert_many(
-            docs: List[API_DOC], index: int
-        ) -> API_RESPONSE:
+            docs: List[API_DOC],
+            index: int,
+            partial_failures_allowed: bool,
+        ) -> Union[API_RESPONSE, Exception]:
             async with sem:
                 logger.debug(f"Processing chunk #{index + 1} of size {len(docs)}")
-                return await self.insert_many(
-                    documents=docs,
-                    options=options,
-                    partial_failures_allowed=partial_failures_allowed,
-                )
+                try:
+                    return await self.insert_many(
+                        documents=docs,
+                        options=options,
+                        partial_failures_allowed=partial_failures_allowed,
+                    )
+                except APIRequestError as e:
+                    if partial_failures_allowed:
+                        return e
+                    else:
+                        raise e
 
-        tasks = [
-            asyncio.create_task(
-                concurrent_insert_many(documents[i : i + chunk_size], i)
-            )
-            for i in range(0, len(documents), chunk_size)
-        ]
-        results = await asyncio.gather(
-            *tasks, return_exceptions=partial_failures_allowed
-        )
-        for result in results:
-            if isinstance(result, BaseException) and not isinstance(result, Exception):
-                raise result
-        return results  # type: ignore
+        if concurrency > 1:
+            tasks = [
+                asyncio.create_task(
+                    concurrent_insert_many(
+                        documents[i : i + chunk_size], i, partial_failures_allowed
+                    )
+                )
+                for i in range(0, len(documents), chunk_size)
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=False)
+        else:
+            # this ensures the expectation of
+            # "sequential strictly obeys fail-fast if ordered and concurrency==1"
+            results = [
+                await concurrent_insert_many(
+                    documents[i : i + chunk_size], i, partial_failures_allowed
+                )
+                for i in range(0, len(documents), chunk_size)
+            ]
+        return results
 
     async def update_one(
         self, filter: Dict[str, Any], update: Dict[str, Any]
@@ -2011,11 +2095,17 @@ class AsyncAstraDBCollection:
 
         return response
 
-    async def delete_many(self, filter: Dict[str, Any]) -> API_RESPONSE:
+    async def delete_many(
+        self,
+        filter: Dict[str, Any],
+        skip_error_check: bool = False,
+    ) -> API_RESPONSE:
         """
         Delete many documents from the collection based on a filter condition
         Args:
             filter (dict): Criteria to identify the documents to delete.
+            skip_error_check (bool): whether to ignore the check for API error
+                and return the response untouched. Default is False.
         Returns:
             dict: The response from the database after the delete operation.
         """
@@ -2026,7 +2116,10 @@ class AsyncAstraDBCollection:
         }
 
         response = await self._request(
-            method=http_methods.POST, path=f"{self.base_path}", json_data=json_query
+            method=http_methods.POST,
+            path=f"{self.base_path}",
+            json_data=json_query,
+            skip_error_check=skip_error_check,
         )
 
         return response

@@ -32,6 +32,11 @@ from typing import (
 )
 
 from astrapy.core.utils import _normalize_payload_value
+from astrapy.exceptions import (
+    CursorIsStartedException,
+    recast_method_sync,
+    recast_method_async,
+)
 from astrapy.constants import (
     DocumentType,
     ProjectionType,
@@ -183,17 +188,9 @@ class BaseCursor:
             )
 
     def __repr__(self) -> str:
-        _state_desc: str
-        if self._started:
-            if self._alive:
-                _state_desc = "running"
-            else:
-                _state_desc = "exhausted"
-        else:
-            _state_desc = "new"
         return (
             f'{self.__class__.__name__}("{self._collection.name}", '
-            f"{_state_desc}, "
+            f"{self.state}, "
             f"retrieved: {self.retrieved})"
         )
 
@@ -203,11 +200,17 @@ class BaseCursor:
 
     def _ensure_alive(self) -> None:
         if not self._alive:
-            raise ValueError("Cursor is closed.")
+            raise CursorIsStartedException(
+                text="Cursor is closed.",
+                cursor_state=self.state,
+            )
 
     def _ensure_not_started(self) -> None:
         if self._started:
-            raise ValueError("Cursor has already been used")
+            raise CursorIsStartedException(
+                text="Cursor is started already.",
+                cursor_state=self.state,
+            )
 
     def _copy(
         self: BC,
@@ -235,6 +238,25 @@ class BaseCursor:
             new_cursor._retrieved = self._retrieved
             new_cursor._alive = self._alive
         return new_cursor
+
+    @property
+    def state(self) -> str:
+        """
+        The current state of this cursor, which can be:
+            - "new": if iteration over results has not started yet
+            - "running": iteration has started, can still yield results
+            - "exhausted": the cursor has finished and won't return documents
+        """
+
+        state_desc: str
+        if self._started:
+            if self._alive:
+                state_desc = "running"
+            else:
+                state_desc = "exhausted"
+        else:
+            state_desc = "new"
+        return state_desc
 
     @property
     def address(self) -> str:
@@ -387,6 +409,7 @@ class Cursor(BaseCursor):
             self._started = True
         return self
 
+    @recast_method_sync
     def __next__(self) -> DocumentType:
         if not self.alive:
             # keep raising once exhausted:
@@ -406,10 +429,11 @@ class Cursor(BaseCursor):
         finder_cursor = self._copy().skip(index).limit(1)
         items = list(finder_cursor)
         if items:
-            return items[0]
+            return items[0]  # type: ignore[no-any-return]
         else:
             raise IndexError("no such item for Cursor instance")
 
+    @recast_method_sync
     def _create_iterator(self) -> Iterator[DocumentType]:
         self._ensure_not_started()
         self._ensure_alive()
@@ -449,6 +473,7 @@ class Cursor(BaseCursor):
 
         return self._collection
 
+    @recast_method_sync
     def distinct(self, key: str) -> List[Any]:
         """
         Compute a list of unique values for a specific field across all
@@ -528,6 +553,7 @@ class AsyncCursor(BaseCursor):
             self._started = True
         return self
 
+    @recast_method_async
     async def __anext__(self) -> DocumentType:
         if not self.alive:
             # keep raising once exhausted:
@@ -547,10 +573,11 @@ class AsyncCursor(BaseCursor):
         finder_cursor = self._to_sync().skip(index).limit(1)
         items = list(finder_cursor)
         if items:
-            return items[0]
+            return items[0]  # type: ignore[no-any-return]
         else:
             raise IndexError("no such item for AsyncCursor instance")
 
+    @recast_method_sync
     def _create_iterator(self) -> AsyncIterator[DocumentType]:
         self._ensure_not_started()
         self._ensure_alive()
@@ -616,6 +643,7 @@ class AsyncCursor(BaseCursor):
 
         return self._collection
 
+    @recast_method_async
     async def distinct(self, key: str) -> List[Any]:
         """
         Compute a list of unique values for a specific field across all
@@ -691,6 +719,16 @@ class CommandCursor(Generic[T]):
             raise
 
     @property
+    def state(self) -> str:
+        """
+        The current state of this cursor, which can be:
+            - "alive": the cursor has still the potential to return items.
+            - "exhausted": the cursor has finished and won't return documents
+        """
+
+        return "alive" if self._alive else "exhausted"
+
+    @property
     def address(self) -> str:
         """
         The API endpoint used by this cursor when issuing
@@ -717,7 +755,10 @@ class CommandCursor(Generic[T]):
 
     def _ensure_alive(self) -> None:
         if not self._alive:
-            raise ValueError("Cursor is closed.")
+            raise CursorIsStartedException(
+                text="Cursor is closed.",
+                cursor_state=self.state,
+            )
 
     def try_next(self) -> T:
         """
@@ -765,6 +806,16 @@ class AsyncCommandCursor(Generic[T]):
             raise StopAsyncIteration
 
     @property
+    def state(self) -> str:
+        """
+        The current state of this cursor, which can be:
+            - "alive": the cursor has still the potential to return items.
+            - "exhausted": the cursor has finished and won't return documents
+        """
+
+        return "alive" if self._alive else "exhausted"
+
+    @property
     def address(self) -> str:
         """
         The API endpoint used by this cursor when issuing
@@ -791,7 +842,10 @@ class AsyncCommandCursor(Generic[T]):
 
     def _ensure_alive(self) -> None:
         if not self._alive:
-            raise ValueError("Cursor is closed.")
+            raise CursorIsStartedException(
+                text="Cursor is closed.",
+                cursor_state=self.state,
+            )
 
     async def try_next(self) -> T:
         """
