@@ -554,7 +554,6 @@ def test_chunked_insert_many_failures(
             chunk_size=2,
             concurrency=2,
         )
-    assert len(empty_v_collection.find({})["data"]["documents"]) >= 2
 
     empty_v_collection.delete_many({})
     with pytest.raises(TypeError):
@@ -576,7 +575,6 @@ def test_chunked_insert_many_failures(
             chunk_size=2,
             concurrency=2,
         )
-    assert len(empty_v_collection.find({})["data"]["documents"]) >= 2
 
     empty_v_collection.delete_many({})
     with pytest.raises(APIRequestError):

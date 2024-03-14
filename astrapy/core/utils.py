@@ -1,5 +1,14 @@
 from __future__ import annotations
-from typing import Any, cast, Dict, Iterable, List, Optional, Union
+from typing import (
+    Any,
+    cast,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    TypedDict,
+    Union,
+)
 import time
 import datetime
 import logging
@@ -119,6 +128,29 @@ def compose_user_agent(
     return " ".join(all_user_agents)
 
 
+class TimeoutInfo(TypedDict, total=False):
+    read: float
+    write: float
+    base: float
+
+
+TimeoutInfoWideType = Union[TimeoutInfo, float, None]
+
+
+def to_httpx_timeout(timeout_info: TimeoutInfoWideType) -> Union[httpx.Timeout, None]:
+    if timeout_info is None:
+        return None
+    if isinstance(timeout_info, float):
+        return httpx.Timeout(timeout_info)
+    elif isinstance(timeout_info, dict):
+        _base = timeout_info.get("base") or DEFAULT_TIMEOUT
+        _read = timeout_info.get("read") or _base
+        _write = timeout_info.get("write") or _base
+        return httpx.Timeout(_base, read=_read, write=_write)
+    else:
+        raise ValueError("Invalid timeout info provided.")
+
+
 def make_request(
     client: httpx.Client,
     base_url: str,
@@ -130,6 +162,7 @@ def make_request(
     path: Optional[str],
     caller_name: Optional[str],
     caller_version: Optional[str],
+    timeout: Optional[Union[httpx.Timeout, float]],
 ) -> httpx.Response:
     """
     Make an HTTP request to a specified URL.
@@ -162,7 +195,7 @@ def make_request(
         url=f"{base_url}{path}",
         params=url_params,
         json=json_data,
-        timeout=DEFAULT_TIMEOUT,
+        timeout=timeout or DEFAULT_TIMEOUT,
         headers=request_headers,
     )
 
@@ -183,6 +216,7 @@ async def amake_request(
     url_params: Optional[Dict[str, Any]],
     caller_name: Optional[str],
     caller_version: Optional[str],
+    timeout: Optional[Union[httpx.Timeout, float]],
 ) -> httpx.Response:
     """
     Make an HTTP request to a specified URL.
@@ -215,7 +249,7 @@ async def amake_request(
         url=f"{base_url}{path}",
         params=url_params,
         json=json_data,
-        timeout=DEFAULT_TIMEOUT,
+        timeout=timeout or DEFAULT_TIMEOUT,
         headers=request_headers,
     )
 
