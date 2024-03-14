@@ -25,7 +25,13 @@ from typing import (
 )
 
 from astrapy.constants import DocumentType
-from astrapy.results import BulkWriteResult
+from astrapy.results import (
+    BulkWriteResult,
+    DeleteResult,
+    InsertManyResult,
+    InsertOneResult,
+    UpdateResult,
+)
 from astrapy.collection import AsyncCollection, Collection
 
 
@@ -115,16 +121,8 @@ class InsertOne(BaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result = collection.insert_one(document=self.document)
-        return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: [op_result.raw_result]},
-            deleted_count=0,
-            inserted_count=1,
-            matched_count=0,
-            modified_count=0,
-            upserted_count=0,
-            upserted_ids={},
-        )
+        op_result: InsertOneResult = collection.insert_one(document=self.document)
+        return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
 @dataclass
@@ -159,19 +157,11 @@ class InsertMany(BaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result = collection.insert_many(
+        op_result: InsertManyResult = collection.insert_many(
             documents=self.documents,
             ordered=self.ordered,
         )
-        return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_results},
-            deleted_count=0,
-            inserted_count=len(op_result.inserted_ids),
-            matched_count=0,
-            modified_count=0,
-            upserted_count=0,
-            upserted_ids={},
-        )
+        return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
 @dataclass
@@ -212,26 +202,12 @@ class UpdateOne(BaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result = collection.update_one(
+        op_result: UpdateResult = collection.update_one(
             filter=self.filter,
             update=self.update,
             upsert=self.upsert,
         )
-        inserted_count = 1 if "upserted" in op_result.update_info else 0
-        matched_count = (op_result.update_info.get("n") or 0) - inserted_count
-        if "upserted" in op_result.update_info:
-            upserted_ids = {index_in_bulk_write: op_result.update_info["upserted"]}
-        else:
-            upserted_ids = {}
-        return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_results},
-            deleted_count=0,
-            inserted_count=inserted_count,
-            matched_count=matched_count,
-            modified_count=op_result.update_info.get("nModified") or 0,
-            upserted_count=1 if "upserted" in op_result.update_info else 0,
-            upserted_ids=upserted_ids,
-        )
+        return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
 @dataclass
@@ -272,26 +248,12 @@ class UpdateMany(BaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result = collection.update_many(
+        op_result: UpdateResult = collection.update_many(
             filter=self.filter,
             update=self.update,
             upsert=self.upsert,
         )
-        inserted_count = 1 if "upserted" in op_result.update_info else 0
-        matched_count = (op_result.update_info.get("n") or 0) - inserted_count
-        if "upserted" in op_result.update_info:
-            upserted_ids = {index_in_bulk_write: op_result.update_info["upserted"]}
-        else:
-            upserted_ids = {}
-        return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_results},
-            deleted_count=0,
-            inserted_count=inserted_count,
-            matched_count=matched_count,
-            modified_count=op_result.update_info.get("nModified") or 0,
-            upserted_count=1 if "upserted" in op_result.update_info else 0,
-            upserted_ids=upserted_ids,
-        )
+        return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
 @dataclass
@@ -332,26 +294,12 @@ class ReplaceOne(BaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result = collection.replace_one(
+        op_result: UpdateResult = collection.replace_one(
             filter=self.filter,
             replacement=self.replacement,
             upsert=self.upsert,
         )
-        inserted_count = 1 if "upserted" in op_result.update_info else 0
-        matched_count = (op_result.update_info.get("n") or 0) - inserted_count
-        if "upserted" in op_result.update_info:
-            upserted_ids = {index_in_bulk_write: op_result.update_info["upserted"]}
-        else:
-            upserted_ids = {}
-        return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_results},
-            deleted_count=0,
-            inserted_count=inserted_count,
-            matched_count=matched_count,
-            modified_count=op_result.update_info.get("nModified") or 0,
-            upserted_count=1 if "upserted" in op_result.update_info else 0,
-            upserted_ids=upserted_ids,
-        )
+        return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
 @dataclass
@@ -383,16 +331,8 @@ class DeleteOne(BaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result = collection.delete_one(filter=self.filter)
-        return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_results},
-            deleted_count=op_result.deleted_count,
-            inserted_count=0,
-            matched_count=0,
-            modified_count=0,
-            upserted_count=0,
-            upserted_ids={},
-        )
+        op_result: DeleteResult = collection.delete_one(filter=self.filter)
+        return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
 @dataclass
@@ -424,16 +364,8 @@ class DeleteMany(BaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result = collection.delete_many(filter=self.filter)
-        return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_results},
-            deleted_count=op_result.deleted_count,
-            inserted_count=0,
-            matched_count=0,
-            modified_count=0,
-            upserted_count=0,
-            upserted_ids={},
-        )
+        op_result: DeleteResult = collection.delete_many(filter=self.filter)
+        return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
 class AsyncBaseOperation(ABC):
@@ -477,16 +409,8 @@ class AsyncInsertOne(AsyncBaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result = await collection.insert_one(document=self.document)
-        return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: [op_result.raw_result]},
-            deleted_count=0,
-            inserted_count=1,
-            matched_count=0,
-            modified_count=0,
-            upserted_count=0,
-            upserted_ids={},
-        )
+        op_result: InsertOneResult = await collection.insert_one(document=self.document)
+        return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
 @dataclass
@@ -522,19 +446,11 @@ class AsyncInsertMany(AsyncBaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result = await collection.insert_many(
+        op_result: InsertManyResult = await collection.insert_many(
             documents=self.documents,
             ordered=self.ordered,
         )
-        return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_results},
-            deleted_count=0,
-            inserted_count=len(op_result.inserted_ids),
-            matched_count=0,
-            modified_count=0,
-            upserted_count=0,
-            upserted_ids={},
-        )
+        return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
 @dataclass
@@ -575,26 +491,12 @@ class AsyncUpdateOne(AsyncBaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result = await collection.update_one(
+        op_result: UpdateResult = await collection.update_one(
             filter=self.filter,
             update=self.update,
             upsert=self.upsert,
         )
-        inserted_count = 1 if "upserted" in op_result.update_info else 0
-        matched_count = (op_result.update_info.get("n") or 0) - inserted_count
-        if "upserted" in op_result.update_info:
-            upserted_ids = {index_in_bulk_write: op_result.update_info["upserted"]}
-        else:
-            upserted_ids = {}
-        return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_results},
-            deleted_count=0,
-            inserted_count=inserted_count,
-            matched_count=matched_count,
-            modified_count=op_result.update_info.get("nModified") or 0,
-            upserted_count=1 if "upserted" in op_result.update_info else 0,
-            upserted_ids=upserted_ids,
-        )
+        return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
 @dataclass
@@ -635,26 +537,12 @@ class AsyncUpdateMany(AsyncBaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result = await collection.update_many(
+        op_result: UpdateResult = await collection.update_many(
             filter=self.filter,
             update=self.update,
             upsert=self.upsert,
         )
-        inserted_count = 1 if "upserted" in op_result.update_info else 0
-        matched_count = (op_result.update_info.get("n") or 0) - inserted_count
-        if "upserted" in op_result.update_info:
-            upserted_ids = {index_in_bulk_write: op_result.update_info["upserted"]}
-        else:
-            upserted_ids = {}
-        return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_results},
-            deleted_count=0,
-            inserted_count=inserted_count,
-            matched_count=matched_count,
-            modified_count=op_result.update_info.get("nModified") or 0,
-            upserted_count=1 if "upserted" in op_result.update_info else 0,
-            upserted_ids=upserted_ids,
-        )
+        return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
 @dataclass
@@ -695,26 +583,12 @@ class AsyncReplaceOne(AsyncBaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result = await collection.replace_one(
+        op_result: UpdateResult = await collection.replace_one(
             filter=self.filter,
             replacement=self.replacement,
             upsert=self.upsert,
         )
-        inserted_count = 1 if "upserted" in op_result.update_info else 0
-        matched_count = (op_result.update_info.get("n") or 0) - inserted_count
-        if "upserted" in op_result.update_info:
-            upserted_ids = {index_in_bulk_write: op_result.update_info["upserted"]}
-        else:
-            upserted_ids = {}
-        return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_results},
-            deleted_count=0,
-            inserted_count=inserted_count,
-            matched_count=matched_count,
-            modified_count=op_result.update_info.get("nModified") or 0,
-            upserted_count=1 if "upserted" in op_result.update_info else 0,
-            upserted_ids=upserted_ids,
-        )
+        return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
 @dataclass
@@ -746,16 +620,8 @@ class AsyncDeleteOne(AsyncBaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result = await collection.delete_one(filter=self.filter)
-        return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_results},
-            deleted_count=op_result.deleted_count,
-            inserted_count=0,
-            matched_count=0,
-            modified_count=0,
-            upserted_count=0,
-            upserted_ids={},
-        )
+        op_result: DeleteResult = await collection.delete_one(filter=self.filter)
+        return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
 @dataclass
@@ -787,13 +653,5 @@ class AsyncDeleteMany(AsyncBaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result = await collection.delete_many(filter=self.filter)
-        return BulkWriteResult(
-            bulk_api_results={index_in_bulk_write: op_result.raw_results},
-            deleted_count=op_result.deleted_count,
-            inserted_count=0,
-            matched_count=0,
-            modified_count=0,
-            upserted_count=0,
-            upserted_ids={},
-        )
+        op_result: DeleteResult = await collection.delete_many(filter=self.filter)
+        return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)

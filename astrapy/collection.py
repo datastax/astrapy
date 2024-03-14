@@ -385,7 +385,7 @@ class Collection:
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
                 return InsertOneResult(
-                    raw_result=io_response,
+                    raw_results=[io_response],
                     inserted_id=inserted_id,
                 )
             else:
@@ -1692,7 +1692,7 @@ class AsyncCollection:
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
                 return InsertOneResult(
-                    raw_result=io_response,
+                    raw_results=[io_response],
                     inserted_id=inserted_id,
                 )
             else:
