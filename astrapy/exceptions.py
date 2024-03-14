@@ -118,7 +118,7 @@ class DataAPIResponseException(DataAPIException):
         command: Optional[Dict[str, Any]],
         raw_response: Dict[str, Any],
         **kwargs: Any,
-    ) -> DataAPIException:
+    ) -> DataAPIResponseException:
         return cls.from_responses(
             commands=[command],
             raw_responses=[raw_response],
@@ -131,7 +131,7 @@ class DataAPIResponseException(DataAPIException):
         commands: List[Optional[Dict[str, Any]]],
         raw_responses: List[Dict[str, Any]],
         **kwargs: Any,
-    ) -> DataAPIException:
+    ) -> DataAPIResponseException:
         detailed_error_descriptors: List[DataAPIDetailedErrorDescriptor] = []
         for command, raw_response in zip(commands, raw_responses):
             if raw_response.get("errors", []):

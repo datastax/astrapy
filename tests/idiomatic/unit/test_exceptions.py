@@ -26,7 +26,7 @@ from astrapy.results import DeleteResult, InsertManyResult
 
 @pytest.mark.describe("test DataAPIResponseException")
 def test_dataapiresponseexception() -> None:
-    da_e1: DataAPIResponseException = DataAPIResponseException.from_responses(  # type: ignore[assignment]
+    da_e1 = DataAPIResponseException.from_responses(
         commands=[{"cmd": "C1"}],
         raw_responses=[
             {"errors": [{"errorCode": "C", "message": "Aaa", "field": "value"}]}
