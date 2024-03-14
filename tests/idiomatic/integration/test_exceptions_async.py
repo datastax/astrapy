@@ -17,7 +17,9 @@ from typing import List
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
+from astrapy.operations import AsyncInsertOne
 from astrapy.exceptions import (
+    BulkWriteException,
     CollectionAlreadyExistsException,
     CollectionNotFoundException,
     CursorIsStartedException,
@@ -183,6 +185,25 @@ class TestExceptionsAsync:
             await acol.replace_one({"a": 1}, {"a": -1})
         with pytest.raises(DataAPIResponseException):
             await acol.update_one({"a": 1}, {"$set": {"a": -1}})
+
+    @pytest.mark.describe("test of exceptions in ordered bulk_write, async")
+    async def test_ordered_bulk_write_failures_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        i1 = AsyncInsertOne({"_id": "a"})
+        i3 = AsyncInsertOne({"_id": "z"})
+
+        with pytest.raises(BulkWriteException) as exc:
+            await async_empty_collection.bulk_write([i1, i1, i3])
+        assert set(exc.value.partial_result.bulk_api_results.keys()) == {0}
+        assert exc.value.partial_result.deleted_count == 0
+        assert exc.value.partial_result.inserted_count == 1
+        assert exc.value.partial_result.matched_count == 0
+        assert exc.value.partial_result.modified_count == 0
+        assert exc.value.partial_result.upserted_count == 0
+        assert exc.value.partial_result.upserted_ids == {}
+        assert await async_empty_collection.count_documents({}, upper_bound=10) == 1
 
     @pytest.mark.describe("test of check_exists for database create_collection, async")
     async def test_database_create_collection_check_exists_async(
