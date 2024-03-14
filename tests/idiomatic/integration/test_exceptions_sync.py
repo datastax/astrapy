@@ -196,6 +196,17 @@ class TestExceptionsSync:
         assert exc.value.partial_result.upserted_ids == {}
         assert sync_empty_collection.count_documents({}, upper_bound=10) == 1
 
+    @pytest.mark.describe("test of hard exceptions in ordered bulk_write, sync")
+    def test_ordered_bulk_write_error_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        i1 = InsertOne({"_id": "a"})
+        i2 = InsertOne({"_id": ValueError("unserializable")})
+
+        with pytest.raises(TypeError):
+            sync_empty_collection.bulk_write([i1, i2])
+
     @pytest.mark.describe("test of check_exists for database create_collection, sync")
     def test_database_create_collection_check_exists_sync(
         self,

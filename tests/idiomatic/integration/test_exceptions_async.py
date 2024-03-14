@@ -205,6 +205,17 @@ class TestExceptionsAsync:
         assert exc.value.partial_result.upserted_ids == {}
         assert await async_empty_collection.count_documents({}, upper_bound=10) == 1
 
+    @pytest.mark.describe("test of hard exceptions in ordered bulk_write, async")
+    async def test_ordered_bulk_write_error_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        i1 = AsyncInsertOne({"_id": "a"})
+        i2 = AsyncInsertOne({"_id": ValueError("unserializable")})
+
+        with pytest.raises(TypeError):
+            await async_empty_collection.bulk_write([i1, i2])
+
     @pytest.mark.describe("test of check_exists for database create_collection, async")
     async def test_database_create_collection_check_exists_async(
         self,
