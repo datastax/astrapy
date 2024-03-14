@@ -140,7 +140,7 @@ TimeoutInfoWideType = Union[TimeoutInfo, float, None]
 def to_httpx_timeout(timeout_info: TimeoutInfoWideType) -> Union[httpx.Timeout, None]:
     if timeout_info is None:
         return None
-    if isinstance(timeout_info, float):
+    if isinstance(timeout_info, float) or isinstance(timeout_info, int):
         return httpx.Timeout(timeout_info)
     elif isinstance(timeout_info, dict):
         _base = timeout_info.get("base") or DEFAULT_TIMEOUT
