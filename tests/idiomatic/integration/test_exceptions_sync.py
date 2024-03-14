@@ -207,6 +207,36 @@ class TestExceptionsSync:
         with pytest.raises(TypeError):
             sync_empty_collection.bulk_write([i1, i2])
 
+    @pytest.mark.describe("test of exceptions in unordered bulk_write, sync")
+    def test_unordered_bulk_write_failures_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        i1 = InsertOne({"_id": "a"})
+        i3 = InsertOne({"_id": "z"})
+
+        with pytest.raises(BulkWriteException) as exc:
+            sync_empty_collection.bulk_write([i1, i1, i3], ordered=False)
+        assert set(exc.value.partial_result.bulk_api_results.keys()) == {0, 2}
+        assert exc.value.partial_result.deleted_count == 0
+        assert exc.value.partial_result.inserted_count == 2
+        assert exc.value.partial_result.matched_count == 0
+        assert exc.value.partial_result.modified_count == 0
+        assert exc.value.partial_result.upserted_count == 0
+        assert exc.value.partial_result.upserted_ids == {}
+        assert sync_empty_collection.count_documents({}, upper_bound=10) == 2
+
+    @pytest.mark.describe("test of hard exceptions in unordered bulk_write, sync")
+    def test_unordered_bulk_write_error_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        i1 = InsertOne({"_id": "a"})
+        i2 = InsertOne({"_id": ValueError("unserializable")})
+
+        with pytest.raises(TypeError):
+            sync_empty_collection.bulk_write([i1, i2], ordered=False)
+
     @pytest.mark.describe("test of check_exists for database create_collection, sync")
     def test_database_create_collection_check_exists_sync(
         self,

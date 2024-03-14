@@ -18,7 +18,7 @@ import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from typing import Any, Dict, Iterable, List, Optional, Union, TYPE_CHECKING
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 
 from astrapy.core.db import (
     AstraDBCollection,
@@ -1421,20 +1421,58 @@ class Collection:
             full_bw_result = reduce_bulk_write_results(bulk_write_results)
             return full_bw_result
         else:
+
+            def _execute_as_either(
+                operation: BaseOperation, operation_i: int
+            ) -> Tuple[Optional[BulkWriteResult], Optional[DataAPIResponseException]]:
+                try:
+                    ex_result = operation.execute(self, operation_i)
+                    return (ex_result, None)
+                except DataAPIResponseException as exc:
+                    return (None, exc)
+
             with ThreadPoolExecutor(max_workers=BULK_WRITE_CONCURRENCY) as executor:
-                bulk_write_futures = [
+                bulk_write_either_futures = [
                     executor.submit(
-                        operation.execute,
-                        self,
+                        _execute_as_either,
+                        operation,
                         operation_i,
                     )
                     for operation_i, operation in enumerate(requests)
                 ]
-                bulk_write_results = [
-                    bulk_write_future.result()
-                    for bulk_write_future in bulk_write_futures
+                bulk_write_either_results = [
+                    bulk_write_either_future.result()
+                    for bulk_write_either_future in bulk_write_either_futures
                 ]
-                return reduce_bulk_write_results(bulk_write_results)
+                # regroup
+                bulk_write_successes = [
+                    bwr for bwr, _ in bulk_write_either_results if bwr
+                ]
+                bulk_write_failures = [
+                    bwf for _, bwf in bulk_write_either_results if bwf
+                ]
+                if bulk_write_failures:
+                    # extract and cumulate
+                    partial_results_from_failures = [
+                        failure.partial_result.to_bulk_write_result(
+                            index_in_bulk_write=operation_i
+                        )
+                        for failure in bulk_write_failures
+                        if isinstance(failure, CumulativeOperationException)
+                    ]
+                    partial_bw_result = reduce_bulk_write_results(
+                        bulk_write_successes + partial_results_from_failures
+                    )
+                    # raise and recast the first exception
+                    dar_exception = bulk_write_failures[0].data_api_response_exception()
+                    raise BulkWriteException(
+                        text=dar_exception.text,
+                        error_descriptors=dar_exception.error_descriptors,
+                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
+                        partial_result=partial_bw_result,
+                    )
+                else:
+                    return reduce_bulk_write_results(bulk_write_successes)
 
     def drop(self) -> Dict[str, Any]:
         """
@@ -2758,26 +2796,51 @@ class AsyncCollection:
             full_bw_result = reduce_bulk_write_results(bulk_write_results)
             return full_bw_result
         else:
+
             sem = asyncio.Semaphore(BULK_WRITE_CONCURRENCY)
 
-            async def concurrent_execute_operation(
-                operation: AsyncBaseOperation,
-                collection: AsyncCollection,
-                index_in_bulk_write: int,
-            ) -> BulkWriteResult:
+            async def _concurrent_execute_as_either(
+                operation: AsyncBaseOperation, operation_i: int
+            ) -> Tuple[Optional[BulkWriteResult], Optional[DataAPIResponseException]]:
                 async with sem:
-                    return await operation.execute(
-                        collection=collection, index_in_bulk_write=index_in_bulk_write
-                    )
+                    try:
+                        ex_result = await operation.execute(self, operation_i)
+                        return (ex_result, None)
+                    except DataAPIResponseException as exc:
+                        return (None, exc)
 
             tasks = [
                 asyncio.create_task(
-                    concurrent_execute_operation(operation, self, operation_i)
+                    _concurrent_execute_as_either(operation, operation_i)
                 )
                 for operation_i, operation in enumerate(requests)
             ]
-            bulk_write_results = await asyncio.gather(*tasks)
-            return reduce_bulk_write_results(bulk_write_results)
+            bulk_write_either_results = await asyncio.gather(*tasks)
+            # regroup
+            bulk_write_successes = [bwr for bwr, _ in bulk_write_either_results if bwr]
+            bulk_write_failures = [bwf for _, bwf in bulk_write_either_results if bwf]
+            if bulk_write_failures:
+                # extract and cumulate
+                partial_results_from_failures = [
+                    failure.partial_result.to_bulk_write_result(
+                        index_in_bulk_write=operation_i
+                    )
+                    for failure in bulk_write_failures
+                    if isinstance(failure, CumulativeOperationException)
+                ]
+                partial_bw_result = reduce_bulk_write_results(
+                    bulk_write_successes + partial_results_from_failures
+                )
+                # raise and recast the first exception
+                dar_exception = bulk_write_failures[0].data_api_response_exception()
+                raise BulkWriteException(
+                    text=dar_exception.text,
+                    error_descriptors=dar_exception.error_descriptors,
+                    detailed_error_descriptors=dar_exception.detailed_error_descriptors,
+                    partial_result=partial_bw_result,
+                )
+            else:
+                return reduce_bulk_write_results(bulk_write_successes)
 
     async def drop(self) -> Dict[str, Any]:
         """
