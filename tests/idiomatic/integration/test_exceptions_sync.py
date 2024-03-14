@@ -217,7 +217,8 @@ class TestExceptionsSync:
 
         with pytest.raises(BulkWriteException) as exc:
             sync_empty_collection.bulk_write([i1, i1, i3], ordered=False)
-        assert set(exc.value.partial_result.bulk_api_results.keys()) == {0, 2}
+        # whether '0' or '1' succeeds in inserting 'a' is random:
+        assert set(exc.value.partial_result.bulk_api_results.keys()) in [{0, 2}, {1, 2}]
         assert exc.value.partial_result.deleted_count == 0
         assert exc.value.partial_result.inserted_count == 2
         assert exc.value.partial_result.matched_count == 0
