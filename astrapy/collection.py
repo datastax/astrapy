@@ -394,12 +394,12 @@ class Collection:
             else:
                 raise DataAPIFaultyResponseException(
                     text="Faulty response from insert_one API command.",
-                    response=io_response,
+                    raw_response=io_response,
                 )
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from insert_one API command.",
-                response=io_response,
+                raw_response=io_response,
             )
 
     def insert_many(
@@ -801,7 +801,7 @@ class Collection:
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from count_documents API command.",
-                response=cd_response,
+                raw_response=cd_response,
             )
 
     @recast_method_sync
@@ -876,7 +876,7 @@ class Collection:
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from find_one_and_replace API command.",
-                response=fo_response,
+                raw_response=fo_response,
             )
 
     @recast_method_sync
@@ -927,7 +927,7 @@ class Collection:
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from find_one_and_replace API command.",
-                response=fo_response,
+                raw_response=fo_response,
             )
 
     @recast_method_sync
@@ -1008,7 +1008,7 @@ class Collection:
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from find_one_and_update API command.",
-                response=fo_response,
+                raw_response=fo_response,
             )
 
     @recast_method_sync
@@ -1065,7 +1065,7 @@ class Collection:
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from find_one_and_update API command.",
-                response=fo_response,
+                raw_response=fo_response,
             )
 
     def update_many(
@@ -1136,7 +1136,7 @@ class Collection:
                 if "status" not in this_um_response:
                     raise DataAPIFaultyResponseException(
                         text="Faulty response from update_many API command.",
-                        response=this_um_response,
+                        raw_response=this_um_response,
                     )
                 um_responses.append(this_um_response)
                 um_statuses.append(this_um_status)
@@ -1208,7 +1208,7 @@ class Collection:
             else:
                 raise DataAPIFaultyResponseException(
                     text="Faulty response from find_one_and_delete API command.",
-                    response=fo_response,
+                    raw_response=fo_response,
                 )
 
     @recast_method_sync
@@ -1251,7 +1251,7 @@ class Collection:
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from delete_one API command.",
-                response=do_response,
+                raw_response=do_response,
             )
 
     def delete_many(
@@ -1315,7 +1315,7 @@ class Collection:
                 if this_dc is None or this_dc < 0:
                     raise DataAPIFaultyResponseException(
                         text="Faulty response from delete_many API command.",
-                        response=this_dm_response,
+                        raw_response=this_dm_response,
                     )
                 dm_responses.append(this_dm_response)
                 deleted_count += this_dc
@@ -1345,7 +1345,7 @@ class Collection:
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from delete_many API command.",
-                response=dm_response,
+                raw_response=dm_response,
             )
 
     def bulk_write(
@@ -1405,6 +1405,7 @@ class Collection:
                         error_descriptors=dar_exception.error_descriptors,
                         detailed_error_descriptors=dar_exception.detailed_error_descriptors,
                         partial_result=partial_bw_result,
+                        exceptions=[dar_exception],
                     )
                 except DataAPIResponseException as exc:
                     # the cumulative exceptions, with their
@@ -1417,6 +1418,7 @@ class Collection:
                         error_descriptors=dar_exception.error_descriptors,
                         detailed_error_descriptors=dar_exception.detailed_error_descriptors,
                         partial_result=partial_bw_result,
+                        exceptions=[dar_exception],
                     )
             full_bw_result = reduce_bulk_write_results(bulk_write_results)
             return full_bw_result
@@ -1464,12 +1466,17 @@ class Collection:
                         bulk_write_successes + partial_results_from_failures
                     )
                     # raise and recast the first exception
-                    dar_exception = bulk_write_failures[0].data_api_response_exception()
+                    all_dar_exceptions = [
+                        bw_failure.data_api_response_exception()
+                        for bw_failure in bulk_write_failures
+                    ]
+                    dar_exception = all_dar_exceptions[0]
                     raise BulkWriteException(
                         text=dar_exception.text,
                         error_descriptors=dar_exception.error_descriptors,
                         detailed_error_descriptors=dar_exception.detailed_error_descriptors,
                         partial_result=partial_bw_result,
+                        exceptions=all_dar_exceptions,
                     )
                 else:
                     return reduce_bulk_write_results(bulk_write_successes)
@@ -2172,7 +2179,7 @@ class AsyncCollection:
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from count_documents API command.",
-                response=cd_response,
+                raw_response=cd_response,
             )
 
     @recast_method_async
@@ -2247,7 +2254,7 @@ class AsyncCollection:
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from find_one_and_replace API command.",
-                response=fo_response,
+                raw_response=fo_response,
             )
 
     @recast_method_async
@@ -2298,7 +2305,7 @@ class AsyncCollection:
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from find_one_and_replace API command.",
-                response=fo_response,
+                raw_response=fo_response,
             )
 
     @recast_method_async
@@ -2379,7 +2386,7 @@ class AsyncCollection:
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from find_one_and_update API command.",
-                response=fo_response,
+                raw_response=fo_response,
             )
 
     @recast_method_async
@@ -2436,7 +2443,7 @@ class AsyncCollection:
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from find_one_and_update API command.",
-                response=fo_response,
+                raw_response=fo_response,
             )
 
     async def update_many(
@@ -2507,7 +2514,7 @@ class AsyncCollection:
                 if "status" not in this_um_response:
                     raise DataAPIFaultyResponseException(
                         text="Faulty response from update_many API command.",
-                        response=this_um_response,
+                        raw_response=this_um_response,
                     )
                 um_responses.append(this_um_response)
                 um_statuses.append(this_um_status)
@@ -2579,7 +2586,7 @@ class AsyncCollection:
             else:
                 raise DataAPIFaultyResponseException(
                     text="Faulty response from find_one_and_delete API command.",
-                    response=fo_response,
+                    raw_response=fo_response,
                 )
 
     @recast_method_async
@@ -2624,7 +2631,7 @@ class AsyncCollection:
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from delete_one API command.",
-                response=do_response,
+                raw_response=do_response,
             )
 
     async def delete_many(
@@ -2690,7 +2697,7 @@ class AsyncCollection:
                 if this_dc is None or this_dc < 0:
                     raise DataAPIFaultyResponseException(
                         text="Faulty response from delete_many API command.",
-                        response=this_dm_response,
+                        raw_response=this_dm_response,
                     )
                 dm_responses.append(this_dm_response)
                 deleted_count += this_dc
@@ -2720,7 +2727,7 @@ class AsyncCollection:
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from delete_many API command.",
-                response=dm_response,
+                raw_response=dm_response,
             )
 
     async def bulk_write(
@@ -2780,6 +2787,7 @@ class AsyncCollection:
                         error_descriptors=dar_exception.error_descriptors,
                         detailed_error_descriptors=dar_exception.detailed_error_descriptors,
                         partial_result=partial_bw_result,
+                        exceptions=[dar_exception],
                     )
                 except DataAPIResponseException as exc:
                     # the cumulative exceptions, with their
@@ -2792,6 +2800,7 @@ class AsyncCollection:
                         error_descriptors=dar_exception.error_descriptors,
                         detailed_error_descriptors=dar_exception.detailed_error_descriptors,
                         partial_result=partial_bw_result,
+                        exceptions=[dar_exception],
                     )
             full_bw_result = reduce_bulk_write_results(bulk_write_results)
             return full_bw_result
@@ -2832,12 +2841,17 @@ class AsyncCollection:
                     bulk_write_successes + partial_results_from_failures
                 )
                 # raise and recast the first exception
-                dar_exception = bulk_write_failures[0].data_api_response_exception()
+                all_dar_exceptions = [
+                    bw_failure.data_api_response_exception()
+                    for bw_failure in bulk_write_failures
+                ]
+                dar_exception = all_dar_exceptions[0]
                 raise BulkWriteException(
                     text=dar_exception.text,
                     error_descriptors=dar_exception.error_descriptors,
                     detailed_error_descriptors=dar_exception.detailed_error_descriptors,
                     partial_result=partial_bw_result,
+                    exceptions=all_dar_exceptions,
                 )
             else:
                 return reduce_bulk_write_results(bulk_write_successes)

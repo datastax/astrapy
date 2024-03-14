@@ -475,7 +475,7 @@ class Database:
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
                 text="Faulty response from get_collections API command.",
-                response=gc_response,
+                raw_response=gc_response,
             )
         else:
             # we know this is a list of dicts which need a little adjusting
@@ -512,7 +512,7 @@ class Database:
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
                 text="Faulty response from get_collections API command.",
-                response=gc_response,
+                raw_response=gc_response,
             )
         else:
             # we know this is a list of strings
@@ -968,7 +968,7 @@ class AsyncDatabase:
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
                 text="Faulty response from get_collections API command.",
-                response=gc_response,
+                raw_response=gc_response,
             )
         else:
             # we know this is a list of dicts which need a little adjusting
@@ -1001,7 +1001,7 @@ class AsyncDatabase:
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
                 text="Faulty response from get_collections API command.",
-                response=gc_response,
+                raw_response=gc_response,
             )
         else:
             # we know this is a list of strings

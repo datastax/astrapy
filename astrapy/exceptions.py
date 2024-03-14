@@ -30,11 +30,32 @@ from astrapy.results import (
 
 
 class DevOpsAPIException(ValueError):
+    """
+    An exception specific to issuing requests to the DevOps API.
+    """
+
     pass
 
 
 @dataclass
 class DataAPIErrorDescriptor:
+    """
+    An object representing a single error returned from the Data API,
+    typically with an error code and a text message.
+    An API request would return with an HTTP 200 success error code,
+    but contain a nonzero amount of these.
+
+    A single response from the Data API may return zero, one or more of these.
+    Moreover, some operations, such as an insert_many, may partally succeed
+    yet return these errors about the rest of the operation (such as,
+    some of the input documents could not be inserted).
+
+    Attributes:
+        error_code: a string code as found in the API "error" item.
+        message: the text found in the API "error" item.
+        attributes: a dict with any further key-value pairs returned by the API.
+    """
+
     error_code: Optional[str]
     message: Optional[str]
     attributes: Dict[str, Any]
@@ -49,23 +70,68 @@ class DataAPIErrorDescriptor:
 
 @dataclass
 class DataAPIDetailedErrorDescriptor:
+    """
+    An object representing an errorful response from the Data API.
+    Errors specific to the Data API (as opposed to e.g. network failures)
+    would result in an HTTP 200 success response code but coming with
+    one or more DataAPIErrorDescriptor objects.
+
+    This object corresponds to one response, and as such its attributes
+    are a single request payload, a single response, but a list of
+    DataAPIErrorDescriptor instances.
+
+    Attributes:
+        error_descriptors: a list of DataAPIErrorDescriptor objects.
+        command: the raw payload of the API request.
+        raw_response: the full API response in the form of a dict.
+    """
+
     error_descriptors: List[DataAPIErrorDescriptor]
     command: Optional[Dict[str, Any]]
     raw_response: Dict[str, Any]
 
 
 class DataAPIException(ValueError):
+    """
+    Any exception occurred while issuing requests to the Data API
+    and specific to it, such as:
+      - a collection is found not to exist when gettings its metadata,
+      - the API return a response with an error,
+    but not, for instance,
+      - a network error while sending an HTTP request to the API.
+    """
+
     pass
 
 
 @dataclass
 class CursorIsStartedException(DataAPIException):
+    """
+    The cursor operation cannot be invoked if a cursor is not in its pristine
+    state (i.e. is already being consumed or is exhausted altogether).
+
+    Attributes:
+        text: a text message about the exception.
+        cursor_state: a string description of the current state
+            of the cursor. See the documentation for Cursor.
+    """
+
     text: str
     cursor_state: str
 
 
 @dataclass
 class CollectionNotFoundException(DataAPIException):
+    """
+    A collection is found non-existing and the requested operation
+    cannot be performed.
+
+    Attributes:
+        text: a text message about the exception.
+        namespace: the namespace where the collection was supposed to be.
+        collection_name: the name of the expected collection.
+    """
+
     text: str
     namespace: str
     collection_name: str
@@ -73,6 +139,16 @@ class CollectionNotFoundException(DataAPIException):
 
 @dataclass
 class CollectionAlreadyExistsException(DataAPIException):
+    """
+    An operation expected a collection not to exist, yet it has
+    been detected as pre-existing.
+
+    Attributes:
+        text: a text message about the exception.
+        namespace: the namespace where the collection was expected not to exist.
+        collection_name: the name of the collection.
+    """
+
     text: str
     namespace: str
     collection_name: str
@@ -80,27 +156,68 @@ class CollectionAlreadyExistsException(DataAPIException):
 
 @dataclass
 class TooManyDocumentsToCountException(DataAPIException):
+    """
+    A count_documents() operation failed because the resulting number of documents
+    exceeded either the upper bound set by the caller or the hard limit imposed
+    by the Data API.
+
+    Attributes:
+        text: a text message about the exception.
+        server_max_count_exceeded: True if the count limit imposed by the API
+            is reached. In that case, increasing the upper bound in the method
+            invocation is of no help.
+    """
+
     text: str
     server_max_count_exceeded: bool
 
 
 @dataclass
 class DataAPIFaultyResponseException(DataAPIException):
+    """
+    The Data API response is malformed in that it does not have
+    expected field(s), or they are of the wrong type.
+
+    Attributes:
+        text: a text message about the exception.
+        raw_response: the response returned by the API in the form of a dict.
+    """
+
     text: str
-    response: Optional[Dict[str, Any]]
+    raw_response: Optional[Dict[str, Any]]
 
     def __init__(
         self,
         text: str,
-        response: Optional[Dict[str, Any]],
+        raw_response: Optional[Dict[str, Any]],
     ) -> None:
         super().__init__(text)
         self.text = text
-        self.response = response
+        self.raw_response = raw_response
 
 
 @dataclass
 class DataAPIResponseException(DataAPIException):
+    """
+    The Data API returned an HTTP 200 success response, which however
+    reports about API-specific error(s), possibly alongside partial successes.
+
+    This exception is related to an operation that can have spanned several
+    HTTP requests in sequence (e.g. a chunked insert_many). For this
+    reason, it should be not thought as being in a 1:1 relation with
+    actual API requests, rather with operations invoked by the user,
+    such as the methods of the Collection object.
+
+    Attributes:
+        text: a text message about the exception.
+        error_descriptors: a list of all DataAPIErrorDescriptor objects
+            found across all requests involved in this exception, which are
+            possibly more than one.
+        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
+            objects, one for each of the requests performed during this operation.
+            For single-request methods, such as insert_one, this list always
+            has a single element.
+    """
 
     text: Optional[str]
     error_descriptors: List[DataAPIErrorDescriptor]
@@ -180,30 +297,136 @@ class DataAPIResponseException(DataAPIException):
 
 
 class CumulativeOperationException(DataAPIResponseException):
+    """
+    An exception of type DataAPIResponseException (see) occurred
+    during an operation that in general spans several requests.
+    As such, besides information on the error, it may have accumulated
+    a partial result from past successful Data API requests.
+
+    Attributes:
+        text: a text message about the exception.
+        error_descriptors: a list of all DataAPIErrorDescriptor objects
+            found across all requests involved in this exception, which are
+            possibly more than one.
+        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
+            objects, one for each of the requests performed during this operation.
+            For single-request methods, such as insert_one, this list always
+            has a single element.
+        partial_result: an OperationResult object, just like the one that would
+            be the return value of the operation, had it succeeded completely.
+    """
+
     partial_result: OperationResult
 
 
 @dataclass
 class InsertManyException(CumulativeOperationException):
+    """
+    An exception of type DataAPIResponseException (see) occurred
+    during an insert_many (that in general spans several requests).
+    As such, besides information on the error, it may have accumulated
+    a partial result from past successful Data API requests.
+
+    Attributes:
+        text: a text message about the exception.
+        error_descriptors: a list of all DataAPIErrorDescriptor objects
+            found across all requests involved in this exception, which are
+            possibly more than one.
+        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
+            objects, one for each of the requests performed during this operation.
+            For single-request methods, such as insert_one, this list always
+            has a single element.
+        partial_result: an InsertManyResult object, just like the one that would
+            be the return value of the operation, had it succeeded completely.
+    """
+
     partial_result: InsertManyResult
 
 
 @dataclass
 class DeleteManyException(CumulativeOperationException):
+    """
+    An exception of type DataAPIResponseException (see) occurred
+    during a delete_many (that in general spans several requests).
+    As such, besides information on the error, it may have accumulated
+    a partial result from past successful Data API requests.
+
+    Attributes:
+        text: a text message about the exception.
+        error_descriptors: a list of all DataAPIErrorDescriptor objects
+            found across all requests involved in this exception, which are
+            possibly more than one.
+        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
+            objects, one for each of the requests performed during this operation.
+            For single-request methods, such as insert_one, this list always
+            has a single element.
+        partial_result: a DeleteResult object, just like the one that would
+            be the return value of the operation, had it succeeded completely.
+    """
+
     partial_result: DeleteResult
 
 
 @dataclass
 class UpdateManyException(CumulativeOperationException):
+    """
+    An exception of type DataAPIResponseException (see) occurred
+    during an update_many (that in general spans several requests).
+    As such, besides information on the error, it may have accumulated
+    a partial result from past successful Data API requests.
+
+    Attributes:
+        text: a text message about the exception.
+        error_descriptors: a list of all DataAPIErrorDescriptor objects
+            found across all requests involved in this exception, which are
+            possibly more than one.
+        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
+            objects, one for each of the requests performed during this operation.
+            For single-request methods, such as insert_one, this list always
+            has a single element.
+        partial_result: an UpdateResult object, just like the one that would
+            be the return value of the operation, had it succeeded completely.
+    """
+
     partial_result: UpdateResult
 
 
 @dataclass
 class BulkWriteException(DataAPIResponseException):
+    """
+    An exception of type DataAPIResponseException (see) occurred
+    during a bulk_write of a list of operations.
+    As such, besides information on the error, it may have accumulated
+    a partial result from past successful operations.
+
+    Attributes:
+        text: a text message about the exception.
+        error_descriptors: a list of all DataAPIErrorDescriptor objects
+            found across all requests involved in the first
+            operation that has failed.
+        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
+            objects, one for each of the requests performed during the first operation
+            that has failed.
+        partial_result: a BulkWriteResult object, just like the one that would
+            be the return value of the operation, had it succeeded completely.
+        exceptions: a list of DataAPIResponseException objects, one for each
+            operation in the bulk that has failed. This information is made
+            available here since the top-level fields of this error
+            only surface the first such failure that is detected across the bulk.
+            In case of bulk_writes with ordered=True, this trivially contains
+            a single element, the same described by the top-level fields
+            text, error_descriptors and detailed_error_descriptors.
+    """
+
     partial_result: BulkWriteResult
+    exceptions: List[DataAPIResponseException]
 
 
 def recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Decorator for a sync method liable to generate the core APIRequestError.
+    That exception is intercepted and recast as DataAPIResponseException.
+    """
 
     @wraps(method)
     def _wrapped_sync(*pargs: Any, **kwargs: Any) -> Any:
@@ -220,6 +443,10 @@ def recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
 def recast_method_async(
     method: Callable[..., Awaitable[Any]]
 ) -> Callable[..., Awaitable[Any]]:
+    """
+    Decorator for an async method liable to generate the core APIRequestError.
+    That exception is intercepted and recast as DataAPIResponseException.
+    """
 
     @wraps(method)
     async def _wrapped_async(*pargs: Any, **kwargs: Any) -> Any:
