@@ -20,7 +20,13 @@ from dataclasses import dataclass
 
 
 from astrapy.core.api import APIRequestError
-from astrapy.results import DeleteResult, InsertManyResult, UpdateResult
+from astrapy.results import (
+    BulkWriteResult,
+    DeleteResult,
+    InsertManyResult,
+    OperationResult,
+    UpdateResult,
+)
 
 
 class DevOpsAPIException(ValueError):
@@ -165,20 +171,36 @@ class DataAPIResponseException(DataAPIException):
             **kwargs,
         )
 
+    def data_api_response_exception(self) -> DataAPIResponseException:
+        return DataAPIResponseException(
+            text=self.text,
+            error_descriptors=self.error_descriptors,
+            detailed_error_descriptors=self.detailed_error_descriptors,
+        )
+
+
+class CumulativeOperationException(DataAPIResponseException):
+    partial_result: OperationResult
+
 
 @dataclass
-class InsertManyException(DataAPIResponseException):
+class InsertManyException(CumulativeOperationException):
     partial_result: InsertManyResult
 
 
 @dataclass
-class DeleteManyException(DataAPIResponseException):
+class DeleteManyException(CumulativeOperationException):
     partial_result: DeleteResult
 
 
 @dataclass
-class UpdateManyException(DataAPIResponseException):
+class UpdateManyException(CumulativeOperationException):
     partial_result: UpdateResult
+
+
+@dataclass
+class BulkWriteException(DataAPIResponseException):
+    partial_result: BulkWriteResult
 
 
 def recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:

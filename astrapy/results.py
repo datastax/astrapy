@@ -14,12 +14,14 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
+
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 
 @dataclass
-class OperationResult:
+class OperationResult(ABC):
     """
     Class that represents the generic result of a single mutation operation.
 
@@ -30,6 +32,9 @@ class OperationResult:
     """
 
     raw_results: List[Dict[str, Any]]
+
+    @abstractmethod
+    def to_bulk_write_result(self, index_in_bulk_write: int) -> BulkWriteResult: ...
 
 
 @dataclass
@@ -169,3 +174,19 @@ class BulkWriteResult:
     modified_count: int
     upserted_count: int
     upserted_ids: Dict[int, Any]
+
+    @staticmethod
+    def zero() -> BulkWriteResult:
+        """
+        Return an empty BulkWriteResult, for use in no-ops and list reductions.
+        """
+
+        return BulkWriteResult(
+            bulk_api_results={},
+            deleted_count=0,
+            inserted_count=0,
+            matched_count=0,
+            modified_count=0,
+            upserted_count=0,
+            upserted_ids={},
+        )

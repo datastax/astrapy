@@ -26,8 +26,11 @@ from astrapy.core.db import (
 )
 from astrapy.core.defaults import MAX_INSERT_NUM_DOCUMENTS
 from astrapy.exceptions import (
+    BulkWriteException,
     CollectionNotFoundException,
+    CumulativeOperationException,
     DataAPIFaultyResponseException,
+    DataAPIResponseException,
     DeleteManyException,
     InsertManyException,
     TooManyDocumentsToCountException,
@@ -1381,11 +1384,42 @@ class Collection:
         from astrapy.operations import reduce_bulk_write_results
 
         if ordered:
-            bulk_write_results = [
-                operation.execute(self, operation_i)
-                for operation_i, operation in enumerate(requests)
-            ]
-            return reduce_bulk_write_results(bulk_write_results)
+            bulk_write_results: List[BulkWriteResult] = []
+            for operation_i, operation in enumerate(requests):
+                try:
+                    this_bw_result = operation.execute(self, operation_i)
+                except CumulativeOperationException as exc:
+                    partial_result = exc.partial_result
+                    partial_bw_result = reduce_bulk_write_results(
+                        bulk_write_results
+                        + [
+                            partial_result.to_bulk_write_result(
+                                index_in_bulk_write=operation_i
+                            )
+                        ]
+                    )
+                    dar_exception = exc.data_api_response_exception()
+                    raise BulkWriteException(
+                        text=dar_exception.text,
+                        error_descriptors=dar_exception.error_descriptors,
+                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
+                        partial_result=partial_bw_result,
+                    )
+                except DataAPIResponseException as exc:
+                    # the cumulative exceptions, with their
+                    # partially-done-info, are handled above:
+                    # here it's just one-shot d.a.r. exceptions
+                    partial_bw_result = reduce_bulk_write_results(bulk_write_results)
+                    dar_exception = exc.data_api_response_exception()
+                    raise BulkWriteException(
+                        text=dar_exception.text,
+                        error_descriptors=dar_exception.error_descriptors,
+                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
+                        partial_result=partial_bw_result,
+                    )
+                bulk_write_results.append(this_bw_result)
+            full_bw_result = reduce_bulk_write_results(bulk_write_results)
+            return full_bw_result
         else:
             with ThreadPoolExecutor(max_workers=BULK_WRITE_CONCURRENCY) as executor:
                 bulk_write_futures = [

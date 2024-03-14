@@ -46,15 +46,7 @@ def reduce_bulk_write_results(results: List[BulkWriteResult]) -> BulkWriteResult
         A new BulkWRiteResult object which summarized the whole input list.
     """
 
-    zero = BulkWriteResult(
-        bulk_api_results={},
-        deleted_count=0,
-        inserted_count=0,
-        matched_count=0,
-        modified_count=0,
-        upserted_count=0,
-        upserted_ids={},
-    )
+    zero = BulkWriteResult.zero()
 
     def _sum_results(r1: BulkWriteResult, r2: BulkWriteResult) -> BulkWriteResult:
         bulk_api_results = {**r1.bulk_api_results, **r2.bulk_api_results}
