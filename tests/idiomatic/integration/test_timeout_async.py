@@ -75,3 +75,21 @@ class TestTimeoutAsync:
         await async_empty_collection.find_one({})
         with pytest.raises(DataAPITimeoutException):
             await async_empty_collection.find_one({}, max_time_ms=1)
+
+    @pytest.mark.describe("test of cursor-based overall timeouts, async")
+    async def test_cursor_overalltimeout_exceptions_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+        await acol.insert_many([{"a": 1}] * 1000)
+
+        await acol.distinct("a", max_time_ms=5000)
+        with pytest.raises(DataAPITimeoutException):
+            await acol.distinct("a", max_time_ms=1)
+
+        cur1 = acol.find({})
+        cur2 = acol.find({})
+        await cur1.distinct("a", max_time_ms=5000)
+        with pytest.raises(DataAPITimeoutException):
+            await cur2.distinct("a", max_time_ms=1)

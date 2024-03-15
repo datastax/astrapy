@@ -73,3 +73,21 @@ class TestTimeoutSync:
         sync_empty_collection.find_one({})
         with pytest.raises(DataAPITimeoutException):
             sync_empty_collection.find_one({}, max_time_ms=1)
+
+    @pytest.mark.describe("test of cursor-based overall timeouts, sync")
+    def test_cursor_overalltimeout_exceptions_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+        col.insert_many([{"a": 1}] * 1000)
+
+        col.distinct("a", max_time_ms=5000)
+        with pytest.raises(DataAPITimeoutException):
+            col.distinct("a", max_time_ms=1)
+
+        cur1 = col.find({})
+        cur2 = col.find({})
+        cur1.distinct("a", max_time_ms=5000)
+        with pytest.raises(DataAPITimeoutException):
+            cur2.distinct("a", max_time_ms=1)

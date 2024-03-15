@@ -650,6 +650,7 @@ class Collection:
                 filter=filter,
                 projection=projection,
                 max_time_ms=max_time_ms,
+                overall_max_time_ms=None,
             )
             .skip(skip)
             .limit(limit)
@@ -713,6 +714,7 @@ class Collection:
         key: str,
         *,
         filter: Optional[FilterType] = None,
+        max_time_ms: Optional[int] = None,
     ) -> List[Any]:
         """
         Return a list of the unique values of `key` across the documents
@@ -743,6 +745,7 @@ class Collection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             a list of all different values for `key` found across the documents
@@ -756,10 +759,14 @@ class Collection:
             billing implications if the amount of matching documents is large.
         """
 
-        return self.find(  # type: ignore[no-any-return]
+        f_cursor = Cursor(
+            collection=self,
             filter=filter,
             projection={key: True},
-        ).distinct(key)
+            max_time_ms=None,
+            overall_max_time_ms=max_time_ms,
+        )
+        return f_cursor.distinct(key)  # type: ignore[no-any-return]
 
     @recast_method_sync
     def count_documents(
@@ -2085,6 +2092,7 @@ class AsyncCollection:
                 filter=filter,
                 projection=projection,
                 max_time_ms=max_time_ms,
+                overall_max_time_ms=None,
             )
             .skip(skip)
             .limit(limit)
@@ -2148,6 +2156,7 @@ class AsyncCollection:
         key: str,
         *,
         filter: Optional[FilterType] = None,
+        max_time_ms: Optional[int] = None,
     ) -> List[Any]:
         """
         Return a list of the unique values of `key` across the documents
@@ -2170,6 +2179,7 @@ class AsyncCollection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             a list of all different values for `key` found across the documents
@@ -2183,11 +2193,14 @@ class AsyncCollection:
             billing implications if the amount of matching documents is large.
         """
 
-        cursor = self.find(
+        f_cursor = AsyncCursor(
+            collection=self,
             filter=filter,
             projection={key: True},
+            max_time_ms=None,
+            overall_max_time_ms=max_time_ms,
         )
-        return await cursor.distinct(key)  # type: ignore[no-any-return]
+        return await f_cursor.distinct(key)  # type: ignore[no-any-return]
 
     @recast_method_async
     async def count_documents(
