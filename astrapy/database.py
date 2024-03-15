@@ -23,6 +23,7 @@ from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     recast_method_sync,
     recast_method_async,
+    base_timeout_info,
 )
 from astrapy.cursors import AsyncCommandCursor, CommandCursor
 from astrapy.info import DatabaseInfo, get_database_info
@@ -339,6 +340,7 @@ class Database:
         indexing: Optional[Dict[str, Any]] = None,
         additional_options: Optional[Dict[str, Any]] = None,
         check_exists: Optional[bool] = None,
+        max_time_ms: Optional[int] = None,
     ) -> Collection:
         """
         Creates a collection on the database and return the Collection
@@ -373,6 +375,7 @@ class Database:
                 If it is False, the creation is attempted. In this case, for
                 preexisting collections, the command will succeed or fail
                 depending on whether the options match or not.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a (synchronous) Collection instance, representing the
@@ -396,7 +399,9 @@ class Database:
             _check_exists = check_exists
         existing_names: List[str]
         if _check_exists:
-            existing_names = self.list_collection_names(namespace=namespace)
+            existing_names = self.list_collection_names(
+                namespace=namespace, max_time_ms=max_time_ms
+            )
         else:
             existing_names = []
         driver_db = self._astra_db.copy(namespace=namespace)
@@ -412,19 +417,23 @@ class Database:
             options=_options,
             dimension=dimension,
             metric=metric,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         return self.get_collection(name, namespace=namespace)
 
     @recast_method_sync
     def drop_collection(
-        self, name_or_collection: Union[str, Collection]
+        self,
+        name_or_collection: Union[str, Collection],
+        max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Drop a collection from the database, along with all documents therein.
 
         Args:
             name_or_collection: either the name of a collection or
-            a Collection instance.
+                a Collection instance.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a dictionary in the form {"ok": 1} if the command succeeds.
@@ -441,11 +450,15 @@ class Database:
             _namespace = name_or_collection.namespace
             _name: str = name_or_collection.name
             dc_response = self._astra_db.copy(namespace=_namespace).delete_collection(
-                _name
+                _name,
+                timeout_info=base_timeout_info(max_time_ms),
             )
             return dc_response.get("status", {})  # type: ignore[no-any-return]
         else:
-            dc_response = self._astra_db.delete_collection(name_or_collection)
+            dc_response = self._astra_db.delete_collection(
+                name_or_collection,
+                timeout_info=base_timeout_info(max_time_ms),
+            )
             return dc_response.get("status", {})  # type: ignore[no-any-return]
 
     @recast_method_sync
@@ -453,13 +466,15 @@ class Database:
         self,
         *,
         namespace: Optional[str] = None,
+        max_time_ms: Optional[int] = None,
     ) -> CommandCursor[Dict[str, Any]]:
         """
         List all collections in a given namespace for this database.
 
         Args:
             namespace: the namespace to be inspected. If not specified,
-            the general setting for this database is assumed.
+                the general setting for this database is assumed.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a `CommandCursor` to iterate over dictionaries, each
@@ -471,7 +486,9 @@ class Database:
             _client = self._astra_db.copy(namespace=namespace)
         else:
             _client = self._astra_db
-        gc_response = _client.get_collections(options={"explain": True})
+        gc_response = _client.get_collections(
+            options={"explain": True}, timeout_info=base_timeout_info(max_time_ms)
+        )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
                 text="Faulty response from get_collections API command.",
@@ -492,13 +509,15 @@ class Database:
         self,
         *,
         namespace: Optional[str] = None,
+        max_time_ms: Optional[int] = None,
     ) -> List[str]:
         """
         List the names of all collections in a given namespace of this database.
 
         Args:
             namespace: the namespace to be inspected. If not specified,
-            the general setting for this database is assumed.
+                the general setting for this database is assumed.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a list of the collection names as strings, in no particular order.
@@ -508,7 +527,9 @@ class Database:
             _client = self._astra_db.copy(namespace=namespace)
         else:
             _client = self._astra_db
-        gc_response = _client.get_collections()
+        gc_response = _client.get_collections(
+            timeout_info=base_timeout_info(max_time_ms)
+        )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
                 text="Faulty response from get_collections API command.",
@@ -525,6 +546,7 @@ class Database:
         *,
         namespace: Optional[str] = None,
         collection_name: Optional[str] = None,
+        max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Send a POST request to the Data API for this database with
@@ -534,10 +556,11 @@ class Database:
             body: a JSON-serializable dictionary, the payload of the request.
         Args:
             namespace: the namespace to use. Requests always target a namespace:
-            if not specified, the general setting for this database is assumed.
-        collection_name: if provided, the collection name is appended at the end
-            of the endpoint. In this way, this method allows collection-level
-            arbitrary POST requests as well.
+                if not specified, the general setting for this database is assumed.
+            collection_name: if provided, the collection name is appended at the end
+                of the endpoint. In this way, this method allows collection-level
+                arbitrary POST requests as well.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a dictionary with the response of the HTTP request.
@@ -549,9 +572,15 @@ class Database:
             _client = self._astra_db
         if collection_name:
             _collection = _client.collection(collection_name)
-            return _collection.post_raw_request(body=body)
+            return _collection.post_raw_request(
+                body=body,
+                timeout_info=base_timeout_info(max_time_ms),
+            )
         else:
-            return _client.post_raw_request(body=body)
+            return _client.post_raw_request(
+                body=body,
+                timeout_info=base_timeout_info(max_time_ms),
+            )
 
 
 class AsyncDatabase:
@@ -832,6 +861,7 @@ class AsyncDatabase:
         indexing: Optional[Dict[str, Any]] = None,
         additional_options: Optional[Dict[str, Any]] = None,
         check_exists: Optional[bool] = None,
+        max_time_ms: Optional[int] = None,
     ) -> AsyncCollection:
         """
         Creates a collection on the database and return the AsyncCollection
@@ -866,6 +896,7 @@ class AsyncDatabase:
                 If it is False, the creation is attempted. In this case, for
                 preexisting collections, the command will succeed or fail
                 depending on whether the options match or not.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             an AsyncCollection instance, representing the newly-created collection.
@@ -888,7 +919,9 @@ class AsyncDatabase:
             _check_exists = check_exists
         existing_names: List[str]
         if _check_exists:
-            existing_names = await self.list_collection_names(namespace=namespace)
+            existing_names = await self.list_collection_names(
+                namespace=namespace, max_time_ms=max_time_ms
+            )
         else:
             existing_names = []
         driver_db = self._astra_db.copy(namespace=namespace)
@@ -904,19 +937,23 @@ class AsyncDatabase:
             options=_options,
             dimension=dimension,
             metric=metric,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         return await self.get_collection(name, namespace=namespace)
 
     @recast_method_async
     async def drop_collection(
-        self, name_or_collection: Union[str, AsyncCollection]
+        self,
+        name_or_collection: Union[str, AsyncCollection],
+        max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Drop a collection from the database, along with all documents therein.
 
         Args:
             name_or_collection: either the name of a collection or
-            an AsyncCollection instance.
+                an AsyncCollection instance.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a dictionary in the form {"ok": 1} if the command succeeds.
@@ -934,10 +971,16 @@ class AsyncDatabase:
             _name = name_or_collection.name
             dc_response = await self._astra_db.copy(
                 namespace=_namespace
-            ).delete_collection(_name)
+            ).delete_collection(
+                _name,
+                timeout_info=base_timeout_info(max_time_ms),
+            )
             return dc_response.get("status", {})  # type: ignore[no-any-return]
         else:
-            dc_response = await self._astra_db.delete_collection(name_or_collection)
+            dc_response = await self._astra_db.delete_collection(
+                name_or_collection,
+                timeout_info=base_timeout_info(max_time_ms),
+            )
             return dc_response.get("status", {})  # type: ignore[no-any-return]
 
     @recast_method_sync
@@ -945,13 +988,15 @@ class AsyncDatabase:
         self,
         *,
         namespace: Optional[str] = None,
+        max_time_ms: Optional[int] = None,
     ) -> AsyncCommandCursor[Dict[str, Any]]:
         """
         List all collections in a given namespace for this database.
 
         Args:
             namespace: the namespace to be inspected. If not specified,
-            the general setting for this database is assumed.
+                the general setting for this database is assumed.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             an `AsyncCommandCursor` to iterate over dictionaries, each
@@ -964,7 +1009,10 @@ class AsyncDatabase:
             _client = self._astra_db.copy(namespace=namespace)
         else:
             _client = self._astra_db
-        gc_response = _client.to_sync().get_collections(options={"explain": True})
+        gc_response = _client.to_sync().get_collections(
+            options={"explain": True},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
                 text="Faulty response from get_collections API command.",
@@ -985,19 +1033,23 @@ class AsyncDatabase:
         self,
         *,
         namespace: Optional[str] = None,
+        max_time_ms: Optional[int] = None,
     ) -> List[str]:
         """
         List the names of all collections in a given namespace of this database.
 
         Args:
             namespace: the namespace to be inspected. If not specified,
-            the general setting for this database is assumed.
+                the general setting for this database is assumed.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a list of the collection names as strings, in no particular order.
         """
 
-        gc_response = await self._astra_db.copy(namespace=namespace).get_collections()
+        gc_response = await self._astra_db.copy(namespace=namespace).get_collections(
+            timeout_info=base_timeout_info(max_time_ms)
+        )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
                 text="Faulty response from get_collections API command.",
@@ -1014,6 +1066,7 @@ class AsyncDatabase:
         *,
         namespace: Optional[str] = None,
         collection_name: Optional[str] = None,
+        max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Send a POST request to the Data API for this database with
@@ -1023,10 +1076,11 @@ class AsyncDatabase:
             body: a JSON-serializable dictionary, the payload of the request.
         Args:
             namespace: the namespace to use. Requests always target a namespace:
-            if not specified, the general setting for this database is assumed.
-        collection_name: if provided, the collection name is appended at the end
-            of the endpoint. In this way, this method allows collection-level
-            arbitrary POST requests as well.
+                if not specified, the general setting for this database is assumed.
+            collection_name: if provided, the collection name is appended at the end
+                of the endpoint. In this way, this method allows collection-level
+                arbitrary POST requests as well.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a dictionary with the response of the HTTP request.
@@ -1038,6 +1092,12 @@ class AsyncDatabase:
             _client = self._astra_db
         if collection_name:
             _collection = await _client.collection(collection_name)
-            return await _collection.post_raw_request(body=body)
+            return await _collection.post_raw_request(
+                body=body,
+                timeout_info=base_timeout_info(max_time_ms),
+            )
         else:
-            return await _client.post_raw_request(body=body)
+            return await _client.post_raw_request(
+                body=body,
+                timeout_info=base_timeout_info(max_time_ms),
+            )

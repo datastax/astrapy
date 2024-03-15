@@ -18,8 +18,14 @@ import re
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+import httpx
+
 from astrapy.core.ops import AstraDBOps
-from astrapy.exceptions import DevOpsAPIException
+from astrapy.exceptions import (
+    DevOpsAPIException,
+    base_timeout_info,
+    to_dataapi_timeout_exception,
+)
 
 
 database_id_finder = re.compile(
@@ -45,7 +51,9 @@ def find_database_id(api_endpoint: str) -> Optional[str]:
         return None
 
 
-def get_database_info(api_endpoint: str, token: str, namespace: str) -> DatabaseInfo:
+def get_database_info(
+    api_endpoint: str, token: str, namespace: str, max_time_ms: Optional[int] = None
+) -> DatabaseInfo:
     """
     Fetch the relevant information through the DevOps API.
 
@@ -53,6 +61,7 @@ def get_database_info(api_endpoint: str, token: str, namespace: str) -> Database
         api_endpoint: a full API endpoint for the Data Api.
         token: a valid token to access the database.
         namespace: the desired namespace that will be used in the result.
+        max_time_ms: a timeout, in milliseconds, for waiting on a response.
 
     Returns:
         A DatabaseInfo object.
@@ -66,7 +75,12 @@ def get_database_info(api_endpoint: str, token: str, namespace: str) -> Database
     astra_db_ops = AstraDBOps(token=token)
     database_id = find_database_id(api_endpoint)
     if database_id:
-        gd_response = astra_db_ops.get_database(database=database_id)
+        try:
+            gd_response = astra_db_ops.get_database(
+                database=database_id, timeout_info=base_timeout_info(max_time_ms)
+            )
+        except httpx.TimeoutException as texc:
+            raise to_dataapi_timeout_exception(texc)
         raw_info = gd_response["info"]
         if namespace not in raw_info["keyspaces"]:
             raise DevOpsAPIException(f"Namespace {namespace} not found on DB.")

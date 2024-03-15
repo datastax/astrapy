@@ -15,11 +15,13 @@
 from __future__ import annotations
 
 from functools import wraps
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 from dataclasses import dataclass
 
+import httpx
 
 from astrapy.core.api import APIRequestError
+from astrapy.core.utils import TimeoutInfo
 from astrapy.results import (
     BulkWriteResult,
     DeleteResult,
@@ -102,6 +104,18 @@ class DataAPIException(ValueError):
     """
 
     pass
+
+
+@dataclass
+class DataAPITimeoutException(DataAPIException):
+    """
+    TODO
+    """
+
+    text: str
+    timeout_type: str
+    endpoint: Optional[str]
+    raw_payload: Optional[str]
 
 
 @dataclass
@@ -422,6 +436,37 @@ class BulkWriteException(DataAPIResponseException):
     exceptions: List[DataAPIResponseException]
 
 
+def to_dataapi_timeout_exception(
+    httpx_timeout: httpx.TimeoutException,
+) -> DataAPITimeoutException:
+    text = str(httpx_timeout)
+    if isinstance(httpx_timeout, httpx.ConnectTimeout):
+        timeout_type = "connect"
+    elif isinstance(httpx_timeout, httpx.ReadTimeout):
+        timeout_type = "read"
+    elif isinstance(httpx_timeout, httpx.WriteTimeout):
+        timeout_type = "write"
+    elif isinstance(httpx_timeout, httpx.PoolTimeout):
+        timeout_type = "pool"
+    else:
+        timeout_type = "generic"
+    if httpx_timeout.request:
+        endpoint = str(httpx_timeout.request.url)
+        if isinstance(httpx_timeout.request.content, bytes):
+            raw_payload = httpx_timeout.request.content.decode()
+        else:
+            raw_payload = None
+    else:
+        endpoint = None
+        raw_payload = None
+    return DataAPITimeoutException(
+        text=text,
+        timeout_type=timeout_type,
+        endpoint=endpoint,
+        raw_payload=raw_payload,
+    )
+
+
 def recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator for a sync method liable to generate the core APIRequestError.
@@ -436,6 +481,8 @@ def recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
             raise DataAPIResponseException.from_response(
                 command=exc.payload, raw_response=exc.response.json()
             )
+        except httpx.TimeoutException as texc:
+            raise to_dataapi_timeout_exception(texc)
 
     return _wrapped_sync
 
@@ -456,5 +503,14 @@ def recast_method_async(
             raise DataAPIResponseException.from_response(
                 command=exc.payload, raw_response=exc.response.json()
             )
+        except httpx.TimeoutException as texc:
+            raise to_dataapi_timeout_exception(texc)
 
     return _wrapped_async
+
+
+def base_timeout_info(max_time_ms: Optional[int]) -> Union[TimeoutInfo, None]:
+    if max_time_ms is not None:
+        return {"base": max_time_ms / 1000.0}
+    else:
+        return None
