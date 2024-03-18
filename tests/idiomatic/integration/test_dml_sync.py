@@ -99,6 +99,11 @@ class TestDMLSync:
         assert do_result1.deleted_count == 1
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 2
 
+        # test of sort
+        sync_empty_collection.insert_many([{"ts": 1, "seq": i} for i in [2, 0, 1]])
+        sync_empty_collection.delete_one({"ts": 1}, sort={"seq": 1})
+        assert set(sync_empty_collection.distinct("seq", filter={"ts": 1})) == {1, 2}
+
     @pytest.mark.describe("test of collection delete_many, sync")
     def test_collection_delete_many_sync(
         self,
@@ -714,6 +719,13 @@ class TestDMLSync:
         assert result4.update_info["nModified"] == 1
         assert "upserted" not in result4.update_info
 
+        # test of sort
+        sync_empty_collection.insert_many([{"ts": 1, "seq": i} for i in [2, 0, 1]])
+        sync_empty_collection.replace_one(
+            {"ts": 1}, {"ts": 1, "R": True}, sort={"seq": 1}
+        )
+        assert set(sync_empty_collection.distinct("seq", filter={"ts": 1})) == {1, 2}
+
     @pytest.mark.describe("test of update_one, sync")
     def test_collection_update_one_sync(
         self,
@@ -748,6 +760,15 @@ class TestDMLSync:
         assert result4.update_info["updatedExisting"] is True
         assert result4.update_info["nModified"] == 1
         assert "upserted" not in result4.update_info
+
+        # test of sort
+        sync_empty_collection.insert_many([{"ts": 1, "seq": i} for i in [2, 0, 1]])
+        sync_empty_collection.update_one(
+            {"ts": 1}, {"$set": {"U": True}}, sort={"seq": 1}
+        )
+        updated = sync_empty_collection.find_one({"U": True})
+        assert updated is not None
+        assert updated["seq"] == 0
 
     @pytest.mark.describe("test of update_many, sync")
     def test_collection_update_many_sync(

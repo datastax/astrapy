@@ -929,6 +929,7 @@ class Collection:
         filter: Dict[str, Any],
         replacement: DocumentType,
         *,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
         max_time_ms: Optional[int] = None,
     ) -> UpdateResult:
@@ -945,6 +946,10 @@ class Collection:
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                replaced one. See the `find` method for more on sorting.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, `replacement` is inserted as a new document
                 if no matches are found on the collection. If False,
@@ -961,6 +966,7 @@ class Collection:
         fo_response = self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
+            sort=sort,
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
@@ -1067,6 +1073,7 @@ class Collection:
         filter: Dict[str, Any],
         update: Dict[str, Any],
         *,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
         max_time_ms: Optional[int] = None,
     ) -> UpdateResult:
@@ -1088,6 +1095,10 @@ class Collection:
                     {"$inc": {"counter": 10}}
                     {"$unset": {"field": ""}}
                 See the Data API documentation for the full syntax.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                updated one. See the `find` method for more on sorting.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, a new document (resulting from applying the `update`
                 to an empty document) is inserted if no matches are found on
@@ -1104,6 +1115,7 @@ class Collection:
         }
         fo_response = self._astra_db_collection.find_one_and_update(
             update=update,
+            sort=sort,
             filter=filter,
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
@@ -1276,6 +1288,8 @@ class Collection:
     def delete_one(
         self,
         filter: Dict[str, Any],
+        *,
+        sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
         """
@@ -1291,6 +1305,10 @@ class Collection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                deleted one. See the `find` method for more on sorting.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -1298,7 +1316,7 @@ class Collection:
         """
 
         do_response = self._astra_db_collection.delete_one_by_predicate(
-            filter=filter, timeout_info=base_timeout_info(max_time_ms)
+            filter=filter, timeout_info=base_timeout_info(max_time_ms), sort=sort
         )
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
@@ -2379,6 +2397,7 @@ class AsyncCollection:
         filter: Dict[str, Any],
         replacement: DocumentType,
         *,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
         max_time_ms: Optional[int] = None,
     ) -> UpdateResult:
@@ -2395,6 +2414,10 @@ class AsyncCollection:
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                replaced one. See the `find` method for more on sorting.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, `replacement` is inserted as a new document
                 if no matches are found on the collection. If False,
@@ -2411,6 +2434,7 @@ class AsyncCollection:
         fo_response = await self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
+            sort=sort,
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
@@ -2517,6 +2541,7 @@ class AsyncCollection:
         filter: Dict[str, Any],
         update: Dict[str, Any],
         *,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
         max_time_ms: Optional[int] = None,
     ) -> UpdateResult:
@@ -2538,6 +2563,10 @@ class AsyncCollection:
                     {"$inc": {"counter": 10}}
                     {"$unset": {"field": ""}}
                 See the Data API documentation for the full syntax.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                updated one. See the `find` method for more on sorting.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, a new document (resulting from applying the `update`
                 to an empty document) is inserted if no matches are found on
@@ -2554,6 +2583,7 @@ class AsyncCollection:
         }
         fo_response = await self._astra_db_collection.find_one_and_update(
             update=update,
+            sort=sort,
             filter=filter,
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
@@ -2726,6 +2756,8 @@ class AsyncCollection:
     async def delete_one(
         self,
         filter: Dict[str, Any],
+        *,
+        sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
         """
@@ -2741,6 +2773,10 @@ class AsyncCollection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                deleted one. See the `find` method for more on sorting.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -2750,6 +2786,7 @@ class AsyncCollection:
         do_response = await self._astra_db_collection.delete_one_by_predicate(
             filter=filter,
             timeout_info=base_timeout_info(max_time_ms),
+            sort=sort,
         )
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]

@@ -1050,6 +1050,7 @@ class AstraDBCollection:
         self,
         filter: Dict[str, Any],
         update: Dict[str, Any],
+        sort: Optional[Dict[str, Any]] = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -1065,7 +1066,12 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the update operation.
         """
-        json_query = make_payload(top_level="updateOne", filter=filter, update=update)
+        json_query = make_payload(
+            top_level="updateOne",
+            filter=filter,
+            update=update,
+            sort=sort,
+        )
 
         response = self._request(
             method=http_methods.POST,
@@ -1140,7 +1146,10 @@ class AstraDBCollection:
         return self.delete_one(id, timeout_info=timeout_info)
 
     def delete_one(
-        self, id: str, timeout_info: TimeoutInfoWideType = None
+        self,
+        id: str,
+        sort: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
         Delete a single document from the collection based on its ID.
@@ -1154,11 +1163,11 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the delete operation.
         """
-        json_query = {
-            "deleteOne": {
-                "filter": {"_id": id},
-            }
-        }
+        json_query = make_payload(
+            top_level="deleteOne",
+            filter={"_id": id},
+            sort=sort,
+        )
 
         response = self._request(
             method=http_methods.POST,
@@ -1170,7 +1179,10 @@ class AstraDBCollection:
         return response
 
     def delete_one_by_predicate(
-        self, filter: Dict[str, Any], timeout_info: TimeoutInfoWideType = None
+        self,
+        filter: Dict[str, Any],
+        sort: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
         Delete a single document from the collection based on a filter clause
@@ -1184,11 +1196,11 @@ class AstraDBCollection:
         Returns:
             dict: The response from the database after the delete operation.
         """
-        json_query = {
-            "deleteOne": {
-                "filter": filter,
-            }
-        }
+        json_query = make_payload(
+            top_level="deleteOne",
+            filter=filter,
+            sort=sort,
+        )
 
         response = self._request(
             method=http_methods.POST,
@@ -2399,6 +2411,7 @@ class AsyncAstraDBCollection:
         self,
         filter: Dict[str, Any],
         update: Dict[str, Any],
+        sort: Optional[Dict[str, Any]] = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -2414,7 +2427,12 @@ class AsyncAstraDBCollection:
         Returns:
             dict: The response from the database after the update operation.
         """
-        json_query = make_payload(top_level="updateOne", filter=filter, update=update)
+        json_query = make_payload(
+            top_level="updateOne",
+            filter=filter,
+            update=update,
+            sort=sort,
+        )
 
         response = await self._request(
             method=http_methods.POST,
@@ -2480,7 +2498,10 @@ class AsyncAstraDBCollection:
         return await self._put(path=path, document=document, timeout_info=timeout_info)
 
     async def delete_one(
-        self, id: str, timeout_info: TimeoutInfoWideType = None
+        self,
+        id: str,
+        sort: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
         Delete a single document from the collection based on its ID.
@@ -2494,11 +2515,11 @@ class AsyncAstraDBCollection:
         Returns:
             dict: The response from the database after the delete operation.
         """
-        json_query = {
-            "deleteOne": {
-                "filter": {"_id": id},
-            }
-        }
+        json_query = make_payload(
+            top_level="deleteOne",
+            filter={"_id": id},
+            sort=sort,
+        )
 
         response = await self._request(
             method=http_methods.POST,
@@ -2510,7 +2531,10 @@ class AsyncAstraDBCollection:
         return response
 
     async def delete_one_by_predicate(
-        self, filter: Dict[str, Any], timeout_info: TimeoutInfoWideType = None
+        self,
+        filter: Dict[str, Any],
+        sort: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
         Delete a single document from the collection based on a filter clause
@@ -2524,11 +2548,11 @@ class AsyncAstraDBCollection:
         Returns:
             dict: The response from the database after the delete operation.
         """
-        json_query = {
-            "deleteOne": {
-                "filter": filter,
-            }
-        }
+        json_query = make_payload(
+            top_level="deleteOne",
+            filter=filter,
+            sort=sort,
+        )
 
         response = await self._request(
             method=http_methods.POST,
