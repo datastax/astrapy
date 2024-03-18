@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import datetime
 
 import pytest
@@ -803,10 +802,6 @@ class TestDMLSync:
         assert resp4.update_info["nModified"] == 0
         assert "upserted" in resp4.update_info
 
-    @pytest.mark.skipif(
-        ".astra-dev." not in os.environ["ASTRA_DB_API_ENDPOINT"],
-        reason="paginated update_many is in DEV only at the moment",
-    )
     @pytest.mark.describe("test of update_many, sync")
     def test_collection_paginated_update_many_sync(
         self,
