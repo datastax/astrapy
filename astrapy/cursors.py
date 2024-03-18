@@ -862,13 +862,6 @@ class CommandCursor(Generic[T]):
                 cursor_state=self.state,
             )
 
-    def try_next(self) -> T:
-        """
-        An alias for the `__next__` method, used by the iterator protocol.
-        """
-
-        return self.__next__()
-
     def close(self) -> None:
         """
         Stop/kill the cursor, regardless of its status.
@@ -948,13 +941,6 @@ class AsyncCommandCursor(Generic[T]):
                 text="Cursor is closed.",
                 cursor_state=self.state,
             )
-
-    async def try_next(self) -> T:
-        """
-        An alias for the `__next__` method, used by the iterator protocol.
-        """
-
-        return await self.__anext__()
 
     def close(self) -> None:
         """
