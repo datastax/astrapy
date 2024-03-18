@@ -109,7 +109,19 @@ class DataAPIException(ValueError):
 @dataclass
 class DataAPITimeoutException(DataAPIException):
     """
-    TODO
+    A Data API operation timed out. This can be a request timeout occurring
+    during a specific HTTP request, or can happen over the course of a method
+    involving several requests in a row, such as a paginated find.
+
+    Attributes:
+        text: a textual description of the error
+        timeout_type: this denotes the phase of the HTTP request when the event
+            occurred ("connect", "read", "write", "pool") or "generic" if there is
+            not a specific request associated to the exception.
+        endpoint: if the timeout is tied to a specific request, this is the
+            URL that the request was targeting.
+        raw_payload:  if the timeout is tied to a specific request, this is the
+            associated payload (as a string).
     """
 
     text: str
