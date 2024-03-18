@@ -17,7 +17,6 @@ from __future__ import annotations
 import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
-from functools import partial
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 
 from astrapy.core.db import (
@@ -33,10 +32,12 @@ from astrapy.exceptions import (
     DataAPIResponseException,
     DeleteManyException,
     InsertManyException,
+    MultiCallTimeoutManager,
     TooManyDocumentsToCountException,
     UpdateManyException,
     recast_method_sync,
     recast_method_async,
+    base_timeout_info,
 )
 from astrapy.constants import (
     DocumentType,
@@ -265,13 +266,16 @@ class Collection:
             caller_version=caller_version,
         )
 
-    def options(self) -> Dict[str, Any]:
+    def options(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Get the collection options, i.e. its configuration as read from the database.
 
         The method issues a request to the Data API each time is invoked,
         without caching mechanisms: this ensures up-to-date information
         for usages such as real-time collection validation by the application.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a dictionary expressing the collection as a set of key-value pairs
@@ -281,7 +285,7 @@ class Collection:
 
         self_dicts = [
             coll_dict
-            for coll_dict in self.database.list_collections()
+            for coll_dict in self.database.list_collections(max_time_ms=max_time_ms)
             if coll_dict["name"] == self.name
         ]
         if self_dicts:
@@ -348,6 +352,8 @@ class Collection:
     def insert_one(
         self,
         document: DocumentType,
+        *,
+        max_time_ms: Optional[int] = None,
     ) -> InsertOneResult:
         """
         Insert a single document in the collection in an atomic operation.
@@ -356,6 +362,7 @@ class Collection:
             document: the dictionary expressing the document to insert.
                 The `_id` field of the document can be left out, in which
                 case it will be created automatically.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             an InsertOneResult object.
@@ -383,7 +390,10 @@ class Collection:
             the insertion fails.
         """
 
-        io_response = self._astra_db_collection.insert_one(document)
+        io_response = self._astra_db_collection.insert_one(
+            document,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
         if "insertedIds" in io_response.get("status", {}):
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
@@ -402,6 +412,7 @@ class Collection:
                 raw_response=io_response,
             )
 
+    @recast_method_sync
     def insert_many(
         self,
         documents: Iterable[DocumentType],
@@ -409,6 +420,7 @@ class Collection:
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
+        max_time_ms: Optional[int] = None,
     ) -> InsertManyResult:
         """
         Insert a list of documents into the collection.
@@ -425,6 +437,7 @@ class Collection:
                 Leave it unspecified (recommended) to use the system default.
             concurrency: maximum number of concurrent requests to the API at
                 a given time. It cannot be more than one for ordered insertions.
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             an InsertManyResult object.
@@ -472,6 +485,7 @@ class Collection:
         _documents = list(documents)  # TODO make this a chunked iterator
         # TODO handle the auto-inserted-ids here (chunk-wise better)
         raw_results: List[Dict[str, Any]] = []
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
             options = {"ordered": True}
             inserted_ids: List[Any] = []
@@ -480,6 +494,7 @@ class Collection:
                     documents=_documents[i : i + _chunk_size],
                     options=options,
                     partial_failures_allowed=True,
+                    timeout_info=timeout_manager.remaining_timeout_info(),
                 )
                 # accumulate the results in this call
                 chunk_inserted_ids = (chunk_response.get("status") or {}).get(
@@ -511,11 +526,17 @@ class Collection:
             options = {"ordered": False}
             if _concurrency > 1:
                 with ThreadPoolExecutor(max_workers=_concurrency) as executor:
-                    _chunk_insertor = partial(
-                        self._astra_db_collection.insert_many,
-                        options=options,
-                        partial_failures_allowed=True,
-                    )
+
+                    def _chunk_insertor(
+                        document_chunk: List[Dict[str, Any]]
+                    ) -> Dict[str, Any]:
+                        return self._astra_db_collection.insert_many(
+                            documents=document_chunk,
+                            options=options,
+                            partial_failures_allowed=True,
+                            timeout_info=timeout_manager.remaining_timeout_info(),
+                        )
+
                     raw_results = list(
                         executor.map(
                             _chunk_insertor,
@@ -531,6 +552,7 @@ class Collection:
                         _documents[i : i + _chunk_size],
                         options=options,
                         partial_failures_allowed=True,
+                        timeout_info=timeout_manager.remaining_timeout_info(),
                     )
                     for i in range(0, len(_documents), _chunk_size)
                 ]
@@ -572,6 +594,7 @@ class Collection:
         skip: Optional[int] = None,
         limit: Optional[int] = None,
         sort: Optional[SortType] = None,
+        max_time_ms: Optional[int] = None,
     ) -> Cursor:
         """
         Find documents on the collection, matching a certain provided filter.
@@ -606,6 +629,9 @@ class Collection:
                 for lack of matching documents), nothing more is returned.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
+            max_time_ms: a timeout, in milliseconds, for each single one
+                of the underlying HTTP requests used to fetch documents as the
+                cursor is iterated over.
 
         Returns:
             a Cursor object representing iterations over the matching documents
@@ -636,6 +662,8 @@ class Collection:
                 collection=self,
                 filter=filter,
                 projection=projection,
+                max_time_ms=max_time_ms,
+                overall_max_time_ms=None,
             )
             .skip(skip)
             .limit(limit)
@@ -648,6 +676,7 @@ class Collection:
         *,
         projection: Optional[ProjectionType] = None,
         sort: Optional[SortType] = None,
+        max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
         """
         Run a search, returning the first document in the collection that matches
@@ -669,6 +698,7 @@ class Collection:
                 The default is to return the whole documents.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a dictionary expressing the required document, otherwise None.
@@ -684,6 +714,7 @@ class Collection:
             skip=None,
             limit=1,
             sort=sort,
+            max_time_ms=max_time_ms,
         )
         try:
             document = fo_cursor.__next__()
@@ -696,6 +727,7 @@ class Collection:
         key: str,
         *,
         filter: Optional[FilterType] = None,
+        max_time_ms: Optional[int] = None,
     ) -> List[Any]:
         """
         Return a list of the unique values of `key` across the documents
@@ -726,6 +758,7 @@ class Collection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             a list of all different values for `key` found across the documents
@@ -739,16 +772,22 @@ class Collection:
             billing implications if the amount of matching documents is large.
         """
 
-        return self.find(  # type: ignore[no-any-return]
+        f_cursor = Cursor(
+            collection=self,
             filter=filter,
             projection={key: True},
-        ).distinct(key)
+            max_time_ms=None,
+            overall_max_time_ms=max_time_ms,
+        )
+        return f_cursor.distinct(key)  # type: ignore[no-any-return]
 
     @recast_method_sync
     def count_documents(
         self,
         filter: Dict[str, Any],
+        *,
         upper_bound: int,
+        max_time_ms: Optional[int] = None,
     ) -> int:
         """
         Count the documents in the collection matching the specified filter.
@@ -767,6 +806,7 @@ class Collection:
                 Furthermore, if the actual number of documents exceeds the maximum
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             the exact count of matching documents.
@@ -782,7 +822,10 @@ class Collection:
             by this method if this limit is encountered.
         """
 
-        cd_response = self._astra_db_collection.count_documents(filter=filter)
+        cd_response = self._astra_db_collection.count_documents(
+            filter=filter,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
             if cd_response["status"].get("moreData", False):
@@ -814,6 +857,7 @@ class Collection:
         sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
+        max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
         """
         Find a document on the collection and replace it entirely with a new one,
@@ -847,6 +891,7 @@ class Collection:
                 the document found on database is returned; if set to
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -866,6 +911,7 @@ class Collection:
             projection=normalize_optional_projection(projection),
             sort=sort,
             options=options,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         if "document" in fo_response.get("data", {}):
             ret_document = fo_response.get("data", {}).get("document")
@@ -885,7 +931,9 @@ class Collection:
         filter: Dict[str, Any],
         replacement: DocumentType,
         *,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
+        max_time_ms: Optional[int] = None,
     ) -> UpdateResult:
         """
         Replace a single document on the collection with a new one,
@@ -900,10 +948,15 @@ class Collection:
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                replaced one. See the `find` method for more on sorting.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, `replacement` is inserted as a new document
                 if no matches are found on the collection. If False,
                 the operation silently does nothing in case of no matches.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             an UpdateResult object summarizing the outcome of the replace operation.
@@ -915,7 +968,9 @@ class Collection:
         fo_response = self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
+            sort=sort,
             options=options,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
@@ -940,6 +995,7 @@ class Collection:
         sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
+        max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
         """
         Find a document on the collection and update it as requested,
@@ -979,6 +1035,7 @@ class Collection:
                 the document found on database is returned; if set to
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -998,6 +1055,7 @@ class Collection:
             projection=normalize_optional_projection(projection),
             sort=sort,
             options=options,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         if "document" in fo_response.get("data", {}):
             ret_document = fo_response.get("data", {}).get("document")
@@ -1017,7 +1075,9 @@ class Collection:
         filter: Dict[str, Any],
         update: Dict[str, Any],
         *,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
+        max_time_ms: Optional[int] = None,
     ) -> UpdateResult:
         """
         Update a single document on the collection as requested,
@@ -1037,11 +1097,16 @@ class Collection:
                     {"$inc": {"counter": 10}}
                     {"$unset": {"field": ""}}
                 See the Data API documentation for the full syntax.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                updated one. See the `find` method for more on sorting.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, a new document (resulting from applying the `update`
                 to an empty document) is inserted if no matches are found on
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
@@ -1052,8 +1117,10 @@ class Collection:
         }
         fo_response = self._astra_db_collection.find_one_and_update(
             update=update,
+            sort=sort,
             filter=filter,
             options=options,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
@@ -1068,12 +1135,14 @@ class Collection:
                 raw_response=fo_response,
             )
 
+    @recast_method_sync
     def update_many(
         self,
         filter: Dict[str, Any],
         update: Dict[str, Any],
         *,
         upsert: bool = False,
+        max_time_ms: Optional[int] = None,
     ) -> UpdateResult:
         """
         Apply an update operations to all documents matching a condition,
@@ -1098,6 +1167,7 @@ class Collection:
                 to an empty document) is inserted if no matches are found on
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
@@ -1110,12 +1180,14 @@ class Collection:
         um_responses: List[Dict[str, Any]] = []
         um_statuses: List[Dict[str, Any]] = []
         must_proceed = True
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         while must_proceed:
             options = {**base_options, **page_state_options}
             this_um_response = self._astra_db_collection.update_many(
                 update=update,
                 filter=filter,
                 options=options,
+                timeout_info=timeout_manager.remaining_timeout_info(),
             )
             this_um_status = this_um_response.get("status") or {}
             #
@@ -1161,6 +1233,7 @@ class Collection:
         *,
         projection: Optional[ProjectionType] = None,
         sort: Optional[SortType] = None,
+        max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
         """
         Find a document in the collection and delete it. The deleted document,
@@ -1186,6 +1259,7 @@ class Collection:
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
                 deleted one. See the `find` method for more on sorting.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             Either the document (or a projection thereof, as requested), or None
@@ -1197,6 +1271,7 @@ class Collection:
             sort=sort,
             filter=filter,
             projection=_projection,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         if "document" in fo_response.get("data", {}):
             document = fo_response["data"]["document"]
@@ -1215,6 +1290,9 @@ class Collection:
     def delete_one(
         self,
         filter: Dict[str, Any],
+        *,
+        sort: Optional[SortType] = None,
+        max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
         """
         Delete one document matching a provided filter.
@@ -1229,12 +1307,19 @@ class Collection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                deleted one. See the `find` method for more on sorting.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
         """
 
-        do_response = self._astra_db_collection.delete_one_by_predicate(filter=filter)
+        do_response = self._astra_db_collection.delete_one_by_predicate(
+            filter=filter, timeout_info=base_timeout_info(max_time_ms), sort=sort
+        )
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
             if deleted_count == -1:
@@ -1254,9 +1339,12 @@ class Collection:
                 raw_response=do_response,
             )
 
+    @recast_method_sync
     def delete_many(
         self,
         filter: Dict[str, Any],
+        *,
+        max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
         """
         Delete all documents matching a provided filter.
@@ -1269,8 +1357,9 @@ class Collection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
-            The `delete_many` method does not accept an empty filter: see
-            `delete_all` to completely erase all contents of a collection
+                The `delete_many` method does not accept an empty filter: see
+                `delete_all` to completely erase all contents of a collection
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
@@ -1293,10 +1382,12 @@ class Collection:
         dm_responses: List[Dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         while must_proceed:
             this_dm_response = self._astra_db_collection.delete_many(
                 filter=filter,
                 skip_error_check=True,
+                timeout_info=timeout_manager.remaining_timeout_info(),
             )
             # if errors, quit early
             if this_dm_response.get("errors", []):
@@ -1327,9 +1418,12 @@ class Collection:
         )
 
     @recast_method_sync
-    def delete_all(self) -> Dict[str, Any]:
+    def delete_all(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Delete all documents in a collection.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a dictionary of the form {"ok": 1} to signal successful deletion.
@@ -1338,7 +1432,9 @@ class Collection:
             Use with caution.
         """
 
-        dm_response = self._astra_db_collection.delete_many(filter={})
+        dm_response = self._astra_db_collection.delete_many(
+            filter={}, timeout_info=base_timeout_info(max_time_ms)
+        )
         deleted_count = dm_response["status"]["deletedCount"]
         if deleted_count == -1:
             return {"ok": 1}
@@ -1353,6 +1449,7 @@ class Collection:
         requests: Iterable[BaseOperation],
         *,
         ordered: bool = True,
+        max_time_ms: Optional[int] = None,
     ) -> BulkWriteResult:
         """
         Execute an arbitrary amount of operations such as inserts, updates, deletes
@@ -1372,6 +1469,10 @@ class Collection:
                 in arbitrary order, possibly in a concurrent fashion. For
                 performance reasons, `ordered=False` should be preferred
                 when compatible with the needs of the application flow.
+            max_time_ms: a timeout, in milliseconds, for the whole bulk write.
+                Remember that, if the method call times out, then there's no
+                guarantee about what portion of the bulk write has been received
+                and successfully executed by the Data API.
 
         Returns:
             A single BulkWriteResult summarizing the whole list of requested
@@ -1383,11 +1484,16 @@ class Collection:
         # lazy importing here against circular-import error
         from astrapy.operations import reduce_bulk_write_results
 
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
             bulk_write_results: List[BulkWriteResult] = []
             for operation_i, operation in enumerate(requests):
                 try:
-                    this_bw_result = operation.execute(self, operation_i)
+                    this_bw_result = operation.execute(
+                        self,
+                        index_in_bulk_write=operation_i,
+                        bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
+                    )
                     bulk_write_results.append(this_bw_result)
                 except CumulativeOperationException as exc:
                     partial_result = exc.partial_result
@@ -1428,7 +1534,11 @@ class Collection:
                 operation: BaseOperation, operation_i: int
             ) -> Tuple[Optional[BulkWriteResult], Optional[DataAPIResponseException]]:
                 try:
-                    ex_result = operation.execute(self, operation_i)
+                    ex_result = operation.execute(
+                        self,
+                        index_in_bulk_write=operation_i,
+                        bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
+                    )
                     return (ex_result, None)
                 except DataAPIResponseException as exc:
                     return (None, exc)
@@ -1481,10 +1591,15 @@ class Collection:
                 else:
                     return reduce_bulk_write_results(bulk_write_successes)
 
-    def drop(self) -> Dict[str, Any]:
+    def drop(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Drop the collection, i.e. delete it from the database along with
         all the documents it contains.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                Remember there is not guarantee that a request that has
+                timed out us not in fact honored.
 
         Returns:
             a dictionary of the form {"ok": 1} to signal successful deletion.
@@ -1493,7 +1608,7 @@ class Collection:
             Use with caution.
         """
 
-        return self.database.drop_collection(self)  # type: ignore[no-any-return]
+        return self.database.drop_collection(self, max_time_ms=max_time_ms)  # type: ignore[no-any-return]
 
 
 class AsyncCollection:
@@ -1665,13 +1780,16 @@ class AsyncCollection:
             caller_version=caller_version,
         )
 
-    async def options(self) -> Dict[str, Any]:
+    async def options(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Get the collection options, i.e. its configuration as read from the database.
 
         The method issues a request to the Data API each time is invoked,
         without caching mechanisms: this ensures up-to-date information
         for usages such as real-time collection validation by the application.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a dictionary expressing the collection as a set of key-value pairs
@@ -1681,7 +1799,9 @@ class AsyncCollection:
 
         self_dicts = [
             coll_dict
-            async for coll_dict in self.database.list_collections()
+            async for coll_dict in self.database.list_collections(
+                max_time_ms=max_time_ms
+            )
             if coll_dict["name"] == self.name
         ]
         if self_dicts:
@@ -1748,6 +1868,8 @@ class AsyncCollection:
     async def insert_one(
         self,
         document: DocumentType,
+        *,
+        max_time_ms: Optional[int] = None,
     ) -> InsertOneResult:
         """
         Insert a single document in the collection in an atomic operation.
@@ -1756,6 +1878,7 @@ class AsyncCollection:
             document: the dictionary expressing the document to insert.
                 The `_id` field of the document can be left out, in which
                 case it will be created automatically.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             an InsertOneResult object.
@@ -1766,7 +1889,10 @@ class AsyncCollection:
             the insertion fails.
         """
 
-        io_response = await self._astra_db_collection.insert_one(document)
+        io_response = await self._astra_db_collection.insert_one(
+            document,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
         if "insertedIds" in io_response.get("status", {}):
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
@@ -1785,6 +1911,7 @@ class AsyncCollection:
                 f"(gotten '${json.dumps(io_response)}')"
             )
 
+    @recast_method_async
     async def insert_many(
         self,
         documents: Iterable[DocumentType],
@@ -1792,6 +1919,7 @@ class AsyncCollection:
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
+        max_time_ms: Optional[int] = None,
     ) -> InsertManyResult:
         """
         Insert a list of documents into the collection.
@@ -1808,6 +1936,7 @@ class AsyncCollection:
                 Leave it unspecified (recommended) to use the system default.
             concurrency: maximum number of concurrent requests to the API at
                 a given time. It cannot be more than one for ordered insertions.
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             an InsertManyResult object.
@@ -1855,6 +1984,7 @@ class AsyncCollection:
         _documents = list(documents)  # TODO make this a chunked iterator
         # TODO handle the auto-inserted-ids here (chunk-wise better)
         raw_results: List[Dict[str, Any]] = []
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
             options = {"ordered": True}
             inserted_ids: List[Any] = []
@@ -1863,6 +1993,7 @@ class AsyncCollection:
                     documents=_documents[i : i + _chunk_size],
                     options=options,
                     partial_failures_allowed=True,
+                    timeout_info=timeout_manager.remaining_timeout_info(),
                 )
                 # accumulate the results in this call
                 chunk_inserted_ids = (chunk_response.get("status") or {}).get(
@@ -1903,6 +2034,7 @@ class AsyncCollection:
                         document_chunk,
                         options=options,
                         partial_failures_allowed=True,
+                        timeout_info=timeout_manager.remaining_timeout_info(),
                     )
 
             if _concurrency > 1:
@@ -1957,6 +2089,7 @@ class AsyncCollection:
         skip: Optional[int] = None,
         limit: Optional[int] = None,
         sort: Optional[SortType] = None,
+        max_time_ms: Optional[int] = None,
     ) -> AsyncCursor:
         """
         Find documents on the collection, matching a certain provided filter.
@@ -1991,6 +2124,9 @@ class AsyncCollection:
                 for lack of matching documents), nothing more is returned.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
+            max_time_ms: a timeout, in milliseconds, for each single one
+                of the underlying HTTP requests used to fetch documents as the
+                cursor is iterated over.
 
         Returns:
             an AsyncCursor object representing iterations over the matching documents
@@ -2021,6 +2157,8 @@ class AsyncCollection:
                 collection=self,
                 filter=filter,
                 projection=projection,
+                max_time_ms=max_time_ms,
+                overall_max_time_ms=None,
             )
             .skip(skip)
             .limit(limit)
@@ -2033,6 +2171,7 @@ class AsyncCollection:
         *,
         projection: Optional[ProjectionType] = None,
         sort: Optional[SortType] = None,
+        max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
         """
         Run a search, returning the first document in the collection that matches
@@ -2054,6 +2193,7 @@ class AsyncCollection:
                 The default is to return the whole documents.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a dictionary expressing the required document, otherwise None.
@@ -2069,6 +2209,7 @@ class AsyncCollection:
             skip=None,
             limit=1,
             sort=sort,
+            max_time_ms=max_time_ms,
         )
         try:
             document = await fo_cursor.__anext__()
@@ -2081,6 +2222,7 @@ class AsyncCollection:
         key: str,
         *,
         filter: Optional[FilterType] = None,
+        max_time_ms: Optional[int] = None,
     ) -> List[Any]:
         """
         Return a list of the unique values of `key` across the documents
@@ -2103,6 +2245,7 @@ class AsyncCollection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             a list of all different values for `key` found across the documents
@@ -2116,17 +2259,22 @@ class AsyncCollection:
             billing implications if the amount of matching documents is large.
         """
 
-        cursor = self.find(
+        f_cursor = AsyncCursor(
+            collection=self,
             filter=filter,
             projection={key: True},
+            max_time_ms=None,
+            overall_max_time_ms=max_time_ms,
         )
-        return await cursor.distinct(key)  # type: ignore[no-any-return]
+        return await f_cursor.distinct(key)  # type: ignore[no-any-return]
 
     @recast_method_async
     async def count_documents(
         self,
         filter: Dict[str, Any],
+        *,
         upper_bound: int,
+        max_time_ms: Optional[int] = None,
     ) -> int:
         """
         Count the documents in the collection matching the specified filter.
@@ -2145,6 +2293,7 @@ class AsyncCollection:
                 Furthermore, if the actual number of documents exceeds the maximum
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             the exact count of matching documents.
@@ -2160,7 +2309,10 @@ class AsyncCollection:
             by this method if this limit is encountered.
         """
 
-        cd_response = await self._astra_db_collection.count_documents(filter=filter)
+        cd_response = await self._astra_db_collection.count_documents(
+            filter=filter,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
             if cd_response["status"].get("moreData", False):
@@ -2192,6 +2344,7 @@ class AsyncCollection:
         sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
+        max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
         """
         Find a document on the collection and replace it entirely with a new one,
@@ -2226,6 +2379,7 @@ class AsyncCollection:
                 the document found on database is returned; if set to
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             A document, either the one before the replace operation or the
@@ -2244,6 +2398,7 @@ class AsyncCollection:
             projection=normalize_optional_projection(projection),
             sort=sort,
             options=options,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         if "document" in fo_response.get("data", {}):
             ret_document = fo_response.get("data", {}).get("document")
@@ -2263,7 +2418,9 @@ class AsyncCollection:
         filter: Dict[str, Any],
         replacement: DocumentType,
         *,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
+        max_time_ms: Optional[int] = None,
     ) -> UpdateResult:
         """
         Replace a single document on the collection with a new one,
@@ -2278,10 +2435,15 @@ class AsyncCollection:
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                replaced one. See the `find` method for more on sorting.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, `replacement` is inserted as a new document
                 if no matches are found on the collection. If False,
                 the operation silently does nothing in case of no matches.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             an UpdateResult object summarizing the outcome of the replace operation.
@@ -2293,7 +2455,9 @@ class AsyncCollection:
         fo_response = await self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
+            sort=sort,
             options=options,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
@@ -2318,6 +2482,7 @@ class AsyncCollection:
         sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
+        max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
         """
         Find a document on the collection and update it as requested,
@@ -2357,6 +2522,7 @@ class AsyncCollection:
                 the document found on database is returned; if set to
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -2376,6 +2542,7 @@ class AsyncCollection:
             projection=normalize_optional_projection(projection),
             sort=sort,
             options=options,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         if "document" in fo_response.get("data", {}):
             ret_document = fo_response.get("data", {}).get("document")
@@ -2395,7 +2562,9 @@ class AsyncCollection:
         filter: Dict[str, Any],
         update: Dict[str, Any],
         *,
+        sort: Optional[SortType] = None,
         upsert: bool = False,
+        max_time_ms: Optional[int] = None,
     ) -> UpdateResult:
         """
         Update a single document on the collection as requested,
@@ -2415,11 +2584,16 @@ class AsyncCollection:
                     {"$inc": {"counter": 10}}
                     {"$unset": {"field": ""}}
                 See the Data API documentation for the full syntax.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                updated one. See the `find` method for more on sorting.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, a new document (resulting from applying the `update`
                 to an empty document) is inserted if no matches are found on
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
@@ -2430,8 +2604,10 @@ class AsyncCollection:
         }
         fo_response = await self._astra_db_collection.find_one_and_update(
             update=update,
+            sort=sort,
             filter=filter,
             options=options,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
@@ -2446,12 +2622,14 @@ class AsyncCollection:
                 raw_response=fo_response,
             )
 
+    @recast_method_async
     async def update_many(
         self,
         filter: Dict[str, Any],
         update: Dict[str, Any],
         *,
         upsert: bool = False,
+        max_time_ms: Optional[int] = None,
     ) -> UpdateResult:
         """
         Apply an update operations to all documents matching a condition,
@@ -2476,6 +2654,7 @@ class AsyncCollection:
                 to an empty document) is inserted if no matches are found on
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
@@ -2488,12 +2667,14 @@ class AsyncCollection:
         um_responses: List[Dict[str, Any]] = []
         um_statuses: List[Dict[str, Any]] = []
         must_proceed = True
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         while must_proceed:
             options = {**base_options, **page_state_options}
             this_um_response = await self._astra_db_collection.update_many(
                 update=update,
                 filter=filter,
                 options=options,
+                timeout_info=timeout_manager.remaining_timeout_info(),
             )
             this_um_status = this_um_response.get("status") or {}
             #
@@ -2539,6 +2720,7 @@ class AsyncCollection:
         *,
         projection: Optional[ProjectionType] = None,
         sort: Optional[SortType] = None,
+        max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
         """
         Find a document in the collection and delete it. The deleted document,
@@ -2564,6 +2746,7 @@ class AsyncCollection:
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
                 deleted one. See the `find` method for more on sorting.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             Either the document (or a projection thereof, as requested), or None
@@ -2575,6 +2758,7 @@ class AsyncCollection:
             sort=sort,
             filter=filter,
             projection=_projection,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         if "document" in fo_response.get("data", {}):
             document = fo_response["data"]["document"]
@@ -2593,6 +2777,9 @@ class AsyncCollection:
     async def delete_one(
         self,
         filter: Dict[str, Any],
+        *,
+        sort: Optional[SortType] = None,
+        max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
         """
         Delete one document matching a provided filter.
@@ -2607,13 +2794,20 @@ class AsyncCollection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
+            sort: with this dictionary parameter one can control the sorting
+                order of the documents matching the filter, effectively
+                determining what document will come first and hence be the
+                deleted one. See the `find` method for more on sorting.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
         """
 
         do_response = await self._astra_db_collection.delete_one_by_predicate(
-            filter=filter
+            filter=filter,
+            timeout_info=base_timeout_info(max_time_ms),
+            sort=sort,
         )
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
@@ -2634,11 +2828,12 @@ class AsyncCollection:
                 raw_response=do_response,
             )
 
+    @recast_method_async
     async def delete_many(
         self,
         filter: Dict[str, Any],
         *,
-        let: Optional[int] = None,
+        max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
         """
         Delete all documents matching a provided filter.
@@ -2651,8 +2846,9 @@ class AsyncCollection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
-            The `delete_many` method does not accept an empty filter: see
-            `delete_all` to completely erase all contents of a collection
+                The `delete_many` method does not accept an empty filter: see
+                `delete_all` to completely erase all contents of a collection
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
@@ -2675,10 +2871,12 @@ class AsyncCollection:
         dm_responses: List[Dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         while must_proceed:
             this_dm_response = await self._astra_db_collection.delete_many(
                 filter=filter,
                 skip_error_check=True,
+                timeout_info=timeout_manager.remaining_timeout_info(),
             )
             # if errors, quit early
             if this_dm_response.get("errors", []):
@@ -2709,9 +2907,12 @@ class AsyncCollection:
         )
 
     @recast_method_async
-    async def delete_all(self) -> Dict[str, Any]:
+    async def delete_all(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Delete all documents in a collection.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
             a dictionary of the form {"ok": 1} to signal successful deletion.
@@ -2720,7 +2921,9 @@ class AsyncCollection:
             Use with caution.
         """
 
-        dm_response = await self._astra_db_collection.delete_many(filter={})
+        dm_response = await self._astra_db_collection.delete_many(
+            filter={}, timeout_info=base_timeout_info(max_time_ms)
+        )
         deleted_count = dm_response["status"]["deletedCount"]
         if deleted_count == -1:
             return {"ok": 1}
@@ -2735,6 +2938,7 @@ class AsyncCollection:
         requests: Iterable[AsyncBaseOperation],
         *,
         ordered: bool = True,
+        max_time_ms: Optional[int] = None,
     ) -> BulkWriteResult:
         """
         Execute an arbitrary amount of operations such as inserts, updates, deletes
@@ -2754,6 +2958,10 @@ class AsyncCollection:
                 in arbitrary order, possibly in a concurrent fashion. For
                 performance reasons, `ordered=False` should be preferred
                 when compatible with the needs of the application flow.
+            max_time_ms: a timeout, in milliseconds, for the whole bulk write.
+                Remember that, if the method call times out, then there's no
+                guarantee about what portion of the bulk write has been received
+                and successfully executed by the Data API.
 
         Returns:
             A single BulkWriteResult summarizing the whole list of requested
@@ -2765,11 +2973,16 @@ class AsyncCollection:
         # lazy importing here against circular-import error
         from astrapy.operations import reduce_bulk_write_results
 
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
             bulk_write_results: List[BulkWriteResult] = []
             for operation_i, operation in enumerate(requests):
                 try:
-                    this_bw_result = await operation.execute(self, operation_i)
+                    this_bw_result = await operation.execute(
+                        self,
+                        index_in_bulk_write=operation_i,
+                        bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
+                    )
                     bulk_write_results.append(this_bw_result)
                 except CumulativeOperationException as exc:
                     partial_result = exc.partial_result
@@ -2813,7 +3026,11 @@ class AsyncCollection:
             ) -> Tuple[Optional[BulkWriteResult], Optional[DataAPIResponseException]]:
                 async with sem:
                     try:
-                        ex_result = await operation.execute(self, operation_i)
+                        ex_result = await operation.execute(
+                            self,
+                            index_in_bulk_write=operation_i,
+                            bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
+                        )
                         return (ex_result, None)
                     except DataAPIResponseException as exc:
                         return (None, exc)
@@ -2856,10 +3073,15 @@ class AsyncCollection:
             else:
                 return reduce_bulk_write_results(bulk_write_successes)
 
-    async def drop(self) -> Dict[str, Any]:
+    async def drop(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Drop the collection, i.e. delete it from the database along with
         all the documents it contains.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                Remember there is not guarantee that a request that has
+                timed out us not in fact honored.
 
         Returns:
             a dictionary of the form {"ok": 1} to signal successful deletion.
@@ -2868,4 +3090,4 @@ class AsyncCollection:
             Use with caution.
         """
 
-        return await self.database.drop_collection(self)  # type: ignore[no-any-return]
+        return await self.database.drop_collection(self, max_time_ms=max_time_ms)  # type: ignore[no-any-return]

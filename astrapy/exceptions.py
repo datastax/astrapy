@@ -14,12 +14,15 @@
 
 from __future__ import annotations
 
+import time
 from functools import wraps
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 from dataclasses import dataclass
 
+import httpx
 
 from astrapy.core.api import APIRequestError
+from astrapy.core.utils import TimeoutInfo
 from astrapy.results import (
     BulkWriteResult,
     DeleteResult,
@@ -102,6 +105,30 @@ class DataAPIException(ValueError):
     """
 
     pass
+
+
+@dataclass
+class DataAPITimeoutException(DataAPIException):
+    """
+    A Data API operation timed out. This can be a request timeout occurring
+    during a specific HTTP request, or can happen over the course of a method
+    involving several requests in a row, such as a paginated find.
+
+    Attributes:
+        text: a textual description of the error
+        timeout_type: this denotes the phase of the HTTP request when the event
+            occurred ("connect", "read", "write", "pool") or "generic" if there is
+            not a specific request associated to the exception.
+        endpoint: if the timeout is tied to a specific request, this is the
+            URL that the request was targeting.
+        raw_payload:  if the timeout is tied to a specific request, this is the
+            associated payload (as a string).
+    """
+
+    text: str
+    timeout_type: str
+    endpoint: Optional[str]
+    raw_payload: Optional[str]
 
 
 @dataclass
@@ -422,6 +449,37 @@ class BulkWriteException(DataAPIResponseException):
     exceptions: List[DataAPIResponseException]
 
 
+def to_dataapi_timeout_exception(
+    httpx_timeout: httpx.TimeoutException,
+) -> DataAPITimeoutException:
+    text = str(httpx_timeout)
+    if isinstance(httpx_timeout, httpx.ConnectTimeout):
+        timeout_type = "connect"
+    elif isinstance(httpx_timeout, httpx.ReadTimeout):
+        timeout_type = "read"
+    elif isinstance(httpx_timeout, httpx.WriteTimeout):
+        timeout_type = "write"
+    elif isinstance(httpx_timeout, httpx.PoolTimeout):
+        timeout_type = "pool"
+    else:
+        timeout_type = "generic"
+    if httpx_timeout.request:
+        endpoint = str(httpx_timeout.request.url)
+        if isinstance(httpx_timeout.request.content, bytes):
+            raw_payload = httpx_timeout.request.content.decode()
+        else:
+            raw_payload = None
+    else:
+        endpoint = None
+        raw_payload = None
+    return DataAPITimeoutException(
+        text=text,
+        timeout_type=timeout_type,
+        endpoint=endpoint,
+        raw_payload=raw_payload,
+    )
+
+
 def recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator for a sync method liable to generate the core APIRequestError.
@@ -436,6 +494,8 @@ def recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
             raise DataAPIResponseException.from_response(
                 command=exc.payload, raw_response=exc.response.json()
             )
+        except httpx.TimeoutException as texc:
+            raise to_dataapi_timeout_exception(texc)
 
     return _wrapped_sync
 
@@ -456,5 +516,71 @@ def recast_method_async(
             raise DataAPIResponseException.from_response(
                 command=exc.payload, raw_response=exc.response.json()
             )
+        except httpx.TimeoutException as texc:
+            raise to_dataapi_timeout_exception(texc)
 
     return _wrapped_async
+
+
+def base_timeout_info(max_time_ms: Optional[int]) -> Union[TimeoutInfo, None]:
+    if max_time_ms is not None:
+        return {"base": max_time_ms / 1000.0}
+    else:
+        return None
+
+
+class MultiCallTimeoutManager:
+    """
+    A helper class to keep track of timing and timeouts
+    in a multi-call method context.
+
+    Args:
+        overall_max_time_ms: an optional max duration to track (milliseconds)
+
+    Attributes:
+        overall_max_time_ms: an optional max duration to track (milliseconds)
+        started_ms: timestamp of the instance construction (milliseconds)
+        deadline_ms: optional deadline in milliseconds (computed by the class).
+    """
+
+    overall_max_time_ms: Optional[int]
+    started_ms: int = -1
+    deadline_ms: Optional[int]
+
+    def __init__(self, overall_max_time_ms: Optional[int]) -> None:
+        self.started_ms = int(time.time() * 1000)
+        self.overall_max_time_ms = overall_max_time_ms
+        if self.overall_max_time_ms is not None:
+            self.deadline_ms = self.started_ms + self.overall_max_time_ms
+        else:
+            self.deadline_ms = None
+
+    def remaining_timeout_ms(self) -> Union[int, None]:
+        """
+        Ensure the deadline, if any, is not yet in the past.
+        If it is, raise an appropriate timeout error.
+        If not, return either None (if no timeout) or the remaining milliseconds.
+        For use within the multi-call method.
+        """
+        now_ms = int(time.time() * 1000)
+        if self.deadline_ms is not None:
+            if now_ms < self.deadline_ms:
+                return self.deadline_ms - now_ms
+            else:
+                raise DataAPITimeoutException(
+                    text="Operation timed out.",
+                    timeout_type="generic",
+                    endpoint=None,
+                    raw_payload=None,
+                )
+        else:
+            return None
+
+    def remaining_timeout_info(self) -> Union[TimeoutInfo, None]:
+        """
+        Ensure the deadline, if any, is not yet in the past.
+        If it is, raise an appropriate timeout error.
+        It it is not, or there is no deadline, return a suitable TimeoutInfo
+        for use within the multi-call method.
+        """
+        return base_timeout_info(max_time_ms=self.remaining_timeout_ms())

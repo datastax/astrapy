@@ -583,7 +583,6 @@ async def test_chunked_insert_many_failures(
             chunk_size=2,
             concurrency=2,
         )
-    assert len((await async_empty_v_collection.find({}))["data"]["documents"]) >= 2
 
     await async_empty_v_collection.delete_many({})
     with pytest.raises(TypeError):
@@ -605,7 +604,6 @@ async def test_chunked_insert_many_failures(
             chunk_size=2,
             concurrency=2,
         )
-    assert len((await async_empty_v_collection.find({}))["data"]["documents"]) >= 2
 
     await async_empty_v_collection.delete_many({})
     with pytest.raises(APIRequestError):

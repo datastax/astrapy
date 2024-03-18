@@ -19,7 +19,11 @@ from typing import Any, cast, Dict, Optional, TypedDict
 import httpx
 from astrapy.core.api import api_request, raw_api_request
 
-from astrapy.core.utils import http_methods
+from astrapy.core.utils import (
+    http_methods,
+    to_httpx_timeout,
+    TimeoutInfoWideType,
+)
 from astrapy.core.defaults import (
     DEFAULT_DEV_OPS_AUTH_HEADER,
     DEFAULT_DEV_OPS_API_VERSION,
@@ -116,6 +120,7 @@ class AstraDBOps:
         path: str,
         options: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> httpx.Response:
         _options = {} if options is None else options
 
@@ -130,6 +135,7 @@ class AstraDBOps:
             path=path,
             caller_name=self.caller_name,
             caller_version=self.caller_version,
+            timeout=to_httpx_timeout(timeout_info),
         )
         return raw_response
 
@@ -139,6 +145,7 @@ class AstraDBOps:
         path: str,
         options: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         _options = {} if options is None else options
 
@@ -154,11 +161,14 @@ class AstraDBOps:
             skip_error_check=False,
             caller_name=None,
             caller_version=None,
+            timeout=to_httpx_timeout(timeout_info),
         )
         return response
 
     def get_databases(
-        self, options: Optional[Dict[str, Any]] = None
+        self,
+        options: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Retrieve a list of databases.
@@ -170,25 +180,34 @@ class AstraDBOps:
             list: a JSON list of dictionaries, one per database.
         """
         response = self._json_ops_request(
-            method=http_methods.GET, path="/databases", options=options
+            method=http_methods.GET,
+            path="/databases",
+            options=options,
+            timeout_info=timeout_info,
         )
 
         return response
 
     def create_database(
-        self, database_definition: Optional[Dict[str, Any]] = None
+        self,
+        database_definition: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> Optional[Dict[str, str]]:
         """
         Create a new database.
 
         Args:
             database_definition (dict, optional): A dictionary defining the properties of the database to be created.
+            timeout_info: either a float (seconds) or a TimeoutInfo dict (see)
 
         Returns:
             dict: A dictionary containing the ID of the created database, or None if creation was unsuccessful.
         """
         r = self._ops_request(
-            method=http_methods.POST, path="/databases", json_data=database_definition
+            method=http_methods.POST,
+            path="/databases",
+            json_data=database_definition,
+            timeout_info=timeout_info,
         )
 
         if r.status_code == 201:
@@ -196,18 +215,23 @@ class AstraDBOps:
 
         return None
 
-    def terminate_database(self, database: str = "") -> Optional[str]:
+    def terminate_database(
+        self, database: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> Optional[str]:
         """
         Terminate an existing database.
 
         Args:
             database (str): The identifier of the database to terminate.
+            timeout_info: either a float (seconds) or a TimeoutInfo dict (see)
 
         Returns:
             str: The identifier of the terminated database, or None if termination was unsuccessful.
         """
         r = self._ops_request(
-            method=http_methods.POST, path=f"/databases/{database}/terminate"
+            method=http_methods.POST,
+            path=f"/databases/{database}/terminate",
+            timeout_info=timeout_info,
         )
 
         if r.status_code == 202:
@@ -216,7 +240,10 @@ class AstraDBOps:
         return None
 
     def get_database(
-        self, database: str = "", options: Optional[Dict[str, Any]] = None
+        self,
+        database: str = "",
+        options: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
         Retrieve details of a specific database.
@@ -234,16 +261,23 @@ class AstraDBOps:
                 method=http_methods.GET,
                 path=f"/databases/{database}",
                 options=options,
+                timeout_info=timeout_info,
             ),
         )
 
-    def create_keyspace(self, database: str = "", keyspace: str = "") -> httpx.Response:
+    def create_keyspace(
+        self,
+        database: str = "",
+        keyspace: str = "",
+        timeout_info: TimeoutInfoWideType = None,
+    ) -> httpx.Response:
         """
         Create a keyspace in a specified database.
 
         Args:
             database (str): The identifier of the database where the keyspace will be created.
             keyspace (str): The name of the keyspace to create.
+            timeout_info: either a float (seconds) or a TimeoutInfo dict (see)
 
         Returns:
             requests.Response: The response object from the HTTP request.
@@ -251,9 +285,12 @@ class AstraDBOps:
         return self._ops_request(
             method=http_methods.POST,
             path=f"/databases/{database}/keyspaces/{keyspace}",
+            timeout_info=timeout_info,
         )
 
-    def park_database(self, database: str = "") -> OPS_API_RESPONSE:
+    def park_database(
+        self, database: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Park a specific database, making it inactive.
 
@@ -264,10 +301,14 @@ class AstraDBOps:
             dict: The response from the server after parking the database.
         """
         return self._json_ops_request(
-            method=http_methods.POST, path=f"/databases/{database}/park"
+            method=http_methods.POST,
+            path=f"/databases/{database}/park",
+            timeout_info=timeout_info,
         )
 
-    def unpark_database(self, database: str = "") -> OPS_API_RESPONSE:
+    def unpark_database(
+        self, database: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Unpark a specific database, making it active again.
 
@@ -278,11 +319,16 @@ class AstraDBOps:
             dict: The response from the server after unparking the database.
         """
         return self._json_ops_request(
-            method=http_methods.POST, path=f"/databases/{database}/unpark"
+            method=http_methods.POST,
+            path=f"/databases/{database}/unpark",
+            timeout_info=timeout_info,
         )
 
     def resize_database(
-        self, database: str = "", options: Optional[Dict[str, Any]] = None
+        self,
+        database: str = "",
+        options: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Resize a specific database according to provided options.
@@ -298,10 +344,14 @@ class AstraDBOps:
             method=http_methods.POST,
             path=f"/databases/{database}/resize",
             json_data=options,
+            timeout_info=timeout_info,
         )
 
     def reset_database_password(
-        self, database: str = "", options: Optional[Dict[str, Any]] = None
+        self,
+        database: str = "",
+        options: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Reset the password for a specific database.
@@ -317,9 +367,12 @@ class AstraDBOps:
             method=http_methods.POST,
             path=f"/databases/{database}/resetPassword",
             json_data=options,
+            timeout_info=timeout_info,
         )
 
-    def get_secure_bundle(self, database: str = "") -> OPS_API_RESPONSE:
+    def get_secure_bundle(
+        self, database: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve a secure bundle URL for a specific database.
 
@@ -332,9 +385,12 @@ class AstraDBOps:
         return self._json_ops_request(
             method=http_methods.POST,
             path=f"/databases/{database}/secureBundleURL",
+            timeout_info=timeout_info,
         )
 
-    def get_datacenters(self, database: str = "") -> OPS_API_RESPONSE:
+    def get_datacenters(
+        self, database: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Get a list of datacenters associated with a specific database.
 
@@ -347,10 +403,14 @@ class AstraDBOps:
         return self._json_ops_request(
             method=http_methods.GET,
             path=f"/databases/{database}/datacenters",
+            timeout_info=timeout_info,
         )
 
     def create_datacenter(
-        self, database: str = "", options: Optional[Dict[str, Any]] = None
+        self,
+        database: str = "",
+        options: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Create a new datacenter for a specific database.
@@ -366,10 +426,14 @@ class AstraDBOps:
             method=http_methods.POST,
             path=f"/databases/{database}/datacenters",
             json_data=options,
+            timeout_info=timeout_info,
         )
 
     def terminate_datacenter(
-        self, database: str = "", datacenter: str = ""
+        self,
+        database: str = "",
+        datacenter: str = "",
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Terminate a specific datacenter in a database.
@@ -384,9 +448,12 @@ class AstraDBOps:
         return self._json_ops_request(
             method=http_methods.POST,
             path=f"/databases/{database}/datacenters/{datacenter}/terminate",
+            timeout_info=timeout_info,
         )
 
-    def get_access_list(self, database: str = "") -> OPS_API_RESPONSE:
+    def get_access_list(
+        self, database: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve the access list for a specific database.
 
@@ -399,10 +466,14 @@ class AstraDBOps:
         return self._json_ops_request(
             method=http_methods.GET,
             path=f"/databases/{database}/access-list",
+            timeout_info=timeout_info,
         )
 
     def replace_access_list(
-        self, database: str = "", access_list: Optional[Dict[str, Any]] = None
+        self,
+        database: str = "",
+        access_list: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Replace the entire access list for a specific database.
@@ -418,10 +489,14 @@ class AstraDBOps:
             method=http_methods.PUT,
             path=f"/databases/{database}/access-list",
             json_data=access_list,
+            timeout_info=timeout_info,
         )
 
     def update_access_list(
-        self, database: str = "", access_list: Optional[Dict[str, Any]] = None
+        self,
+        database: str = "",
+        access_list: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Update the access list for a specific database.
@@ -437,10 +512,14 @@ class AstraDBOps:
             method=http_methods.PATCH,
             path=f"/databases/{database}/access-list",
             json_data=access_list,
+            timeout_info=timeout_info,
         )
 
     def add_access_list_address(
-        self, database: str = "", address: Optional[Dict[str, Any]] = None
+        self,
+        database: str = "",
+        address: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Add a new address to the access list for a specific database.
@@ -456,9 +535,12 @@ class AstraDBOps:
             method=http_methods.POST,
             path=f"/databases/{database}/access-list",
             json_data=address,
+            timeout_info=timeout_info,
         )
 
-    def delete_access_list(self, database: str = "") -> OPS_API_RESPONSE:
+    def delete_access_list(
+        self, database: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Delete the access list for a specific database.
 
@@ -471,9 +553,12 @@ class AstraDBOps:
         return self._json_ops_request(
             method=http_methods.DELETE,
             path=f"/databases/{database}/access-list",
+            timeout_info=timeout_info,
         )
 
-    def get_private_link(self, database: str = "") -> OPS_API_RESPONSE:
+    def get_private_link(
+        self, database: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve the private link information for a specified database.
 
@@ -486,10 +571,14 @@ class AstraDBOps:
         return self._json_ops_request(
             method=http_methods.GET,
             path=f"/organizations/clusters/{database}/private-link",
+            timeout_info=timeout_info,
         )
 
     def get_datacenter_private_link(
-        self, database: str = "", datacenter: str = ""
+        self,
+        database: str = "",
+        datacenter: str = "",
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Retrieve the private link information for a specific datacenter in a database.
@@ -504,6 +593,7 @@ class AstraDBOps:
         return self._json_ops_request(
             method=http_methods.GET,
             path=f"/organizations/clusters/{database}/datacenters/{datacenter}/private-link",
+            timeout_info=timeout_info,
         )
 
     def create_datacenter_private_link(
@@ -511,6 +601,7 @@ class AstraDBOps:
         database: str = "",
         datacenter: str = "",
         private_link: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Create a private link for a specific datacenter in a database.
@@ -527,6 +618,7 @@ class AstraDBOps:
             method=http_methods.POST,
             path=f"/organizations/clusters/{database}/datacenters/{datacenter}/private-link",
             json_data=private_link,
+            timeout_info=timeout_info,
         )
 
     def create_datacenter_endpoint(
@@ -534,6 +626,7 @@ class AstraDBOps:
         database: str = "",
         datacenter: str = "",
         endpoint: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Create an endpoint for a specific datacenter in a database.
@@ -550,10 +643,15 @@ class AstraDBOps:
             method=http_methods.POST,
             path=f"/organizations/clusters/{database}/datacenters/{datacenter}/endpoint",
             json_data=endpoint,
+            timeout_info=timeout_info,
         )
 
     def update_datacenter_endpoint(
-        self, database: str = "", datacenter: str = "", endpoint: Dict[str, Any] = {}
+        self,
+        database: str = "",
+        datacenter: str = "",
+        endpoint: Dict[str, Any] = {},
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Update an existing endpoint for a specific datacenter in a database.
@@ -570,10 +668,15 @@ class AstraDBOps:
             method=http_methods.PUT,
             path=f"/organizations/clusters/{database}/datacenters/{datacenter}/endpoints/{endpoint['id']}",
             json_data=endpoint,
+            timeout_info=timeout_info,
         )
 
     def get_datacenter_endpoint(
-        self, database: str = "", datacenter: str = "", endpoint: str = ""
+        self,
+        database: str = "",
+        datacenter: str = "",
+        endpoint: str = "",
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Retrieve information about a specific endpoint in a datacenter of a database.
@@ -589,10 +692,15 @@ class AstraDBOps:
         return self._json_ops_request(
             method=http_methods.GET,
             path=f"/organizations/clusters/{database}/datacenters/{datacenter}/endpoints/{endpoint}",
+            timeout_info=timeout_info,
         )
 
     def delete_datacenter_endpoint(
-        self, database: str = "", datacenter: str = "", endpoint: str = ""
+        self,
+        database: str = "",
+        datacenter: str = "",
+        endpoint: str = "",
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Delete a specific endpoint in a datacenter of a database.
@@ -608,18 +716,25 @@ class AstraDBOps:
         return self._json_ops_request(
             method=http_methods.DELETE,
             path=f"/organizations/clusters/{database}/datacenters/{datacenter}/endpoints/{endpoint}",
+            timeout_info=timeout_info,
         )
 
-    def get_available_classic_regions(self) -> OPS_API_RESPONSE:
+    def get_available_classic_regions(
+        self, timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve a list of available classic regions.
 
         Returns:
             dict: A list of available classic regions.
         """
-        return self._json_ops_request(method=http_methods.GET, path="/availableRegions")
+        return self._json_ops_request(
+            method=http_methods.GET, path="/availableRegions", timeout_info=timeout_info
+        )
 
-    def get_available_regions(self) -> OPS_API_RESPONSE:
+    def get_available_regions(
+        self, timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve a list of available regions for serverless deployment.
 
@@ -627,10 +742,12 @@ class AstraDBOps:
             dict: A list of available regions for serverless deployment.
         """
         return self._json_ops_request(
-            method=http_methods.GET, path="/regions/serverless"
+            method=http_methods.GET,
+            path="/regions/serverless",
+            timeout_info=timeout_info,
         )
 
-    def get_roles(self) -> OPS_API_RESPONSE:
+    def get_roles(self, timeout_info: TimeoutInfoWideType = None) -> OPS_API_RESPONSE:
         """
         Retrieve a list of roles within the organization.
 
@@ -638,11 +755,15 @@ class AstraDBOps:
             dict: A list of roles within the organization.
         """
         return self._json_ops_request(
-            method=http_methods.GET, path="/organizations/roles"
+            method=http_methods.GET,
+            path="/organizations/roles",
+            timeout_info=timeout_info,
         )
 
     def create_role(
-        self, role_definition: Optional[Dict[str, Any]] = None
+        self,
+        role_definition: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Create a new role within the organization.
@@ -657,9 +778,12 @@ class AstraDBOps:
             method=http_methods.POST,
             path="/organizations/roles",
             json_data=role_definition,
+            timeout_info=timeout_info,
         )
 
-    def get_role(self, role: str = "") -> OPS_API_RESPONSE:
+    def get_role(
+        self, role: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve details of a specific role within the organization.
 
@@ -670,11 +794,16 @@ class AstraDBOps:
             dict: The details of the specified role.
         """
         return self._json_ops_request(
-            method=http_methods.GET, path=f"/organizations/roles/{role}"
+            method=http_methods.GET,
+            path=f"/organizations/roles/{role}",
+            timeout_info=timeout_info,
         )
 
     def update_role(
-        self, role: str = "", role_definition: Optional[Dict[str, Any]] = None
+        self,
+        role: str = "",
+        role_definition: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Update the definition of an existing role within the organization.
@@ -690,9 +819,12 @@ class AstraDBOps:
             method=http_methods.PUT,
             path=f"/organizations/roles/{role}",
             json_data=role_definition,
+            timeout_info=timeout_info,
         )
 
-    def delete_role(self, role: str = "") -> OPS_API_RESPONSE:
+    def delete_role(
+        self, role: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Delete a specific role from the organization.
 
@@ -703,11 +835,15 @@ class AstraDBOps:
             dict: The response from the server after deleting the role.
         """
         return self._json_ops_request(
-            method=http_methods.DELETE, path=f"/organizations/roles/{role}"
+            method=http_methods.DELETE,
+            path=f"/organizations/roles/{role}",
+            timeout_info=timeout_info,
         )
 
     def invite_user(
-        self, user_definition: Optional[Dict[str, Any]] = None
+        self,
+        user_definition: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Invite a new user to the organization.
@@ -722,9 +858,10 @@ class AstraDBOps:
             method=http_methods.PUT,
             path="/organizations/users",
             json_data=user_definition,
+            timeout_info=timeout_info,
         )
 
-    def get_users(self) -> OPS_API_RESPONSE:
+    def get_users(self, timeout_info: TimeoutInfoWideType = None) -> OPS_API_RESPONSE:
         """
         Retrieve a list of users within the organization.
 
@@ -732,10 +869,14 @@ class AstraDBOps:
             dict: A list of users within the organization.
         """
         return self._json_ops_request(
-            method=http_methods.GET, path="/organizations/users"
+            method=http_methods.GET,
+            path="/organizations/users",
+            timeout_info=timeout_info,
         )
 
-    def get_user(self, user: str = "") -> OPS_API_RESPONSE:
+    def get_user(
+        self, user: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve details of a specific user within the organization.
 
@@ -746,10 +887,14 @@ class AstraDBOps:
             dict: The details of the specified user.
         """
         return self._json_ops_request(
-            method=http_methods.GET, path=f"/organizations/users/{user}"
+            method=http_methods.GET,
+            path=f"/organizations/users/{user}",
+            timeout_info=timeout_info,
         )
 
-    def remove_user(self, user: str = "") -> OPS_API_RESPONSE:
+    def remove_user(
+        self, user: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Remove a user from the organization.
 
@@ -760,11 +905,16 @@ class AstraDBOps:
             dict: The response from the server after removing the user.
         """
         return self._json_ops_request(
-            method=http_methods.DELETE, path=f"/organizations/users/{user}"
+            method=http_methods.DELETE,
+            path=f"/organizations/users/{user}",
+            timeout_info=timeout_info,
         )
 
     def update_user_roles(
-        self, user: str = "", roles: Optional[Dict[str, Any]] = None
+        self,
+        user: str = "",
+        roles: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Update the roles assigned to a specific user within the organization.
@@ -780,18 +930,25 @@ class AstraDBOps:
             method=http_methods.PUT,
             path=f"/organizations/users/{user}/roles",
             json_data=roles,
+            timeout_info=timeout_info,
         )
 
-    def get_clients(self) -> OPS_API_RESPONSE:
+    def get_clients(self, timeout_info: TimeoutInfoWideType = None) -> OPS_API_RESPONSE:
         """
         Retrieve a list of client IDs and secrets associated with the organization.
 
         Returns:
             dict: A list of client IDs and their associated secrets.
         """
-        return self._json_ops_request(method=http_methods.GET, path="/clientIdSecrets")
+        return self._json_ops_request(
+            method=http_methods.GET, path="/clientIdSecrets", timeout_info=timeout_info
+        )
 
-    def create_token(self, roles: Optional[Dict[str, Any]] = None) -> OPS_API_RESPONSE:
+    def create_token(
+        self,
+        roles: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
+    ) -> OPS_API_RESPONSE:
         """
         Create a new token with specific roles.
 
@@ -806,9 +963,12 @@ class AstraDBOps:
             method=http_methods.POST,
             path="/clientIdSecrets",
             json_data=roles,
+            timeout_info=timeout_info,
         )
 
-    def delete_token(self, token: str = "") -> OPS_API_RESPONSE:
+    def delete_token(
+        self, token: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Delete a specific token.
 
@@ -819,28 +979,40 @@ class AstraDBOps:
             dict: The response from the server after deleting the token.
         """
         return self._json_ops_request(
-            method=http_methods.DELETE, path=f"/clientIdSecret/{token}"
+            method=http_methods.DELETE,
+            path=f"/clientIdSecret/{token}",
+            timeout_info=timeout_info,
         )
 
-    def get_organization(self) -> OPS_API_RESPONSE:
+    def get_organization(
+        self, timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve details of the current organization.
 
         Returns:
             dict: The details of the organization.
         """
-        return self._json_ops_request(method=http_methods.GET, path="/currentOrg")
+        return self._json_ops_request(
+            method=http_methods.GET, path="/currentOrg", timeout_info=timeout_info
+        )
 
-    def get_access_lists(self) -> OPS_API_RESPONSE:
+    def get_access_lists(
+        self, timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve a list of access lists for the organization.
 
         Returns:
             dict: A list of access lists.
         """
-        return self._json_ops_request(method=http_methods.GET, path="/access-lists")
+        return self._json_ops_request(
+            method=http_methods.GET, path="/access-lists", timeout_info=timeout_info
+        )
 
-    def get_access_list_template(self) -> OPS_API_RESPONSE:
+    def get_access_list_template(
+        self, timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve a template for creating an access list.
 
@@ -848,10 +1020,14 @@ class AstraDBOps:
             dict: An access list template.
         """
         return self._json_ops_request(
-            method=http_methods.GET, path="/access-list/template"
+            method=http_methods.GET,
+            path="/access-list/template",
+            timeout_info=timeout_info,
         )
 
-    def validate_access_list(self) -> OPS_API_RESPONSE:
+    def validate_access_list(
+        self, timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Validate the configuration of the access list.
 
@@ -859,10 +1035,14 @@ class AstraDBOps:
             dict: The validation result of the access list configuration.
         """
         return self._json_ops_request(
-            method=http_methods.POST, path="/access-list/validate"
+            method=http_methods.POST,
+            path="/access-list/validate",
+            timeout_info=timeout_info,
         )
 
-    def get_private_links(self) -> OPS_API_RESPONSE:
+    def get_private_links(
+        self, timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve a list of private link connections for the organization.
 
@@ -870,10 +1050,14 @@ class AstraDBOps:
             dict: A list of private link connections.
         """
         return self._json_ops_request(
-            method=http_methods.GET, path="/organizations/private-link"
+            method=http_methods.GET,
+            path="/organizations/private-link",
+            timeout_info=timeout_info,
         )
 
-    def get_streaming_providers(self) -> OPS_API_RESPONSE:
+    def get_streaming_providers(
+        self, timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve a list of streaming service providers.
 
@@ -881,10 +1065,14 @@ class AstraDBOps:
             dict: A list of available streaming service providers.
         """
         return self._json_ops_request(
-            method=http_methods.GET, path="/streaming/providers"
+            method=http_methods.GET,
+            path="/streaming/providers",
+            timeout_info=timeout_info,
         )
 
-    def get_streaming_tenants(self) -> OPS_API_RESPONSE:
+    def get_streaming_tenants(
+        self, timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve a list of streaming tenants.
 
@@ -892,11 +1080,15 @@ class AstraDBOps:
             dict: A list of streaming tenants and their details.
         """
         return self._json_ops_request(
-            method=http_methods.GET, path="/streaming/tenants"
+            method=http_methods.GET,
+            path="/streaming/tenants",
+            timeout_info=timeout_info,
         )
 
     def create_streaming_tenant(
-        self, tenant: Optional[Dict[str, Any]] = None
+        self,
+        tenant: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
         Create a new streaming tenant.
@@ -911,15 +1103,22 @@ class AstraDBOps:
             method=http_methods.POST,
             path="/streaming/tenants",
             json_data=tenant,
+            timeout_info=timeout_info,
         )
 
-    def delete_streaming_tenant(self, tenant: str = "", cluster: str = "") -> None:
+    def delete_streaming_tenant(
+        self,
+        tenant: str = "",
+        cluster: str = "",
+        timeout_info: TimeoutInfoWideType = None,
+    ) -> None:
         """
         Delete a specific streaming tenant from a cluster.
 
         Args:
             tenant (str): The identifier of the tenant to delete.
             cluster (str): The identifier of the cluster from which the tenant is to be deleted.
+            timeout_info: either a float (seconds) or a TimeoutInfo dict (see)
 
         Returns:
             dict: The response from the server after deleting the streaming tenant.
@@ -927,6 +1126,7 @@ class AstraDBOps:
         r = self._ops_request(
             method=http_methods.DELETE,
             path=f"/streaming/tenants/{tenant}/clusters/{cluster}",
+            timeout_info=timeout_info,
         )
 
         if r.status_code == 202:  # 'Accepted'
@@ -934,7 +1134,9 @@ class AstraDBOps:
         else:
             raise ValueError(r.text)
 
-    def get_streaming_tenant(self, tenant: str = "") -> OPS_API_RESPONSE:
+    def get_streaming_tenant(
+        self, tenant: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> OPS_API_RESPONSE:
         """
         Retrieve information about the limits and usage of a specific streaming tenant.
 
@@ -947,4 +1149,5 @@ class AstraDBOps:
         return self._json_ops_request(
             method=http_methods.GET,
             path=f"/streaming/tenants/{tenant}/limits",
+            timeout_info=timeout_info,
         )

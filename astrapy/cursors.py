@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from collections.abc import Iterator, AsyncIterator
 from typing import (
     Any,
@@ -34,8 +35,10 @@ from typing import (
 from astrapy.core.utils import _normalize_payload_value
 from astrapy.exceptions import (
     CursorIsStartedException,
+    DataAPITimeoutException,
     recast_method_sync,
     recast_method_async,
+    base_timeout_info,
 )
 from astrapy.constants import (
     DocumentType,
@@ -144,11 +147,16 @@ class BaseCursor:
     """
     Represents a generic Cursor over query results, regardless of whether
     synchronous or asynchronous. It cannot be instantiated.
+
+    See classes Cursor and AsyncCursor for more information.
     """
 
     _collection: Union[Collection, AsyncCollection]
     _filter: Optional[Dict[str, Any]]
     _projection: Optional[ProjectionType]
+    _max_time_ms: Optional[int]
+    _overall_max_time_ms: Optional[int]
+    _started_time_s: Optional[float]
     _limit: Optional[int]
     _skip: Optional[int]
     _sort: Optional[Dict[str, Any]]
@@ -164,6 +172,8 @@ class BaseCursor:
         collection: Union[Collection, AsyncCollection],
         filter: Optional[Dict[str, Any]],
         projection: Optional[ProjectionType],
+        max_time_ms: Optional[int],
+        overall_max_time_ms: Optional[int],
     ) -> None:
         raise NotImplementedError
 
@@ -216,6 +226,8 @@ class BaseCursor:
         self: BC,
         *,
         projection: Optional[ProjectionType] = None,
+        max_time_ms: Optional[int] = None,
+        overall_max_time_ms: Optional[int] = None,
         limit: Optional[int] = None,
         skip: Optional[int] = None,
         started: Optional[bool] = None,
@@ -225,6 +237,8 @@ class BaseCursor:
             collection=self._collection,
             filter=self._filter,
             projection=projection or self._projection,
+            max_time_ms=max_time_ms or self._max_time_ms,
+            overall_max_time_ms=overall_max_time_ms or self._overall_max_time_ms,
         )
         # Cursor treated as mutable within this function scope:
         new_cursor._limit = limit if limit is not None else self._limit
@@ -382,6 +396,25 @@ class Cursor(BaseCursor):
 
     Generally cursors are not supposed to be instantiated directly,
     rather they are obtained by invoking the `find` method on a collection.
+
+    Attributes:
+        collection: the collection to find documents in
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            projection: used to select a subset of fields in the document being
+                returned. The projection can be: an iterable over the field names
+                to return; a dictionary {field_name: True} to positively select
+                certain fields; or a dictionary {field_name: False} if one wants
+                to discard some fields from the response.
+                The default is to return the whole documents.
+            max_time_ms: a timeout, in milliseconds, for each single one
+                of the underlying HTTP requests used to fetch documents as the
+                cursor is iterated over.
     """
 
     def __init__(
@@ -389,10 +422,17 @@ class Cursor(BaseCursor):
         collection: Collection,
         filter: Optional[Dict[str, Any]],
         projection: Optional[ProjectionType],
+        max_time_ms: Optional[int],
+        overall_max_time_ms: Optional[int],
     ) -> None:
         self._collection: Collection = collection
         self._filter = filter
         self._projection = projection
+        self._overall_max_time_ms = overall_max_time_ms
+        if overall_max_time_ms is not None and max_time_ms is not None:
+            self._max_time_ms = min(max_time_ms, overall_max_time_ms)
+        else:
+            self._max_time_ms = max_time_ms
         self._limit: Optional[int] = None
         self._skip: Optional[int] = None
         self._sort: Optional[Dict[str, Any]] = None
@@ -417,6 +457,16 @@ class Cursor(BaseCursor):
         if self._iterator is None:
             self._iterator = self._create_iterator()
             self._started = True
+        # check for overall timing out
+        if self._overall_max_time_ms is not None:
+            _elapsed = time.time() - self._started_time_s  # type: ignore[operator]
+            if _elapsed > (self._overall_max_time_ms / 1000.0):
+                raise DataAPITimeoutException(
+                    text="Cursor timed out.",
+                    timeout_type="generic",
+                    endpoint=None,
+                    raw_payload=None,
+                )
         try:
             next_item = self._iterator.__next__()
             self._retrieved = self._retrieved + 1
@@ -461,8 +511,10 @@ class Cursor(BaseCursor):
             projection=pf_projection,
             sort=pf_sort,
             options=_options,
-            prefetched=FIND_PREFETCH,
+            prefetched=0,
+            timeout_info=base_timeout_info(self._max_time_ms),
         )
+        self._started_time_s = time.time()
         return iterator
 
     @property
@@ -474,7 +526,7 @@ class Cursor(BaseCursor):
         return self._collection
 
     @recast_method_sync
-    def distinct(self, key: str) -> List[Any]:
+    def distinct(self, key: str, max_time_ms: Optional[int] = None) -> List[Any]:
         """
         Compute a list of unique values for a specific field across all
         documents the cursor iterates through.
@@ -492,6 +544,7 @@ class Cursor(BaseCursor):
                     "field.3.subfield"
                 if lists are encountered and no numeric index is specified,
                 all items in the list are visited.
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Note:
             this operation works at client-side by scrolling through all
@@ -507,7 +560,11 @@ class Cursor(BaseCursor):
         _extractor = _create_document_key_extractor(key)
         _key = _reduce_distinct_key_to_safe(key)
 
-        d_cursor = self._copy(projection={_key: True}, started=False)
+        d_cursor = self._copy(
+            projection={_key: True},
+            started=False,
+            overall_max_time_ms=max_time_ms,
+        )
         for document in d_cursor:
             for item in _extractor(document):
                 _item_hash = _hash_document(item)
@@ -526,6 +583,25 @@ class AsyncCursor(BaseCursor):
 
     Generally cursors are not supposed to be instantiated directly,
     rather they are obtained by invoking the `find` method on a collection.
+
+    Attributes:
+        collection: the collection to find documents in
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$le": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                See the Data API documentation for the full set of operators.
+            projection: used to select a subset of fields in the document being
+                returned. The projection can be: an iterable over the field names
+                to return; a dictionary {field_name: True} to positively select
+                certain fields; or a dictionary {field_name: False} if one wants
+                to discard some fields from the response.
+                The default is to return the whole documents.
+            max_time_ms: a timeout, in milliseconds, for each single one
+                of the underlying HTTP requests used to fetch documents as the
+                cursor is iterated over.
     """
 
     def __init__(
@@ -533,10 +609,17 @@ class AsyncCursor(BaseCursor):
         collection: AsyncCollection,
         filter: Optional[Dict[str, Any]],
         projection: Optional[ProjectionType],
+        max_time_ms: Optional[int],
+        overall_max_time_ms: Optional[int],
     ) -> None:
         self._collection: AsyncCollection = collection
         self._filter = filter
         self._projection = projection
+        self._overall_max_time_ms = overall_max_time_ms
+        if overall_max_time_ms is not None and max_time_ms is not None:
+            self._max_time_ms = min(max_time_ms, overall_max_time_ms)
+        else:
+            self._max_time_ms = max_time_ms
         self._limit: Optional[int] = None
         self._skip: Optional[int] = None
         self._sort: Optional[Dict[str, Any]] = None
@@ -561,6 +644,16 @@ class AsyncCursor(BaseCursor):
         if self._iterator is None:
             self._iterator = self._create_iterator()
             self._started = True
+        # check for overall timing out
+        if self._overall_max_time_ms is not None:
+            _elapsed = time.time() - self._started_time_s  # type: ignore[operator]
+            if _elapsed > (self._overall_max_time_ms / 1000.0):
+                raise DataAPITimeoutException(
+                    text="Cursor timed out.",
+                    timeout_type="generic",
+                    endpoint=None,
+                    raw_payload=None,
+                )
         try:
             next_item = await self._iterator.__anext__()
             self._retrieved = self._retrieved + 1
@@ -605,8 +698,10 @@ class AsyncCursor(BaseCursor):
             projection=pf_projection,
             sort=pf_sort,
             options=_options,
-            prefetched=FIND_PREFETCH,
+            prefetched=0,
+            timeout_info=base_timeout_info(self._max_time_ms),
         )
+        self._started_time_s = time.time()
         return iterator
 
     def _to_sync(
@@ -621,6 +716,8 @@ class AsyncCursor(BaseCursor):
             collection=self._collection.to_sync(),
             filter=self._filter,
             projection=self._projection,
+            max_time_ms=self._max_time_ms,
+            overall_max_time_ms=self._overall_max_time_ms,
         )
         # Cursor treated as mutable within this function scope:
         new_cursor._limit = limit if limit is not None else self._limit
@@ -644,7 +741,7 @@ class AsyncCursor(BaseCursor):
         return self._collection
 
     @recast_method_async
-    async def distinct(self, key: str) -> List[Any]:
+    async def distinct(self, key: str, max_time_ms: Optional[int] = None) -> List[Any]:
         """
         Compute a list of unique values for a specific field across all
         documents the cursor iterates through.
@@ -662,6 +759,7 @@ class AsyncCursor(BaseCursor):
                     "field.3.subfield"
                 if lists are encountered and no numeric index is specified,
                 all items in the list are visited.
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Note:
             this operation works at client-side by scrolling through all
@@ -677,7 +775,11 @@ class AsyncCursor(BaseCursor):
         _extractor = _create_document_key_extractor(key)
         _key = _reduce_distinct_key_to_safe(key)
 
-        d_cursor = self._copy(projection={_key: True}, started=False)
+        d_cursor = self._copy(
+            projection={_key: True},
+            started=False,
+            overall_max_time_ms=max_time_ms,
+        )
         async for document in d_cursor:
             for item in _extractor(document):
                 _item_hash = _hash_document(item)

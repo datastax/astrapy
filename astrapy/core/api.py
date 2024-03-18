@@ -1,6 +1,6 @@
 import logging
 import httpx
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, Optional, Union, cast
 
 from astrapy.core.core_types import API_RESPONSE
 from astrapy.core.utils import amake_request, make_request
@@ -32,6 +32,7 @@ def raw_api_request(
     path: Optional[str],
     caller_name: Optional[str],
     caller_version: Optional[str],
+    timeout: Optional[Union[httpx.Timeout, float]],
 ) -> httpx.Response:
     return make_request(
         client=client,
@@ -44,6 +45,7 @@ def raw_api_request(
         path=path,
         caller_name=caller_name,
         caller_version=caller_version,
+        timeout=timeout,
     )
 
 
@@ -82,6 +84,7 @@ def api_request(
     skip_error_check: bool,
     caller_name: Optional[str],
     caller_version: Optional[str],
+    timeout: Optional[Union[httpx.Timeout, float]],
 ) -> API_RESPONSE:
     raw_response = raw_api_request(
         client=client,
@@ -94,6 +97,7 @@ def api_request(
         path=path,
         caller_name=caller_name,
         caller_version=caller_version,
+        timeout=timeout,
     )
     raw_response.raise_for_status()
     return process_raw_api_response(
@@ -113,6 +117,7 @@ async def async_raw_api_request(
     path: Optional[str],
     caller_name: Optional[str],
     caller_version: Optional[str],
+    timeout: Optional[Union[httpx.Timeout, float]],
 ) -> httpx.Response:
     return await amake_request(
         client=client,
@@ -125,6 +130,7 @@ async def async_raw_api_request(
         path=path,
         caller_name=caller_name,
         caller_version=caller_version,
+        timeout=timeout,
     )
 
 
@@ -163,6 +169,7 @@ async def async_api_request(
     skip_error_check: bool,
     caller_name: Optional[str],
     caller_version: Optional[str],
+    timeout: Optional[Union[httpx.Timeout, float]],
 ) -> API_RESPONSE:
     raw_response = await async_raw_api_request(
         client=client,
@@ -175,6 +182,7 @@ async def async_api_request(
         path=path,
         caller_name=caller_name,
         caller_version=caller_version,
+        timeout=timeout,
     )
     raw_response.raise_for_status()
     return await async_process_raw_api_response(
