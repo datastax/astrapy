@@ -110,16 +110,14 @@ class TestTimeoutAsync:
         )
 
         with pytest.raises(DataAPITimeoutException):
+            await async_collection.insert_many(fifty_docs, ordered=True, max_time_ms=2)
+        with pytest.raises(DataAPITimeoutException):
             await async_collection.insert_many(
-                fifty_docs, ordered=True, max_time_ms=200
+                fifty_docs, ordered=False, concurrency=1, max_time_ms=2
             )
         with pytest.raises(DataAPITimeoutException):
             await async_collection.insert_many(
-                fifty_docs, ordered=False, concurrency=1, max_time_ms=200
-            )
-        with pytest.raises(DataAPITimeoutException):
-            await async_collection.insert_many(
-                fifty_docs, ordered=False, concurrency=2, max_time_ms=200
+                fifty_docs, ordered=False, concurrency=2, max_time_ms=2
             )
 
     @pytest.mark.describe("test of update_many timeouts, async")
@@ -137,7 +135,7 @@ class TestTimeoutAsync:
 
         with pytest.raises(DataAPITimeoutException):
             await async_collection.update_many(
-                {"f": "update_many"}, {"$inc": {"seq": 100}}, max_time_ms=200
+                {"f": "update_many"}, {"$inc": {"seq": 100}}, max_time_ms=2
             )
 
     @pytest.mark.describe("test of delete_many timeouts, async")
@@ -157,7 +155,7 @@ class TestTimeoutAsync:
         await async_collection.delete_many({"f": "delete_many1"})
         await async_collection.delete_many({"f": "delete_many2"}, max_time_ms=20000)
         with pytest.raises(DataAPITimeoutException):
-            await async_collection.delete_many({"f": "delete_many3"}, max_time_ms=200)
+            await async_collection.delete_many({"f": "delete_many3"}, max_time_ms=2)
 
     @pytest.mark.describe("test of bulk_write timeouts, async")
     async def test_bulk_write_ordered_timeout_exceptions_async(
@@ -174,7 +172,7 @@ class TestTimeoutAsync:
         )
         with pytest.raises(DataAPITimeoutException):
             await async_empty_collection.bulk_write(
-                [im_a, im_b, dm], ordered=True, max_time_ms=500
+                [im_a, im_b, dm], ordered=True, max_time_ms=5
             )
 
     @pytest.mark.describe("test of bulk_write timeouts, async")
@@ -192,5 +190,5 @@ class TestTimeoutAsync:
         )
         with pytest.raises(DataAPITimeoutException):
             await async_empty_collection.bulk_write(
-                [im_a, im_b, dm], ordered=False, max_time_ms=500
+                [im_a, im_b, dm], ordered=False, max_time_ms=5
             )

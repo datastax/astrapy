@@ -108,14 +108,14 @@ class TestTimeoutSync:
         )
 
         with pytest.raises(DataAPITimeoutException):
-            sync_collection.insert_many(fifty_docs, ordered=True, max_time_ms=200)
+            sync_collection.insert_many(fifty_docs, ordered=True, max_time_ms=2)
         with pytest.raises(DataAPITimeoutException):
             sync_collection.insert_many(
-                fifty_docs, ordered=False, concurrency=1, max_time_ms=200
+                fifty_docs, ordered=False, concurrency=1, max_time_ms=2
             )
         with pytest.raises(DataAPITimeoutException):
             sync_collection.insert_many(
-                fifty_docs, ordered=False, concurrency=2, max_time_ms=200
+                fifty_docs, ordered=False, concurrency=2, max_time_ms=2
             )
 
     @pytest.mark.describe("test of update_many timeouts, sync")
@@ -133,7 +133,7 @@ class TestTimeoutSync:
 
         with pytest.raises(DataAPITimeoutException):
             sync_collection.update_many(
-                {"f": "update_many"}, {"$inc": {"seq": 100}}, max_time_ms=200
+                {"f": "update_many"}, {"$inc": {"seq": 100}}, max_time_ms=2
             )
 
     @pytest.mark.describe("test of delete_many timeouts, sync")
@@ -153,7 +153,7 @@ class TestTimeoutSync:
         sync_collection.delete_many({"f": "delete_many1"})
         sync_collection.delete_many({"f": "delete_many2"}, max_time_ms=20000)
         with pytest.raises(DataAPITimeoutException):
-            sync_collection.delete_many({"f": "delete_many3"}, max_time_ms=200)
+            sync_collection.delete_many({"f": "delete_many3"}, max_time_ms=2)
 
     @pytest.mark.describe("test of bulk_write timeouts, sync")
     def test_bulk_write_ordered_timeout_exceptions_sync(
@@ -188,5 +188,5 @@ class TestTimeoutSync:
         )
         with pytest.raises(DataAPITimeoutException):
             sync_empty_collection.bulk_write(
-                [im_a, im_b, dm], ordered=False, max_time_ms=500
+                [im_a, im_b, dm], ordered=False, max_time_ms=5
             )
