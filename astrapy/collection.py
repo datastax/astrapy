@@ -17,7 +17,6 @@ from __future__ import annotations
 import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
-from functools import partial
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 
 from astrapy.core.db import (
@@ -33,6 +32,7 @@ from astrapy.exceptions import (
     DataAPIResponseException,
     DeleteManyException,
     InsertManyException,
+    MultiCallTimeoutManager,
     TooManyDocumentsToCountException,
     UpdateManyException,
     recast_method_sync,
@@ -411,6 +411,7 @@ class Collection:
                 raw_response=io_response,
             )
 
+    @recast_method_sync
     def insert_many(
         self,
         documents: Iterable[DocumentType],
@@ -418,6 +419,7 @@ class Collection:
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
+        max_time_ms: Optional[int] = None,
     ) -> InsertManyResult:
         """
         Insert a list of documents into the collection.
@@ -434,6 +436,7 @@ class Collection:
                 Leave it unspecified (recommended) to use the system default.
             concurrency: maximum number of concurrent requests to the API at
                 a given time. It cannot be more than one for ordered insertions.
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             an InsertManyResult object.
@@ -481,6 +484,7 @@ class Collection:
         _documents = list(documents)  # TODO make this a chunked iterator
         # TODO handle the auto-inserted-ids here (chunk-wise better)
         raw_results: List[Dict[str, Any]] = []
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
             options = {"ordered": True}
             inserted_ids: List[Any] = []
@@ -489,6 +493,7 @@ class Collection:
                     documents=_documents[i : i + _chunk_size],
                     options=options,
                     partial_failures_allowed=True,
+                    timeout_info=timeout_manager.check_remaining_timeout(),
                 )
                 # accumulate the results in this call
                 chunk_inserted_ids = (chunk_response.get("status") or {}).get(
@@ -520,11 +525,17 @@ class Collection:
             options = {"ordered": False}
             if _concurrency > 1:
                 with ThreadPoolExecutor(max_workers=_concurrency) as executor:
-                    _chunk_insertor = partial(
-                        self._astra_db_collection.insert_many,
-                        options=options,
-                        partial_failures_allowed=True,
-                    )
+
+                    def _chunk_insertor(
+                        document_chunk: List[Dict[str, Any]]
+                    ) -> Dict[str, Any]:
+                        return self._astra_db_collection.insert_many(
+                            documents=document_chunk,
+                            options=options,
+                            partial_failures_allowed=True,
+                            timeout_info=timeout_manager.check_remaining_timeout(),
+                        )
+
                     raw_results = list(
                         executor.map(
                             _chunk_insertor,
@@ -540,6 +551,7 @@ class Collection:
                         _documents[i : i + _chunk_size],
                         options=options,
                         partial_failures_allowed=True,
+                        timeout_info=timeout_manager.check_remaining_timeout(),
                     )
                     for i in range(0, len(_documents), _chunk_size)
                 ]
@@ -1109,12 +1121,14 @@ class Collection:
                 raw_response=fo_response,
             )
 
+    @recast_method_sync
     def update_many(
         self,
         filter: Dict[str, Any],
         update: Dict[str, Any],
         *,
         upsert: bool = False,
+        max_time_ms: Optional[int] = None,
     ) -> UpdateResult:
         """
         Apply an update operations to all documents matching a condition,
@@ -1139,6 +1153,7 @@ class Collection:
                 to an empty document) is inserted if no matches are found on
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
@@ -1151,12 +1166,14 @@ class Collection:
         um_responses: List[Dict[str, Any]] = []
         um_statuses: List[Dict[str, Any]] = []
         must_proceed = True
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         while must_proceed:
             options = {**base_options, **page_state_options}
             this_um_response = self._astra_db_collection.update_many(
                 update=update,
                 filter=filter,
                 options=options,
+                timeout_info=timeout_manager.check_remaining_timeout(),
             )
             this_um_status = this_um_response.get("status") or {}
             #
@@ -1302,9 +1319,11 @@ class Collection:
                 raw_response=do_response,
             )
 
+    @recast_method_sync
     def delete_many(
         self,
         filter: Dict[str, Any],
+        max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
         """
         Delete all documents matching a provided filter.
@@ -1317,8 +1336,9 @@ class Collection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
-            The `delete_many` method does not accept an empty filter: see
-            `delete_all` to completely erase all contents of a collection
+                The `delete_many` method does not accept an empty filter: see
+                `delete_all` to completely erase all contents of a collection
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
@@ -1341,10 +1361,12 @@ class Collection:
         dm_responses: List[Dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         while must_proceed:
             this_dm_response = self._astra_db_collection.delete_many(
                 filter=filter,
                 skip_error_check=True,
+                timeout_info=timeout_manager.check_remaining_timeout(),
             )
             # if errors, quit early
             if this_dm_response.get("errors", []):
@@ -1851,6 +1873,7 @@ class AsyncCollection:
                 f"(gotten '${json.dumps(io_response)}')"
             )
 
+    @recast_method_async
     async def insert_many(
         self,
         documents: Iterable[DocumentType],
@@ -1858,6 +1881,7 @@ class AsyncCollection:
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
+        max_time_ms: Optional[int] = None,
     ) -> InsertManyResult:
         """
         Insert a list of documents into the collection.
@@ -1874,6 +1898,7 @@ class AsyncCollection:
                 Leave it unspecified (recommended) to use the system default.
             concurrency: maximum number of concurrent requests to the API at
                 a given time. It cannot be more than one for ordered insertions.
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             an InsertManyResult object.
@@ -1921,6 +1946,7 @@ class AsyncCollection:
         _documents = list(documents)  # TODO make this a chunked iterator
         # TODO handle the auto-inserted-ids here (chunk-wise better)
         raw_results: List[Dict[str, Any]] = []
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
             options = {"ordered": True}
             inserted_ids: List[Any] = []
@@ -1929,6 +1955,7 @@ class AsyncCollection:
                     documents=_documents[i : i + _chunk_size],
                     options=options,
                     partial_failures_allowed=True,
+                    timeout_info=timeout_manager.check_remaining_timeout(),
                 )
                 # accumulate the results in this call
                 chunk_inserted_ids = (chunk_response.get("status") or {}).get(
@@ -1969,6 +1996,7 @@ class AsyncCollection:
                         document_chunk,
                         options=options,
                         partial_failures_allowed=True,
+                        timeout_info=timeout_manager.check_remaining_timeout(),
                     )
 
             if _concurrency > 1:
@@ -2543,12 +2571,14 @@ class AsyncCollection:
                 raw_response=fo_response,
             )
 
+    @recast_method_async
     async def update_many(
         self,
         filter: Dict[str, Any],
         update: Dict[str, Any],
         *,
         upsert: bool = False,
+        max_time_ms: Optional[int] = None,
     ) -> UpdateResult:
         """
         Apply an update operations to all documents matching a condition,
@@ -2573,6 +2603,7 @@ class AsyncCollection:
                 to an empty document) is inserted if no matches are found on
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
@@ -2585,12 +2616,14 @@ class AsyncCollection:
         um_responses: List[Dict[str, Any]] = []
         um_statuses: List[Dict[str, Any]] = []
         must_proceed = True
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         while must_proceed:
             options = {**base_options, **page_state_options}
             this_um_response = await self._astra_db_collection.update_many(
                 update=update,
                 filter=filter,
                 options=options,
+                timeout_info=timeout_manager.check_remaining_timeout(),
             )
             this_um_status = this_um_response.get("status") or {}
             #
@@ -2737,11 +2770,13 @@ class AsyncCollection:
                 raw_response=do_response,
             )
 
+    @recast_method_async
     async def delete_many(
         self,
         filter: Dict[str, Any],
         *,
         let: Optional[int] = None,
+        max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
         """
         Delete all documents matching a provided filter.
@@ -2754,8 +2789,9 @@ class AsyncCollection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
-            The `delete_many` method does not accept an empty filter: see
-            `delete_all` to completely erase all contents of a collection
+                The `delete_many` method does not accept an empty filter: see
+                `delete_all` to completely erase all contents of a collection
+            max_time_ms: a timeout, in milliseconds, for the operation.
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
@@ -2778,10 +2814,12 @@ class AsyncCollection:
         dm_responses: List[Dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         while must_proceed:
             this_dm_response = await self._astra_db_collection.delete_many(
                 filter=filter,
                 skip_error_check=True,
+                timeout_info=timeout_manager.check_remaining_timeout(),
             )
             # if errors, quit early
             if this_dm_response.get("errors", []):

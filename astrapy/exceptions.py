@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import time
 from functools import wraps
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
 from dataclasses import dataclass
@@ -526,3 +527,52 @@ def base_timeout_info(max_time_ms: Optional[int]) -> Union[TimeoutInfo, None]:
         return {"base": max_time_ms / 1000.0}
     else:
         return None
+
+
+class MultiCallTimeoutManager:
+    """
+    A helper class to keep track of timing and timeouts
+    in a multi-call method context.
+
+    Args:
+        overall_max_time_ms: an optional max duration to track (milliseconds)
+
+    Attributes:
+        overall_max_time_ms: an optional max duration to track (milliseconds)
+        started_ms: timestamp of the instance construction (milliseconds)
+        deadline_ms: optional deadline in milliseconds (computed by the class).
+    """
+
+    overall_max_time_ms: Optional[int]
+    started_ms: int = -1
+    deadline_ms: Optional[int]
+
+    def __init__(self, overall_max_time_ms: Optional[int]) -> None:
+        self.started_ms = int(time.time() * 1000)
+        self.overall_max_time_ms = overall_max_time_ms
+        if self.overall_max_time_ms is not None:
+            self.deadline_ms = self.started_ms + self.overall_max_time_ms
+        else:
+            self.deadline_ms = None
+
+    def check_remaining_timeout(self) -> Union[TimeoutInfo, None]:
+        """
+        Ensure the deadline, if any, is not yet in the past.
+        If it is, raise an appropriate timeout error.
+        It it is not, or there is no deadline, return a suitable TimeoutInfo
+        for use within the multi-call method.
+        """
+        now_ms = int(time.time() * 1000)
+        if self.deadline_ms is not None:
+            if now_ms < self.deadline_ms:
+                remaining_ms = self.deadline_ms - now_ms
+                return base_timeout_info(max_time_ms=remaining_ms)
+            else:
+                raise DataAPITimeoutException(
+                    text="Operation timed out.",
+                    timeout_type="generic",
+                    endpoint=None,
+                    raw_payload=None,
+                )
+        else:
+            return None
