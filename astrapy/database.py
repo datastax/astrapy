@@ -425,6 +425,7 @@ class Database:
     def drop_collection(
         self,
         name_or_collection: Union[str, Collection],
+        *,
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
@@ -945,6 +946,7 @@ class AsyncDatabase:
     async def drop_collection(
         self,
         name_or_collection: Union[str, AsyncCollection],
+        *,
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """

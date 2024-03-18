@@ -266,7 +266,7 @@ class Collection:
             caller_version=caller_version,
         )
 
-    def options(self, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
+    def options(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Get the collection options, i.e. its configuration as read from the database.
 
@@ -352,6 +352,7 @@ class Collection:
     def insert_one(
         self,
         document: DocumentType,
+        *,
         max_time_ms: Optional[int] = None,
     ) -> InsertOneResult:
         """
@@ -784,6 +785,7 @@ class Collection:
     def count_documents(
         self,
         filter: Dict[str, Any],
+        *,
         upper_bound: int,
         max_time_ms: Optional[int] = None,
     ) -> int:
@@ -1341,6 +1343,7 @@ class Collection:
     def delete_many(
         self,
         filter: Dict[str, Any],
+        *,
         max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
         """
@@ -1415,7 +1418,7 @@ class Collection:
         )
 
     @recast_method_sync
-    def delete_all(self, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
+    def delete_all(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Delete all documents in a collection.
 
@@ -1574,13 +1577,15 @@ class Collection:
                 else:
                     return reduce_bulk_write_results(bulk_write_successes)
 
-    def drop(self, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
+    def drop(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Drop the collection, i.e. delete it from the database along with
         all the documents it contains.
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                Remember there is not guarantee that a request that has
+                timed out us not in fact honored.
 
         Returns:
             a dictionary of the form {"ok": 1} to signal successful deletion.
@@ -1761,7 +1766,7 @@ class AsyncCollection:
             caller_version=caller_version,
         )
 
-    async def options(self, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
+    async def options(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Get the collection options, i.e. its configuration as read from the database.
 
@@ -1849,6 +1854,7 @@ class AsyncCollection:
     async def insert_one(
         self,
         document: DocumentType,
+        *,
         max_time_ms: Optional[int] = None,
     ) -> InsertOneResult:
         """
@@ -2252,6 +2258,7 @@ class AsyncCollection:
     async def count_documents(
         self,
         filter: Dict[str, Any],
+        *,
         upper_bound: int,
         max_time_ms: Optional[int] = None,
     ) -> int:
@@ -2812,7 +2819,6 @@ class AsyncCollection:
         self,
         filter: Dict[str, Any],
         *,
-        let: Optional[int] = None,
         max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
         """
@@ -2887,7 +2893,7 @@ class AsyncCollection:
         )
 
     @recast_method_async
-    async def delete_all(self, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
+    async def delete_all(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Delete all documents in a collection.
 
@@ -3039,13 +3045,15 @@ class AsyncCollection:
             else:
                 return reduce_bulk_write_results(bulk_write_successes)
 
-    async def drop(self, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
+    async def drop(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Drop the collection, i.e. delete it from the database along with
         all the documents it contains.
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                Remember there is not guarantee that a request that has
+                timed out us not in fact honored.
 
         Returns:
             a dictionary of the form {"ok": 1} to signal successful deletion.
