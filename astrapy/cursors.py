@@ -140,7 +140,7 @@ def _reduce_distinct_key_to_safe(distinct_key: str) -> str:
     blocks = distinct_key.split(".")
     valid_portion = []
     for block in blocks:
-        if not _maybe_valid_list_index(block):
+        if _maybe_valid_list_index(block) is None:
             valid_portion.append(block)
         else:
             break
