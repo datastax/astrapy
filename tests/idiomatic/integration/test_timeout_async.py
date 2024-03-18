@@ -29,7 +29,7 @@ class TestTimeoutAsync:
         async_empty_collection: AsyncCollection,
     ) -> None:
         await async_empty_collection.insert_many([{"a": 1}] * 100)
-        await asyncio.sleep(2)
+        await asyncio.sleep(10)
         assert await async_empty_collection.count_documents({}, upper_bound=150) == 100
 
         with pytest.raises(DataAPITimeoutException) as exc:
