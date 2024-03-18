@@ -103,10 +103,16 @@ def _create_document_key_extractor(
                         yield item
                 return
             elif isinstance(value, list):
-                if k_int is not None and len(value) > k_int:
-                    new_value = value[k_int]
-                    for item in _extract_with_key_blocks(rest_key_blocks, new_value):
-                        yield item
+                if k_int is not None:
+                    if len(value) > k_int:
+                        new_value = value[k_int]
+                        for item in _extract_with_key_blocks(
+                            rest_key_blocks, new_value
+                        ):
+                            yield item
+                    else:
+                        # list has no such element. Nothing to extract.
+                        return
                 else:
                     for item in value:
                         for item in _extract_with_key_blocks(key_blocks, item):
