@@ -137,7 +137,14 @@ def _reduce_distinct_key_to_safe(distinct_key: str) -> str:
         key = "x.0"
     With full key as projection, we would lose the `"y": "Y"` part (mistakenly).
     """
-    return distinct_key.split(".")[0]
+    blocks = distinct_key.split(".")
+    valid_portion = []
+    for block in blocks:
+        if not _maybe_valid_list_index(block):
+            valid_portion.append(block)
+        else:
+            break
+    return ".".join(valid_portion)
 
 
 def _hash_document(document: Dict[str, Any]) -> str:
@@ -565,6 +572,12 @@ class Cursor(BaseCursor):
 
         _extractor = _create_document_key_extractor(key)
         _key = _reduce_distinct_key_to_safe(key)
+
+        if _key == "":
+            raise ValueError(
+                "The 'key' parameter for distinct cannot be empty "
+                "or start with a list index."
+            )
 
         d_cursor = self._copy(
             projection={_key: True},
