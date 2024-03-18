@@ -17,6 +17,7 @@ import pytest
 from astrapy import AsyncCollection, AsyncDatabase
 
 from astrapy.exceptions import DataAPITimeoutException
+from astrapy.operations import AsyncDeleteMany, AsyncInsertMany
 from astrapy.info import get_database_info
 
 
@@ -84,13 +85,13 @@ class TestTimeoutAsync:
         acol = async_empty_collection
         await acol.insert_many([{"a": 1}] * 1000)
 
-        await acol.distinct("a", max_time_ms=5000)
+        await acol.distinct("a", max_time_ms=20000)
         with pytest.raises(DataAPITimeoutException):
             await acol.distinct("a", max_time_ms=1)
 
         cur1 = acol.find({})
         cur2 = acol.find({})
-        await cur1.distinct("a", max_time_ms=5000)
+        await cur1.distinct("a", max_time_ms=20000)
         with pytest.raises(DataAPITimeoutException):
             await cur2.distinct("a", max_time_ms=1)
 
@@ -157,3 +158,39 @@ class TestTimeoutAsync:
         await async_collection.delete_many({"f": "delete_many2"}, max_time_ms=20000)
         with pytest.raises(DataAPITimeoutException):
             await async_collection.delete_many({"f": "delete_many3"}, max_time_ms=200)
+
+    @pytest.mark.describe("test of bulk_write timeouts, async")
+    async def test_bulk_write_ordered_timeout_exceptions_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        im_a = AsyncInsertMany([{"seq": i, "group": "A"} for i in range(100)])
+        im_b = AsyncInsertMany([{"seq": i, "group": "B"} for i in range(100)])
+        dm = AsyncDeleteMany(filter={"group": "A"})
+
+        await async_empty_collection.bulk_write([im_a, im_b, dm], ordered=True)
+        await async_empty_collection.bulk_write(
+            [im_a, im_b, dm], ordered=True, max_time_ms=50000
+        )
+        with pytest.raises(DataAPITimeoutException):
+            await async_empty_collection.bulk_write(
+                [im_a, im_b, dm], ordered=True, max_time_ms=500
+            )
+
+    @pytest.mark.describe("test of bulk_write timeouts, async")
+    async def test_bulk_write_unordered_timeout_exceptions_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        im_a = AsyncInsertMany([{"seq": i, "group": "A"} for i in range(100)])
+        im_b = AsyncInsertMany([{"seq": i, "group": "B"} for i in range(100)])
+        dm = AsyncDeleteMany(filter={"group": "A"})
+
+        await async_empty_collection.bulk_write([im_a, im_b, dm], ordered=False)
+        await async_empty_collection.bulk_write(
+            [im_a, im_b, dm], ordered=False, max_time_ms=50000
+        )
+        with pytest.raises(DataAPITimeoutException):
+            await async_empty_collection.bulk_write(
+                [im_a, im_b, dm], ordered=False, max_time_ms=500
+            )

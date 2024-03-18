@@ -555,18 +555,17 @@ class MultiCallTimeoutManager:
         else:
             self.deadline_ms = None
 
-    def check_remaining_timeout(self) -> Union[TimeoutInfo, None]:
+    def remaining_timeout_ms(self) -> Union[int, None]:
         """
         Ensure the deadline, if any, is not yet in the past.
         If it is, raise an appropriate timeout error.
-        It it is not, or there is no deadline, return a suitable TimeoutInfo
-        for use within the multi-call method.
+        If not, return either None (if no timeout) or the remaining milliseconds.
+        For use within the multi-call method.
         """
         now_ms = int(time.time() * 1000)
         if self.deadline_ms is not None:
             if now_ms < self.deadline_ms:
-                remaining_ms = self.deadline_ms - now_ms
-                return base_timeout_info(max_time_ms=remaining_ms)
+                return self.deadline_ms - now_ms
             else:
                 raise DataAPITimeoutException(
                     text="Operation timed out.",
@@ -576,3 +575,12 @@ class MultiCallTimeoutManager:
                 )
         else:
             return None
+
+    def remaining_timeout_info(self) -> Union[TimeoutInfo, None]:
+        """
+        Ensure the deadline, if any, is not yet in the past.
+        If it is, raise an appropriate timeout error.
+        It it is not, or there is no deadline, return a suitable TimeoutInfo
+        for use within the multi-call method.
+        """
+        return base_timeout_info(max_time_ms=self.remaining_timeout_ms())

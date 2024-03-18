@@ -81,7 +81,10 @@ class BaseOperation(ABC):
 
     @abstractmethod
     def execute(
-        self, collection: Collection, index_in_bulk_write: int
+        self,
+        collection: Collection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult: ...
 
 
@@ -104,7 +107,10 @@ class InsertOne(BaseOperation):
         self.document = document
 
     def execute(
-        self, collection: Collection, index_in_bulk_write: int
+        self,
+        collection: Collection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -114,7 +120,9 @@ class InsertOne(BaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result: InsertOneResult = collection.insert_one(document=self.document)
+        op_result: InsertOneResult = collection.insert_one(
+            document=self.document, max_time_ms=bulk_write_timeout_ms
+        )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
@@ -153,7 +161,10 @@ class InsertMany(BaseOperation):
         self.concurrency = concurrency
 
     def execute(
-        self, collection: Collection, index_in_bulk_write: int
+        self,
+        collection: Collection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -168,6 +179,7 @@ class InsertMany(BaseOperation):
             ordered=self.ordered,
             chunk_size=self.chunk_size,
             concurrency=self.concurrency,
+            max_time_ms=bulk_write_timeout_ms,
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
@@ -204,7 +216,10 @@ class UpdateOne(BaseOperation):
         self.upsert = upsert
 
     def execute(
-        self, collection: Collection, index_in_bulk_write: int
+        self,
+        collection: Collection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -219,6 +234,7 @@ class UpdateOne(BaseOperation):
             update=self.update,
             sort=self.sort,
             upsert=self.upsert,
+            max_time_ms=bulk_write_timeout_ms,
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
@@ -251,7 +267,10 @@ class UpdateMany(BaseOperation):
         self.upsert = upsert
 
     def execute(
-        self, collection: Collection, index_in_bulk_write: int
+        self,
+        collection: Collection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -265,6 +284,7 @@ class UpdateMany(BaseOperation):
             filter=self.filter,
             update=self.update,
             upsert=self.upsert,
+            max_time_ms=bulk_write_timeout_ms,
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
@@ -301,7 +321,10 @@ class ReplaceOne(BaseOperation):
         self.upsert = upsert
 
     def execute(
-        self, collection: Collection, index_in_bulk_write: int
+        self,
+        collection: Collection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -316,6 +339,7 @@ class ReplaceOne(BaseOperation):
             replacement=self.replacement,
             sort=self.sort,
             upsert=self.upsert,
+            max_time_ms=bulk_write_timeout_ms,
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
@@ -344,7 +368,10 @@ class DeleteOne(BaseOperation):
         self.sort = sort
 
     def execute(
-        self, collection: Collection, index_in_bulk_write: int
+        self,
+        collection: Collection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -355,7 +382,9 @@ class DeleteOne(BaseOperation):
         """
 
         op_result: DeleteResult = collection.delete_one(
-            filter=self.filter, sort=self.sort
+            filter=self.filter,
+            sort=self.sort,
+            max_time_ms=bulk_write_timeout_ms,
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
@@ -379,7 +408,10 @@ class DeleteMany(BaseOperation):
         self.filter = filter
 
     def execute(
-        self, collection: Collection, index_in_bulk_write: int
+        self,
+        collection: Collection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -389,7 +421,9 @@ class DeleteMany(BaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result: DeleteResult = collection.delete_many(filter=self.filter)
+        op_result: DeleteResult = collection.delete_many(
+            filter=self.filter, max_time_ms=bulk_write_timeout_ms
+        )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
@@ -401,7 +435,10 @@ class AsyncBaseOperation(ABC):
 
     @abstractmethod
     async def execute(
-        self, collection: AsyncCollection, index_in_bulk_write: int
+        self,
+        collection: AsyncCollection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult: ...
 
 
@@ -424,7 +461,10 @@ class AsyncInsertOne(AsyncBaseOperation):
         self.document = document
 
     async def execute(
-        self, collection: AsyncCollection, index_in_bulk_write: int
+        self,
+        collection: AsyncCollection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -434,7 +474,9 @@ class AsyncInsertOne(AsyncBaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result: InsertOneResult = await collection.insert_one(document=self.document)
+        op_result: InsertOneResult = await collection.insert_one(
+            document=self.document, max_time_ms=bulk_write_timeout_ms
+        )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
 
@@ -473,7 +515,10 @@ class AsyncInsertMany(AsyncBaseOperation):
         self.concurrency = concurrency
 
     async def execute(
-        self, collection: AsyncCollection, index_in_bulk_write: int
+        self,
+        collection: AsyncCollection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -488,6 +533,7 @@ class AsyncInsertMany(AsyncBaseOperation):
             ordered=self.ordered,
             chunk_size=self.chunk_size,
             concurrency=self.concurrency,
+            max_time_ms=bulk_write_timeout_ms,
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
@@ -524,7 +570,10 @@ class AsyncUpdateOne(AsyncBaseOperation):
         self.upsert = upsert
 
     async def execute(
-        self, collection: AsyncCollection, index_in_bulk_write: int
+        self,
+        collection: AsyncCollection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -539,6 +588,7 @@ class AsyncUpdateOne(AsyncBaseOperation):
             update=self.update,
             sort=self.sort,
             upsert=self.upsert,
+            max_time_ms=bulk_write_timeout_ms,
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
@@ -571,7 +621,10 @@ class AsyncUpdateMany(AsyncBaseOperation):
         self.upsert = upsert
 
     async def execute(
-        self, collection: AsyncCollection, index_in_bulk_write: int
+        self,
+        collection: AsyncCollection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -585,6 +638,7 @@ class AsyncUpdateMany(AsyncBaseOperation):
             filter=self.filter,
             update=self.update,
             upsert=self.upsert,
+            max_time_ms=bulk_write_timeout_ms,
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
@@ -621,7 +675,10 @@ class AsyncReplaceOne(AsyncBaseOperation):
         self.upsert = upsert
 
     async def execute(
-        self, collection: AsyncCollection, index_in_bulk_write: int
+        self,
+        collection: AsyncCollection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -636,6 +693,7 @@ class AsyncReplaceOne(AsyncBaseOperation):
             replacement=self.replacement,
             sort=self.sort,
             upsert=self.upsert,
+            max_time_ms=bulk_write_timeout_ms,
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
@@ -664,7 +722,10 @@ class AsyncDeleteOne(AsyncBaseOperation):
         self.sort = sort
 
     async def execute(
-        self, collection: AsyncCollection, index_in_bulk_write: int
+        self,
+        collection: AsyncCollection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -675,7 +736,7 @@ class AsyncDeleteOne(AsyncBaseOperation):
         """
 
         op_result: DeleteResult = await collection.delete_one(
-            filter=self.filter, sort=self.sort
+            filter=self.filter, sort=self.sort, max_time_ms=bulk_write_timeout_ms
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
@@ -699,7 +760,10 @@ class AsyncDeleteMany(AsyncBaseOperation):
         self.filter = filter
 
     async def execute(
-        self, collection: AsyncCollection, index_in_bulk_write: int
+        self,
+        collection: AsyncCollection,
+        index_in_bulk_write: int,
+        bulk_write_timeout_ms: Optional[int],
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -709,5 +773,7 @@ class AsyncDeleteMany(AsyncBaseOperation):
             insert_in_bulk_write: the index in the list of bulkoperations
         """
 
-        op_result: DeleteResult = await collection.delete_many(filter=self.filter)
+        op_result: DeleteResult = await collection.delete_many(
+            filter=self.filter, max_time_ms=bulk_write_timeout_ms
+        )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)

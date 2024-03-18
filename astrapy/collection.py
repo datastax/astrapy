@@ -494,7 +494,7 @@ class Collection:
                     documents=_documents[i : i + _chunk_size],
                     options=options,
                     partial_failures_allowed=True,
-                    timeout_info=timeout_manager.check_remaining_timeout(),
+                    timeout_info=timeout_manager.remaining_timeout_info(),
                 )
                 # accumulate the results in this call
                 chunk_inserted_ids = (chunk_response.get("status") or {}).get(
@@ -534,7 +534,7 @@ class Collection:
                             documents=document_chunk,
                             options=options,
                             partial_failures_allowed=True,
-                            timeout_info=timeout_manager.check_remaining_timeout(),
+                            timeout_info=timeout_manager.remaining_timeout_info(),
                         )
 
                     raw_results = list(
@@ -552,7 +552,7 @@ class Collection:
                         _documents[i : i + _chunk_size],
                         options=options,
                         partial_failures_allowed=True,
-                        timeout_info=timeout_manager.check_remaining_timeout(),
+                        timeout_info=timeout_manager.remaining_timeout_info(),
                     )
                     for i in range(0, len(_documents), _chunk_size)
                 ]
@@ -1187,7 +1187,7 @@ class Collection:
                 update=update,
                 filter=filter,
                 options=options,
-                timeout_info=timeout_manager.check_remaining_timeout(),
+                timeout_info=timeout_manager.remaining_timeout_info(),
             )
             this_um_status = this_um_response.get("status") or {}
             #
@@ -1387,7 +1387,7 @@ class Collection:
             this_dm_response = self._astra_db_collection.delete_many(
                 filter=filter,
                 skip_error_check=True,
-                timeout_info=timeout_manager.check_remaining_timeout(),
+                timeout_info=timeout_manager.remaining_timeout_info(),
             )
             # if errors, quit early
             if this_dm_response.get("errors", []):
@@ -1449,6 +1449,7 @@ class Collection:
         requests: Iterable[BaseOperation],
         *,
         ordered: bool = True,
+        max_time_ms: Optional[int] = None,
     ) -> BulkWriteResult:
         """
         Execute an arbitrary amount of operations such as inserts, updates, deletes
@@ -1468,6 +1469,10 @@ class Collection:
                 in arbitrary order, possibly in a concurrent fashion. For
                 performance reasons, `ordered=False` should be preferred
                 when compatible with the needs of the application flow.
+            max_time_ms: a timeout, in milliseconds, for the whole bulk write.
+                Remember that, if the method call times out, then there's no
+                guarantee about what portion of the bulk write has been received
+                and successfully executed by the Data API.
 
         Returns:
             A single BulkWriteResult summarizing the whole list of requested
@@ -1479,11 +1484,16 @@ class Collection:
         # lazy importing here against circular-import error
         from astrapy.operations import reduce_bulk_write_results
 
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
             bulk_write_results: List[BulkWriteResult] = []
             for operation_i, operation in enumerate(requests):
                 try:
-                    this_bw_result = operation.execute(self, operation_i)
+                    this_bw_result = operation.execute(
+                        self,
+                        index_in_bulk_write=operation_i,
+                        bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
+                    )
                     bulk_write_results.append(this_bw_result)
                 except CumulativeOperationException as exc:
                     partial_result = exc.partial_result
@@ -1524,7 +1534,11 @@ class Collection:
                 operation: BaseOperation, operation_i: int
             ) -> Tuple[Optional[BulkWriteResult], Optional[DataAPIResponseException]]:
                 try:
-                    ex_result = operation.execute(self, operation_i)
+                    ex_result = operation.execute(
+                        self,
+                        index_in_bulk_write=operation_i,
+                        bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
+                    )
                     return (ex_result, None)
                 except DataAPIResponseException as exc:
                     return (None, exc)
@@ -1979,7 +1993,7 @@ class AsyncCollection:
                     documents=_documents[i : i + _chunk_size],
                     options=options,
                     partial_failures_allowed=True,
-                    timeout_info=timeout_manager.check_remaining_timeout(),
+                    timeout_info=timeout_manager.remaining_timeout_info(),
                 )
                 # accumulate the results in this call
                 chunk_inserted_ids = (chunk_response.get("status") or {}).get(
@@ -2020,7 +2034,7 @@ class AsyncCollection:
                         document_chunk,
                         options=options,
                         partial_failures_allowed=True,
-                        timeout_info=timeout_manager.check_remaining_timeout(),
+                        timeout_info=timeout_manager.remaining_timeout_info(),
                     )
 
             if _concurrency > 1:
@@ -2660,7 +2674,7 @@ class AsyncCollection:
                 update=update,
                 filter=filter,
                 options=options,
-                timeout_info=timeout_manager.check_remaining_timeout(),
+                timeout_info=timeout_manager.remaining_timeout_info(),
             )
             this_um_status = this_um_response.get("status") or {}
             #
@@ -2862,7 +2876,7 @@ class AsyncCollection:
             this_dm_response = await self._astra_db_collection.delete_many(
                 filter=filter,
                 skip_error_check=True,
-                timeout_info=timeout_manager.check_remaining_timeout(),
+                timeout_info=timeout_manager.remaining_timeout_info(),
             )
             # if errors, quit early
             if this_dm_response.get("errors", []):
@@ -2924,6 +2938,7 @@ class AsyncCollection:
         requests: Iterable[AsyncBaseOperation],
         *,
         ordered: bool = True,
+        max_time_ms: Optional[int] = None,
     ) -> BulkWriteResult:
         """
         Execute an arbitrary amount of operations such as inserts, updates, deletes
@@ -2943,6 +2958,10 @@ class AsyncCollection:
                 in arbitrary order, possibly in a concurrent fashion. For
                 performance reasons, `ordered=False` should be preferred
                 when compatible with the needs of the application flow.
+            max_time_ms: a timeout, in milliseconds, for the whole bulk write.
+                Remember that, if the method call times out, then there's no
+                guarantee about what portion of the bulk write has been received
+                and successfully executed by the Data API.
 
         Returns:
             A single BulkWriteResult summarizing the whole list of requested
@@ -2954,11 +2973,16 @@ class AsyncCollection:
         # lazy importing here against circular-import error
         from astrapy.operations import reduce_bulk_write_results
 
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
             bulk_write_results: List[BulkWriteResult] = []
             for operation_i, operation in enumerate(requests):
                 try:
-                    this_bw_result = await operation.execute(self, operation_i)
+                    this_bw_result = await operation.execute(
+                        self,
+                        index_in_bulk_write=operation_i,
+                        bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
+                    )
                     bulk_write_results.append(this_bw_result)
                 except CumulativeOperationException as exc:
                     partial_result = exc.partial_result
@@ -3002,7 +3026,11 @@ class AsyncCollection:
             ) -> Tuple[Optional[BulkWriteResult], Optional[DataAPIResponseException]]:
                 async with sem:
                     try:
-                        ex_result = await operation.execute(self, operation_i)
+                        ex_result = await operation.execute(
+                            self,
+                            index_in_bulk_write=operation_i,
+                            bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
+                        )
                         return (ex_result, None)
                     except DataAPIResponseException as exc:
                         return (None, exc)
