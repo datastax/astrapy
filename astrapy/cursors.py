@@ -103,10 +103,16 @@ def _create_document_key_extractor(
                         yield item
                 return
             elif isinstance(value, list):
-                if k_int is not None and len(value) > k_int:
-                    new_value = value[k_int]
-                    for item in _extract_with_key_blocks(rest_key_blocks, new_value):
-                        yield item
+                if k_int is not None:
+                    if len(value) > k_int:
+                        new_value = value[k_int]
+                        for item in _extract_with_key_blocks(
+                            rest_key_blocks, new_value
+                        ):
+                            yield item
+                    else:
+                        # list has no such element. Nothing to extract.
+                        return
                 else:
                     for item in value:
                         for item in _extract_with_key_blocks(key_blocks, item):
@@ -131,7 +137,14 @@ def _reduce_distinct_key_to_safe(distinct_key: str) -> str:
         key = "x.0"
     With full key as projection, we would lose the `"y": "Y"` part (mistakenly).
     """
-    return distinct_key.split(".")[0]
+    blocks = distinct_key.split(".")
+    valid_portion = []
+    for block in blocks:
+        if _maybe_valid_list_index(block) is None:
+            valid_portion.append(block)
+        else:
+            break
+    return ".".join(valid_portion)
 
 
 def _hash_document(document: Dict[str, Any]) -> str:
@@ -560,6 +573,12 @@ class Cursor(BaseCursor):
         _extractor = _create_document_key_extractor(key)
         _key = _reduce_distinct_key_to_safe(key)
 
+        if _key == "":
+            raise ValueError(
+                "The 'key' parameter for distinct cannot be empty "
+                "or start with a list index."
+            )
+
         d_cursor = self._copy(
             projection={_key: True},
             started=False,
@@ -862,13 +881,6 @@ class CommandCursor(Generic[T]):
                 cursor_state=self.state,
             )
 
-    def try_next(self) -> T:
-        """
-        An alias for the `__next__` method, used by the iterator protocol.
-        """
-
-        return self.__next__()
-
     def close(self) -> None:
         """
         Stop/kill the cursor, regardless of its status.
@@ -948,13 +960,6 @@ class AsyncCommandCursor(Generic[T]):
                 text="Cursor is closed.",
                 cursor_state=self.state,
             )
-
-    async def try_next(self) -> T:
-        """
-        An alias for the `__next__` method, used by the iterator protocol.
-        """
-
-        return await self.__anext__()
 
     def close(self) -> None:
         """

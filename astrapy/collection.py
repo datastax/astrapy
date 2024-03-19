@@ -63,8 +63,8 @@ if TYPE_CHECKING:
     from astrapy.operations import AsyncBaseOperation, BaseOperation
 
 
-INSERT_MANY_CONCURRENCY = 20
-BULK_WRITE_CONCURRENCY = 10
+DEFAULT_INSERT_MANY_CONCURRENCY = 20
+DEFAULT_BULK_WRITE_CONCURRENCY = 10
 
 
 def _prepare_update_info(statuses: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -473,7 +473,7 @@ class Collection:
             if ordered:
                 _concurrency = 1
             else:
-                _concurrency = INSERT_MANY_CONCURRENCY
+                _concurrency = DEFAULT_INSERT_MANY_CONCURRENCY
         else:
             _concurrency = concurrency
         if _concurrency > 1 and ordered:
@@ -1449,6 +1449,7 @@ class Collection:
         requests: Iterable[BaseOperation],
         *,
         ordered: bool = True,
+        concurrency: Optional[int] = None,
         max_time_ms: Optional[int] = None,
     ) -> BulkWriteResult:
         """
@@ -1469,6 +1470,8 @@ class Collection:
                 in arbitrary order, possibly in a concurrent fashion. For
                 performance reasons, `ordered=False` should be preferred
                 when compatible with the needs of the application flow.
+            concurrency: maximum number of concurrent operations executing at
+                a given time. It cannot be more than one for ordered bulk writes.
             max_time_ms: a timeout, in milliseconds, for the whole bulk write.
                 Remember that, if the method call times out, then there's no
                 guarantee about what portion of the bulk write has been received
@@ -1484,6 +1487,15 @@ class Collection:
         # lazy importing here against circular-import error
         from astrapy.operations import reduce_bulk_write_results
 
+        if concurrency is None:
+            if ordered:
+                _concurrency = 1
+            else:
+                _concurrency = DEFAULT_BULK_WRITE_CONCURRENCY
+        else:
+            _concurrency = concurrency
+        if _concurrency > 1 and ordered:
+            raise ValueError("Cannot run ordered bulk_write concurrently.")
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
             bulk_write_results: List[BulkWriteResult] = []
@@ -1543,7 +1555,7 @@ class Collection:
                 except DataAPIResponseException as exc:
                     return (None, exc)
 
-            with ThreadPoolExecutor(max_workers=BULK_WRITE_CONCURRENCY) as executor:
+            with ThreadPoolExecutor(max_workers=_concurrency) as executor:
                 bulk_write_either_futures = [
                     executor.submit(
                         _execute_as_either,
@@ -1972,7 +1984,7 @@ class AsyncCollection:
             if ordered:
                 _concurrency = 1
             else:
-                _concurrency = INSERT_MANY_CONCURRENCY
+                _concurrency = DEFAULT_INSERT_MANY_CONCURRENCY
         else:
             _concurrency = concurrency
         if _concurrency > 1 and ordered:
@@ -2938,6 +2950,7 @@ class AsyncCollection:
         requests: Iterable[AsyncBaseOperation],
         *,
         ordered: bool = True,
+        concurrency: Optional[int] = None,
         max_time_ms: Optional[int] = None,
     ) -> BulkWriteResult:
         """
@@ -2958,6 +2971,8 @@ class AsyncCollection:
                 in arbitrary order, possibly in a concurrent fashion. For
                 performance reasons, `ordered=False` should be preferred
                 when compatible with the needs of the application flow.
+            concurrency: maximum number of concurrent operations executing at
+                a given time. It cannot be more than one for ordered bulk writes.
             max_time_ms: a timeout, in milliseconds, for the whole bulk write.
                 Remember that, if the method call times out, then there's no
                 guarantee about what portion of the bulk write has been received
@@ -2973,6 +2988,15 @@ class AsyncCollection:
         # lazy importing here against circular-import error
         from astrapy.operations import reduce_bulk_write_results
 
+        if concurrency is None:
+            if ordered:
+                _concurrency = 1
+            else:
+                _concurrency = DEFAULT_BULK_WRITE_CONCURRENCY
+        else:
+            _concurrency = concurrency
+        if _concurrency > 1 and ordered:
+            raise ValueError("Cannot run ordered bulk_write concurrently.")
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
             bulk_write_results: List[BulkWriteResult] = []
@@ -3019,7 +3043,7 @@ class AsyncCollection:
             return full_bw_result
         else:
 
-            sem = asyncio.Semaphore(BULK_WRITE_CONCURRENCY)
+            sem = asyncio.Semaphore(_concurrency)
 
             async def _concurrent_execute_as_either(
                 operation: AsyncBaseOperation, operation_i: int

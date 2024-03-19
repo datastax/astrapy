@@ -1070,7 +1070,7 @@ class TestDMLSync:
             DeleteMany({"x": 100}),
         ]
 
-        bw_u_result = col.bulk_write(bw_u_ops, ordered=False)
+        bw_u_result = col.bulk_write(bw_u_ops, ordered=False, concurrency=4)
 
         assert bw_u_result.deleted_count == 0
         assert bw_u_result.inserted_count == 2
