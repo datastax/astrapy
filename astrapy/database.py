@@ -314,6 +314,10 @@ class Database:
     def name(self) -> Optional[str]:
         """
         The name of this database. Note that this bears no unicity guarantees.
+
+        Example:
+            >>> my_db.name
+            'the_application_database'
         """
 
         return self.info.name
@@ -325,8 +329,8 @@ class Database:
         no method-call-specific namespace is specified.
 
         Example:
-            >>> my_db.name
-            'my_example_database'
+            >>> my_db.namespace
+            'the_keyspace'
         """
 
         return self._astra_db.namespace
@@ -352,6 +356,11 @@ class Database:
         Returns:
             a Collection instance, representing the desired collection
                 (but without any form of validation).
+
+        Example:
+            >>> my_col = my_db.get_collection("my_collection")
+            >>> my_col.count_documents({}, upper_bound=100)
+            41
         """
 
         # lazy importing here against circular-import error
@@ -411,6 +420,11 @@ class Database:
         Returns:
             a (synchronous) Collection instance, representing the
             newly-created collection.
+
+        Example:
+            >>> new_col = my_db.create_collection("my_v_col", dimension=3)
+            >>> new_col.insert_one({"name": "the_row", "$vector": [0.4, 0.5, 0.7]})
+            InsertOneResult(raw_results=..., inserted_id='e22dd65e-...-...-...')
         """
 
         _validate_create_collection_options(
@@ -470,6 +484,14 @@ class Database:
         Returns:
             a dictionary in the form {"ok": 1} if the command succeeds.
 
+        Example:
+            >>> my_db.list_collection_names()
+            ['a_collection', 'my_v_col', 'another_col']
+            >>> my_db.drop_collection("my_v_col")
+            {'ok': 1}
+            >>> my_db.list_collection_names()
+            ['a_collection', 'another_col']
+
         Note:
             when providing a collection name, it is assumed that the collection
             is to be found in the namespace set at database instance level.
@@ -512,6 +534,17 @@ class Database:
             a `CommandCursor` to iterate over dictionaries, each
             expressing a collection as a set of key-value pairs
             matching the arguments of a `create_collection` call.
+
+        Example:
+            >>> ccur = my_db.list_collections()
+            >>> ccur
+            <astrapy.cursors.CommandCursor object at 0x71c44abc65f0>
+            >>> list(ccur)
+            [{'name': 'my_v_col'}]
+            >>> for coll_dict in my_db.list_collections():
+            ...     print(coll_dict)
+            ... 
+            {'name': 'my_v_col'}
         """
 
         if namespace:
