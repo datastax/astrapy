@@ -113,3 +113,8 @@ class TestDocumentExtractors:
         assert_extracts(document2c, "x", ["X0", "X1"])
         assert_extracts(document2c, "x.0", ["X0"])
         assert_extracts(document2c, "x.1", ["X1"])
+
+        # nonexistent index should block list auto-unrolling
+        document_3 = {"a": [1, 2, ["a", "b", "c", "d", "e", "f"]]}
+
+        assert_extracts(document_3, "a.5", [])
