@@ -217,7 +217,7 @@ class Collection:
             >>> my_other_coll = my_coll.with_options(
             ...     name="the_other_coll",
             ...     caller_name="caller_identity",
-            ...     )
+            ... )
         """
 
         return self._copy(
@@ -502,7 +502,7 @@ class Collection:
             >>> my_coll.count_documents({}, upper_bound=100)
             3
             >>> my_coll.insert_many(
-            ...     [{"sequence": i} for i in range(50)],
+            ...     [{"seq": i} for i in range(50)],
             ...     ordered=False,
             ...     concurrency=5,
             ... )
@@ -1047,7 +1047,7 @@ class Collection:
             ... )
             {'_id': 'rule1', 'text': 'all animals are equal'}
             >>> my_coll.find_one_and_replace(
-            ...     {"text": "all animals are equal"},
+            ...     {"text": "some animals are more equal!"},
             ...     {"text": "and the pigs are the rulers"},
             ...     return_document=astrapy.constants.ReturnDocument.AFTER,
             ... )
@@ -1227,9 +1227,9 @@ class Collection:
             >>> my_coll.insert_one({"Marco": "Polo"})
             InsertOneResult(...)
             >>> my_coll.find_one_and_update(
-            ..     {"Marco": {"$exists": True}},
-            ..     {"$set": {"title": "Mr."}},
-            .. )
+            ...     {"Marco": {"$exists": True}},
+            ...     {"$set": {"title": "Mr."}},
+            ... )
             {'_id': 'a80106f2-...', 'Marco': 'Polo'}
             >>> my_coll.find_one_and_update(
             ...     {"title": "Mr."},
@@ -1920,7 +1920,7 @@ class Collection:
             >>> my_coll.find_one({})
             Traceback (most recent call last):
                 ... ...
-            astrapy.exceptions.DataAPIResponseException: table my_collection does not exist
+            astrapy.exceptions.DataAPIResponseException: Collection does not exist, collection name: my_collection
 
         Note:
             Use with caution.
@@ -1949,6 +1949,21 @@ class AsyncCollection:
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
+
+    Examples:
+            >>> from astrapy import AsyncCollection, AsyncDatabase
+            >>> my_async_db = AsyncDatabase(api_endpoint="https://...", token="AstraCS:...")
+            >>> my_async_coll_1 = AsyncCollection(database=my_async_db, name="my_collection")
+            >>> my_async coll_2 = asyncio.run(my_async_db.create_collection(
+            ...     "my_v_collection",
+            ...     dimension=3,
+            ...     metric="cosine",
+            ... ))
+            my_async_coll_3a = asyncio.run(my_async_db.get_collection(
+            ...     "my_already_existing_collection",
+            ... ))
+            my_async_coll_3b = my_async_db.my_already_existing_collection
+            my_async_coll_3c = my_async_db["my_already_existing_collection"]
 
     Note:
         creating an instance of Collection does not trigger actual creation
@@ -2031,6 +2046,12 @@ class AsyncCollection:
 
         Returns:
             a new AsyncCollection instance.
+
+        Example:
+            >>> my_other_async_coll = my_async_coll.with_options(
+            ...     name="the_other_coll",
+            ...     caller_name="caller_identity",
+            ... )
         """
 
         return self._copy(
@@ -2068,6 +2089,10 @@ class AsyncCollection:
 
         Returns:
             the new copy, a Collection instance.
+
+        Example:
+            >>> my_async_coll.to_sync().count_documents({}, upper_bound=100)
+            77
         """
 
         return Collection(
@@ -2091,6 +2116,9 @@ class AsyncCollection:
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
+
+        Example:
+            >>> my_coll.set_caller(caller_name="the_caller", caller_version="0.1.0")
         """
 
         self._astra_db_collection.set_caller(
@@ -2113,6 +2141,10 @@ class AsyncCollection:
             a dictionary expressing the collection as a set of key-value pairs
             matching the arguments of a `create_collection` call.
             (See also the database `list_collections` method.)
+
+        Example:
+            >>> asyncio.run(my_async_coll.options())
+            {'name': 'my_v_collection', 'dimension': 3, 'metric': 'cosine'}
         """
 
         self_dicts = [
@@ -2139,6 +2171,12 @@ class AsyncCollection:
 
         Not to be confused with the collection `options` method (related
         to the collection internal configuration).
+
+        Example:
+            >>> my_async_coll.info.database_info.region
+            'us-east1'
+            >>> my_async_coll.info.full_name
+            'default_keyspace.my_v_collection'
         """
 
         return CollectionInfo(
@@ -2152,6 +2190,10 @@ class AsyncCollection:
     def database(self) -> AsyncDatabase:
         """
         a Database object, the database this collection belongs to.
+
+        Example:
+            >>> my_async_coll.database.name
+            'quicktest'
         """
 
         return self._database
@@ -2160,6 +2202,10 @@ class AsyncCollection:
     def namespace(self) -> str:
         """
         The namespace this collection is in.
+
+        Example:
+            >>> my_async_coll.database.namespace
+            'default_keyspace'
         """
 
         return self.database.namespace
@@ -2168,6 +2214,10 @@ class AsyncCollection:
     def name(self) -> str:
         """
         The name of this collection.
+
+        Example:
+            >>> my_async_coll.name
+            'my_v_collection'
         """
 
         # type hint added as for some reason the typechecker gets lost
@@ -2178,6 +2228,10 @@ class AsyncCollection:
         """
         The fully-qualified collection name within the database,
         in the form "namespace.collection_name".
+
+        Example:
+            >>> my_async_coll.full_name
+            'default_keyspace.my_v_collection'
         """
 
         return f"{self.namespace}.{self.name}"
@@ -2200,6 +2254,26 @@ class AsyncCollection:
 
         Returns:
             an InsertOneResult object.
+
+        Example:
+            >>> async def write_and_count(acol: AsyncCollection) -> None:
+            ...     count0 = await acol.count_documents({}, upper_bound=10)
+            ...     print("count0", count0)
+            ...     await acol.insert_one(
+            ...         {
+            ...             "age": 30,
+            ...             "name": "Smith",
+            ...             "food": ["pear", "peach"],
+            ...             "likes_fruit": True,
+            ...         },
+            ...     )
+            ...     await acol.insert_one({"_id": "user-123", "age": 50, "name": "Maccio"})
+            ...     count1 = await acol.count_documents({}, upper_bound=10)
+            ...     print("count1", count1)
+            ...
+            >>> asyncio.run(write_and_count(my_async_coll))
+            count0 0
+            count1 2
 
         Note:
             If an `_id` is explicitly provided, which corresponds to a document
@@ -2258,6 +2332,34 @@ class AsyncCollection:
 
         Returns:
             an InsertManyResult object.
+
+        Example:
+            >>> async def write_and_count(acol: AsyncCollection) -> None:
+            ...             count0 = await acol.count_documents({}, upper_bound=10)
+            ...             print("count0", count0)
+            ...             im_result1 = await acol.insert_many(
+            ...                 [
+            ...                     {"a": 10},
+            ...                     {"a": 5},
+            ...                     {"b": [True, False, False]},
+            ...                 ],
+            ...             )
+            ...             print("inserted1", im_result1.inserted_ids)
+            ...             count1 = await acol.count_documents({}, upper_bound=100)
+            ...             print("count1", count1)
+            ...             await acol.insert_many(
+            ...                 [{"seq": i} for i in range(50)],
+            ...                 ordered=False,
+            ...                 concurrency=5,
+            ...             )
+            ...             count2 = await acol.count_documents({}, upper_bound=100)
+            ...             print("count2", count2)
+            ...
+            >>> asyncio.run(write_and_count(my_async_coll))
+            count0 0
+            inserted1 ['e3c2a684-...', '1de4949f-...', '167dacc3-...']
+            count1 3
+            count2 53
 
         Note:
             Unordered insertions are executed with some degree of concurrency,
@@ -2451,6 +2553,33 @@ class AsyncCollection:
             (see the AsyncCursor object for how to use it. The simplest thing is to
             run a for loop: `for document in collection.sort(...):`).
 
+        Example:
+            >>> async def run_finds(acol: AsyncCollection) -> None:
+            ...             filter = {"seq": {"$exists": True}}
+            ...             print("find results 1:")
+            ...             async for doc in acol.find(filter, projection={"seq": True}, limit=5):
+            ...                 print(doc["seq"])
+            ...             async_cursor1 = acol.find(
+            ...                 {},
+            ...                 limit=4,
+            ...                 sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
+            ...             )
+            ...             ids = [doc["_id"] async for doc in async_cursor1]
+            ...             print("find results 2:", ids)
+            ...             async_cursor2 = acol.find({}, limit=3)
+            ...             seqs = await async_cursor2.distinct("seq")
+            ...             print("distinct results 3:", seqs)
+            ...
+            >>> asyncio.run(run_finds(my_async_coll))
+            find results 1:
+            48
+            35
+            7
+            11
+            13
+            find results 2: ['d656cd9d-...', '479c7ce8-...', '96dc87fd-...', '83f0a21f-...']
+            distinct results 3: [48, 35, 7]
+
         Note:
             The following are example values for the `sort` parameter.
             When no particular order is required:
@@ -2516,6 +2645,32 @@ class AsyncCollection:
         Returns:
             a dictionary expressing the required document, otherwise None.
 
+        Example:
+            >>> async def demo_find_one(acol: AsyncCollection) -> None:
+            ....    print("Count:", await acol.count_documents({}, upper_bound=100))
+            ...     result0 = await acol.find_one({})
+            ...     print("result0", result0)
+            ...     result1 = await acol.find_one({"seq": 10})
+            ...     print("result1", result1)
+            ...     result2 = await acol.find_one({"seq": 1011})
+            ...     print("result2", result2)
+            ...     result3 = await acol.find_one({}, projection={"seq": False})
+            ...     print("result3", result3)
+            ...     result4 = await acol.find_one(
+            ...         {},
+            ...         sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
+            ...     )
+            ...     print("result4", result4)
+            ...
+            >>>
+            >>> asyncio.run(demo_find_one(my_async_coll))
+            Count: 50
+            result0 {'_id': '479c7ce8-...', 'seq': 48}
+            result1 {'_id': '93e992c4-...', 'seq': 10}
+            result2 None
+            result3 {'_id': '479c7ce8-...'}
+            result4 {'_id': 'd656cd9d-...', 'seq': 49}
+
         Note:
             See the `find` method for more details on the accepted parameters
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
@@ -2569,6 +2724,35 @@ class AsyncCollection:
             a list of all different values for `key` found across the documents
             that match the filter. The result list has no repeated items.
 
+        Example:
+            >>> async def run_distinct(acol: AsyncCollection) -> None:
+            ...     await acol.insert_many(
+            ...         [
+            ...             {"name": "Marco", "food": ["apple", "orange"], "city": "Helsinki"},
+            ...             {"name": "Emma", "food": {"likes_fruit": True, "allergies": []}},
+            ...         ]
+            ...     )
+            ...     distinct0 = await acol.distinct("name")
+            ...     print("distinct('name')", distinct0)
+            ...     distinct1 = await acol.distinct("city")
+            ...     print("distinct('city')", distinct1)
+            ...     distinct2 = await acol.distinct("food")
+            ...     print("distinct('food')", distinct2)
+            ...     distinct3 = await acol.distinct("food.1")
+            ...     print("distinct('food.1')", distinct3)
+            ...     distinct4 = await acol.distinct("food.allergies")
+            ...     print("distinct('food.allergies')", distinct4)
+            ...     distinct5 = await acol.distinct("food.likes_fruit")
+            ...     print("distinct('food.likes_fruit')", distinct5)
+            ...
+            >>> asyncio.run(run_distinct(my_async_coll))
+            distinct('name') ['Emma', 'Marco']
+            distinct('city') ['Helsinki']
+            distinct('food') [{'likes_fruit': True, 'allergies': []}, 'apple', 'orange']
+            distinct('food.1') ['orange']
+            distinct('food.allergies') []
+            distinct('food.likes_fruit') [True]
+
         Note:
             It must be kept in mind that `distinct` is a client-side operation,
             which effectively browses all required documents using the logic
@@ -2615,6 +2799,23 @@ class AsyncCollection:
 
         Returns:
             the exact count of matching documents.
+
+        Example:
+            >>> async def do_count_docs(acol: AsyncCollection) -> None:
+            ...     await acol.insert_many([{"seq": i} for i in range(20)])
+            ...     count0 = await acol.count_documents({}, upper_bound=100)
+            ...     print("count0", count0)
+            ...     count1 = await acol.count_documents({"seq":{"$gt": 15}}, upper_bound=100)
+            ...     print("count1", count1)
+            ...     count2 = await acol.count_documents({}, upper_bound=10)
+            ...     print("count2", count2)
+            ...
+            >>> asyncio.run(do_count_docs(my_async_coll))
+            count0 20
+            count1 4
+            Traceback (most recent call last):
+                ... ...
+            astrapy.exceptions.TooManyDocumentsToCountException
 
         Note:
             Count operations are expensive: for this reason, the best practice
@@ -2704,6 +2905,41 @@ class AsyncCollection:
             one after that. Alternatively, the method returns None to represent
             that no matching document was found, or that no replacement
             was inserted (depending on the `return_document` parameter).
+
+        Example:
+            >>> async def do_find_one_and_replace(acol: AsyncCollection) -> None:
+            ...             await acol.insert_one({"_id": "rule1", "text": "all animals are equal"})
+            ...             result0 = await acol.find_one_and_replace(
+            ...                 {"_id": "rule1"},
+            ...                 {"text": "some animals are more equal!"},
+            ...             )
+            ...             print("result0", result0)
+            ...             result1 = await acol.find_one_and_replace(
+            ...                 {"text": "some animals are more equal!"},
+            ...                 {"text": "and the pigs are the rulers"},
+            ...                 return_document=astrapy.constants.ReturnDocument.AFTER,
+            ...             )
+            ...             print("result1", result1)
+            ...             result2 = await acol.find_one_and_replace(
+            ...                 {"_id": "rule2"},
+            ...                 {"text": "F=ma^2"},
+            ...                 return_document=astrapy.constants.ReturnDocument.AFTER,
+            ...             )
+            ...             print("result2", result2)
+            ...             result3 = await acol.find_one_and_replace(
+            ...                 {"_id": "rule2"},
+            ...                 {"text": "F=ma"},
+            ...                 upsert=True,
+            ...                 return_document=astrapy.constants.ReturnDocument.AFTER,
+            ...                 projection={"_id": False},
+            ...             )
+            ...             print("result3", result3)
+            ...
+            >>> asyncio.run(do_find_one_and_replace(my_async_coll))
+            result0 {'_id': 'rule1', 'text': 'all animals are equal'}
+            result1 {'_id': 'rule1', 'text': 'and the pigs are the rulers'}
+            result2 None
+            result3 {'text': 'F=ma'}
         """
 
         options = {
@@ -2765,6 +3001,34 @@ class AsyncCollection:
 
         Returns:
             an UpdateResult object summarizing the outcome of the replace operation.
+
+        Example:
+            >>> async def do_replace_one(acol: AsyncCollection) -> None:
+            ...     await acol.insert_one({"Marco": "Polo"})
+            ...     result0 = await acol.replace_one(
+            ...         {"Marco": {"$exists": True}},
+            ...         {"Buda": "Pest"},
+            ...     )
+            ...     print("result0.update_info", result0.update_info)
+            ...     doc1 = await acol.find_one({"Buda": "Pest"})
+            ...     print("doc1", doc1)
+            ...     result1 = await acol.replace_one(
+            ...         {"Mirco": {"$exists": True}},
+            ...         {"Oh": "yeah?"},
+            ...     )
+            ...     print("result1.update_info", result1.update_info)
+            ...     result2 = await acol.replace_one(
+            ...         {"Mirco": {"$exists": True}},
+            ...         {"Oh": "yeah?"},
+            ...         upsert=True,
+            ...     )
+            ...     print("result2.update_info", result2.update_info)
+            ...
+            >>> asyncio.run(do_replace_one(my_async_coll))
+            result0.update_info {'n': 1, 'updatedExisting': True, 'ok': 1.0, 'nModified': 1}
+            doc1 {'_id': '6e669a5a-...', 'Buda': 'Pest'}
+            result1.update_info {'n': 0, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0}
+            result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '30e34e00-...'}
         """
 
         options = {
@@ -2848,6 +3112,41 @@ class AsyncCollection:
             Alternatively, the method returns None to represent
             that no matching document was found, or that no update
             was applied (depending on the `return_document` parameter).
+
+        Example:
+            >>> async def do_find_one_and_update(acol: AsyncCollection) -> None:
+            ...     await acol.insert_one({"Marco": "Polo"})
+            ...     result0 = await acol.find_one_and_update(
+            ...         {"Marco": {"$exists": True}},
+            ...         {"$set": {"title": "Mr."}},
+            ...     )
+            ...     print("result0", result0)
+            ...     result1 = await acol.find_one_and_update(
+            ...         {"title": "Mr."},
+            ...         {"$inc": {"rank": 3}},
+            ...         projection=["title", "rank"],
+            ...         return_document=astrapy.constants.ReturnDocument.AFTER,
+            ...     )
+            ...     print("result1", result1)
+            ...     result2 = await acol.find_one_and_update(
+            ...         {"name": "Johnny"},
+            ...         {"$set": {"rank": 0}},
+            ...         return_document=astrapy.constants.ReturnDocument.AFTER,
+            ...     )
+            ...     print("result2", result2)
+            ...     result3 = await acol.find_one_and_update(
+            ...         {"name": "Johnny"},
+            ...         {"$set": {"rank": 0}},
+            ...         upsert=True,
+            ...         return_document=astrapy.constants.ReturnDocument.AFTER,
+            ...     )
+            ...     print("result3", result3)
+            ...
+            >>> asyncio.run(do_find_one_and_update(my_async_coll))
+            result0 {'_id': 'f7c936d3-b0a0-45eb-a676-e2829662a57c', 'Marco': 'Polo'}
+            result1 {'_id': 'f7c936d3-b0a0-45eb-a676-e2829662a57c', 'title': 'Mr.', 'rank': 3}
+            result2 None
+            result3 {'_id': 'db3d678d-14d4-4caa-82d2-d5fb77dab7ec', 'name': 'Johnny', 'rank': 0}
         """
 
         options = {
@@ -2915,6 +3214,31 @@ class AsyncCollection:
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
+
+        Example:
+            >>> async def do_update_one(acol: AsyncCollection) -> None:
+            ...     await acol.insert_one({"Marco": "Polo"})
+            ...     result0 = await acol.update_one(
+            ...         {"Marco": {"$exists": True}},
+            ...         {"$inc": {"rank": 3}},
+            ...     )
+            ...     print("result0.update_info", result0.update_info)
+            ...     result1 = await acol.update_one(
+            ...         {"Mirko": {"$exists": True}},
+            ...         {"$inc": {"rank": 3}},
+            ...     )
+            ...     print("result1.update_info", result1.update_info)
+            ...     result2 = await acol.update_one(
+            ...         {"Mirko": {"$exists": True}},
+            ...         {"$inc": {"rank": 3}},
+            ...         upsert=True,
+            ...     )
+            ...     print("result2.update_info", result2.update_info)
+            ...
+            >>> asyncio.run(do_update_one(my_async_coll))
+            result0.update_info {'n': 1, 'updatedExisting': True, 'ok': 1.0, 'nModified': 1})
+            result1.update_info {'n': 0, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0})
+            result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '75748092-...'}
         """
 
         options = {
@@ -2976,6 +3300,31 @@ class AsyncCollection:
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
+
+        Example:
+            >>> async def do_update_many(acol: AsyncCollection) -> None:
+            ...     await acol.insert_many([{"c": "red"}, {"c": "green"}, {"c": "blue"}])
+            ...     result0 = await acol.update_many(
+            ...         {"c": {"$ne": "green"}},
+            ...         {"$set": {"nongreen": True}},
+            ...     )
+            ...     print("result0.update_info", result0.update_info)
+            ...     result1 = await acol.update_many(
+            ...         {"c": "orange"},
+            ...         {"$set": {"is_also_fruit": True}},
+            ...     )
+            ...     print("result1.update_info", result1.update_info)
+            ...     result2 = await acol.update_many(
+            ...         {"c": "orange"},
+            ...         {"$set": {"is_also_fruit": True}},
+            ...         upsert=True,
+            ...     )
+            ...     print("result2.update_info", result2.update_info)
+            ...
+            >>> asyncio.run(do_update_many(my_async_coll))
+            result0.update_info {'n': 2, 'updatedExisting': True, 'ok': 1.0, 'nModified': 2}
+            result1.update_info {'n': 0, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0}
+            result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '79ffd5a3-ab99-4dff-a2a5-4aaa0e59e854'}
         """
 
         base_options = {
@@ -3069,6 +3418,28 @@ class AsyncCollection:
         Returns:
             Either the document (or a projection thereof, as requested), or None
             if no matches were found in the first place.
+
+        Example:
+            >>> async def do_find_one_and_delete(acol: AsyncCollection) -> None:
+            ...     await acol.insert_many(
+            ...         [
+            ...             {"species": "swan", "class": "Aves"},
+            ...             {"species": "frog", "class": "Amphibia"},
+            ...         ],
+            ...     )
+            ...     delete_result0 = await acol.find_one_and_delete(
+            ...         {"species": {"$ne": "frog"}},
+            ...         projection=["species"],
+            ...     )
+            ...     print("delete_result0", delete_result0)
+            ...     delete_result1 = await acol.find_one_and_delete(
+            ...         {"species": {"$ne": "frog"}},
+            ...     )
+            ...     print("delete_result1", delete_result1)
+            ...
+            >>> asyncio.run(do_find_one_and_delete(my_async_coll))
+            delete_result0 {'_id': 'f335cd0f-...', 'species': 'swan'}
+            delete_result1 None
         """
 
         _projection = normalize_optional_projection(projection)
@@ -3120,6 +3491,23 @@ class AsyncCollection:
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
+
+        Example:
+            >>> my_coll.insert_many([{"seq": 1}, {"seq": 0}, {"seq": 2}])
+            InsertManyResult(...)
+            >>> my_coll.delete_one({"seq": 1})
+            DeleteResult(raw_results=..., deleted_count=1)
+            >>> my_coll.distinct("seq")
+            [0, 2]
+            >>> my_coll.delete_one(
+            ...     {"seq": {"$exists": True}},
+            ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
+            ... )
+            DeleteResult(raw_results=..., deleted_count=1)
+            >>> my_coll.distinct("seq")
+            [0]
+            >>> my_coll.delete_one({"seq": 2})
+            DeleteResult(raw_results=..., deleted_count=0)
         """
 
         do_response = await self._astra_db_collection.delete_one_by_predicate(
@@ -3170,6 +3558,21 @@ class AsyncCollection:
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
+
+        Example:
+            >>> async def do_delete_many(acol: AsyncCollection) -> None:
+            ...     await acol.insert_many([{"seq": 1}, {"seq": 0}, {"seq": 2}])
+            ...     delete_result0 = await acol.delete_many({"seq": {"$lte": 1}})
+            ...     print("delete_result0.deleted_count", delete_result0.deleted_count)
+            ...     distinct1 = await acol.distinct("seq")
+            ...     print("distinct1", distinct1)
+            ...     delete_result2 = await acol.delete_many({"seq": {"$lte": 1}})
+            ...     print("delete_result2.deleted_count", delete_result2.deleted_count)
+            ...
+            >>> asyncio.run(do_delete_many(my_async_coll))
+            delete_result0.deleted_count 2
+            distinct1 [2]
+            delete_result2.deleted_count 0
 
         Note:
             This operation is not atomic. Depending on the amount of matching
@@ -3235,6 +3638,23 @@ class AsyncCollection:
         Returns:
             a dictionary of the form {"ok": 1} to signal successful deletion.
 
+        Example:
+            >>> async def do_delete_all(acol: AsyncCollection) -> None:
+            ...     distinct0 = await acol.distinct("seq")
+            ...     print("distinct0", distinct0)
+            ...     count1 = await acol.count_documents({}, upper_bound=100)
+            ...     print("count1", count1)
+            ...     delete_result2 = await acol.delete_all()
+            ...     print("delete_result2", delete_result2)
+            ...     count3 = await acol.count_documents({}, upper_bound=100)
+            ...     print("count3", count3)
+            ...
+            >>> asyncio.run(do_delete_all(my_async_coll))
+            distinct0 [4, 2, 3, 0, 1]
+            count1 5
+            delete_result2 {'ok': 1}
+            count3 0
+
         Note:
             Use with caution.
         """
@@ -3269,7 +3689,7 @@ class AsyncCollection:
 
         Args:
             requests: an iterable over concrete subclasses of `BaseOperation`,
-                such as `InsertMany` or `ReplaceOne`. Each such object
+                such as `AsyncInsertMany` or `AsyncReplaceOne`. Each such object
                 represents an operation ready to be executed on a collection,
                 and is instantiated by passing the same parameters as one
                 would the corresponding collection method.
@@ -3289,6 +3709,33 @@ class AsyncCollection:
             operations. The keys in the map attributes of BulkWriteResult
             (when present) are the integer indices of the corresponding operation
             in the `requests` iterable.
+
+        Example:
+            >>> from astrapy.operations import AsyncInsertMany, AsyncReplaceOne, AsyncOperation
+            >>> from astrapy.results import BulkWriteResult
+            >>>
+            >>> async def do_bulk_write(
+            ...     acol: AsyncCollection,
+            ...     async_operations: List[AsyncOperation],
+            ... ) -> BulkWriteResult:
+            ...     bw_result = await acol.bulk_write(async_operations)
+            ...     count0 = await acol.count_documents({}, upper_bound=100)
+            ...     print("count0", count0)
+            ...     distinct0 = await acol.distinct("replaced")
+            ...     print("distinct0", distinct0)
+            ...     return bw_result
+            ...
+            >>> op1 = AsyncInsertMany([{"a": 1}, {"a": 2}])
+            >>> op2 = AsyncReplaceOne(
+            ...     {"z": 9},
+            ...     replacement={"z": 9, "replaced": True},
+            ...     upsert=True,
+            ... )
+            >>> result = asyncio.run(do_bulk_write(my_async_coll, [op1, op2]))
+            count0 3
+            distinct0 [True]
+            >>> print("result", result)
+            result BulkWriteResult(bulk_api_results={0: ..., 1: ...}, deleted_count=0, inserted_count=3, matched_count=0, modified_count=0, upserted_count=1, upserted_ids={1: 'ccd0a800-...'})
         """
 
         # lazy importing here against circular-import error
@@ -3415,6 +3862,21 @@ class AsyncCollection:
 
         Returns:
             a dictionary of the form {"ok": 1} to signal successful deletion.
+
+        Example:
+            >>> async def drop_and_check(acol: AsyncCollection) -> None:
+            ...     doc0 = await acol.find_one({})
+            ...     print("doc0", doc0)
+            ...     drop_result = await acol.drop()
+            ...     print("drop_result", drop_result)
+            ...     doc1 = await acol.find_one({})
+            ...
+            >>> asyncio.run(drop_and_check(my_async_coll))
+            doc0 {'_id': '...', 'z': -10}
+            drop_result {'ok': 1}
+            Traceback (most recent call last):
+                ... ...
+            astrapy.exceptions.DataAPIResponseException: Collection does not exist, collection name: my_collection
 
         Note:
             Use with caution.
