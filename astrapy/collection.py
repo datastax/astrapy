@@ -706,6 +706,28 @@ class Collection:
             (see the Cursor object for how to use it. The simplest thing is to
             run a for loop: `for document in collection.sort(...):`).
 
+        Examples:
+            >>> filter = {"seq": {"$exists": True}}
+            >>> for doc in my_coll.find(filter, projection={"seq": True}, limit=5):
+            ...     print(doc["seq"])
+            ...
+            37
+            35
+            10
+            36
+            27
+            >>> cursor1 = my_coll.find(
+            ...     {},
+            ...     limit=4,
+            ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
+            ... )
+            >>> [doc["_id"] for doc in cursor1]
+            ['97e85f81-...', '1581efe4-...', '...', '...']
+            >>> cursor2 = my_coll.find({}, limit=3)
+            >>> cursor2.distinct("seq")
+            [37, 35, 10]
+
+
         Note:
             The following are example values for the `sort` parameter.
             When no particular order is required:
@@ -771,6 +793,21 @@ class Collection:
         Returns:
             a dictionary expressing the required document, otherwise None.
 
+        Examples:
+            >>> my_coll.find_one({})
+            {'_id': '68d1e515-...', 'seq': 37}
+            >>> my_coll.find_one({"seq": 10})
+            {'_id': 'd560e217-...', 'seq': 10}
+            >>> my_coll.find_one({"seq": 1011})
+            >>> # (returns None for no matches)
+            >>> my_coll.find_one({}, projection={"seq": False})
+            {'_id': '68d1e515-...'}
+            >>> my_coll.find_one(
+            ...     {},
+            ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
+            ... )
+            {'_id': '97e85f81-...', 'seq': 69}
+
         Note:
             See the `find` method for more details on the accepted parameters
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
@@ -832,6 +869,27 @@ class Collection:
             a list of all different values for `key` found across the documents
             that match the filter. The result list has no repeated items.
 
+        Example:
+            >>> my_coll.insert_many(
+            ...     [
+            ...         {"name": "Marco", "food": ["apple", "orange"], "city": "Helsinki"},
+            ...         {"name": "Emma", "food": {"likes_fruit": True, "allergies": []}},
+            ...     ]
+            ... )
+            InsertManyResult(raw_results=..., inserted_ids=['c5b99f37-...', 'd6416321-...'])
+            >>> my_coll.distinct("name")
+            ['Marco', 'Emma']
+            >>> my_coll.distinct("city")
+            ['Helsinki']
+            >>> my_coll.distinct("food")
+            ['apple', 'orange', {'likes_fruit': True, 'allergies': []}]
+            >>> my_coll.distinct("food.1")
+            ['orange']
+            >>> my_coll.distinct("food.allergies")
+            []
+            >>> my_coll.distinct("food.likes_fruit")
+            [True]
+
         Note:
             It must be kept in mind that `distinct` is a client-side operation,
             which effectively browses all required documents using the logic
@@ -878,6 +936,18 @@ class Collection:
 
         Returns:
             the exact count of matching documents.
+
+        Example:
+            >>> my_coll.insert_many([{"seq": i} for i in range(20)])
+            InsertManyResult(...)
+            >>> my_coll.count_documents({}, upper_bound=100)
+            20
+            >>> my_coll.count_documents({"seq":{"$gt": 15}}, upper_bound=100)
+            4
+            >>> my_coll.count_documents({}, upper_bound=10)
+            Traceback (most recent call last):
+                ... ...
+            astrapy.exceptions.TooManyDocumentsToCountException
 
         Note:
             Count operations are expensive: for this reason, the best practice
@@ -967,6 +1037,35 @@ class Collection:
             Alternatively, the method returns None to represent
             that no matching document was found, or that no replacement
             was inserted (depending on the `return_document` parameter).
+
+        Example:
+            >>> my_coll.insert_one({"_id": "rule1", "text": "all animals are equal"})
+            InsertOneResult(...)
+            >>> my_coll.find_one_and_replace(
+            ...     {"_id": "rule1"},
+            ...     {"text": "some animals are more equal!"},
+            ... )
+            {'_id': 'rule1', 'text': 'all animals are equal'}
+            >>> my_coll.find_one_and_replace(
+            ...     {"text": "all animals are equal"},
+            ...     {"text": "and the pigs are the rulers"},
+            ...     return_document=astrapy.constants.ReturnDocument.AFTER,
+            ... )
+            {'_id': 'rule1', 'text': 'and the pigs are the rulers'}
+            >>> my_coll.find_one_and_replace(
+            ...     {"_id": "rule2"},
+            ...     {"text": "F=ma^2"},
+            ...     return_document=astrapy.constants.ReturnDocument.AFTER,
+            ... )
+            >>> # (returns None for no matches)
+            >>> my_coll.find_one_and_replace(
+            ...     {"_id": "rule2"},
+            ...     {"text": "F=ma"},
+            ...     upsert=True,
+            ...     return_document=astrapy.constants.ReturnDocument.AFTER,
+            ...     projection={"_id": False},
+            ... )
+            {'text': 'F=ma'}
         """
 
         options = {
@@ -1028,6 +1127,18 @@ class Collection:
 
         Returns:
             an UpdateResult object summarizing the outcome of the replace operation.
+
+        Example:
+            >>> my_coll.insert_one({"Marco": "Polo"})
+            InsertOneResult(...)
+            >>> my_coll.replace_one({"Marco": {"$exists": True}}, {"Buda": "Pest"})
+            UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': True, 'ok': 1.0, 'nModified': 1})
+            >>> my_coll.find_one({"Buda": "Pest"})
+            {'_id': '8424905a-...', 'Buda': 'Pest'}
+            >>> my_coll.replace_one({"Mirco": {"$exists": True}}, {"Oh": "yeah?"})
+            UpdateResult(raw_results=..., update_info={'n': 0, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0})
+            >>> my_coll.replace_one({"Mirco": {"$exists": True}}, {"Oh": "yeah?"}, upsert=True)
+            UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '931b47d6-...'})
         """
 
         options = {
@@ -1111,6 +1222,35 @@ class Collection:
             Alternatively, the method returns None to represent
             that no matching document was found, or that no update
             was applied (depending on the `return_document` parameter).
+
+        Example:
+            >>> my_coll.insert_one({"Marco": "Polo"})
+            InsertOneResult(...)
+            >>> my_coll.find_one_and_update(
+            ..     {"Marco": {"$exists": True}},
+            ..     {"$set": {"title": "Mr."}},
+            .. )
+            {'_id': 'a80106f2-...', 'Marco': 'Polo'}
+            >>> my_coll.find_one_and_update(
+            ...     {"title": "Mr."},
+            ...     {"$inc": {"rank": 3}},
+            ...     projection=["title", "rank"],
+            ...     return_document=astrapy.constants.ReturnDocument.AFTER,
+            ... )
+            {'_id': 'a80106f2-...', 'title': 'Mr.', 'rank': 3}
+            >>> my_coll.find_one_and_update(
+            ...     {"name": "Johnny"},
+            ...     {"$set": {"rank": 0}},
+            ...     return_document=astrapy.constants.ReturnDocument.AFTER,
+            ... )
+            >>> # (returns None for no matches)
+            >>> my_coll.find_one_and_update(
+            ...     {"name": "Johnny"},
+            ...     {"$set": {"rank": 0}},
+            ...     upsert=True,
+            ...     return_document=astrapy.constants.ReturnDocument.AFTER,
+            ... )
+            {'_id': 'cb4ef2ab-...', 'name': 'Johnny', 'rank': 0}
         """
 
         options = {
@@ -1178,6 +1318,16 @@ class Collection:
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
+
+        Example:
+            >>> my_coll.insert_one({"Marco": "Polo"})
+            InsertOneResult(...)
+            >>> my_coll.update_one({"Marco": {"$exists": True}}, {"$inc": {"rank": 3}})
+            UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': True, 'ok': 1.0, 'nModified': 1})
+            >>> my_coll.update_one({"Mirko": {"$exists": True}}, {"$inc": {"rank": 3}})
+            UpdateResult(raw_results=..., update_info={'n': 0, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0})
+            >>> my_coll.update_one({"Mirko": {"$exists": True}}, {"$inc": {"rank": 3}}, upsert=True)
+            UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '2a45ff60-...'})
         """
 
         options = {
@@ -1239,6 +1389,20 @@ class Collection:
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
+
+        Example:
+            >>> my_coll.insert_many([{"c": "red"}, {"c": "green"}, {"c": "blue"}])
+            InsertManyResult(...)
+            >>> my_coll.update_many({"c": {"$ne": "green"}}, {"$set": {"nongreen": True}})
+            UpdateResult(raw_results=..., update_info={'n': 2, 'updatedExisting': True, 'ok': 1.0, 'nModified': 2})
+            >>> my_coll.update_many({"c": "orange"}, {"$set": {"is_also_fruit": True}})
+            UpdateResult(raw_results=..., update_info={'n': 0, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0})
+            >>> my_coll.update_many(
+            ...     {"c": "orange"},
+            ...     {"$set": {"is_also_fruit": True}},
+            ...     upsert=True,
+            ... )
+            UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '46643050-...'})
         """
 
         base_options = {
@@ -1332,6 +1496,22 @@ class Collection:
         Returns:
             Either the document (or a projection thereof, as requested), or None
             if no matches were found in the first place.
+
+        Example:
+            >>> my_coll.insert_many(
+            ...     [
+            ...         {"species": "swan", "class": "Aves"},
+            ...         {"species": "frog", "class": "Amphibia"},
+            ...     ],
+            ... )
+            InsertManyResult(,,,)
+            >>> my_coll.find_one_and_delete(
+            ...     {"species": {"$ne": "frog"}},
+            ...     projection=["species"],
+            ... )
+            {'_id': '5997fb48-...', 'species': 'swan'}
+            >>> my_coll.find_one_and_delete({"species": {"$ne": "frog"}})
+            >>> # (returns None for no matches)
         """
 
         _projection = normalize_optional_projection(projection)
@@ -1383,6 +1563,23 @@ class Collection:
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
+
+        Example:
+            >>> my_coll.insert_many([{"seq": 1}, {"seq": 0}, {"seq": 2}])
+            InsertManyResult(...)
+            >>> my_coll.delete_one({"seq": 1})
+            DeleteResult(raw_results=..., deleted_count=1)
+            >>> my_coll.distinct("seq")
+            [0, 2]
+            >>> my_coll.delete_one(
+            ...     {"seq": {"$exists": True}},
+            ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
+            ... )
+            DeleteResult(raw_results=..., deleted_count=1)
+            >>> my_coll.distinct("seq")
+            [0]
+            >>> my_coll.delete_one({"seq": 2})
+            DeleteResult(raw_results=..., deleted_count=0)
         """
 
         do_response = self._astra_db_collection.delete_one_by_predicate(
@@ -1431,6 +1628,16 @@ class Collection:
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
+
+        Example:
+            >>> my_coll.insert_many([{"seq": 1}, {"seq": 0}, {"seq": 2}])
+            InsertManyResult(...)
+            >>> my_coll.delete_many({"seq": {"$lte": 1}})
+            DeleteResult(raw_results=..., deleted_count=2)
+            >>> my_coll.distinct("seq")
+            [2]
+            >>> my_coll.delete_many({"seq": {"$lte": 1}})
+            DeleteResult(raw_results=..., deleted_count=0)
 
         Note:
             This operation is not atomic. Depending on the amount of matching
@@ -1496,6 +1703,16 @@ class Collection:
         Returns:
             a dictionary of the form {"ok": 1} to signal successful deletion.
 
+        Example:
+            >>> my_coll.distinct("seq")
+            [2, 1, 0]
+            >>> my_coll.count_documents({}, upper_bound=100)
+            4
+            >>> my_coll.delete_all()
+            {'ok': 1}
+            >>> my_coll.count_documents({}, upper_bound=100)
+            0
+
         Note:
             Use with caution.
         """
@@ -1526,7 +1743,7 @@ class Collection:
 
         This method does not execute atomically, i.e. individual operations are
         each performed in the same way as the corresponding collection method,
-        and certainly each one is a different and unrelated database mutation.
+        and each one is a different and unrelated database mutation.
 
         Args:
             requests: an iterable over concrete subclasses of `BaseOperation`,
@@ -1550,6 +1767,17 @@ class Collection:
             operations. The keys in the map attributes of BulkWriteResult
             (when present) are the integer indices of the corresponding operation
             in the `requests` iterable.
+
+        Example:
+            >>> from astrapy.operations import InsertMany, ReplaceOne
+            >>> op1 = InsertMany([{"a": 1}, {"a": 2}])
+            >>> op2 = ReplaceOne({"z": 9}, replacement={"z": 9, "replaced": True}, upsert=True)
+            >>> my_coll.bulk_write([op1, op2])
+            BulkWriteResult(bulk_api_results={0: ..., 1: ...}, deleted_count=0, inserted_count=3, matched_count=0, modified_count=0, upserted_count=1, upserted_ids={1: '2addd676-...'})
+            >>> my_coll.count_documents({}, upper_bound=100)
+            3
+            >>> my_coll.distinct("replaced")
+            [True]
         """
 
         # lazy importing here against circular-import error
@@ -1683,6 +1911,16 @@ class Collection:
 
         Returns:
             a dictionary of the form {"ok": 1} to signal successful deletion.
+
+        Example:
+            >>> my_coll.find_one({})
+            {'_id': '...', 'a': 100}
+            >>> my_coll.drop()
+            {'ok': 1}
+            >>> my_coll.find_one({})
+            Traceback (most recent call last):
+                ... ...
+            astrapy.exceptions.DataAPIResponseException: table my_collection does not exist
 
         Note:
             Use with caution.
@@ -3027,7 +3265,7 @@ class AsyncCollection:
 
         This method does not execute atomically, i.e. individual operations are
         each performed in the same way as the corresponding collection method,
-        and certainly each one is a different and unrelated database mutation.
+        and each one is a different and unrelated database mutation.
 
         Args:
             requests: an iterable over concrete subclasses of `BaseOperation`,
