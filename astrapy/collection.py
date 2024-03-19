@@ -118,6 +118,19 @@ class Collection:
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
 
+    Examples:
+        >>> from astrapy import Collection, Database
+        >>> my_db = Database(api_endpoint="https://...", token="AstraCS:...")
+        >>> my_coll_1 = Collection(database=my_db, name="my_collection")
+        >>> my_coll_2 = my_db.create_collection(
+        ...     "my_v_collection",
+        ...     dimension=3,
+        ...     metric="cosine",
+        ... )
+        >>> my_coll_3a = my_db.get_collection("my_already_existing_collection")
+        >>> my_coll_3b = my_db.my_already_existing_collection
+        >>> my_coll_3c = my_db["my_already_existing_collection"]
+
     Note:
         creating an instance of Collection does not trigger actual creation
         of the collection on the database. The latter should have been created
@@ -199,6 +212,12 @@ class Collection:
 
         Returns:
             a new Collection instance.
+
+        Example:
+            >>> my_other_coll = my_coll.with_options(
+            ...     name="the_other_coll",
+            ...     caller_name="caller_identity",
+            ...     )
         """
 
         return self._copy(
@@ -236,6 +255,10 @@ class Collection:
 
         Returns:
             the new copy, an AsyncCollection instance.
+
+        Example:
+            >>> asyncio.run(my_coll.to_async().count_documents({},upper_bound=100))
+            77
         """
 
         return AsyncCollection(
@@ -259,6 +282,9 @@ class Collection:
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
+
+        Example:
+            >>> my_coll.set_caller(caller_name="the_caller", caller_version="0.1.0")
         """
 
         self._astra_db_collection.set_caller(
@@ -281,6 +307,10 @@ class Collection:
             a dictionary expressing the collection as a set of key-value pairs
             matching the arguments of a `create_collection` call.
             (See also the database `list_collections` method.)
+
+        Example:
+            >>> my_coll.options()
+            {'name': 'my_v_collection', 'dimension': 3, 'metric': 'cosine'}
         """
 
         self_dicts = [
@@ -305,6 +335,12 @@ class Collection:
 
         Not to be confused with the collection `options` method (related
         to the collection internal configuration).
+
+        Example:
+            >>> my_coll.info.database_info.region
+            'eu-west-1'
+            >>> my_coll.info.full_name
+            'default_keyspace.my_v_collection'
         """
 
         return CollectionInfo(
@@ -318,6 +354,10 @@ class Collection:
     def database(self) -> Database:
         """
         a Database object, the database this collection belongs to.
+
+        Example:
+            >>> my_coll.database.name
+            'the_application_database'
         """
 
         return self._database
@@ -326,6 +366,10 @@ class Collection:
     def namespace(self) -> str:
         """
         The namespace this collection is in.
+
+        Example:
+            >>> my_coll.namespace
+            'default_keyspace'
         """
 
         return self.database.namespace
@@ -334,6 +378,10 @@ class Collection:
     def name(self) -> str:
         """
         The name of this collection.
+
+        Example:
+            >>> my_coll.name
+            'my_v_collection'
         """
 
         # type hint added as for some reason the typechecker gets lost
@@ -344,6 +392,10 @@ class Collection:
         """
         The fully-qualified collection name within the database,
         in the form "namespace.collection_name".
+
+        Example:
+            >>> my_coll.full_name
+            'default_keyspace.my_v_collection'
         """
 
         return f"{self.namespace}.{self.name}"
@@ -367,22 +419,22 @@ class Collection:
         Returns:
             an InsertOneResult object.
 
-        Note:
-            If an `_id` is explicitly provided, which corresponds to a document
-            that exists already in the collection, an error is raised and
-            the insertion fails.
-        """
-
-        """
-        Insert a single document in the collection in an atomic operation.
-
-        Args:
-            document: the dictionary expressing the document to insert.
-                The `_id` field of the document can be left out, in which
-                case it will be created automatically.
-
-        Returns:
-            an InsertOneResult object.
+        Examples:
+            >>> my_coll.count_documents({}, upper_bound=10)
+            0
+            >>> my_coll.insert_one(
+            ...     {
+            ...         "age": 30,
+            ...         "name": "Smith",
+            ...         "food": ["pear", "peach"],
+            ...         "likes_fruit": True,
+            ...     },
+            ... )
+            InsertOneResult(raw_results=..., inserted_id='ed4587a4-...-...-...')
+            >>> my_coll.insert_one({"_id": "user-123", "age": 50, "name": "Maccio"})
+            InsertOneResult(raw_results=..., inserted_id='user-123')
+            >>> my_coll.count_documents({}, upper_bound=10)
+            2
 
         Note:
             If an `_id` is explicitly provided, which corresponds to a document
@@ -441,6 +493,22 @@ class Collection:
 
         Returns:
             an InsertManyResult object.
+
+        Example:
+            >>> my_coll.count_documents({}, upper_bound=10)
+            0
+            >>> my_coll.insert_many([{"a": 10}, {"a": 5}, {"b": [True, False, False]}])
+            InsertManyResult(raw_results=..., inserted_ids=['184bb06f-...', '...', '...'])
+            >>> my_coll.count_documents({}, upper_bound=100)
+            3
+            >>> my_coll.insert_many(
+            ...     [{"sequence": i} for i in range(50)],
+            ...     ordered=False,
+            ...     concurrency=5,
+            ... )
+            InsertManyResult(raw_results=..., inserted_ids=[... ...])
+            >>> my_coll.count_documents({}, upper_bound=100)
+            53
 
         Note:
             Unordered insertions are executed with some degree of concurrency,

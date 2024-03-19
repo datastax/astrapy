@@ -286,8 +286,8 @@ class Database:
         is made; it is then cached for subsequent access.
 
         Example:
-            >>> my_db.info.id
-            '01234567-89ab-cdef-0123-456789abcdef'
+            >>> my_db.info.region
+            'eu-west-1'
         """
 
         if self._database_info is None:
@@ -891,8 +891,8 @@ class AsyncDatabase:
         is made; it is then cached for subsequent access.
 
         Example:
-            >>> my_async_db.info.id
-            '01234567-89ab-cdef-0123-456789abcdef'
+            >>> my_async_db.info.region
+            'eu-west-1'
         """
 
         if self._database_info is None:
