@@ -361,6 +361,13 @@ class Database:
             >>> my_col = my_db.get_collection("my_collection")
             >>> my_col.count_documents({}, upper_bound=100)
             41
+
+        Note:
+            The attribute and indexing syntax forms achieve the same effect
+            as this method. In other words, the following are equivalent:
+                my_db.get_collection("coll_name")
+                my_db.coll_name
+                my_db["coll_name"]
         """
 
         # lazy importing here against circular-import error
@@ -538,12 +545,12 @@ class Database:
         Example:
             >>> ccur = my_db.list_collections()
             >>> ccur
-            <astrapy.cursors.CommandCursor object at 0x71c44abc65f0>
+            <astrapy.cursors.CommandCursor object at ...>
             >>> list(ccur)
             [{'name': 'my_v_col'}]
             >>> for coll_dict in my_db.list_collections():
             ...     print(coll_dict)
-            ... 
+            ...
             {'name': 'my_v_col'}
         """
 
@@ -586,6 +593,10 @@ class Database:
 
         Returns:
             a list of the collection names as strings, in no particular order.
+
+        Example:
+            >>> my_db.list_collection_names()
+            ['a_collection', 'another_col']
         """
 
         if namespace:
@@ -619,7 +630,6 @@ class Database:
 
         Args:
             body: a JSON-serializable dictionary, the payload of the request.
-        Args:
             namespace: the namespace to use. Requests always target a namespace:
                 if not specified, the general setting for this database is assumed.
             collection_name: if provided, the collection name is appended at the end
@@ -629,6 +639,12 @@ class Database:
 
         Returns:
             a dictionary with the response of the HTTP request.
+
+        Example:
+            >>> my_db.command({"findCollections": {}})
+            {'status': {'collections': ['my_coll']}}
+            >>> my_db.command({"countDocuments": {}}, collection_name="my_coll")
+            {'status': {'count': 123}}
         """
 
         if namespace:
@@ -672,6 +688,13 @@ class AsyncDatabase:
             should be left to its default of "/api/json".
         api_version: version specifier to append to the API path. In typical
             usage, this should be left to its default of "v1".
+
+    Example:
+        >>> from astrapy import AsyncDatabase
+        >>> my_async_db = AsyncDatabase(
+        ...     api_endpoint="https://...",
+        ...     token="AstraCS:...",
+        ... )
 
     Note:
         creating an instance of Database does not trigger actual creation
@@ -771,6 +794,13 @@ class AsyncDatabase:
 
         Returns:
             a new AsyncDatabase instance.
+
+        Example:
+            >>> my_async_db_2 = my_async_db.with_options(
+            ...     namespace="the_other_namespace",
+            ...     caller_name="the_caller",
+            ...     caller_version="0.1.0",
+            ... )
         """
 
         return self._copy(
@@ -812,6 +842,11 @@ class AsyncDatabase:
 
         Returns:
             the new copy, a Database instance.
+
+        Example:
+            >>> my_sync_db = my_async_db.to_sync()
+            >>> my_sync_db.list_collection_names()
+            ['a_collection', 'another_collection']
         """
 
         return Database(
@@ -837,6 +872,9 @@ class AsyncDatabase:
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
+
+        Example:
+            >>> my_db.set_caller(caller_name="the_caller", caller_version="0.1.0")
         """
 
         self._astra_db.set_caller(
@@ -851,6 +889,10 @@ class AsyncDatabase:
 
         On accessing this property the first time, a call to the DevOps API
         is made; it is then cached for subsequent access.
+
+        Example:
+            >>> my_async_db.info.id
+            '01234567-89ab-cdef-0123-456789abcdef'
         """
 
         if self._database_info is None:
@@ -865,6 +907,10 @@ class AsyncDatabase:
     def id(self) -> Optional[str]:
         """
         The ID of this database.
+
+        Example:
+            >>> my_async_db.id
+            '01234567-89ab-cdef-0123-456789abcdef'
         """
 
         return self.info.id
@@ -873,6 +919,10 @@ class AsyncDatabase:
     def name(self) -> Optional[str]:
         """
         The name of this database. Note that this bears no unicity guarantees.
+
+        Example:
+            >>> my_async_db.name
+            'the_application_database'
         """
 
         return self.info.name
@@ -882,6 +932,10 @@ class AsyncDatabase:
         """
         The namespace this database uses as target for all commands when
         no method-call-specific namespace is specified.
+
+        Example:
+            >>> my_async_db.namespace
+            'the_keyspace'
         """
 
         return self._astra_db.namespace
@@ -907,6 +961,21 @@ class AsyncDatabase:
         Returns:
             an AsyncCollection instance, representing the desired collection
                 (but without any form of validation).
+
+        Example:
+            >>> async def count_docs(adb: AsyncDatabase, c_name: str) -> int:
+            ...    async_col = await adb.get_collection(c_name)
+            ...    return await async_col.count_documents({}, upper_bound=100)
+            ...
+            >>> asyncio.run(count_docs(my_async_db, "my_collection"))
+            45
+
+        Note: the attribute and indexing syntax forms achieve the same effect
+            as this method, returning an AsyncCollection, albeit
+            in a synchronous way. In other words, the following are equivalent:
+                await my_async_db.get_collection("coll_name")
+                my_async_db.coll_name
+                my_async_db["coll_name"]
         """
 
         # lazy importing here against circular-import error
@@ -965,6 +1034,16 @@ class AsyncDatabase:
 
         Returns:
             an AsyncCollection instance, representing the newly-created collection.
+
+        Example:
+            >>> async def create_and_insert(adb: AsyncDatabase) -> Dict[str, Any]:
+            ...     new_a_col = await adb.create_collection("my_v_col", dimension=3)
+            ...     return await new_a_col.insert_one(
+            ...         {"name": "the_row", "$vector": [0.4, 0.5, 0.7]}
+            ...     )
+            ...
+            >>> asyncio.run(create_and_insert(my_async_db))
+            InsertOneResult(raw_results=..., inserted_id='08f05ecf-...-...-...')
         """
 
         _validate_create_collection_options(
@@ -1024,6 +1103,14 @@ class AsyncDatabase:
         Returns:
             a dictionary in the form {"ok": 1} if the command succeeds.
 
+        Example:
+            >>> asyncio.run(my_async_db.list_collection_names())
+            ['a_collection', 'my_v_col', 'another_col']
+            >>> asyncio.run(my_async_db.drop_collection("my_v_col"))
+            {'ok': 1}
+            >>> asyncio.run(my_async_db.list_collection_names())
+            ['a_collection', 'another_col']
+
         Note:
             when providing a collection name, it is assumed that the collection
             is to be found in the namespace set at database instance level.
@@ -1068,6 +1155,19 @@ class AsyncDatabase:
             an `AsyncCommandCursor` to iterate over dictionaries, each
             expressing a collection as a set of key-value pairs
             matching the arguments of a `create_collection` call.
+
+        Example:
+            >>> async def a_list_colls(adb: AsyncDatabase) -> None:
+            ...     a_ccur = adb.list_collections()
+            ...     print("* a_ccur:", a_ccur)
+            ...     print("* list:", [coll async for coll in a_ccur])
+            ...     async for coll in adb.list_collections():
+            ...         print("* coll:", coll)
+            ...
+            >>> asyncio.run(a_list_colls(my_async_db))
+            * a_ccur: <astrapy.cursors.AsyncCommandCursor object at ...>
+            * list: [{'name': 'my_v_col'}]
+            * coll: {'name': 'my_v_col'}
         """
 
         _client: AsyncAstraDB
@@ -1111,6 +1211,10 @@ class AsyncDatabase:
 
         Returns:
             a list of the collection names as strings, in no particular order.
+
+        Example:
+            >>> asyncio.run(my_async_db.list_collection_names())
+            ['a_collection', 'another_col']
         """
 
         gc_response = await self._astra_db.copy(namespace=namespace).get_collections(
@@ -1140,7 +1244,6 @@ class AsyncDatabase:
 
         Args:
             body: a JSON-serializable dictionary, the payload of the request.
-        Args:
             namespace: the namespace to use. Requests always target a namespace:
                 if not specified, the general setting for this database is assumed.
             collection_name: if provided, the collection name is appended at the end
@@ -1150,6 +1253,15 @@ class AsyncDatabase:
 
         Returns:
             a dictionary with the response of the HTTP request.
+
+        Example:
+            >>> asyncio.run(my_async_db.command({"findCollections": {}}))
+            {'status': {'collections': ['my_coll']}}
+            >>> asyncio.run(my_async_db.command(
+            ...     {"countDocuments": {}},
+            ...     collection_name="my_coll",
+            ... )
+            {'status': {'count': 123}}
         """
 
         if namespace:
