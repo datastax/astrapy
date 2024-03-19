@@ -104,6 +104,10 @@ class Database:
         api_version: version specifier to append to the API path. In typical
             usage, this should be left to its default of "v1".
 
+    Example:
+        >>> from astrapy import Database
+        >>> my_db = Database(api_endpoint="https://...", token="AstraCS:...")
+
     Note:
         creating an instance of Database does not trigger actual creation
         of the database itself, which should exist beforehand.
@@ -187,6 +191,13 @@ class Database:
 
         Returns:
             a new Database instance.
+
+        Example:
+            >>> my_db_2 = my_db.with_options(
+            ...     namespace="the_other_namespace",
+            ...     caller_name="the_caller",
+            ...     caller_version="0.1.0",
+            ... )
         """
 
         return self._copy(
@@ -228,6 +239,10 @@ class Database:
 
         Returns:
             the new copy, an AsyncDatabase instance.
+
+        Example:
+            >>> my_async_db = my_db.to_async()
+            >>> asyncio.run(my_async_db.list_collection_names())
         """
 
         return AsyncDatabase(
@@ -253,6 +268,9 @@ class Database:
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
+
+        Example:
+            >>> my_db.set_caller(caller_name="the_caller", caller_version="0.1.0")
         """
         self._astra_db.set_caller(
             caller_name=caller_name,
@@ -266,7 +284,12 @@ class Database:
 
         On accessing this property the first time, a call to the DevOps API
         is made; it is then cached for subsequent access.
+
+        Example:
+            >>> my_db.info.id
+            '01234567-89ab-cdef-0123-456789abcdef'
         """
+
         if self._database_info is None:
             self._database_info = get_database_info(
                 self._astra_db.api_endpoint,
@@ -279,6 +302,10 @@ class Database:
     def id(self) -> Optional[str]:
         """
         The ID of this database.
+
+        Example:
+            >>> my_db.id
+            '01234567-89ab-cdef-0123-456789abcdef'
         """
 
         return self.info.id
@@ -296,6 +323,10 @@ class Database:
         """
         The namespace this database uses as target for all commands when
         no method-call-specific namespace is specified.
+
+        Example:
+            >>> my_db.name
+            'my_example_database'
         """
 
         return self._astra_db.namespace
