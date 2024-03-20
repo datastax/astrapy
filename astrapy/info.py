@@ -81,7 +81,7 @@ def parse_api_endpoint(api_endpoint: str) -> Optional[ParsedAPIEndpoint]:
 
 def get_database_info(
     api_endpoint: str, token: str, namespace: str, max_time_ms: Optional[int] = None
-) -> DatabaseInfo:
+) -> Optional[DatabaseInfo]:
     """
     Fetch the relevant information through the DevOps API.
 
@@ -93,11 +93,7 @@ def get_database_info(
 
     Returns:
         A DatabaseInfo object.
-
-    Note:
-        If the API endpoint does not allow to extract a database_id,
-        namespace validation is skipped and the returned info will have
-        most fields set to None.
+        If the API endpoint fails to be parsed, None is returned.
     """
 
     astra_db_ops = AstraDBOps(token=token)
@@ -123,14 +119,7 @@ def get_database_info(
                 raw_info=raw_info,
             )
     else:
-        return DatabaseInfo(
-            id=None,
-            region=None,
-            namespace=namespace,
-            name=None,
-            environment=None,
-            raw_info=None,
-        )
+        return None
 
 
 @dataclass
@@ -163,11 +152,11 @@ class DatabaseInfo:
             database_info.region != database_info.raw_info["region"]
     """
 
-    id: Optional[str]
-    region: Optional[str]
+    id: str
+    region: str
     namespace: str
-    name: Optional[str]
-    environment: Optional[str]
+    name: str
+    environment: str
     raw_info: Optional[Dict[str, Any]]
 
 

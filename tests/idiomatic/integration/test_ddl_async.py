@@ -156,7 +156,7 @@ class TestDDLAsync:
         astra_db_credentials_kwargs: AstraDBCredentials,
     ) -> None:
         assert isinstance(async_database.id, str)
-        assert isinstance(async_database.name, str)
+        assert isinstance(async_database.name(), str)
         assert async_database.namespace == astra_db_credentials_kwargs["namespace"]
         assert isinstance(async_database.info(), DatabaseInfo)
         assert isinstance(async_database.info().raw_info, dict)

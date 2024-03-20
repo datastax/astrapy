@@ -241,3 +241,18 @@ class TestDatabasesSync:
             namespace=ASTRA_DB_SECONDARY_KEYSPACE,
         )
         assert db2.namespace == ASTRA_DB_SECONDARY_KEYSPACE
+
+    @pytest.mark.describe("test database id, sync")
+    def test_database_id_sync(self) -> None:
+        db1 = Database(
+            token="t",
+            api_endpoint="https://a1234567-89ab-cdef-0123-456789abcdef-us-central1.apps.astra-dev.datastax.com",
+        )
+        assert db1.id == "a1234567-89ab-cdef-0123-456789abcdef"
+
+        db2 = Database(
+            token="t",
+            api_endpoint="http://localhost:12345",
+        )
+        with pytest.raises(Exception):
+            db2.id

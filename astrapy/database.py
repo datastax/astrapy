@@ -21,12 +21,13 @@ from astrapy.core.db import AstraDB, AsyncAstraDB
 from astrapy.exceptions import (
     CollectionAlreadyExistsException,
     DataAPIFaultyResponseException,
+    DevOpsAPIException,
     recast_method_sync,
     recast_method_async,
     base_timeout_info,
 )
 from astrapy.cursors import AsyncCommandCursor, CommandCursor
-from astrapy.info import DatabaseInfo, get_database_info
+from astrapy.info import DatabaseInfo, parse_api_endpoint, get_database_info
 
 if TYPE_CHECKING:
     from astrapy.collection import AsyncCollection, Collection
@@ -156,6 +157,7 @@ class Database:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+        self._name: Optional[str] = None
 
     def __getattr__(self, collection_name: str) -> Collection:
         return self.get_collection(name=collection_name)
@@ -324,10 +326,15 @@ class Database:
             token=self._astra_db.token,
             namespace=self.namespace,
         )
-        return database_info
+        if database_info is not None:
+            return database_info
+        else:
+            raise DevOpsAPIException(
+                "Database is not in a supported environment for this operation."
+            )
 
     @property
-    def id(self) -> Optional[str]:
+    def id(self) -> str:
         """
         The ID of this database.
 
@@ -336,19 +343,30 @@ class Database:
             '01234567-89ab-cdef-0123-456789abcdef'
         """
 
-        return self.info().id
+        parsed_api_endpoint = parse_api_endpoint(self._astra_db.api_endpoint)
+        if parsed_api_endpoint is not None:
+            return parsed_api_endpoint.database_id
+        else:
+            raise DevOpsAPIException(
+                "Database is not in a supported environment for this operation."
+            )
 
-    @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str:
         """
         The name of this database. Note that this bears no unicity guarantees.
 
+        Calling this method the first time involves a request
+        to the DevOps API (the resulting database name is then cached).
+        See the `info()` method for more details.
+
         Example:
-            >>> my_db.name
+            >>> my_db.name()
             'the_application_database'
         """
 
-        return self.info().name
+        if self._name is None:
+            self._name = self.info().name
+        return self._name
 
     @property
     def namespace(self) -> str:
@@ -758,6 +776,7 @@ class AsyncDatabase:
             caller_name=caller_name,
             caller_version=caller_version,
         )
+        self._name: Optional[str] = None
 
     def __getattr__(self, collection_name: str) -> AsyncCollection:
         return self.to_sync().get_collection(name=collection_name).to_async()
@@ -943,10 +962,15 @@ class AsyncDatabase:
             token=self._astra_db.token,
             namespace=self.namespace,
         )
-        return database_info
+        if database_info is not None:
+            return database_info
+        else:
+            raise DevOpsAPIException(
+                "Database is not in a supported environment for this operation."
+            )
 
     @property
-    def id(self) -> Optional[str]:
+    def id(self) -> str:
         """
         The ID of this database.
 
@@ -955,19 +979,30 @@ class AsyncDatabase:
             '01234567-89ab-cdef-0123-456789abcdef'
         """
 
-        return self.info().id
+        parsed_api_endpoint = parse_api_endpoint(self._astra_db.api_endpoint)
+        if parsed_api_endpoint is not None:
+            return parsed_api_endpoint.database_id
+        else:
+            raise DevOpsAPIException(
+                "Database is not in a supported environment for this operation."
+            )
 
-    @property
-    def name(self) -> Optional[str]:
+    def name(self) -> str:
         """
         The name of this database. Note that this bears no unicity guarantees.
 
+        Calling this method the first time involves a request
+        to the DevOps API (the resulting database name is then cached).
+        See the `info()` method for more details.
+
         Example:
-            >>> my_async_db.name
+            >>> my_async_db.name()
             'the_application_database'
         """
 
-        return self.info().name
+        if self._name is None:
+            self._name = self.info().name
+        return self._name
 
     @property
     def namespace(self) -> str:

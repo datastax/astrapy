@@ -154,7 +154,7 @@ class TestDDLSync:
         astra_db_credentials_kwargs: AstraDBCredentials,
     ) -> None:
         assert isinstance(sync_database.id, str)
-        assert isinstance(sync_database.name, str)
+        assert isinstance(sync_database.name(), str)
         assert sync_database.namespace == astra_db_credentials_kwargs["namespace"]
         assert isinstance(sync_database.info(), DatabaseInfo)
         assert isinstance(sync_database.info().raw_info, dict)
