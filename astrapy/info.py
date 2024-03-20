@@ -30,7 +30,8 @@ class DatabaseInfo:
         namespace: the namespace this DB is set to work with.
         name: the database name. Not necessarily unique: there can be multiple
             databases with the same name.
-        environment: a label such as "prod", "dev" or "test"
+        environment: a label, whose value is one of Environment.PROD, Environment.DEV
+            or Environment.TEST.
         raw_info: the full response from the DevOPS API call to get this info.
 
     Note:

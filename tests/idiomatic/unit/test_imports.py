@@ -50,9 +50,14 @@ def test_imports() -> None:
         DefaultIdType,
     )
     from astrapy.info import (  # noqa: F401
-        ParsedAPIEndpoint,
         DatabaseInfo,
         CollectionInfo,
+    )
+    from astrapy.admin import (  # noqa: F401
+        Environment,
+        ParsedAPIEndpoint,
+        Admin,
+        DatabaseAdmin,
     )
     from astrapy.cursors import (  # noqa: F401
         BaseCursor,

@@ -29,6 +29,19 @@ from astrapy.exceptions import (
 )
 
 
+class Environment:
+    """
+    Admitted values for `environment` property, such as the one denoting databases.
+    """
+
+    def __init__(self) -> None:
+        raise NotImplementedError
+
+    PROD = "prod"
+    DEV = "dev"
+    TEST = "test"
+
+
 database_id_finder = re.compile(
     "https://"
     "([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
@@ -41,8 +54,9 @@ database_id_finder = re.compile(
 
 
 DEV_OPS_URL_MAP = {
-    "dev": "https://api.dev.cloud.datastax.com",
-    "test": "https://api.test.cloud.datastax.com",
+    Environment.PROD: "https://api.astra.datastax.com",
+    Environment.DEV: "https://api.dev.cloud.datastax.com",
+    Environment.TEST: "https://api.test.cloud.datastax.com",
 }
 
 
@@ -55,7 +69,8 @@ class ParsedAPIEndpoint:
     Attributes:
         database_id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
         region: a region ID, such as "us-west1".
-        environment: a label such as "prod", "dev", "test".
+        environment: a label, whose value is one of Environment.PROD, Environment.DEV
+            or Environment.TEST.
     """
 
     database_id: str
@@ -107,7 +122,7 @@ def get_database_info(
     if parsed_endpoint:
         astra_db_ops = AstraDBOps(
             token=token,
-            dev_ops_url=DEV_OPS_URL_MAP.get(parsed_endpoint.environment),
+            dev_ops_url=DEV_OPS_URL_MAP[parsed_endpoint.environment],
         )
         try:
             gd_response = astra_db_ops.get_database(
@@ -130,3 +145,17 @@ def get_database_info(
             )
     else:
         return None
+
+
+class Admin:
+    def __init__(
+        self,
+        token: str,
+        *,
+        environment: Optional[str] = None,
+    ) -> None:
+        pass
+
+
+class DatabaseAdmin:
+    pass
