@@ -20,6 +20,7 @@ from ..conftest import (
     TEST_COLLECTION_INSTANCE_NAME,
 )
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
+from astrapy.exceptions import DevOpsAPIException
 from astrapy import Collection, Database
 
 
@@ -254,5 +255,5 @@ class TestDatabasesSync:
             token="t",
             api_endpoint="http://localhost:12345",
         )
-        with pytest.raises(Exception):
+        with pytest.raises(DevOpsAPIException):
             db2.id
