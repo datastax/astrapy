@@ -407,13 +407,18 @@ class TestDMLAsync:
         cursor1 = async_empty_collection.find(sort={"seq": 1})
         await cursor1.__anext__()
         await cursor1.__anext__()
-        items1 = (await _alist(cursor1))[:2]
+        items1 = (await _alist(cursor1))[:2]  # noqa: F841
         assert await _alist(cursor1.rewind()) == await _alist(
             async_empty_collection.find(sort={"seq": 1})
         )
         cursor1.rewind()
-        assert items1 == await _alist(cursor1[2:4])  # type: ignore[arg-type]
-        assert cursor1.retrieved == 2
+
+        # Note: this, i.e. cursor[i]/cursor[i:j], is disabled
+        # pending full skip/limit support by the Data API.
+        # # slice indexing of cursor
+        # cursor1.rewind()
+        # assert items1 == await _alist(cursor1[2:4])  # type: ignore[arg-type]
+        # assert cursor1.retrieved == 2
 
         # address, cursor_id, collection
         assert cursor1.address == async_empty_collection._astra_db_collection.base_path
@@ -456,14 +461,16 @@ class TestDMLAsync:
         assert set(await async_empty_collection.distinct("ternary")) == {0, 1, 2}
         assert set(await async_empty_collection.distinct("nonfield")) == set()
 
-        # indexing by integer
-        cursor7 = async_empty_collection.find(sort={"seq": 1})
-        assert cursor7[5]["seq"] == 5
+        # Note: this, i.e. cursor[i]/cursor[i:j], is disabled
+        # pending full skip/limit support by the Data API.
+        # # indexing by integer
+        # cursor7 = async_empty_collection.find(sort={"seq": 1})
+        # assert cursor7[5]["seq"] == 5
 
-        # indexing by wrong type
-        with pytest.raises(TypeError):
-            cursor7.rewind()
-            cursor7["wrong"]
+        # # indexing by wrong type
+        # with pytest.raises(TypeError):
+        #     cursor7.rewind()
+        #     cursor7["wrong"]
 
     @pytest.mark.describe("test of distinct with non-hashable items, async")
     async def test_collection_distinct_nonhashable_async(

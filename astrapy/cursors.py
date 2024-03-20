@@ -190,25 +190,28 @@ class BaseCursor:
     ) -> None:
         raise NotImplementedError
 
-    def __getitem__(self: BC, index: Union[int, slice]) -> Union[BC, DocumentType]:
-        self._ensure_not_started()
-        self._ensure_alive()
-        if isinstance(index, int):
-            # In this case, a separate cursor is run, not touching self
-            return self._item_at_index(index)
-        elif isinstance(index, slice):
-            start = index.start
-            stop = index.stop
-            step = index.step
-            if step is not None and step != 1:
-                raise ValueError("Cursor slicing cannot have arbitrary step")
-            _skip = start
-            _limit = stop - start
-            return self.limit(_limit).skip(_skip)
-        else:
-            raise TypeError(
-                f"cursor indices must be integers or slices, not {type(index).__name__}"
-            )
+    # Note: this, i.e. cursor[i]/cursor[i:j], is disabled
+    # pending full skip/limit support by the Data API.
+    #
+    # def __getitem__(self: BC, index: Union[int, slice]) -> Union[BC, DocumentType]:
+    #     self._ensure_not_started()
+    #     self._ensure_alive()
+    #     if isinstance(index, int):
+    #         # In this case, a separate cursor is run, not touching self
+    #         return self._item_at_index(index)
+    #     elif isinstance(index, slice):
+    #         start = index.start
+    #         stop = index.stop
+    #         step = index.step
+    #         if step is not None and step != 1:
+    #             raise ValueError("Cursor slicing cannot have arbitrary step")
+    #         _skip = start
+    #         _limit = stop - start
+    #         return self.limit(_limit).skip(_skip)
+    #     else:
+    #         raise TypeError(
+    #             f"cursor indices must be integers or slices, not {type(index).__name__}"
+    #         )
 
     def __repr__(self) -> str:
         return (
