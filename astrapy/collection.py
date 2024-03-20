@@ -120,13 +120,32 @@ def _collate_vector_to_document(
     else:
         if "$vector" in document0:
             raise ValueError(
-                "Cannot specify `vector` for a document with its '$vector' field already."
+                "Cannot specify the vector separately for a document with its '$vector' field already."
             )
         else:
             return {
                 **document0,
                 **{"$vector": vector},
             }
+
+
+def _collate_vectors_to_documents(
+    documents: Iterable[DocumentType],
+    vectors: Optional[Iterable[Optional[VectorType]]],
+) -> List[DocumentType]:
+    if vectors is None:
+        return list(documents)
+    else:
+        _documents = list(documents)
+        _vectors = list(vectors)
+        if len(_documents) != len(_vectors):
+            raise ValueError(
+                "The `documents` and `vectors` parameters must have the same length"
+            )
+        return [
+            _collate_vector_to_document(_doc, _vec)
+            for _doc, _vec in zip(_documents, _vectors)
+        ]
 
 
 class Collection:
@@ -479,6 +498,9 @@ class Collection:
             >>> my_coll.count_documents({}, upper_bound=10)
             2
 
+            >>> my_coll.insert_one({"tag": v"}, vector=[10, 11])
+            InsertOneResult(...)
+
         Note:
             If an `_id` is explicitly provided, which corresponds to a document
             that exists already in the collection, an error is raised and
@@ -513,6 +535,7 @@ class Collection:
         self,
         documents: Iterable[DocumentType],
         *,
+        vectors: Optional[Iterable[Optional[VectorType]]] = None,
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
@@ -526,6 +549,14 @@ class Collection:
             documents: an iterable of dictionaries, each a document to insert.
                 Documents may specify their `_id` field or leave it out, in which
                 case it will be added automatically.
+            vectors: an optional list of vectors (as many vectors as the provided
+                documents) to associate to the documents when inserting.
+                Each vector is added to the corresponding document prior to
+                insertion on database. The list can be a mixture of None and vectors,
+                in which case some documents will not have a vector, unless it is
+                specified in their "$vector" field already.
+                Passing vectors this way is indeed equivalent to the "$vector" field
+                of the documents, however the two are mutually exclusive.
             ordered: if True (default), the insertions are processed sequentially.
                 If False, they can occur in arbitrary order and possibly concurrently.
             chunk_size: how many documents to include in a single API request.
@@ -538,7 +569,7 @@ class Collection:
         Returns:
             an InsertManyResult object.
 
-        Example:
+        Examples:
             >>> my_coll.count_documents({}, upper_bound=10)
             0
             >>> my_coll.insert_many([{"a": 10}, {"a": 5}, {"b": [True, False, False]}])
@@ -553,6 +584,25 @@ class Collection:
             InsertManyResult(raw_results=..., inserted_ids=[... ...])
             >>> my_coll.count_documents({}, upper_bound=100)
             53
+
+            # The following are three equivalent statements:
+            >>> my_coll.insert_many(
+            ...     [{"tag": "a"}, {"tag": "b"}],
+            ...     vectors=[[1, 2], [3, 4]],
+            ... )
+            InsertManyResult(...)
+            >>> my_coll.insert_many(
+            ...     [{"tag": "a", "$vector": [1, 2]}, {"tag": "b"}],
+            ...     vectors=[None, [3, 4]],
+            ... )
+            InsertManyResult(...)
+            >>> my_coll.insert_many(
+            ...     [
+            ...         {"tag": "a", "$vector": [1, 2]},
+            ...         {"tag": "b", "$vector": [3, 4]},
+            ...     ]
+            ... )
+            InsertManyResult(...)
 
         Note:
             Unordered insertions are executed with some degree of concurrency,
@@ -594,8 +644,7 @@ class Collection:
             _chunk_size = MAX_INSERT_NUM_DOCUMENTS
         else:
             _chunk_size = chunk_size
-        _documents = list(documents)  # TODO make this a chunked iterator
-        # TODO handle the auto-inserted-ids here (chunk-wise better)
+        _documents = _collate_vectors_to_documents(documents, vectors)
         raw_results: List[Dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
@@ -2421,6 +2470,9 @@ class AsyncCollection:
             count0 0
             count1 2
 
+            >>> asyncio.run(my_async_coll.insert_one({"tag": v"}, vector=[10, 11]))
+            InsertOneResult(...)
+
         Note:
             If an `_id` is explicitly provided, which corresponds to a document
             that exists already in the collection, an error is raised and
@@ -2455,6 +2507,7 @@ class AsyncCollection:
         self,
         documents: Iterable[DocumentType],
         *,
+        vectors: Optional[Iterable[Optional[VectorType]]] = None,
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
@@ -2468,6 +2521,14 @@ class AsyncCollection:
             documents: an iterable of dictionaries, each a document to insert.
                 Documents may specify their `_id` field or leave it out, in which
                 case it will be added automatically.
+            vectors: an optional list of vectors (as many vectors as the provided
+                documents) to associate to the documents when inserting.
+                Each vector is added to the corresponding document prior to
+                insertion on database. The list can be a mixture of None and vectors,
+                in which case some documents will not have a vector, unless it is
+                specified in their "$vector" field already.
+                Passing vectors this way is indeed equivalent to the "$vector" field
+                of the documents, however the two are mutually exclusive.
             ordered: if True (default), the insertions are processed sequentially.
                 If False, they can occur in arbitrary order and possibly concurrently.
             chunk_size: how many documents to include in a single API request.
@@ -2480,7 +2541,7 @@ class AsyncCollection:
         Returns:
             an InsertManyResult object.
 
-        Example:
+        Examples:
             >>> async def write_and_count(acol: AsyncCollection) -> None:
             ...             count0 = await acol.count_documents({}, upper_bound=10)
             ...             print("count0", count0)
@@ -2507,6 +2568,26 @@ class AsyncCollection:
             inserted1 ['e3c2a684-...', '1de4949f-...', '167dacc3-...']
             count1 3
             count2 53
+
+            # The following are three equivalent statements:
+            >>> asyncio.run(my_async_coll.insert_many(
+            ...     [{"tag": "a"}, {"tag": "b"}],
+            ...     vectors=[[1, 2], [3, 4]],
+            ... ))
+            InsertManyResult(...)
+            >>> asyncio.run(my_async_coll.insert_many(
+            ...     [{"tag": "a", "$vector": [1, 2]}, {"tag": "b"}],
+            ...     vectors=[None, [3, 4]],
+            ... ))
+            InsertManyResult(...)
+            >>> asyncio.run(my_async_coll.insert_many(
+            ...     [
+            ...         {"tag": "a", "$vector": [1, 2]},
+            ...         {"tag": "b", "$vector": [3, 4]},
+            ...     ]
+            ... ))
+            InsertManyResult(...)
+
 
         Note:
             Unordered insertions are executed with some degree of concurrency,
@@ -2548,8 +2629,7 @@ class AsyncCollection:
             _chunk_size = MAX_INSERT_NUM_DOCUMENTS
         else:
             _chunk_size = chunk_size
-        _documents = list(documents)  # TODO make this a chunked iterator
-        # TODO handle the auto-inserted-ids here (chunk-wise better)
+        _documents = _collate_vectors_to_documents(documents, vectors)
         raw_results: List[Dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:

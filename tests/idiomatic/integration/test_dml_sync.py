@@ -563,6 +563,29 @@ class TestDMLSync:
             )
         assert {doc["_id"] for doc in col.find()} == {"a", "b", "c", "d", "e"}
 
+    @pytest.mark.describe("test of collection insert_many with vectors, sync")
+    def test_collection_insert_many_vectors_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+        col.insert_many([{"t": 0}, {"t": 1}], vectors=[[0, 1], [1, 0]])
+        col.insert_many([{"t": 2, "$vector": [0, 2]}, {"t": 3}], vectors=[None, [2, 0]])
+        col.insert_many(
+            [{"t": 4, "$vector": [0, 3]}, {"t": 5, "$vector": [3, 0]}],
+            vectors=[None, None],
+        )
+
+        assert all(len(doc["$vector"]) == 2 for doc in col.find({}))
+
+        with pytest.raises(ValueError):
+            col.insert_many(
+                [{"t": "z1"}, {"t": "z2"}, {"t": "z3"}], vectors=[None, None]
+            )
+
+        with pytest.raises(ValueError):
+            col.insert_many([{"t": "z4", "$vector": [2, 2]}], vectors=[[1, 1]])
+
     @pytest.mark.describe("test of collection find_one, sync")
     def test_collection_find_one_sync(
         self,

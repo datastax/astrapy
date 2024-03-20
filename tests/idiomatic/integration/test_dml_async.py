@@ -627,6 +627,32 @@ class TestDMLAsync:
             )
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "c", "d", "e"}
 
+    @pytest.mark.describe("test of collection insert_many with vectors, async")
+    async def test_collection_insert_many_vectors_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+        await acol.insert_many([{"t": 0}, {"t": 1}], vectors=[[0, 1], [1, 0]])
+        await acol.insert_many(
+            [{"t": 2, "$vector": [0, 2]}, {"t": 3}], vectors=[None, [2, 0]]
+        )
+        await acol.insert_many(
+            [{"t": 4, "$vector": [0, 3]}, {"t": 5, "$vector": [3, 0]}],
+            vectors=[None, None],
+        )
+
+        vectors = [doc["$vector"] async for doc in acol.find({})]
+        assert all(len(vec) == 2 for vec in vectors)
+
+        with pytest.raises(ValueError):
+            await acol.insert_many(
+                [{"t": "z1"}, {"t": "z2"}, {"t": "z3"}], vectors=[None, None]
+            )
+
+        with pytest.raises(ValueError):
+            await acol.insert_many([{"t": "z4", "$vector": [2, 2]}], vectors=[[1, 1]])
+
     @pytest.mark.describe("test of collection find_one, async")
     async def test_collection_find_one_async(
         self,
