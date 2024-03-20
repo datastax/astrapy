@@ -235,8 +235,8 @@ class TestDDLSync:
             not in database_on_secondary.list_collection_names()
         )
 
-    @pytest.mark.describe("test of collection command, sync")
-    def test_collection_command_sync(
+    @pytest.mark.describe("test of database command targeting collection, sync")
+    def test_database_command_on_collection_sync(
         self,
         sync_database: Database,
         sync_collection: Collection,
@@ -265,3 +265,12 @@ class TestDDLSync:
             {"findCollections": {}}, namespace=sync_database.namespace
         )
         assert cmd2 == cmd1
+
+    @pytest.mark.describe("test of database command, sync")
+    def test_collection_command_sync(
+        self,
+        sync_collection: Collection,
+    ) -> None:
+        cmd1 = sync_collection.command({"countDocuments": {}})
+        assert isinstance(cmd1, dict)
+        assert isinstance(cmd1["status"]["count"], int)

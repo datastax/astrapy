@@ -2131,6 +2131,34 @@ class Collection:
 
         return self.database.drop_collection(self, max_time_ms=max_time_ms)  # type: ignore[no-any-return]
 
+    def command(
+        self,
+        body: Dict[str, Any],
+        *,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Send a POST request to the Data API for this collection with
+        an arbitrary, caller-provided payload.
+
+        Args:
+            body: a JSON-serializable dictionary, the payload of the request.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+
+        Returns:
+            a dictionary with the response of the HTTP request.
+
+        Example:
+            >>> my_coll.command({"countDocuments": {}})
+            {'status': {'count': 123}}
+        """
+        return self.database.command(  # type: ignore[no-any-return]
+            body=body,
+            namespace=self.namespace,
+            collection_name=self.name,
+            max_time_ms=max_time_ms,
+        )
+
 
 class AsyncCollection:
     """
@@ -4244,3 +4272,31 @@ class AsyncCollection:
         """
 
         return await self.database.drop_collection(self, max_time_ms=max_time_ms)  # type: ignore[no-any-return]
+
+    async def command(
+        self,
+        body: Dict[str, Any],
+        *,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Send a POST request to the Data API for this collection with
+        an arbitrary, caller-provided payload.
+
+        Args:
+            body: a JSON-serializable dictionary, the payload of the request.
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+
+        Returns:
+            a dictionary with the response of the HTTP request.
+
+        Example:
+            >>> asyncio.await(my_async_coll.command({"countDocuments": {}}))
+            {'status': {'count': 123}}
+        """
+        return await self.database.command(  # type: ignore[no-any-return]
+            body=body,
+            namespace=self.namespace,
+            collection_name=self.name,
+            max_time_ms=max_time_ms,
+        )
