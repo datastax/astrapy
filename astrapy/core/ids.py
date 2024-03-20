@@ -14,18 +14,20 @@
 
 from __future__ import annotations
 
-DEFAULT_AUTH_PATH = "/api/rest/v1/auth"
+from uuid import uuid1, uuid3, uuid4, uuid5, UUID  # noqa: F401
 
-DEFAULT_JSON_API_PATH = "/api/json"
-DEFAULT_JSON_API_VERSION = "v1"
+from bson.objectid import ObjectId  # noqa: F401
+from uuid6 import uuid6, uuid7, uuid8  # noqa: F401
 
-DEFAULT_DEV_OPS_URL = "https://api.astra.datastax.com"
-DEFAULT_DEV_OPS_API_VERSION = "v2"
-DEFAULT_DEV_OPS_AUTH_HEADER = "Authorization"
 
-DEFAULT_TIMEOUT = 30000
-DEFAULT_AUTH_HEADER = "Token"
-DEFAULT_KEYSPACE_NAME = "default_keyspace"
-DEFAULT_REGION = "us-east1"
-
-MAX_INSERT_NUM_DOCUMENTS = 20
+__all__ = [
+    "ObjectId",
+    "uuid1",
+    "uuid3",
+    "uuid4",
+    "uuid5",
+    "uuid6",
+    "uuid7",
+    "uuid8",
+    "UUID",
+]

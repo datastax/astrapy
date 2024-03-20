@@ -85,3 +85,19 @@ class VectorMetric:
     DOT_PRODUCT = "dot_product"
     EUCLIDEAN = "euclidean"
     COSINE = "cosine"
+
+
+class DefaultIdType:
+    """
+    Admitted values for the "default_id_type" parameter when creating collections
+    through the database `create_collection` method.
+    """
+
+    def __init__(self) -> None:
+        raise NotImplementedError
+
+    UUID = "uuid"
+    OBJECTID = "objectId"
+    UUIDV6 = "uuidv6"
+    UUIDV7 = "uuidv7"
+    DEFAULT = "uuid"

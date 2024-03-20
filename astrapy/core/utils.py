@@ -1,3 +1,17 @@
+# Copyright DataStax, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 from typing import (
     Any,
@@ -19,6 +33,7 @@ import httpx
 from astrapy import __version__
 from astrapy.core.defaults import DEFAULT_AUTH_HEADER, DEFAULT_TIMEOUT
 from astrapy.core.core_types import API_RESPONSE
+from astrapy.core.ids import ObjectId, UUID
 
 
 class CustomLogger(logging.Logger):
@@ -313,10 +328,28 @@ def convert_to_ejson_date_object(
     return {"$date": int(time.mktime(date_value.timetuple()) * 1000)}
 
 
+def convert_to_ejson_uuid_object(uuid_value: UUID) -> Dict[str, str]:
+    return {"$uuid": str(uuid_value)}
+
+
+def convert_to_ejson_objectid_object(objectid_value: ObjectId) -> Dict[str, str]:
+    return {"$objectId": str(objectid_value)}
+
+
 def convert_ejson_date_object_to_datetime(
     date_object: Dict[str, int]
 ) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(date_object["$date"] / 1000.0)
+
+
+def convert_ejson_uuid_object_to_uuid(uuid_object: Dict[str, str]) -> UUID:
+    return UUID(uuid_object["$uuid"])
+
+
+def convert_ejson_objectid_object_to_objectid(
+    objectid_object: Dict[str, str]
+) -> ObjectId:
+    return ObjectId(objectid_object["$objectId"])
 
 
 def _normalize_payload_value(path: List[str], value: Any) -> Any:
@@ -342,6 +375,10 @@ def _normalize_payload_value(path: List[str], value: Any) -> Any:
         else:
             if isinstance(value, datetime.datetime) or isinstance(value, datetime.date):
                 return convert_to_ejson_date_object(value)
+            elif isinstance(value, UUID):
+                return convert_to_ejson_uuid_object(value)
+            elif isinstance(value, ObjectId):
+                return convert_to_ejson_objectid_object(value)
             else:
                 return value
 
@@ -375,6 +412,12 @@ def _restore_response_value(path: List[str], value: Any) -> Any:
         if len(value) == 1 and "$date" in value:
             # this is `{"$date": 123456}`, restore to datetime.datetime
             return convert_ejson_date_object_to_datetime(value)
+        elif len(value) == 1 and "$uuid" in value:
+            # this is `{"$uuid": "abc123..."}`, restore to UUID
+            return convert_ejson_uuid_object_to_uuid(value)
+        elif len(value) == 1 and "$objectId" in value:
+            # this is `{"$objectId": "123abc..."}`, restore to ObjectId
+            return convert_ejson_objectid_object_to_objectid(value)
         else:
             return {k: _restore_response_value(path + [k], v) for k, v in value.items()}
     elif isinstance(value, list):

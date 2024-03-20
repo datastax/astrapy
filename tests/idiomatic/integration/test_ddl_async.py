@@ -14,13 +14,17 @@
 
 import pytest
 
+import os
+import time
+
 from ..conftest import (
     AstraDBCredentials,
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
 )
 from astrapy.info import DatabaseInfo
-from astrapy.constants import VectorMetric
+from astrapy.constants import DefaultIdType, VectorMetric
+from astrapy.ids import ObjectId, UUID
 from astrapy import AsyncCollection, AsyncDatabase
 
 
@@ -64,6 +68,75 @@ class TestDDLAsync:
         dc_response2 = await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         assert dc_response2 == {"ok": 1}
         await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
+
+    @pytest.mark.skipif(
+        any(
+            [
+                ".astra-dev." not in os.environ["ASTRA_DB_API_ENDPOINT"],
+                "europe-west4" not in os.environ["ASTRA_DB_API_ENDPOINT"],
+            ]
+        ),
+        reason="A dev database in europe-west4 is required for this test",
+    )
+    @pytest.mark.describe("test of default_id_type in creating collections, async")
+    async def test_collection_default_id_type_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        ID_TEST_COLLECTION_NAME_ROOT = "id_type_test_"
+
+        acol = await async_database.create_collection(
+            ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUID,
+            default_id_type=DefaultIdType.UUID,
+        )
+        assert (await acol.options())["default_id_type"] == DefaultIdType.UUID
+        await acol.insert_one({"role": "probe"})
+        doc = await acol.find_one({})
+        assert isinstance(doc["_id"], UUID)
+        await acol.drop()
+
+        time.sleep(2)
+        acol = await async_database.create_collection(
+            ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV6,
+            default_id_type=DefaultIdType.UUIDV6,
+        )
+        assert (await acol.options())["default_id_type"] == DefaultIdType.UUIDV6
+        await acol.insert_one({"role": "probe"})
+        doc = await acol.find_one({})
+        assert isinstance(doc["_id"], UUID)
+        assert doc["_id"].version == 6
+        await acol.drop()
+
+        time.sleep(2)
+        acol = await async_database.create_collection(
+            ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV7,
+            default_id_type=DefaultIdType.UUIDV7,
+        )
+        assert (await acol.options())["default_id_type"] == DefaultIdType.UUIDV7
+        await acol.insert_one({"role": "probe"})
+        doc = await acol.find_one({})
+        assert isinstance(doc["_id"], UUID)
+        assert doc["_id"].version == 7
+        await acol.drop()
+
+        time.sleep(2)
+        acol = await async_database.create_collection(
+            ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.DEFAULT,
+            default_id_type=DefaultIdType.DEFAULT,
+        )
+        assert (await acol.options())["default_id_type"] == DefaultIdType.DEFAULT
+        await acol.drop()
+
+        time.sleep(2)
+        acol = await async_database.create_collection(
+            ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.OBJECTID,
+            default_id_type=DefaultIdType.OBJECTID,
+        )
+        assert (await acol.options())["default_id_type"] == DefaultIdType.OBJECTID
+        await acol.insert_one({"role": "probe"})
+        doc = await acol.find_one({})
+        assert isinstance(doc["_id"], ObjectId)
+        await acol.drop()
 
     @pytest.mark.describe("test of collection drop, async")
     async def test_collection_drop_async(self, async_database: AsyncDatabase) -> None:

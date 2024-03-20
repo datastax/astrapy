@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import datetime
+import os
 
 from typing import Any, Dict, List
 
@@ -32,6 +33,7 @@ from astrapy.operations import (
     AsyncDeleteOne,
     AsyncDeleteMany,
 )
+from astrapy.ids import ObjectId, UUID
 
 
 class TestDMLAsync:
@@ -1182,3 +1184,111 @@ class TestDMLAsync:
         assert len(no_id_found_docs) == 2
         assert {"a": 1} in no_id_found_docs
         assert {"b": 1, "newfield": True} in no_id_found_docs
+
+    @pytest.mark.skipif(
+        any(
+            [
+                ".astra-dev." not in os.environ["ASTRA_DB_API_ENDPOINT"],
+                "europe-west4" not in os.environ["ASTRA_DB_API_ENDPOINT"],
+            ]
+        ),
+        reason="A dev database in europe-west4 is required for this test",
+    )
+    @pytest.mark.describe("test of the various ids in the document id field, async")
+    async def test_collection_ids_as_doc_id_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        types_and_ids = {
+            "uuid1": UUID("8ccd6ff8-e61b-11ee-a2fc-7df4a8c4164b"),
+            "uuid3": UUID("6fa459ea-ee8a-3ca4-894e-db77e160355e"),
+            "uuid4": UUID("4f16cba8-1115-43ab-aa39-3a9c29f37db5"),
+            "uuid5": UUID("886313e1-3b8a-5372-9b90-0c9aee199e5d"),
+            "uuid6": UUID("1eee61b9-8f2d-69ad-8ebb-5054d2a1a2c0"),
+            "uuid7": UUID("018e57e5-f586-7ed6-be55-6b0de3041116"),
+            "uuid8": UUID("018e57e5-fbcd-8bd4-b794-be914f2c4c85"),
+            "objectid": ObjectId("65f9cfa0d7fabb3f255c25a1"),
+        }
+
+        await async_empty_collection.insert_many(
+            [
+                {"_id": t_id, "id_type": t_id_type}
+                for t_id_type, t_id in types_and_ids.items()
+            ]
+        )
+
+        for t_id_type, t_id in types_and_ids.items():
+            this_doc = await async_empty_collection.find_one(
+                {"_id": t_id},
+                projection={"id_type": True},
+            )
+            assert this_doc is not None
+            assert this_doc["id_type"] == t_id_type
+
+    @pytest.mark.skipif(
+        any(
+            [
+                ".astra-dev." not in os.environ["ASTRA_DB_API_ENDPOINT"],
+                "europe-west4" not in os.environ["ASTRA_DB_API_ENDPOINT"],
+            ]
+        ),
+        reason="A dev database in europe-west4 is required for this test",
+    )
+    @pytest.mark.describe(
+        "test of ids in various parameters of various DML methods, async"
+    )
+    async def test_collection_ids_throughout_dml_methods_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        types_and_ids = {
+            "uuid1": UUID("8ccd6ff8-e61b-11ee-a2fc-7df4a8c4164b"),
+            "uuid3": UUID("6fa459ea-ee8a-3ca4-894e-db77e160355e"),
+            "uuid4": UUID("4f16cba8-1115-43ab-aa39-3a9c29f37db5"),
+            "uuid5": UUID("886313e1-3b8a-5372-9b90-0c9aee199e5d"),
+            "uuid6": UUID("1eee61b9-8f2d-69ad-8ebb-5054d2a1a2c0"),
+            "uuid7": UUID("018e57e5-f586-7ed6-be55-6b0de3041116"),
+            "uuid8": UUID("018e57e5-fbcd-8bd4-b794-be914f2c4c85"),
+            "objectid": ObjectId("65f9cfa0d7fabb3f255c25a1"),
+        }
+        wide_document = {
+            "all_ids": types_and_ids,
+            "_id": 0,
+            "name": "wide_document",
+            "touched_times": 0,
+        }
+        await async_empty_collection.insert_one(wide_document)
+
+        full_doc = await async_empty_collection.find_one({})
+        assert full_doc == wide_document
+
+        for t_id_type, t_id in types_and_ids.items():
+            doc = await async_empty_collection.find_one(
+                {f"all_ids.{t_id_type}": t_id}, projection={"name": True}
+            )
+            assert doc is not None
+            assert doc["name"] == "wide_document"
+
+        for upd_index, (t_id_type, t_id) in enumerate(types_and_ids.items()):
+            updated_doc = await async_empty_collection.find_one_and_update(
+                {f"all_ids.{t_id_type}": t_id},
+                {"$inc": {"touched_times": 1}},
+                return_document=ReturnDocument.AFTER,
+            )
+            assert updated_doc is not None
+            assert updated_doc["touched_times"] == upd_index + 1
+
+        await async_empty_collection.delete_one({"_id": 0})
+
+        await async_empty_collection.insert_many(
+            [{"_id": t_id} for t_id in types_and_ids.values()]
+        )
+
+        count = await async_empty_collection.count_documents({}, upper_bound=20)
+        assert count == len(types_and_ids)
+
+        for del_index, t_id in enumerate(types_and_ids.values()):
+            del_result = await async_empty_collection.delete_one({"_id": t_id})
+            assert del_result.deleted_count == 1
+            count = await async_empty_collection.count_documents({}, upper_bound=20)
+            assert count == len(types_and_ids) - del_index - 1
