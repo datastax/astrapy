@@ -18,7 +18,7 @@ Unit tests for the parsing of API endpoints and related
 
 import pytest
 
-from astrapy.info import ParsedAPIEndpoint, parse_api_endpoint
+from astrapy.admin import ParsedAPIEndpoint, parse_api_endpoint
 
 
 @pytest.mark.describe("test of parsing API endpoints")

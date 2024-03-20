@@ -27,7 +27,8 @@ from astrapy.exceptions import (
     base_timeout_info,
 )
 from astrapy.cursors import AsyncCommandCursor, CommandCursor
-from astrapy.info import DatabaseInfo, parse_api_endpoint, get_database_info
+from astrapy.info import DatabaseInfo
+from astrapy.admin import parse_api_endpoint, get_database_info
 
 if TYPE_CHECKING:
     from astrapy.collection import AsyncCollection, Collection

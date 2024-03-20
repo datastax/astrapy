@@ -19,7 +19,7 @@ from astrapy import Collection, Database
 
 from astrapy.exceptions import DataAPITimeoutException
 from astrapy.operations import DeleteMany, InsertMany
-from astrapy.info import get_database_info
+from astrapy.admin import get_database_info
 
 
 class TestTimeoutSync:
