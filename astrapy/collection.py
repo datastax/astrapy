@@ -755,6 +755,7 @@ class Collection:
         skip: Optional[int] = None,
         limit: Optional[int] = None,
         vector: Optional[VectorType] = None,
+        include_similarity: Optional[bool] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> Cursor:
@@ -786,16 +787,22 @@ class Collection:
             skip: with this integer parameter, what would be the first `skip`
                 documents returned by the query are discarded, and the results
                 start from the (skip+1)-th document.
+                This parameter cannot be used when passing 'vector' (i.e. with ANN search).
             limit: this (integer) parameter sets a limit over how many documents
                 are returned. Once `limit` is reached (or the cursor is exhausted
                 for lack of matching documents), nothing more is returned.
-             vector: a suitable vector, i.e. a list of float numbers of the appropriate
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to perform vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search).
                 When running similarity search on a collection, no other sorting
                 criteria can be specified. Moreover, there is an upper bound
                 to the number of documents that can be returned. See the Data API
                 documentation for details.
+            include_similarity: a boolean to request the numeric value of the
+                similarity to be returned as an added "$similarity" key in each
+                returned document. Can only be used for vector ANN search, i.e.
+                when either `vector` is supplied or the `sort` parameter has the
+                shape {"$vector": ...}.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
             max_time_ms: a timeout, in milliseconds, for each single one
@@ -867,6 +874,10 @@ class Collection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector)
+        if include_similarity is not None and "$vector" not in (_sort or {}):
+            raise ValueError(
+                "Cannot use `include_similarity` when not searching through `vector`."
+            )
         return (
             Cursor(
                 collection=self,
@@ -878,6 +889,7 @@ class Collection:
             .skip(skip)
             .limit(limit)
             .sort(_sort)
+            .include_similarity(include_similarity)
         )
 
     def find_one(
@@ -886,6 +898,7 @@ class Collection:
         *,
         projection: Optional[ProjectionType] = None,
         vector: Optional[VectorType] = None,
+        include_similarity: Optional[bool] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
@@ -913,6 +926,11 @@ class Collection:
                 similar document in the collection matching the filter.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            include_similarity: a boolean to request the numeric value of the
+                similarity to be returned as an added "$similarity" key in the
+                returned document. Can only be used for vector ANN search, i.e.
+                when either `vector` is supplied or the `sort` parameter has the
+                shape {"$vector": ...}.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
@@ -948,6 +966,7 @@ class Collection:
             skip=None,
             limit=1,
             vector=vector,
+            include_similarity=include_similarity,
             sort=sort,
             max_time_ms=max_time_ms,
         )
@@ -2736,6 +2755,7 @@ class AsyncCollection:
         skip: Optional[int] = None,
         limit: Optional[int] = None,
         vector: Optional[VectorType] = None,
+        include_similarity: Optional[bool] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> AsyncCursor:
@@ -2767,16 +2787,22 @@ class AsyncCollection:
             skip: with this integer parameter, what would be the first `skip`
                 documents returned by the query are discarded, and the results
                 start from the (skip+1)-th document.
+                This parameter cannot be used when passing 'vector' (i.e. with ANN search).
             limit: this (integer) parameter sets a limit over how many documents
                 are returned. Once `limit` is reached (or the cursor is exhausted
                 for lack of matching documents), nothing more is returned.
-             vector: a suitable vector, i.e. a list of float numbers of the appropriate
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to perform vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search).
                 When running similarity search on a collection, no other sorting
                 criteria can be specified. Moreover, there is an upper bound
                 to the number of documents that can be returned. See the Data API
                 documentation for details.
+            include_similarity: a boolean to request the numeric value of the
+                similarity to be returned as an added "$similarity" key in each
+                returned document. Can only be used for vector ANN search, i.e.
+                when either `vector` is supplied or the `sort` parameter has the
+                shape {"$vector": ...}.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
             max_time_ms: a timeout, in milliseconds, for each single one
@@ -2857,6 +2883,10 @@ class AsyncCollection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector)
+        if include_similarity is not None and "$vector" not in (_sort or {}):
+            raise ValueError(
+                "Cannot use `include_similarity` when not searching through `vector`."
+            )
         return (
             AsyncCursor(
                 collection=self,
@@ -2868,6 +2898,7 @@ class AsyncCollection:
             .skip(skip)
             .limit(limit)
             .sort(_sort)
+            .include_similarity(include_similarity)
         )
 
     async def find_one(
@@ -2876,6 +2907,7 @@ class AsyncCollection:
         *,
         projection: Optional[ProjectionType] = None,
         vector: Optional[VectorType] = None,
+        include_similarity: Optional[bool] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
@@ -2903,6 +2935,11 @@ class AsyncCollection:
                 similar document in the collection matching the filter.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            include_similarity: a boolean to request the numeric value of the
+                similarity to be returned as an added "$similarity" key in the
+                returned document. Can only be used for vector ANN search, i.e.
+                when either `vector` is supplied or the `sort` parameter has the
+                shape {"$vector": ...}.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
@@ -2949,8 +2986,9 @@ class AsyncCollection:
             projection=projection,
             skip=None,
             limit=1,
-            sort=sort,
             vector=vector,
+            include_similarity=include_similarity,
+            sort=sort,
             max_time_ms=max_time_ms,
         )
         try:

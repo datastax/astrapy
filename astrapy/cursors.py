@@ -172,6 +172,7 @@ class BaseCursor:
     _started_time_s: Optional[float]
     _limit: Optional[int]
     _skip: Optional[int]
+    _include_similarity: Optional[bool]
     _sort: Optional[Dict[str, Any]]
     _started: bool
     _retrieved: int
@@ -246,6 +247,7 @@ class BaseCursor:
         overall_max_time_ms: Optional[int] = None,
         limit: Optional[int] = None,
         skip: Optional[int] = None,
+        include_similarity: Optional[bool] = None,
         started: Optional[bool] = None,
         sort: Optional[Dict[str, Any]] = None,
     ) -> BC:
@@ -259,6 +261,11 @@ class BaseCursor:
         # Cursor treated as mutable within this function scope:
         new_cursor._limit = limit if limit is not None else self._limit
         new_cursor._skip = skip if skip is not None else self._skip
+        new_cursor._include_similarity = (
+            include_similarity
+            if include_similarity is not None
+            else self._include_similarity
+        )
         new_cursor._started = started if started is not None else self._started
         new_cursor._sort = sort if sort is not None else self._sort
         if started is False:
@@ -345,6 +352,22 @@ class BaseCursor:
         self._ensure_not_started()
         self._ensure_alive()
         self._limit = limit if limit != 0 else None
+        return self
+
+    def include_similarity(self: BC, include_similarity: Optional[bool]) -> BC:
+        """
+        Set a new `include_similarity` value for this cursor.
+
+        Args:
+            include_similarity: the new value to set
+
+        Returns:
+            this cursor itself.
+        """
+
+        self._ensure_not_started()
+        self._ensure_alive()
+        self._include_similarity = include_similarity
         return self
 
     @property
@@ -451,6 +474,7 @@ class Cursor(BaseCursor):
             self._max_time_ms = max_time_ms
         self._limit: Optional[int] = None
         self._skip: Optional[int] = None
+        self._include_similarity: Optional[bool] = None
         self._sort: Optional[Dict[str, Any]] = None
         self._started = False
         self._retrieved = 0
@@ -508,6 +532,7 @@ class Cursor(BaseCursor):
             for k, v in {
                 "limit": self._limit,
                 "skip": self._skip,
+                "includeSimilarity": self._include_similarity,
             }.items()
             if v is not None
         }
@@ -644,6 +669,7 @@ class AsyncCursor(BaseCursor):
             self._max_time_ms = max_time_ms
         self._limit: Optional[int] = None
         self._skip: Optional[int] = None
+        self._include_similarity: Optional[bool] = None
         self._sort: Optional[Dict[str, Any]] = None
         self._started = False
         self._retrieved = 0
@@ -701,6 +727,7 @@ class AsyncCursor(BaseCursor):
             for k, v in {
                 "limit": self._limit,
                 "skip": self._skip,
+                "includeSimilarity": self._include_similarity,
             }.items()
             if v is not None
         }
@@ -731,6 +758,7 @@ class AsyncCursor(BaseCursor):
         *,
         limit: Optional[int] = None,
         skip: Optional[int] = None,
+        include_similarity: Optional[bool] = None,
         started: Optional[bool] = None,
         sort: Optional[Dict[str, Any]] = None,
     ) -> Cursor:
@@ -744,6 +772,11 @@ class AsyncCursor(BaseCursor):
         # Cursor treated as mutable within this function scope:
         new_cursor._limit = limit if limit is not None else self._limit
         new_cursor._skip = skip if skip is not None else self._skip
+        new_cursor._include_similarity = (
+            include_similarity
+            if include_similarity is not None
+            else self._include_similarity
+        )
         new_cursor._started = started if started is not None else self._started
         new_cursor._sort = sort if sort is not None else self._sort
         if started is False:

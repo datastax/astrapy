@@ -537,6 +537,36 @@ class TestDMLSync:
         assert top_doc is not None
         assert top_doc["tag"] == "D"
 
+        fdoc_no_s = sync_empty_collection.find(
+            {}, vector=[1, 1], include_similarity=False
+        ).__next__()
+        fdoc_wi_s = sync_empty_collection.find(
+            {}, vector=[1, 1], include_similarity=True
+        ).__next__()
+        assert fdoc_no_s is not None
+        assert fdoc_wi_s is not None
+        assert "$similarity" not in fdoc_no_s
+        assert "$similarity" in fdoc_wi_s
+        assert fdoc_wi_s["$similarity"] > 0.0
+
+        f1doc_no_s = sync_empty_collection.find_one(
+            {}, vector=[1, 1], include_similarity=False
+        )
+        f1doc_wi_s = sync_empty_collection.find_one(
+            {}, vector=[1, 1], include_similarity=True
+        )
+        assert f1doc_no_s is not None
+        assert f1doc_wi_s is not None
+        assert "$similarity" not in f1doc_no_s
+        assert "$similarity" in f1doc_wi_s
+        assert f1doc_wi_s["$similarity"] > 0.0
+
+        with pytest.raises(ValueError):
+            sync_empty_collection.find({}, include_similarity=True)
+
+        with pytest.raises(ValueError):
+            sync_empty_collection.find_one({}, include_similarity=True)
+
     @pytest.mark.describe("test of collection insert_many, sync")
     def test_collection_insert_many_sync(
         self,
