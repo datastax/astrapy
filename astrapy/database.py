@@ -36,6 +36,7 @@ def _validate_create_collection_options(
     dimension: Optional[int] = None,
     metric: Optional[str] = None,
     indexing: Optional[Dict[str, Any]] = None,
+    default_id_type: Optional[str] = None,
     additional_options: Optional[Dict[str, Any]] = None,
 ) -> None:
     if additional_options:
@@ -51,6 +52,14 @@ def _validate_create_collection_options(
                 "cannot have a `indexing` key. Please use the specific "
                 "method parameter."
             )
+        if "defaultId" in additional_options and default_id_type is not None:
+            # this leaves the workaround to pass more info in the defaultId
+            # should that become part of the specs:
+            raise ValueError(
+                "`additional_options` dict parameter to create_collection "
+                "cannot have a `defaultId` key when passing the "
+                "`default_id_type` parameter as well."
+            )
     if dimension is None and metric is not None:
         raise ValueError(
             "Cannot specify `metric` and not `vector_dimension` in the "
@@ -65,14 +74,28 @@ def _recast_api_collection_dict(api_coll_dict: Dict[str, Any]) -> Dict[str, Any]
     _indexing = _options.get("indexing") or {}
     _v_dimension = _v_options0.get("dimension")
     _v_metric = _v_options0.get("metric")
+    _default_id = _options.get("defaultId")
+    # defaultId may potentially in the future have other subfields than 'type':
+    if _default_id:
+        _default_id_type = _default_id.get("type")
+        _rest_default_id = {k: v for k, v in _default_id.items() if k != "type"}
+    else:
+        _default_id_type = None
+        _rest_default_id = None
     _additional_options = {
-        k: v for k, v in _options.items() if k not in {"vector", "indexing"}
+        **{
+            k: v
+            for k, v in _options.items()
+            if k not in {"vector", "indexing", "defaultId"}
+        },
+        **(_rest_default_id if _rest_default_id else {}),
     }
     recast_dict0 = {
         "name": _name,
         "dimension": _v_dimension,
         "metric": _v_metric,
         "indexing": _indexing,
+        "default_id_type": _default_id_type,
         "additional_options": _additional_options,
     }
     recast_dict = {k: v for k, v in recast_dict0.items() if v}
@@ -385,6 +408,7 @@ class Database:
         dimension: Optional[int] = None,
         metric: Optional[str] = None,
         indexing: Optional[Dict[str, Any]] = None,
+        default_id_type: Optional[str] = None,
         additional_options: Optional[Dict[str, Any]] = None,
         check_exists: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
@@ -412,6 +436,12 @@ class Database:
                     {"deny": [...]}
                 or
                     {"allow": [...]}
+            default_id_type: this sets what type of IDs the API server will
+                generate when inserting documents that do not specify their
+                `_id` field explicitly. Can be set to any of the values
+                `DefaultIdType.UUID`, `DefaultIdType.OBJECTID`,
+                `DefaultIdType.UUIDV6`, `DefaultIdType.UUIDV7`,
+                `DefaultIdType.DEFAULT`.
             additional_options: any further set of key-value pairs that will
                 be added to the "options" part of the payload when sending
                 the Data API command to create a collection.
@@ -438,11 +468,13 @@ class Database:
             dimension=dimension,
             metric=metric,
             indexing=indexing,
+            default_id_type=default_id_type,
             additional_options=additional_options,
         )
         _options = {
             **(additional_options or {}),
             **({"indexing": indexing} if indexing else {}),
+            **({"defaultId": {"type": default_id_type}} if default_id_type else {}),
         }
 
         if check_exists is None:
@@ -993,6 +1025,7 @@ class AsyncDatabase:
         dimension: Optional[int] = None,
         metric: Optional[str] = None,
         indexing: Optional[Dict[str, Any]] = None,
+        default_id_type: Optional[str] = None,
         additional_options: Optional[Dict[str, Any]] = None,
         check_exists: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
@@ -1020,6 +1053,12 @@ class AsyncDatabase:
                     {"deny": [...]}
                 or
                     {"allow": [...]}
+            default_id_type: this sets what type of IDs the API server will
+                generate when inserting documents that do not specify their
+                `_id` field explicitly. Can be set to any of the values
+                `DefaultIdType.UUID`, `DefaultIdType.OBJECTID`,
+                `DefaultIdType.UUIDV6`, `DefaultIdType.UUIDV7`,
+                `DefaultIdType.DEFAULT`.
             additional_options: any further set of key-value pairs that will
                 be added to the "options" part of the payload when sending
                 the Data API command to create a collection.
@@ -1050,11 +1089,13 @@ class AsyncDatabase:
             dimension=dimension,
             metric=metric,
             indexing=indexing,
+            default_id_type=default_id_type,
             additional_options=additional_options,
         )
         _options = {
             **(additional_options or {}),
             **({"indexing": indexing} if indexing else {}),
+            **({"defaultId": {"type": default_id_type}} if default_id_type else {}),
         }
 
         if check_exists is None:

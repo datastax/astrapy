@@ -14,13 +14,17 @@
 
 import pytest
 
+import os
+import time
+
 from ..conftest import (
     AstraDBCredentials,
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
 )
 from astrapy.info import DatabaseInfo
-from astrapy.constants import VectorMetric
+from astrapy.constants import DefaultIdType, VectorMetric
+from astrapy.ids import ObjectId, UUID
 from astrapy import Collection, Database
 
 
@@ -64,6 +68,75 @@ class TestDDLSync:
         dc_response2 = sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         assert dc_response2 == {"ok": 1}
         sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
+
+    @pytest.mark.skipif(
+        any(
+            [
+                ".astra-dev." not in os.environ["ASTRA_DB_API_ENDPOINT"],
+                "europe-west4" not in os.environ["ASTRA_DB_API_ENDPOINT"],
+            ]
+        ),
+        reason="A dev database in europe-west4 is required for this test",
+    )
+    @pytest.mark.describe("test of default_id_type in creating collections, sync")
+    def test_collection_default_id_type_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        ID_TEST_COLLECTION_NAME_ROOT = "id_type_test_"
+
+        col = sync_database.create_collection(
+            ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUID,
+            default_id_type=DefaultIdType.UUID,
+        )
+        assert col.options()["default_id_type"] == DefaultIdType.UUID
+        col.insert_one({"role": "probe"})
+        doc = col.find_one({})
+        assert isinstance(doc["_id"], UUID)
+        col.drop()
+
+        time.sleep(2)
+        col = sync_database.create_collection(
+            ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV6,
+            default_id_type=DefaultIdType.UUIDV6,
+        )
+        assert col.options()["default_id_type"] == DefaultIdType.UUIDV6
+        col.insert_one({"role": "probe"})
+        doc = col.find_one({})
+        assert isinstance(doc["_id"], UUID)
+        assert doc["_id"].version == 6
+        col.drop()
+
+        time.sleep(2)
+        col = sync_database.create_collection(
+            ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV7,
+            default_id_type=DefaultIdType.UUIDV7,
+        )
+        assert col.options()["default_id_type"] == DefaultIdType.UUIDV7
+        col.insert_one({"role": "probe"})
+        doc = col.find_one({})
+        assert isinstance(doc["_id"], UUID)
+        assert doc["_id"].version == 7
+        col.drop()
+
+        time.sleep(2)
+        col = sync_database.create_collection(
+            ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.DEFAULT,
+            default_id_type=DefaultIdType.DEFAULT,
+        )
+        assert col.options()["default_id_type"] == DefaultIdType.DEFAULT
+        col.drop()
+
+        time.sleep(2)
+        col = sync_database.create_collection(
+            ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.OBJECTID,
+            default_id_type=DefaultIdType.OBJECTID,
+        )
+        assert col.options()["default_id_type"] == DefaultIdType.OBJECTID
+        col.insert_one({"role": "probe"})
+        doc = col.find_one({})
+        assert isinstance(doc["_id"], ObjectId)
+        col.drop()
 
     @pytest.mark.describe("test of collection drop, sync")
     def test_collection_drop_sync(self, sync_database: Database) -> None:
