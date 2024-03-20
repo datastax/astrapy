@@ -28,6 +28,23 @@ from astrapy.exceptions import (
 )
 
 
+database_id_finder = re.compile(
+    "https://"
+    "([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
+    "-"
+    "([a-z0-9\-]+)"
+    ".apps.astra[\-]{0,1}"
+    "(dev|test)?"
+    ".datastax.com"
+)
+
+
+DEV_OPS_URL_MAP = {
+    "dev": "https://api.dev.cloud.datastax.com",
+    "test": "https://api.test.cloud.datastax.com",
+}
+
+
 @dataclass
 class ParsedAPIEndpoint:
     """
@@ -43,17 +60,6 @@ class ParsedAPIEndpoint:
     database_id: str
     region: str
     environment: str  # 'prod', 'dev', 'test'
-
-
-database_id_finder = re.compile(
-    "https://"
-    "([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
-    "-"
-    "([a-z0-9\-]+)"
-    ".apps.astra[\-]{0,1}"
-    "(dev|test)?"
-    ".datastax.com"
-)
 
 
 def parse_api_endpoint(api_endpoint: str) -> Optional[ParsedAPIEndpoint]:
@@ -96,9 +102,12 @@ def get_database_info(
         If the API endpoint fails to be parsed, None is returned.
     """
 
-    astra_db_ops = AstraDBOps(token=token)
     parsed_endpoint = parse_api_endpoint(api_endpoint)
     if parsed_endpoint:
+        astra_db_ops = AstraDBOps(
+            token=token,
+            dev_ops_url=DEV_OPS_URL_MAP.get(parsed_endpoint.environment),
+        )
         try:
             gd_response = astra_db_ops.get_database(
                 database=parsed_endpoint.database_id,
