@@ -18,6 +18,7 @@ import pytest
 @pytest.mark.describe("test imports")
 def test_imports() -> None:
     from astrapy.results import (  # noqa: F401
+        OperationResult,
         DeleteResult,
         InsertOneResult,
         InsertManyResult,
@@ -46,6 +47,7 @@ def test_imports() -> None:
         ReturnDocument,
         SortDocuments,
         VectorMetric,
+        DefaultIdType,
     )
     from astrapy.info import (  # noqa: F401
         DatabaseInfo,
@@ -55,6 +57,37 @@ def test_imports() -> None:
         BaseCursor,
         Cursor,
         AsyncCursor,
+        CommandCursor,
+        AsyncCommandCursor,
+    )
+    from astrapy.exceptions import (  # noqa: F401
+        DevOpsAPIException,
+        DataAPIErrorDescriptor,
+        DataAPIDetailedErrorDescriptor,
+        DataAPIException,
+        DataAPITimeoutException,
+        CursorIsStartedException,
+        CollectionNotFoundException,
+        CollectionAlreadyExistsException,
+        TooManyDocumentsToCountException,
+        DataAPIFaultyResponseException,
+        DataAPIResponseException,
+        CumulativeOperationException,
+        InsertManyException,
+        DeleteManyException,
+        UpdateManyException,
+        BulkWriteException,
+    )
+    from astrapy.ids import (  # noqa: F401
+        ObjectId,
+        uuid1,
+        uuid3,
+        uuid4,
+        uuid5,
+        uuid6,
+        uuid7,
+        uuid8,
+        UUID,
     )
     from astrapy import (  # noqa: F401
         Database,

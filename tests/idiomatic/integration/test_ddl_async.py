@@ -158,15 +158,15 @@ class TestDDLAsync:
         assert isinstance(async_database.id, str)
         assert isinstance(async_database.name, str)
         assert async_database.namespace == astra_db_credentials_kwargs["namespace"]
-        assert isinstance(async_database.info, DatabaseInfo)
-        assert isinstance(async_database.info.raw_info, dict)
+        assert isinstance(async_database.info(), DatabaseInfo)
+        assert isinstance(async_database.info().raw_info, dict)
 
     @pytest.mark.describe("test of collection metainformation, async")
     async def test_get_collection_info_async(
         self,
         async_collection: AsyncCollection,
     ) -> None:
-        info = async_collection.info
+        info = async_collection.info()
         assert info.namespace == async_collection.namespace
         assert (
             info.namespace == async_collection._astra_db_collection.astra_db.namespace

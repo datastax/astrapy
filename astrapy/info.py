@@ -120,6 +120,15 @@ class DatabaseInfo:
         Most members of this object can be None. This happens when errors occur
         during DevOps API calls and usually signals that the Data API server
         is a deploy where concepts such as "region" or "database ID" do not apply.
+
+    Note:
+        The `raw_info` dictionary usually has a `region` key describing
+        the default region as configured in the database, which does not
+        necessarily (for multi-region databases) match the region through
+        which the connection is established: the latter is the one specified
+        by the "api endpoint" used for connecting. In other words, for multi-region
+        databases it is possible that
+            database_info.region != database_info.raw_info["region"]
     """
 
     id: Optional[str]

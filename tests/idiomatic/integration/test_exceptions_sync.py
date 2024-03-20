@@ -26,7 +26,6 @@ from astrapy.exceptions import (
     InsertManyException,
     TooManyDocumentsToCountException,
 )
-from astrapy.constants import SortDocuments
 
 from ..conftest import AstraDBCredentials
 
@@ -302,18 +301,25 @@ class TestExceptionsSync:
     ) -> None:
         hacked_ns = (astra_db_credentials_kwargs["namespace"] or "") + "_hacked"
         with pytest.raises(DevOpsAPIException):
-            sync_database._copy(namespace=hacked_ns).info
+            sync_database._copy(namespace=hacked_ns).info()
 
     @pytest.mark.describe("test of hard exceptions in cursors, sync")
     def test_cursor_hard_exceptions_sync(
         self,
         sync_empty_collection: Collection,
     ) -> None:
-        with pytest.raises(IndexError):
+        with pytest.raises(TypeError):
             sync_empty_collection.find(
                 {},
-                sort={"f": SortDocuments.ASCENDING},
-            )[100]
+                sort={"f": ValueError("nonserializable")},
+            ).distinct("a")
+        # # Note: this, i.e. cursor[i]/cursor[i:j], is disabled
+        # # pending full skip/limit support by the Data API.
+        # with pytest.raises(IndexError):
+        #     sync_empty_collection.find(
+        #         {},
+        #         sort={"f": SortDocuments.ASCENDING},
+        #     )[100]
 
     @pytest.mark.describe("test of custom exceptions in cursors, sync")
     def test_cursor_custom_exceptions_sync(

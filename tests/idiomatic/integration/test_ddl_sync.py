@@ -156,15 +156,15 @@ class TestDDLSync:
         assert isinstance(sync_database.id, str)
         assert isinstance(sync_database.name, str)
         assert sync_database.namespace == astra_db_credentials_kwargs["namespace"]
-        assert isinstance(sync_database.info, DatabaseInfo)
-        assert isinstance(sync_database.info.raw_info, dict)
+        assert isinstance(sync_database.info(), DatabaseInfo)
+        assert isinstance(sync_database.info().raw_info, dict)
 
     @pytest.mark.describe("test of collection metainformation, sync")
     def test_get_collection_info_sync(
         self,
         sync_collection: Collection,
     ) -> None:
-        info = sync_collection.info
+        info = sync_collection.info()
         assert info.namespace == sync_collection.namespace
         assert info.namespace == sync_collection._astra_db_collection.astra_db.namespace
 

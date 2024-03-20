@@ -327,7 +327,6 @@ class Collection:
                 collection_name=self.name,
             )
 
-    @property
     def info(self) -> CollectionInfo:
         """
         Information on the collection (name, location, database), in the
@@ -337,14 +336,21 @@ class Collection:
         to the collection internal configuration).
 
         Example:
-            >>> my_coll.info.database_info.region
+            >>> my_coll.info().database_info.region
             'eu-west-1'
-            >>> my_coll.info.full_name
+            >>> my_coll.info().full_name
             'default_keyspace.my_v_collection'
+
+        Note:
+            the returned CollectionInfo wraps, among other things,
+            the database information: as such, calling this method
+            triggers the same-named method of a Database object (which, in turn,
+            performs a HTTP request to the DevOps API).
+            See the documentation for `Database.info()` for more details.
         """
 
         return CollectionInfo(
-            database_info=self.database.info,
+            database_info=self.database.info(),
             namespace=self.namespace,
             name=self.name,
             full_name=self.full_name,
@@ -2163,7 +2169,6 @@ class AsyncCollection:
                 collection_name=self.name,
             )
 
-    @property
     def info(self) -> CollectionInfo:
         """
         Information on the collection (name, location, database), in the
@@ -2173,14 +2178,21 @@ class AsyncCollection:
         to the collection internal configuration).
 
         Example:
-            >>> my_async_coll.info.database_info.region
+            >>> my_async_coll.info().database_info.region
             'us-east1'
-            >>> my_async_coll.info.full_name
+            >>> my_async_coll.info().full_name
             'default_keyspace.my_v_collection'
+
+        Note:
+            the returned CollectionInfo wraps, among other things,
+            the database information: as such, calling this method
+            triggers the same-named method of a Database object (which, in turn,
+            performs a HTTP request to the DevOps API).
+            See the documentation for `Database.info()` for more details.
         """
 
         return CollectionInfo(
-            database_info=self.database.info,
+            database_info=self.database.info(),
             namespace=self.namespace,
             name=self.name,
             full_name=self.full_name,

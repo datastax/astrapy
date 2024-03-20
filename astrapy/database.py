@@ -156,7 +156,6 @@ class Database:
             caller_name=caller_name,
             caller_version=caller_version,
         )
-        self._database_info: Optional[DatabaseInfo] = None
 
     def __getattr__(self, collection_name: str) -> Collection:
         return self.get_collection(name=collection_name)
@@ -300,26 +299,32 @@ class Database:
             caller_version=caller_version,
         )
 
-    @property
     def info(self) -> DatabaseInfo:
         """
         Additional information on the database as a DatabaseInfo instance.
 
-        On accessing this property the first time, a call to the DevOps API
-        is made; it is then cached for subsequent access.
+        Some of the returned properties are dynamic throughout the lifetime
+        of the database (such as raw_info["keyspaces"]). For this reason,
+        each invocation of this method triggers a new request to the DevOps API.
 
         Example:
-            >>> my_db.info.region
+            >>> my_db.info().region
             'eu-west-1'
+
+            >>> my_db.info().raw_info['datacenters'][0]['dateCreated']
+            '2023-01-30T12:34:56Z'
+
+        Note:
+            see the DatabaseInfo documentation for a caveat about the difference
+            between the `region` and the `raw_info["region"]` attributes.
         """
 
-        if self._database_info is None:
-            self._database_info = get_database_info(
-                self._astra_db.api_endpoint,
-                token=self._astra_db.token,
-                namespace=self.namespace,
-            )
-        return self._database_info
+        database_info = get_database_info(
+            self._astra_db.api_endpoint,
+            token=self._astra_db.token,
+            namespace=self.namespace,
+        )
+        return database_info
 
     @property
     def id(self) -> Optional[str]:
@@ -331,7 +336,7 @@ class Database:
             '01234567-89ab-cdef-0123-456789abcdef'
         """
 
-        return self.info.id
+        return self.info().id
 
     @property
     def name(self) -> Optional[str]:
@@ -343,7 +348,7 @@ class Database:
             'the_application_database'
         """
 
-        return self.info.name
+        return self.info().name
 
     @property
     def namespace(self) -> str:
@@ -753,7 +758,6 @@ class AsyncDatabase:
             caller_name=caller_name,
             caller_version=caller_version,
         )
-        self._database_info: Optional[DatabaseInfo] = None
 
     def __getattr__(self, collection_name: str) -> AsyncCollection:
         return self.to_sync().get_collection(name=collection_name).to_async()
@@ -914,26 +918,32 @@ class AsyncDatabase:
             caller_version=caller_version,
         )
 
-    @property
     def info(self) -> DatabaseInfo:
         """
         Additional information on the database as a DatabaseInfo instance.
 
-        On accessing this property the first time, a call to the DevOps API
-        is made; it is then cached for subsequent access.
+        Some of the returned properties are dynamic throughout the lifetime
+        of the database (such as raw_info["keyspaces"]). For this reason,
+        each invocation of this method triggers a new request to the DevOps API.
 
         Example:
-            >>> my_async_db.info.region
+            >>> my_async_db.info().region
             'eu-west-1'
+
+            >>> my_async_db.info().raw_info['datacenters'][0]['dateCreated']
+            '2023-01-30T12:34:56Z'
+
+        Note:
+            see the DatabaseInfo documentation for a caveat about the difference
+            between the `region` and the `raw_info["region"]` attributes.
         """
 
-        if self._database_info is None:
-            self._database_info = get_database_info(
-                self._astra_db.api_endpoint,
-                token=self._astra_db.token,
-                namespace=self.namespace,
-            )
-        return self._database_info
+        database_info = get_database_info(
+            self._astra_db.api_endpoint,
+            token=self._astra_db.token,
+            namespace=self.namespace,
+        )
+        return database_info
 
     @property
     def id(self) -> Optional[str]:
@@ -945,7 +955,7 @@ class AsyncDatabase:
             '01234567-89ab-cdef-0123-456789abcdef'
         """
 
-        return self.info.id
+        return self.info().id
 
     @property
     def name(self) -> Optional[str]:
@@ -957,7 +967,7 @@ class AsyncDatabase:
             'the_application_database'
         """
 
-        return self.info.name
+        return self.info().name
 
     @property
     def namespace(self) -> str:

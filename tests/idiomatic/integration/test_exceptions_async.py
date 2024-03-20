@@ -28,7 +28,6 @@ from astrapy.exceptions import (
     InsertManyException,
     TooManyDocumentsToCountException,
 )
-from astrapy.constants import SortDocuments
 from astrapy.constants import DocumentType
 from astrapy.cursors import AsyncCursor
 
@@ -311,18 +310,25 @@ class TestExceptionsAsync:
     ) -> None:
         hacked_ns = (astra_db_credentials_kwargs["namespace"] or "") + "_hacked"
         with pytest.raises(DevOpsAPIException):
-            async_database._copy(namespace=hacked_ns).info
+            async_database._copy(namespace=hacked_ns).info()
 
     @pytest.mark.describe("test of hard exceptions in cursors, async")
     async def test_cursor_hard_exceptions_async(
         self,
         async_empty_collection: AsyncCollection,
     ) -> None:
-        with pytest.raises(IndexError):
-            async_empty_collection.find(
+        with pytest.raises(TypeError):
+            await async_empty_collection.find(
                 {},
-                sort={"f": SortDocuments.ASCENDING},
-            )[100]
+                sort={"f": ValueError("nonserializable")},
+            ).distinct("a")
+        # # Note: this, i.e. cursor[i]/cursor[i:j], is disabled
+        # # pending full skip/limit support by the Data API.
+        # with pytest.raises(IndexError):
+        #     async_empty_collection.find(
+        #         {},
+        #         sort={"f": SortDocuments.ASCENDING},
+        #     )[100]
 
     @pytest.mark.describe("test of custom exceptions in cursors, async")
     async def test_cursor_custom_exceptions_async(
