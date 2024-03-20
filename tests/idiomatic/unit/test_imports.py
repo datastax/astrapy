@@ -50,6 +50,7 @@ def test_imports() -> None:
         DefaultIdType,
     )
     from astrapy.info import (  # noqa: F401
+        ParsedAPIEndpoint,
         DatabaseInfo,
         CollectionInfo,
     )

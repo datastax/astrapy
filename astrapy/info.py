@@ -28,25 +28,53 @@ from astrapy.exceptions import (
 )
 
 
+@dataclass
+class ParsedAPIEndpoint:
+    """
+    The results of successfully parsing an Astra DB API endpoint, for internal
+    by database metadata-related functions.
+
+    Attributes:
+        database_id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+        region: a region ID, such as "us-west1".
+        environment: a label such as "prod", "dev", "test".
+    """
+
+    database_id: str
+    region: str
+    environment: str  # 'prod', 'dev', 'test'
+
+
 database_id_finder = re.compile(
-    "https://([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
+    "https://"
+    "([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
+    "-"
+    "([a-z0-9\-]+)"
+    ".apps.astra[\-]{0,1}"
+    "(dev|test)?"
+    ".datastax.com"
 )
 
 
-def find_database_id(api_endpoint: str) -> Optional[str]:
+def parse_api_endpoint(api_endpoint: str) -> Optional[ParsedAPIEndpoint]:
     """
-    Parse an API Endpoint into a database ID.
+    Parse an API Endpoint into a ParsedAPIEndpoint structure.
 
     Args:
         api_endpoint: a full API endpoint for the Data Api.
 
     Returns:
-        the database ID. If parsing fails, return None.
+        The parsed ParsedAPIEndpoint. If parsing fails, return None.
     """
 
     match = database_id_finder.match(api_endpoint)
     if match and match.groups():
-        return match.groups()[0]
+        d_id, d_re, d_en_x = match.groups()
+        return ParsedAPIEndpoint(
+            database_id=d_id,
+            region=d_re,
+            environment=d_en_x if d_en_x else "prod",
+        )
     else:
         return None
 
@@ -73,11 +101,12 @@ def get_database_info(
     """
 
     astra_db_ops = AstraDBOps(token=token)
-    database_id = find_database_id(api_endpoint)
-    if database_id:
+    parsed_endpoint = parse_api_endpoint(api_endpoint)
+    if parsed_endpoint:
         try:
             gd_response = astra_db_ops.get_database(
-                database=database_id, timeout_info=base_timeout_info(max_time_ms)
+                database=parsed_endpoint.database_id,
+                timeout_info=base_timeout_info(max_time_ms),
             )
         except httpx.TimeoutException as texc:
             raise to_dataapi_timeout_exception(texc)
@@ -86,10 +115,11 @@ def get_database_info(
             raise DevOpsAPIException(f"Namespace {namespace} not found on DB.")
         else:
             return DatabaseInfo(
-                id=database_id,
-                region=raw_info["region"],
+                id=parsed_endpoint.database_id,
+                region=parsed_endpoint.region,
                 namespace=namespace,
                 name=raw_info["name"],
+                environment=parsed_endpoint.environment,
                 raw_info=raw_info,
             )
     else:
@@ -98,6 +128,7 @@ def get_database_info(
             region=None,
             namespace=namespace,
             name=None,
+            environment=None,
             raw_info=None,
         )
 
@@ -114,6 +145,7 @@ class DatabaseInfo:
         namespace: the namespace this DB is set to work with.
         name: the database name. Not necessarily unique: there can be multiple
             databases with the same name.
+        environment: a label such as "prod", "dev" or "test"
         raw_info: the full response from the DevOPS API call to get this info.
 
     Note:
@@ -135,6 +167,7 @@ class DatabaseInfo:
     region: Optional[str]
     namespace: str
     name: Optional[str]
+    environment: Optional[str]
     raw_info: Optional[Dict[str, Any]]
 
 
