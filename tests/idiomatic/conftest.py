@@ -71,7 +71,7 @@ def sync_collection(
     collection = sync_database.create_collection(
         TEST_COLLECTION_NAME,
         dimension=2,
-        metric=VectorMetric.DOT_PRODUCT,
+        metric=VectorMetric.COSINE,
         indexing={"deny": ["not_indexed"]},
     )
     yield collection

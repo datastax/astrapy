@@ -475,6 +475,47 @@ class TestDMLSync:
         with pytest.raises(ValueError):
             sync_empty_collection.distinct("root.subf..subsubf")
 
+    @pytest.mark.describe("test of collection find, find_one with vectors, sync")
+    def test_collection_find_find_one_vectors_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        q_vector = [3, 3]
+        sync_empty_collection.insert_many(
+            [
+                {"tag": "A", "$vector": [4, 5]},
+                {"tag": "B", "$vector": [3, 4]},
+                {"tag": "C", "$vector": [3, 2]},
+                {"tag": "D", "$vector": [4, 1]},
+                {"tag": "E", "$vector": [2, 5]},
+            ]
+        )
+
+        hits = list(
+            sync_empty_collection.find(
+                {},
+                projection=["tag"],
+                limit=3,
+                vector=q_vector,
+            )
+        )
+        assert [hit["tag"] for hit in hits] == ["A", "B", "C"]
+
+        with pytest.raises(ValueError):
+            list(
+                sync_empty_collection.find(
+                    {},
+                    projection=["tag"],
+                    limit=3,
+                    vector=q_vector,
+                    sort={"tag": SortDocuments.DESCENDING},
+                )
+            )
+
+        top_doc = sync_empty_collection.find_one({}, vector=[1, 0])
+        assert top_doc is not None
+        assert top_doc["tag"] == "D"
+
     @pytest.mark.describe("test of collection insert_many, sync")
     def test_collection_insert_many_sync(
         self,
@@ -734,6 +775,23 @@ class TestDMLSync:
         )
         assert set(sync_empty_collection.distinct("seq", filter={"ts": 1})) == {1, 2}
 
+    @pytest.mark.describe("test of replace_one with vectors, sync")
+    def test_collection_replace_one_vector_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+        col.insert_many(
+            [
+                {"tag": "h", "$vector": [10, 5]},
+                {"tag": "v", "$vector": [2, 20]},
+            ]
+        )
+        result = col.replace_one({}, {"new_doc": True}, vector=[0, 1])
+        assert result.update_info["updatedExisting"]
+
+        assert col.find_one({"tag": "h"}) is not None
+
     @pytest.mark.describe("test of update_one, sync")
     def test_collection_update_one_sync(
         self,
@@ -860,6 +918,22 @@ class TestDMLSync:
 
         fo_result4 = sync_empty_collection.find_one_and_delete({}, sort={"f": 1})
         assert fo_result4 is None
+
+    @pytest.mark.describe("test of collection find_one_and_delete with vectors, sync")
+    def test_collection_find_one_and_delete_vectors_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+        col.insert_many(
+            [
+                {"tag": "h", "$vector": [10, 5]},
+                {"tag": "v", "$vector": [2, 20]},
+            ]
+        )
+        deleted = col.find_one_and_delete({}, vector=[0, 1])
+        assert deleted is not None
+        assert deleted["tag"] == "v"
 
     @pytest.mark.describe("test of find_one_and_update, sync")
     def test_collection_find_one_and_update_sync(

@@ -45,6 +45,7 @@ from astrapy.constants import (
     ProjectionType,
     ReturnDocument,
     SortType,
+    VectorType,
     normalize_optional_projection,
 )
 from astrapy.database import AsyncDatabase, Database
@@ -95,6 +96,20 @@ def _prepare_update_info(statuses: List[Dict[str, Any]]) -> Dict[str, Any]:
         },
         **ups_dict,
     }
+
+
+def _collate_vector_to_sort(
+    sort: Optional[SortType] = None,
+    vector: Optional[VectorType] = None,
+) -> Optional[SortType]:
+    if vector is None:
+        return sort
+    else:
+        _vsort = {"$vector": vector}
+        if sort is None:
+            return _vsort
+        else:
+            raise ValueError("The `vector` and `sort` clauses are mutually exclusive.")
 
 
 class Collection:
@@ -667,6 +682,7 @@ class Collection:
         projection: Optional[ProjectionType] = None,
         skip: Optional[int] = None,
         limit: Optional[int] = None,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> Cursor:
@@ -701,6 +717,13 @@ class Collection:
             limit: this (integer) parameter sets a limit over how many documents
                 are returned. Once `limit` is reached (or the cursor is exhausted
                 for lack of matching documents), nothing more is returned.
+             vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to perform vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search).
+                When running similarity search on a collection, no other sorting
+                criteria can be specified. Moreover, there is an upper bound
+                to the number of documents that can be returned. See the Data API
+                documentation for details.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
             max_time_ms: a timeout, in milliseconds, for each single one
@@ -733,6 +756,24 @@ class Collection:
             >>> cursor2.distinct("seq")
             [37, 35, 10]
 
+            >>> my_coll.insert_many([
+            ...     {"tag": "A", "$vector": [4, 5]},
+            ...     {"tag": "B", "$vector": [3, 4]},
+            ...     {"tag": "C", "$vector": [3, 2]},
+            ...     {"tag": "D", "$vector": [4, 1]},
+            ...     {"tag": "E", "$vector": [2, 5]},
+            ... ])
+            >>> ann_tags = [
+            ...     document["tag"]
+            ...     for document in my_coll.find(
+            ...         {},
+            ...         limit=3,
+            ...         vector=[3, 3],
+            ...     )
+            ... ]
+            >>> ann_tags
+            ['A', 'B', 'C']
+            # (assuming the collection has metric VectorMetric.COSINE)
 
         Note:
             The following are example values for the `sort` parameter.
@@ -753,6 +794,7 @@ class Collection:
                 sort={"$vector": [0.4, 0.15, -0.5]}
         """
 
+        _sort = _collate_vector_to_sort(sort, vector)
         return (
             Cursor(
                 collection=self,
@@ -763,7 +805,7 @@ class Collection:
             )
             .skip(skip)
             .limit(limit)
-            .sort(sort)
+            .sort(_sort)
         )
 
     def find_one(
@@ -771,6 +813,7 @@ class Collection:
         filter: Optional[FilterType] = None,
         *,
         projection: Optional[ProjectionType] = None,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
@@ -792,6 +835,12 @@ class Collection:
                 certain fields; or a dictionary {field_name: False} if one wants
                 to discard some fields from the response.
                 The default is to return the whole documents.
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to perform vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search), extracting the most
+                similar document in the collection matching the filter.
+                This parameter cannot be used together with `sort`.
+                See the `find` method for more details on this parameter.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
@@ -813,6 +862,8 @@ class Collection:
             ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
             ... )
             {'_id': '97e85f81-...', 'seq': 69}
+            >>> my_coll.find_one({}, vector=[1, 0])
+            {'_id': '...', 'tag': 'D', '$vector': [4.0, 1.0]}
 
         Note:
             See the `find` method for more details on the accepted parameters
@@ -824,6 +875,7 @@ class Collection:
             projection=projection,
             skip=None,
             limit=1,
+            vector=vector,
             sort=sort,
             max_time_ms=max_time_ms,
         )
@@ -998,6 +1050,7 @@ class Collection:
         replacement: DocumentType,
         *,
         projection: Optional[ProjectionType] = None,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
@@ -1022,6 +1075,13 @@ class Collection:
                 certain fields; or a dictionary {field_name: False} if one wants
                 to discard some fields from the response.
                 The default is to return the whole documents.
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to use vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search), as the sorting criterion.
+                In this way, the matched document (if any) will be the one
+                that is most similar to the provided vector.
+                This parameter cannot be used together with `sort`.
+                See the `find` method for more details on this parameter.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1074,6 +1134,7 @@ class Collection:
             {'text': 'F=ma'}
         """
 
+        _sort = _collate_vector_to_sort(sort, vector)
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -1082,7 +1143,7 @@ class Collection:
             replacement=replacement,
             filter=filter,
             projection=normalize_optional_projection(projection),
-            sort=sort,
+            sort=_sort,
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
@@ -1104,6 +1165,7 @@ class Collection:
         filter: Dict[str, Any],
         replacement: DocumentType,
         *,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         max_time_ms: Optional[int] = None,
@@ -1121,6 +1183,13 @@ class Collection:
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to use vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search), as the sorting criterion.
+                In this way, the matched document (if any) will be the one
+                that is most similar to the provided vector.
+                This parameter cannot be used together with `sort`.
+                See the `find` method for more details on this parameter.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1147,13 +1216,14 @@ class Collection:
             UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '931b47d6-...'})
         """
 
+        _sort = _collate_vector_to_sort(sort, vector)
         options = {
             "upsert": upsert,
         }
         fo_response = self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
-            sort=sort,
+            sort=_sort,
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
@@ -1177,6 +1247,7 @@ class Collection:
         update: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
@@ -1206,6 +1277,13 @@ class Collection:
                 certain fields; or a dictionary {field_name: False} if one wants
                 to discard some fields from the response.
                 The default is to return the whole documents.
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to use vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search), as the sorting criterion.
+                In this way, the matched document (if any) will be the one
+                that is most similar to the provided vector.
+                This parameter cannot be used together with `sort`.
+                See the `find` method for more details on this parameter.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1259,6 +1337,7 @@ class Collection:
             {'_id': 'cb4ef2ab-...', 'name': 'Johnny', 'rank': 0}
         """
 
+        _sort = _collate_vector_to_sort(sort, vector)
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -1267,7 +1346,7 @@ class Collection:
             update=update,
             filter=filter,
             projection=normalize_optional_projection(projection),
-            sort=sort,
+            sort=_sort,
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
@@ -1289,6 +1368,7 @@ class Collection:
         filter: Dict[str, Any],
         update: Dict[str, Any],
         *,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         max_time_ms: Optional[int] = None,
@@ -1311,6 +1391,13 @@ class Collection:
                     {"$inc": {"counter": 10}}
                     {"$unset": {"field": ""}}
                 See the Data API documentation for the full syntax.
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to use vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search), as the sorting criterion.
+                In this way, the matched document (if any) will be the one
+                that is most similar to the provided vector.
+                This parameter cannot be used together with `sort`.
+                See the `find` method for more details on this parameter.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1336,12 +1423,13 @@ class Collection:
             UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '2a45ff60-...'})
         """
 
+        _sort = _collate_vector_to_sort(sort, vector)
         options = {
             "upsert": upsert,
         }
         fo_response = self._astra_db_collection.find_one_and_update(
             update=update,
-            sort=sort,
+            sort=_sort,
             filter=filter,
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
@@ -1470,6 +1558,7 @@ class Collection:
         filter: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
@@ -1493,6 +1582,13 @@ class Collection:
                 Note that the `_id` field will be returned with the document
                 in any case, regardless of what the provided `projection` requires.
                 The default is to return the whole documents.
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to use vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search), as the sorting criterion.
+                In this way, the matched document (if any) will be the one
+                that is most similar to the provided vector.
+                This parameter cannot be used together with `sort`.
+                See the `find` method for more details on this parameter.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1520,9 +1616,10 @@ class Collection:
             >>> # (returns None for no matches)
         """
 
+        _sort = _collate_vector_to_sort(sort, vector)
         _projection = normalize_optional_projection(projection)
         fo_response = self._astra_db_collection.find_one_and_delete(
-            sort=sort,
+            sort=_sort,
             filter=filter,
             projection=_projection,
             timeout_info=base_timeout_info(max_time_ms),
@@ -1545,6 +1642,7 @@ class Collection:
         self,
         filter: Dict[str, Any],
         *,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
@@ -1561,6 +1659,13 @@ class Collection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to use vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search), as the sorting criterion.
+                In this way, the matched document (if any) will be the one
+                that is most similar to the provided vector.
+                This parameter cannot be used together with `sort`.
+                See the `find` method for more details on this parameter.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1588,8 +1693,9 @@ class Collection:
             DeleteResult(raw_results=..., deleted_count=0)
         """
 
+        _sort = _collate_vector_to_sort(sort, vector)
         do_response = self._astra_db_collection.delete_one_by_predicate(
-            filter=filter, timeout_info=base_timeout_info(max_time_ms), sort=sort
+            filter=filter, timeout_info=base_timeout_info(max_time_ms), sort=_sort
         )
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
@@ -2520,6 +2626,7 @@ class AsyncCollection:
         projection: Optional[ProjectionType] = None,
         skip: Optional[int] = None,
         limit: Optional[int] = None,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> AsyncCursor:
@@ -2554,6 +2661,13 @@ class AsyncCollection:
             limit: this (integer) parameter sets a limit over how many documents
                 are returned. Once `limit` is reached (or the cursor is exhausted
                 for lack of matching documents), nothing more is returned.
+             vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to perform vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search).
+                When running similarity search on a collection, no other sorting
+                criteria can be specified. Moreover, there is an upper bound
+                to the number of documents that can be returned. See the Data API
+                documentation for details.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
             max_time_ms: a timeout, in milliseconds, for each single one
@@ -2565,7 +2679,7 @@ class AsyncCollection:
             (see the AsyncCursor object for how to use it. The simplest thing is to
             run a for loop: `for document in collection.sort(...):`).
 
-        Example:
+        Examples:
             >>> async def run_finds(acol: AsyncCollection) -> None:
             ...             filter = {"seq": {"$exists": True}}
             ...             print("find results 1:")
@@ -2592,6 +2706,28 @@ class AsyncCollection:
             find results 2: ['d656cd9d-...', '479c7ce8-...', '96dc87fd-...', '83f0a21f-...']
             distinct results 3: [48, 35, 7]
 
+            >>> async def run_vector_finds(acol: AsyncCollection) -> None:
+            ...     await acol.insert_many([
+            ...         {"tag": "A", "$vector": [4, 5]},
+            ...         {"tag": "B", "$vector": [3, 4]},
+            ...         {"tag": "C", "$vector": [3, 2]},
+            ...         {"tag": "D", "$vector": [4, 1]},
+            ...         {"tag": "E", "$vector": [2, 5]},
+            ...     ])
+            ...     ann_tags = [
+            ...         document["tag"]
+            ...         async for document in acol.find(
+            ...             {},
+            ...             limit=3,
+            ...             vector=[3, 3],
+            ...         )
+            ...     ]
+            ...     return ann_tags
+            ...
+            >>> asyncio.run(run_vector_finds(my_async_coll))
+            ['A', 'B', 'C']
+            # (assuming the collection has metric VectorMetric.COSINE)
+
         Note:
             The following are example values for the `sort` parameter.
             When no particular order is required:
@@ -2611,6 +2747,7 @@ class AsyncCollection:
                 sort={"$vector": [0.4, 0.15, -0.5]}
         """
 
+        _sort = _collate_vector_to_sort(sort, vector)
         return (
             AsyncCursor(
                 collection=self,
@@ -2621,7 +2758,7 @@ class AsyncCollection:
             )
             .skip(skip)
             .limit(limit)
-            .sort(sort)
+            .sort(_sort)
         )
 
     async def find_one(
@@ -2629,6 +2766,7 @@ class AsyncCollection:
         filter: Optional[FilterType] = None,
         *,
         projection: Optional[ProjectionType] = None,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
@@ -2650,6 +2788,12 @@ class AsyncCollection:
                 certain fields; or a dictionary {field_name: False} if one wants
                 to discard some fields from the response.
                 The default is to return the whole documents.
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to perform vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search), extracting the most
+                similar document in the collection matching the filter.
+                This parameter cannot be used together with `sort`.
+                See the `find` method for more details on this parameter.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
@@ -2683,6 +2827,9 @@ class AsyncCollection:
             result3 {'_id': '479c7ce8-...'}
             result4 {'_id': 'd656cd9d-...', 'seq': 49}
 
+            >>> asyncio.run(my_async_coll.find_one({}, vector=[1, 0]))
+            {'_id': '...', 'tag': 'D', '$vector': [4.0, 1.0]}
+
         Note:
             See the `find` method for more details on the accepted parameters
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
@@ -2694,6 +2841,7 @@ class AsyncCollection:
             skip=None,
             limit=1,
             sort=sort,
+            vector=vector,
             max_time_ms=max_time_ms,
         )
         try:
@@ -2872,6 +3020,7 @@ class AsyncCollection:
         replacement: DocumentType,
         *,
         projection: Optional[ProjectionType] = None,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
@@ -2897,6 +3046,13 @@ class AsyncCollection:
                 certain fields; or a dictionary {field_name: False} if one wants
                 to discard some fields from the response.
                 The default is to return the whole documents.
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to use vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search), as the sorting criterion.
+                In this way, the matched document (if any) will be the one
+                that is most similar to the provided vector.
+                This parameter cannot be used together with `sort`.
+                See the `find` method for more details on this parameter.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -2954,6 +3110,7 @@ class AsyncCollection:
             result3 {'text': 'F=ma'}
         """
 
+        _sort = _collate_vector_to_sort(sort, vector)
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -2962,7 +3119,7 @@ class AsyncCollection:
             replacement=replacement,
             filter=filter,
             projection=normalize_optional_projection(projection),
-            sort=sort,
+            sort=_sort,
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
@@ -2984,6 +3141,7 @@ class AsyncCollection:
         filter: Dict[str, Any],
         replacement: DocumentType,
         *,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         max_time_ms: Optional[int] = None,
@@ -3001,6 +3159,13 @@ class AsyncCollection:
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to use vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search), as the sorting criterion.
+                In this way, the matched document (if any) will be the one
+                that is most similar to the provided vector.
+                This parameter cannot be used together with `sort`.
+                See the `find` method for more details on this parameter.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3043,13 +3208,14 @@ class AsyncCollection:
             result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '30e34e00-...'}
         """
 
+        _sort = _collate_vector_to_sort(sort, vector)
         options = {
             "upsert": upsert,
         }
         fo_response = await self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
-            sort=sort,
+            sort=_sort,
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
@@ -3073,6 +3239,7 @@ class AsyncCollection:
         update: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
@@ -3102,6 +3269,13 @@ class AsyncCollection:
                 certain fields; or a dictionary {field_name: False} if one wants
                 to discard some fields from the response.
                 The default is to return the whole documents.
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to use vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search), as the sorting criterion.
+                In this way, the matched document (if any) will be the one
+                that is most similar to the provided vector.
+                This parameter cannot be used together with `sort`.
+                See the `find` method for more details on this parameter.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3161,6 +3335,7 @@ class AsyncCollection:
             result3 {'_id': 'db3d678d-14d4-4caa-82d2-d5fb77dab7ec', 'name': 'Johnny', 'rank': 0}
         """
 
+        _sort = _collate_vector_to_sort(sort, vector)
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -3169,7 +3344,7 @@ class AsyncCollection:
             update=update,
             filter=filter,
             projection=normalize_optional_projection(projection),
-            sort=sort,
+            sort=_sort,
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
@@ -3191,6 +3366,7 @@ class AsyncCollection:
         filter: Dict[str, Any],
         update: Dict[str, Any],
         *,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         max_time_ms: Optional[int] = None,
@@ -3213,6 +3389,13 @@ class AsyncCollection:
                     {"$inc": {"counter": 10}}
                     {"$unset": {"field": ""}}
                 See the Data API documentation for the full syntax.
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to use vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search), as the sorting criterion.
+                In this way, the matched document (if any) will be the one
+                that is most similar to the provided vector.
+                This parameter cannot be used together with `sort`.
+                See the `find` method for more details on this parameter.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3253,12 +3436,13 @@ class AsyncCollection:
             result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '75748092-...'}
         """
 
+        _sort = _collate_vector_to_sort(sort, vector)
         options = {
             "upsert": upsert,
         }
         fo_response = await self._astra_db_collection.find_one_and_update(
             update=update,
-            sort=sort,
+            sort=_sort,
             filter=filter,
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
@@ -3398,6 +3582,7 @@ class AsyncCollection:
         filter: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
@@ -3421,6 +3606,13 @@ class AsyncCollection:
                 Note that the `_id` field will be returned with the document
                 in any case, regardless of what the provided `projection` requires.
                 The default is to return the whole documents.
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to use vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search), as the sorting criterion.
+                In this way, the matched document (if any) will be the one
+                that is most similar to the provided vector.
+                This parameter cannot be used together with `sort`.
+                See the `find` method for more details on this parameter.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3454,9 +3646,10 @@ class AsyncCollection:
             delete_result1 None
         """
 
+        _sort = _collate_vector_to_sort(sort, vector)
         _projection = normalize_optional_projection(projection)
         fo_response = await self._astra_db_collection.find_one_and_delete(
-            sort=sort,
+            sort=_sort,
             filter=filter,
             projection=_projection,
             timeout_info=base_timeout_info(max_time_ms),
@@ -3479,6 +3672,7 @@ class AsyncCollection:
         self,
         filter: Dict[str, Any],
         *,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
@@ -3495,6 +3689,13 @@ class AsyncCollection:
                     {"price": {"$le": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
                 See the Data API documentation for the full set of operators.
+            vector: a suitable vector, i.e. a list of float numbers of the appropriate
+                dimensionality, to use vector search (i.e. ANN,
+                or "approximate nearest-neighbours" search), as the sorting criterion.
+                In this way, the matched document (if any) will be the one
+                that is most similar to the provided vector.
+                This parameter cannot be used together with `sort`.
+                See the `find` method for more details on this parameter.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3522,10 +3723,11 @@ class AsyncCollection:
             DeleteResult(raw_results=..., deleted_count=0)
         """
 
+        _sort = _collate_vector_to_sort(sort, vector)
         do_response = await self._astra_db_collection.delete_one_by_predicate(
             filter=filter,
             timeout_info=base_timeout_info(max_time_ms),
-            sort=sort,
+            sort=_sort,
         )
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]

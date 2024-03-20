@@ -540,6 +540,46 @@ class TestDMLAsync:
         with pytest.raises(ValueError):
             await async_empty_collection.distinct("root.subf..subsubf")
 
+    @pytest.mark.describe("test of collection find with vectors, async")
+    async def test_collection_find_find_one_vectors_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        q_vector = [3, 3]
+        await async_empty_collection.insert_many(
+            [
+                {"tag": "A", "$vector": [4, 5]},
+                {"tag": "B", "$vector": [3, 4]},
+                {"tag": "C", "$vector": [3, 2]},
+                {"tag": "D", "$vector": [4, 1]},
+                {"tag": "E", "$vector": [2, 5]},
+            ]
+        )
+
+        hits = [
+            hit
+            async for hit in async_empty_collection.find(
+                {},
+                projection=["tag"],
+                limit=3,
+                vector=q_vector,
+            )
+        ]
+        assert [hit["tag"] for hit in hits] == ["A", "B", "C"]
+
+        with pytest.raises(ValueError):
+            await async_empty_collection.find(
+                {},
+                projection=["tag"],
+                limit=3,
+                vector=q_vector,
+                sort={"tag": SortDocuments.DESCENDING},
+            ).distinct("tag")
+
+        top_doc = await async_empty_collection.find_one({}, vector=[1, 0])
+        assert top_doc is not None
+        assert top_doc["tag"] == "D"
+
     @pytest.mark.describe("test of collection insert_many, async")
     async def test_collection_insert_many_async(
         self,
@@ -808,6 +848,23 @@ class TestDMLAsync:
             2,
         }
 
+    @pytest.mark.describe("test of replace_one with vectors, async")
+    async def test_collection_replace_one_vector_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+        await acol.insert_many(
+            [
+                {"tag": "h", "$vector": [10, 5]},
+                {"tag": "v", "$vector": [2, 20]},
+            ]
+        )
+        result = await acol.replace_one({}, {"new_doc": True}, vector=[0, 1])
+        assert result.update_info["updatedExisting"]
+
+        assert (await acol.find_one({"tag": "h"})) is not None
+
     @pytest.mark.describe("test of update_one, async")
     async def test_collection_update_one_async(
         self,
@@ -948,6 +1005,22 @@ class TestDMLAsync:
 
         fo_result4 = await async_empty_collection.find_one_and_delete({}, sort={"f": 1})
         assert fo_result4 is None
+
+    @pytest.mark.describe("test of collection find_one_and_delete with vectors, async")
+    async def test_collection_find_one_and_delete_vectors_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+        await acol.insert_many(
+            [
+                {"tag": "h", "$vector": [10, 5]},
+                {"tag": "v", "$vector": [2, 20]},
+            ]
+        )
+        deleted = await acol.find_one_and_delete({}, vector=[0, 1])
+        assert deleted is not None
+        assert deleted["tag"] == "v"
 
     @pytest.mark.describe("test of find_one_and_update, async")
     async def test_collection_find_one_and_update_async(

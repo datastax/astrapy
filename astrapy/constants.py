@@ -21,6 +21,7 @@ DocumentType = Dict[str, Any]
 ProjectionType = Union[Iterable[str], Dict[str, bool]]
 SortType = Dict[str, Any]
 FilterType = Dict[str, Any]
+VectorType = Iterable[float]
 
 
 def normalize_optional_projection(
