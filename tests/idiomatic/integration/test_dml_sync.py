@@ -86,6 +86,27 @@ class TestDMLSync:
             == 1
         )
 
+    @pytest.mark.describe("test of collection insert_one with vector, sync")
+    def test_collection_insert_one_vector_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        sync_empty_collection.insert_one({"tag": "v1"}, vector=[-1, -2])
+        retrieved1 = sync_empty_collection.find_one({"tag": "v1"})
+        assert retrieved1 is not None
+        assert retrieved1["$vector"] == [-1, -2]
+
+        sync_empty_collection.insert_one({"tag": "v2", "$vector": [-3, -4]})
+        retrieved2 = sync_empty_collection.find_one({"tag": "v2"})
+        assert retrieved2 is not None
+        assert retrieved2["$vector"] == [-3, -4]
+
+        with pytest.raises(ValueError):
+            sync_empty_collection.insert_one(
+                {"tag": "v3", "$vector": [-5, -6]},
+                vector=[-5, -6],
+            )
+
     @pytest.mark.describe("test of collection delete_one, sync")
     def test_collection_delete_one_sync(
         self,

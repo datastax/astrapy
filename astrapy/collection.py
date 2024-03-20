@@ -112,6 +112,23 @@ def _collate_vector_to_sort(
             raise ValueError("The `vector` and `sort` clauses are mutually exclusive.")
 
 
+def _collate_vector_to_document(
+    document0: DocumentType, vector: Optional[VectorType]
+) -> DocumentType:
+    if vector is None:
+        return document0
+    else:
+        if "$vector" in document0:
+            raise ValueError(
+                "Cannot specify `vector` for a document with its '$vector' field already."
+            )
+        else:
+            return {
+                **document0,
+                **{"$vector": vector},
+            }
+
+
 class Collection:
     """
     A Data API collection, the main object to interact with the Data API,
@@ -426,6 +443,7 @@ class Collection:
         self,
         document: DocumentType,
         *,
+        vector: Optional[VectorType] = None,
         max_time_ms: Optional[int] = None,
     ) -> InsertOneResult:
         """
@@ -435,6 +453,10 @@ class Collection:
             document: the dictionary expressing the document to insert.
                 The `_id` field of the document can be left out, in which
                 case it will be created automatically.
+            vector: a vector (a list of numbers appropriate for the collection)
+                for the document. Passing this parameter is equivalent to
+                providing the vector in the "$vector" field of the document itself,
+                however the two are mutually exclusive.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -463,8 +485,9 @@ class Collection:
             the insertion fails.
         """
 
+        _document = _collate_vector_to_document(document, vector)
         io_response = self._astra_db_collection.insert_one(
-            document,
+            _document,
             timeout_info=base_timeout_info(max_time_ms),
         )
         if "insertedIds" in io_response.get("status", {}):
@@ -2359,6 +2382,7 @@ class AsyncCollection:
         self,
         document: DocumentType,
         *,
+        vector: Optional[VectorType] = None,
         max_time_ms: Optional[int] = None,
     ) -> InsertOneResult:
         """
@@ -2368,6 +2392,10 @@ class AsyncCollection:
             document: the dictionary expressing the document to insert.
                 The `_id` field of the document can be left out, in which
                 case it will be created automatically.
+            vector: a vector (a list of numbers appropriate for the collection)
+                for the document. Passing this parameter is equivalent to
+                providing the vector in the "$vector" field of the document itself,
+                however the two are mutually exclusive.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -2399,8 +2427,9 @@ class AsyncCollection:
             the insertion fails.
         """
 
+        _document = _collate_vector_to_document(document, vector)
         io_response = await self._astra_db_collection.insert_one(
-            document,
+            _document,
             timeout_info=base_timeout_info(max_time_ms),
         )
         if "insertedIds" in io_response.get("status", {}):

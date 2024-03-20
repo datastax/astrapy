@@ -106,6 +106,27 @@ class TestDMLAsync:
             == 1
         )
 
+    @pytest.mark.describe("test of collection insert_one with vector, async")
+    async def test_collection_insert_one_vector_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        await async_empty_collection.insert_one({"tag": "v1"}, vector=[-1, -2])
+        retrieved1 = await async_empty_collection.find_one({"tag": "v1"})
+        assert retrieved1 is not None
+        assert retrieved1["$vector"] == [-1, -2]
+
+        await async_empty_collection.insert_one({"tag": "v2", "$vector": [-3, -4]})
+        retrieved2 = await async_empty_collection.find_one({"tag": "v2"})
+        assert retrieved2 is not None
+        assert retrieved2["$vector"] == [-3, -4]
+
+        with pytest.raises(ValueError):
+            await async_empty_collection.insert_one(
+                {"tag": "v3", "$vector": [-5, -6]},
+                vector=[-5, -6],
+            )
+
     @pytest.mark.describe("test of collection delete_one, async")
     async def test_collection_delete_one_async(
         self,
