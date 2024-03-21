@@ -134,6 +134,27 @@ def build_api_endpoint(environment: str, database_id: str, region: str) -> str:
     )
 
 
+def fetch_raw_database_info_from_id_token(
+    id: str,
+    *,
+    token: str,
+    environment: str = Environment.PROD,
+    max_time_ms: Optional[int] = None,
+) -> Dict[str, Any]:
+    astra_db_ops = AstraDBOps(
+        token=token,
+        dev_ops_url=DEV_OPS_URL_MAP[environment],
+    )
+    try:
+        gd_response = astra_db_ops.get_database(
+            database=id,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        return gd_response
+    except httpx.TimeoutException as texc:
+        raise to_dataapi_timeout_exception(texc)
+
+
 def fetch_database_info(
     api_endpoint: str, token: str, namespace: str, max_time_ms: Optional[int] = None
 ) -> Optional[DatabaseInfo]:
@@ -153,17 +174,12 @@ def fetch_database_info(
 
     parsed_endpoint = parse_api_endpoint(api_endpoint)
     if parsed_endpoint:
-        astra_db_ops = AstraDBOps(
+        gd_response = fetch_raw_database_info_from_id_token(
+            id=parsed_endpoint.database_id,
             token=token,
-            dev_ops_url=DEV_OPS_URL_MAP[parsed_endpoint.environment],
+            environment=parsed_endpoint.environment,
+            max_time_ms=max_time_ms,
         )
-        try:
-            gd_response = astra_db_ops.get_database(
-                database=parsed_endpoint.database_id,
-                timeout_info=base_timeout_info(max_time_ms),
-            )
-        except httpx.TimeoutException as texc:
-            raise to_dataapi_timeout_exception(texc)
         raw_info = gd_response["info"]
         if namespace not in raw_info["keyspaces"]:
             raise DevOpsAPIException(f"Namespace {namespace} not found on DB.")
@@ -237,7 +253,7 @@ class AstraDBAdmin:
         self._dev_ops_api_version = dev_ops_api_version
         self._astra_db_ops = AstraDBOps(
             token=self.token,
-            dev_ops_url=dev_ops_url,
+            dev_ops_url=self.dev_ops_url,
             dev_ops_api_version=dev_ops_api_version,
             caller_name=caller_name,
             caller_version=caller_version,
