@@ -41,6 +41,13 @@ DEFAULT_NEW_DATABASE_CLOUD_PROVIDER = "gcp"
 DEFAULT_NEW_DATABASE_REGION = "us-east1"
 WAITING_ON_DB_POLL_PERIOD_SECONDS = 2
 
+STATUS_MAINTENANCE = "MAINTENANCE"
+STATUS_ACTIVE = "ACTIVE"
+STATUS_PENDING = "PENDING"
+STATUS_INITIALIZING = "INITIALIZING"
+STATUS_ERROR = "ERROR"
+STATUS_TERMINATING = "TERMINATING"
+
 
 class Environment:
     """
@@ -307,14 +314,14 @@ class AstraDBAdmin:
         if cd_response is not None and "id" in cd_response:
             new_database_id = cd_response["id"]
             if wait_until_active:
-                last_status_seen = "PENDING"
-                while last_status_seen in {"PENDING", "INITIALIZING"}:
+                last_status_seen = STATUS_PENDING
+                while last_status_seen in {STATUS_PENDING, STATUS_INITIALIZING}:
                     time.sleep(WAITING_ON_DB_POLL_PERIOD_SECONDS)
                     last_status_seen = self.database_info(
                         id=new_database_id,
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
                     ).status
-                if last_status_seen not in {"ACTIVE"}:
+                if last_status_seen != STATUS_ACTIVE:
                     raise DevOpsAPIException(
                         f"Database {name} entered unexpected status {last_status_seen} after PENDING"
                     )
@@ -343,9 +350,9 @@ class AstraDBAdmin:
         )
         if te_response == id:
             if wait_until_active:
-                last_status_seen: Optional[str] = "TERMINATING"
+                last_status_seen: Optional[str] = STATUS_TERMINATING
                 _db_name: Optional[str] = None
-                while last_status_seen == "TERMINATING":
+                while last_status_seen == STATUS_TERMINATING:
                     time.sleep(WAITING_ON_DB_POLL_PERIOD_SECONDS)
                     #
                     detected_databases = [
@@ -517,13 +524,13 @@ class AstraDBDatabaseAdmin:
         )
         if cn_response is not None and name == cn_response.get("name"):
             if wait_until_active:
-                last_status_seen = "MAINTENANCE"
-                while last_status_seen == "MAINTENANCE":
+                last_status_seen = STATUS_MAINTENANCE
+                while last_status_seen == STATUS_MAINTENANCE:
                     time.sleep(WAITING_ON_DB_POLL_PERIOD_SECONDS)
                     last_status_seen = self.info(
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
                     ).status
-                if last_status_seen not in {"ACTIVE"}:
+                if last_status_seen != STATUS_ACTIVE:
                     raise DevOpsAPIException(
                         f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
                     )
@@ -554,13 +561,13 @@ class AstraDBDatabaseAdmin:
         )
         if dk_response == name:
             if wait_until_active:
-                last_status_seen = "MAINTENANCE"
-                while last_status_seen == "MAINTENANCE":
+                last_status_seen = STATUS_MAINTENANCE
+                while last_status_seen == STATUS_MAINTENANCE:
                     time.sleep(WAITING_ON_DB_POLL_PERIOD_SECONDS)
                     last_status_seen = self.info(
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
                     ).status
-                if last_status_seen not in {"ACTIVE"}:
+                if last_status_seen != STATUS_ACTIVE:
                     raise DevOpsAPIException(
                         f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
                     )
