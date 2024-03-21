@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 import time
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from dataclasses import dataclass
 
 import httpx
@@ -39,7 +39,6 @@ if TYPE_CHECKING:
 
 DEFAULT_NEW_DATABASE_CLOUD_PROVIDER = "gcp"
 DEFAULT_NEW_DATABASE_REGION = "us-east1"
-DEFAULT_NEW_DATABASE_NAMESPACE = "default_keyspace"
 WAITING_ON_DB_POLL_PERIOD_SECONDS = 2
 
 
@@ -263,7 +262,8 @@ class AstraDBAdmin:
                 ],
             )
 
-    def get_database_info(
+    @ops_recast_method_sync
+    def database_info(
         self, id: str, *, max_time_ms: Optional[int] = None
     ) -> AdminDatabaseInfo:
         gd_response = self._astra_db_ops.get_database(
@@ -286,22 +286,16 @@ class AstraDBAdmin:
         name: str,
         *,
         wait_until_active: bool = True,
-        namespace: str = DEFAULT_NEW_DATABASE_NAMESPACE,
         cloud_provider: str = DEFAULT_NEW_DATABASE_CLOUD_PROVIDER,
         region: str = DEFAULT_NEW_DATABASE_REGION,
-        capacity_units: int = 1,
         max_time_ms: Optional[int] = None,
     ) -> AstraDBDatabaseAdmin:
         database_definition = {
             "name": name,
             "tier": "serverless",
             "cloudProvider": cloud_provider,
-            "keyspace": namespace,
             "region": region,
-            "capacityUnits": capacity_units,
-            "user": "token",
-            "password": self.token,
-            "dbType": "vector",
+            "capacityUnits": 1,
         }
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
@@ -310,17 +304,17 @@ class AstraDBAdmin:
             database_definition=database_definition,
             timeout_info=base_timeout_info(max_time_ms),
         )
-        if cd_response is not None:
+        if cd_response is not None and "id" in cd_response:
             new_database_id = cd_response["id"]
             if wait_until_active:
                 last_status_seen = "PENDING"
-                while last_status_seen == "PENDING":
+                while last_status_seen in {"PENDING", "INITIALIZING"}:
                     time.sleep(WAITING_ON_DB_POLL_PERIOD_SECONDS)
-                    last_status_seen = self.get_database_info(
+                    last_status_seen = self.database_info(
                         id=new_database_id,
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
                     ).status
-                if last_status_seen not in {"ACTIVE", "INITIALIZING"}:
+                if last_status_seen not in {"ACTIVE"}:
                     raise DevOpsAPIException(
                         f"Database {name} entered unexpected status {last_status_seen} after PENDING"
                     )
@@ -383,6 +377,7 @@ class AstraDBAdmin:
             astra_db_admin=self,
         )
 
+    @ops_recast_method_sync
     def get_database(
         self,
         id: str,
@@ -404,13 +399,13 @@ class AstraDBAdmin:
             _namespace = namespace
         else:
             if this_db_info is None:
-                this_db_info = self.get_database_info(id)
+                this_db_info = self.database_info(id)
             _namespace = this_db_info.info.namespace
         if region:
             _region = region
         else:
             if this_db_info is None:
-                this_db_info = self.get_database_info(id)
+                this_db_info = self.database_info(id)
             _region = this_db_info.info.region
 
         _api_endpoint = build_api_endpoint(
@@ -491,3 +486,88 @@ class AstraDBDatabaseAdmin:
             )
         else:
             raise ValueError("Cannot parse the provided API endpoint.")
+
+    @ops_recast_method_sync
+    def info(self, *, max_time_ms: Optional[int] = None) -> AdminDatabaseInfo:
+        return self._astra_db_admin.database_info(  # type: ignore[no-any-return]
+            id=self.id,
+            max_time_ms=max_time_ms,
+        )
+
+    @ops_recast_method_sync
+    def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
+        info = self.info(max_time_ms=max_time_ms)
+        return info.raw_info["info"]["keyspaces"]  # type: ignore[no-any-return]
+
+    def create_namespace(
+        self,
+        name: str,
+        *,
+        wait_until_active: bool = True,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        timeout_manager = MultiCallTimeoutManager(
+            overall_max_time_ms=max_time_ms, exception_type="devops_api"
+        )
+        cn_response = self._astra_db_admin._astra_db_ops.create_keyspace(
+            database=self.id,
+            keyspace=name,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if cn_response is not None and name == cn_response.get("name"):
+            if wait_until_active:
+                last_status_seen = "MAINTENANCE"
+                while last_status_seen == "MAINTENANCE":
+                    time.sleep(WAITING_ON_DB_POLL_PERIOD_SECONDS)
+                    last_status_seen = self.info(
+                        max_time_ms=timeout_manager.remaining_timeout_ms(),
+                    ).status
+                if last_status_seen not in {"ACTIVE"}:
+                    raise DevOpsAPIException(
+                        f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
+                    )
+                # is the namespace found?
+                if name not in self.list_namespaces():
+                    raise DevOpsAPIException("Could not create the namespace.")
+            return {"ok": 1}
+        else:
+            raise DevOpsAPIException(
+                f"Could not issue a successful create-namespace DevOps API request for {name}."
+            )
+
+    @ops_recast_method_sync
+    def drop_namespace(
+        self,
+        name: str,
+        *,
+        wait_until_active: bool = True,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        timeout_manager = MultiCallTimeoutManager(
+            overall_max_time_ms=max_time_ms, exception_type="devops_api"
+        )
+        dk_response = self._astra_db_admin._astra_db_ops.delete_keyspace(
+            database=self.id,
+            keyspace=name,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if dk_response == name:
+            if wait_until_active:
+                last_status_seen = "MAINTENANCE"
+                while last_status_seen == "MAINTENANCE":
+                    time.sleep(WAITING_ON_DB_POLL_PERIOD_SECONDS)
+                    last_status_seen = self.info(
+                        max_time_ms=timeout_manager.remaining_timeout_ms(),
+                    ).status
+                if last_status_seen not in {"ACTIVE"}:
+                    raise DevOpsAPIException(
+                        f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
+                    )
+                # is the namespace found?
+                if name in self.list_namespaces():
+                    raise DevOpsAPIException("Could not drop the namespace.")
+            return {"ok": 1}
+        else:
+            raise DevOpsAPIException(
+                f"Could not issue a successful delete-namespace DevOps API request for {name}."
+            )
