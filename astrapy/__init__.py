@@ -55,11 +55,22 @@ from astrapy.collection import (  # noqa: E402
     AsyncCollection,
     Collection,
 )
+from astrapy.admin import (  # noqa: E402
+    AstraDBAdmin,
+    AstraDBDatabaseAdmin,
+)
+from astrapy.client import (  # noqa: E402
+    DataAPIClient,
+)
+
 
 __all__ = [
+    "AstraDBAdmin",
+    "AstraDBDatabaseAdmin",
     "AsyncCollection",
     "AsyncDatabase",
     "Collection",
     "Database",
+    "DataAPIClient",
     "__version__",
 ]

@@ -19,7 +19,7 @@ from astrapy import Collection, Database
 
 from astrapy.exceptions import DataAPITimeoutException
 from astrapy.operations import DeleteMany, InsertMany
-from astrapy.info import get_database_info
+from astrapy.admin import fetch_database_info
 
 
 class TestTimeoutSync:
@@ -43,14 +43,14 @@ class TestTimeoutSync:
         self,
         sync_database: Database,
     ) -> None:
-        get_database_info(
+        fetch_database_info(
             sync_database._astra_db.api_endpoint,
             token=sync_database._astra_db.token,
             namespace=sync_database.namespace,
         )
 
         with pytest.raises(DataAPITimeoutException) as exc:
-            get_database_info(
+            fetch_database_info(
                 sync_database._astra_db.api_endpoint,
                 token=sync_database._astra_db.token,
                 namespace=sync_database.namespace,

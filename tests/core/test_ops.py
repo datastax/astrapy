@@ -118,4 +118,4 @@ class TestAstraDBOps:
         )
 
         assert response is not None
-        assert response.status_code == 201  # Created
+        assert response["name"] == new_keyspace_name

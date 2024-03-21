@@ -19,7 +19,7 @@ from astrapy import AsyncCollection, AsyncDatabase
 
 from astrapy.exceptions import DataAPITimeoutException
 from astrapy.operations import AsyncDeleteMany, AsyncInsertMany
-from astrapy.info import get_database_info
+from astrapy.admin import fetch_database_info
 
 
 class TestTimeoutAsync:
@@ -45,14 +45,14 @@ class TestTimeoutAsync:
         self,
         async_database: AsyncDatabase,
     ) -> None:
-        get_database_info(
+        fetch_database_info(
             async_database._astra_db.api_endpoint,
             token=async_database._astra_db.token,
             namespace=async_database.namespace,
         )
 
         with pytest.raises(DataAPITimeoutException) as exc:
-            get_database_info(
+            fetch_database_info(
                 async_database._astra_db.api_endpoint,
                 token=async_database._astra_db.token,
                 namespace=async_database.namespace,

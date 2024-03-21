@@ -18,7 +18,7 @@ import logging
 from typing import Any, cast, Dict, Optional, TypedDict
 
 import httpx
-from astrapy.core.api import api_request, raw_api_request
+from astrapy.core.api import APIRequestError, api_request, raw_api_request
 
 from astrapy.core.utils import (
     http_methods,
@@ -193,7 +193,7 @@ class AstraDBOps:
         self,
         database_definition: Optional[Dict[str, Any]] = None,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Optional[Dict[str, str]]:
+    ) -> Dict[str, str]:
         """
         Create a new database.
 
@@ -202,7 +202,8 @@ class AstraDBOps:
             timeout_info: either a float (seconds) or a TimeoutInfo dict (see)
 
         Returns:
-            dict: A dictionary containing the ID of the created database, or None if creation was unsuccessful.
+            dict: A dictionary such as: {"id": the ID of the created database}
+            Raises an error if not successful.
         """
         r = self._ops_request(
             method=http_methods.POST,
@@ -213,12 +214,14 @@ class AstraDBOps:
 
         if r.status_code == 201:
             return {"id": r.headers["Location"]}
-
-        return None
+        elif r.status_code >= 400 and r.status_code < 500:
+            raise APIRequestError(r, payload=database_definition)
+        else:
+            raise ValueError(f"[HTTP {r.status_code}] {r.text}")
 
     def terminate_database(
         self, database: str = "", timeout_info: TimeoutInfoWideType = None
-    ) -> Optional[str]:
+    ) -> str:
         """
         Terminate an existing database.
 
@@ -237,6 +240,10 @@ class AstraDBOps:
 
         if r.status_code == 202:
             return database
+        elif r.status_code >= 400 and r.status_code < 500:
+            raise APIRequestError(r, payload=None)
+        else:
+            raise ValueError(f"[HTTP {r.status_code}] {r.text}")
 
         return None
 
@@ -271,7 +278,7 @@ class AstraDBOps:
         database: str = "",
         keyspace: str = "",
         timeout_info: TimeoutInfoWideType = None,
-    ) -> httpx.Response:
+    ) -> Dict[str, str]:
         """
         Create a keyspace in a specified database.
 
@@ -281,13 +288,50 @@ class AstraDBOps:
             timeout_info: either a float (seconds) or a TimeoutInfo dict (see)
 
         Returns:
-            requests.Response: The response object from the HTTP request.
+            {"ok": 1} if successful. Raises errors otherwise.
         """
-        return self._ops_request(
+        r = self._ops_request(
             method=http_methods.POST,
             path=f"/databases/{database}/keyspaces/{keyspace}",
             timeout_info=timeout_info,
         )
+
+        if r.status_code == 201:
+            return {"name": keyspace}
+        elif r.status_code >= 400 and r.status_code < 500:
+            raise APIRequestError(r, payload=None)
+        else:
+            raise ValueError(f"[HTTP {r.status_code}] {r.text}")
+
+    def delete_keyspace(
+        self,
+        database: str = "",
+        keyspace: str = "",
+        timeout_info: TimeoutInfoWideType = None,
+    ) -> str:
+        """
+        Delete a keyspace from a database
+
+        Args:
+            database (str): The identifier of the database to terminate.
+            keyspace (str): The name of the keyspace to create.
+            timeout_info: either a float (seconds) or a TimeoutInfo dict (see)
+
+        Returns:
+            str: The identifier of the deleted keyspace. Otherwise raises an error.
+        """
+        r = self._ops_request(
+            method=http_methods.DELETE,
+            path=f"/databases/{database}/keyspaces/{keyspace}",
+            timeout_info=timeout_info,
+        )
+
+        if r.status_code == 202:
+            return keyspace
+        elif r.status_code >= 400 and r.status_code < 500:
+            raise APIRequestError(r, payload=None)
+        else:
+            raise ValueError(f"[HTTP {r.status_code}] {r.text}")
 
     def park_database(
         self, database: str = "", timeout_info: TimeoutInfoWideType = None
