@@ -32,6 +32,7 @@ from astrapy.admin import parse_api_endpoint, fetch_database_info
 
 if TYPE_CHECKING:
     from astrapy.collection import AsyncCollection, Collection
+    from astrapy.admin import AstraDBDatabaseAdmin
 
 
 def _validate_create_collection_options(
@@ -719,6 +720,25 @@ class Database:
                 timeout_info=base_timeout_info(max_time_ms),
             )
 
+    def get_database_admin(
+        self,
+        *,
+        token: Optional[str] = None,
+        dev_ops_url: Optional[str] = None,
+        dev_ops_api_version: Optional[str] = None,
+    ) -> AstraDBDatabaseAdmin:
+        # lazy importing here to avoid circular dependency
+        from astrapy.admin import AstraDBDatabaseAdmin
+
+        return AstraDBDatabaseAdmin.from_api_endpoint(
+            api_endpoint=self._astra_db.api_endpoint,
+            token=token or self._astra_db.token,
+            caller_name=self._astra_db.caller_name,
+            caller_version=self._astra_db.caller_version,
+            dev_ops_url=dev_ops_url,
+            dev_ops_api_version=dev_ops_api_version,
+        )
+
 
 class AsyncDatabase:
     """
@@ -1366,3 +1386,22 @@ class AsyncDatabase:
                 body=body,
                 timeout_info=base_timeout_info(max_time_ms),
             )
+
+    def get_database_admin(
+        self,
+        *,
+        token: Optional[str] = None,
+        dev_ops_url: Optional[str] = None,
+        dev_ops_api_version: Optional[str] = None,
+    ) -> AstraDBDatabaseAdmin:
+        # lazy importing here to avoid circular dependency
+        from astrapy.admin import AstraDBDatabaseAdmin
+
+        return AstraDBDatabaseAdmin.from_api_endpoint(
+            api_endpoint=self._astra_db.api_endpoint,
+            token=token or self._astra_db.token,
+            caller_name=self._astra_db.caller_name,
+            caller_version=self._astra_db.caller_version,
+            dev_ops_url=dev_ops_url,
+            dev_ops_api_version=dev_ops_api_version,
+        )
