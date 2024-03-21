@@ -357,7 +357,7 @@ class AstraDBAdmin:
                     ]
                     if detected_databases:
                         last_status_seen = detected_databases[0].status
-                        _db_name = detected_databases[0].status.info.name
+                        _db_name = detected_databases[0].info.name
                     else:
                         last_status_seen = None
                 if last_status_seen is not None:
@@ -377,7 +377,6 @@ class AstraDBAdmin:
             astra_db_admin=self,
         )
 
-    @ops_recast_method_sync
     def get_database(
         self,
         id: str,
@@ -487,18 +486,20 @@ class AstraDBDatabaseAdmin:
         else:
             raise ValueError("Cannot parse the provided API endpoint.")
 
-    @ops_recast_method_sync
     def info(self, *, max_time_ms: Optional[int] = None) -> AdminDatabaseInfo:
         return self._astra_db_admin.database_info(  # type: ignore[no-any-return]
             id=self.id,
             max_time_ms=max_time_ms,
         )
 
-    @ops_recast_method_sync
     def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
         info = self.info(max_time_ms=max_time_ms)
-        return info.raw_info["info"]["keyspaces"]  # type: ignore[no-any-return]
+        if info.raw_info is None:
+            raise DevOpsAPIException("Could not get the namespace list.")
+        else:
+            return info.raw_info["info"]["keyspaces"]  # type: ignore[no-any-return]
 
+    @ops_recast_method_sync
     def create_namespace(
         self,
         name: str,
@@ -571,3 +572,33 @@ class AstraDBDatabaseAdmin:
             raise DevOpsAPIException(
                 f"Could not issue a successful delete-namespace DevOps API request for {name}."
             )
+
+    def drop(
+        self,
+        *,
+        wait_until_active: bool = True,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        return self._astra_db_admin.drop_database(  # type: ignore[no-any-return]
+            id=self.id,
+            wait_until_active=wait_until_active,
+            max_time_ms=max_time_ms,
+        )
+
+    def get_database(
+        self,
+        *,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        region: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> Database:
+        return self._astra_db_admin.get_database(
+            id=self.id,
+            token=token,
+            namespace=namespace,
+            region=region,
+            api_path=api_path,
+            api_version=api_version,
+        )
