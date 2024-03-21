@@ -111,7 +111,7 @@ def parse_api_endpoint(api_endpoint: str) -> Optional[ParsedAPIEndpoint]:
         return None
 
 
-def get_database_info(
+def fetch_database_info(
     api_endpoint: str, token: str, namespace: str, max_time_ms: Optional[int] = None
 ) -> Optional[DatabaseInfo]:
     """
@@ -243,10 +243,10 @@ class AstraDBAdmin:
             )
 
     def get_database_info(
-        self, database_id: str, *, max_time_ms: Optional[int] = None
+        self, id: str, *, max_time_ms: Optional[int] = None
     ) -> AdminDatabaseInfo:
         gd_response = self._astra_db_ops.get_database(
-            database=database_id,
+            database=id,
             timeout_info=base_timeout_info(max_time_ms),
         )
         if not isinstance(gd_response, dict):
@@ -296,7 +296,7 @@ class AstraDBAdmin:
                 while last_status_seen == "PENDING":
                     time.sleep(WAITING_ON_DB_POLL_PERIOD_SECONDS)
                     last_status_seen = self.get_database_info(
-                        database_id=new_database_id,
+                        id=new_database_id,
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
                     ).status
                 if last_status_seen not in {"ACTIVE", "INITIALIZING"}:
@@ -311,7 +311,7 @@ class AstraDBAdmin:
     @ops_recast_method_sync
     def drop_database(
         self,
-        database_id: str,
+        id: str,
         *,
         wait_until_active: bool = True,
         max_time_ms: Optional[int] = None,
@@ -320,10 +320,10 @@ class AstraDBAdmin:
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
         te_response = self._astra_db_ops.terminate_database(
-            database=database_id,
+            database=id,
             timeout_info=base_timeout_info(max_time_ms),
         )
-        if te_response == database_id:
+        if te_response == id:
             if wait_until_active:
                 last_status_seen: Optional[str] = "TERMINATING"
                 _db_name: Optional[str] = None
@@ -335,7 +335,7 @@ class AstraDBAdmin:
                         for a_db_info in self.list_databases(
                             max_time_ms=timeout_manager.remaining_timeout_ms(),
                         )
-                        if a_db_info.id == database_id
+                        if a_db_info.id == id
                     ]
                     if detected_databases:
                         last_status_seen = detected_databases[0].status
@@ -345,12 +345,12 @@ class AstraDBAdmin:
                 if last_status_seen is not None:
                     _name_desc = f" ({_db_name})" if _db_name else ""
                     raise DevOpsAPIException(
-                        f"Database {database_id}{_name_desc} entered unexpected status {last_status_seen} after PENDING"
+                        f"Database {id}{_name_desc} entered unexpected status {last_status_seen} after PENDING"
                     )
             return {"ok": 1}
         else:
             raise DevOpsAPIException(
-                f"Could not issue a successful terminate-database DevOps API request for {database_id}."
+                f"Could not issue a successful terminate-database DevOps API request for {id}."
             )
 
 

@@ -28,7 +28,7 @@ from astrapy.exceptions import (
 )
 from astrapy.cursors import AsyncCommandCursor, CommandCursor
 from astrapy.info import DatabaseInfo
-from astrapy.admin import parse_api_endpoint, get_database_info
+from astrapy.admin import parse_api_endpoint, fetch_database_info
 
 if TYPE_CHECKING:
     from astrapy.collection import AsyncCollection, Collection
@@ -322,7 +322,7 @@ class Database:
             between the `region` and the `raw_info["region"]` attributes.
         """
 
-        database_info = get_database_info(
+        database_info = fetch_database_info(
             self._astra_db.api_endpoint,
             token=self._astra_db.token,
             namespace=self.namespace,
@@ -958,7 +958,7 @@ class AsyncDatabase:
             between the `region` and the `raw_info["region"]` attributes.
         """
 
-        database_info = get_database_info(
+        database_info = fetch_database_info(
             self._astra_db.api_endpoint,
             token=self._astra_db.token,
             namespace=self.namespace,
