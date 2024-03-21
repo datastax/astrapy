@@ -34,7 +34,7 @@ from astrapy.exceptions import (
 
 
 if TYPE_CHECKING:
-    from astrapy import Database
+    from astrapy import AsyncDatabase, Database
 
 
 DEFAULT_NEW_DATABASE_CLOUD_PROVIDER = "gcp"
@@ -445,6 +445,25 @@ class AstraDBAdmin:
             api_version=api_version,
         )
 
+    def get_async_database(
+        self,
+        id: str,
+        *,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        region: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> AsyncDatabase:
+        return self.get_database(
+            id=id,
+            token=token,
+            namespace=namespace,
+            region=region,
+            api_path=api_path,
+            api_version=api_version,
+        ).to_async()
+
 
 class AstraDBDatabaseAdmin:
 
@@ -625,3 +644,20 @@ class AstraDBDatabaseAdmin:
             api_path=api_path,
             api_version=api_version,
         )
+
+    def get_async_database(
+        self,
+        *,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        region: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> AsyncDatabase:
+        return self.get_database(
+            token=token,
+            namespace=namespace,
+            region=region,
+            api_path=api_path,
+            api_version=api_version,
+        ).to_async()

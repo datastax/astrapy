@@ -25,7 +25,7 @@ from astrapy.admin import (
 
 
 if TYPE_CHECKING:
-    from astrapy import Database
+    from astrapy import AsyncDatabase, Database
     from astrapy.admin import AstraDBAdmin
 
 
@@ -33,6 +33,11 @@ class DataAPIClient:
     """
     A client for using the Data API. This is the main entry point and sits
     at the top of the conceptual "client -> database -> collection" hierarchy.
+
+    The client is created by passing a suitable Access Token. Starting from the
+    client:
+        - databases (Database and AsyncDatabase) are created for working with data
+        - AstraDBAdmin objects can be created for admin-level work
     """
 
     def __init__(
@@ -93,6 +98,27 @@ class DataAPIClient:
             api_version=api_version,
         )
 
+    def get_async_database(
+        self,
+        id: str,
+        *,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        region: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+        max_time_ms: Optional[int] = None,
+    ) -> AsyncDatabase:
+        return self.get_database(
+            id=id,
+            token=token,
+            namespace=namespace,
+            region=region,
+            api_path=api_path,
+            api_version=api_version,
+            max_time_ms=max_time_ms,
+        ).to_async()
+
     def get_database_by_api_endpoint(
         self,
         api_endpoint: str,
@@ -123,6 +149,23 @@ class DataAPIClient:
             )
         else:
             raise ValueError("Cannot parse the provided API endpoint.")
+
+    def get_async_database_by_api_endpoint(
+        self,
+        api_endpoint: str,
+        *,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> AsyncDatabase:
+        return self.get_database_by_api_endpoint(
+            api_endpoint=api_endpoint,
+            token=token,
+            namespace=namespace,
+            api_path=api_path,
+            api_version=api_version,
+        ).to_async()
 
     def get_admin(
         self,
