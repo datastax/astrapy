@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 from dataclasses import dataclass
 
 import httpx
@@ -31,6 +31,10 @@ from astrapy.exceptions import (
     to_dataapi_timeout_exception,
     ops_recast_method_sync,
 )
+
+
+if TYPE_CHECKING:
+    from astrapy import Database
 
 
 DEFAULT_NEW_DATABASE_CLOUD_PROVIDER = "gcp"
@@ -67,6 +71,12 @@ DEV_OPS_URL_MAP = {
     Environment.PROD: "https://api.astra.datastax.com",
     Environment.DEV: "https://api.dev.cloud.datastax.com",
     Environment.TEST: "https://api.test.cloud.datastax.com",
+}
+
+API_ENDPOINT_TEMPLATE_MAP = {
+    Environment.PROD: "https://{database_id}-{region}.apps.astra.datastax.com",
+    Environment.DEV: "https://{database_id}-{region}.apps.astra-dev.datastax.com",
+    Environment.TEST: "https://{database_id}-{region}.apps.astra-test.datastax.com",
 }
 
 
@@ -109,6 +119,13 @@ def parse_api_endpoint(api_endpoint: str) -> Optional[ParsedAPIEndpoint]:
         )
     else:
         return None
+
+
+def build_api_endpoint(environment: str, database_id: str, region: str) -> str:
+    return API_ENDPOINT_TEMPLATE_MAP[environment].format(
+        database_id=database_id,
+        region=region,
+    )
 
 
 def fetch_database_info(
@@ -208,6 +225,10 @@ class AstraDBAdmin:
             self.dev_ops_url = DEV_OPS_URL_MAP[self.environment]
         else:
             self.dev_ops_url = dev_ops_url
+        self._caller_name = caller_name
+        self._caller_version = caller_version
+        self._dev_ops_url = dev_ops_url
+        self._dev_ops_api_version = dev_ops_api_version
         self._astra_db_ops = AstraDBOps(
             token=self.token,
             dev_ops_url=dev_ops_url,
@@ -304,7 +325,10 @@ class AstraDBAdmin:
                         f"Database {name} entered unexpected status {last_status_seen} after PENDING"
                     )
             # return the database instance
-            return AstraDBDatabaseAdmin(id=new_database_id)  # TODO here
+            return AstraDBDatabaseAdmin.from_astra_db_admin(
+                id=new_database_id,
+                astra_db_admin=self,
+            )
         else:
             raise DevOpsAPIException("Could not create the database.")
 
@@ -353,8 +377,117 @@ class AstraDBAdmin:
                 f"Could not issue a successful terminate-database DevOps API request for {id}."
             )
 
+    def get_database_admin(self, id: str) -> AstraDBDatabaseAdmin:
+        return AstraDBDatabaseAdmin.from_astra_db_admin(
+            id=id,
+            astra_db_admin=self,
+        )
+
+    def get_database(
+        self,
+        id: str,
+        *,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        region: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> Database:
+        # lazy importing here to avoid circular dependency
+        from astrapy import Database
+
+        # need to inspect for values?
+        this_db_info: Optional[AdminDatabaseInfo] = None
+        # handle overrides
+        _token = token or self.token
+        if namespace:
+            _namespace = namespace
+        else:
+            if this_db_info is None:
+                this_db_info = self.get_database_info(id)
+            _namespace = this_db_info.info.namespace
+        if region:
+            _region = region
+        else:
+            if this_db_info is None:
+                this_db_info = self.get_database_info(id)
+            _region = this_db_info.info.region
+
+        _api_endpoint = build_api_endpoint(
+            environment=self.environment,
+            database_id=id,
+            region=_region,
+        )
+        return Database(
+            api_endpoint=_api_endpoint,
+            token=_token,
+            namespace=_namespace,
+            caller_name=self._caller_name,
+            caller_version=self._caller_version,
+            api_path=api_path,
+            api_version=api_version,
+        )
+
 
 class AstraDBDatabaseAdmin:
 
-    def __init__(self, id: str) -> None:
+    def __init__(
+        self,
+        id: str,
+        *,
+        token: str,
+        environment: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+        dev_ops_url: Optional[str] = None,
+        dev_ops_api_version: Optional[str] = None,
+    ) -> None:
         self.id = id
+        self.token = token
+        self.environment = environment or Environment.PROD
+        self._astra_db_admin = AstraDBAdmin(
+            token=self.token,
+            environment=self.environment,
+            caller_name=caller_name,
+            caller_version=caller_version,
+            dev_ops_url=dev_ops_url,
+            dev_ops_api_version=dev_ops_api_version,
+        )
+
+    @staticmethod
+    def from_astra_db_admin(
+        id: str, *, astra_db_admin: AstraDBAdmin
+    ) -> AstraDBDatabaseAdmin:
+        return AstraDBDatabaseAdmin(
+            id=id,
+            token=astra_db_admin.token,
+            environment=astra_db_admin.environment,
+            caller_name=astra_db_admin._caller_name,
+            caller_version=astra_db_admin._caller_version,
+            dev_ops_url=astra_db_admin._dev_ops_url,
+            dev_ops_api_version=astra_db_admin._dev_ops_api_version,
+        )
+
+    @staticmethod
+    def from_api_endpoint(
+        api_endpoint: str,
+        *,
+        token: str,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+        dev_ops_url: Optional[str] = None,
+        dev_ops_api_version: Optional[str] = None,
+    ) -> AstraDBDatabaseAdmin:
+        parsed_api_endpoint = parse_api_endpoint(api_endpoint)
+        if parsed_api_endpoint:
+            return AstraDBDatabaseAdmin(
+                id=parsed_api_endpoint.database_id,
+                token=token,
+                environment=parsed_api_endpoint.environment,
+                caller_name=caller_name,
+                caller_version=caller_version,
+                dev_ops_url=dev_ops_url,
+                dev_ops_api_version=dev_ops_api_version,
+            )
+        else:
+            raise ValueError("Cannot parse the provided API endpoint.")
