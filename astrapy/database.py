@@ -727,6 +727,32 @@ class Database:
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
     ) -> AstraDBDatabaseAdmin:
+        """
+        Return an AstraDBDatabaseAdmin object corresponding to this database, for
+        use in admin tasks such as managing namespaces.
+
+        Args:
+            token: an access token with enough permission on the database to
+                perform the desired tasks. If omitted (as it can generally be done),
+                the token of this Database is used.
+            dev_ops_url: in case of custom deployments, this can be used to specify
+                the URL to the DevOps API, such as "https://api.astra.datastax.com".
+                Generally it can be omitted. The environment (prod/dev/...) is
+                determined from the API Endpoint.
+            dev_ops_api_version: this can specify a custom version of the DevOps API
+                (such as "v2"). Generally not needed.
+
+        Returns:
+            An AstraDBDatabaseAdmin instance targeting this database.
+
+        Example:
+            >>> my_db_admin = my_db.get_database_admin()
+            >>> if "new_namespace" not in my_db_admin.list_namespaces():
+            ...     my_db_admin.create_namespace("new_namespace")
+            >>> my_db_admin.list_namespaces()
+            ['default_keyspace', 'new_namespace']
+        """
+
         # lazy importing here to avoid circular dependency
         from astrapy.admin import AstraDBDatabaseAdmin
 
@@ -1394,6 +1420,32 @@ class AsyncDatabase:
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
     ) -> AstraDBDatabaseAdmin:
+        """
+        Return an AstraDBDatabaseAdmin object corresponding to this database, for
+        use in admin tasks such as managing namespaces.
+
+        Args:
+            token: an access token with enough permission on the database to
+                perform the desired tasks. If omitted (as it can generally be done),
+                the token of this Database is used.
+            dev_ops_url: in case of custom deployments, this can be used to specify
+                the URL to the DevOps API, such as "https://api.astra.datastax.com".
+                Generally it can be omitted. The environment (prod/dev/...) is
+                determined from the API Endpoint.
+            dev_ops_api_version: this can specify a custom version of the DevOps API
+                (such as "v2"). Generally not needed.
+
+        Returns:
+            An AstraDBDatabaseAdmin instance targeting this database.
+
+        Example:
+            >>> my_db_admin = my_async_db.get_database_admin()
+            >>> if "new_namespace" not in my_db_admin.list_namespaces():
+            ...     my_db_admin.create_namespace("new_namespace")
+            >>> my_db_admin.list_namespaces()
+            ['default_keyspace', 'new_namespace']
+        """
+
         # lazy importing here to avoid circular dependency
         from astrapy.admin import AstraDBDatabaseAdmin
 

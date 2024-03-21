@@ -68,6 +68,17 @@ class DevOpsAPIErrorDescriptor:
 
 
 class DevOpsAPIResponseException(DevOpsAPIException):
+    """
+    A request to the DevOps API returned with a non-success return code
+    and one of more errors in the HTTP response.
+
+    Attributes:
+        text: a text message about the exception.
+        command: the raw payload that was sent to the DevOps API.
+        error_descriptors: a list of all DevOpsAPIErrorDescriptor objects
+            returned by the API in the response.
+    """
+
     text: Optional[str]
     command: Optional[Dict[str, Any]]
     error_descriptors: List[DevOpsAPIErrorDescriptor]
@@ -89,6 +100,8 @@ class DevOpsAPIResponseException(DevOpsAPIException):
         command: Optional[Dict[str, Any]],
         raw_response: Dict[str, Any],
     ) -> DevOpsAPIResponseException:
+        """Parse a raw response from the API into this exception."""
+
         error_descriptors = [
             DevOpsAPIErrorDescriptor(error_dict)
             for error_dict in raw_response.get("errors") or []
@@ -104,8 +117,8 @@ class DevOpsAPIResponseException(DevOpsAPIException):
 
 @dataclass
 class DataAPIErrorDescriptor:
-    """
-    An object representing a single error returned from the Data API,
+    """list of
+    Ans object representing a single error returned from the Data API,
     typically with an error code and a text message.
     An API request would return with an HTTP 200 success error code,
     but contain a nonzero amount of these.
@@ -331,6 +344,8 @@ class DataAPIResponseException(DataAPIException):
         raw_response: Dict[str, Any],
         **kwargs: Any,
     ) -> DataAPIResponseException:
+        """Parse a raw response from the API into this exception."""
+
         return cls.from_responses(
             commands=[command],
             raw_responses=[raw_response],
@@ -344,6 +359,8 @@ class DataAPIResponseException(DataAPIException):
         raw_responses: List[Dict[str, Any]],
         **kwargs: Any,
     ) -> DataAPIResponseException:
+        """Parse a list of raw responses from the API into this exception."""
+
         detailed_error_descriptors: List[DataAPIDetailedErrorDescriptor] = []
         for command, raw_response in zip(commands, raw_responses):
             if raw_response.get("errors", []):
@@ -378,6 +395,8 @@ class DataAPIResponseException(DataAPIException):
         )
 
     def data_api_response_exception(self) -> DataAPIResponseException:
+        """Cast the exception, whatever the subclass, into this parent superclass."""
+
         return DataAPIResponseException(
             text=self.text,
             error_descriptors=self.error_descriptors,

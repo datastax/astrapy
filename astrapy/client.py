@@ -30,6 +30,11 @@ if TYPE_CHECKING:
 
 
 class DataAPIClient:
+    """
+    A client for using the Data API. This is the main entry point and sits
+    at the top of the conceptual "client -> database -> collection" hierarchy.
+    """
+
     def __init__(
         self,
         token: str,
