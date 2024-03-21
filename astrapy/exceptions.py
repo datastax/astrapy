@@ -37,7 +37,69 @@ class DevOpsAPIException(ValueError):
     An exception specific to issuing requests to the DevOps API.
     """
 
-    pass
+    def __init__(self, text: str = ""):
+        super().__init__(text)
+
+
+@dataclass
+class DevOpsAPIErrorDescriptor:
+    """
+    An object representing a single error returned from the DevOps API,
+    typically with an error code and a text message.
+
+    A single response from the Devops API may return zero, one or more of these.
+
+    Attributes:
+        id: a numeric code as found in the API "ID" item.
+        message: the text found in the API "error" item.
+        attributes: a dict with any further key-value pairs returned by the API.
+    """
+
+    id: Optional[int]
+    message: Optional[str]
+    attributes: Dict[str, Any]
+
+    def __init__(self, error_dict: Dict[str, Any]) -> None:
+        self.id = error_dict.get("ID")
+        self.message = error_dict.get("message")
+        self.attributes = {
+            k: v for k, v in error_dict.items() if k not in {"ID", "message"}
+        }
+
+
+class DevOpsAPIResponseException(DevOpsAPIException):
+    text: Optional[str]
+    command: Optional[Dict[str, Any]]
+    error_descriptors: List[DevOpsAPIErrorDescriptor]
+
+    def __init__(
+        self,
+        text: Optional[str] = None,
+        *,
+        command: Optional[Dict[str, Any]] = None,
+        error_descriptors: List[DevOpsAPIErrorDescriptor] = [],
+    ) -> None:
+        super().__init__(text or self.__class__.__name__)
+        self.text = text
+        self.command = command
+        self.error_descriptors = error_descriptors
+
+    @staticmethod
+    def from_response(
+        command: Optional[Dict[str, Any]],
+        raw_response: Dict[str, Any],
+    ) -> DevOpsAPIResponseException:
+        error_descriptors = [
+            DevOpsAPIErrorDescriptor(error_dict)
+            for error_dict in raw_response.get("errors") or []
+        ]
+        if error_descriptors:
+            _text = error_descriptors[0].message
+        else:
+            _text = None
+        return DevOpsAPIResponseException(
+            text=_text, command=command, error_descriptors=error_descriptors
+        )
 
 
 @dataclass
@@ -484,6 +546,7 @@ def recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator for a sync method liable to generate the core APIRequestError.
     That exception is intercepted and recast as DataAPIResponseException.
+    Moreover, timeouts are also caught and converted into Data API timeouts.
     """
 
     @wraps(method)
@@ -506,6 +569,7 @@ def recast_method_async(
     """
     Decorator for an async method liable to generate the core APIRequestError.
     That exception is intercepted and recast as DataAPIResponseException.
+    Moreover, timeouts are also caught and converted into Data API timeouts.
     """
 
     @wraps(method)
@@ -520,6 +584,27 @@ def recast_method_async(
             raise to_dataapi_timeout_exception(texc)
 
     return _wrapped_async
+
+
+def ops_recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Decorator for a sync DevOps method liable to generate the core APIRequestError.
+    That exception is intercepted and recast as DevOpsAPIException.
+    Moreover, timeouts are also caught and converted into Data API timeouts.
+    """
+
+    @wraps(method)
+    def _wrapped_sync(*pargs: Any, **kwargs: Any) -> Any:
+        try:
+            return method(*pargs, **kwargs)
+        except APIRequestError as exc:
+            raise DevOpsAPIResponseException.from_response(
+                command=exc.payload, raw_response=exc.response.json()
+            )
+        except httpx.TimeoutException as texc:
+            raise to_dataapi_timeout_exception(texc)
+
+    return _wrapped_sync
 
 
 def base_timeout_info(max_time_ms: Optional[int]) -> Union[TimeoutInfo, None]:
@@ -547,9 +632,12 @@ class MultiCallTimeoutManager:
     started_ms: int = -1
     deadline_ms: Optional[int]
 
-    def __init__(self, overall_max_time_ms: Optional[int]) -> None:
+    def __init__(
+        self, overall_max_time_ms: Optional[int], exception_type: str = "data_api"
+    ) -> None:
         self.started_ms = int(time.time() * 1000)
         self.overall_max_time_ms = overall_max_time_ms
+        self.exception_type = exception_type
         if self.overall_max_time_ms is not None:
             self.deadline_ms = self.started_ms + self.overall_max_time_ms
         else:
@@ -567,12 +655,17 @@ class MultiCallTimeoutManager:
             if now_ms < self.deadline_ms:
                 return self.deadline_ms - now_ms
             else:
-                raise DataAPITimeoutException(
-                    text="Operation timed out.",
-                    timeout_type="generic",
-                    endpoint=None,
-                    raw_payload=None,
-                )
+                if self.exception_type == "data_api":
+                    raise DataAPITimeoutException(
+                        text="Operation timed out.",
+                        timeout_type="generic",
+                        endpoint=None,
+                        raw_payload=None,
+                    )
+                elif self.exception_type == "devops_api":
+                    raise DevOpsAPIException("Operation timed out.")
+                else:
+                    raise ValueError("Operation timed out.")
         else:
             return None
 

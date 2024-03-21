@@ -50,14 +50,13 @@ def test_imports() -> None:
         DefaultIdType,
     )
     from astrapy.info import (  # noqa: F401
+        AdminDatabaseInfo,
         DatabaseInfo,
         CollectionInfo,
     )
     from astrapy.admin import (  # noqa: F401
         Environment,
         ParsedAPIEndpoint,
-        Admin,
-        DatabaseAdmin,
     )
     from astrapy.cursors import (  # noqa: F401
         BaseCursor,
@@ -100,6 +99,8 @@ def test_imports() -> None:
         AsyncDatabase,
         Collection,
         AsyncCollection,
+        AstraDBAdmin,
+        AstraDBDatabaseAdmin,
     )
 
     # The import pattern above for database and collection is to be preferred.
@@ -110,4 +111,8 @@ def test_imports() -> None:
     from astrapy.collection import (  # noqa: F401
         Collection as Collection2,
         AsyncCollection as AsyncCollection2,
+    )
+    from astrapy.admin import (  # noqa: F401
+        AstraDBAdmin as AstraDBAdmin2,
+        AstraDBDatabaseAdmin as AstraDBDatabaseAdmin2,
     )

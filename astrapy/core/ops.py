@@ -18,7 +18,7 @@ import logging
 from typing import Any, cast, Dict, Optional, TypedDict
 
 import httpx
-from astrapy.core.api import api_request, raw_api_request
+from astrapy.core.api import APIRequestError, api_request, raw_api_request
 
 from astrapy.core.utils import (
     http_methods,
@@ -213,6 +213,10 @@ class AstraDBOps:
 
         if r.status_code == 201:
             return {"id": r.headers["Location"]}
+        elif r.status_code >= 400 and r.status_code < 500:
+            raise APIRequestError(r, payload=database_definition)
+        else:
+            raise ValueError(f"[HTTP {r.status_code}] {r.text}")
 
         return None
 
@@ -237,6 +241,10 @@ class AstraDBOps:
 
         if r.status_code == 202:
             return database
+        elif r.status_code >= 400 and r.status_code < 500:
+            raise APIRequestError(r, payload=None)
+        else:
+            raise ValueError(f"[HTTP {r.status_code}] {r.text}")
 
         return None
 

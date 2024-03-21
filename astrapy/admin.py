@@ -15,18 +15,28 @@
 from __future__ import annotations
 
 import re
-from typing import Optional
+import time
+from typing import Any, Dict, Optional
 from dataclasses import dataclass
 
 import httpx
 
 from astrapy.core.ops import AstraDBOps
-from astrapy.info import DatabaseInfo
+from astrapy.cursors import CommandCursor
+from astrapy.info import AdminDatabaseInfo, DatabaseInfo
 from astrapy.exceptions import (
     DevOpsAPIException,
+    MultiCallTimeoutManager,
     base_timeout_info,
     to_dataapi_timeout_exception,
+    ops_recast_method_sync,
 )
+
+
+DEFAULT_NEW_DATABASE_CLOUD_PROVIDER = "gcp"
+DEFAULT_NEW_DATABASE_REGION = "us-east1"
+DEFAULT_NEW_DATABASE_NAMESPACE = "default_keyspace"
+WAITING_ON_DB_POLL_PERIOD_SECONDS = 2
 
 
 class Environment:
@@ -147,15 +157,204 @@ def get_database_info(
         return None
 
 
-class Admin:
+def _recast_as_admin_database_info(
+    admin_database_info_dict: Dict[str, Any],
+    *,
+    environment: str,
+) -> AdminDatabaseInfo:
+    return AdminDatabaseInfo(
+        info=DatabaseInfo(
+            id=admin_database_info_dict["id"],
+            region=admin_database_info_dict["info"]["region"],
+            namespace=admin_database_info_dict["info"]["keyspace"],
+            name=admin_database_info_dict["info"]["name"],
+            environment=environment,
+            raw_info=admin_database_info_dict["info"],
+        ),
+        available_actions=admin_database_info_dict.get("availableActions"),
+        cost=admin_database_info_dict["cost"],
+        cqlsh_url=admin_database_info_dict["cqlshUrl"],
+        creation_time=admin_database_info_dict["creationTime"],
+        data_endpoint_url=admin_database_info_dict["dataEndpointUrl"],
+        grafana_url=admin_database_info_dict["grafanaUrl"],
+        graphql_url=admin_database_info_dict["graphqlUrl"],
+        id=admin_database_info_dict["id"],
+        last_usage_time=admin_database_info_dict["lastUsageTime"],
+        metrics=admin_database_info_dict["metrics"],
+        observed_status=admin_database_info_dict["observedStatus"],
+        org_id=admin_database_info_dict["orgId"],
+        owner_id=admin_database_info_dict["ownerId"],
+        status=admin_database_info_dict["status"],
+        storage=admin_database_info_dict["storage"],
+        termination_time=admin_database_info_dict["terminationTime"],
+        raw_info=admin_database_info_dict,
+    )
+
+
+class AstraDBAdmin:
     def __init__(
         self,
         token: str,
         *,
         environment: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+        dev_ops_url: Optional[str] = None,
+        dev_ops_api_version: Optional[str] = None,
     ) -> None:
-        pass
+        self.token = token
+        self.environment = environment or Environment.PROD
+        if dev_ops_url is None:
+            self.dev_ops_url = DEV_OPS_URL_MAP[self.environment]
+        else:
+            self.dev_ops_url = dev_ops_url
+        self._astra_db_ops = AstraDBOps(
+            token=self.token,
+            dev_ops_url=dev_ops_url,
+            dev_ops_api_version=dev_ops_api_version,
+            caller_name=caller_name,
+            caller_version=caller_version,
+        )
+
+    @ops_recast_method_sync
+    def list_databases(
+        self,
+        *,
+        max_time_ms: Optional[int] = None,
+    ) -> CommandCursor[AdminDatabaseInfo]:
+        gd_list_response = self._astra_db_ops.get_databases(
+            timeout_info=base_timeout_info(max_time_ms)
+        )
+        if not isinstance(gd_list_response, list):
+            raise DevOpsAPIException(
+                "Faulty response from get-databases DevOps API command.",
+            )
+        else:
+            # we know this is a list of dicts which need a little adjusting
+            return CommandCursor(
+                address=self._astra_db_ops.base_url,
+                items=[
+                    _recast_as_admin_database_info(
+                        db_dict,
+                        environment=self.environment,
+                    )
+                    for db_dict in gd_list_response
+                ],
+            )
+
+    def get_database_info(
+        self, database_id: str, *, max_time_ms: Optional[int] = None
+    ) -> AdminDatabaseInfo:
+        gd_response = self._astra_db_ops.get_database(
+            database=database_id,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if not isinstance(gd_response, dict):
+            raise DevOpsAPIException(
+                "Faulty response from get-database DevOps API command.",
+            )
+        else:
+            return _recast_as_admin_database_info(
+                gd_response,
+                environment=self.environment,
+            )
+
+    @ops_recast_method_sync
+    def create_database(
+        self,
+        name: str,
+        *,
+        wait_until_active: bool = True,
+        namespace: str = DEFAULT_NEW_DATABASE_NAMESPACE,
+        cloud_provider: str = DEFAULT_NEW_DATABASE_CLOUD_PROVIDER,
+        region: str = DEFAULT_NEW_DATABASE_REGION,
+        capacity_units: int = 1,
+        max_time_ms: Optional[int] = None,
+    ) -> AstraDBDatabaseAdmin:
+        database_definition = {
+            "name": name,
+            "tier": "serverless",
+            "cloudProvider": cloud_provider,
+            "keyspace": namespace,
+            "region": region,
+            "capacityUnits": capacity_units,
+            "user": "token",
+            "password": self.token,
+            "dbType": "vector",
+        }
+        timeout_manager = MultiCallTimeoutManager(
+            overall_max_time_ms=max_time_ms, exception_type="devops_api"
+        )
+        cd_response = self._astra_db_ops.create_database(
+            database_definition=database_definition,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if cd_response is not None:
+            new_database_id = cd_response["id"]
+            if wait_until_active:
+                last_status_seen = "PENDING"
+                while last_status_seen == "PENDING":
+                    time.sleep(WAITING_ON_DB_POLL_PERIOD_SECONDS)
+                    last_status_seen = self.get_database_info(
+                        database_id=new_database_id,
+                        max_time_ms=timeout_manager.remaining_timeout_ms(),
+                    ).status
+                if last_status_seen not in {"ACTIVE", "INITIALIZING"}:
+                    raise DevOpsAPIException(
+                        f"Database {name} entered unexpected status {last_status_seen} after PENDING"
+                    )
+            # return the database instance
+            return AstraDBDatabaseAdmin(id=new_database_id)  # TODO here
+        else:
+            raise DevOpsAPIException("Could not create the database.")
+
+    @ops_recast_method_sync
+    def drop_database(
+        self,
+        database_id: str,
+        *,
+        wait_until_active: bool = True,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        timeout_manager = MultiCallTimeoutManager(
+            overall_max_time_ms=max_time_ms, exception_type="devops_api"
+        )
+        te_response = self._astra_db_ops.terminate_database(
+            database=database_id,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if te_response == database_id:
+            if wait_until_active:
+                last_status_seen: Optional[str] = "TERMINATING"
+                _db_name: Optional[str] = None
+                while last_status_seen == "TERMINATING":
+                    time.sleep(WAITING_ON_DB_POLL_PERIOD_SECONDS)
+                    #
+                    detected_databases = [
+                        a_db_info
+                        for a_db_info in self.list_databases(
+                            max_time_ms=timeout_manager.remaining_timeout_ms(),
+                        )
+                        if a_db_info.id == database_id
+                    ]
+                    if detected_databases:
+                        last_status_seen = detected_databases[0].status
+                        _db_name = detected_databases[0].status.info.name
+                    else:
+                        last_status_seen = None
+                if last_status_seen is not None:
+                    _name_desc = f" ({_db_name})" if _db_name else ""
+                    raise DevOpsAPIException(
+                        f"Database {database_id}{_name_desc} entered unexpected status {last_status_seen} after PENDING"
+                    )
+            return {"ok": 1}
+        else:
+            raise DevOpsAPIException(
+                f"Could not issue a successful terminate-database DevOps API request for {database_id}."
+            )
 
 
-class DatabaseAdmin:
-    pass
+class AstraDBDatabaseAdmin:
+
+    def __init__(self, id: str) -> None:
+        self.id = id

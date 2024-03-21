@@ -55,8 +55,14 @@ from astrapy.collection import (  # noqa: E402
     AsyncCollection,
     Collection,
 )
+from astrapy.admin import (  # noqa: E402
+    AstraDBAdmin,
+    AstraDBDatabaseAdmin,
+)
 
 __all__ = [
+    "AstraDBAdmin",
+    "AstraDBDatabaseAdmin",
     "AsyncCollection",
     "AsyncDatabase",
     "Collection",

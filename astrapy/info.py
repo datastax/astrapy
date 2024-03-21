@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 
 
@@ -35,11 +35,6 @@ class DatabaseInfo:
         raw_info: the full response from the DevOPS API call to get this info.
 
     Note:
-        Most members of this object can be None. This happens when errors occur
-        during DevOps API calls and usually signals that the Data API server
-        is a deploy where concepts such as "region" or "database ID" do not apply.
-
-    Note:
         The `raw_info` dictionary usually has a `region` key describing
         the default region as configured in the database, which does not
         necessarily (for multi-region databases) match the region through
@@ -47,6 +42,10 @@ class DatabaseInfo:
         by the "api endpoint" used for connecting. In other words, for multi-region
         databases it is possible that
             database_info.region != database_info.raw_info["region"]
+        Conversely, in case of a DatabaseInfo not obtained through a
+        connected database, such as when calling `Admin.list_databases()`,
+        all fields except `environment` (e.g. namespace, region, etc)
+        are set as found on the DevOps API response directly.
     """
 
     id: str
@@ -75,3 +74,55 @@ class CollectionInfo:
     namespace: str
     name: str
     full_name: str
+
+
+@dataclass
+class AdminDatabaseInfo:
+    """
+    Represents the full response from the DevOps API about a database info.
+
+    Most attributes just contain the corresponding part of the raw response:
+    for this reason, please consult the DevOps API documentation for details.
+
+    Attributes:
+        info: a DatabaseInfo instance for the underlying database.
+            The DatabaseInfo is a subset of the information described by
+            AdminDatabaseInfo - in terms of the DevOps API response,
+            it corresponds to just its "info" subdictionary.
+        available_actions: the "availableActions" value in the full API response.
+        cost: the "cost" value in the full API response.
+        cqlsh_url: the "cqlshUrl" value in the full API response.
+        creation_time: the "creationTime" value in the full API response.
+        data_endpoint_url: the "dataEndpointUrl" value in the full API response.
+        grafana_url: the "grafanaUrl" value in the full API response.
+        graphql_url: the "graphqlUrl" value in the full API response.
+        id: the "id" value in the full API response.
+        last_usage_time: the "lastUsageTime" value in the full API response.
+        metrics: the "metrics" value in the full API response.
+        observed_status: the "observedStatus" value in the full API response.
+        org_id: the "orgId" value in the full API response.
+        owner_id: the "ownerId" value in the full API response.
+        status: the "status" value in the full API response.
+        storage: the "storage" value in the full API response.
+        termination_time: the "terminationTime" value in the full API response.
+        raw_info: the full raw response from the DevOps API.
+    """
+
+    info: DatabaseInfo
+    available_actions: Optional[List[str]]
+    cost: Dict[str, Any]
+    cqlsh_url: str
+    creation_time: str
+    data_endpoint_url: str
+    grafana_url: str
+    graphql_url: str
+    id: str
+    last_usage_time: str
+    metrics: Dict[str, Any]
+    observed_status: str
+    org_id: str
+    owner_id: str
+    status: str
+    storage: Dict[str, Any]
+    termination_time: str
+    raw_info: Optional[Dict[str, Any]]
