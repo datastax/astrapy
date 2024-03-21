@@ -101,6 +101,7 @@ def test_imports() -> None:
         AsyncCollection,
         AstraDBAdmin,
         AstraDBDatabaseAdmin,
+        DataAPIClient,
     )
 
     # The import pattern above for database and collection is to be preferred.
@@ -115,4 +116,7 @@ def test_imports() -> None:
     from astrapy.admin import (  # noqa: F401
         AstraDBAdmin as AstraDBAdmin2,
         AstraDBDatabaseAdmin as AstraDBDatabaseAdmin2,
+    )
+    from astrapy.client import (  # noqa: F401
+        DataAPIClient as DataAPIClient2,
     )
