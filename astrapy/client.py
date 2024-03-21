@@ -38,6 +38,27 @@ class DataAPIClient:
     client:
         - databases (Database and AsyncDatabase) are created for working with data
         - AstraDBAdmin objects can be created for admin-level work
+
+    Args:
+        token: an Access Token to the database. Example: "AstraCS:xyz..."
+        environment: a string representing the target Astra environment.
+            It can be left unspecified for the default value of Environment.PROD;
+            other values are Environment.DEV and Environment.TEST.
+        caller_name: name of the application, or framework, on behalf of which
+            the Data API calls are performed. This ends up in the request user-agent.
+        caller_version: version of the caller.
+
+    Example:
+        >>> from astrapy import DataAPIClient
+        >>> my_client = DataAPIClient("AstraCS:...")
+        >>> my_db0 = my_client.get_database_by_api_endpoint(
+        ...     "https://01234567-....apps.astra.datastax.com"
+        ... )
+        >>> my_db1 = my_client.get_database("01234567-...")
+        >>> my_db2 = my_client.get_database("01234567-...", region="us-east1")
+        >>> my_adm0 = my_client.get_admin()
+        >>> my_adm1 = my_client.get_admin(token=more_powerful_token_override)
+        >>> database_list = my_adm0.list_databases()
     """
 
     def __init__(
@@ -64,6 +85,40 @@ class DataAPIClient:
         api_version: Optional[str] = None,
         max_time_ms: Optional[int] = None,
     ) -> Database:
+        """
+        Get a Database object from this client, for doing data-related work.
+
+        Args:
+            id: the target database ID. The database must exist for the resulting
+                object to be effectively used; in other words, this invocation
+                does not create the database, just the object instance.
+                Actual admin work can be achieved by using the AstraDBAdmin object.
+            token: if supplied, is passed to the Database instead of the client token.
+            namespace: if provided, is passed to the Database
+                (it is left to the default otherwise).
+            region: the region to use for connecting to the database. The
+                database must be located in that region.
+                Note that if this parameter is not passed, an additional
+                DevOps API request is made to determine the default region
+                and use it subsequently.
+            api_path: path to append to the API Endpoint. In typical usage, this
+                should be left to its default of "/api/json".
+            api_version: version specifier to append to the API path. In typical
+                usage, this should be left to its default of "v1".
+            max_time_ms: a timeout, in milliseconds, for the DevOps API
+                HTTP request should it be necessary (see the `region` argument).
+
+        Returns:
+            a Database object with which to work on Data API collections.
+
+        Example:
+            >>> my_db0 = my_client.get_database("01234567-...")
+            >>> my_db1 = my_client.get_database("01234567-...", token="AstraCS:...")
+            >>> my_db2 = my_client.get_database("01234567-...", region="us-west1")
+            >>> my_coll = my_db0.create_collection("movies", dimension=512)
+            >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+        """
+
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
@@ -109,6 +164,13 @@ class DataAPIClient:
         api_version: Optional[str] = None,
         max_time_ms: Optional[int] = None,
     ) -> AsyncDatabase:
+        """
+        Get an AsyncDatabase object from this client.
+
+        This method has identical behavior and signature as the sync
+        counterpart `get_database`: please see that one for more details.
+        """
+
         return self.get_database(
             id=id,
             token=token,
@@ -128,6 +190,38 @@ class DataAPIClient:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> Database:
+        """
+        Get a Database object from this client, for doing data-related work.
+        The Database is specified by an API Endpoint instead of the ID and a region.
+
+        Args:
+            api_endpoint: the full "API Endpoint" string used to reach the Data API.
+                Example: "https://<database_id>-<region>.apps.astra.datastax.com"
+            token: if supplied, is passed to the Database instead of the client token.
+            namespace: if provided, is passed to the Database
+                (it is left to the default otherwise).
+            api_path: path to append to the API Endpoint. In typical usage, this
+                should be left to its default of "/api/json".
+            api_version: version specifier to append to the API path. In typical
+                usage, this should be left to its default of "v1".
+
+        Returns:
+            a Database object with which to work on Data API collections.
+
+        Example:
+            >>> my_db0 = my_client.get_database_by_api_endpoint("01234567-...")
+            >>> my_db1 = my_client.get_database_by_api_endpoint(
+            ...     "https://01234567-....apps.astra.datastax.com",
+            ...     token="AstraCS:...",
+            ... )
+            >>> my_db2 = my_client.get_database_by_api_endpoint(
+            ...     "https://01234567-....apps.astra.datastax.com",
+            ...     namespace="the_other_namespace",
+            ... )
+            >>> my_coll = my_db0.create_collection("movies", dimension=512)
+            >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+        """
+
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
@@ -135,7 +229,10 @@ class DataAPIClient:
         if parsed_api_endpoint is not None:
             if parsed_api_endpoint.environment != self.environment:
                 raise ValueError(
-                    "Environment mismatch between client and provided API endpoint."
+                    "Environment mismatch between client and provided "
+                    "API endpoint. You can try adding "
+                    f'`environment="{parsed_api_endpoint.environment}"` '
+                    "to the DataAPIClient creation statement."
                 )
             _token = token or self.token
             return Database(
@@ -159,6 +256,15 @@ class DataAPIClient:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> AsyncDatabase:
+        """
+        Get an AsyncDatabase object from this client, for doing data-related work.
+        The Database is specified by an API Endpoint instead of the ID and a region.
+
+        This method has identical behavior and signature as the sync
+        counterpart `get_database_by_api_endpoint`: please see that one
+        for more details.
+        """
+
         return self.get_database_by_api_endpoint(
             api_endpoint=api_endpoint,
             token=token,
@@ -174,6 +280,38 @@ class DataAPIClient:
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
     ) -> AstraDBAdmin:
+        """
+        Get an AstraDBAdmin instance corresponding to this client, for
+        admin work such as managing databases.
+
+        Args:
+            token: if supplied, is passed to the Database instead of the client token.
+                This may be useful when switching to a more powerful,
+                admin-capable permission set.
+            dev_ops_url: in case of custom deployments, this can be used to specify
+                the URL to the DevOps API, such as "https://api.astra.datastax.com".
+                Generally it can be omitted. The environment (prod/dev/...) is
+                determined from the API Endpoint.
+            dev_ops_api_version: this can specify a custom version of the DevOps API
+                (such as "v2"). Generally not needed.
+
+        Returns:
+            An AstraDBAdmin instance, wich which to perform management at the
+            database level.
+
+        Example:
+            >>> my_adm0 = my_client.get_admin()
+            >>> my_adm1 = my_client.get_admin(token=more_powerful_token_override)
+            >>> database_list = my_adm0.list_databases()
+            >>> my_db_admin = my_adm0.create_database(
+            ...     "the_other_database",
+            ...     cloud_provider="AWS",
+            ...     region="eu-west-1",
+            ... )
+            >>> my_db_admin.list_namespaces()
+            ['default_keyspace', 'that_other_one']
+        """
+
         # lazy importing here to avoid circular dependency
         from astrapy.admin import AstraDBAdmin
 
