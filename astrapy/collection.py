@@ -790,7 +790,9 @@ class Collection:
             skip: with this integer parameter, what would be the first `skip`
                 documents returned by the query are discarded, and the results
                 start from the (skip+1)-th document.
-                This parameter cannot be used when passing 'vector' (i.e. with ANN search).
+                This parameter can be used only in conjunction with an explicit
+                `sort` criterion of the ascending/descending type (i.e. it cannot
+                be used when not sorting, nor with vector-based ANN search).
             limit: this (integer) parameter sets a limit over how many documents
                 are returned. Once `limit` is reached (or the cursor is exhausted
                 for lack of matching documents), nothing more is returned.
@@ -799,15 +801,16 @@ class Collection:
                 or "approximate nearest-neighbours" search).
                 When running similarity search on a collection, no other sorting
                 criteria can be specified. Moreover, there is an upper bound
-                to the number of documents that can be returned. See the Data API
-                documentation for details.
+                to the number of documents that can be returned. For details,
+                see the Note about upper bounds and the Data API documentation.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
                 returned document. Can only be used for vector ANN search, i.e.
                 when either `vector` is supplied or the `sort` parameter has the
                 shape {"$vector": ...}.
             sort: with this dictionary parameter one can control the order
-                the documents are returned. See the Note about sorting for details.
+                the documents are returned. See the Note about sorting, as well as
+                the one about upper bounds, for details.
             max_time_ms: a timeout, in milliseconds, for each single one
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
@@ -874,6 +877,37 @@ class Collection:
                 }
             When running a vector similarity (ANN) search:
                 sort={"$vector": [0.4, 0.15, -0.5]}
+
+        Note:
+            Some combinations of arguments impose an implicit upper bound on the
+            number of documents that are returned by the Data API. More specifically:
+            (a) Vector ANN searches cannot return more than a number of documents
+            that at the time of writing is set to 1000 items.
+            (b) When using a sort criterion of the ascending/descending type,
+            the Data API will return a smaller number of documents, set to 20
+            at the time of writing, and stop there. The returned documents are
+            the top results across the whole collection according to the requested
+            criterion.
+            These provisions should be kept in mind even when subsequently running
+            a command such as `.distinct()` on a cursor.
+
+        Note:
+            When not specifying sorting criteria at all (by vector or otherwise),
+            the cursor can scroll through an arbitrary number of documents as
+            the Data API and the client periodically exchange new chunks of documents.
+            It should be noted that the behavior of the cursor in the case documents
+            have been added/removed after the `find` was started depends on database
+            internals and it is not guaranteed, nor excluded, that such "real-time"
+            changes in the data would be picked up by the cursor.
+
+        Note:
+            When not specifying sorting criteria at all (by vector or otherwise),
+            the cursor can scroll through an arbitrary number of documents as
+            the Data API and the client periodically exchange new chunks of documents.
+            It should be noted that the behavior of the cursor in the case documents
+            have been added/removed after the `find` was started depends on database
+            internals and it is not guaranteed, nor excluded, that such "real-time"
+            changes in the data would be picked up by the cursor.
         """
 
         _sort = _collate_vector_to_sort(sort, vector)
@@ -1048,6 +1082,11 @@ class Collection:
             of the `find` method and collects the unique values found for `key`.
             As such, there may be performance, latency and ultimately
             billing implications if the amount of matching documents is large.
+
+        Note:
+            For details on the behaviour of "distinct" in conjunction with
+            real-time changes in the collection contents, see the
+            Note of the `find` command.
         """
 
         f_cursor = Cursor(
@@ -1591,6 +1630,14 @@ class Collection:
             ...     upsert=True,
             ... )
             UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '46643050-...'})
+
+        Note:
+            Similarly to the case of `find` (see its docstring for more details),
+            running this command while, at the same time, another process is
+            inserting new documents which match the filter of the `update_many`
+            can result in an unpredictable fraction of these documents being updated.
+            In other words, it cannot be easily predicted whether a given
+            newly-inserted document will be picked up by the update_many command or not.
         """
 
         base_options = {
@@ -1602,6 +1649,7 @@ class Collection:
         must_proceed = True
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         while must_proceed:
+            _ = input("DM continue?")
             options = {**base_options, **page_state_options}
             this_um_response = self._astra_db_collection.update_many(
                 update=update,
@@ -1850,7 +1898,9 @@ class Collection:
             documents, it can keep running (in a blocking way) for a macroscopic
             time. In that case, new documents that are meanwhile inserted
             (e.g. from another process/application) will be deleted during
-            the execution of this method call.
+            the execution of this method call until the collection is devoid
+            of matches.
+            of matches.
         """
 
         if not filter:
@@ -2836,7 +2886,9 @@ class AsyncCollection:
             skip: with this integer parameter, what would be the first `skip`
                 documents returned by the query are discarded, and the results
                 start from the (skip+1)-th document.
-                This parameter cannot be used when passing 'vector' (i.e. with ANN search).
+                This parameter can be used only in conjunction with an explicit
+                `sort` criterion of the ascending/descending type (i.e. it cannot
+                be used when not sorting, nor with vector-based ANN search).
             limit: this (integer) parameter sets a limit over how many documents
                 are returned. Once `limit` is reached (or the cursor is exhausted
                 for lack of matching documents), nothing more is returned.
@@ -2845,15 +2897,16 @@ class AsyncCollection:
                 or "approximate nearest-neighbours" search).
                 When running similarity search on a collection, no other sorting
                 criteria can be specified. Moreover, there is an upper bound
-                to the number of documents that can be returned. See the Data API
-                documentation for details.
+                to the number of documents that can be returned. For details,
+                see the Note about upper bounds and the Data API documentation.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
                 returned document. Can only be used for vector ANN search, i.e.
                 when either `vector` is supplied or the `sort` parameter has the
                 shape {"$vector": ...}.
             sort: with this dictionary parameter one can control the order
-                the documents are returned. See the Note about sorting for details.
+                the documents are returned. See the Note about sorting, as well as
+                the one about upper bounds, for details.
             max_time_ms: a timeout, in milliseconds, for each single one
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
@@ -2929,6 +2982,28 @@ class AsyncCollection:
                 }
             When running a vector similarity (ANN) search:
                 sort={"$vector": [0.4, 0.15, -0.5]}
+
+        Note:
+            Some combinations of arguments impose an implicit upper bound on the
+            number of documents that are returned by the Data API. More specifically:
+            (a) Vector ANN searches cannot return more than a number of documents
+            that at the time of writing is set to 1000 items.
+            (b) When using a sort criterion of the ascending/descending type,
+            the Data API will return a smaller number of documents, set to 20
+            at the time of writing, and stop there. The returned documents are
+            the top results across the whole collection according to the requested
+            criterion.
+            These provisions should be kept in mind even when subsequently running
+            a command such as `.distinct()` on a cursor.
+
+        Note:
+            When not specifying sorting criteria at all (by vector or otherwise),
+            the cursor can scroll through an arbitrary number of documents as
+            the Data API and the client periodically exchange new chunks of documents.
+            It should be noted that the behavior of the cursor in the case documents
+            have been added/removed after the `find` was started depends on database
+            internals and it is not guaranteed, nor excluded, that such "real-time"
+            changes in the data would be picked up by the cursor.
         """
 
         _sort = _collate_vector_to_sort(sort, vector)
@@ -3115,6 +3190,11 @@ class AsyncCollection:
             of the `find` method and collects the unique values found for `key`.
             As such, there may be performance, latency and ultimately
             billing implications if the amount of matching documents is large.
+
+        Note:
+            For details on the behaviour of "distinct" in conjunction with
+            real-time changes in the collection contents, see the
+            Note of the `find` command.
         """
 
         f_cursor = AsyncCursor(
@@ -3717,6 +3797,14 @@ class AsyncCollection:
             result0.update_info {'n': 2, 'updatedExisting': True, 'ok': 1.0, 'nModified': 2}
             result1.update_info {'n': 0, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0}
             result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '79ffd5a3-ab99-4dff-a2a5-4aaa0e59e854'}
+
+        Note:
+            Similarly to the case of `find` (see its docstring for more details),
+            running this command while, at the same time, another process is
+            inserting new documents which match the filter of the `update_many`
+            can result in an unpredictable fraction of these documents being updated.
+            In other words, it cannot be easily predicted whether a given
+            newly-inserted document will be picked up by the update_many command or not.
         """
 
         base_options = {
@@ -3989,7 +4077,8 @@ class AsyncCollection:
             documents, it can keep running (in a blocking way) for a macroscopic
             time. In that case, new documents that are meanwhile inserted
             (e.g. from another process/application) will be deleted during
-            the execution of this method call.
+            the execution of this method call until the collection is devoid
+            of matches.
         """
 
         if not filter:

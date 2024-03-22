@@ -401,6 +401,11 @@ class BaseCursor:
 
         Returns:
             this cursor itself.
+
+        Note:
+            This parameter can be used only in conjunction with an explicit
+            `sort` criterion of the ascending/descending type (i.e. it cannot
+            be used when not sorting, nor with vector-based ANN search).
         """
         self._ensure_not_started()
         self._ensure_alive()
@@ -419,6 +424,19 @@ class BaseCursor:
 
         Returns:
             this cursor itself.
+
+        Note:
+            Some combinations of arguments impose an implicit upper bound on the
+            number of documents that are returned by the Data API. More specifically:
+            (a) Vector ANN searches cannot return more than a number of documents
+            that at the time of writing is set to 1000 items.
+            (b) When using a sort criterion of the ascending/descending type,
+            the Data API will return a smaller number of documents, set to 20
+            at the time of writing, and stop there. The returned documents are
+            the top results across the whole collection according to the requested
+            criterion.
+            These provisions should be kept in mind even when subsequently running
+            a command such as `.distinct()` on a cursor.
         """
 
         self._ensure_not_started()
@@ -454,6 +472,15 @@ class Cursor(BaseCursor):
             max_time_ms: a timeout, in milliseconds, for each single one
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
+
+    Note:
+        When not specifying sorting criteria at all (by vector or otherwise),
+        the cursor can scroll through an arbitrary number of documents as
+        the Data API and the client periodically exchange new chunks of documents.
+        It should be noted that the behavior of the cursor in the case documents
+        have been added/removed after the cursor was started depends on database
+        internals and it is not guaranteed, nor excluded, that such "real-time"
+        changes in the data would be picked up by the cursor.
     """
 
     def __init__(
@@ -649,6 +676,15 @@ class AsyncCursor(BaseCursor):
             max_time_ms: a timeout, in milliseconds, for each single one
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
+
+    Note:
+        When not specifying sorting criteria at all (by vector or otherwise),
+        the cursor can scroll through an arbitrary number of documents as
+        the Data API and the client periodically exchange new chunks of documents.
+        It should be noted that the behavior of the cursor in the case documents
+        have been added/removed after the cursor was started depends on database
+        internals and it is not guaranteed, nor excluded, that such "real-time"
+        changes in the data would be picked up by the cursor.
     """
 
     def __init__(
