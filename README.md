@@ -331,7 +331,7 @@ from astrapy.cursors import (
 
 If your code uses the pre-1.0.0 astrapy (i.e. `from astrapy.db import Database, Collection` and so on) you are strongly advised to migrate to the current API.
 
-That being said, there are no known breaking of backward compatibility.
+That being said, there are no known breakings of backward compatibility.
 Here is a recap of the minor changes that came _to the old API_ with 1.0.0:
 
 - Added methods to `[Async]AstraDBCollection`: `delete_one_filter`, 
