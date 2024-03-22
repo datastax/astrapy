@@ -2127,6 +2127,21 @@ class Collection:
 
         Note:
             Use with caution.
+
+
+        Note:
+            Once the method succeeds, methods on this object can still be invoked:
+            however, this hardly makes sense as the underlying actual collection
+            is no more.
+            It is responsibility of the developer to design a correct flow
+            which avoids using a deceased collection any further.
+
+        Note:
+            Once the method succeeds, methods on this object can still be invoked:
+            however, this hardly makes sense as the underlying actual collection
+            is no more.
+            It is responsibility of the developer to design a correct flow
+            which avoids using a deceased collection any further.
         """
 
         return self.database.drop_collection(self, max_time_ms=max_time_ms)  # type: ignore[no-any-return]
@@ -4046,6 +4061,13 @@ class AsyncCollection:
 
         Note:
             Use with caution.
+
+        Note:
+            Once the method succeeds, methods on this object can still be invoked:
+            however, this hardly makes sense as the underlying actual collection
+            is no more.
+            It is responsibility of the developer to design a correct flow
+            which avoids using a deceased collection any further.
         """
 
         dm_response = await self._astra_db_collection.delete_many(
@@ -4269,6 +4291,13 @@ class AsyncCollection:
 
         Note:
             Use with caution.
+
+        Note:
+            Once the method succeeds, methods on this object can still be invoked:
+            however, this hardly makes sense as the underlying actual collection
+            is no more.
+            It is responsibility of the developer to design a correct flow
+            which avoids using a deceased collection any further.
         """
 
         return await self.database.drop_collection(self, max_time_ms=max_time_ms)  # type: ignore[no-any-return]

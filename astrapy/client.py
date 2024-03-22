@@ -117,6 +117,11 @@ class DataAPIClient:
             >>> my_db2 = my_client.get_database("01234567-...", region="us-west1")
             >>> my_coll = my_db0.create_collection("movies", dimension=512)
             >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+
+        Note:
+            This method does not perform any admin-level operation through
+            the DevOps API. For actual creation of a database, see the
+            `create_database` method of class AstraDBAdmin.
         """
 
         # lazy importing here to avoid circular dependency
@@ -220,6 +225,11 @@ class DataAPIClient:
             ... )
             >>> my_coll = my_db0.create_collection("movies", dimension=512)
             >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+
+        Note:
+            This method does not perform any admin-level operation through
+            the DevOps API. For actual creation of a database, see the
+            `create_database` method of class AstraDBAdmin.
         """
 
         # lazy importing here to avoid circular dependency
