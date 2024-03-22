@@ -2,15 +2,14 @@
 
 AstraPy is a Pythonic SDK for [DataStax Astra](https://astra.datastax.com)
 
-_This README targets AstraPy version **1.0.0+**, where a whole new API is introduced. Click [here](pre-overhaul readme
-  https://github.com/datastax/astrapy/blob/cd3f5ce8146093e10a095709c0f5c3f8e3f2c7da/README.md) for the pre-existing API (fully compatible with newer versions)._
+_This README targets AstraPy version **1.0.0+**, which introducesa a whole new API. Click [here](https://github.com/datastax/astrapy/blob/cd3f5ce8146093e10a095709c0f5c3f8e3f2c7da/README.md) for the pre-existing API (fully compatible with newer versions)._
 
 
 ## Quickstart
 
 Install with `pip install astrapy`.
 
-Get the *API Endpoint* and the *Token* to your Astra DB instance.
+Get the *API Endpoint* and the *Token* to your Astra DB instance at [astra.datastax.com](https://astra.datastax.com).
 
 Try the following code after replacing the connection parameters:
 
@@ -60,12 +59,16 @@ cursor = my_collection.find(
 
 for result in cursor:
     print(f"{result['summary']}: {result['$similarity']}")
+
+# This would print:
+#   Surfers' paradise: 0.98238194
+#   Friendly aliens in town: 0.91873914
 ```
 
 Next steps:
 
 - More info and usage patterns are given in the docstrings of classes and methods
-- [AstraPy reference]()
+- [AstraPy reference](https://docs.datastax.com/en/astra/astra-db-vector/clients/python.html)
 - [Data API reference](https://docs.datastax.com/en/astra/astra-db-vector/api-reference/data-api-commands.html)
 
 ## AstraPy's API
