@@ -19,6 +19,7 @@ from astrapy.core.db import (
     AsyncAstraDBCollection,
     AstraDB,
     AsyncAstraDB,
+    logger,
 )
 
 
@@ -27,4 +28,5 @@ __all__ = [
     "AsyncAstraDBCollection",
     "AstraDB",
     "AsyncAstraDB",
+    "logger",
 ]
