@@ -2,427 +2,153 @@
 
 AstraPy is a Pythonic SDK for [DataStax Astra](https://astra.datastax.com)
 
-[**Part I - Getting Started**](#part-i---getting-started)
+_This README targets AstraPy version **1.0.0+**, which introducesa a whole new API. Click [here](https://github.com/datastax/astrapy/blob/cd3f5ce8146093e10a095709c0f5c3f8e3f2c7da/README.md) for the pre-existing API (fully compatible with newer versions)._
 
-- [1.1 Install AstraPy](#11-install-astrapy)
-- [1.2 Setup your Astra client](#12-setup-your-astra-client)
 
-[**Part II - Collections**](#part-ii---collections)
+## Quickstart
 
-- [2.1 Create and delete vector collections](#21-create-and-delete-vector-collections)
-- [2.2 Connect to existing collection](#22-connect-to-existing-collection)
+Install with `pip install astrapy`.
 
-[**Part III - Inserting Documents**](#part-iii---inserting-documents)
+Get the *API Endpoint* and the *Token* to your Astra DB instance at [astra.datastax.com](https://astra.datastax.com).
 
-- [3.1 - Inserting a document](#31-inserting-a-document)
-- [3.2 - Inserting multiple documents](#32-inserting-multiple-documents)
-- [3.3 - Inserting multiple documents](#33-inserting-multiple-vector-documents)
-- [3.4 - Creating a subdocument](#34-creating-a-subdocument)
-- [3.5 - Create a document without an ID](#35-create-a-document-without-an-id)
-
-[**Part IV - Updating Documents**](#part-iv---updating-documents)
-
-- [4.1 - Update a Document](#41-update-a-document)
-- [4.2 - Replace a Non-vector-document](#42-replace-a-non-vector-document)
-
-[**Part V - Finding Documents**](#part-v---finding-documents)
-
-- [5.1 - Find documents using vector search](#51-find-documents-using-vector-search)
-- [5.2 - Find documents using vector search and projection](#52-find-documents-using-vector-search-and-projection)
-- [5.3 - Find one and update with vector search](#53-find-one-and-update-with-vector-search)
-- [5.4 Find one and replace with vector search](#54-find-one-and-replace-with-vector-search)
-
-[**Part VI - Deleting Documents**](#part-vi---deleting-documents)
-
-- [6.1 Delete a Subdocument](#61-delete-a-subdocument)
-- [6.2 Delete a Document](#62-delete-a-document)
-
-## Part I - Getting Started
-
-### 1.1 Install AstraPy
-
-```bash
-pip install astrapy
-```
-
-### 1.2 Setup your Astra client
-
-Create a `.env` file with the appropriate values:
-
-```bash
-ASTRA_DB_APPLICATION_TOKEN="<AstraCS:...>"
-ASTRA_DB_API_ENDPOINT="<https://...>"
-```
-
-> If you have [Astra CLI](https://docs.datastax.com/en/astra-cli/docs/0.2/installation.html) installed, you can create the `.env` file with
-> `astra db create-dotenv DATABASE_NAME`.
-
-Load the variables in and then create the client. This collections client can make non-vector and vector calls, depending on the call configuration.
+Try the following code after replacing the connection parameters:
 
 ```python
-import os
+import astrapy
 
-from dotenv import load_dotenv
 
-from astrapy.db import AstraDB, AstraDBCollection
-from astrapy.ops import AstraDBOps
-
-load_dotenv()
-
-# Grab the Astra token and api endpoint from the environment
-token = os.getenv("ASTRA_DB_APPLICATION_TOKEN")
-api_endpoint = os.getenv("ASTRA_DB_API_ENDPOINT")
-
-# Initialize our vector db
-astra_db = AstraDB(token=token, api_endpoint=api_endpoint)
-```
-
-## Part II - Collections
-
-### 2.1 Create and Delete Vector Collections
-
-Create a vector collection with dimension of 5
-If you were using OpenAI here you would use 1376 as the value
-
-```python
-# Create a collection and then delete it
-astra_db.create_collection(collection_name="collection_test_delete", dimension=5)
-astra_db.delete_collection(collection_name="collection_test_delete")
-
-# Double check the collections in your vector store
-astra_db.get_collections()
-```
-
-At this point you have a collection named "collection_test" to do the following operations
-
-In the next section, you will be creating the object for your collection
-
-### 2.2 Connect to existing collection
-
-```python
-# The return of create_collection() will return the collection
-collection = astra_db.create_collection(
-    collection_name="collection_test", dimension=5
+my_client = astrapy.DataAPIClient("AstraCS:...")
+my_database = my_client.get_database_by_api_endpoint(
+   "https://01234567-....apps.astra.datastax.com"
 )
 
-# Or you can connect to an existing collection directly
-collection = AstraDBCollection(
-    collection_name="collection_test", astra_db=astra_db
+my_collection = my_database.create_collection(
+    "dreams",
+    dimension=3,
+    metric=astrapy.constants.VectorMetric.COSINE,
 )
 
-# You don't even need the astra_db object
-collection = AstraDBCollection(
-    collection_name="collection_test", token=token, api_endpoint=api_endpoint
-)
-```
+my_collection.insert_one({"summary": "I was flying"}, vector=[-0.4, 0.7, 0])
 
-## Part III - Inserting Documents
-
-### 3.1 Inserting a document
-
-Here is an example of inserting a vector object into your vector store (collection), followed by running a find command to retrieve the document. The first find command fails because that object does not exist. The second find command should succeed.
-
-```python
-collection.insert_one(
-    {
-        "_id": "5",
-        "name": "Coded Cleats Copy",
-        "description": "ChatGPT integrated sneakers that talk to you",
-        "$vector": [0.25, 0.25, 0.25, 0.25, 0.25],
-    }
+my_collection.insert_many(
+    [
+        {"summary": "A dinner on the Moon"},
+        {"summary": "Riding the waves", "tags": ["sport"]},
+        {"summary": "Friendly aliens in town", "tags": ["scifi"]},
+        {"summary": "Meeting Beethoven at the dentist"},
+    ],
+    vectors=[
+        [0.2, -0.3, -0.5],
+        [0, 0.2, 1],
+        [-0.3, 0, 0.8],
+        [0.2, 0.6, 0],
+    ],
 )
 
-collection.find_one({"name": "potato"})  # Not found
-collection.find_one({"name": "Coded Cleats Copy"})
-```
-
-### 3.2 Inserting multiple documents
-
-Here is an example of inserting a number of documents into your collection. Note that the json object is 'documents' here, not 'document' as it is in insert_one.
-
-In the first insert, the default behavior is in place. If you are inserting documents that already exist, you will get an error and the process will end.
-
-These two examples are using non-vector objects.
-
-```python
-documents = [
-    {
-        "_id": "id_1",
-        "first_name": "Dang",
-        "last_name": "Son",
-    },
-    {
-        "_id": "id_2",
-        "first_name": "Yep",
-        "last_name": "Boss",
-    },
-]
-response = collection.insert_many(documents=documents)
-```
-
-In the following insert_many example, options are set so that it skips errors and only inserts successful entries.
-
-```python
-documents2 = [
-    {
-        "_id": "id_2",
-        "first_name": "Yep",
-        "last_name": "Boss",
-    },
-    {
-        "_id": "id_3",
-        "first_name": "Miv",
-        "last_name": "Fuff",
-    },
-]
-response = collection.insert_many(
-    documents=documents2,
-    partial_failures_allowed=True,
-)
-```
-
-### 3.3 Inserting multiple vector documents
-
-The following code inserts vector objects into the collection in your vector store.
-
-```python
-json_query = [
-    {
-        "_id": str(uuid.uuid4()),
-        "name": "Coded Cleats",
-        "description": "ChatGPT integrated sneakers that talk to you",
-        "$vector": [0.1, 0.15, 0.3, 0.12, 0.05],
-    },
-    {
-        "_id": str(uuid.uuid4()),
-        "name": "Logic Layers",
-        "description": "An AI quilt to help you sleep forever",
-        "$vector": [0.45, 0.09, 0.01, 0.2, 0.11],
-    },
-    {
-        "_id": vv_uuid,
-        "name": "Vision Vector Frame",
-        "description": "Vision Vector Frame - A deep learning display that controls your mood",
-        "$vector": [0.1, 0.05, 0.08, 0.3, 0.6],
-    },
-]
-
-res = collection.insert_many(documents=json_query)
-```
-
-### 3.4 Creating a subdocument
-
-The following code uses update to create or update a sub-document under one of your existing documents.
-
-```python
-document = collection.update_one(
-    filter={"_id": "id_1"},
-    update={"$set": {"name": "Eric"}},
+my_collection.update_one(
+    {"tags": "sport"},
+    {"$set": {"summary": "Surfers' paradise"}},
 )
 
-document = collection.find_one(filter={"_id": "id_1"})
-```
-
-### 3.5 Create a document without an ID
-
-```python
-response = collection.insert_one(
-        document={
-            "first_name": "New",
-            "last_name": "Guy",
-        }
-    )
-
-document = collection.find_one(filter={"first_name": "New"})
-```
-
-## Part IV - Updating Documents
-
-### 4.1 Update a document
-
-```python
-collection.update_one(
-    filter={"_id": cliff_uuid},
-    update={"$set": {"name": "Bob"}},
+cursor = my_collection.find(
+    {},
+    vector=[0, 0.2, 0.4],
+    limit=2,
+    include_similarity=True,
 )
 
-document = collection.find_one(filter={"_id": "id_1"})
+for result in cursor:
+    print(f"{result['summary']}: {result['$similarity']}")
+
+# This would print:
+#   Surfers' paradise: 0.98238194
+#   Friendly aliens in town: 0.91873914
 ```
 
-### 4.2 Replace a non-vector document
+Next steps:
+
+- More info and usage patterns are given in the docstrings of classes and methods
+- [AstraPy reference](https://docs.datastax.com/en/astra/astra-db-vector/clients/python.html)
+- [Data API reference](https://docs.datastax.com/en/astra/astra-db-vector/api-reference/data-api-commands.html)
+
+## AstraPy's API
+
+AstraPy's abstractions for working at the data and admin layers are structured
+as depicted by this diagram:
+
+![AstraPy, abstractions chart](pictures/astrapy_abstractions.png)
+
+Here's a small admin-oriented example:
 
 ```python
-collection.find_one_and_replace(
-        filter={"_id": "id_1"},
-        replacement={
-            "_id": "id_1",
-            "addresses": {
-                "work": {
-                    "city": "New York",
-                    "state": "NY",
-                }
-            },
-        },
-    )
-document = collection.find_one(filter={"_id": "id_1"})
-document_2 = collection.find_one(
-        filter={"_id": cliff_uuid}, projection={"addresses.work.city": 1}
-    )
+import astrapy
+
+my_client = astrapy.DataAPIClient("AstraCS:...")
+
+my_astra_admin = my_client.get_admin()
+
+database_list = list(my_astra_admin.list_databases())
+
+db_info = database_list[0].info
+print(db_info.name, db_info.id, db_info.region)
+
+my_database_admin = my_astra_admin.get_database_admin(db_info.id)
+
+my_database_admin.list_namespaces()
+my_database_admin.create_namespace("my_dreamspace")
 ```
 
-## Part V - Finding Documents
+The package comes with its own set of exceptions, arranged in this hierarchy:
 
-The below examples show our high-level interfaces for finding documents. Note that corresponding low-level functionality exists, i.e., the high-level interface `vector_find` is a wrapper around the `find` function, as available in the JSON API.
+![AstraPy, exception hierarchy](pictures/astrapy_exceptions.png)
 
-### 5.1 Find documents using vector search
+For more information, and code examples, check out the docstrings and consult
+the API reference linked above.
 
-```python
-documents = collection.vector_find(
-    [0.15, 0.1, 0.1, 0.35, 0.55],
-    limit=100,
-)
+## For contributors
+
+First install poetry with `pip install poetry` and then the project dependencies with `poetry install`.
+
+Linter, style and typecheck should all pass for a PR:
+
 ```
-
-### 5.2 Find documents using vector search and projection
-
-```python
-documents = collection.vector_find(
-    [0.15, 0.1, 0.1, 0.35, 0.55],
-    limit=100,
-    fields=["$vector"],
-)
-```
-
-### 5.3 Find one and update with vector search
-
-```python
-update = {"$set": {"status": "active"}}
-
-document = collection.find_one(filter={"status": "active"})
-
-collection.vector_find_one_and_update(
-    [0.15, 0.1, 0.1, 0.35, 0.55],
-    update=update,
-)
-
-document = collection.find_one(filter={"status": "active"})
-```
-
-### 5.4 Find one and replace with vector search
-
-```python
-replacement = {
-    "_id": "1",
-    "name": "Vision Vector Frame",
-    "description": "Vision Vector Frame - A deep learning display that controls your mood",
-    "$vector": [0.1, 0.05, 0.08, 0.3, 0.6],
-    "status": "inactive",
-}
-
-collection.vector_find_one_and_replace(
-    [0.15, 0.1, 0.1, 0.35, 0.55],
-    replacement=replacement,
-)
-
-document = collection.find_one(filter={"name": "Vision Vector Frame"})
-```
-
-## Part VI - Deleting Documents
-
-### 6.1 Delete a subdocument
-
-```python
-response = collection.delete_subdocument(id="id_1", subdoc="addresses")
-document = collection.find(filter={"_id": "id_1"})
-```
-
-## 6.2 Delete a document
-
-```python
-response = collection.delete(id="id_1")
-```
-
-### More Information
-
-Check out the [notebook](https://colab.research.google.com/github/synedra/astra_vector_examples/blob/main/notebook/vector.ipynb#scrollTo=f04a1806) which has examples for finding and inserting information into the database, including vector commands.
-
-Take a look at the [Astra DB DML tests](https://github.com/datastax/astrapy/blob/master/tests/astrapy/test_db_dml.py) for specific endpoint examples. Further examples are available in the other corresponding [test files](https://github.com/datastax/astrapy/tree/master/tests/astrapy).
-
-### Using the Ops Client
-
-You can use the Ops client to work with the Astra DevOps API. Check the [devops tests](https://github.com/datastax/astrapy/blob/master/tests/astrapy/test_ops.py)
-
-## For Developers
-
-Install poetry
-```bash
-pip install poetry
-```
-
-Install the project dependencies
-```bash
-poetry install
-```
-
-### Style, linter, typing
-
-AstraPy tries to be consistent in code style and linting.
-Moreover, **type annotations** are used everywhere.
-
-To ensure the code complies, you should get no errors
-(_Success: no issues found..._) when running the following in the root dir:
-
-```bash
 poetry run black --check astrapy && poetry run ruff astrapy && poetry run mypy astrapy
-```
 
-Likewise, for the tests:
-
-```bash
 poetry run black --check tests && poetry run ruff tests && poetry run mypy tests
 ```
 
-### Testing
+Features must be thoroughly covered in tests (see `tests/idiomatic/*` for
+naming convention and module structure).
 
-Ensure you provide all required environment variables (you can start from `tests/.env.template`):
+### Running tests
+
+Full testing requires environment variables:
+
+```
+export ASTRA_DB_APPLICATION_TOKEN="AstraCS:..."
+export ASTRA_DB_API_ENDPOINT="https://.......apps.astra.datastax.com"
+
+export ASTRA_DB_KEYSPACE="default_keyspace"
+# Optional:
+export ASTRA_DB_SECONDARY_KEYSPACE="..."
+```
+
+Tests can be started in various ways:
 
 ```bash
-export ASTRA_DB_APPLICATION_TOKEN="..."
-export ASTRA_DB_API_ENDPOINT="..."
-export ASTRA_DB_KEYSPACE="..."              # Optional
-export ASTRA_DB_SECONDARY_KEYSPACE="..."    # Optional, enables cross-ns testing
-
-export ASTRA_DB_ID="..."                    # For the Ops testing only
-export ASTRA_DB_OPS_APPLICATION_TOKEN="..." # Ops-only, falls back to the other token
-```
-
-then you can source the `.env` you created and finally run:
-
-```bash
-poetry run pytest
-```
-
-To remove the noise from the logs (on by default), run `pytest -o log_cli=0`.
-
-To skip all collection deletions (done by default):
-
-```bash
-TEST_SKIP_COLLECTION_DELETE=1 poetry run pytest [...]
-```
-
-To enable the `AstraDBOps` testing (off by default):
-
-```bash
-TEST_ASTRADBOPS=1 poetry run pytest [...]
-```
-
-To separately test the "astrapy proper" vs. the "idiomatic" part, and/or only the unit/integration part of the latter:
-
-```
-poetry run pytest tests/astrapy
+# test the core modules
+poetry run pytest tests/core
+# test the "idiomatic" layer
 poetry run pytest tests/idiomatic
 poetry run pytest tests/idiomatic/unit
 poetry run pytest tests/idiomatic/integration
-```
 
-(the above can be combined with the options seen earlier, where it makes sense).
+# remove logging noise:
+poetry run pytest [...] -o log_cli=0
+
+# do not drop collections:
+TEST_SKIP_COLLECTION_DELETE=1 poetry run pytest [...]
+
+# include astrapy.core.ops testing (must cleanup after that):
+TEST_ASTRADBOPS=1 poetry run pytest [...]
+```

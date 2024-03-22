@@ -54,6 +54,8 @@ class DataAPIClient:
         >>> my_db0 = my_client.get_database_by_api_endpoint(
         ...     "https://01234567-....apps.astra.datastax.com"
         ... )
+        >>> my_coll = my_db0.create_collection("movies", dimension=512)
+        >>> my_coll.insert_one({"title": "The Title"}, vector=...)
         >>> my_db1 = my_client.get_database("01234567-...")
         >>> my_db2 = my_client.get_database("01234567-...", region="us-east1")
         >>> my_adm0 = my_client.get_admin()
