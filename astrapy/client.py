@@ -45,7 +45,8 @@ class DataAPIClient:
             It can be left unspecified for the default value of Environment.PROD;
             other values are Environment.DEV and Environment.TEST.
         caller_name: name of the application, or framework, on behalf of which
-            the Data API calls are performed. This ends up in the request user-agent.
+            the Data API and DevOps API calls are performed. This ends up in
+            the request user-agent.
         caller_version: version of the caller.
 
     Example:

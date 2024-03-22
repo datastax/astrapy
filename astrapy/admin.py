@@ -267,7 +267,7 @@ class AstraDBAdmin:
         environment: a label, whose value is one of Environment.PROD (default),
             Environment.DEV or Environment.TEST.
         caller_name: name of the application, or framework, on behalf of which
-            the Data API calls are performed. This ends up in the request user-agent.
+            the DevOps API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
         dev_ops_url: in case of custom deployments, this can be used to specify
             the URL to the DevOps API, such as "https://api.astra.datastax.com".
@@ -718,7 +718,7 @@ class AstraDBDatabaseAdmin:
         environment: a label, whose value is one of Environment.PROD (default),
             Environment.DEV or Environment.TEST.
         caller_name: name of the application, or framework, on behalf of which
-            the Data API calls are performed. This ends up in the request user-agent.
+            the DevOps API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
         dev_ops_url: in case of custom deployments, this can be used to specify
             the URL to the DevOps API, such as "https://api.astra.datastax.com".
@@ -824,7 +824,7 @@ class AstraDBDatabaseAdmin:
             api_endpoint: a full API endpoint for the Data Api.
             token: an access token with enough permissions to do admin work.
             caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
+                the DevOps API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
             dev_ops_url: in case of custom deployments, this can be used to specify
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
