@@ -34,7 +34,7 @@ from astrapy.exceptions import (
 
 
 if TYPE_CHECKING:
-    from astrapy import Database
+    from astrapy import AsyncDatabase, Database
 
 
 DEFAULT_NEW_DATABASE_CLOUD_PROVIDER = "gcp"
@@ -95,13 +95,13 @@ class ParsedAPIEndpoint:
     Attributes:
         database_id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
         region: a region ID, such as "us-west1".
-        environment: a label, whose value is one of Environment.PROD, Environment.DEV
-            or Environment.TEST.
+        environment: a label, whose value is one of Environment.PROD,
+            Environment.DEV or Environment.TEST.
     """
 
     database_id: str
     region: str
-    environment: str  # 'prod', 'dev', 'test'
+    environment: str
 
 
 def parse_api_endpoint(api_endpoint: str) -> Optional[ParsedAPIEndpoint]:
@@ -128,6 +128,19 @@ def parse_api_endpoint(api_endpoint: str) -> Optional[ParsedAPIEndpoint]:
 
 
 def build_api_endpoint(environment: str, database_id: str, region: str) -> str:
+    """
+    Build the API Endpoint full strings from database parameters.
+
+    Args:
+        environment: a label, whose value is one of Environment.PROD,
+            Environment.DEV or Environment.TEST.
+        database_id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+        region: a region ID, such as "us-west1".
+
+    Returns:
+        the endpoint string, such as "https://01234567-...-eu-west1.apps.datastax.com"
+    """
+
     return API_ENDPOINT_TEMPLATE_MAP[environment].format(
         database_id=database_id,
         region=region,
@@ -141,6 +154,19 @@ def fetch_raw_database_info_from_id_token(
     environment: str = Environment.PROD,
     max_time_ms: Optional[int] = None,
 ) -> Dict[str, Any]:
+    """
+    Fetch database information through the DevOps API and return it in
+    full, exactly like the API gives it back.
+
+    Args:
+        id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+        token: a valid token to access the database information.
+        max_time_ms: a timeout, in milliseconds, for waiting on a response.
+
+    Returns:
+        The full response from the DevOps API about the database.
+    """
+
     astra_db_ops = AstraDBOps(
         token=token,
         dev_ops_url=DEV_OPS_URL_MAP[environment],
@@ -159,17 +185,18 @@ def fetch_database_info(
     api_endpoint: str, token: str, namespace: str, max_time_ms: Optional[int] = None
 ) -> Optional[DatabaseInfo]:
     """
-    Fetch the relevant information through the DevOps API.
+    Fetch database information through the DevOps API.
 
     Args:
         api_endpoint: a full API endpoint for the Data Api.
-        token: a valid token to access the database.
+        token: a valid token to access the database information.
         namespace: the desired namespace that will be used in the result.
         max_time_ms: a timeout, in milliseconds, for waiting on a response.
 
     Returns:
         A DatabaseInfo object.
         If the API endpoint fails to be parsed, None is returned.
+        For valid-looking endpoints, if something goes wrong an exception is raised.
     """
 
     parsed_endpoint = parse_api_endpoint(api_endpoint)
@@ -231,6 +258,38 @@ def _recast_as_admin_database_info(
 
 
 class AstraDBAdmin:
+    """
+    An "admin" object, able to perform administrative tasks at the databases
+    level, such as creating, listing or dropping databases.
+
+    Args:
+        token: an access token with enough permission to perform admin tasks.
+        environment: a label, whose value is one of Environment.PROD (default),
+            Environment.DEV or Environment.TEST.
+        caller_name: name of the application, or framework, on behalf of which
+            the Data API calls are performed. This ends up in the request user-agent.
+        caller_version: version of the caller.
+        dev_ops_url: in case of custom deployments, this can be used to specify
+            the URL to the DevOps API, such as "https://api.astra.datastax.com".
+            Generally it can be omitted. The environment (prod/dev/...) is
+            determined from the API Endpoint.
+        dev_ops_api_version: this can specify a custom version of the DevOps API
+            (such as "v2"). Generally not needed.
+
+    Example:
+        >>> from astrapy import DataAPIClient
+        >>> my_client = DataAPIClient("AstraCS:...")
+        >>> my_astra_db_admin = my_client.get_admin()
+        >>> database_list = my_astra_db_admin.list_databases()
+        >>> len(database_list)
+        3
+        >>> database_list[2].id
+        '01234567-...'
+        >>> my_db_admin = my_astra_db_admin.get_database_admin("01234567-...")
+        >>> my_db_admin.list_namespaces()
+        ['default_keyspace', 'staging_namespace']
+    """
+
     def __init__(
         self,
         token: str,
@@ -265,6 +324,28 @@ class AstraDBAdmin:
         *,
         max_time_ms: Optional[int] = None,
     ) -> CommandCursor[AdminDatabaseInfo]:
+        """
+        Get the list of databases, as obtained with a request to the DevOps API.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the API request.
+
+        Returns:
+            A CommandCursor to iterate over the detected databases,
+            represented as AdminDatabaseInfo objects.
+
+        Example:
+            >>> database_list = my_astra_db_admin.list_databases()
+            >>> len(database_list)
+            3
+            >>> database_list[2].id
+            '01234567-...'
+            >>> database_list[2].status
+            'ACTIVE'
+            >>> database_list[2].info.region
+            'eu-west-1'
+        """
+
         gd_list_response = self._astra_db_ops.get_databases(
             timeout_info=base_timeout_info(max_time_ms)
         )
@@ -289,6 +370,26 @@ class AstraDBAdmin:
     def database_info(
         self, id: str, *, max_time_ms: Optional[int] = None
     ) -> AdminDatabaseInfo:
+        """
+        Get the full information on a given database, through a request to the DevOps API.
+
+        Args:
+            id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+            max_time_ms: a timeout, in milliseconds, for the API request.
+
+        Returns:
+            An AdminDatabaseInfo object.
+
+        Example:
+            >>> details_of_my_db = my_astra_db_admin.database_info("")
+            >>> details_of_my_db.id
+            '01234567-...'
+            >>> details_of_my_db.status
+            'ACTIVE'
+            >>> details_of_my_db.info.region
+            'eu-west-1'
+        """
+
         gd_response = self._astra_db_ops.get_database(
             database=id,
             timeout_info=base_timeout_info(max_time_ms),
@@ -313,6 +414,36 @@ class AstraDBAdmin:
         region: str = DEFAULT_NEW_DATABASE_REGION,
         max_time_ms: Optional[int] = None,
     ) -> AstraDBDatabaseAdmin:
+        """
+        Create a database as requested, optionally waiting for it to be ready.
+
+        Args:
+            name: the desired name for the database.
+            wait_until_active: if True (default), the method returns only after
+                the newly-created database is in ACTIVE state (a few minutes,
+                usually). If False, it will return right after issuing the
+                creation request to the DevOps API, and it will be responsibility
+                of the caller to check the database status before working with it.
+            cloud_provider: one of 'aws', 'gcp' (default) or 'azure'.
+            region: any of the available cloud regions (default: 'us-east1').
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the creation request
+                has not reached the API server.
+
+        Returns:
+            An AstraDBDatabaseAdmin instance.
+
+        Example:
+            >>> my_new_db = my_astra_db_admin.create_database(
+            ...     "new_database",
+            ...     cloud_provider="aws",
+            ...     region="ap-south-1",
+            ... )
+            >>> my_coll = my_new_db.create_collection("movies", dimension=512)
+            >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+        """
+
         database_definition = {
             "name": name,
             "tier": "serverless",
@@ -357,6 +488,37 @@ class AstraDBAdmin:
         wait_until_active: bool = True,
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
+        """
+        Drop a database, i.e. delete it completely and permanently with all its data.
+
+        Args:
+            id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+            wait_until_active: if True (default), the method returns only after
+                the database has actually been deleted (generally a few minutes).
+                If False, it will return right after issuing the
+                drop request to the DevOps API, and it will be responsibility
+                of the caller to check the database status/availability
+                after that, if desired.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the deletion request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> database_list_pre = my_astra_db_admin.list_databases()
+            >>> len(database_list_pre)
+            3
+            >>> my_astra_db_admin.drop_database('01234567-...")
+            {'ok': 1}
+            >>> database_list_post = my_astra_db_admin.list_databases()
+            >>> len(database_list_post)
+            2
+        """
+
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
@@ -395,6 +557,30 @@ class AstraDBAdmin:
             )
 
     def get_database_admin(self, id: str) -> AstraDBDatabaseAdmin:
+        """
+        Create an AstraDBDatabaseAdmin object for admin work within a certain database.
+
+        Args:
+            id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+
+        Returns:
+            An AstraDBDatabaseAdmin instance representing the requested database.
+
+        Example:
+            >>> my_db_admin = my_astra_db_admin.get_database_admin("01234567-...")
+            >>> my_db_admin.list_namespaces()
+            ['default_keyspace']
+            >>> my_db_admin.create_namespace("that_other_one")
+            {'ok': 1}
+            >>> my_db_admin.list_namespaces()
+            ['default_keyspace', 'that_other_one']
+
+        Note:
+            This method does not perform any admin-level operation through
+            the DevOps API. For actual creation of a database, see the
+            `create_database` method.
+        """
+
         return AstraDBDatabaseAdmin.from_astra_db_admin(
             id=id,
             astra_db_admin=self,
@@ -409,7 +595,51 @@ class AstraDBAdmin:
         region: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
+        max_time_ms: Optional[int] = None,
     ) -> Database:
+        """
+        Create a Database instance for a specific database, to be used
+        when doing data-level work (such as creating/managing collections).
+
+        Args:
+            id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+            token: if supplied, is passed to the Database instead of
+                the one set for this object.
+            namespace: used to specify a certain namespace the resulting
+                Database will primarily work on. If not specified, similar
+                as for `region`, an additional DevOps API call reveals
+                the default namespace for the target database.
+            region: the region to use for connecting to the database. The
+                database must be located in that region.
+                Note that if this parameter is not passed, an additional
+                DevOps API request is made to determine the default region
+                and use it subsequently.
+                If both `namespace` and `region` are missing, a single
+                DevOps API request is made.
+            api_path: path to append to the API Endpoint. In typical usage, this
+                should be left to its default of "/api/json".
+            api_version: version specifier to append to the API path. In typical
+                usage, this should be left to its default of "v1".
+            max_time_ms: a timeout, in milliseconds, for the DevOps API
+                HTTP request should it be necessary (see the `region` argument).
+
+        Returns:
+            A Database object ready to be used.
+
+        Example:
+            >>> my_db = my_astra_db_admin.get_database(
+            ...     "01234567-...",
+            ...     region="us-east1",
+            ... )
+            >>> coll = my_db.create_collection("movies", dimension=512)
+            >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+
+        Note:
+            This method does not perform any admin-level operation through
+            the DevOps API. For actual creation of a database, see the
+            `create_database` method of class AstraDBAdmin.
+        """
+
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
@@ -421,13 +651,13 @@ class AstraDBAdmin:
             _namespace = namespace
         else:
             if this_db_info is None:
-                this_db_info = self.database_info(id)
+                this_db_info = self.database_info(id, max_time_ms=max_time_ms)
             _namespace = this_db_info.info.namespace
         if region:
             _region = region
         else:
             if this_db_info is None:
-                this_db_info = self.database_info(id)
+                this_db_info = self.database_info(id, max_time_ms=max_time_ms)
             _region = this_db_info.info.region
 
         _api_endpoint = build_api_endpoint(
@@ -445,8 +675,72 @@ class AstraDBAdmin:
             api_version=api_version,
         )
 
+    def get_async_database(
+        self,
+        id: str,
+        *,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        region: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> AsyncDatabase:
+        """
+        Create an AsyncDatabase instance for a specific database, to be used
+        when doing data-level work (such as creating/managing collections).
+
+        This method has identical behavior and signature as the sync
+        counterpart `get_database`: please see that one for more details.
+        """
+
+        return self.get_database(
+            id=id,
+            token=token,
+            namespace=namespace,
+            region=region,
+            api_path=api_path,
+            api_version=api_version,
+        ).to_async()
+
 
 class AstraDBDatabaseAdmin:
+    """
+    An "admin" object, able to perform administrative tasks at the namespaces level
+    (i.e. within a certani database), such as creating/listing/dropping namespaces.
+
+    This is one layer below the AstraDBAdmin concept, in that it is tied to
+    a single database and enables admin work within it. As such, it is generally
+    created by a method call on an AstraDBAdmin.
+
+    Args:
+        id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+        token: an access token with enough permission to perform admin tasks.
+        environment: a label, whose value is one of Environment.PROD (default),
+            Environment.DEV or Environment.TEST.
+        caller_name: name of the application, or framework, on behalf of which
+            the Data API calls are performed. This ends up in the request user-agent.
+        caller_version: version of the caller.
+        dev_ops_url: in case of custom deployments, this can be used to specify
+            the URL to the DevOps API, such as "https://api.astra.datastax.com".
+            Generally it can be omitted. The environment (prod/dev/...) is
+            determined from the API Endpoint.
+        dev_ops_api_version: this can specify a custom version of the DevOps API
+            (such as "v2"). Generally not needed.
+
+    Example:
+        >>> from astrapy import DataAPIClient
+        >>> my_client = DataAPIClient("AstraCS:...")
+        >>> admin_for_my_db = my_client.get_admin().get_database_admin("01234567-...")
+        >>> admin_for_my_db.list_namespaces()
+        ['default_keyspace', 'staging_namespace']
+        >>> admin_for_my_db.info().status
+        'ACTIVE'
+
+    Note:
+        creating an instance of AstraDBDatabaseAdmin does not trigger actual creation
+        of the database itself, which should exist beforehand. To create databases,
+        see the AstraDBAdmin class.
+    """
 
     def __init__(
         self,
@@ -475,6 +769,34 @@ class AstraDBDatabaseAdmin:
     def from_astra_db_admin(
         id: str, *, astra_db_admin: AstraDBAdmin
     ) -> AstraDBDatabaseAdmin:
+        """
+        Create an AstraDBDatabaseAdmin from an AstraDBAdmin and a database ID.
+
+        Args:
+            id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+            astra_db_admin: an AstraDBAdmin object that has visibility over
+                the target database.
+
+        Returns:
+            An AstraDBDatabaseAdmin object, for admin work within the database.
+
+        Example:
+            >>> from astrapy import DataAPIClient, AstraDBDatabaseAdmin
+            >>> admin_for_my_db = AstraDBDatabaseAdmin.from_astra_db_admin(
+            ...     id="01234567-...",
+            ...     astra_db_admin=DataAPIClient("AstraCS:...").get_admin(),
+            ... )
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace', 'staging_namespace']
+            >>> admin_for_my_db.info().status
+            'ACTIVE'
+
+        Note:
+            Creating an instance of AstraDBDatabaseAdmin does not trigger actual creation
+            of the database itself, which should exist beforehand. To create databases,
+            see the AstraDBAdmin class.
+        """
+
         return AstraDBDatabaseAdmin(
             id=id,
             token=astra_db_admin.token,
@@ -495,6 +817,42 @@ class AstraDBDatabaseAdmin:
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
     ) -> AstraDBDatabaseAdmin:
+        """
+        Create an AstraDBDatabaseAdmin from an API Endpoint and optionally a token.
+
+        Args:
+            api_endpoint: a full API endpoint for the Data Api.
+            token: an access token with enough permissions to do admin work.
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+            dev_ops_url: in case of custom deployments, this can be used to specify
+                the URL to the DevOps API, such as "https://api.astra.datastax.com".
+                Generally it can be omitted. The environment (prod/dev/...) is
+                determined from the API Endpoint.
+            dev_ops_api_version: this can specify a custom version of the DevOps API
+                (such as "v2"). Generally not needed.
+
+        Returns:
+            An AstraDBDatabaseAdmin object, for admin work within the database.
+
+        Example:
+            >>> from astrapy import AstraDBDatabaseAdmin
+            >>> admin_for_my_db = AstraDBDatabaseAdmin.from_api_endpoint(
+            ...     api_endpoint="https://01234567-....apps.astra.datastax.com",
+            ...     token="AstraCS:...",
+            ... )
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace', 'another_namespace']
+            >>> admin_for_my_db.info().status
+            'ACTIVE'
+
+        Note:
+            Creating an instance of AstraDBDatabaseAdmin does not trigger actual creation
+            of the database itself, which should exist beforehand. To create databases,
+            see the AstraDBAdmin class.
+        """
+
         parsed_api_endpoint = parse_api_endpoint(api_endpoint)
         if parsed_api_endpoint:
             return AstraDBDatabaseAdmin(
@@ -510,12 +868,43 @@ class AstraDBDatabaseAdmin:
             raise ValueError("Cannot parse the provided API endpoint.")
 
     def info(self, *, max_time_ms: Optional[int] = None) -> AdminDatabaseInfo:
+        """
+        Query the DevOps API for the full info on this database.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            An AdminDatabaseInfo object.
+
+        Example:
+            >>> my_db_info = admin_for_my_db.info()
+            >>> my_db_info.status
+            'ACTIVE'
+            >>> my_db_info.info.region
+            'us-east1'
+        """
+
         return self._astra_db_admin.database_info(  # type: ignore[no-any-return]
             id=self.id,
             max_time_ms=max_time_ms,
         )
 
     def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
+        """
+        Query the DevOps API for a list of the namespaces in the database.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A list of the namespaces, each a string, in no particular order.
+
+        Example:
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace', 'staging_namespace']
+        """
+
         info = self.info(max_time_ms=max_time_ms)
         if info.raw_info is None:
             raise DevOpsAPIException("Could not get the namespace list.")
@@ -530,6 +919,38 @@ class AstraDBDatabaseAdmin:
         wait_until_active: bool = True,
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
+        """
+        Create a namespace in this database as requested,
+        optionally waiting for it to be ready.
+
+        Args:
+            name: the namespace name. If supplying a namespace that exists
+                already, the method call proceeds as usual, no errors are
+                raised, and the whole invocation is a no-op.
+            wait_until_active: if True (default), the method returns only after
+                the target database is in ACTIVE state again (a few
+                seconds, usually). If False, it will return right after issuing the
+                creation request to the DevOps API, and it will be responsibility
+                of the caller to check the database status/namespace availability
+                before working with it.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the creation request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> my_db_admin.list_namespaces()
+            ['default_keyspace']
+            >>> my_db_admin.create_namespace("that_other_one")
+            {'ok': 1}
+            >>> my_db_admin.list_namespaces()
+            ['default_keyspace', 'that_other_one']
+        """
+
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
@@ -567,6 +988,37 @@ class AstraDBDatabaseAdmin:
         wait_until_active: bool = True,
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
+        """
+        Delete a namespace from the database, optionally waiting for it
+        to become active again.
+
+        Args:
+            name: the namespace to delete. If it does not exist in this database,
+                an error is raised.
+            wait_until_active: if True (default), the method returns only after
+                the target database is in ACTIVE state again (a few
+                seconds, usually). If False, it will return right after issuing the
+                deletion request to the DevOps API, and it will be responsibility
+                of the caller to check the database status/namespace availability
+                before working with it.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the deletion request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> my_db_admin.list_namespaces()
+            ['default_keyspace', 'that_other_one']
+            >>> my_db_admin.drop_namespace("that_other_one")
+            {'ok': 1}
+            >>> my_db_admin.list_namespaces()
+            ['default_keyspace']
+        """
+
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
@@ -602,6 +1054,43 @@ class AstraDBDatabaseAdmin:
         wait_until_active: bool = True,
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
+        """
+        Drop this database, i.e. delete it completely and permanently with all its data.
+
+        This method wraps the `drop_database` method of the AstraDBAdmin class,
+        where more information may be found.
+
+        Args:
+            wait_until_active: if True (default), the method returns only after
+                the database has actually been deleted (generally a few minutes).
+                If False, it will return right after issuing the
+                drop request to the DevOps API, and it will be responsibility
+                of the caller to check the database status/availability
+                after that, if desired.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the deletion request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> my_db_admin.list_namespaces()
+            ['default_keyspace', 'that_other_one']
+            >>> my_db_admin.drop()
+            {'ok': 1}
+            >>> my_db_admin.list_namespaces()  # raises a 404 Not Found http error
+
+        Note:
+            Once the method succeeds, methods on this object -- such as `info()`,
+            or `list_namespaces()` -- can still be invoked: however, this hardly
+            makes sense as the underlying actual database is no more.
+            It is responsibility of the developer to design a correct flow
+            which avoids using a deceased database any further.
+        """
+
         return self._astra_db_admin.drop_database(  # type: ignore[no-any-return]
             id=self.id,
             wait_until_active=wait_until_active,
@@ -616,7 +1105,38 @@ class AstraDBDatabaseAdmin:
         region: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
+        max_time_ms: Optional[int] = None,
     ) -> Database:
+        """
+        Create a Database instance out of this class for working with the data in it.
+
+        Args:
+            token: if supplied, is passed to the Database instead of
+                the one set for this object. Useful if one wants to work in
+                a least-privilege manner, limiting the permissions for non-admin work.
+            namespace: an optional namespace to set in the resulting Database.
+                The same default logic as for `AstraDBAdmin.get_database` applies.
+            region: an optional region for connecting to the database Data API endpoint.
+                The same default logic as for `AstraDBAdmin.get_database` applies.
+            api_path: path to append to the API Endpoint. In typical usage, this
+                should be left to its default of "/api/json".
+            api_version: version specifier to append to the API path. In typical
+                usage, this should be left to its default of "v1".
+
+        Returns:
+            A Database object, ready to be used for working with data and collections.
+
+        Example:
+            >>> my_db = my_db_admin.get_database()
+            >>> my_db.list_collection_names()
+            ['movies', 'another_collection']
+
+        Note:
+            creating an instance of Database does not trigger actual creation
+            of the database itself, which should exist beforehand. To create databases,
+            see the AstraDBAdmin class.
+        """
+
         return self._astra_db_admin.get_database(
             id=self.id,
             token=token,
@@ -624,4 +1144,32 @@ class AstraDBDatabaseAdmin:
             region=region,
             api_path=api_path,
             api_version=api_version,
+            max_time_ms=max_time_ms,
         )
+
+    def get_async_database(
+        self,
+        *,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        region: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+        max_time_ms: Optional[int] = None,
+    ) -> AsyncDatabase:
+        """
+        Create an AsyncDatabase instance out of this class for working
+        with the data in it.
+
+        This method has identical behavior and signature as the sync
+        counterpart `get_database`: please see that one for more details.
+        """
+
+        return self.get_database(
+            token=token,
+            namespace=namespace,
+            region=region,
+            api_path=api_path,
+            api_version=api_version,
+            max_time_ms=max_time_ms,
+        ).to_async()

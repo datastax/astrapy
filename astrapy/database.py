@@ -136,7 +136,8 @@ class Database:
 
     Note:
         creating an instance of Database does not trigger actual creation
-        of the database itself, which should exist beforehand.
+        of the database itself, which should exist beforehand. To create databases,
+        see the AstraDBAdmin class.
     """
 
     def __init__(
@@ -799,8 +800,9 @@ class AsyncDatabase:
         ... )
 
     Note:
-        creating an instance of Database does not trigger actual creation
-        of the database itself, which should exist beforehand.
+        creating an instance of AsyncDatabase does not trigger actual creation
+        of the database itself, which should exist beforehand. To create databases,
+        see the AstraDBAdmin class.
     """
 
     def __init__(
