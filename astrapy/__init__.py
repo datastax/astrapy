@@ -63,6 +63,11 @@ from astrapy.client import (  # noqa: E402
     DataAPIClient,
 )
 
+import astrapy.ids  # noqa: E402
+import astrapy.constants  # noqa: E402
+import astrapy.cursors  # noqa: E402
+import astrapy.operations  # noqa: F401, E402
+
 
 __all__ = [
     "AstraDBAdmin",
