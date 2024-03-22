@@ -899,15 +899,6 @@ class Collection:
             have been added/removed after the `find` was started depends on database
             internals and it is not guaranteed, nor excluded, that such "real-time"
             changes in the data would be picked up by the cursor.
-
-        Note:
-            When not specifying sorting criteria at all (by vector or otherwise),
-            the cursor can scroll through an arbitrary number of documents as
-            the Data API and the client periodically exchange new chunks of documents.
-            It should be noted that the behavior of the cursor in the case documents
-            have been added/removed after the `find` was started depends on database
-            internals and it is not guaranteed, nor excluded, that such "real-time"
-            changes in the data would be picked up by the cursor.
         """
 
         _sort = _collate_vector_to_sort(sort, vector)
