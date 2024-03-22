@@ -1640,7 +1640,6 @@ class Collection:
         must_proceed = True
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         while must_proceed:
-            _ = input("DM continue?")
             options = {**base_options, **page_state_options}
             this_um_response = self._astra_db_collection.update_many(
                 update=update,
