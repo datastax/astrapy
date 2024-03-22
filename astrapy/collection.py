@@ -1891,7 +1891,6 @@ class Collection:
             (e.g. from another process/application) will be deleted during
             the execution of this method call until the collection is devoid
             of matches.
-            of matches.
         """
 
         if not filter:
