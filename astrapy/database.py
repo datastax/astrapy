@@ -131,8 +131,11 @@ class Database:
             usage, this should be left to its default of "v1".
 
     Example:
-        >>> from astrapy import Database
-        >>> my_db = Database(api_endpoint="https://...", token="AstraCS:...")
+        >>> from astrapy import DataAPIClient
+        >>> my_client = astrapy.DataAPIClient("AstraCS:...")
+        >>> my_db = my_client.get_database_by_api_endpoint(
+        ...    "https://01234567-....apps.astra.datastax.com"
+        ... )
 
     Note:
         creating an instance of Database does not trigger actual creation
@@ -793,10 +796,10 @@ class AsyncDatabase:
             usage, this should be left to its default of "v1".
 
     Example:
-        >>> from astrapy import AsyncDatabase
-        >>> my_async_db = AsyncDatabase(
-        ...     api_endpoint="https://...",
-        ...     token="AstraCS:...",
+        >>> from astrapy import DataAPIClient
+        >>> my_client = astrapy.DataAPIClient("AstraCS:...")
+        >>> my_db = my_client.get_async_database_by_api_endpoint(
+        ...    "https://01234567-....apps.astra.datastax.com"
         ... )
 
     Note:
