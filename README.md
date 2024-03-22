@@ -121,7 +121,7 @@ from the `uuid` package and its `uuidv6` extension. You can also use them direct
 Even when setting a default ID type for a collection, you still retain the freedom
 to use any ID type for any document:
 
-```
+```python
 import astrapy
 import bson
 
@@ -150,7 +150,7 @@ First install poetry with `pip install poetry` and then the project dependencies
 
 Linter, style and typecheck should all pass for a PR:
 
-```
+```bash
 poetry run black --check astrapy && poetry run ruff astrapy && poetry run mypy astrapy
 
 poetry run black --check tests && poetry run ruff tests && poetry run mypy tests
@@ -163,7 +163,7 @@ naming convention and module structure).
 
 Full testing requires environment variables:
 
-```
+```bash
 export ASTRA_DB_APPLICATION_TOKEN="AstraCS:..."
 export ASTRA_DB_API_ENDPOINT="https://.......apps.astra.datastax.com"
 
@@ -192,7 +192,9 @@ TEST_SKIP_COLLECTION_DELETE=1 poetry run pytest [...]
 TEST_ASTRADBOPS=1 poetry run pytest [...]
 ```
 
-## Appendix: quick reference for imports
+## Appendices
+
+### Appendix A: quick reference for imports
 
 Client, data and admin abstractions:
 
@@ -324,3 +326,33 @@ from astrapy.cursors import (
     AsyncCommandCursor,
 )
 ```
+
+### Appendix B: compatibility with pre-1.0.0 library
+
+If your code uses the pre-1.0.0 astrapy (i.e. `from astrapy.db import Database, Collection` and so on) you are strongly advised to migrate to the current API.
+
+That being said, there are no known breaking of backward compatibility.
+Here is a recap of the minor changes that came _to the old API_ with 1.0.0:
+
+- Added methods to `[Async]AstraDBCollection`: `delete_one_filter`, 
+- Paginated find methods (sync/async) type change from Iterable to Generator
+- Bugfix: handling of the mutable caller identity in copy and convert (sync/async) methods
+- Default value of `sort` is `None` and not `{}` for `find` (sync/async)
+- Introduction of `[Async]AstraDBCollection.chunked_delete_many` method
+- Added `projection` parameter to `find_one_and[replace/update]` (sync/async)
+- Bugfix: projection was silently ignored in `vector_find_one_and_[replace/update]` (sync/async)
+- Added `options` to `update_many` (sync/async)
+- `[Async]AstraDBDatabase.chunked_insert_many` does not intercept generic exceptions anymore, only `APIRequestError`
+- Bugfix: `AsyncAstraDBCollection.async chunked_insert_many` stops at the first error when `ordered=True`
+- Added payload info to `DataAPIException`
+- Added `find_one_and_delete` method (sync/async)
+- Added `skip_error_check` parameter to `delete_many` (sync/async)
+- Timeout support throughout the library
+- Added `sort` to `update_one`, `delete_one` and `delete_one_by_predicate` methods (sync/async)
+- Full support for UUID v1,3,4,5,6,7,8 and ObjectID at the collection data I/O level
+- `AstraDBOps.create_database` raises errors in case of failures
+- `AstraDBOps.create_database`, return type corrected
+- Fixed behaviour and return type of `AstraDBOps.create_keyspace` and `AstraDBOps.terminate_db`
+- Added `AstraDBOps.delete_keyspace` method
+
+Keep in mind that the pre-1.0.0 library, now dubbed "core", is what the current 1.0.0 API ("idiomatic") builds on.
