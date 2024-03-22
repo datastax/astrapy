@@ -35,7 +35,7 @@ bson = "~0.5.10"
 httpx = { version=">=0.25.2,<1", extras=["http2"] }
 
 [tool.poetry.group.dev.dependencies]
-black = "~24.2.0"
+black = "~24.3.0"
 faker = "~23.1.0"
 mypy = "~1.9.0"
 pre-commit = "~3.5.0"
