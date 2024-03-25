@@ -1244,6 +1244,29 @@ class TestDMLSync:
         assert {"a": 1} in no_id_found_docs
         assert {"b": 1, "newfield": True} in no_id_found_docs
 
+    @pytest.mark.describe("test of bulk_write with vectors, sync")
+    def test_collection_bulk_write_vector_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+
+        bw_ops = [
+            InsertOne({"a": 1}, vector=[1, 1]),
+            InsertMany([{"a": 2}, {"z": 0}], vectors=[[1, 10], [-1, 1]]),
+            UpdateOne({}, {"$set": {"b": 1}}, vector=[1, 15]),
+            ReplaceOne({}, {"a": 10}, vector=[5, 6]),
+            DeleteOne({}, vector=[-8, 7]),
+        ]
+        col.bulk_write(bw_ops)
+        found = [
+            {k: v for k, v in doc.items() if k != "_id"}
+            for doc in col.find({}, projection=["a", "b"])
+        ]
+        assert len(found) == 2
+        assert {"a": 10} in found
+        assert {"a": 2, "b": 1} in found
+
     @pytest.mark.skipif(
         any(
             [
