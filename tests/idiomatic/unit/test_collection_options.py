@@ -20,9 +20,13 @@ from functools import partial
 
 import pytest
 
-from astrapy.database import _recast_api_collection_dict, _validate_create_collection_options
+from astrapy.database import (
+    _recast_api_collection_dict,
+    _validate_create_collection_options,
+)
 from astrapy.collection import EmbeddingService
 from astrapy.constants import DefaultIdType, VectorMetric
+
 
 @pytest.mark.describe("test of recasting the collection options from the api")
 def test_recast_api_collection_dict() -> None:
@@ -131,6 +135,7 @@ def test_recast_api_collection_dict() -> None:
         _recast_api_collection_dict(dim_met_didplus_idx_raw)
         == dim_met_didplus_idx_expected
     )
+
 
 @pytest.mark.describe("test of validation for create_collection options")
 def test_validate_create_collection_options() -> None:

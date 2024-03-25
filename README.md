@@ -221,6 +221,14 @@ from astrapy.constants import (
 )
 ```
 
+Embedding service for creating collections:
+
+```python
+from astrapy.collection import (
+    EmbeddingService,
+)
+```
+
 ObjectIds and UUIDs:
 
 ```python

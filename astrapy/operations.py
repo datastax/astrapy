@@ -97,19 +97,25 @@ class InsertOne(BaseOperation):
     Attributes:
         document: the document to insert.
         vector: an optional suitable vector to enrich the document at insertion.
+        vectorize: a string to be made into a vector, with the same result as the
+            `vector` attribute, through an embedding service, assuming one is
+            configured for the collection.
     """
 
     document: DocumentType
     vector: Optional[VectorType]
+    vectorize: Optional[str]
 
     def __init__(
         self,
         document: DocumentType,
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
     ) -> None:
         self.document = document
         self.vector = vector
+        self.vectorize = vectorize
 
     def execute(
         self,
@@ -128,6 +134,7 @@ class InsertOne(BaseOperation):
         op_result: InsertOneResult = collection.insert_one(
             document=self.document,
             vector=self.vector,
+            vectorize=self.vectorize,
             max_time_ms=bulk_write_timeout_ms,
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
@@ -142,6 +149,8 @@ class InsertMany(BaseOperation):
     Attributes:
         documents: the list document to insert.
         vectors: an optional list of vectors to enrich the documents at insertion.
+        vectorizes: an optional list of texts achieving the same effect as `vectors`
+            except through an embedding service, if one is configured for the collection.
         ordered: whether the inserts should be done in sequence.
         chunk_size: how many documents to include in a single API request.
             Exceeding the server maximum allowed value results in an error.
@@ -152,6 +161,7 @@ class InsertMany(BaseOperation):
 
     documents: Iterable[DocumentType]
     vectors: Optional[Iterable[Optional[VectorType]]]
+    vectorizes: Optional[Iterable[Optional[str]]]
     ordered: bool
     chunk_size: Optional[int]
     concurrency: Optional[int]
@@ -161,6 +171,7 @@ class InsertMany(BaseOperation):
         documents: Iterable[DocumentType],
         *,
         vectors: Optional[Iterable[Optional[VectorType]]] = None,
+        vectorizes: Optional[Iterable[Optional[str]]] = None,
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
@@ -168,6 +179,7 @@ class InsertMany(BaseOperation):
         self.documents = documents
         self.ordered = ordered
         self.vectors = vectors
+        self.vectorizes = vectorizes
         self.chunk_size = chunk_size
         self.concurrency = concurrency
 
@@ -188,6 +200,7 @@ class InsertMany(BaseOperation):
         op_result: InsertManyResult = collection.insert_many(
             documents=self.documents,
             vectors=self.vectors,
+            vectorizes=self.vectorizes,
             ordered=self.ordered,
             chunk_size=self.chunk_size,
             concurrency=self.concurrency,
@@ -206,6 +219,9 @@ class UpdateOne(BaseOperation):
         filter: a filter condition to select a target document.
         update: an update prescription to apply to the document.
         vector: a vector of numbers to use for ANN (vector-search) sorting.
+        vectorize: a string to be made into a vector, with the same result as the
+            `vector` attribute, through an embedding service, assuming one is
+            configured for the collection.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
@@ -213,6 +229,7 @@ class UpdateOne(BaseOperation):
     filter: Dict[str, Any]
     update: Dict[str, Any]
     vector: Optional[VectorType]
+    vectorize: Optional[str]
     sort: Optional[SortType]
     upsert: bool
 
@@ -222,12 +239,14 @@ class UpdateOne(BaseOperation):
         update: Dict[str, Any],
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
     ) -> None:
         self.filter = filter
         self.update = update
         self.vector = vector
+        self.vectorize = vectorize
         self.sort = sort
         self.upsert = upsert
 
@@ -249,6 +268,7 @@ class UpdateOne(BaseOperation):
             filter=self.filter,
             update=self.update,
             vector=self.vector,
+            vectorize=self.vectorize,
             sort=self.sort,
             upsert=self.upsert,
             max_time_ms=bulk_write_timeout_ms,
@@ -316,6 +336,9 @@ class ReplaceOne(BaseOperation):
         filter: a filter condition to select a target document.
         replacement: the replacement document.
         vector: a vector of numbers to use for ANN (vector-search) sorting.
+        vectorize: a string to be made into a vector, with the same result as the
+            `vector` attribute, through an embedding service, assuming one is
+            configured for the collection.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
@@ -323,6 +346,7 @@ class ReplaceOne(BaseOperation):
     filter: Dict[str, Any]
     replacement: DocumentType
     vector: Optional[VectorType]
+    vectorize: Optional[str]
     sort: Optional[SortType]
     upsert: bool
 
@@ -332,12 +356,14 @@ class ReplaceOne(BaseOperation):
         replacement: DocumentType,
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
     ) -> None:
         self.filter = filter
         self.replacement = replacement
         self.vector = vector
+        self.vectorize = vectorize
         self.sort = sort
         self.upsert = upsert
 
@@ -359,6 +385,7 @@ class ReplaceOne(BaseOperation):
             filter=self.filter,
             replacement=self.replacement,
             vector=self.vector,
+            vectorize=self.vectorize,
             sort=self.sort,
             upsert=self.upsert,
             max_time_ms=bulk_write_timeout_ms,
@@ -375,11 +402,15 @@ class DeleteOne(BaseOperation):
     Attributes:
         filter: a filter condition to select a target document.
         vector: a vector of numbers to use for ANN (vector-search) sorting.
+        vectorize: a string to be made into a vector, with the same result as the
+            `vector` attribute, through an embedding service, assuming one is
+            configured for the collection.
         sort: controls ordering of results, hence which document is affected.
     """
 
     filter: Dict[str, Any]
     vector: Optional[VectorType]
+    vectorize: Optional[str]
     sort: Optional[SortType]
 
     def __init__(
@@ -387,10 +418,12 @@ class DeleteOne(BaseOperation):
         filter: Dict[str, Any],
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
     ) -> None:
         self.filter = filter
         self.vector = vector
+        self.vectorize = vectorize
         self.sort = sort
 
     def execute(
@@ -410,6 +443,7 @@ class DeleteOne(BaseOperation):
         op_result: DeleteResult = collection.delete_one(
             filter=self.filter,
             vector=self.vector,
+            vectorize=self.vectorize,
             sort=self.sort,
             max_time_ms=bulk_write_timeout_ms,
         )
@@ -478,19 +512,25 @@ class AsyncInsertOne(AsyncBaseOperation):
     Attributes:
         document: the document to insert.
         vector: an optional suitable vector to enrich the document at insertion.
+        vectorize: a string to be made into a vector, with the same result as the
+            `vector` attribute, through an embedding service, assuming one is
+            configured for the collection.
     """
 
     document: DocumentType
     vector: Optional[VectorType]
+    vectorize: Optional[str]
 
     def __init__(
         self,
         document: DocumentType,
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
     ) -> None:
         self.document = document
         self.vector = vector
+        self.vectorize = vectorize
 
     async def execute(
         self,
@@ -509,6 +549,7 @@ class AsyncInsertOne(AsyncBaseOperation):
         op_result: InsertOneResult = await collection.insert_one(
             document=self.document,
             vector=self.vector,
+            vectorize=self.vectorize,
             max_time_ms=bulk_write_timeout_ms,
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
@@ -523,6 +564,8 @@ class AsyncInsertMany(AsyncBaseOperation):
     Attributes:
         documents: the list document to insert.
         vectors: an optional list of vectors to enrich the documents at insertion.
+        vectorizes: an optional list of texts achieving the same effect as `vectors`
+            except through an embedding service, if one is configured for the collection.
         ordered: whether the inserts should be done in sequence.
         chunk_size: how many documents to include in a single API request.
             Exceeding the server maximum allowed value results in an error.
@@ -533,6 +576,7 @@ class AsyncInsertMany(AsyncBaseOperation):
 
     documents: Iterable[DocumentType]
     vectors: Optional[Iterable[Optional[VectorType]]]
+    vectorizes: Optional[Iterable[Optional[str]]]
     ordered: bool
     chunk_size: Optional[int]
     concurrency: Optional[int]
@@ -542,12 +586,14 @@ class AsyncInsertMany(AsyncBaseOperation):
         documents: Iterable[DocumentType],
         *,
         vectors: Optional[Iterable[Optional[VectorType]]] = None,
+        vectorizes: Optional[Iterable[Optional[str]]] = None,
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
     ) -> None:
         self.documents = documents
         self.vectors = vectors
+        self.vectorizes = vectorizes
         self.ordered = ordered
         self.chunk_size = chunk_size
         self.concurrency = concurrency
@@ -569,6 +615,7 @@ class AsyncInsertMany(AsyncBaseOperation):
         op_result: InsertManyResult = await collection.insert_many(
             documents=self.documents,
             vectors=self.vectors,
+            vectorizes=self.vectorizes,
             ordered=self.ordered,
             chunk_size=self.chunk_size,
             concurrency=self.concurrency,
@@ -587,6 +634,9 @@ class AsyncUpdateOne(AsyncBaseOperation):
         filter: a filter condition to select a target document.
         update: an update prescription to apply to the document.
         vector: a vector of numbers to use for ANN (vector-search) sorting.
+        vectorize: a string to be made into a vector, with the same result as the
+            `vector` attribute, through an embedding service, assuming one is
+            configured for the collection.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
@@ -594,6 +644,7 @@ class AsyncUpdateOne(AsyncBaseOperation):
     filter: Dict[str, Any]
     update: Dict[str, Any]
     vector: Optional[VectorType]
+    vectorize: Optional[str]
     sort: Optional[SortType]
     upsert: bool
 
@@ -603,12 +654,14 @@ class AsyncUpdateOne(AsyncBaseOperation):
         update: Dict[str, Any],
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
     ) -> None:
         self.filter = filter
         self.update = update
         self.vector = vector
+        self.vectorize = vectorize
         self.sort = sort
         self.upsert = upsert
 
@@ -630,6 +683,7 @@ class AsyncUpdateOne(AsyncBaseOperation):
             filter=self.filter,
             update=self.update,
             vector=self.vector,
+            vectorize=self.vectorize,
             sort=self.sort,
             upsert=self.upsert,
             max_time_ms=bulk_write_timeout_ms,
@@ -697,6 +751,9 @@ class AsyncReplaceOne(AsyncBaseOperation):
         filter: a filter condition to select a target document.
         replacement: the replacement document.
         vector: a vector of numbers to use for ANN (vector-search) sorting.
+        vectorize: a string to be made into a vector, with the same result as the
+            `vector` attribute, through an embedding service, assuming one is
+            configured for the collection.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
@@ -704,6 +761,7 @@ class AsyncReplaceOne(AsyncBaseOperation):
     filter: Dict[str, Any]
     replacement: DocumentType
     vector: Optional[VectorType]
+    vectorize: Optional[str]
     sort: Optional[SortType]
     upsert: bool
 
@@ -713,12 +771,14 @@ class AsyncReplaceOne(AsyncBaseOperation):
         replacement: DocumentType,
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
     ) -> None:
         self.filter = filter
         self.replacement = replacement
         self.vector = vector
+        self.vectorize = vectorize
         self.sort = sort
         self.upsert = upsert
 
@@ -740,6 +800,7 @@ class AsyncReplaceOne(AsyncBaseOperation):
             filter=self.filter,
             replacement=self.replacement,
             vector=self.vector,
+            vectorize=self.vectorize,
             sort=self.sort,
             upsert=self.upsert,
             max_time_ms=bulk_write_timeout_ms,
@@ -756,11 +817,15 @@ class AsyncDeleteOne(AsyncBaseOperation):
     Attributes:
         filter: a filter condition to select a target document.
         vector: a vector of numbers to use for ANN (vector-search) sorting.
+        vectorize: a string to be made into a vector, with the same result as the
+            `vector` attribute, through an embedding service, assuming one is
+            configured for the collection.
         sort: controls ordering of results, hence which document is affected.
     """
 
     filter: Dict[str, Any]
     vector: Optional[VectorType]
+    vectorize: Optional[str]
     sort: Optional[SortType]
 
     def __init__(
@@ -768,10 +833,12 @@ class AsyncDeleteOne(AsyncBaseOperation):
         filter: Dict[str, Any],
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
     ) -> None:
         self.filter = filter
         self.vector = vector
+        self.vectorize = vectorize
         self.sort = sort
 
     async def execute(
@@ -791,6 +858,7 @@ class AsyncDeleteOne(AsyncBaseOperation):
         op_result: DeleteResult = await collection.delete_one(
             filter=self.filter,
             vector=self.vector,
+            vectorize=self.vectorize,
             sort=self.sort,
             max_time_ms=bulk_write_timeout_ms,
         )
