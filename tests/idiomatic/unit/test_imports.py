@@ -15,6 +15,35 @@
 import pytest
 
 
+@pytest.mark.describe("test namespace")
+def test_namespace() -> None:
+    import astrapy
+
+    assert str(astrapy.admin) != ""
+    assert str(astrapy.client) != ""
+    assert str(astrapy.collection) != ""
+    assert str(astrapy.constants) != ""
+    assert str(astrapy.cursors) != ""
+    assert str(astrapy.database) != ""
+    assert str(astrapy.exceptions) != ""
+    assert str(astrapy.ids) != ""
+    assert str(astrapy.info) != ""
+    assert str(astrapy.operations) != ""
+    assert str(astrapy.results) != ""
+
+    assert str(astrapy.admin.AstraDBAdmin) != ""
+    assert str(astrapy.client.DataAPIClient) != ""
+    assert str(astrapy.collection.Collection) != ""
+    assert str(astrapy.constants.VectorMetric.DOT_PRODUCT) != ""
+    assert str(astrapy.cursors.BaseCursor) != ""
+    assert str(astrapy.database.Database) != ""
+    assert str(astrapy.exceptions.DevOpsAPIException) != ""
+    assert str(astrapy.ids.uuid6) != ""
+    assert str(astrapy.info.DatabaseInfo) != ""
+    assert str(astrapy.operations.InsertMany) != ""
+    assert str(astrapy.results.DeleteResult) != ""
+
+
 @pytest.mark.describe("test imports")
 def test_imports() -> None:
     from astrapy.results import (  # noqa: F401

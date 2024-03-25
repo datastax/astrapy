@@ -14,7 +14,6 @@
 
 import pytest
 
-import os
 import time
 
 from ..conftest import (
@@ -69,15 +68,6 @@ class TestDDLSync:
         assert dc_response2 == {"ok": 1}
         sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
 
-    @pytest.mark.skipif(
-        any(
-            [
-                ".astra-dev." not in os.environ["ASTRA_DB_API_ENDPOINT"],
-                "europe-west4" not in os.environ["ASTRA_DB_API_ENDPOINT"],
-            ]
-        ),
-        reason="A dev database in europe-west4 is required for this test",
-    )
     @pytest.mark.describe("test of default_id_type in creating collections, sync")
     def test_collection_default_id_type_sync(
         self,
