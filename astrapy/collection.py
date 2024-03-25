@@ -115,9 +115,9 @@ def _prepare_update_info(statuses: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def _collate_vector_to_sort(
-    sort: Optional[SortType] = None,
-    vector: Optional[VectorType] = None,
-    vectorize: Optional[str] = None,
+    sort: Optional[SortType],
+    vector: Optional[VectorType],
+    vectorize: Optional[str],
 ) -> Optional[SortType]:
     _vsort: Dict[str, Any]
     if vector is None:
@@ -604,7 +604,7 @@ class Collection:
         documents: Iterable[DocumentType],
         *,
         vectors: Optional[Iterable[Optional[VectorType]]] = None,
-        vectorizes: Optional[Iterable[Optional[str]]],
+        vectorizes: Optional[Iterable[Optional[str]]] = None,
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
@@ -2733,7 +2733,7 @@ class AsyncCollection:
         documents: Iterable[DocumentType],
         *,
         vectors: Optional[Iterable[Optional[VectorType]]] = None,
-        vectorizes: Optional[Iterable[Optional[str]]],
+        vectorizes: Optional[Iterable[Optional[str]]] = None,
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
