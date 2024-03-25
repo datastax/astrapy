@@ -117,50 +117,93 @@ def _prepare_update_info(statuses: List[Dict[str, Any]]) -> Dict[str, Any]:
 def _collate_vector_to_sort(
     sort: Optional[SortType] = None,
     vector: Optional[VectorType] = None,
+    vectorize: Optional[str] = None,
 ) -> Optional[SortType]:
+    _vsort: Dict[str, Any]
     if vector is None:
-        return sort
-    else:
-        _vsort = {"$vector": vector}
-        if sort is None:
-            return _vsort
+        if vectorize is None:
+            return sort
         else:
-            raise ValueError("The `vector` and `sort` clauses are mutually exclusive.")
+            _vsort = {"$vectorize": vectorize}
+            if sort is None:
+                return _vsort
+            else:
+                raise ValueError(
+                    "The `vectorize` and `sort` clauses are mutually exclusive."
+                )
+    else:
+        if vectorize is None:
+            _vsort = {"$vector": vector}
+            if sort is None:
+                return _vsort
+            else:
+                raise ValueError(
+                    "The `vector` and `sort` clauses are mutually exclusive."
+                )
+        else:
+            raise ValueError(
+                "The `vector` and `vectorize` parameters cannot be passed at the same time."
+            )
 
 
 def _collate_vector_to_document(
-    document0: DocumentType, vector: Optional[VectorType]
+    document0: DocumentType, vector: Optional[VectorType], vectorize: Optional[str]
 ) -> DocumentType:
     if vector is None:
-        return document0
-    else:
-        if "$vector" in document0:
-            raise ValueError(
-                "Cannot specify the vector separately for a document with its '$vector' field already."
-            )
+        if vectorize is None:
+            return document0
         else:
-            return {
-                **document0,
-                **{"$vector": vector},
-            }
+            if "$vectorize" in document0:
+                raise ValueError(
+                    "Cannot specify the `vectorize` separately for a document with "
+                    "its '$vectorize' field already."
+                )
+            else:
+                return {
+                    **document0,
+                    **{"$vectorize": vectorize},
+                }
+    else:
+        if vectorize is None:
+            if "$vector" in document0:
+                raise ValueError(
+                    "Cannot specify the `vector` separately for a document with "
+                    "its '$vector' field already."
+                )
+            else:
+                return {
+                    **document0,
+                    **{"$vector": vector},
+                }
+        else:
+            raise ValueError(
+                "The `vector` and `vectorize` parameters cannot be passed at the same time."
+            )
 
 
 def _collate_vectors_to_documents(
     documents: Iterable[DocumentType],
     vectors: Optional[Iterable[Optional[VectorType]]],
+    vectorizes: Optional[Iterable[Optional[str]]],
 ) -> List[DocumentType]:
-    if vectors is None:
+    if vectors is None and vectorizes is None:
         return list(documents)
     else:
         _documents = list(documents)
-        _vectors = list(vectors)
-        if len(_documents) != len(_vectors):
+        _ndocs = len(_documents)
+        _vectors = list(vectors) if vectors else [None] * _ndocs
+        _vectorizes = list(vectorizes) if vectorizes else [None] * _ndocs
+        if _ndocs != len(_vectors):
             raise ValueError(
                 "The `documents` and `vectors` parameters must have the same length"
             )
+        elif _ndocs != len(_vectorizes):
+            raise ValueError(
+                "The `documents` and `vectorizes` parameters must have the same length"
+            )
         return [
-            _collate_vector_to_document(_doc, _vec)
-            for _doc, _vec in zip(_documents, _vectors)
+            _collate_vector_to_document(_doc, _vec, _vecize)
+            for _doc, _vec, _vecize in zip(_documents, _vectors, _vectorizes)
         ]
 
 
@@ -482,6 +525,7 @@ class Collection:
         document: DocumentType,
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         max_time_ms: Optional[int] = None,
     ) -> InsertOneResult:
         """
@@ -495,6 +539,11 @@ class Collection:
                 for the document. Passing this parameter is equivalent to
                 providing the vector in the "$vector" field of the document itself,
                 however the two are mutually exclusive.
+            vectorize: a string to be made into a vector, if such a service
+                is configured for the collection. Passing this parameter is
+                equivalent to providing a `$vectorize` field in the document itself,
+                however the two are mutually exclusive.
+                Moreover, this parameter cannot coexist with `vector`.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -526,7 +575,7 @@ class Collection:
             the insertion fails.
         """
 
-        _document = _collate_vector_to_document(document, vector)
+        _document = _collate_vector_to_document(document, vector, vectorize)
         io_response = self._astra_db_collection.insert_one(
             _document,
             timeout_info=base_timeout_info(max_time_ms),
@@ -555,6 +604,7 @@ class Collection:
         documents: Iterable[DocumentType],
         *,
         vectors: Optional[Iterable[Optional[VectorType]]] = None,
+        vectorizes: Optional[Iterable[Optional[str]]],
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
@@ -576,6 +626,12 @@ class Collection:
                 specified in their "$vector" field already.
                 Passing vectors this way is indeed equivalent to the "$vector" field
                 of the documents, however the two are mutually exclusive.
+            vectorizes: an optional list of strings to be made into as many vectors
+                (one per document), if such a service is configured for the collection.
+                Passing this parameter is equivalent to providing a `$vectorize`
+                field in the documents themselves, however the two are mutually exclusive.
+                For any given document, this parameter cannot coexist with the
+                corresponding `vector` entry.
             ordered: if True (default), the insertions are processed sequentially.
                 If False, they can occur in arbitrary order and possibly concurrently.
             chunk_size: how many documents to include in a single API request.
@@ -663,7 +719,7 @@ class Collection:
             _chunk_size = MAX_INSERT_NUM_DOCUMENTS
         else:
             _chunk_size = chunk_size
-        _documents = _collate_vectors_to_documents(documents, vectors)
+        _documents = _collate_vectors_to_documents(documents, vectors, vectorizes)
         raw_results: List[Dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
@@ -774,6 +830,7 @@ class Collection:
         skip: Optional[int] = None,
         limit: Optional[int] = None,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         include_similarity: Optional[bool] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
@@ -819,6 +876,10 @@ class Collection:
                 criteria can be specified. Moreover, there is an upper bound
                 to the number of documents that can be returned. For details,
                 see the Note about upper bounds and the Data API documentation.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
                 returned document. Can only be used for vector ANN search, i.e.
@@ -917,7 +978,7 @@ class Collection:
             changes in the data would be picked up by the cursor.
         """
 
-        _sort = _collate_vector_to_sort(sort, vector)
+        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         if include_similarity is not None and "$vector" not in (_sort or {}):
             raise ValueError(
                 "Cannot use `include_similarity` when not searching through `vector`."
@@ -942,6 +1003,7 @@ class Collection:
         *,
         projection: Optional[ProjectionType] = None,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         include_similarity: Optional[bool] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
@@ -970,6 +1032,10 @@ class Collection:
                 similar document in the collection matching the filter.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in the
                 returned document. Can only be used for vector ANN search, i.e.
@@ -1191,6 +1257,7 @@ class Collection:
         *,
         projection: Optional[ProjectionType] = None,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
@@ -1222,6 +1289,10 @@ class Collection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1274,7 +1345,7 @@ class Collection:
             {'text': 'F=ma'}
         """
 
-        _sort = _collate_vector_to_sort(sort, vector)
+        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -1306,6 +1377,7 @@ class Collection:
         replacement: DocumentType,
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         max_time_ms: Optional[int] = None,
@@ -1330,6 +1402,10 @@ class Collection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1356,7 +1432,7 @@ class Collection:
             UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '931b47d6-...'})
         """
 
-        _sort = _collate_vector_to_sort(sort, vector)
+        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "upsert": upsert,
         }
@@ -1388,6 +1464,7 @@ class Collection:
         *,
         projection: Optional[ProjectionType] = None,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
@@ -1424,6 +1501,10 @@ class Collection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1477,7 +1558,7 @@ class Collection:
             {'_id': 'cb4ef2ab-...', 'name': 'Johnny', 'rank': 0}
         """
 
-        _sort = _collate_vector_to_sort(sort, vector)
+        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -1509,6 +1590,7 @@ class Collection:
         update: Dict[str, Any],
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         max_time_ms: Optional[int] = None,
@@ -1538,6 +1620,10 @@ class Collection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1563,7 +1649,7 @@ class Collection:
             UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '2a45ff60-...'})
         """
 
-        _sort = _collate_vector_to_sort(sort, vector)
+        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "upsert": upsert,
         }
@@ -1707,6 +1793,7 @@ class Collection:
         *,
         projection: Optional[ProjectionType] = None,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
@@ -1737,6 +1824,10 @@ class Collection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1764,7 +1855,7 @@ class Collection:
             >>> # (returns None for no matches)
         """
 
-        _sort = _collate_vector_to_sort(sort, vector)
+        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
         fo_response = self._astra_db_collection.find_one_and_delete(
             sort=_sort,
@@ -1791,6 +1882,7 @@ class Collection:
         filter: Dict[str, Any],
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
@@ -1814,6 +1906,10 @@ class Collection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1841,7 +1937,7 @@ class Collection:
             DeleteResult(raw_results=..., deleted_count=0)
         """
 
-        _sort = _collate_vector_to_sort(sort, vector)
+        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         do_response = self._astra_db_collection.delete_one_by_predicate(
             filter=filter, timeout_info=base_timeout_info(max_time_ms), sort=_sort
         )
@@ -2555,6 +2651,7 @@ class AsyncCollection:
         document: DocumentType,
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         max_time_ms: Optional[int] = None,
     ) -> InsertOneResult:
         """
@@ -2568,6 +2665,11 @@ class AsyncCollection:
                 for the document. Passing this parameter is equivalent to
                 providing the vector in the "$vector" field of the document itself,
                 however the two are mutually exclusive.
+            vectorize: a string to be made into a vector, if such a service
+                is configured for the collection. Passing this parameter is
+                equivalent to providing a `$vectorize` field in the document itself,
+                however the two are mutually exclusive.
+                Moreover, this parameter cannot coexist with `vector`.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -2602,7 +2704,7 @@ class AsyncCollection:
             the insertion fails.
         """
 
-        _document = _collate_vector_to_document(document, vector)
+        _document = _collate_vector_to_document(document, vector, vectorize)
         io_response = await self._astra_db_collection.insert_one(
             _document,
             timeout_info=base_timeout_info(max_time_ms),
@@ -2631,6 +2733,7 @@ class AsyncCollection:
         documents: Iterable[DocumentType],
         *,
         vectors: Optional[Iterable[Optional[VectorType]]] = None,
+        vectorizes: Optional[Iterable[Optional[str]]],
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
@@ -2652,6 +2755,12 @@ class AsyncCollection:
                 specified in their "$vector" field already.
                 Passing vectors this way is indeed equivalent to the "$vector" field
                 of the documents, however the two are mutually exclusive.
+            vectorizes: an optional list of strings to be made into as many vectors
+                (one per document), if such a service is configured for the collection.
+                Passing this parameter is equivalent to providing a `$vectorize`
+                field in the documents themselves, however the two are mutually exclusive.
+                For any given document, this parameter cannot coexist with the
+                corresponding `vector` entry.
             ordered: if True (default), the insertions are processed sequentially.
                 If False, they can occur in arbitrary order and possibly concurrently.
             chunk_size: how many documents to include in a single API request.
@@ -2752,7 +2861,7 @@ class AsyncCollection:
             _chunk_size = MAX_INSERT_NUM_DOCUMENTS
         else:
             _chunk_size = chunk_size
-        _documents = _collate_vectors_to_documents(documents, vectors)
+        _documents = _collate_vectors_to_documents(documents, vectors, vectorizes)
         raw_results: List[Dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
@@ -2859,6 +2968,7 @@ class AsyncCollection:
         skip: Optional[int] = None,
         limit: Optional[int] = None,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         include_similarity: Optional[bool] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
@@ -2904,6 +3014,10 @@ class AsyncCollection:
                 criteria can be specified. Moreover, there is an upper bound
                 to the number of documents that can be returned. For details,
                 see the Note about upper bounds and the Data API documentation.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
                 returned document. Can only be used for vector ANN search, i.e.
@@ -3011,7 +3125,7 @@ class AsyncCollection:
             changes in the data would be picked up by the cursor.
         """
 
-        _sort = _collate_vector_to_sort(sort, vector)
+        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         if include_similarity is not None and "$vector" not in (_sort or {}):
             raise ValueError(
                 "Cannot use `include_similarity` when not searching through `vector`."
@@ -3036,6 +3150,7 @@ class AsyncCollection:
         *,
         projection: Optional[ProjectionType] = None,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         include_similarity: Optional[bool] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
@@ -3064,6 +3179,10 @@ class AsyncCollection:
                 similar document in the collection matching the filter.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in the
                 returned document. Can only be used for vector ANN search, i.e.
@@ -3302,6 +3421,7 @@ class AsyncCollection:
         *,
         projection: Optional[ProjectionType] = None,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
@@ -3334,6 +3454,10 @@ class AsyncCollection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3391,7 +3515,7 @@ class AsyncCollection:
             result3 {'text': 'F=ma'}
         """
 
-        _sort = _collate_vector_to_sort(sort, vector)
+        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -3423,6 +3547,7 @@ class AsyncCollection:
         replacement: DocumentType,
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         max_time_ms: Optional[int] = None,
@@ -3447,6 +3572,10 @@ class AsyncCollection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3489,7 +3618,7 @@ class AsyncCollection:
             result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '30e34e00-...'}
         """
 
-        _sort = _collate_vector_to_sort(sort, vector)
+        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "upsert": upsert,
         }
@@ -3521,6 +3650,7 @@ class AsyncCollection:
         *,
         projection: Optional[ProjectionType] = None,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
@@ -3557,6 +3687,10 @@ class AsyncCollection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3616,7 +3750,7 @@ class AsyncCollection:
             result3 {'_id': 'db3d678d-14d4-4caa-82d2-d5fb77dab7ec', 'name': 'Johnny', 'rank': 0}
         """
 
-        _sort = _collate_vector_to_sort(sort, vector)
+        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -3648,6 +3782,7 @@ class AsyncCollection:
         update: Dict[str, Any],
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
         max_time_ms: Optional[int] = None,
@@ -3677,6 +3812,10 @@ class AsyncCollection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3717,7 +3856,7 @@ class AsyncCollection:
             result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '75748092-...'}
         """
 
-        _sort = _collate_vector_to_sort(sort, vector)
+        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "upsert": upsert,
         }
@@ -3872,6 +4011,7 @@ class AsyncCollection:
         *,
         projection: Optional[ProjectionType] = None,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> Union[DocumentType, None]:
@@ -3902,6 +4042,10 @@ class AsyncCollection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3935,7 +4079,7 @@ class AsyncCollection:
             delete_result1 None
         """
 
-        _sort = _collate_vector_to_sort(sort, vector)
+        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
         fo_response = await self._astra_db_collection.find_one_and_delete(
             sort=_sort,
@@ -3962,6 +4106,7 @@ class AsyncCollection:
         filter: Dict[str, Any],
         *,
         vector: Optional[VectorType] = None,
+        vectorize: Optional[str] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
@@ -3985,6 +4130,10 @@ class AsyncCollection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+            vectorize: a string to be made into a vector to perform vector search.
+                This can be supplied in (exclusive) alternative to `vector`,
+                provided such a service is configured for the collection,
+                and achieves the same effect.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -4012,7 +4161,7 @@ class AsyncCollection:
             DeleteResult(raw_results=..., deleted_count=0)
         """
 
-        _sort = _collate_vector_to_sort(sort, vector)
+        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         do_response = await self._astra_db_collection.delete_one_by_predicate(
             filter=filter,
             timeout_info=base_timeout_info(max_time_ms),

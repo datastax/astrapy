@@ -3038,8 +3038,6 @@ class AstraDB:
                 **options.get("vector", {}),
                 **vector_options,
             }
-            if "dimension" not in options["vector"]:
-                raise ValueError("Must pass dimension for vector collections")
 
         # Build the final json payload
         jsondata = {
@@ -3389,8 +3387,6 @@ class AsyncAstraDB:
                 **options.get("vector", {}),
                 **vector_options,
             }
-            if "dimension" not in options["vector"]:
-                raise ValueError("Must pass dimension for vector collections")
 
         # Build the final json payload
         jsondata = {

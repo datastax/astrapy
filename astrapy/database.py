@@ -474,14 +474,12 @@ class Database:
             namespace: the namespace where the collection is to be created.
                 If not specified, the general setting for this database is used.
             dimension: for vector collections, the dimension of the vectors
-                (i.e. the number of their components). If not specified, a
-                a non-vector collection is created.
+                (i.e. the number of their components).
             metric: the metric used for similarity searches.
                 Allowed values are "dot_product", "euclidean" and "cosine"
                 (see the VectorMetric object).
             service: an EmbeddingService object describing a service for
-                embedding computation. Can be used only if the collection
-                has a `dimension` (i.e. if it is a vector collection).
+                embedding computation.
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}
@@ -513,6 +511,13 @@ class Database:
             >>> new_col = my_db.create_collection("my_v_col", dimension=3)
             >>> new_col.insert_one({"name": "the_row", "$vector": [0.4, 0.5, 0.7]})
             InsertOneResult(raw_results=..., inserted_id='e22dd65e-...-...-...')
+
+        Note:
+            A collection is considered a vector collection if at least one of
+            `dimension` or `service` are provided and not null. In that case,
+            and only in that case, is `metric` an accepted parameter.
+            Note, moreover, that if passing both these parameters, then
+            the dimension must be compatible with the chosen service.
         """
 
         _validate_create_collection_options(
@@ -1174,14 +1179,12 @@ class AsyncDatabase:
             namespace: the namespace where the collection is to be created.
                 If not specified, the general setting for this database is used.
             dimension: for vector collections, the dimension of the vectors
-                (i.e. the number of their components). If not specified, a
-                a non-vector collection is created.
+                (i.e. the number of their components).
             metric: the metric used for similarity searches.
                 Allowed values are "dot_product", "euclidean" and "cosine"
                 (see the VectorMetric object).
             service: an EmbeddingService object describing a service for
-                embedding computation. Can be used only if the collection
-                has a `dimension` (i.e. if it is a vector collection).
+                embedding computation.
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}
@@ -1217,6 +1220,13 @@ class AsyncDatabase:
             ...
             >>> asyncio.run(create_and_insert(my_async_db))
             InsertOneResult(raw_results=..., inserted_id='08f05ecf-...-...-...')
+
+        Note:
+            A collection is considered a vector collection if at least one of
+            `dimension` or `service` are provided and not null. In that case,
+            and only in that case, is `metric` an accepted parameter.
+            Note, moreover, that if passing both these parameters, then
+            the dimension must be compatible with the chosen service.
         """
 
         _validate_create_collection_options(
