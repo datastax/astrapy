@@ -362,5 +362,6 @@ Here is a recap of the minor changes that came _to the old API_ with 1.0.0:
 - `AstraDBOps.create_database`, return type corrected
 - Fixed behaviour and return type of `AstraDBOps.create_keyspace` and `AstraDBOps.terminate_db`
 - Added `AstraDBOps.delete_keyspace` method
+- Method `create_collection` of `AstraDB` relaxes checks on passing `dimensions` for vector collections
 
 Keep in mind that the pre-1.0.0 library, now dubbed "core", is what the current 1.0.0 API ("idiomatic") builds on.
