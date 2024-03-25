@@ -25,7 +25,7 @@ from typing import (
     Optional,
 )
 
-from astrapy.constants import DocumentType, SortType
+from astrapy.constants import DocumentType, SortType, VectorType
 from astrapy.results import (
     BulkWriteResult,
     DeleteResult,
@@ -96,15 +96,20 @@ class InsertOne(BaseOperation):
 
     Attributes:
         document: the document to insert.
+        vector: an optional suitable vector to enrich the document at insertion.
     """
 
     document: DocumentType
+    vector: Optional[VectorType]
 
     def __init__(
         self,
         document: DocumentType,
+        *,
+        vector: Optional[VectorType] = None,
     ) -> None:
         self.document = document
+        self.vector = vector
 
     def execute(
         self,
@@ -121,7 +126,9 @@ class InsertOne(BaseOperation):
         """
 
         op_result: InsertOneResult = collection.insert_one(
-            document=self.document, max_time_ms=bulk_write_timeout_ms
+            document=self.document,
+            vector=self.vector,
+            max_time_ms=bulk_write_timeout_ms,
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
@@ -134,6 +141,7 @@ class InsertMany(BaseOperation):
 
     Attributes:
         documents: the list document to insert.
+        vectors: an optional list of vectors to enrich the documents at insertion.
         ordered: whether the inserts should be done in sequence.
         chunk_size: how many documents to include in a single API request.
             Exceeding the server maximum allowed value results in an error.
@@ -143,6 +151,7 @@ class InsertMany(BaseOperation):
     """
 
     documents: Iterable[DocumentType]
+    vectors: Optional[Iterable[Optional[VectorType]]]
     ordered: bool
     chunk_size: Optional[int]
     concurrency: Optional[int]
@@ -151,12 +160,14 @@ class InsertMany(BaseOperation):
         self,
         documents: Iterable[DocumentType],
         *,
+        vectors: Optional[Iterable[Optional[VectorType]]] = None,
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
     ) -> None:
         self.documents = documents
         self.ordered = ordered
+        self.vectors = vectors
         self.chunk_size = chunk_size
         self.concurrency = concurrency
 
@@ -176,6 +187,7 @@ class InsertMany(BaseOperation):
 
         op_result: InsertManyResult = collection.insert_many(
             documents=self.documents,
+            vectors=self.vectors,
             ordered=self.ordered,
             chunk_size=self.chunk_size,
             concurrency=self.concurrency,
@@ -193,12 +205,14 @@ class UpdateOne(BaseOperation):
     Attributes:
         filter: a filter condition to select a target document.
         update: an update prescription to apply to the document.
+        vector: a vector of numbers to use for ANN (vector-search) sorting.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
 
     filter: Dict[str, Any]
     update: Dict[str, Any]
+    vector: Optional[VectorType]
     sort: Optional[SortType]
     upsert: bool
 
@@ -207,11 +221,13 @@ class UpdateOne(BaseOperation):
         filter: Dict[str, Any],
         update: Dict[str, Any],
         *,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
     ) -> None:
         self.filter = filter
         self.update = update
+        self.vector = vector
         self.sort = sort
         self.upsert = upsert
 
@@ -232,6 +248,7 @@ class UpdateOne(BaseOperation):
         op_result: UpdateResult = collection.update_one(
             filter=self.filter,
             update=self.update,
+            vector=self.vector,
             sort=self.sort,
             upsert=self.upsert,
             max_time_ms=bulk_write_timeout_ms,
@@ -298,12 +315,14 @@ class ReplaceOne(BaseOperation):
     Attributes:
         filter: a filter condition to select a target document.
         replacement: the replacement document.
+        vector: a vector of numbers to use for ANN (vector-search) sorting.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
 
     filter: Dict[str, Any]
     replacement: DocumentType
+    vector: Optional[VectorType]
     sort: Optional[SortType]
     upsert: bool
 
@@ -312,11 +331,13 @@ class ReplaceOne(BaseOperation):
         filter: Dict[str, Any],
         replacement: DocumentType,
         *,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
     ) -> None:
         self.filter = filter
         self.replacement = replacement
+        self.vector = vector
         self.sort = sort
         self.upsert = upsert
 
@@ -337,6 +358,7 @@ class ReplaceOne(BaseOperation):
         op_result: UpdateResult = collection.replace_one(
             filter=self.filter,
             replacement=self.replacement,
+            vector=self.vector,
             sort=self.sort,
             upsert=self.upsert,
             max_time_ms=bulk_write_timeout_ms,
@@ -352,19 +374,23 @@ class DeleteOne(BaseOperation):
 
     Attributes:
         filter: a filter condition to select a target document.
+        vector: a vector of numbers to use for ANN (vector-search) sorting.
         sort: controls ordering of results, hence which document is affected.
     """
 
     filter: Dict[str, Any]
+    vector: Optional[VectorType]
     sort: Optional[SortType]
 
     def __init__(
         self,
         filter: Dict[str, Any],
         *,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
     ) -> None:
         self.filter = filter
+        self.vector = vector
         self.sort = sort
 
     def execute(
@@ -383,6 +409,7 @@ class DeleteOne(BaseOperation):
 
         op_result: DeleteResult = collection.delete_one(
             filter=self.filter,
+            vector=self.vector,
             sort=self.sort,
             max_time_ms=bulk_write_timeout_ms,
         )
@@ -450,15 +477,20 @@ class AsyncInsertOne(AsyncBaseOperation):
 
     Attributes:
         document: the document to insert.
+        vector: an optional suitable vector to enrich the document at insertion.
     """
 
     document: DocumentType
+    vector: Optional[VectorType]
 
     def __init__(
         self,
         document: DocumentType,
+        *,
+        vector: Optional[VectorType] = None,
     ) -> None:
         self.document = document
+        self.vector = vector
 
     async def execute(
         self,
@@ -475,7 +507,9 @@ class AsyncInsertOne(AsyncBaseOperation):
         """
 
         op_result: InsertOneResult = await collection.insert_one(
-            document=self.document, max_time_ms=bulk_write_timeout_ms
+            document=self.document,
+            vector=self.vector,
+            max_time_ms=bulk_write_timeout_ms,
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 
@@ -488,6 +522,7 @@ class AsyncInsertMany(AsyncBaseOperation):
 
     Attributes:
         documents: the list document to insert.
+        vectors: an optional list of vectors to enrich the documents at insertion.
         ordered: whether the inserts should be done in sequence.
         chunk_size: how many documents to include in a single API request.
             Exceeding the server maximum allowed value results in an error.
@@ -497,6 +532,7 @@ class AsyncInsertMany(AsyncBaseOperation):
     """
 
     documents: Iterable[DocumentType]
+    vectors: Optional[Iterable[Optional[VectorType]]]
     ordered: bool
     chunk_size: Optional[int]
     concurrency: Optional[int]
@@ -505,11 +541,13 @@ class AsyncInsertMany(AsyncBaseOperation):
         self,
         documents: Iterable[DocumentType],
         *,
+        vectors: Optional[Iterable[Optional[VectorType]]] = None,
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
     ) -> None:
         self.documents = documents
+        self.vectors = vectors
         self.ordered = ordered
         self.chunk_size = chunk_size
         self.concurrency = concurrency
@@ -530,6 +568,7 @@ class AsyncInsertMany(AsyncBaseOperation):
 
         op_result: InsertManyResult = await collection.insert_many(
             documents=self.documents,
+            vectors=self.vectors,
             ordered=self.ordered,
             chunk_size=self.chunk_size,
             concurrency=self.concurrency,
@@ -547,12 +586,14 @@ class AsyncUpdateOne(AsyncBaseOperation):
     Attributes:
         filter: a filter condition to select a target document.
         update: an update prescription to apply to the document.
+        vector: a vector of numbers to use for ANN (vector-search) sorting.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
 
     filter: Dict[str, Any]
     update: Dict[str, Any]
+    vector: Optional[VectorType]
     sort: Optional[SortType]
     upsert: bool
 
@@ -561,11 +602,13 @@ class AsyncUpdateOne(AsyncBaseOperation):
         filter: Dict[str, Any],
         update: Dict[str, Any],
         *,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
     ) -> None:
         self.filter = filter
         self.update = update
+        self.vector = vector
         self.sort = sort
         self.upsert = upsert
 
@@ -586,6 +629,7 @@ class AsyncUpdateOne(AsyncBaseOperation):
         op_result: UpdateResult = await collection.update_one(
             filter=self.filter,
             update=self.update,
+            vector=self.vector,
             sort=self.sort,
             upsert=self.upsert,
             max_time_ms=bulk_write_timeout_ms,
@@ -652,12 +696,14 @@ class AsyncReplaceOne(AsyncBaseOperation):
     Attributes:
         filter: a filter condition to select a target document.
         replacement: the replacement document.
+        vector: a vector of numbers to use for ANN (vector-search) sorting.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
 
     filter: Dict[str, Any]
     replacement: DocumentType
+    vector: Optional[VectorType]
     sort: Optional[SortType]
     upsert: bool
 
@@ -666,11 +712,13 @@ class AsyncReplaceOne(AsyncBaseOperation):
         filter: Dict[str, Any],
         replacement: DocumentType,
         *,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
         upsert: bool = False,
     ) -> None:
         self.filter = filter
         self.replacement = replacement
+        self.vector = vector
         self.sort = sort
         self.upsert = upsert
 
@@ -691,6 +739,7 @@ class AsyncReplaceOne(AsyncBaseOperation):
         op_result: UpdateResult = await collection.replace_one(
             filter=self.filter,
             replacement=self.replacement,
+            vector=self.vector,
             sort=self.sort,
             upsert=self.upsert,
             max_time_ms=bulk_write_timeout_ms,
@@ -706,19 +755,23 @@ class AsyncDeleteOne(AsyncBaseOperation):
 
     Attributes:
         filter: a filter condition to select a target document.
+        vector: a vector of numbers to use for ANN (vector-search) sorting.
         sort: controls ordering of results, hence which document is affected.
     """
 
     filter: Dict[str, Any]
+    vector: Optional[VectorType]
     sort: Optional[SortType]
 
     def __init__(
         self,
         filter: Dict[str, Any],
         *,
+        vector: Optional[VectorType] = None,
         sort: Optional[SortType] = None,
     ) -> None:
         self.filter = filter
+        self.vector = vector
         self.sort = sort
 
     async def execute(
@@ -736,7 +789,10 @@ class AsyncDeleteOne(AsyncBaseOperation):
         """
 
         op_result: DeleteResult = await collection.delete_one(
-            filter=self.filter, sort=self.sort, max_time_ms=bulk_write_timeout_ms
+            filter=self.filter,
+            vector=self.vector,
+            sort=self.sort,
+            max_time_ms=bulk_write_timeout_ms,
         )
         return op_result.to_bulk_write_result(index_in_bulk_write=index_in_bulk_write)
 

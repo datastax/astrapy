@@ -40,12 +40,13 @@ class DataAPIClient:
         - AstraDBAdmin objects can be created for admin-level work
 
     Args:
-        token: an Access Token to the database. Example: "AstraCS:xyz..."
+        token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
         environment: a string representing the target Astra environment.
-            It can be left unspecified for the default value of Environment.PROD;
-            other values are Environment.DEV and Environment.TEST.
+            It can be left unspecified for the default value of `Environment.PROD`;
+            other values are `Environment.DEV` and `Environment.TEST`.
         caller_name: name of the application, or framework, on behalf of which
-            the Data API calls are performed. This ends up in the request user-agent.
+            the Data API and DevOps API calls are performed. This ends up in
+            the request user-agent.
         caller_version: version of the caller.
 
     Example:
@@ -297,8 +298,8 @@ class DataAPIClient:
         admin work such as managing databases.
 
         Args:
-            token: if supplied, is passed to the Database instead of the client token.
-                This may be useful when switching to a more powerful,
+            token: if supplied, is passed to the Astra DB Admin instead of the
+                client token. This may be useful when switching to a more powerful,
                 admin-capable permission set.
             dev_ops_url: in case of custom deployments, this can be used to specify
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
