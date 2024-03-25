@@ -335,7 +335,8 @@ class AstraDBAdmin:
             represented as AdminDatabaseInfo objects.
 
         Example:
-            >>> database_list = my_astra_db_admin.list_databases()
+            >>> database_cursor = my_astra_db_admin.list_databases()
+            >>> database_list = list(database_cursor)
             >>> len(database_list)
             3
             >>> database_list[2].id
@@ -374,14 +375,15 @@ class AstraDBAdmin:
         Get the full information on a given database, through a request to the DevOps API.
 
         Args:
-            id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+            id: the ID of the target database, e. g.
+                "01234567-89ab-cdef-0123-456789abcdef".
             max_time_ms: a timeout, in milliseconds, for the API request.
 
         Returns:
             An AdminDatabaseInfo object.
 
         Example:
-            >>> details_of_my_db = my_astra_db_admin.database_info("")
+            >>> details_of_my_db = my_astra_db_admin.database_info("01234567-...")
             >>> details_of_my_db.id
             '01234567-...'
             >>> details_of_my_db.status
@@ -435,11 +437,12 @@ class AstraDBAdmin:
             An AstraDBDatabaseAdmin instance.
 
         Example:
-            >>> my_new_db = my_astra_db_admin.create_database(
+            >>> my_new_db_admin = my_astra_db_admin.create_database(
             ...     "new_database",
             ...     cloud_provider="aws",
             ...     region="ap-south-1",
             ... )
+            >>> my_new_db = my_new_db_admin.get_database()
             >>> my_coll = my_new_db.create_collection("movies", dimension=512)
             >>> my_coll.insert_one({"title": "The Title"}, vector=...)
         """
@@ -492,7 +495,8 @@ class AstraDBAdmin:
         Drop a database, i.e. delete it completely and permanently with all its data.
 
         Args:
-            id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+            id: The ID of the database to drop, e. g.
+                "01234567-89ab-cdef-0123-456789abcdef".
             wait_until_active: if True (default), the method returns only after
                 the database has actually been deleted (generally a few minutes).
                 If False, it will return right after issuing the
@@ -512,7 +516,7 @@ class AstraDBAdmin:
             >>> database_list_pre = my_astra_db_admin.list_databases()
             >>> len(database_list_pre)
             3
-            >>> my_astra_db_admin.drop_database('01234567-...")
+            >>> my_astra_db_admin.drop_database("01234567-...")
             {'ok': 1}
             >>> database_list_post = my_astra_db_admin.list_databases()
             >>> len(database_list_post)
@@ -561,7 +565,7 @@ class AstraDBAdmin:
         Create an AstraDBDatabaseAdmin object for admin work within a certain database.
 
         Args:
-            id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+            id: the ID of the target database, e. g. "01234567-89ab-cdef-0123-456789abcdef".
 
         Returns:
             An AstraDBDatabaseAdmin instance representing the requested database.
