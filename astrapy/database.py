@@ -64,14 +64,14 @@ def _validate_create_collection_options(
                 "cannot have a `defaultId` key when passing the "
                 "`default_id_type` parameter as well."
             )
-    if dimension is None and metric is not None:
+    is_vector: bool
+    if service is not None or dimension is not None:
+        is_vector = True
+    else:
+        is_vector = False
+    if not is_vector and metric is not None:
         raise ValueError(
-            "Cannot specify `metric` and not `dimension` in the "
-            "create_collection method."
-        )
-    if dimension is None and service is not None:
-        raise ValueError(
-            "Cannot specify `service` and not `dimension` in the "
+            "Cannot specify `metric` for non-vector collections in the "
             "create_collection method."
         )
 
