@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 
 from astrapy.core.db import (
@@ -66,6 +67,21 @@ if TYPE_CHECKING:
 
 DEFAULT_INSERT_MANY_CONCURRENCY = 20
 DEFAULT_BULK_WRITE_CONCURRENCY = 10
+
+
+@dataclass
+class EmbeddingService:
+    """
+    An object expressing the settings for a collection's embedding service,
+    for use within a collection creation command.
+
+    Attributes:
+        provider: the name of a service provider for embedding calculation.
+        model_name: the name of a specific model for use by the service.
+    """
+
+    provider: str
+    model_name: str
 
 
 def _prepare_update_info(statuses: List[Dict[str, Any]]) -> Dict[str, Any]:

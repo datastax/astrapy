@@ -94,6 +94,9 @@ def test_imports() -> None:
         uuid8,
         UUID,
     )
+    from astrapy.collection import (  # noqa: F401
+        EmbeddingService,
+    )
     from astrapy import (  # noqa: F401
         Database,
         AsyncDatabase,

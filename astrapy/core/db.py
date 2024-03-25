@@ -2989,6 +2989,7 @@ class AstraDB:
         options: Optional[Dict[str, Any]] = None,
         dimension: Optional[int] = None,
         metric: Optional[str] = None,
+        service_dict: Optional[Dict[str, str]] = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> AstraDBCollection:
         """
@@ -2999,6 +3000,7 @@ class AstraDB:
             options (dict, optional): Options for the collection.
             dimension (int, optional): Dimension for vector search.
             metric (str, optional): Metric choice for vector search.
+            service_dict (dict, optional): a definition for the $vectorize service
             timeout_info: a float, or a TimeoutInfo dict, for the HTTP request.
                 Note that a 'read' timeout event will not block the action taken
                 by the API server if it has received the request already.
@@ -3012,6 +3014,7 @@ class AstraDB:
             for k, v in {
                 "dimension": dimension,
                 "metric": metric,
+                "service": service_dict,
             }.items()
             if v is not None
         }
@@ -3337,6 +3340,7 @@ class AsyncAstraDB:
         options: Optional[Dict[str, Any]] = None,
         dimension: Optional[int] = None,
         metric: Optional[str] = None,
+        service_dict: Optional[Dict[str, str]] = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> AsyncAstraDBCollection:
         """
@@ -3347,6 +3351,7 @@ class AsyncAstraDB:
             options (dict, optional): Options for the collection.
             dimension (int, optional): Dimension for vector search.
             metric (str, optional): Metric choice for vector search.
+            service_dict (dict, optional): a definition for the $vectorize service
             timeout_info: a float, or a TimeoutInfo dict, for the HTTP request.
                 Note that a 'read' timeout event will not block the action taken
                 by the API server if it has received the request already.
@@ -3360,6 +3365,7 @@ class AsyncAstraDB:
             for k, v in {
                 "dimension": dimension,
                 "metric": metric,
+                "service": service_dict,
             }.items()
             if v is not None
         }
