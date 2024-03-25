@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import datetime
-import os
 
 from typing import Any, Dict, List
 
@@ -1365,15 +1364,6 @@ class TestDMLAsync:
         assert {"a": 10} in found
         assert {"a": 2, "b": 1} in found
 
-    @pytest.mark.skipif(
-        any(
-            [
-                ".astra-dev." not in os.environ["ASTRA_DB_API_ENDPOINT"],
-                "europe-west4" not in os.environ["ASTRA_DB_API_ENDPOINT"],
-            ]
-        ),
-        reason="A dev database in europe-west4 is required for this test",
-    )
     @pytest.mark.describe("test of the various ids in the document id field, async")
     async def test_collection_ids_as_doc_id_async(
         self,
@@ -1405,15 +1395,6 @@ class TestDMLAsync:
             assert this_doc is not None
             assert this_doc["id_type"] == t_id_type
 
-    @pytest.mark.skipif(
-        any(
-            [
-                ".astra-dev." not in os.environ["ASTRA_DB_API_ENDPOINT"],
-                "europe-west4" not in os.environ["ASTRA_DB_API_ENDPOINT"],
-            ]
-        ),
-        reason="A dev database in europe-west4 is required for this test",
-    )
     @pytest.mark.describe(
         "test of ids in various parameters of various DML methods, async"
     )
