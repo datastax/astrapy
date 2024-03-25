@@ -91,7 +91,7 @@ def _recast_api_collection_dict(api_coll_dict: Dict[str, Any]) -> Dict[str, Any]
             for k, v in _options.items()
             if k not in {"vector", "indexing", "defaultId"}
         },
-        **(_rest_default_id if _rest_default_id else {}),
+        **({"defaultId": _rest_default_id} if _rest_default_id else {}),
     }
     recast_dict0 = {
         "name": _name,
