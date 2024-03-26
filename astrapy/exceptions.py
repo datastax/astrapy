@@ -259,7 +259,7 @@ class CollectionAlreadyExistsException(DataAPIException):
 @dataclass
 class TooManyDocumentsToCountException(DataAPIException):
     """
-    A count_documents() operation failed because the resulting number of documents
+    A `count_documents()` operation failed because the resulting number of documents
     exceeded either the upper bound set by the caller or the hard limit imposed
     by the Data API.
 

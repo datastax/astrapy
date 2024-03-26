@@ -220,7 +220,7 @@ class Database:
             caller_version: version of the caller.
 
         Returns:
-            a new Database instance.
+            a new `Database` instance.
 
         Example:
             >>> my_db_2 = my_db.with_options(
@@ -268,7 +268,7 @@ class Database:
                 usage, this should be left to its default of "v1".
 
         Returns:
-            the new copy, an AsyncDatabase instance.
+            the new copy, an `AsyncDatabase` instance.
 
         Example:
             >>> my_async_db = my_db.to_async()
@@ -391,12 +391,12 @@ class Database:
         self, name: str, *, namespace: Optional[str] = None
     ) -> Collection:
         """
-        Spawn a Collection object instance representing a collection
+        Spawn a `Collection` object instance representing a collection
         on this database.
 
-        Creating a Collection instance does not have any effect on the
+        Creating a `Collection` instance does not have any effect on the
         actual state of the database: in other words, for the created
-        Collection instance to be used meaningfully, the collection
+        `Collection` instance to be used meaningfully, the collection
         must exist already (for instance, it should have been created
         previously by calling the `create_collection` method).
 
@@ -406,7 +406,7 @@ class Database:
                 is specified, the general setting for this database is used.
 
         Returns:
-            a Collection instance, representing the desired collection
+            a `Collection` instance, representing the desired collection
                 (but without any form of validation).
 
         Example:
@@ -457,9 +457,9 @@ class Database:
             dimension: for vector collections, the dimension of the vectors
                 (i.e. the number of their components). If not specified, a
                 a non-vector collection is created.
-            metric: the metric used for similarity searches.
-                Allowed values are "dot_product", "euclidean" and "cosine"
-                (see the VectorMetric object).
+            metric: the similarity metric used for vector searches.
+                Allowed values are `VectorMetric.DOT_PRODUCT`, `VectorMetric.EUCLIDEAN`
+                or `VectorMetric.COSINE` (default).
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}
@@ -484,7 +484,7 @@ class Database:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
-            a (synchronous) Collection instance, representing the
+            a (synchronous) `Collection` instance, representing the
             newly-created collection.
 
         Example:
@@ -546,7 +546,7 @@ class Database:
 
         Args:
             name_or_collection: either the name of a collection or
-                a Collection instance.
+                a `Collection` instance.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -900,7 +900,7 @@ class AsyncDatabase:
             caller_version: version of the caller.
 
         Returns:
-            a new AsyncDatabase instance.
+            a new `AsyncDatabase` instance.
 
         Example:
             >>> my_async_db_2 = my_async_db.with_options(
@@ -948,7 +948,7 @@ class AsyncDatabase:
                 usage, this should be left to its default of "v1".
 
         Returns:
-            the new copy, a Database instance.
+            the new copy, a `Database` instance.
 
         Example:
             >>> my_sync_db = my_async_db.to_sync()
@@ -1073,12 +1073,12 @@ class AsyncDatabase:
         self, name: str, *, namespace: Optional[str] = None
     ) -> AsyncCollection:
         """
-        Spawn an AsyncCollection object instance representing a collection
+        Spawn an `AsyncCollection` object instance representing a collection
         on this database.
 
-        Creating an AsyncCollection instance does not have any effect on the
+        Creating an `AsyncCollection` instance does not have any effect on the
         actual state of the database: in other words, for the created
-        AsyncCollection instance to be used meaningfully, the collection
+        `AsyncCollection` instance to be used meaningfully, the collection
         must exist already (for instance, it should have been created
         previously by calling the `create_collection` method).
 
@@ -1088,7 +1088,7 @@ class AsyncDatabase:
                 is specified, the setting for this database is used.
 
         Returns:
-            an AsyncCollection instance, representing the desired collection
+            an `AsyncCollection` instance, representing the desired collection
                 (but without any form of validation).
 
         Example:
@@ -1142,9 +1142,9 @@ class AsyncDatabase:
             dimension: for vector collections, the dimension of the vectors
                 (i.e. the number of their components). If not specified, a
                 a non-vector collection is created.
-            metric: the metric used for similarity searches.
-                Allowed values are "dot_product", "euclidean" and "cosine"
-                (see the VectorMetric object).
+            metric: the similarity metric used for vector searches.
+                Allowed values are `VectorMetric.DOT_PRODUCT`, `VectorMetric.EUCLIDEAN`
+                or `VectorMetric.COSINE` (default).
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}
@@ -1169,7 +1169,7 @@ class AsyncDatabase:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
-            an AsyncCollection instance, representing the newly-created collection.
+            an `AsyncCollection` instance, representing the newly-created collection.
 
         Example:
             >>> async def create_and_insert(adb: AsyncDatabase) -> Dict[str, Any]:
@@ -1235,7 +1235,7 @@ class AsyncDatabase:
 
         Args:
             name_or_collection: either the name of a collection or
-                an AsyncCollection instance.
+                an `AsyncCollection` instance.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:

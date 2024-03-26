@@ -163,8 +163,7 @@ class Collection:
         name: the collection name. This parameter should match an existing
             collection on the database.
         namespace: this is the namespace to which the collection belongs.
-            This is generally not specified, in which case the general setting
-            for the provided Database is used.
+            If not specified, the database's working namespace is used.
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -301,8 +300,7 @@ class Collection:
             name: the collection name. This parameter should match an existing
                 collection on the database.
             namespace: this is the namespace to which the collection belongs.
-                This is generally not specified, in which case the general setting
-                for the provided Database is used.
+                If not specified, the database's working namespace is used.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -1023,15 +1021,7 @@ class Collection:
                     "field.subfield"
                     "field.3"
                     "field.3.subfield"
-                if lists are encountered and no numeric index is specified,
-                all items in the list are visited.
-                Keys can use dot-notation to descend to deeper document levels.
-                Example of acceptable `key` values:
-                    "field"
-                    "field.subfield"
-                    "field.3"
-                    "field.3.subfield"
-                if lists are encountered and no numeric index is specified,
+                If lists are encountered and no numeric index is specified,
                 all items in the list are visited.
             filter: a predicate expressed as a dictionary according to the
                 Data API filter syntax. Examples are:
@@ -1182,7 +1172,7 @@ class Collection:
     ) -> Union[DocumentType, None]:
         """
         Find a document on the collection and replace it entirely with a new one,
-        optionally inserting a new document if no match is found.
+        optionally inserting a new one if no match is found.
 
         Args:
             filter: a predicate expressed as a dictionary according to the
@@ -1296,7 +1286,7 @@ class Collection:
     ) -> UpdateResult:
         """
         Replace a single document on the collection with a new one,
-        optionally inserting a new document if no match is found.
+        optionally inserting a new one if no match is found.
 
         Args:
             filter: a predicate expressed as a dictionary according to the
@@ -1379,7 +1369,7 @@ class Collection:
     ) -> Union[DocumentType, None]:
         """
         Find a document on the collection and update it as requested,
-        optionally inserting a new document if no match is found.
+        optionally inserting a new one if no match is found.
 
         Args:
             filter: a predicate expressed as a dictionary according to the
@@ -1499,7 +1489,7 @@ class Collection:
     ) -> UpdateResult:
         """
         Update a single document on the collection as requested,
-        optionally inserting a new document if no match is found.
+        optionally inserting a new one if no match is found.
 
         Args:
             filter: a predicate expressed as a dictionary according to the
@@ -1738,7 +1728,7 @@ class Collection:
             ...         {"species": "frog", "class": "Amphibia"},
             ...     ],
             ... )
-            InsertManyResult(,,,)
+            InsertManyResult(...)
             >>> my_coll.find_one_and_delete(
             ...     {"species": {"$ne": "frog"}},
             ...     projection=["species"],
@@ -2232,8 +2222,7 @@ class AsyncCollection:
         name: the collection name. This parameter should match an existing
             collection on the database.
         namespace: this is the namespace to which the collection belongs.
-            This is generally not specified, in which case the general setting
-            for the provided Database is used.
+            If not specified, the database's working namespace is used.
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -2372,8 +2361,7 @@ class AsyncCollection:
             name: the collection name. This parameter should match an existing
                 collection on the database.
             namespace: this is the namespace to which the collection belongs.
-                This is generally not specified, in which case the general setting
-                for the provided Database is used.
+                If not specified, the database's working namespace is used.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -3129,7 +3117,7 @@ class AsyncCollection:
                     "field.subfield"
                     "field.3"
                     "field.3.subfield"
-                if lists are encountered and no numeric index is specified,
+                If lists are encountered and no numeric index is specified,
                 all items in the list are visited.
             filter: a predicate expressed as a dictionary according to the
                 Data API filter syntax. Examples are:
@@ -3293,7 +3281,7 @@ class AsyncCollection:
     ) -> Union[DocumentType, None]:
         """
         Find a document on the collection and replace it entirely with a new one,
-        optionally inserting a new document if no match is found.
+        optionally inserting a new one if no match is found.
 
         Args:
 
@@ -3413,7 +3401,7 @@ class AsyncCollection:
     ) -> UpdateResult:
         """
         Replace a single document on the collection with a new one,
-        optionally inserting a new document if no match is found.
+        optionally inserting a new one if no match is found.
 
         Args:
             filter: a predicate expressed as a dictionary according to the
@@ -3512,7 +3500,7 @@ class AsyncCollection:
     ) -> Union[DocumentType, None]:
         """
         Find a document on the collection and update it as requested,
-        optionally inserting a new document if no match is found.
+        optionally inserting a new one if no match is found.
 
         Args:
             filter: a predicate expressed as a dictionary according to the
@@ -3638,7 +3626,7 @@ class AsyncCollection:
     ) -> UpdateResult:
         """
         Update a single document on the collection as requested,
-        optionally inserting a new document if no match is found.
+        optionally inserting a new one if no match is found.
 
         Args:
             filter: a predicate expressed as a dictionary according to the
