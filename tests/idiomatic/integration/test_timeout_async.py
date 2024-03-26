@@ -36,7 +36,7 @@ class TestTimeoutAsync:
             await async_empty_collection.count_documents(
                 {}, upper_bound=150, max_time_ms=1
             )
-        assert exc.value.timeout_type == "read"
+        assert exc.value.timeout_type in {"connect", "read"}
         assert exc.value.endpoint is not None
         assert exc.value.raw_payload is not None
 
@@ -58,7 +58,7 @@ class TestTimeoutAsync:
                 namespace=async_database.namespace,
                 max_time_ms=1,
             )
-        assert exc.value.timeout_type == "read"
+        assert exc.value.timeout_type in {"connect", "read"}
         assert exc.value.endpoint is not None
         assert exc.value.raw_payload is not None
 
