@@ -278,6 +278,8 @@ Exceptions:
 ```python
 from astrapy.exceptions import (
     DevOpsAPIException,
+    DevOpsAPIResponseException,
+    DevOpsAPIErrorDescriptor,
     DataAPIErrorDescriptor,
     DataAPIDetailedErrorDescriptor,
     DataAPIException,

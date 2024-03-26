@@ -212,7 +212,10 @@ class Collection:
         )
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__}[_astra_db_collection="{self._astra_db_collection}"]'
+        return (
+            f'{self.__class__.__name__}(name="{self.name}", '
+            f'namespace="{self.namespace}", database={self.database})'
+        )
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Collection):
@@ -2273,7 +2276,10 @@ class AsyncCollection:
         )
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__}[_astra_db_collection="{self._astra_db_collection}"]'
+        return (
+            f'{self.__class__.__name__}(name="{self.name}", '
+            f'namespace="{self.namespace}", database={self.database})'
+        )
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AsyncCollection):

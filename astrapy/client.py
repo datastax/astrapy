@@ -77,6 +77,14 @@ class DataAPIClient:
         self._caller_name = caller_name
         self._caller_version = caller_version
 
+    def __repr__(self) -> str:
+        env_desc: str
+        if self.environment == Environment.PROD:
+            env_desc = ""
+        else:
+            env_desc = f', environment="{self.environment}"'
+        return f'{self.__class__.__name__}("{self.token[:12]}..."{env_desc})'
+
     def get_database(
         self,
         id: str,

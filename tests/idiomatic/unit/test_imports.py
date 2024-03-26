@@ -96,6 +96,8 @@ def test_imports() -> None:
     )
     from astrapy.exceptions import (  # noqa: F401
         DevOpsAPIException,
+        DevOpsAPIResponseException,
+        DevOpsAPIErrorDescriptor,
         DataAPIErrorDescriptor,
         DataAPIDetailedErrorDescriptor,
         DataAPIException,

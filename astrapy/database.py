@@ -172,7 +172,10 @@ class Database:
         return self.get_collection(name=collection_name)
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__}[_astra_db={self._astra_db}"]'
+        return (
+            f'{self.__class__.__name__}(api_endpoint="{self._astra_db.api_endpoint}", '
+            f'token="{self._astra_db.token[:12]}...", namespace="{self._astra_db.namespace}")'
+        )
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Database):
@@ -837,7 +840,10 @@ class AsyncDatabase:
         return self.to_sync().get_collection(name=collection_name).to_async()
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__}[_astra_db={self._astra_db}"]'
+        return (
+            f'{self.__class__.__name__}(api_endpoint="{self._astra_db.api_endpoint}", '
+            f'token="{self._astra_db.token[:12]}...", namespace="{self._astra_db.namespace}")'
+        )
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AsyncDatabase):
