@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 from typing import List
 
 import pytest
@@ -62,6 +63,7 @@ class TestExceptionsAsync:
             await acol.insert_many(bad_docs, ordered=False, chunk_size=2, concurrency=2)
 
         await acol.delete_all()
+        await asyncio.sleep(2)
         im_result1 = await acol.insert_many(
             ok_docs, ordered=True, chunk_size=2, concurrency=1
         )

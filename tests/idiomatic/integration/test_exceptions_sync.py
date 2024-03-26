@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import pytest
 
 from astrapy import Collection, Database
@@ -54,6 +55,7 @@ class TestExceptionsSync:
             col.insert_many(bad_docs, ordered=False, chunk_size=2, concurrency=2)
 
         col.delete_all()
+        time.sleep(2)
         im_result1 = col.insert_many(ok_docs, ordered=True, chunk_size=2, concurrency=1)
         assert len(im_result1.inserted_ids) == 6
         assert len(list(col.find({}))) == 6
