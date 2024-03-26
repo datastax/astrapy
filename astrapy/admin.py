@@ -318,6 +318,14 @@ class AstraDBAdmin:
             caller_version=caller_version,
         )
 
+    def __repr__(self) -> str:
+        env_desc: str
+        if self.environment == Environment.PROD:
+            env_desc = ""
+        else:
+            env_desc = f', environment="{self.environment}"'
+        return f'{self.__class__.__name__}("{self.token[:12]}..."{env_desc})'
+
     @ops_recast_method_sync
     def list_databases(
         self,
@@ -767,6 +775,17 @@ class AstraDBDatabaseAdmin:
             caller_version=caller_version,
             dev_ops_url=dev_ops_url,
             dev_ops_api_version=dev_ops_api_version,
+        )
+
+    def __repr__(self) -> str:
+        env_desc: str
+        if self.environment == Environment.PROD:
+            env_desc = ""
+        else:
+            env_desc = f', environment="{self.environment}"'
+        return (
+            f'{self.__class__.__name__}(id="{self.id}", '
+            f'"{self.token[:12]}..."{env_desc})'
         )
 
     @staticmethod

@@ -899,6 +899,9 @@ class CommandCursor(Generic[T]):
         self.iterable = items.__iter__()
         self._alive = True
 
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}("{self.address}", ' f"{self.state})"
+
     def __iter__(self) -> CommandCursor[T]:
         self._ensure_alive()
         return self
@@ -978,6 +981,9 @@ class AsyncCommandCursor(Generic[T]):
         self.items = items
         self.iterable = items.__iter__()
         self._alive = True
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}("{self.address}", ' f"{self.state})"
 
     def __aiter__(self) -> AsyncCommandCursor[T]:
         self._ensure_alive()

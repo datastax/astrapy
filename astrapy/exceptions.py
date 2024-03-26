@@ -205,6 +205,20 @@ class DataAPITimeoutException(DataAPIException):
     endpoint: Optional[str]
     raw_payload: Optional[str]
 
+    def __init__(
+        self,
+        text: str,
+        *,
+        timeout_type: str,
+        endpoint: Optional[str],
+        raw_payload: Optional[str],
+    ) -> None:
+        super().__init__(text)
+        self.text = text
+        self.timeout_type = timeout_type
+        self.endpoint = endpoint
+        self.raw_payload = raw_payload
+
 
 @dataclass
 class CursorIsStartedException(DataAPIException):
@@ -220,6 +234,16 @@ class CursorIsStartedException(DataAPIException):
 
     text: str
     cursor_state: str
+
+    def __init__(
+        self,
+        text: str,
+        *,
+        cursor_state: str,
+    ) -> None:
+        super().__init__(text)
+        self.text = text
+        self.cursor_state = cursor_state
 
 
 @dataclass
@@ -238,6 +262,18 @@ class CollectionNotFoundException(DataAPIException):
     namespace: str
     collection_name: str
 
+    def __init__(
+        self,
+        text: str,
+        *,
+        namespace: str,
+        collection_name: str,
+    ) -> None:
+        super().__init__(text)
+        self.text = text
+        self.namespace = namespace
+        self.collection_name = collection_name
+
 
 @dataclass
 class CollectionAlreadyExistsException(DataAPIException):
@@ -254,6 +290,18 @@ class CollectionAlreadyExistsException(DataAPIException):
     text: str
     namespace: str
     collection_name: str
+
+    def __init__(
+        self,
+        text: str,
+        *,
+        namespace: str,
+        collection_name: str,
+    ) -> None:
+        super().__init__(text)
+        self.text = text
+        self.namespace = namespace
+        self.collection_name = collection_name
 
 
 @dataclass
@@ -272,6 +320,16 @@ class TooManyDocumentsToCountException(DataAPIException):
 
     text: str
     server_max_count_exceeded: bool
+
+    def __init__(
+        self,
+        text: str,
+        *,
+        server_max_count_exceeded: bool,
+    ) -> None:
+        super().__init__(text)
+        self.text = text
+        self.server_max_count_exceeded = server_max_count_exceeded
 
 
 @dataclass
@@ -450,6 +508,12 @@ class InsertManyException(CumulativeOperationException):
 
     partial_result: InsertManyResult
 
+    def __init__(
+        self, text: str, partial_result: InsertManyResult, *pargs: Any, **kwargs: Any
+    ) -> None:
+        super().__init__(text, *pargs, **kwargs)
+        self.partial_result = partial_result
+
 
 @dataclass
 class DeleteManyException(CumulativeOperationException):
@@ -474,6 +538,12 @@ class DeleteManyException(CumulativeOperationException):
 
     partial_result: DeleteResult
 
+    def __init__(
+        self, text: str, partial_result: DeleteResult, *pargs: Any, **kwargs: Any
+    ) -> None:
+        super().__init__(text, *pargs, **kwargs)
+        self.partial_result = partial_result
+
 
 @dataclass
 class UpdateManyException(CumulativeOperationException):
@@ -497,6 +567,12 @@ class UpdateManyException(CumulativeOperationException):
     """
 
     partial_result: UpdateResult
+
+    def __init__(
+        self, text: str, partial_result: UpdateResult, *pargs: Any, **kwargs: Any
+    ) -> None:
+        super().__init__(text, *pargs, **kwargs)
+        self.partial_result = partial_result
 
 
 @dataclass
@@ -528,6 +604,19 @@ class BulkWriteException(DataAPIResponseException):
 
     partial_result: BulkWriteResult
     exceptions: List[DataAPIResponseException]
+
+    def __init__(
+        self,
+        text: Optional[str],
+        partial_result: BulkWriteResult,
+        exceptions: List[DataAPIResponseException],
+        *pargs: Any,
+        **kwargs: Any,
+    ) -> None:
+        _text = text or "Bulk write exception"
+        super().__init__(_text, *pargs, **kwargs)
+        self.partial_result = partial_result
+        self.exceptions = exceptions
 
 
 def to_dataapi_timeout_exception(
