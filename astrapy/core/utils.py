@@ -23,6 +23,7 @@ from typing import (
     TypedDict,
     Union,
 )
+import json
 import time
 import datetime
 import logging
@@ -209,7 +210,7 @@ def make_request(
         method=method,
         url=f"{base_url}{path}",
         params=url_params,
-        json=json_data,
+        content=json.dumps(json_data, allow_nan=False, separators=(",", ":")).encode(),
         timeout=timeout or DEFAULT_TIMEOUT,
         headers=request_headers,
     )
@@ -263,7 +264,7 @@ async def amake_request(
         method=method,
         url=f"{base_url}{path}",
         params=url_params,
-        json=json_data,
+        content=json.dumps(json_data, allow_nan=False, separators=(",", ":")).encode(),
         timeout=timeout or DEFAULT_TIMEOUT,
         headers=request_headers,
     )
