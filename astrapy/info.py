@@ -142,6 +142,7 @@ class CollectionDefaultIDOptions:
 
     def as_dict(self) -> Dict[str, Any]:
         """Recast this object into a dictionary."""
+
         return {"type": self.default_id_type}
 
     @staticmethod
@@ -152,6 +153,7 @@ class CollectionDefaultIDOptions:
         Create an instance of CollectionDefaultIDOptions from a dictionary
         such as one from the Data API.
         """
+
         if raw_dict is not None:
             return CollectionDefaultIDOptions(default_id_type=raw_dict["type"])
         else:
@@ -175,6 +177,7 @@ class CollectionVectorOptions:
 
     def as_dict(self) -> Dict[str, Any]:
         """Recast this object into a dictionary."""
+
         return {
             k: v
             for k, v in {
@@ -192,6 +195,7 @@ class CollectionVectorOptions:
         Create an instance of CollectionVectorOptions from a dictionary
         such as one from the Data API.
         """
+
         if raw_dict is not None:
             return CollectionVectorOptions(
                 dimension=raw_dict.get("dimension"),
@@ -241,6 +245,7 @@ class CollectionOptions:
 
     def as_dict(self) -> Dict[str, Any]:
         """Recast this object into a dictionary."""
+
         return {
             k: v
             for k, v in {
@@ -253,12 +258,46 @@ class CollectionOptions:
             if v is not None
         }
 
+    def flatten(self) -> Dict[str, Any]:
+        """
+        Recast this object as a flat key-value pair suitable for
+        use as kwargs in a create_collection method call.
+        """
+
+        _dimension: Optional[int]
+        _metric: Optional[str]
+        _indexing: Optional[Dict[str, Any]]
+        _default_id_type: Optional[str]
+        if self.vector is not None:
+            _dimension = self.vector.dimension
+            _metric = self.vector.metric
+        else:
+            _dimension = None
+            _metric = None
+        _indexing = self.indexing
+        if self.default_id is not None:
+            _default_id_type = self.default_id.default_id_type
+        else:
+            _default_id_type = None
+
+        return {
+            k: v
+            for k, v in {
+                "dimension": _dimension,
+                "metric": _metric,
+                "indexing": _indexing,
+                "default_id_type": _default_id_type,
+            }.items()
+            if v is not None
+        }
+
     @staticmethod
     def from_dict(raw_dict: Dict[str, Any]) -> CollectionOptions:
         """
         Create an instance of CollectionOptions from a dictionary
         such as one from the Data API.
         """
+
         return CollectionOptions(
             vector=CollectionVectorOptions.from_dict(raw_dict.get("vector")),
             indexing=raw_dict.get("indexing"),
@@ -295,6 +334,7 @@ class CollectionDescriptor:
         Recast this object into a dictionary.
         Empty `options` will not be returned at all.
         """
+
         return {
             k: v
             for k, v in {
@@ -304,12 +344,24 @@ class CollectionDescriptor:
             if v
         }
 
+    def flatten(self) -> Dict[str, Any]:
+        """
+        Recast this object as a flat key-value pair suitable for
+        use as kwargs in a create_collection method call.
+        """
+
+        return {
+            **(self.options.flatten()),
+            **{"name": self.name},
+        }
+
     @staticmethod
     def from_dict(raw_dict: Dict[str, Any]) -> CollectionDescriptor:
         """
         Create an instance of CollectionDescriptor from a dictionary
         such as one from the Data API.
         """
+
         return CollectionDescriptor(
             name=raw_dict["name"],
             options=CollectionOptions.from_dict(raw_dict.get("options") or {}),

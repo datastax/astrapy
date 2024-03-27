@@ -16,7 +16,7 @@
 Unit tests for the validation/parsing of collection options
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 import pytest
 
@@ -25,91 +25,157 @@ from astrapy.info import CollectionDescriptor
 
 @pytest.mark.describe("test of recasting the collection options from the api")
 def test_recast_api_collection_dict() -> None:
-    api_coll_descs: List[Dict[str, Any]] = [
+    api_coll_descs: List[Tuple[Dict[str, Any], Dict[str, Any]]] = [
         # minimal:
-        {
-            "name": "dvv",
-        },
+        (
+            {
+                "name": "col_name",
+            },
+            {"name": "col_name"},
+        ),
         # full:
-        {
-            "name": "dvv",
-            "options": {
-                "vector": {
-                    "dimension": 1024,
-                    "metric": "cosine",
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
                 },
-                "indexing": {"deny": ["a"]},
-                "defaultId": {"type": "objectId"},
             },
-        },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+            },
+        ),
         # partial/absent 'vector':
-        {
-            "name": "dvv",
-            "options": {
-                "vector": {
-                    "metric": "cosine",
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "metric": "cosine",
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
                 },
-                "indexing": {"deny": ["a"]},
-                "defaultId": {"type": "objectId"},
             },
-        },
-        {
-            "name": "dvv",
-            "options": {
-                "vector": {
-                    "dimension": 1024,
+            {
+                "name": "col_name",
+                "metric": "cosine",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
                 },
-                "indexing": {"deny": ["a"]},
-                "defaultId": {"type": "objectId"},
             },
-        },
-        {
-            "name": "dvv",
-            "options": {
-                "vector": {},
+            {
+                "name": "col_name",
+                "dimension": 1024,
                 "indexing": {"deny": ["a"]},
-                "defaultId": {"type": "objectId"},
+                "default_id_type": "objectId",
             },
-        },
-        {
-            "name": "dvv",
-            "options": {
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {},
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
                 "indexing": {"deny": ["a"]},
-                "defaultId": {"type": "objectId"},
+                "default_id_type": "objectId",
             },
-        },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+            },
+        ),
         # no indexing:
-        {
-            "name": "dvv",
-            "options": {
-                "vector": {
-                    "dimension": 1024,
-                    "metric": "cosine",
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                    },
+                    "defaultId": {"type": "objectId"},
                 },
-                "defaultId": {"type": "objectId"},
             },
-        },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "default_id_type": "objectId",
+            },
+        ),
         # no defaultId:
-        {
-            "name": "dvv",
-            "options": {
-                "vector": {
-                    "dimension": 1024,
-                    "metric": "cosine",
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                    },
+                    "indexing": {"deny": ["a"]},
                 },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
                 "indexing": {"deny": ["a"]},
             },
-        },
+        ),
         # no indexing + no defaultId:
-        {
-            "name": "dvv",
-            "options": {
-                "vector": {
-                    "dimension": 1024,
-                    "metric": "cosine",
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                    },
                 },
             },
-        },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+            },
+        ),
     ]
-    for api_coll_desc in api_coll_descs:
+    for api_coll_desc, flattened_dict in api_coll_descs:
         assert CollectionDescriptor.from_dict(api_coll_desc).as_dict() == api_coll_desc
+        assert CollectionDescriptor.from_dict(api_coll_desc).flatten() == flattened_dict
