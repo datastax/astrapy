@@ -461,6 +461,7 @@ class AstraDBAdmin:
             "cloudProvider": cloud_provider,
             "region": region,
             "capacityUnits": 1,
+            "dbType": "vector",
         }
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
