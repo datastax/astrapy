@@ -146,6 +146,13 @@ def _collate_vector_to_sort(
             )
 
 
+def _is_vector_sort(sort: Optional[SortType]) -> bool:
+    if sort is None:
+        return False
+    else:
+        return "$vector" in sort or "$vectorize" in sort
+
+
 def _collate_vector_to_document(
     document0: DocumentType, vector: Optional[VectorType], vectorize: Optional[str]
 ) -> DocumentType:
@@ -980,7 +987,7 @@ class Collection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
-        if include_similarity is not None and "$vector" not in (_sort or {}):
+        if include_similarity is not None and not _is_vector_sort(_sort):
             raise ValueError(
                 "Cannot use `include_similarity` when not searching through `vector`."
             )
@@ -1077,6 +1084,7 @@ class Collection:
             skip=None,
             limit=1,
             vector=vector,
+            vectorize=vectorize,
             include_similarity=include_similarity,
             sort=sort,
             max_time_ms=max_time_ms,
@@ -3120,7 +3128,7 @@ class AsyncCollection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
-        if include_similarity is not None and "$vector" not in (_sort or {}):
+        if include_similarity is not None and not _is_vector_sort(_sort):
             raise ValueError(
                 "Cannot use `include_similarity` when not searching through `vector`."
             )
@@ -3229,6 +3237,7 @@ class AsyncCollection:
             skip=None,
             limit=1,
             vector=vector,
+            vectorize=vectorize,
             include_similarity=include_similarity,
             sort=sort,
             max_time_ms=max_time_ms,
