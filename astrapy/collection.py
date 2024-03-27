@@ -256,7 +256,7 @@ class Collection:
         caller_version: Optional[str] = None,
     ) -> Collection:
         """
-        Create a clone of this collections with some changed attributes.
+        Create a clone of this collection with some changed attributes.
 
         Args:
             name: the name of the collection. This parameter is useful to
@@ -2320,7 +2320,7 @@ class AsyncCollection:
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
         """
-        Create a clone of this collections with some changed attributes.
+        Create a clone of this collection with some changed attributes.
 
         Args:
             name: the name of the collection. This parameter is useful to
