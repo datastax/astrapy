@@ -21,7 +21,7 @@ from ..conftest import (
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
 )
-from astrapy.info import DatabaseInfo
+from astrapy.info import CollectionDescriptor, DatabaseInfo
 from astrapy.constants import DefaultIdType, VectorMetric
 from astrapy.ids import ObjectId, UUID
 from astrapy import AsyncCollection, AsyncDatabase
@@ -47,18 +47,28 @@ class TestDDLAsync:
         )
         lc_response = [col async for col in async_database.list_collections()]
         #
-        expected_coll_dict = {
-            "name": TEST_LOCAL_COLLECTION_NAME,
-            "dimension": 123,
-            "metric": "euclidean",
-            "indexing": {"deny": ["a", "b", "c"]},
-        }
-        expected_coll_dict_b = {
-            "name": TEST_LOCAL_COLLECTION_NAME_B,
-            "indexing": {"allow": ["z"]},
-        }
-        assert expected_coll_dict in lc_response
-        assert expected_coll_dict_b in lc_response
+        expected_coll_descriptor = CollectionDescriptor.from_dict(
+            {
+                "name": TEST_LOCAL_COLLECTION_NAME,
+                "options": {
+                    "vector": {
+                        "dimension": 123,
+                        "metric": "euclidean",
+                    },
+                    "indexing": {"deny": ["a", "b", "c"]},
+                },
+            },
+        )
+        expected_coll_descriptor_b = CollectionDescriptor.from_dict(
+            {
+                "name": TEST_LOCAL_COLLECTION_NAME_B,
+                "options": {
+                    "indexing": {"allow": ["z"]},
+                },
+            },
+        )
+        assert expected_coll_descriptor in lc_response
+        assert expected_coll_descriptor_b in lc_response
         #
         col2 = await async_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
         assert col1 == col2
