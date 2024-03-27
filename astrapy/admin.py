@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 import time
+from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 from dataclasses import dataclass
 
@@ -717,7 +718,45 @@ class AstraDBAdmin:
         ).to_async()
 
 
-class AstraDBDatabaseAdmin:
+class DatabaseAdmin(ABC):
+    """
+    An abstract class defining the interface for a database admin object.
+    This supports generic namespace crud, as well as spawning databases,
+    without committing to a specific database architecture (e.g. Astra DB).
+    """
+
+    @abstractmethod
+    def list_namespaces(self, *pargs: Any, **kwargs: Any) -> List[str]:
+        """Get a list of namespaces for the database."""
+        ...
+
+    @abstractmethod
+    def create_namespace(self, name: str, *pargs: Any, **kwargs: Any) -> Dict[str, Any]:
+        """
+        Create a namespace in the database, returning {'ok': 1} if successful.
+        """
+        ...
+
+    @abstractmethod
+    def drop_namespace(self, name: str, *pargs: Any, **kwargs: Any) -> Dict[str, Any]:
+        """
+        Drop (delete) a namespace from the database,
+        returning {'ok': 1} if successful.
+        """
+        ...
+
+    @abstractmethod
+    def get_database(self, *pargs: Any, **kwargs: Any) -> Database:
+        """Get a Database object from this database admin."""
+        ...
+
+    @abstractmethod
+    def get_async_database(self, *pargs: Any, **kwargs: Any) -> AsyncDatabase:
+        """Get an AsyncDatabase object from this database admin."""
+        ...
+
+
+class AstraDBDatabaseAdmin(DatabaseAdmin):
     """
     An "admin" object, able to perform administrative tasks at the namespaces level
     (i.e. within a certani database), such as creating/listing/dropping namespaces.
