@@ -305,6 +305,10 @@ from astrapy.info import (
     AdminDatabaseInfo,
     DatabaseInfo,
     CollectionInfo,
+    CollectionDefaultIDOptions,
+    CollectionVectorOptions,
+    CollectionOptions,
+    CollectionDescriptor,
 )
 ```
 

@@ -16,115 +16,166 @@
 Unit tests for the validation/parsing of collection options
 """
 
+from typing import Any, Dict, List, Tuple
+
 import pytest
 
-from astrapy.database import _recast_api_collection_dict
+from astrapy.info import CollectionDescriptor
 
 
 @pytest.mark.describe("test of recasting the collection options from the api")
 def test_recast_api_collection_dict() -> None:
-    plain_raw = {
-        "name": "tablename",
-        "options": {},
-    }
-    plain_expected = {
-        "name": "tablename",
-    }
-    assert _recast_api_collection_dict(plain_raw) == plain_expected
-
-    plainplus_raw = {
-        "name": "tablename",
-        "options": {
-            "futuretopfield": "ftvalue",
-        },
-    }
-    plainplus_expected = {
-        "name": "tablename",
-        "additional_options": {
-            "futuretopfield": "ftvalue",
-        },
-    }
-    assert _recast_api_collection_dict(plainplus_raw) == plainplus_expected
-
-    dim_raw = {
-        "name": "tablename",
-        "options": {
-            "vector": {
-                "dimension": 10,
+    api_coll_descs: List[Tuple[Dict[str, Any], Dict[str, Any]]] = [
+        # minimal:
+        (
+            {
+                "name": "col_name",
             },
-        },
-    }
-    dim_expected = {
-        "name": "tablename",
-        "dimension": 10,
-    }
-    assert _recast_api_collection_dict(dim_raw) == dim_expected
-
-    dim_met_raw = {
-        "name": "tablename",
-        "options": {
-            "vector": {
-                "dimension": 10,
+            {"name": "col_name"},
+        ),
+        # full:
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+            },
+        ),
+        # partial/absent 'vector':
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "metric": "cosine",
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "metric": "cosine",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {},
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+            },
+        ),
+        # no indexing:
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                    },
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "default_id_type": "objectId",
+            },
+        ),
+        # no defaultId:
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                    },
+                    "indexing": {"deny": ["a"]},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "indexing": {"deny": ["a"]},
+            },
+        ),
+        # no indexing + no defaultId:
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                    },
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
                 "metric": "cosine",
             },
-        },
-    }
-    dim_met_expected = {
-        "name": "tablename",
-        "dimension": 10,
-        "metric": "cosine",
-    }
-    assert _recast_api_collection_dict(dim_met_raw) == dim_met_expected
-
-    dim_met_did_idx_raw = {
-        "name": "tablename",
-        "options": {
-            "defaultId": {"type": "objectId"},
-            "indexing": {
-                "allow": ["a"],
-            },
-            "vector": {
-                "dimension": 10,
-                "metric": "cosine",
-            },
-        },
-    }
-    dim_met_did_idx_expected = {
-        "name": "tablename",
-        "dimension": 10,
-        "metric": "cosine",
-        "indexing": {"allow": ["a"]},
-        "default_id_type": "objectId",
-    }
-    assert _recast_api_collection_dict(dim_met_did_idx_raw) == dim_met_did_idx_expected
-
-    dim_met_didplus_idx_raw = {
-        "name": "tablename",
-        "options": {
-            "defaultId": {
-                "type": "objectId",
-                "futurefield": "fvalue",
-            },
-            "indexing": {
-                "allow": ["a"],
-            },
-            "vector": {
-                "dimension": 10,
-                "metric": "cosine",
-            },
-        },
-    }
-    dim_met_didplus_idx_expected = {
-        "name": "tablename",
-        "dimension": 10,
-        "metric": "cosine",
-        "indexing": {"allow": ["a"]},
-        "default_id_type": "objectId",
-        "additional_options": {
-            "defaultId": {"futurefield": "fvalue"},
-        },
-    }
-    assert (
-        _recast_api_collection_dict(dim_met_didplus_idx_raw)
-        == dim_met_didplus_idx_expected
-    )
+        ),
+    ]
+    for api_coll_desc, flattened_dict in api_coll_descs:
+        assert CollectionDescriptor.from_dict(api_coll_desc).as_dict() == api_coll_desc
+        assert CollectionDescriptor.from_dict(api_coll_desc).flatten() == flattened_dict
