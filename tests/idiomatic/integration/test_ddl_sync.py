@@ -79,7 +79,7 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUID,
             default_id_type=DefaultIdType.UUID,
         )
-        assert col.options()["default_id_type"] == DefaultIdType.UUID
+        assert col.options().default_id.default_id_type == DefaultIdType.UUID
         col.insert_one({"role": "probe"})
         doc = col.find_one({})
         assert isinstance(doc["_id"], UUID)
@@ -90,7 +90,7 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV6,
             default_id_type=DefaultIdType.UUIDV6,
         )
-        assert col.options()["default_id_type"] == DefaultIdType.UUIDV6
+        assert col.options().default_id.default_id_type == DefaultIdType.UUIDV6
         col.insert_one({"role": "probe"})
         doc = col.find_one({})
         assert isinstance(doc["_id"], UUID)
@@ -102,7 +102,7 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV7,
             default_id_type=DefaultIdType.UUIDV7,
         )
-        assert col.options()["default_id_type"] == DefaultIdType.UUIDV7
+        assert col.options().default_id.default_id_type == DefaultIdType.UUIDV7
         col.insert_one({"role": "probe"})
         doc = col.find_one({})
         assert isinstance(doc["_id"], UUID)
@@ -114,7 +114,7 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.DEFAULT,
             default_id_type=DefaultIdType.DEFAULT,
         )
-        assert col.options()["default_id_type"] == DefaultIdType.DEFAULT
+        assert col.options().default_id.default_id_type == DefaultIdType.DEFAULT
         col.drop()
 
         time.sleep(2)
@@ -122,7 +122,7 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.OBJECTID,
             default_id_type=DefaultIdType.OBJECTID,
         )
-        assert col.options()["default_id_type"] == DefaultIdType.OBJECTID
+        assert col.options().default_id.default_id_type == DefaultIdType.OBJECTID
         col.insert_one({"role": "probe"})
         doc = col.find_one({})
         assert isinstance(doc["_id"], ObjectId)
@@ -172,7 +172,8 @@ class TestDDLSync:
         sync_collection: Collection,
     ) -> None:
         options = sync_collection.options()
-        assert options["name"] == sync_collection.name
+        assert options.vector is not None
+        assert options.vector.dimension == 2
 
     @pytest.mark.skipif(
         ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"

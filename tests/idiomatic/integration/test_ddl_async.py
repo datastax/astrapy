@@ -79,7 +79,7 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUID,
             default_id_type=DefaultIdType.UUID,
         )
-        assert (await acol.options())["default_id_type"] == DefaultIdType.UUID
+        assert (await acol.options()).default_id.default_id_type == DefaultIdType.UUID
         await acol.insert_one({"role": "probe"})
         doc = await acol.find_one({})
         assert isinstance(doc["_id"], UUID)
@@ -90,7 +90,7 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV6,
             default_id_type=DefaultIdType.UUIDV6,
         )
-        assert (await acol.options())["default_id_type"] == DefaultIdType.UUIDV6
+        assert (await acol.options()).default_id.default_id_type == DefaultIdType.UUIDV6
         await acol.insert_one({"role": "probe"})
         doc = await acol.find_one({})
         assert isinstance(doc["_id"], UUID)
@@ -102,7 +102,7 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV7,
             default_id_type=DefaultIdType.UUIDV7,
         )
-        assert (await acol.options())["default_id_type"] == DefaultIdType.UUIDV7
+        assert (await acol.options()).default_id.default_id_type == DefaultIdType.UUIDV7
         await acol.insert_one({"role": "probe"})
         doc = await acol.find_one({})
         assert isinstance(doc["_id"], UUID)
@@ -114,7 +114,9 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.DEFAULT,
             default_id_type=DefaultIdType.DEFAULT,
         )
-        assert (await acol.options())["default_id_type"] == DefaultIdType.DEFAULT
+        assert (
+            await acol.options()
+        ).default_id.default_id_type == DefaultIdType.DEFAULT
         await acol.drop()
 
         time.sleep(2)
@@ -122,7 +124,9 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.OBJECTID,
             default_id_type=DefaultIdType.OBJECTID,
         )
-        assert (await acol.options())["default_id_type"] == DefaultIdType.OBJECTID
+        assert (
+            await acol.options()
+        ).default_id.default_id_type == DefaultIdType.OBJECTID
         await acol.insert_one({"role": "probe"})
         doc = await acol.find_one({})
         assert isinstance(doc["_id"], ObjectId)
@@ -176,7 +180,8 @@ class TestDDLAsync:
         async_collection: AsyncCollection,
     ) -> None:
         options = await async_collection.options()
-        assert options["name"] == async_collection.name
+        assert options.vector is not None
+        assert options.vector.dimension == 2
 
     @pytest.mark.skipif(
         ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
