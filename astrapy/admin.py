@@ -39,7 +39,8 @@ if TYPE_CHECKING:
 
 DEFAULT_NEW_DATABASE_CLOUD_PROVIDER = "gcp"
 DEFAULT_NEW_DATABASE_REGION = "us-east1"
-WAITING_ON_DB_POLL_PERIOD_SECONDS = 2
+DATABASE_POLL_NAMESPACE_SLEEP_TIME = 2
+DATABASE_POLL_SLEEP_TIME = 15
 
 STATUS_MAINTENANCE = "MAINTENANCE"
 STATUS_ACTIVE = "ACTIVE"
@@ -475,7 +476,7 @@ class AstraDBAdmin:
             if wait_until_active:
                 last_status_seen = STATUS_PENDING
                 while last_status_seen in {STATUS_PENDING, STATUS_INITIALIZING}:
-                    time.sleep(WAITING_ON_DB_POLL_PERIOD_SECONDS)
+                    time.sleep(DATABASE_POLL_SLEEP_TIME)
                     last_status_seen = self.database_info(
                         id=new_database_id,
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
@@ -544,7 +545,7 @@ class AstraDBAdmin:
                 last_status_seen: Optional[str] = STATUS_TERMINATING
                 _db_name: Optional[str] = None
                 while last_status_seen == STATUS_TERMINATING:
-                    time.sleep(WAITING_ON_DB_POLL_PERIOD_SECONDS)
+                    time.sleep(DATABASE_POLL_SLEEP_TIME)
                     #
                     detected_databases = [
                         a_db_info
@@ -987,7 +988,7 @@ class AstraDBDatabaseAdmin:
             if wait_until_active:
                 last_status_seen = STATUS_MAINTENANCE
                 while last_status_seen == STATUS_MAINTENANCE:
-                    time.sleep(WAITING_ON_DB_POLL_PERIOD_SECONDS)
+                    time.sleep(DATABASE_POLL_NAMESPACE_SLEEP_TIME)
                     last_status_seen = self.info(
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
                     ).status
@@ -1055,7 +1056,7 @@ class AstraDBDatabaseAdmin:
             if wait_until_active:
                 last_status_seen = STATUS_MAINTENANCE
                 while last_status_seen == STATUS_MAINTENANCE:
-                    time.sleep(WAITING_ON_DB_POLL_PERIOD_SECONDS)
+                    time.sleep(DATABASE_POLL_NAMESPACE_SLEEP_TIME)
                     last_status_seen = self.info(
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
                     ).status
