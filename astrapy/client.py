@@ -14,11 +14,14 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from astrapy.admin import (
     Environment,
+    api_endpoint_parser,
     build_api_endpoint,
+    database_id_matcher,
     fetch_raw_database_info_from_id_token,
     parse_api_endpoint,
 )
@@ -84,6 +87,101 @@ class DataAPIClient:
         else:
             env_desc = f', environment="{self.environment}"'
         return f'{self.__class__.__name__}("{self.token[:12]}..."{env_desc})'
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, DataAPIClient):
+            return all(
+                [
+                    self.token == other.token,
+                    self.environment == other.environment,
+                    self._caller_name == other._caller_name,
+                    self._caller_version == other._caller_version,
+                ]
+            )
+        else:
+            return False
+
+    def __getitem__(self, database_id_or_api_endpoint: str) -> Database:
+        if re.match(database_id_matcher, database_id_or_api_endpoint):
+            return self.get_database(database_id_or_api_endpoint)
+        elif re.match(api_endpoint_parser, database_id_or_api_endpoint):
+            return self.get_database_by_api_endpoint(database_id_or_api_endpoint)
+        else:
+            raise ValueError(
+                "The provided input does not look like either a database ID "
+                f"or an API endpoint ('{database_id_or_api_endpoint}')."
+            )
+
+    def _copy(
+        self,
+        *,
+        token: Optional[str] = None,
+        environment: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> DataAPIClient:
+        return DataAPIClient(
+            token=token or self.token,
+            environment=environment or self.environment,
+            caller_name=caller_name or self._caller_name,
+            caller_version=caller_version or self._caller_version,
+        )
+
+    def with_options(
+        self,
+        *,
+        token: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> DataAPIClient:
+        """
+        Create a clone of this DataAPIClient with some changed attributes.
+
+        Args:
+            token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API and DevOps API calls are performed. This ends up in
+                the request user-agent.
+            caller_version: version of the caller.
+
+        Returns:
+            a new DataAPIClient instance.
+
+        Example:
+            >>> another_client = my_client.with_options(
+            ...     caller_name="caller_identity",
+            ...     caller_version="1.2.0",
+            ... )
+        """
+
+        return self._copy(
+            token=token,
+            caller_name=caller_name,
+            caller_version=caller_version,
+        )
+
+    def set_caller(
+        self,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> None:
+        """
+        Set a new identity for the application/framework on behalf of which
+        the API calls will be performed (the "caller").
+
+        New objects spawned from this client afterwards will inherit the new settings.
+
+        Args:
+            caller_name: name of the application, or framework, on behalf of which
+                the API API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+
+        Example:
+            >>> my_client.set_caller(caller_name="the_caller", caller_version="0.1.0")
+        """
+
+        self._caller_name = caller_name
+        self._caller_version = caller_version
 
     def get_database(
         self,

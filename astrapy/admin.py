@@ -64,7 +64,11 @@ class Environment:
     TEST = "test"
 
 
-database_id_finder = re.compile(
+database_id_matcher = re.compile(
+    "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
+
+api_endpoint_parser = re.compile(
     "https://"
     "([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
     "-"
@@ -117,7 +121,7 @@ def parse_api_endpoint(api_endpoint: str) -> Optional[ParsedAPIEndpoint]:
         The parsed ParsedAPIEndpoint. If parsing fails, return None.
     """
 
-    match = database_id_finder.match(api_endpoint)
+    match = api_endpoint_parser.match(api_endpoint)
     if match and match.groups():
         d_id, d_re, d_en_x = match.groups()
         return ParsedAPIEndpoint(
@@ -327,6 +331,103 @@ class AstraDBAdmin:
         else:
             env_desc = f', environment="{self.environment}"'
         return f'{self.__class__.__name__}("{self.token[:12]}..."{env_desc})'
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, AstraDBAdmin):
+            return all(
+                [
+                    self.token == other.token,
+                    self.environment == other.environment,
+                    self.dev_ops_url == other.dev_ops_url,
+                    self.dev_ops_url == other.dev_ops_url,
+                    self._caller_name == other._caller_name,
+                    self._caller_version == other._caller_version,
+                    self._dev_ops_url == other._dev_ops_url,
+                    self._dev_ops_api_version == other._dev_ops_api_version,
+                    self._astra_db_ops == other._astra_db_ops,
+                ]
+            )
+        else:
+            return False
+
+    def _copy(
+        self,
+        *,
+        token: Optional[str] = None,
+        environment: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+        dev_ops_url: Optional[str] = None,
+        dev_ops_api_version: Optional[str] = None,
+    ) -> AstraDBAdmin:
+        return AstraDBAdmin(
+            token=token or self.token,
+            environment=environment or self.environment,
+            caller_name=caller_name or self._caller_name,
+            caller_version=caller_version or self._caller_version,
+            dev_ops_url=dev_ops_url or self._dev_ops_url,
+            dev_ops_api_version=dev_ops_api_version or self._dev_ops_api_version,
+        )
+
+    def with_options(
+        self,
+        *,
+        token: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> AstraDBAdmin:
+        """
+        Create a clone of this AstraDBAdmin with some changed attributes.
+
+        Args:
+            token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API and DevOps API calls are performed. This ends up in
+                the request user-agent.
+            caller_version: version of the caller.
+
+        Returns:
+            a new AstraDBAdmin instance.
+
+        Example:
+            >>> another_astra_db_admin = my_astra_db_admin.with_options(
+            ...     caller_name="caller_identity",
+            ...     caller_version="1.2.0",
+            ... )
+        """
+
+        return self._copy(
+            token=token,
+            caller_name=caller_name,
+            caller_version=caller_version,
+        )
+
+    def set_caller(
+        self,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> None:
+        """
+        Set a new identity for the application/framework on behalf of which
+        the DevOps API calls will be performed (the "caller").
+
+        New objects spawned from this client afterwards will inherit the new settings.
+
+        Args:
+            caller_name: name of the application, or framework, on behalf of which
+                the DevOps API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+
+        Example:
+            >>> my_astra_db_admin.set_caller(
+            ...     caller_name="the_caller",
+            ...     caller_version="0.1.0",
+            ... )
+        """
+
+        self._caller_name = caller_name
+        self._caller_version = caller_version
+        self._astra_db_ops.set_caller(caller_name, caller_version)
 
     @ops_recast_method_sync
     def list_databases(
@@ -828,6 +929,100 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             f'{self.__class__.__name__}(id="{self.id}", '
             f'"{self.token[:12]}..."{env_desc})'
         )
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, AstraDBDatabaseAdmin):
+            return all(
+                [
+                    self.id == other.id,
+                    self.token == other.token,
+                    self.environment == other.environment,
+                    self._astra_db_admin == other._astra_db_admin,
+                ]
+            )
+        else:
+            return False
+
+    def _copy(
+        self,
+        id: Optional[str] = None,
+        token: Optional[str] = None,
+        environment: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+        dev_ops_url: Optional[str] = None,
+        dev_ops_api_version: Optional[str] = None,
+    ) -> AstraDBDatabaseAdmin:
+        return AstraDBDatabaseAdmin(
+            id=id or self.id,
+            token=token or self.token,
+            environment=environment or self.environment,
+            caller_name=caller_name or self._astra_db_admin._caller_name,
+            caller_version=caller_version or self._astra_db_admin._caller_version,
+            dev_ops_url=dev_ops_url or self._astra_db_admin._dev_ops_url,
+            dev_ops_api_version=dev_ops_api_version
+            or self._astra_db_admin._dev_ops_api_version,
+        )
+
+    def with_options(
+        self,
+        *,
+        id: Optional[str] = None,
+        token: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> AstraDBDatabaseAdmin:
+        """
+        Create a clone of this AstraDBDatabaseAdmin with some changed attributes.
+
+        Args:
+            id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+            token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
+            caller_name: name of the application, or framework, on behalf of which
+                the Data API and DevOps API calls are performed. This ends up in
+                the request user-agent.
+            caller_version: version of the caller.
+
+        Returns:
+            a new AstraDBDatabaseAdmin instance.
+
+        Example:
+            >>> admin_for_my_other_db = admin_for_my_db.with_options(
+            ...     id="abababab-0101-2323-4545-6789abcdef01",
+            ... )
+        """
+
+        return self._copy(
+            id=id,
+            token=token,
+            caller_name=caller_name,
+            caller_version=caller_version,
+        )
+
+    def set_caller(
+        self,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> None:
+        """
+        Set a new identity for the application/framework on behalf of which
+        the DevOps API calls will be performed (the "caller").
+
+        New objects spawned from this client afterwards will inherit the new settings.
+
+        Args:
+            caller_name: name of the application, or framework, on behalf of which
+                the DevOps API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+
+        Example:
+            >>> admin_for_my_db.set_caller(
+            ...     caller_name="the_caller",
+            ...     caller_version="0.1.0",
+            ... )
+        """
+
+        self._astra_db_admin.set_caller(caller_name, caller_version)
 
     @staticmethod
     def from_astra_db_admin(
