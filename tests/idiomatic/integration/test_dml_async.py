@@ -1271,6 +1271,100 @@ class TestDMLAsync:
         assert set(resp_pr2.keys()) == {"f"}
         await acol.delete_all()
 
+    @pytest.mark.describe("test of vectorize in collection methods, async")
+    async def test_collection_methods_vectorize_async(
+        self,
+        async_empty_service_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_service_collection
+
+        await acol.insert_one({"t": "tower"}, vectorize="How high is this tower?")
+        await acol.insert_one({"t": "vectorless"})
+        await acol.insert_one({"t": "vectorful"}, vector=[0.01] * 1024)
+
+        await acol.insert_many(
+            [{"t": "guide"}, {"t": "seeds"}],
+            vectorizes=[
+                "This is the instructions manual. Read it!",
+                "Other plants rely on wind to propagate their seeds.",
+            ],
+        )
+        await acol.insert_many(
+            [{"t": "dog"}, {"t": "cat_novector"}, {"t": "spider"}],
+            vectorizes=[
+                None,
+                None,
+                "The eye pattern is a primary criterion to the family.",
+            ],
+            vectors=[
+                [0.01] * 1024,
+                None,
+                None,
+            ],
+        )
+
+        doc = await acol.find_one(
+            {},
+            vectorize="This building is five storeys tall.",
+            projection={"$vector": False},
+        )
+        assert doc is not None
+        assert doc["t"] == "tower"
+
+        docs = [
+            doc
+            async for doc in acol.find(
+                {},
+                vectorize="This building is five storeys tall.",
+                limit=2,
+                projection={"$vector": False},
+            )
+        ]
+        assert docs[0]["t"] == "tower"
+
+        rdoc = await acol.find_one_and_replace(
+            {},
+            {"t": "spider", "$vectorize": "Check out the eyes!"},
+            vectorize="The disposition of the eyes tells much",
+            projection={"$vector": False},
+        )
+        assert rdoc["t"] == "spider"
+
+        r1res = await acol.replace_one(
+            {},
+            {"t": "spider", "$vectorize": "Look at how the eyes are placed"},
+            vectorize="The disposition of the eyes tells much",
+        )
+        assert r1res.update_info["nModified"] == 1
+
+        udoc = await acol.find_one_and_update(
+            {},
+            {"$set": {"$vectorize": "Consider consulting the how-to"}},
+            vectorize="Have a look at the user guide...",
+            projection={"$vector": False},
+        )
+        assert udoc["t"] == "guide"
+
+        u1res = await acol.update_one(
+            {},
+            {"$set": {"$vectorize": "Know how to operate it before doing so."}},
+            vectorize="Have a look at the user guide...",
+        )
+        assert u1res.update_info["nModified"] == 1
+
+        ddoc = await acol.find_one_and_delete(
+            {},
+            vectorize="Some trees have seeds that are dispersed in the air!",
+            projection={"$vector": False},
+        )
+        assert ddoc["t"] == "seeds"
+
+        d1res = await acol.delete_one(
+            {},
+            vectorize="yet another giant construction in this suburb.",
+        )
+        assert d1res.deleted_count == 1
+
     @pytest.mark.describe("test of ordered bulk_write, async")
     async def test_collection_ordered_bulk_write_async(
         self,

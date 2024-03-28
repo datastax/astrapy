@@ -30,6 +30,7 @@ from astrapy.cursors import AsyncCommandCursor, CommandCursor
 from astrapy.info import (
     DatabaseInfo,
     CollectionDescriptor,
+    CollectionVectorServiceOptions,
 )
 from astrapy.admin import parse_api_endpoint, fetch_database_info
 
@@ -39,12 +40,12 @@ if TYPE_CHECKING:
 
 
 def _validate_create_collection_options(
-    dimension: Optional[int] = None,
-    metric: Optional[str] = None,
-    service: Optional[Dict[str, Any]] = None,
-    indexing: Optional[Dict[str, Any]] = None,
-    default_id_type: Optional[str] = None,
-    additional_options: Optional[Dict[str, Any]] = None,
+    dimension: Optional[int],
+    metric: Optional[str],
+    service: Optional[Union[CollectionVectorServiceOptions, Dict[str, Any]]],
+    indexing: Optional[Dict[str, Any]],
+    default_id_type: Optional[str],
+    additional_options: Optional[Dict[str, Any]],
 ) -> None:
     if additional_options:
         if "vector" in additional_options:
@@ -413,7 +414,7 @@ class Database:
         namespace: Optional[str] = None,
         dimension: Optional[int] = None,
         metric: Optional[str] = None,
-        service: Optional[Dict[str, Any]] = None,
+        service: Optional[Union[CollectionVectorServiceOptions, Dict[str, Any]]] = None,
         indexing: Optional[Dict[str, Any]] = None,
         default_id_type: Optional[str] = None,
         additional_options: Optional[Dict[str, Any]] = None,
@@ -439,6 +440,7 @@ class Database:
                 or `VectorMetric.COSINE` (default).
             service: a dictionary describing a service for
                 embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
+                Alternatively, a CollectionVectorServiceOptions object to the same effect.
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}
@@ -512,12 +514,18 @@ class Database:
                 collection_name=name,
             )
 
+        service_dict: Optional[Dict[str, Any]]
+        if service is not None:
+            service_dict = service if isinstance(service, dict) else service.as_dict()
+        else:
+            service_dict = None
+
         driver_db.create_collection(
             name,
             options=_options,
             dimension=dimension,
             metric=metric,
-            service_dict=service,
+            service_dict=service_dict,
             timeout_info=base_timeout_info(max_time_ms),
         )
         return self.get_collection(name, namespace=namespace)
@@ -1111,7 +1119,7 @@ class AsyncDatabase:
         namespace: Optional[str] = None,
         dimension: Optional[int] = None,
         metric: Optional[str] = None,
-        service: Optional[Dict[str, Any]] = None,
+        service: Optional[Union[CollectionVectorServiceOptions, Dict[str, Any]]] = None,
         indexing: Optional[Dict[str, Any]] = None,
         default_id_type: Optional[str] = None,
         additional_options: Optional[Dict[str, Any]] = None,
@@ -1137,6 +1145,7 @@ class AsyncDatabase:
                 or `VectorMetric.COSINE` (default).
             service: a dictionary describing a service for
                 embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
+                Alternatively, a CollectionVectorServiceOptions object to the same effect.
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}
@@ -1214,12 +1223,18 @@ class AsyncDatabase:
                 collection_name=name,
             )
 
+        service_dict: Optional[Dict[str, Any]]
+        if service is not None:
+            service_dict = service if isinstance(service, dict) else service.as_dict()
+        else:
+            service_dict = None
+
         await driver_db.create_collection(
             name,
             options=_options,
             dimension=dimension,
             metric=metric,
-            service_dict=service,
+            service_dict=service_dict,
             timeout_info=base_timeout_info(max_time_ms),
         )
         return await self.get_collection(name, namespace=namespace)

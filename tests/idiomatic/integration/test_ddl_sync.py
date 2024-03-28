@@ -18,10 +18,15 @@ import time
 
 from ..conftest import (
     AstraDBCredentials,
+    is_vector_service_available,
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
 )
-from astrapy.info import CollectionDescriptor, DatabaseInfo
+from astrapy.info import (
+    CollectionDescriptor,
+    CollectionVectorServiceOptions,
+    DatabaseInfo,
+)
 from astrapy.constants import DefaultIdType, VectorMetric
 from astrapy.ids import ObjectId, UUID
 from astrapy import Collection, Database
@@ -77,6 +82,36 @@ class TestDDLSync:
         dc_response2 = sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         assert dc_response2 == {"ok": 1}
         sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
+
+    @pytest.mark.skipif(
+        not is_vector_service_available(), reason="No 'service' on this database"
+    )
+    @pytest.mark.describe("test of collection lifecycle with service, sync")
+    def test_collection_service_lifecycle_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        TEST_LOCAL_COLLECTION_NAME_S = "test_local_coll_service_s"
+        TEST_LOCAL_COLLECTION_NAME_D = "test_local_coll_service_d"
+
+        vs_coll1 = sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME_S,
+            service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
+        )
+        vs_coll1.insert_one({}, vectorize="Silly insertion")
+        vs_coll1.drop()
+
+        vs_coll2 = sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME_D,
+            dimension=1024,
+            metric=VectorMetric.DOT_PRODUCT,
+            service=CollectionVectorServiceOptions(
+                provider="nvidia",
+                model_name="NV-Embed-QA",
+            ),
+        )
+        vs_coll2.insert_one({}, vectorize="Silly insertion")
+        vs_coll2.drop()
 
     @pytest.mark.describe("test of default_id_type in creating collections, sync")
     def test_collection_default_id_type_sync(
