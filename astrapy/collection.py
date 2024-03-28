@@ -58,7 +58,7 @@ from astrapy.results import (
     BulkWriteResult,
 )
 from astrapy.cursors import AsyncCursor, Cursor
-from astrapy.info import CollectionInfo
+from astrapy.info import CollectionInfo, CollectionOptions
 
 
 if TYPE_CHECKING:
@@ -322,7 +322,7 @@ class Collection:
         caller_version: Optional[str] = None,
     ) -> Collection:
         """
-        Create a clone of this collections with some changed attributes.
+        Create a clone of this collection with some changed attributes.
 
         Args:
             name: the name of the collection. This parameter is useful to
@@ -413,7 +413,7 @@ class Collection:
             caller_version=caller_version,
         )
 
-    def options(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
+    def options(self, *, max_time_ms: Optional[int] = None) -> CollectionOptions:
         """
         Get the collection options, i.e. its configuration as read from the database.
 
@@ -425,22 +425,21 @@ class Collection:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
-            a dictionary expressing the collection as a set of key-value pairs
-            matching the arguments of a `create_collection` call.
+            a CollectionOptions instance describing the collection.
             (See also the database `list_collections` method.)
 
         Example:
             >>> my_coll.options()
-            {'name': 'my_v_collection', 'dimension': 3, 'metric': 'cosine'}
+            CollectionOptions(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
 
-        self_dicts = [
-            coll_dict
-            for coll_dict in self.database.list_collections(max_time_ms=max_time_ms)
-            if coll_dict["name"] == self.name
+        self_descriptors = [
+            coll_desc
+            for coll_desc in self.database.list_collections(max_time_ms=max_time_ms)
+            if coll_desc.name == self.name
         ]
-        if self_dicts:
-            return self_dicts[0]  # type: ignore[no-any-return]
+        if self_descriptors:
+            return self_descriptors[0].options  # type: ignore[no-any-return]
         else:
             raise CollectionNotFoundException(
                 text=f"Collection {self.namespace}.{self.name} not found.",
@@ -2440,7 +2439,7 @@ class AsyncCollection:
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
         """
-        Create a clone of this collections with some changed attributes.
+        Create a clone of this collection with some changed attributes.
 
         Args:
             name: the name of the collection. This parameter is useful to
@@ -2531,7 +2530,7 @@ class AsyncCollection:
             caller_version=caller_version,
         )
 
-    async def options(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
+    async def options(self, *, max_time_ms: Optional[int] = None) -> CollectionOptions:
         """
         Get the collection options, i.e. its configuration as read from the database.
 
@@ -2543,24 +2542,23 @@ class AsyncCollection:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
-            a dictionary expressing the collection as a set of key-value pairs
-            matching the arguments of a `create_collection` call.
+            a CollectionOptions instance describing the collection.
             (See also the database `list_collections` method.)
 
         Example:
             >>> asyncio.run(my_async_coll.options())
-            {'name': 'my_v_collection', 'dimension': 3, 'metric': 'cosine'}
+            CollectionOptions(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
 
-        self_dicts = [
-            coll_dict
-            async for coll_dict in self.database.list_collections(
+        self_descriptors = [
+            coll_desc
+            async for coll_desc in self.database.list_collections(
                 max_time_ms=max_time_ms
             )
-            if coll_dict["name"] == self.name
+            if coll_desc.name == self.name
         ]
-        if self_dicts:
-            return self_dicts[0]  # type: ignore[no-any-return]
+        if self_descriptors:
+            return self_descriptors[0].options  # type: ignore[no-any-return]
         else:
             raise CollectionNotFoundException(
                 text=f"Collection {self.namespace}.{self.name} not found.",

@@ -27,7 +27,7 @@ from astrapy.exceptions import (
     base_timeout_info,
 )
 from astrapy.cursors import AsyncCommandCursor, CommandCursor
-from astrapy.info import DatabaseInfo
+from astrapy.info import DatabaseInfo, CollectionDescriptor
 from astrapy.admin import parse_api_endpoint, fetch_database_info
 
 if TYPE_CHECKING:
@@ -74,53 +74,6 @@ def _validate_create_collection_options(
             "Cannot specify `metric` for non-vector collections in the "
             "create_collection method."
         )
-
-
-def _recast_api_collection_dict(api_coll_dict: Dict[str, Any]) -> Dict[str, Any]:
-    from astrapy.collection import EmbeddingService
-
-    _name = api_coll_dict["name"]
-    _options = api_coll_dict.get("options") or {}
-    _v_options0 = _options.get("vector") or {}
-    _indexing = _options.get("indexing") or {}
-    _v_dimension = _v_options0.get("dimension")
-    _v_metric = _v_options0.get("metric")
-    _v_service_dict = _v_options0.get("service")
-    _default_id = _options.get("defaultId")
-    # defaultId may potentially in the future have other subfields than 'type':
-    if _default_id:
-        _default_id_type = _default_id.get("type")
-        _rest_default_id = {k: v for k, v in _default_id.items() if k != "type"}
-    else:
-        _default_id_type = None
-        _rest_default_id = None
-    _v_service: Optional[EmbeddingService]
-    if _v_service_dict is not None:
-        _v_service = EmbeddingService(
-            provider=_v_service_dict.get("provider", ""),
-            model_name=_v_service_dict.get("modelName", ""),
-        )
-    else:
-        _v_service = None
-    _additional_options = {
-        **{
-            k: v
-            for k, v in _options.items()
-            if k not in {"vector", "indexing", "defaultId"}
-        },
-        **({"defaultId": _rest_default_id} if _rest_default_id else {}),
-    }
-    recast_dict0 = {
-        "name": _name,
-        "dimension": _v_dimension,
-        "metric": _v_metric,
-        "service": _v_service,
-        "indexing": _indexing,
-        "default_id_type": _default_id_type,
-        "additional_options": _additional_options,
-    }
-    recast_dict = {k: v for k, v in recast_dict0.items() if v}
-    return recast_dict
 
 
 class Database:
@@ -630,7 +583,7 @@ class Database:
         *,
         namespace: Optional[str] = None,
         max_time_ms: Optional[int] = None,
-    ) -> CommandCursor[Dict[str, Any]]:
+    ) -> CommandCursor[CollectionDescriptor]:
         """
         List all collections in a given namespace for this database.
 
@@ -640,20 +593,19 @@ class Database:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
-            a `CommandCursor` to iterate over dictionaries, each
-            expressing a collection as a set of key-value pairs
-            matching the arguments of a `create_collection` call.
+            a `CommandCursor` to iterate over CollectionDescriptor instances,
+            each corresponding to a collection.
 
         Example:
             >>> ccur = my_db.list_collections()
             >>> ccur
             <astrapy.cursors.CommandCursor object at ...>
             >>> list(ccur)
-            [{'name': 'my_v_col'}]
+            [CollectionDescriptor(name='my_v_col', options=CollectionOptions())]
             >>> for coll_dict in my_db.list_collections():
             ...     print(coll_dict)
             ...
-            {'name': 'my_v_col'}
+            CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
         if namespace:
@@ -669,11 +621,11 @@ class Database:
                 raw_response=gc_response,
             )
         else:
-            # we know this is a list of dicts which need a little adjusting
+            # we know this is a list of dicts, to marshal into "descriptors"
             return CommandCursor(
                 address=self._astra_db.base_url,
                 items=[
-                    _recast_api_collection_dict(col_dict)
+                    CollectionDescriptor.from_dict(col_dict)
                     for col_dict in gc_response["status"]["collections"]
                 ],
             )
@@ -1344,7 +1296,7 @@ class AsyncDatabase:
         *,
         namespace: Optional[str] = None,
         max_time_ms: Optional[int] = None,
-    ) -> AsyncCommandCursor[Dict[str, Any]]:
+    ) -> AsyncCommandCursor[CollectionDescriptor]:
         """
         List all collections in a given namespace for this database.
 
@@ -1354,9 +1306,8 @@ class AsyncDatabase:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
-            an `AsyncCommandCursor` to iterate over dictionaries, each
-            expressing a collection as a set of key-value pairs
-            matching the arguments of a `create_collection` call.
+            an `AsyncCommandCursor` to iterate over CollectionDescriptor instances,
+            each corresponding to a collection.
 
         Example:
             >>> async def a_list_colls(adb: AsyncDatabase) -> None:
@@ -1368,8 +1319,8 @@ class AsyncDatabase:
             ...
             >>> asyncio.run(a_list_colls(my_async_db))
             * a_ccur: <astrapy.cursors.AsyncCommandCursor object at ...>
-            * list: [{'name': 'my_v_col'}]
-            * coll: {'name': 'my_v_col'}
+            * list: [CollectionDescriptor(name='my_v_col', options=CollectionOptions())]
+            * coll: CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
         _client: AsyncAstraDB
@@ -1387,11 +1338,11 @@ class AsyncDatabase:
                 raw_response=gc_response,
             )
         else:
-            # we know this is a list of dicts which need a little adjusting
+            # we know this is a list of dicts, to marshal into "descriptors"
             return AsyncCommandCursor(
                 address=self._astra_db.base_url,
                 items=[
-                    _recast_api_collection_dict(col_dict)
+                    CollectionDescriptor.from_dict(col_dict)
                     for col_dict in gc_response["status"]["collections"]
                 ],
             )

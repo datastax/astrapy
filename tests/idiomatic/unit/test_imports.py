@@ -82,6 +82,10 @@ def test_imports() -> None:
         AdminDatabaseInfo,
         DatabaseInfo,
         CollectionInfo,
+        CollectionDefaultIDOptions,
+        CollectionVectorOptions,
+        CollectionOptions,
+        CollectionDescriptor,
     )
     from astrapy.admin import (  # noqa: F401
         Environment,
