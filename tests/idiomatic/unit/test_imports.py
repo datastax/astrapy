@@ -83,6 +83,7 @@ def test_imports() -> None:
         DatabaseInfo,
         CollectionInfo,
         CollectionDefaultIDOptions,
+        CollectionVectorServiceOptions,
         CollectionVectorOptions,
         CollectionOptions,
         CollectionDescriptor,
@@ -128,9 +129,6 @@ def test_imports() -> None:
         uuid7,
         uuid8,
         UUID,
-    )
-    from astrapy.collection import (  # noqa: F401
-        EmbeddingService,
     )
     from astrapy import (  # noqa: F401
         Database,

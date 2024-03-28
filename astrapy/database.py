@@ -27,18 +27,21 @@ from astrapy.exceptions import (
     base_timeout_info,
 )
 from astrapy.cursors import AsyncCommandCursor, CommandCursor
-from astrapy.info import DatabaseInfo, CollectionDescriptor
+from astrapy.info import (
+    DatabaseInfo,
+    CollectionDescriptor,
+)
 from astrapy.admin import parse_api_endpoint, fetch_database_info
 
 if TYPE_CHECKING:
-    from astrapy.collection import AsyncCollection, Collection, EmbeddingService
+    from astrapy.collection import AsyncCollection, Collection
     from astrapy.admin import AstraDBDatabaseAdmin
 
 
 def _validate_create_collection_options(
     dimension: Optional[int] = None,
     metric: Optional[str] = None,
-    service: Optional[EmbeddingService] = None,
+    service: Optional[Dict[str, Any]] = None,
     indexing: Optional[Dict[str, Any]] = None,
     default_id_type: Optional[str] = None,
     additional_options: Optional[Dict[str, Any]] = None,
@@ -410,7 +413,7 @@ class Database:
         namespace: Optional[str] = None,
         dimension: Optional[int] = None,
         metric: Optional[str] = None,
-        service: Optional[EmbeddingService] = None,
+        service: Optional[Dict[str, Any]] = None,
         indexing: Optional[Dict[str, Any]] = None,
         default_id_type: Optional[str] = None,
         additional_options: Optional[Dict[str, Any]] = None,
@@ -434,8 +437,8 @@ class Database:
             metric: the similarity metric used for vector searches.
                 Allowed values are `VectorMetric.DOT_PRODUCT`, `VectorMetric.EUCLIDEAN`
                 or `VectorMetric.COSINE` (default).
-            service: an EmbeddingService object describing a service for
-                embedding computation.
+            service: a dictionary describing a service for
+                embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}
@@ -509,21 +512,12 @@ class Database:
                 collection_name=name,
             )
 
-        service_dict: Optional[Dict[str, str]]
-        if service is not None:
-            service_dict = {
-                "provider": service.provider,
-                "modelName": service.model_name,
-            }
-        else:
-            service_dict = None
-
         driver_db.create_collection(
             name,
             options=_options,
             dimension=dimension,
             metric=metric,
-            service_dict=service_dict,
+            service_dict=service,
             timeout_info=base_timeout_info(max_time_ms),
         )
         return self.get_collection(name, namespace=namespace)
@@ -1117,7 +1111,7 @@ class AsyncDatabase:
         namespace: Optional[str] = None,
         dimension: Optional[int] = None,
         metric: Optional[str] = None,
-        service: Optional[EmbeddingService] = None,
+        service: Optional[Dict[str, Any]] = None,
         indexing: Optional[Dict[str, Any]] = None,
         default_id_type: Optional[str] = None,
         additional_options: Optional[Dict[str, Any]] = None,
@@ -1141,8 +1135,8 @@ class AsyncDatabase:
             metric: the similarity metric used for vector searches.
                 Allowed values are `VectorMetric.DOT_PRODUCT`, `VectorMetric.EUCLIDEAN`
                 or `VectorMetric.COSINE` (default).
-            service: an EmbeddingService object describing a service for
-                embedding computation.
+            service: a dictionary describing a service for
+                embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}
@@ -1220,21 +1214,12 @@ class AsyncDatabase:
                 collection_name=name,
             )
 
-        service_dict: Optional[Dict[str, str]]
-        if service is not None:
-            service_dict = {
-                "provider": service.provider,
-                "modelName": service.model_name,
-            }
-        else:
-            service_dict = None
-
         await driver_db.create_collection(
             name,
             options=_options,
             dimension=dimension,
             metric=metric,
-            service_dict=service_dict,
+            service_dict=service,
             timeout_info=base_timeout_info(max_time_ms),
         )
         return await self.get_collection(name, namespace=namespace)

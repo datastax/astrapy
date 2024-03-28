@@ -33,7 +33,35 @@ def test_recast_api_collection_dict() -> None:
             },
             {"name": "col_name"},
         ),
-        # full:
+        # full, w/o service:
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "NV-Embed-QA",
+                        },
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "NV-Embed-QA",
+                },
+            },
+        ),
         (
             {
                 "name": "col_name",
@@ -54,7 +82,7 @@ def test_recast_api_collection_dict() -> None:
                 "default_id_type": "objectId",
             },
         ),
-        # partial/absent 'vector':
+        # partial/absent 'vector', w/o service:
         (
             {
                 "name": "col_name",
@@ -78,6 +106,32 @@ def test_recast_api_collection_dict() -> None:
                 "name": "col_name",
                 "options": {
                     "vector": {
+                        "metric": "cosine",
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "NV-Embed-QA",
+                        },
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "metric": "cosine",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "NV-Embed-QA",
+                },
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
                         "dimension": 1024,
                     },
                     "indexing": {"deny": ["a"]},
@@ -89,6 +143,32 @@ def test_recast_api_collection_dict() -> None:
                 "dimension": 1024,
                 "indexing": {"deny": ["a"]},
                 "default_id_type": "objectId",
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "NV-Embed-QA",
+                        },
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "NV-Embed-QA",
+                },
             },
         ),
         (
@@ -104,6 +184,30 @@ def test_recast_api_collection_dict() -> None:
                 "name": "col_name",
                 "indexing": {"deny": ["a"]},
                 "default_id_type": "objectId",
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "NV-Embed-QA",
+                        },
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "NV-Embed-QA",
+                },
             },
         ),
         (
@@ -139,6 +243,32 @@ def test_recast_api_collection_dict() -> None:
                 "default_id_type": "objectId",
             },
         ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "NV-Embed-QA",
+                        },
+                    },
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "default_id_type": "objectId",
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "NV-Embed-QA",
+                },
+            },
+        ),
         # no defaultId:
         (
             {
@@ -158,6 +288,32 @@ def test_recast_api_collection_dict() -> None:
                 "indexing": {"deny": ["a"]},
             },
         ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "NV-Embed-QA",
+                        },
+                    },
+                    "indexing": {"deny": ["a"]},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "indexing": {"deny": ["a"]},
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "NV-Embed-QA",
+                },
+            },
+        ),
         # no indexing + no defaultId:
         (
             {
@@ -173,6 +329,30 @@ def test_recast_api_collection_dict() -> None:
                 "name": "col_name",
                 "dimension": 1024,
                 "metric": "cosine",
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "NV-Embed-QA",
+                        },
+                    },
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "NV-Embed-QA",
+                },
             },
         ),
     ]

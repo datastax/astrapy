@@ -161,6 +161,50 @@ class CollectionDefaultIDOptions:
 
 
 @dataclass
+class CollectionVectorServiceOptions:
+    """
+    The "vector.service" component of the collection options.
+    See the Data API specifications for allowed values.
+
+    Attributes:
+        provider: the name of a service provider for embedding calculation.
+        model_name: the name of a specific model for use by the service.
+    """
+
+    provider: Optional[str]
+    model_name: Optional[str]
+
+    def as_dict(self) -> Dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            k: v
+            for k, v in {
+                "provider": self.provider,
+                "modelName": self.model_name,
+            }.items()
+            if v is not None
+        }
+
+    @staticmethod
+    def from_dict(
+        raw_dict: Optional[Dict[str, Any]]
+    ) -> Optional[CollectionVectorServiceOptions]:
+        """
+        Create an instance of CollectionVectorServiceOptions from a dictionary
+        such as one from the Data API.
+        """
+
+        if raw_dict is not None:
+            return CollectionVectorServiceOptions(
+                provider=raw_dict.get("provider"),
+                model_name=raw_dict.get("modelName"),
+            )
+        else:
+            return None
+
+
+@dataclass
 class CollectionVectorOptions:
     """
     The "vector" component of the collection options.
@@ -174,6 +218,7 @@ class CollectionVectorOptions:
 
     dimension: Optional[int]
     metric: Optional[str]
+    service: Optional[CollectionVectorServiceOptions]
 
     def as_dict(self) -> Dict[str, Any]:
         """Recast this object into a dictionary."""
@@ -183,6 +228,7 @@ class CollectionVectorOptions:
             for k, v in {
                 "dimension": self.dimension,
                 "metric": self.metric,
+                "service": None if self.service is None else self.service.as_dict(),
             }.items()
             if v is not None
         }
@@ -200,6 +246,9 @@ class CollectionVectorOptions:
             return CollectionVectorOptions(
                 dimension=raw_dict.get("dimension"),
                 metric=raw_dict.get("metric"),
+                service=CollectionVectorServiceOptions.from_dict(
+                    raw_dict.get("service")
+                ),
             )
         else:
             return None
@@ -261,19 +310,25 @@ class CollectionOptions:
     def flatten(self) -> Dict[str, Any]:
         """
         Recast this object as a flat key-value pair suitable for
-        use as kwargs in a create_collection method call.
+        use as kwargs in a create_collection method call (including recasts).
         """
 
         _dimension: Optional[int]
         _metric: Optional[str]
         _indexing: Optional[Dict[str, Any]]
+        _service: Optional[Dict[str, Any]]
         _default_id_type: Optional[str]
         if self.vector is not None:
             _dimension = self.vector.dimension
             _metric = self.vector.metric
+            if self.vector.service is None:
+                _service = None
+            else:
+                _service = self.vector.service.as_dict()
         else:
             _dimension = None
             _metric = None
+            _service = None
         _indexing = self.indexing
         if self.default_id is not None:
             _default_id_type = self.default_id.default_id_type
@@ -285,6 +340,7 @@ class CollectionOptions:
             for k, v in {
                 "dimension": _dimension,
                 "metric": _metric,
+                "service": _service,
                 "indexing": _indexing,
                 "default_id_type": _default_id_type,
             }.items()
@@ -347,7 +403,7 @@ class CollectionDescriptor:
     def flatten(self) -> Dict[str, Any]:
         """
         Recast this object as a flat key-value pair suitable for
-        use as kwargs in a create_collection method call.
+        use as kwargs in a create_collection method call (including recasts).
         """
 
         return {
