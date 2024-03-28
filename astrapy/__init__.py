@@ -79,3 +79,12 @@ __all__ = [
     "DataAPIClient",
     "__version__",
 ]
+
+
+__pdoc__ = {
+    "api": False,
+    "core": False,
+    "db": False,
+    "ops": False,
+    "ids": False,
+}
