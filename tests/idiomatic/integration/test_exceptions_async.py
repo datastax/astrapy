@@ -300,8 +300,8 @@ class TestExceptionsAsync:
                 service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
             )
 
-    @pytest.mark.describe("test of database drop_collection failures, async")
-    async def test_database_drop_collection_async(
+    @pytest.mark.describe("test of database one-request method failures, async")
+    async def test_database_method_failures_async(
         self,
         async_database: AsyncDatabase,
     ) -> None:
