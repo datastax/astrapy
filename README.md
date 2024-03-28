@@ -147,7 +147,7 @@ print(
 ```
 
 _**Note**: reads from a collection will always_
-_use the `datetime` class regardless of wheter a `date` or a `datetime` was provided_
+_return the `datetime` class regardless of wheter a `date` or a `datetime` was provided_
 _in the insertion._
 
 ### Working with ObjectIds and UUIDs
