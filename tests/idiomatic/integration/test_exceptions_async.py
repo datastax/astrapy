@@ -32,7 +32,7 @@ from astrapy.exceptions import (
 from astrapy.constants import DocumentType
 from astrapy.cursors import AsyncCursor
 
-from ..conftest import AstraDBCredentials
+from ..conftest import AstraDBCredentials, is_vector_service_available
 
 
 class TestExceptionsAsync:
@@ -283,8 +283,25 @@ class TestExceptionsAsync:
 
         await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
 
-    @pytest.mark.describe("test of database drop_collection failures, async")
-    async def test_database_drop_collection_async(
+    @pytest.mark.skipif(
+        not is_vector_service_available(), reason="No 'service' on this database"
+    )
+    @pytest.mark.describe(
+        "test of database create_collection dimension-mismatch failure, async"
+    )
+    async def test_database_create_collection_dimension_mismatch_failure_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        with pytest.raises(DataAPIResponseException):
+            await async_database.create_collection(
+                "collection_name",
+                dimension=123,
+                service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
+            )
+
+    @pytest.mark.describe("test of database one-request method failures, async")
+    async def test_database_method_failures_async(
         self,
         async_database: AsyncDatabase,
     ) -> None:

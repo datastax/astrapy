@@ -18,10 +18,15 @@ import time
 
 from ..conftest import (
     AstraDBCredentials,
+    is_vector_service_available,
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
 )
-from astrapy.info import DatabaseInfo
+from astrapy.info import (
+    CollectionDescriptor,
+    CollectionVectorServiceOptions,
+    DatabaseInfo,
+)
 from astrapy.constants import DefaultIdType, VectorMetric
 from astrapy.ids import ObjectId, UUID
 from astrapy import AsyncCollection, AsyncDatabase
@@ -47,18 +52,28 @@ class TestDDLAsync:
         )
         lc_response = [col async for col in async_database.list_collections()]
         #
-        expected_coll_dict = {
-            "name": TEST_LOCAL_COLLECTION_NAME,
-            "dimension": 123,
-            "metric": "euclidean",
-            "indexing": {"deny": ["a", "b", "c"]},
-        }
-        expected_coll_dict_b = {
-            "name": TEST_LOCAL_COLLECTION_NAME_B,
-            "indexing": {"allow": ["z"]},
-        }
-        assert expected_coll_dict in lc_response
-        assert expected_coll_dict_b in lc_response
+        expected_coll_descriptor = CollectionDescriptor.from_dict(
+            {
+                "name": TEST_LOCAL_COLLECTION_NAME,
+                "options": {
+                    "vector": {
+                        "dimension": 123,
+                        "metric": "euclidean",
+                    },
+                    "indexing": {"deny": ["a", "b", "c"]},
+                },
+            },
+        )
+        expected_coll_descriptor_b = CollectionDescriptor.from_dict(
+            {
+                "name": TEST_LOCAL_COLLECTION_NAME_B,
+                "options": {
+                    "indexing": {"allow": ["z"]},
+                },
+            },
+        )
+        assert expected_coll_descriptor in lc_response
+        assert expected_coll_descriptor_b in lc_response
         #
         col2 = await async_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
         assert col1 == col2
@@ -67,6 +82,36 @@ class TestDDLAsync:
         dc_response2 = await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         assert dc_response2 == {"ok": 1}
         await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
+
+    @pytest.mark.skipif(
+        not is_vector_service_available(), reason="No 'service' on this database"
+    )
+    @pytest.mark.describe("test of collection lifecycle with service, async")
+    async def test_collection_service_lifecycle_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        TEST_LOCAL_COLLECTION_NAME_S = "test_local_coll_service_s"
+        TEST_LOCAL_COLLECTION_NAME_D = "test_local_coll_service_d"
+
+        vs_coll1 = await async_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME_S,
+            service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
+        )
+        await vs_coll1.insert_one({}, vectorize="Silly insertion")
+        await vs_coll1.drop()
+
+        vs_coll2 = await async_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME_D,
+            dimension=1024,
+            metric=VectorMetric.DOT_PRODUCT,
+            service=CollectionVectorServiceOptions(
+                provider="nvidia",
+                model_name="NV-Embed-QA",
+            ),
+        )
+        await vs_coll2.insert_one({}, vectorize="Silly insertion")
+        await vs_coll2.drop()
 
     @pytest.mark.describe("test of default_id_type in creating collections, async")
     async def test_collection_default_id_type_async(
@@ -79,7 +124,7 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUID,
             default_id_type=DefaultIdType.UUID,
         )
-        assert (await acol.options())["default_id_type"] == DefaultIdType.UUID
+        assert (await acol.options()).default_id.default_id_type == DefaultIdType.UUID
         await acol.insert_one({"role": "probe"})
         doc = await acol.find_one({})
         assert isinstance(doc["_id"], UUID)
@@ -90,7 +135,7 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV6,
             default_id_type=DefaultIdType.UUIDV6,
         )
-        assert (await acol.options())["default_id_type"] == DefaultIdType.UUIDV6
+        assert (await acol.options()).default_id.default_id_type == DefaultIdType.UUIDV6
         await acol.insert_one({"role": "probe"})
         doc = await acol.find_one({})
         assert isinstance(doc["_id"], UUID)
@@ -102,7 +147,7 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV7,
             default_id_type=DefaultIdType.UUIDV7,
         )
-        assert (await acol.options())["default_id_type"] == DefaultIdType.UUIDV7
+        assert (await acol.options()).default_id.default_id_type == DefaultIdType.UUIDV7
         await acol.insert_one({"role": "probe"})
         doc = await acol.find_one({})
         assert isinstance(doc["_id"], UUID)
@@ -114,7 +159,9 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.DEFAULT,
             default_id_type=DefaultIdType.DEFAULT,
         )
-        assert (await acol.options())["default_id_type"] == DefaultIdType.DEFAULT
+        assert (
+            await acol.options()
+        ).default_id.default_id_type == DefaultIdType.DEFAULT
         await acol.drop()
 
         time.sleep(2)
@@ -122,7 +169,9 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.OBJECTID,
             default_id_type=DefaultIdType.OBJECTID,
         )
-        assert (await acol.options())["default_id_type"] == DefaultIdType.OBJECTID
+        assert (
+            await acol.options()
+        ).default_id.default_id_type == DefaultIdType.OBJECTID
         await acol.insert_one({"role": "probe"})
         doc = await acol.find_one({})
         assert isinstance(doc["_id"], ObjectId)
@@ -176,7 +225,8 @@ class TestDDLAsync:
         async_collection: AsyncCollection,
     ) -> None:
         options = await async_collection.options()
-        assert options["name"] == async_collection.name
+        assert options.vector is not None
+        assert options.vector.dimension == 2
 
     @pytest.mark.skipif(
         ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"

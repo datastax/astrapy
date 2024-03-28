@@ -16,233 +16,346 @@
 Unit tests for the validation/parsing of collection options
 """
 
-from functools import partial
+from typing import Any, Dict, List, Tuple
 
 import pytest
 
-from astrapy.database import (
-    _recast_api_collection_dict,
-    _validate_create_collection_options,
-)
-from astrapy.collection import EmbeddingService
-from astrapy.constants import DefaultIdType, VectorMetric
+from astrapy.info import CollectionDescriptor
 
 
 @pytest.mark.describe("test of recasting the collection options from the api")
 def test_recast_api_collection_dict() -> None:
-    plain_raw = {
-        "name": "tablename",
-        "options": {},
-    }
-    plain_expected = {
-        "name": "tablename",
-    }
-    assert _recast_api_collection_dict(plain_raw) == plain_expected
-
-    plainplus_raw = {
-        "name": "tablename",
-        "options": {
-            "futuretopfield": "ftvalue",
-        },
-    }
-    plainplus_expected = {
-        "name": "tablename",
-        "additional_options": {
-            "futuretopfield": "ftvalue",
-        },
-    }
-    assert _recast_api_collection_dict(plainplus_raw) == plainplus_expected
-
-    dim_raw = {
-        "name": "tablename",
-        "options": {
-            "vector": {
-                "dimension": 10,
+    api_coll_descs: List[Tuple[Dict[str, Any], Dict[str, Any]]] = [
+        # minimal:
+        (
+            {
+                "name": "col_name",
             },
-        },
-    }
-    dim_expected = {
-        "name": "tablename",
-        "dimension": 10,
-    }
-    assert _recast_api_collection_dict(dim_raw) == dim_expected
-
-    dim_met_raw = {
-        "name": "tablename",
-        "options": {
-            "vector": {
-                "dimension": 10,
+            {"name": "col_name"},
+        ),
+        # full, w/o service:
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "NV-Embed-QA",
+                        },
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "NV-Embed-QA",
+                },
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+            },
+        ),
+        # partial/absent 'vector', w/o service:
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "metric": "cosine",
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "metric": "cosine",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "metric": "cosine",
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "NV-Embed-QA",
+                        },
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "metric": "cosine",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "NV-Embed-QA",
+                },
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "NV-Embed-QA",
+                        },
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "NV-Embed-QA",
+                },
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {},
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "NV-Embed-QA",
+                        },
+                    },
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "NV-Embed-QA",
+                },
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "indexing": {"deny": ["a"]},
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "indexing": {"deny": ["a"]},
+                "default_id_type": "objectId",
+            },
+        ),
+        # no indexing:
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                    },
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "default_id_type": "objectId",
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "NV-Embed-QA",
+                        },
+                    },
+                    "defaultId": {"type": "objectId"},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "default_id_type": "objectId",
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "NV-Embed-QA",
+                },
+            },
+        ),
+        # no defaultId:
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                    },
+                    "indexing": {"deny": ["a"]},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "indexing": {"deny": ["a"]},
+            },
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "NV-Embed-QA",
+                        },
+                    },
+                    "indexing": {"deny": ["a"]},
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
+                "metric": "cosine",
+                "indexing": {"deny": ["a"]},
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "NV-Embed-QA",
+                },
+            },
+        ),
+        # no indexing + no defaultId:
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                    },
+                },
+            },
+            {
+                "name": "col_name",
+                "dimension": 1024,
                 "metric": "cosine",
             },
-        },
-    }
-    dim_met_expected = {
-        "name": "tablename",
-        "dimension": 10,
-        "metric": "cosine",
-    }
-    assert _recast_api_collection_dict(dim_met_raw) == dim_met_expected
-
-    dim_met_did_idx_raw = {
-        "name": "tablename",
-        "options": {
-            "defaultId": {"type": "objectId"},
-            "indexing": {
-                "allow": ["a"],
+        ),
+        (
+            {
+                "name": "col_name",
+                "options": {
+                    "vector": {
+                        "dimension": 1024,
+                        "metric": "cosine",
+                        "service": {
+                            "provider": "nvidia",
+                            "modelName": "NV-Embed-QA",
+                        },
+                    },
+                },
             },
-            "vector": {
-                "dimension": 10,
+            {
+                "name": "col_name",
+                "dimension": 1024,
                 "metric": "cosine",
+                "service": {
+                    "provider": "nvidia",
+                    "modelName": "NV-Embed-QA",
+                },
             },
-        },
-    }
-    dim_met_did_idx_expected = {
-        "name": "tablename",
-        "dimension": 10,
-        "metric": "cosine",
-        "indexing": {"allow": ["a"]},
-        "default_id_type": "objectId",
-    }
-    assert _recast_api_collection_dict(dim_met_did_idx_raw) == dim_met_did_idx_expected
-
-    dim_met_didplus_idx_raw = {
-        "name": "tablename",
-        "options": {
-            "defaultId": {
-                "type": "objectId",
-                "futurefield": "fvalue",
-            },
-            "indexing": {
-                "allow": ["a"],
-            },
-            "vector": {
-                "dimension": 10,
-                "metric": "cosine",
-            },
-        },
-    }
-    dim_met_didplus_idx_expected = {
-        "name": "tablename",
-        "dimension": 10,
-        "metric": "cosine",
-        "indexing": {"allow": ["a"]},
-        "default_id_type": "objectId",
-        "additional_options": {
-            "defaultId": {"futurefield": "fvalue"},
-        },
-    }
-    assert (
-        _recast_api_collection_dict(dim_met_didplus_idx_raw)
-        == dim_met_didplus_idx_expected
-    )
-
-
-@pytest.mark.describe("test of validation for create_collection options")
-def test_validate_create_collection_options() -> None:
-    _dimension = 100
-    _metric = VectorMetric.COSINE
-    _service = EmbeddingService(provider="provider", model_name="modelName")
-
-    variables = [
-        (None, {"a": 1}),
-        (None, None),
-        (DefaultIdType.UUID, {"a": 1}),
-        (DefaultIdType.UUID, None),
+        ),
     ]
-
-    prt000 = partial(
-        _validate_create_collection_options,
-        dimension=None,
-        metric=None,
-        service=None,
-    )
-    for _did, _add in variables:
-        prt000(
-            default_id_type=_did,
-            additional_options=_add,
-        )
-
-    prt001 = partial(
-        _validate_create_collection_options,
-        dimension=None,
-        metric=None,
-        service=_service,
-    )
-    for _did, _add in variables:
-        prt001(
-            default_id_type=_did,
-            additional_options=_add,
-        )
-
-    prt010 = partial(
-        _validate_create_collection_options,
-        dimension=None,
-        metric=_metric,
-        service=None,
-    )
-    for _did, _add in variables:
-        with pytest.raises(ValueError):
-            prt010(
-                default_id_type=_did,
-                additional_options=_add,
-            )
-
-    prt011 = partial(
-        _validate_create_collection_options,
-        dimension=None,
-        metric=_metric,
-        service=_service,
-    )
-    for _did, _add in variables:
-        prt011(
-            default_id_type=_did,
-            additional_options=_add,
-        )
-
-    prt100 = partial(
-        _validate_create_collection_options,
-        dimension=_dimension,
-        metric=None,
-        service=None,
-    )
-    for _did, _add in variables:
-        prt100(
-            default_id_type=_did,
-            additional_options=_add,
-        )
-
-    prt101 = partial(
-        _validate_create_collection_options,
-        dimension=_dimension,
-        metric=None,
-        service=_service,
-    )
-    for _did, _add in variables:
-        prt101(
-            default_id_type=_did,
-            additional_options=_add,
-        )
-
-    prt110 = partial(
-        _validate_create_collection_options,
-        dimension=_dimension,
-        metric=_metric,
-        service=None,
-    )
-    for _did, _add in variables:
-        prt110(
-            default_id_type=_did,
-            additional_options=_add,
-        )
-
-    prt111 = partial(
-        _validate_create_collection_options,
-        dimension=_dimension,
-        metric=_metric,
-        service=_service,
-    )
-    for _did, _add in variables:
-        prt111(
-            default_id_type=_did,
-            additional_options=_add,
-        )
+    for api_coll_desc, flattened_dict in api_coll_descs:
+        assert CollectionDescriptor.from_dict(api_coll_desc).as_dict() == api_coll_desc
+        assert CollectionDescriptor.from_dict(api_coll_desc).flatten() == flattened_dict

@@ -18,10 +18,15 @@ import time
 
 from ..conftest import (
     AstraDBCredentials,
+    is_vector_service_available,
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
 )
-from astrapy.info import DatabaseInfo
+from astrapy.info import (
+    CollectionDescriptor,
+    CollectionVectorServiceOptions,
+    DatabaseInfo,
+)
 from astrapy.constants import DefaultIdType, VectorMetric
 from astrapy.ids import ObjectId, UUID
 from astrapy import Collection, Database
@@ -47,18 +52,28 @@ class TestDDLSync:
         )
         lc_response = list(sync_database.list_collections())
         #
-        expected_coll_dict = {
-            "name": TEST_LOCAL_COLLECTION_NAME,
-            "dimension": 123,
-            "metric": "euclidean",
-            "indexing": {"deny": ["a", "b", "c"]},
-        }
-        expected_coll_dict_b = {
-            "name": TEST_LOCAL_COLLECTION_NAME_B,
-            "indexing": {"allow": ["z"]},
-        }
-        assert expected_coll_dict in lc_response
-        assert expected_coll_dict_b in lc_response
+        expected_coll_descriptor = CollectionDescriptor.from_dict(
+            {
+                "name": TEST_LOCAL_COLLECTION_NAME,
+                "options": {
+                    "vector": {
+                        "dimension": 123,
+                        "metric": "euclidean",
+                    },
+                    "indexing": {"deny": ["a", "b", "c"]},
+                },
+            },
+        )
+        expected_coll_descriptor_b = CollectionDescriptor.from_dict(
+            {
+                "name": TEST_LOCAL_COLLECTION_NAME_B,
+                "options": {
+                    "indexing": {"allow": ["z"]},
+                },
+            },
+        )
+        assert expected_coll_descriptor in lc_response
+        assert expected_coll_descriptor_b in lc_response
         #
         col2 = sync_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
         assert col1 == col2
@@ -67,6 +82,36 @@ class TestDDLSync:
         dc_response2 = sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         assert dc_response2 == {"ok": 1}
         sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
+
+    @pytest.mark.skipif(
+        not is_vector_service_available(), reason="No 'service' on this database"
+    )
+    @pytest.mark.describe("test of collection lifecycle with service, sync")
+    def test_collection_service_lifecycle_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        TEST_LOCAL_COLLECTION_NAME_S = "test_local_coll_service_s"
+        TEST_LOCAL_COLLECTION_NAME_D = "test_local_coll_service_d"
+
+        vs_coll1 = sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME_S,
+            service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
+        )
+        vs_coll1.insert_one({}, vectorize="Silly insertion")
+        vs_coll1.drop()
+
+        vs_coll2 = sync_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME_D,
+            dimension=1024,
+            metric=VectorMetric.DOT_PRODUCT,
+            service=CollectionVectorServiceOptions(
+                provider="nvidia",
+                model_name="NV-Embed-QA",
+            ),
+        )
+        vs_coll2.insert_one({}, vectorize="Silly insertion")
+        vs_coll2.drop()
 
     @pytest.mark.describe("test of default_id_type in creating collections, sync")
     def test_collection_default_id_type_sync(
@@ -79,7 +124,7 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUID,
             default_id_type=DefaultIdType.UUID,
         )
-        assert col.options()["default_id_type"] == DefaultIdType.UUID
+        assert col.options().default_id.default_id_type == DefaultIdType.UUID
         col.insert_one({"role": "probe"})
         doc = col.find_one({})
         assert isinstance(doc["_id"], UUID)
@@ -90,7 +135,7 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV6,
             default_id_type=DefaultIdType.UUIDV6,
         )
-        assert col.options()["default_id_type"] == DefaultIdType.UUIDV6
+        assert col.options().default_id.default_id_type == DefaultIdType.UUIDV6
         col.insert_one({"role": "probe"})
         doc = col.find_one({})
         assert isinstance(doc["_id"], UUID)
@@ -102,7 +147,7 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV7,
             default_id_type=DefaultIdType.UUIDV7,
         )
-        assert col.options()["default_id_type"] == DefaultIdType.UUIDV7
+        assert col.options().default_id.default_id_type == DefaultIdType.UUIDV7
         col.insert_one({"role": "probe"})
         doc = col.find_one({})
         assert isinstance(doc["_id"], UUID)
@@ -114,7 +159,7 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.DEFAULT,
             default_id_type=DefaultIdType.DEFAULT,
         )
-        assert col.options()["default_id_type"] == DefaultIdType.DEFAULT
+        assert col.options().default_id.default_id_type == DefaultIdType.DEFAULT
         col.drop()
 
         time.sleep(2)
@@ -122,7 +167,7 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.OBJECTID,
             default_id_type=DefaultIdType.OBJECTID,
         )
-        assert col.options()["default_id_type"] == DefaultIdType.OBJECTID
+        assert col.options().default_id.default_id_type == DefaultIdType.OBJECTID
         col.insert_one({"role": "probe"})
         doc = col.find_one({})
         assert isinstance(doc["_id"], ObjectId)
@@ -172,7 +217,8 @@ class TestDDLSync:
         sync_collection: Collection,
     ) -> None:
         options = sync_collection.options()
-        assert options["name"] == sync_collection.name
+        assert options.vector is not None
+        assert options.vector.dimension == 2
 
     @pytest.mark.skipif(
         ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"

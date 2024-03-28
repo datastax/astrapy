@@ -82,6 +82,11 @@ def test_imports() -> None:
         AdminDatabaseInfo,
         DatabaseInfo,
         CollectionInfo,
+        CollectionDefaultIDOptions,
+        CollectionVectorServiceOptions,
+        CollectionVectorOptions,
+        CollectionOptions,
+        CollectionDescriptor,
     )
     from astrapy.admin import (  # noqa: F401
         Environment,
@@ -124,9 +129,6 @@ def test_imports() -> None:
         uuid7,
         uuid8,
         UUID,
-    )
-    from astrapy.collection import (  # noqa: F401
-        EmbeddingService,
     )
     from astrapy import (  # noqa: F401
         Database,
