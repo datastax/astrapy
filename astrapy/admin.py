@@ -584,14 +584,14 @@ class AstraDBAdmin:
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
-        logger.info(f"creating database f{name}/(f{cloud_provider}, f{region})")
+        logger.info(f"creating database {name}/({cloud_provider}, {region})")
         cd_response = self._astra_db_ops.create_database(
             database_definition=database_definition,
             timeout_info=base_timeout_info(max_time_ms),
         )
         logger.info(
             "devops api returned from creating database "
-            f"f{name}/(f{cloud_provider}, f{region})"
+            f"{name}/({cloud_provider}, {region})"
         )
         if cd_response is not None and "id" in cd_response:
             new_database_id = cd_response["id"]
@@ -611,7 +611,7 @@ class AstraDBAdmin:
             # return the database instance
             logger.info(
                 f"finished creating database '{new_database_id}' = "
-                f"f{name}/(f{cloud_provider}, f{region})"
+                f"{name}/({cloud_provider}, {region})"
             )
             return AstraDBDatabaseAdmin.from_astra_db_admin(
                 id=new_database_id,
