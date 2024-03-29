@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import time
 from collections.abc import Iterator, AsyncIterator
 from typing import (
@@ -48,6 +49,9 @@ from astrapy.constants import (
 
 if TYPE_CHECKING:
     from astrapy.collection import AsyncCollection, Collection
+
+
+logger = logging.getLogger(__name__)
 
 
 BC = TypeVar("BC", bound="BaseCursor")
@@ -574,6 +578,7 @@ class Cursor(BaseCursor):
         else:
             pf_sort = None
 
+        logger.info(f"creating iterator on '{self._collection.name}'")
         iterator = self._collection._astra_db_collection.paginated_find(
             filter=self._filter,
             projection=pf_projection,
@@ -582,6 +587,7 @@ class Cursor(BaseCursor):
             prefetched=0,
             timeout_info=base_timeout_info(self._max_time_ms),
         )
+        logger.info(f"finished creating iterator on '{self._collection.name}'")
         self._started_time_s = time.time()
         return iterator
 
@@ -639,6 +645,7 @@ class Cursor(BaseCursor):
             started=False,
             overall_max_time_ms=max_time_ms,
         )
+        logger.info(f"running distinct() on '{self._collection.name}'")
         for document in d_cursor:
             for item in _extractor(document):
                 _item_hash = _hash_document(item)
@@ -646,6 +653,7 @@ class Cursor(BaseCursor):
                     _item_hashes.add(_item_hash)
                     distinct_items.append(item)
 
+        logger.info(f"finished running distinct() on '{self._collection.name}'")
         return distinct_items
 
 
@@ -778,6 +786,7 @@ class AsyncCursor(BaseCursor):
         else:
             pf_sort = None
 
+        logger.info(f"creating iterator on '{self._collection.name}'")
         iterator = self._collection._astra_db_collection.paginated_find(
             filter=self._filter,
             projection=pf_projection,
@@ -786,6 +795,7 @@ class AsyncCursor(BaseCursor):
             prefetched=0,
             timeout_info=base_timeout_info(self._max_time_ms),
         )
+        logger.info(f"finished creating iterator on '{self._collection.name}'")
         self._started_time_s = time.time()
         return iterator
 
@@ -871,6 +881,7 @@ class AsyncCursor(BaseCursor):
             started=False,
             overall_max_time_ms=max_time_ms,
         )
+        logger.info(f"running distinct() on '{self._collection.name}'")
         async for document in d_cursor:
             for item in _extractor(document):
                 _item_hash = _hash_document(item)
@@ -878,6 +889,7 @@ class AsyncCursor(BaseCursor):
                     _item_hashes.add(_item_hash)
                     distinct_items.append(item)
 
+        logger.info(f"finished running distinct() on '{self._collection.name}'")
         return distinct_items
 
 

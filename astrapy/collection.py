@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 
@@ -62,6 +63,9 @@ from astrapy.info import CollectionInfo, CollectionOptions
 
 if TYPE_CHECKING:
     from astrapy.operations import AsyncBaseOperation, BaseOperation
+
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_INSERT_MANY_CONCURRENCY = 20
@@ -342,6 +346,7 @@ class Collection:
             >>> my_coll.set_caller(caller_name="the_caller", caller_version="0.1.0")
         """
 
+        logger.info(f"setting caller to {caller_name}/{caller_version}")
         self._astra_db_collection.set_caller(
             caller_name=caller_name,
             caller_version=caller_version,
@@ -367,11 +372,13 @@ class Collection:
             CollectionOptions(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
 
+        logger.info(f"getting collections in search of '{self.name}'")
         self_descriptors = [
             coll_desc
             for coll_desc in self.database.list_collections(max_time_ms=max_time_ms)
             if coll_desc.name == self.name
         ]
+        logger.info(f"finished getting collections in search of '{self.name}'")
         if self_descriptors:
             return self_descriptors[0].options  # type: ignore[no-any-return]
         else:
@@ -511,10 +518,12 @@ class Collection:
         """
 
         _document = _collate_vector_to_document(document, vector)
+        logger.info(f"inserting one document in '{self.name}'")
         io_response = self._astra_db_collection.insert_one(
             _document,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished inserting one document in '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
@@ -648,18 +657,21 @@ class Collection:
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors)
+        logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: List[Dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
             options = {"ordered": True}
             inserted_ids: List[Any] = []
             for i in range(0, len(_documents), _chunk_size):
+                logger.info(f"inserting a chunk of documents in '{self.name}'")
                 chunk_response = self._astra_db_collection.insert_many(
                     documents=_documents[i : i + _chunk_size],
                     options=options,
                     partial_failures_allowed=True,
                     timeout_info=timeout_manager.remaining_timeout_info(),
                 )
+                logger.info(f"finished inserting a chunk of documents in '{self.name}'")
                 # accumulate the results in this call
                 chunk_inserted_ids = (chunk_response.get("status") or {}).get(
                     "insertedIds", []
@@ -683,6 +695,9 @@ class Collection:
                 raw_results=raw_results,
                 inserted_ids=inserted_ids,
             )
+            logger.info(
+                f"finished inserting {len(_documents)} documents in '{self.name}'"
+            )
             return full_result
 
         else:
@@ -694,12 +709,17 @@ class Collection:
                     def _chunk_insertor(
                         document_chunk: List[Dict[str, Any]]
                     ) -> Dict[str, Any]:
-                        return self._astra_db_collection.insert_many(
+                        logger.info(f"inserting a chunk of documents in '{self.name}'")
+                        im_response = self._astra_db_collection.insert_many(
                             documents=document_chunk,
                             options=options,
                             partial_failures_allowed=True,
                             timeout_info=timeout_manager.remaining_timeout_info(),
                         )
+                        logger.info(
+                            f"finished inserting a chunk of documents in '{self.name}'"
+                        )
+                        return im_response
 
                     raw_results = list(
                         executor.map(
@@ -711,15 +731,19 @@ class Collection:
                         )
                     )
             else:
-                raw_results = [
-                    self._astra_db_collection.insert_many(
-                        _documents[i : i + _chunk_size],
-                        options=options,
-                        partial_failures_allowed=True,
-                        timeout_info=timeout_manager.remaining_timeout_info(),
+                for i in range(0, len(_documents), _chunk_size):
+                    logger.info(f"inserting a chunk of documents in '{self.name}'")
+                    raw_results.append(
+                        self._astra_db_collection.insert_many(
+                            _documents[i : i + _chunk_size],
+                            options=options,
+                            partial_failures_allowed=True,
+                            timeout_info=timeout_manager.remaining_timeout_info(),
+                        )
                     )
-                    for i in range(0, len(_documents), _chunk_size)
-                ]
+                    logger.info(
+                        f"finished inserting a chunk of documents in '{self.name}'"
+                    )
             # recast raw_results
             inserted_ids = [
                 inserted_id
@@ -747,6 +771,9 @@ class Collection:
             full_result = InsertManyResult(
                 raw_results=raw_results,
                 inserted_ids=inserted_ids,
+            )
+            logger.info(
+                f"finished inserting {len(_documents)} documents in '{self.name}'"
             )
             return full_result
 
@@ -1134,10 +1161,12 @@ class Collection:
             by this method if this limit is encountered.
         """
 
+        logger.info("calling count_documents")
         cd_response = self._astra_db_collection.count_documents(
             filter=filter,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info("finished calling count_documents")
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
             if cd_response["status"].get("moreData", False):
@@ -1255,6 +1284,7 @@ class Collection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
+        logger.info(f"calling find_one_and_replace on '{self.name}'")
         fo_response = self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
@@ -1263,6 +1293,7 @@ class Collection:
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished calling find_one_and_replace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             ret_document = fo_response.get("data", {}).get("document")
             if ret_document is None:
@@ -1336,6 +1367,7 @@ class Collection:
         options = {
             "upsert": upsert,
         }
+        logger.info(f"calling find_one_and_replace on '{self.name}'")
         fo_response = self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
@@ -1343,6 +1375,7 @@ class Collection:
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished calling find_one_and_replace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
             _update_info = _prepare_update_info([fo_status])
@@ -1458,6 +1491,7 @@ class Collection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
+        logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = self._astra_db_collection.find_one_and_update(
             update=update,
             filter=filter,
@@ -1466,6 +1500,7 @@ class Collection:
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished calling find_one_and_update on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             ret_document = fo_response.get("data", {}).get("document")
             if ret_document is None:
@@ -1543,6 +1578,7 @@ class Collection:
         options = {
             "upsert": upsert,
         }
+        logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = self._astra_db_collection.find_one_and_update(
             update=update,
             sort=_sort,
@@ -1550,6 +1586,7 @@ class Collection:
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished calling find_one_and_update on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
             _update_info = _prepare_update_info([fo_status])
@@ -1631,14 +1668,17 @@ class Collection:
         um_statuses: List[Dict[str, Any]] = []
         must_proceed = True
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        logger.info(f"starting update_many on '{self.name}'")
         while must_proceed:
             options = {**base_options, **page_state_options}
+            logger.info(f"calling update_many on '{self.name}'")
             this_um_response = self._astra_db_collection.update_many(
                 update=update,
                 filter=filter,
                 options=options,
                 timeout_info=timeout_manager.remaining_timeout_info(),
             )
+            logger.info(f"finished calling update_many on '{self.name}'")
             this_um_status = this_um_response.get("status") or {}
             #
             # if errors, quit early
@@ -1671,6 +1711,7 @@ class Collection:
                     page_state_options = {}
 
         update_info = _prepare_update_info(um_statuses)
+        logger.info(f"finished update_many on '{self.name}'")
         return UpdateResult(
             raw_results=um_responses,
             update_info=update_info,
@@ -1742,12 +1783,14 @@ class Collection:
 
         _sort = _collate_vector_to_sort(sort, vector)
         _projection = normalize_optional_projection(projection)
+        logger.info(f"calling find_one_and_delete on '{self.name}'")
         fo_response = self._astra_db_collection.find_one_and_delete(
             sort=_sort,
             filter=filter,
             projection=_projection,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished calling find_one_and_delete on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             document = fo_response["data"]["document"]
             return document  # type: ignore[no-any-return]
@@ -1818,9 +1861,11 @@ class Collection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector)
+        logger.info(f"calling delete_one_by_predicate on '{self.name}'")
         do_response = self._astra_db_collection.delete_one_by_predicate(
             filter=filter, timeout_info=base_timeout_info(max_time_ms), sort=_sort
         )
+        logger.info(f"finished calling delete_one_by_predicate on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
             if deleted_count == -1:
@@ -1895,12 +1940,15 @@ class Collection:
         deleted_count = 0
         must_proceed = True
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        logger.info(f"starting delete_many on '{self.name}'")
         while must_proceed:
+            logger.info(f"calling delete_many on '{self.name}'")
             this_dm_response = self._astra_db_collection.delete_many(
                 filter=filter,
                 skip_error_check=True,
                 timeout_info=timeout_manager.remaining_timeout_info(),
             )
+            logger.info(f"finished calling delete_many on '{self.name}'")
             # if errors, quit early
             if this_dm_response.get("errors", []):
                 partial_result = DeleteResult(
@@ -1924,6 +1972,7 @@ class Collection:
                 deleted_count += this_dc
                 must_proceed = this_dm_response.get("status", {}).get("moreData", False)
 
+        logger.info(f"finished delete_many on '{self.name}'")
         return DeleteResult(
             deleted_count=deleted_count,
             raw_results=dm_responses,
@@ -1954,9 +2003,11 @@ class Collection:
             Use with caution.
         """
 
+        logger.info(f"calling unfiltered delete_many on '{self.name}'")
         dm_response = self._astra_db_collection.delete_many(
             filter={}, timeout_info=base_timeout_info(max_time_ms)
         )
+        logger.info(f"finished calling unfiltered delete_many on '{self.name}'")
         deleted_count = dm_response["status"]["deletedCount"]
         if deleted_count == -1:
             return {"ok": 1}
@@ -2030,6 +2081,7 @@ class Collection:
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered bulk_write concurrently.")
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        logger.info(f"startng a bulk write on '{self.name}'")
         if ordered:
             bulk_write_results: List[BulkWriteResult] = []
             for operation_i, operation in enumerate(requests):
@@ -2072,6 +2124,7 @@ class Collection:
                         exceptions=[dar_exception],
                     )
             full_bw_result = reduce_bulk_write_results(bulk_write_results)
+            logger.info(f"finished a bulk write on '{self.name}'")
             return full_bw_result
         else:
 
@@ -2134,6 +2187,7 @@ class Collection:
                         exceptions=all_dar_exceptions,
                     )
                 else:
+                    logger.info(f"finished a bulk write on '{self.name}'")
                     return reduce_bulk_write_results(bulk_write_successes)
 
     def drop(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
@@ -2178,7 +2232,10 @@ class Collection:
             which avoids using a deceased collection any further.
         """
 
-        return self.database.drop_collection(self, max_time_ms=max_time_ms)  # type: ignore[no-any-return]
+        logger.info(f"dropping collection '{self.name}' (self)")
+        drop_result = self.database.drop_collection(self, max_time_ms=max_time_ms)
+        logger.info(f"finished dropping collection '{self.name}' (self)")
+        return drop_result  # type: ignore[no-any-return]
 
     def command(
         self,
@@ -2201,12 +2258,16 @@ class Collection:
             >>> my_coll.command({"countDocuments": {}})
             {'status': {'count': 123}}
         """
-        return self.database.command(  # type: ignore[no-any-return]
+
+        logger.info(f"calling command on '{self.name}'")
+        command_result = self.database.command(
             body=body,
             namespace=self.namespace,
             collection_name=self.name,
             max_time_ms=max_time_ms,
         )
+        logger.info(f"finished calling command on '{self.name}'")
+        return command_result  # type: ignore[no-any-return]
 
 
 class AsyncCollection:
@@ -2405,6 +2466,7 @@ class AsyncCollection:
             >>> my_coll.set_caller(caller_name="the_caller", caller_version="0.1.0")
         """
 
+        logger.info(f"setting caller to {caller_name}/{caller_version}")
         self._astra_db_collection.set_caller(
             caller_name=caller_name,
             caller_version=caller_version,
@@ -2430,6 +2492,7 @@ class AsyncCollection:
             CollectionOptions(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
 
+        logger.info(f"getting collections in search of '{self.name}'")
         self_descriptors = [
             coll_desc
             async for coll_desc in self.database.list_collections(
@@ -2437,6 +2500,7 @@ class AsyncCollection:
             )
             if coll_desc.name == self.name
         ]
+        logger.info(f"finished getting collections in search of '{self.name}'")
         if self_descriptors:
             return self_descriptors[0].options  # type: ignore[no-any-return]
         else:
@@ -2579,10 +2643,12 @@ class AsyncCollection:
         """
 
         _document = _collate_vector_to_document(document, vector)
+        logger.info(f"inserting one document in '{self.name}'")
         io_response = await self._astra_db_collection.insert_one(
             _document,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished inserting one document in '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
@@ -2729,18 +2795,21 @@ class AsyncCollection:
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors)
+        logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: List[Dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
         if ordered:
             options = {"ordered": True}
             inserted_ids: List[Any] = []
             for i in range(0, len(_documents), _chunk_size):
+                logger.info(f"inserting a chunk of documents in '{self.name}'")
                 chunk_response = await self._astra_db_collection.insert_many(
                     documents=_documents[i : i + _chunk_size],
                     options=options,
                     partial_failures_allowed=True,
                     timeout_info=timeout_manager.remaining_timeout_info(),
                 )
+                logger.info(f"finished inserting a chunk of documents in '{self.name}'")
                 # accumulate the results in this call
                 chunk_inserted_ids = (chunk_response.get("status") or {}).get(
                     "insertedIds", []
@@ -2764,6 +2833,9 @@ class AsyncCollection:
                 raw_results=raw_results,
                 inserted_ids=inserted_ids,
             )
+            logger.info(
+                f"finished inserting {len(_documents)} documents in '{self.name}'"
+            )
             return full_result
 
         else:
@@ -2776,12 +2848,17 @@ class AsyncCollection:
                 document_chunk: List[DocumentType],
             ) -> Dict[str, Any]:
                 async with sem:
-                    return await self._astra_db_collection.insert_many(
+                    logger.info(f"inserting a chunk of documents in '{self.name}'")
+                    im_response = await self._astra_db_collection.insert_many(
                         document_chunk,
                         options=options,
                         partial_failures_allowed=True,
                         timeout_info=timeout_manager.remaining_timeout_info(),
                     )
+                    logger.info(
+                        f"finished inserting a chunk of documents in '{self.name}'"
+                    )
+                    return im_response
 
             if _concurrency > 1:
                 tasks = [
@@ -2824,6 +2901,9 @@ class AsyncCollection:
             full_result = InsertManyResult(
                 raw_results=raw_results,
                 inserted_ids=inserted_ids,
+            )
+            logger.info(
+                f"finished inserting {len(_documents)} documents in '{self.name}'"
             )
             return full_result
 
@@ -3245,10 +3325,12 @@ class AsyncCollection:
             by this method if this limit is encountered.
         """
 
+        logger.info("calling count_documents")
         cd_response = await self._astra_db_collection.count_documents(
             filter=filter,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info("finished calling count_documents")
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
             if cd_response["status"].get("moreData", False):
@@ -3372,6 +3454,7 @@ class AsyncCollection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
+        logger.info(f"calling find_one_and_replace on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
@@ -3380,6 +3463,7 @@ class AsyncCollection:
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished calling find_one_and_replace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             ret_document = fo_response.get("data", {}).get("document")
             if ret_document is None:
@@ -3469,6 +3553,7 @@ class AsyncCollection:
         options = {
             "upsert": upsert,
         }
+        logger.info(f"calling find_one_and_replace on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
@@ -3476,6 +3561,7 @@ class AsyncCollection:
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished calling find_one_and_replace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
             _update_info = _prepare_update_info([fo_status])
@@ -3597,6 +3683,7 @@ class AsyncCollection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
+        logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_update(
             update=update,
             filter=filter,
@@ -3605,6 +3692,7 @@ class AsyncCollection:
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished calling find_one_and_update on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             ret_document = fo_response.get("data", {}).get("document")
             if ret_document is None:
@@ -3697,6 +3785,7 @@ class AsyncCollection:
         options = {
             "upsert": upsert,
         }
+        logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_update(
             update=update,
             sort=_sort,
@@ -3704,6 +3793,7 @@ class AsyncCollection:
             options=options,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished calling find_one_and_update on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
             _update_info = _prepare_update_info([fo_status])
@@ -3796,14 +3886,17 @@ class AsyncCollection:
         um_statuses: List[Dict[str, Any]] = []
         must_proceed = True
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        logger.info(f"starting update_many on '{self.name}'")
         while must_proceed:
             options = {**base_options, **page_state_options}
+            logger.info(f"calling update_many on '{self.name}'")
             this_um_response = await self._astra_db_collection.update_many(
                 update=update,
                 filter=filter,
                 options=options,
                 timeout_info=timeout_manager.remaining_timeout_info(),
             )
+            logger.info(f"finished calling update_many on '{self.name}'")
             this_um_status = this_um_response.get("status") or {}
             #
             # if errors, quit early
@@ -3836,6 +3929,7 @@ class AsyncCollection:
                     page_state_options = {}
 
         update_info = _prepare_update_info(um_statuses)
+        logger.info(f"finished update_many on '{self.name}'")
         return UpdateResult(
             raw_results=um_responses,
             update_info=update_info,
@@ -3913,12 +4007,14 @@ class AsyncCollection:
 
         _sort = _collate_vector_to_sort(sort, vector)
         _projection = normalize_optional_projection(projection)
+        logger.info(f"calling find_one_and_delete on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_delete(
             sort=_sort,
             filter=filter,
             projection=_projection,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished calling find_one_and_delete on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             document = fo_response["data"]["document"]
             return document  # type: ignore[no-any-return]
@@ -3989,11 +4085,13 @@ class AsyncCollection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector)
+        logger.info(f"calling delete_one_by_predicate on '{self.name}'")
         do_response = await self._astra_db_collection.delete_one_by_predicate(
             filter=filter,
             timeout_info=base_timeout_info(max_time_ms),
             sort=_sort,
         )
+        logger.info(f"finished calling delete_one_by_predicate on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
             if deleted_count == -1:
@@ -4073,12 +4171,15 @@ class AsyncCollection:
         deleted_count = 0
         must_proceed = True
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        logger.info(f"starting delete_many on '{self.name}'")
         while must_proceed:
+            logger.info(f"calling delete_many on '{self.name}'")
             this_dm_response = await self._astra_db_collection.delete_many(
                 filter=filter,
                 skip_error_check=True,
                 timeout_info=timeout_manager.remaining_timeout_info(),
             )
+            logger.info(f"finished calling delete_many on '{self.name}'")
             # if errors, quit early
             if this_dm_response.get("errors", []):
                 partial_result = DeleteResult(
@@ -4102,6 +4203,7 @@ class AsyncCollection:
                 deleted_count += this_dc
                 must_proceed = this_dm_response.get("status", {}).get("moreData", False)
 
+        logger.info(f"finished delete_many on '{self.name}'")
         return DeleteResult(
             deleted_count=deleted_count,
             raw_results=dm_responses,
@@ -4146,9 +4248,11 @@ class AsyncCollection:
             which avoids using a deceased collection any further.
         """
 
+        logger.info(f"calling unfiltered delete_many on '{self.name}'")
         dm_response = await self._astra_db_collection.delete_many(
             filter={}, timeout_info=base_timeout_info(max_time_ms)
         )
+        logger.info(f"finished calling unfiltered delete_many on '{self.name}'")
         deleted_count = dm_response["status"]["deletedCount"]
         if deleted_count == -1:
             return {"ok": 1}
@@ -4238,6 +4342,7 @@ class AsyncCollection:
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered bulk_write concurrently.")
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        logger.info(f"startng a bulk write on '{self.name}'")
         if ordered:
             bulk_write_results: List[BulkWriteResult] = []
             for operation_i, operation in enumerate(requests):
@@ -4280,6 +4385,7 @@ class AsyncCollection:
                         exceptions=[dar_exception],
                     )
             full_bw_result = reduce_bulk_write_results(bulk_write_results)
+            logger.info(f"finished a bulk write on '{self.name}'")
             return full_bw_result
         else:
 
@@ -4335,6 +4441,7 @@ class AsyncCollection:
                     exceptions=all_dar_exceptions,
                 )
             else:
+                logger.info(f"finished a bulk write on '{self.name}'")
                 return reduce_bulk_write_results(bulk_write_successes)
 
     async def drop(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
@@ -4376,7 +4483,10 @@ class AsyncCollection:
             which avoids using a deceased collection any further.
         """
 
-        return await self.database.drop_collection(self, max_time_ms=max_time_ms)  # type: ignore[no-any-return]
+        logger.info(f"dropping collection '{self.name}' (self)")
+        drop_result = await self.database.drop_collection(self, max_time_ms=max_time_ms)
+        logger.info(f"finished dropping collection '{self.name}' (self)")
+        return drop_result  # type: ignore[no-any-return]
 
     async def command(
         self,
@@ -4399,9 +4509,13 @@ class AsyncCollection:
             >>> asyncio.await(my_async_coll.command({"countDocuments": {}}))
             {'status': {'count': 123}}
         """
-        return await self.database.command(  # type: ignore[no-any-return]
+
+        logger.info(f"calling command on '{self.name}'")
+        command_result = await self.database.command(
             body=body,
             namespace=self.namespace,
             collection_name=self.name,
             max_time_ms=max_time_ms,
         )
+        logger.info(f"finished calling command on '{self.name}'")
+        return command_result  # type: ignore[no-any-return]

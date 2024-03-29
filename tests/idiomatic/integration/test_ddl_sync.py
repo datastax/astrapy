@@ -90,7 +90,8 @@ class TestDDLSync:
             default_id_type=DefaultIdType.UUID,
         )
         assert col.options().default_id.default_id_type == DefaultIdType.UUID
-        col.insert_one({"role": "probe"})
+        i1res = col.insert_one({"role": "probe"})
+        assert isinstance(i1res.inserted_id, UUID)
         doc = col.find_one({})
         assert isinstance(doc["_id"], UUID)
         col.drop()
@@ -101,7 +102,9 @@ class TestDDLSync:
             default_id_type=DefaultIdType.UUIDV6,
         )
         assert col.options().default_id.default_id_type == DefaultIdType.UUIDV6
-        col.insert_one({"role": "probe"})
+        i1res = col.insert_one({"role": "probe"})
+        assert isinstance(i1res.inserted_id, UUID)
+        assert i1res.inserted_id.version == 6
         doc = col.find_one({})
         assert isinstance(doc["_id"], UUID)
         assert doc["_id"].version == 6
@@ -113,7 +116,9 @@ class TestDDLSync:
             default_id_type=DefaultIdType.UUIDV7,
         )
         assert col.options().default_id.default_id_type == DefaultIdType.UUIDV7
-        col.insert_one({"role": "probe"})
+        i1res = col.insert_one({"role": "probe"})
+        assert isinstance(i1res.inserted_id, UUID)
+        assert i1res.inserted_id.version == 7
         doc = col.find_one({})
         assert isinstance(doc["_id"], UUID)
         assert doc["_id"].version == 7
@@ -133,7 +138,8 @@ class TestDDLSync:
             default_id_type=DefaultIdType.OBJECTID,
         )
         assert col.options().default_id.default_id_type == DefaultIdType.OBJECTID
-        col.insert_one({"role": "probe"})
+        i1res = col.insert_one({"role": "probe"})
+        assert isinstance(i1res.inserted_id, ObjectId)
         doc = col.find_one({})
         assert isinstance(doc["_id"], ObjectId)
         col.drop()
