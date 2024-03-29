@@ -102,3 +102,8 @@ class DefaultIdType:
     UUIDV6 = "uuidv6"
     UUIDV7 = "uuidv7"
     DEFAULT = "uuid"
+
+
+__pdoc__ = {
+    "normalize_optional_projection": False,
+}

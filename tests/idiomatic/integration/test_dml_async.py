@@ -20,7 +20,7 @@ import pytest
 
 from astrapy import AsyncCollection
 from astrapy.results import DeleteResult, InsertOneResult
-from astrapy.exceptions import InsertManyException
+from astrapy.exceptions import InsertManyException, DataAPIResponseException
 from astrapy.constants import DocumentType, ReturnDocument, SortDocuments
 from astrapy.cursors import AsyncCursor
 from astrapy.operations import (
@@ -340,10 +340,24 @@ class TestDMLAsync:
         )  # NONPAGINATED
 
         # case 1000
-        # len(list(async_empty_collection.find(skip=Nski, limit=None, sort=None, filter=None)))
+        with pytest.raises(DataAPIResponseException):
+            len(
+                await _alist(
+                    async_empty_collection.find(
+                        skip=Nski, limit=None, sort=None, filter=None
+                    )
+                )
+            )
 
         # case 1001
-        # len(list(async_empty_collection.find(skip=Nski, limit=None, sort=None, filter=Nfil)))
+        with pytest.raises(DataAPIResponseException):
+            len(
+                await _alist(
+                    async_empty_collection.find(
+                        skip=Nski, limit=None, sort=None, filter=Nfil
+                    )
+                )
+            )
 
         # case 1010
         assert (
@@ -370,10 +384,24 @@ class TestDMLAsync:
         )  # NONPAGINATED
 
         # case 1100
-        # len(list(async_empty_collection.find(skip=Nski, limit=Nlim, sort=None, filter=None)))
+        with pytest.raises(DataAPIResponseException):
+            len(
+                await _alist(
+                    async_empty_collection.find(
+                        skip=Nski, limit=Nlim, sort=None, filter=None
+                    )
+                )
+            )
 
         # case 1101
-        # len(list(async_empty_collection.find(skip=Nski, limit=Nlim, sort=None, filter=Nfil)))
+        with pytest.raises(DataAPIResponseException):
+            len(
+                await _alist(
+                    async_empty_collection.find(
+                        skip=Nski, limit=Nlim, sort=None, filter=Nfil
+                    )
+                )
+            )
 
         # case 1110
         assert (

@@ -785,3 +785,10 @@ class MultiCallTimeoutManager:
         for use within the multi-call method.
         """
         return base_timeout_info(max_time_ms=self.remaining_timeout_ms())
+
+
+__pdoc__ = {
+    "base_timeout_info": False,
+    "to_dataapi_timeout_exception": False,
+    "MultiCallTimeoutManager": False,
+}

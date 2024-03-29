@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import time
 from abc import ABC, abstractmethod
@@ -38,8 +39,9 @@ if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
 
 
-DEFAULT_NEW_DATABASE_CLOUD_PROVIDER = "gcp"
-DEFAULT_NEW_DATABASE_REGION = "us-east1"
+logger = logging.getLogger(__name__)
+
+
 DATABASE_POLL_NAMESPACE_SLEEP_TIME = 2
 DATABASE_POLL_SLEEP_TIME = 15
 
@@ -425,6 +427,7 @@ class AstraDBAdmin:
             ... )
         """
 
+        logger.info(f"setting caller to {caller_name}/{caller_version}")
         self._caller_name = caller_name
         self._caller_version = caller_version
         self._astra_db_ops.set_caller(caller_name, caller_version)
@@ -458,9 +461,11 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
+        logger.info("getting databases")
         gd_list_response = self._astra_db_ops.get_databases(
             timeout_info=base_timeout_info(max_time_ms)
         )
+        logger.info("finished getting databases")
         if not isinstance(gd_list_response, list):
             raise DevOpsAPIException(
                 "Faulty response from get-databases DevOps API command.",
@@ -503,10 +508,12 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
+        logger.info(f"getting database info for {id}")
         gd_response = self._astra_db_ops.get_database(
             database=id,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished getting database info for {id}")
         if not isinstance(gd_response, dict):
             raise DevOpsAPIException(
                 "Faulty response from get-database DevOps API command.",
@@ -522,9 +529,10 @@ class AstraDBAdmin:
         self,
         name: str,
         *,
+        cloud_provider: str,
+        region: str,
+        namespace: Optional[str] = None,
         wait_until_active: bool = True,
-        cloud_provider: str = DEFAULT_NEW_DATABASE_CLOUD_PROVIDER,
-        region: str = DEFAULT_NEW_DATABASE_REGION,
         max_time_ms: Optional[int] = None,
     ) -> AstraDBDatabaseAdmin:
         """
@@ -532,13 +540,15 @@ class AstraDBAdmin:
 
         Args:
             name: the desired name for the database.
+            namespace: name for the one namespace the database starts with.
+                If omitted, DevOps API will use its default.
+            cloud_provider: one of 'aws', 'gcp' or 'azure'.
+            region: any of the available cloud regions.
             wait_until_active: if True (default), the method returns only after
                 the newly-created database is in ACTIVE state (a few minutes,
                 usually). If False, it will return right after issuing the
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status before working with it.
-            cloud_provider: one of 'aws', 'gcp' (default) or 'azure'.
-            region: any of the available cloud regions (default: 'us-east1').
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -559,25 +569,36 @@ class AstraDBAdmin:
         """
 
         database_definition = {
-            "name": name,
-            "tier": "serverless",
-            "cloudProvider": cloud_provider,
-            "region": region,
-            "capacityUnits": 1,
-            "dbType": "vector",
+            k: v
+            for k, v in {
+                "name": name,
+                "tier": "serverless",
+                "cloudProvider": cloud_provider,
+                "region": region,
+                "capacityUnits": 1,
+                "dbType": "vector",
+                "keyspace": namespace,
+            }.items()
+            if v is not None
         }
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
+        logger.info(f"creating database {name}/({cloud_provider}, {region})")
         cd_response = self._astra_db_ops.create_database(
             database_definition=database_definition,
             timeout_info=base_timeout_info(max_time_ms),
+        )
+        logger.info(
+            "devops api returned from creating database "
+            f"{name}/({cloud_provider}, {region})"
         )
         if cd_response is not None and "id" in cd_response:
             new_database_id = cd_response["id"]
             if wait_until_active:
                 last_status_seen = STATUS_PENDING
                 while last_status_seen in {STATUS_PENDING, STATUS_INITIALIZING}:
+                    logger.info(f"sleeping to poll for status of '{new_database_id}'")
                     time.sleep(DATABASE_POLL_SLEEP_TIME)
                     last_status_seen = self.database_info(
                         id=new_database_id,
@@ -588,6 +609,10 @@ class AstraDBAdmin:
                         f"Database {name} entered unexpected status {last_status_seen} after PENDING"
                     )
             # return the database instance
+            logger.info(
+                f"finished creating database '{new_database_id}' = "
+                f"{name}/({cloud_provider}, {region})"
+            )
             return AstraDBDatabaseAdmin.from_astra_db_admin(
                 id=new_database_id,
                 astra_db_admin=self,
@@ -638,15 +663,18 @@ class AstraDBAdmin:
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
+        logger.info(f"dropping database '{id}'")
         te_response = self._astra_db_ops.terminate_database(
             database=id,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"devops api returned from dropping database '{id}'")
         if te_response == id:
             if wait_until_active:
                 last_status_seen: Optional[str] = STATUS_TERMINATING
                 _db_name: Optional[str] = None
                 while last_status_seen == STATUS_TERMINATING:
+                    logger.info(f"sleeping to poll for status of '{id}'")
                     time.sleep(DATABASE_POLL_SLEEP_TIME)
                     #
                     detected_databases = [
@@ -666,6 +694,7 @@ class AstraDBAdmin:
                     raise DevOpsAPIException(
                         f"Database {id}{_name_desc} entered unexpected status {last_status_seen} after PENDING"
                     )
+            logger.info(f"finished dropping database '{id}'")
             return {"ok": 1}
         else:
             raise DevOpsAPIException(
@@ -1022,6 +1051,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ... )
         """
 
+        logger.info(f"setting caller to {caller_name}/{caller_version}")
         self._astra_db_admin.set_caller(caller_name, caller_version)
 
     @staticmethod
@@ -1144,10 +1174,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             'us-east1'
         """
 
-        return self._astra_db_admin.database_info(  # type: ignore[no-any-return]
+        logger.info(f"getting info ('{self.id}')")
+        req_response = self._astra_db_admin.database_info(
             id=self.id,
             max_time_ms=max_time_ms,
         )
+        logger.info(f"finished getting info ('{self.id}')")
+        return req_response  # type: ignore[no-any-return]
 
     def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
         """
@@ -1164,7 +1197,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_namespace']
         """
 
+        logger.info(f"getting namespaces ('{self.id}')")
         info = self.info(max_time_ms=max_time_ms)
+        logger.info(f"finished getting namespaces ('{self.id}')")
         if info.raw_info is None:
             raise DevOpsAPIException("Could not get the namespace list.")
         else:
@@ -1213,15 +1248,20 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
+        logger.info(f"creating namespace '{name}' on '{self.id}'")
         cn_response = self._astra_db_admin._astra_db_ops.create_keyspace(
             database=self.id,
             keyspace=name,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(
+            f"devops api returned from creating namespace '{name}' on '{self.id}'"
+        )
         if cn_response is not None and name == cn_response.get("name"):
             if wait_until_active:
                 last_status_seen = STATUS_MAINTENANCE
                 while last_status_seen == STATUS_MAINTENANCE:
+                    logger.info(f"sleeping to poll for status of '{self.id}'")
                     time.sleep(DATABASE_POLL_NAMESPACE_SLEEP_TIME)
                     last_status_seen = self.info(
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
@@ -1233,6 +1273,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 # is the namespace found?
                 if name not in self.list_namespaces():
                     raise DevOpsAPIException("Could not create the namespace.")
+            logger.info(f"finished creating namespace '{name}' on '{self.id}'")
             return {"ok": 1}
         else:
             raise DevOpsAPIException(
@@ -1281,15 +1322,20 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
+        logger.info(f"dropping namespace '{name}' on '{self.id}'")
         dk_response = self._astra_db_admin._astra_db_ops.delete_keyspace(
             database=self.id,
             keyspace=name,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(
+            f"devops api returned from dropping namespace '{name}' on '{self.id}'"
+        )
         if dk_response == name:
             if wait_until_active:
                 last_status_seen = STATUS_MAINTENANCE
                 while last_status_seen == STATUS_MAINTENANCE:
+                    logger.info(f"sleeping to poll for status of '{self.id}'")
                     time.sleep(DATABASE_POLL_NAMESPACE_SLEEP_TIME)
                     last_status_seen = self.info(
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
@@ -1301,6 +1347,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 # is the namespace found?
                 if name in self.list_namespaces():
                     raise DevOpsAPIException("Could not drop the namespace.")
+            logger.info(f"finished dropping namespace '{name}' on '{self.id}'")
             return {"ok": 1}
         else:
             raise DevOpsAPIException(
@@ -1350,11 +1397,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             which avoids using a deceased database any further.
         """
 
+        logger.info(f"dropping this database ('{self.id}')")
         return self._astra_db_admin.drop_database(  # type: ignore[no-any-return]
             id=self.id,
             wait_until_active=wait_until_active,
             max_time_ms=max_time_ms,
         )
+        logger.info(f"finished dropping this database ('{self.id}')")
 
     def get_database(
         self,

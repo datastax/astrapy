@@ -113,6 +113,43 @@ The package comes with its own set of exceptions, arranged in this hierarchy:
 For more information, and code examples, check out the docstrings and consult
 the API reference linked above.
 
+### Working with dates
+
+Date and datetime objects, i.e. instances of the standard library
+`datetime.datetime` and `datetime.date` classes, can be used anywhere in documents:
+
+```python
+import datetime
+import astrapy
+
+my_client = astrapy.DataAPIClient("AstraCS:...")
+my_database = my_client.get_database_by_api_endpoint(
+   "https://01234567-....apps.astra.datastax.com"
+)
+my_collection = my_database.dreams
+
+my_collection.insert_one({"when": datetime.datetime.now()})
+my_collection.insert_one({"date_of_birth": datetime.date(2000, 1, 1)})
+
+my_collection.update_one(
+    {"registered_at": datetime.date(1999, 11, 14)},
+    {"$set": {"message": "happy Sunday!"}},
+)
+
+print(
+    my_collection.find_one(
+        {"date_of_birth": {"$lt": datetime.date(2001, 1, 1)}},
+        projection={"_id": False},
+    )
+)
+# This would print:
+#    {'date_of_birth': datetime.datetime(2000, 1, 1, 0, 0)}
+```
+
+_**Note**: reads from a collection will always_
+_return the `datetime` class regardless of wheter a `date` or a `datetime` was provided_
+_in the insertion._
+
 ### Working with ObjectIds and UUIDs
 
 Astrapy repackages the ObjectId from `bson` and the UUID class and utilities

@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from types import TracebackType
 from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
 
@@ -37,6 +39,9 @@ from astrapy.admin import parse_api_endpoint, fetch_database_info
 if TYPE_CHECKING:
     from astrapy.collection import AsyncCollection, Collection
     from astrapy.admin import AstraDBDatabaseAdmin
+
+
+logger = logging.getLogger(__name__)
 
 
 def _validate_create_collection_options(
@@ -280,6 +285,8 @@ class Database:
         Example:
             >>> my_db.set_caller(caller_name="the_caller", caller_version="0.1.0")
         """
+
+        logger.info(f"setting caller to {caller_name}/{caller_version}")
         self._astra_db.set_caller(
             caller_name=caller_name,
             caller_version=caller_version,
@@ -305,12 +312,14 @@ class Database:
             between the `region` and the `raw_info["region"]` attributes.
         """
 
+        logger.info("getting database info")
         database_info = fetch_database_info(
             self._astra_db.api_endpoint,
             token=self._astra_db.token,
             namespace=self.namespace,
         )
         if database_info is not None:
+            logger.info("finished getting database info")
             return database_info
         else:
             raise DevOpsAPIException(
@@ -501,6 +510,7 @@ class Database:
             _check_exists = check_exists
         existing_names: List[str]
         if _check_exists:
+            logger.info(f"checking collection existence for '{name}'")
             existing_names = self.list_collection_names(
                 namespace=namespace, max_time_ms=max_time_ms
             )
@@ -520,6 +530,7 @@ class Database:
         else:
             service_dict = None
 
+        logger.info(f"creating collection '{name}'")
         driver_db.create_collection(
             name,
             options=_options,
@@ -528,6 +539,7 @@ class Database:
             service_dict=service_dict,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished creating collection '{name}'")
         return self.get_collection(name, namespace=namespace)
 
     @recast_method_sync
@@ -567,16 +579,20 @@ class Database:
         if isinstance(name_or_collection, Collection):
             _namespace = name_or_collection.namespace
             _name: str = name_or_collection.name
+            logger.info(f"dropping collection '{_name}'")
             dc_response = self._astra_db.copy(namespace=_namespace).delete_collection(
                 _name,
                 timeout_info=base_timeout_info(max_time_ms),
             )
+            logger.info(f"finished dropping collection '{_name}'")
             return dc_response.get("status", {})  # type: ignore[no-any-return]
         else:
+            logger.info(f"dropping collection '{name_or_collection}'")
             dc_response = self._astra_db.delete_collection(
                 name_or_collection,
                 timeout_info=base_timeout_info(max_time_ms),
             )
+            logger.info(f"finished dropping collection '{name_or_collection}'")
             return dc_response.get("status", {})  # type: ignore[no-any-return]
 
     @recast_method_sync
@@ -614,6 +630,7 @@ class Database:
             _client = self._astra_db.copy(namespace=namespace)
         else:
             _client = self._astra_db
+        logger.info("getting collections")
         gc_response = _client.get_collections(
             options={"explain": True}, timeout_info=base_timeout_info(max_time_ms)
         )
@@ -624,6 +641,7 @@ class Database:
             )
         else:
             # we know this is a list of dicts, to marshal into "descriptors"
+            logger.info("finished getting collections")
             return CommandCursor(
                 address=self._astra_db.base_url,
                 items=[
@@ -655,11 +673,8 @@ class Database:
             ['a_collection', 'another_col']
         """
 
-        if namespace:
-            _client = self._astra_db.copy(namespace=namespace)
-        else:
-            _client = self._astra_db
-        gc_response = _client.get_collections(
+        logger.info("getting collection names")
+        gc_response = self._astra_db.copy(namespace=namespace).get_collections(
             timeout_info=base_timeout_info(max_time_ms)
         )
         if "collections" not in gc_response.get("status", {}):
@@ -669,6 +684,7 @@ class Database:
             )
         else:
             # we know this is a list of strings
+            logger.info("finished getting collection names")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
     @recast_method_sync
@@ -709,15 +725,23 @@ class Database:
             _client = self._astra_db
         if collection_name:
             _collection = _client.collection(collection_name)
-            return _collection.post_raw_request(
+            logger.info(f"issuing custom command to API (on '{collection_name}')")
+            req_response = _collection.post_raw_request(
                 body=body,
                 timeout_info=base_timeout_info(max_time_ms),
             )
+            logger.info(
+                f"finished issuing custom command to API (on '{collection_name}')"
+            )
+            return req_response
         else:
-            return _client.post_raw_request(
+            logger.info("issuing custom command to API")
+            req_response = _client.post_raw_request(
                 body=body,
                 timeout_info=base_timeout_info(max_time_ms),
             )
+            logger.info("finished issuing custom command to API")
+            return req_response
 
     def get_database_admin(
         self,
@@ -982,6 +1006,7 @@ class AsyncDatabase:
             >>> my_db.set_caller(caller_name="the_caller", caller_version="0.1.0")
         """
 
+        logger.info(f"setting caller to {caller_name}/{caller_version}")
         self._astra_db.set_caller(
             caller_name=caller_name,
             caller_version=caller_version,
@@ -1007,12 +1032,14 @@ class AsyncDatabase:
             between the `region` and the `raw_info["region"]` attributes.
         """
 
+        logger.info("getting database info")
         database_info = fetch_database_info(
             self._astra_db.api_endpoint,
             token=self._astra_db.token,
             namespace=self.namespace,
         )
         if database_info is not None:
+            logger.info("finished getting database info")
             return database_info
         else:
             raise DevOpsAPIException(
@@ -1210,6 +1237,7 @@ class AsyncDatabase:
             _check_exists = check_exists
         existing_names: List[str]
         if _check_exists:
+            logger.info(f"checking collection existence for '{name}'")
             existing_names = await self.list_collection_names(
                 namespace=namespace, max_time_ms=max_time_ms
             )
@@ -1229,6 +1257,7 @@ class AsyncDatabase:
         else:
             service_dict = None
 
+        logger.info(f"creating collection '{name}'")
         await driver_db.create_collection(
             name,
             options=_options,
@@ -1237,6 +1266,7 @@ class AsyncDatabase:
             service_dict=service_dict,
             timeout_info=base_timeout_info(max_time_ms),
         )
+        logger.info(f"finished creating collection '{name}'")
         return await self.get_collection(name, namespace=namespace)
 
     @recast_method_async
@@ -1276,18 +1306,22 @@ class AsyncDatabase:
         if isinstance(name_or_collection, AsyncCollection):
             _namespace = name_or_collection.namespace
             _name = name_or_collection.name
+            logger.info(f"dropping collection '{_name}'")
             dc_response = await self._astra_db.copy(
                 namespace=_namespace
             ).delete_collection(
                 _name,
                 timeout_info=base_timeout_info(max_time_ms),
             )
+            logger.info(f"finished dropping collection '{_name}'")
             return dc_response.get("status", {})  # type: ignore[no-any-return]
         else:
+            logger.info(f"dropping collection '{name_or_collection}'")
             dc_response = await self._astra_db.delete_collection(
                 name_or_collection,
                 timeout_info=base_timeout_info(max_time_ms),
             )
+            logger.info(f"finished dropping collection '{name_or_collection}'")
             return dc_response.get("status", {})  # type: ignore[no-any-return]
 
     @recast_method_sync
@@ -1328,6 +1362,7 @@ class AsyncDatabase:
             _client = self._astra_db.copy(namespace=namespace)
         else:
             _client = self._astra_db
+        logger.info("getting collections")
         gc_response = _client.to_sync().get_collections(
             options={"explain": True},
             timeout_info=base_timeout_info(max_time_ms),
@@ -1339,6 +1374,7 @@ class AsyncDatabase:
             )
         else:
             # we know this is a list of dicts, to marshal into "descriptors"
+            logger.info("finished getting collections")
             return AsyncCommandCursor(
                 address=self._astra_db.base_url,
                 items=[
@@ -1370,6 +1406,7 @@ class AsyncDatabase:
             ['a_collection', 'another_col']
         """
 
+        logger.info("getting collection names")
         gc_response = await self._astra_db.copy(namespace=namespace).get_collections(
             timeout_info=base_timeout_info(max_time_ms)
         )
@@ -1380,6 +1417,7 @@ class AsyncDatabase:
             )
         else:
             # we know this is a list of strings
+            logger.info("finished getting collection names")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
     @recast_method_async
@@ -1423,15 +1461,23 @@ class AsyncDatabase:
             _client = self._astra_db
         if collection_name:
             _collection = await _client.collection(collection_name)
-            return await _collection.post_raw_request(
+            logger.info(f"issuing custom command to API (on '{collection_name}')")
+            req_response = await _collection.post_raw_request(
                 body=body,
                 timeout_info=base_timeout_info(max_time_ms),
             )
+            logger.info(
+                f"finished issuing custom command to API (on '{collection_name}')"
+            )
+            return req_response
         else:
-            return await _client.post_raw_request(
+            logger.info("issuing custom command to API")
+            req_response = await _client.post_raw_request(
                 body=body,
                 timeout_info=base_timeout_info(max_time_ms),
             )
+            logger.info("finished issuing custom command to API")
+            return req_response
 
     def get_database_admin(
         self,

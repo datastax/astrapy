@@ -19,7 +19,7 @@ from typing import Any, Dict, List
 
 from astrapy import Collection
 from astrapy.results import DeleteResult, InsertOneResult
-from astrapy.exceptions import InsertManyException
+from astrapy.exceptions import InsertManyException, DataAPIResponseException
 from astrapy.constants import ReturnDocument, SortDocuments
 from astrapy.operations import (
     InsertOne,
@@ -278,10 +278,24 @@ class TestDMLSync:
         )  # NONPAGINATED
 
         # case 1000
-        # len(list(sync_empty_collection.find(skip=Nski, limit=None, sort=None, filter=None)))
+        with pytest.raises(DataAPIResponseException):
+            len(
+                list(
+                    sync_empty_collection.find(
+                        skip=Nski, limit=None, sort=None, filter=None
+                    )
+                )
+            )
 
         # case 1001
-        # len(list(sync_empty_collection.find(skip=Nski, limit=None, sort=None, filter=Nfil)))
+        with pytest.raises(DataAPIResponseException):
+            len(
+                list(
+                    sync_empty_collection.find(
+                        skip=Nski, limit=None, sort=None, filter=Nfil
+                    )
+                )
+            )
 
         # case 1010
         assert (
@@ -308,10 +322,24 @@ class TestDMLSync:
         )  # NONPAGINATED
 
         # case 1100
-        # len(list(sync_empty_collection.find(skip=Nski, limit=Nlim, sort=None, filter=None)))
+        with pytest.raises(DataAPIResponseException):
+            len(
+                list(
+                    sync_empty_collection.find(
+                        skip=Nski, limit=Nlim, sort=None, filter=None
+                    )
+                )
+            )
 
         # case 1101
-        # len(list(sync_empty_collection.find(skip=Nski, limit=Nlim, sort=None, filter=Nfil)))
+        with pytest.raises(DataAPIResponseException):
+            len(
+                list(
+                    sync_empty_collection.find(
+                        skip=Nski, limit=Nlim, sort=None, filter=Nfil
+                    )
+                )
+            )
 
         # case 1110
         assert (
