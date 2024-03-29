@@ -27,6 +27,8 @@ NAMESPACE_POLL_SLEEP_TIME = 2
 NAMESPACE_TIMEOUT = 30
 DATABASE_POLL_SLEEP_TIME = 10
 DATABASE_TIMEOUT = 480
+PRE_DROP_SAFETY_POLL_INTERVAL = 5
+PRE_DROP_SAFETY_TIMEOUT = 120
 
 
 DO_IDIOMATIC_ADMIN_TESTS: bool
@@ -107,6 +109,7 @@ class TestAdmin:
         # create a db (wait)
         db_admin = admin.create_database(
             name=db_name,
+            namespace="custom_namespace",
             wait_until_active=True,
             cloud_provider=db_provider,
             region=db_region,
@@ -118,7 +121,7 @@ class TestAdmin:
 
         # list nss
         namespaces1 = set(db_admin.list_namespaces())
-        assert namespaces1 == {"default_keyspace"}
+        assert namespaces1 == {"custom_namespace"}
 
         # create two namespaces
         w_create_ns_response = db_admin.create_namespace(
@@ -171,7 +174,12 @@ class TestAdmin:
         namespaces1b = set(db_admin.list_namespaces())
         assert namespaces1b == namespaces1
 
-        # drop db and check
+        # drop db and check. We wait a little due to "nontransactional cluster md"
+        wait_until_true(
+            poll_interval=PRE_DROP_SAFETY_POLL_INTERVAL,
+            max_seconds=PRE_DROP_SAFETY_TIMEOUT,
+            condition=lambda: db_admin.info().status == "ACTIVE",
+        )
         db_drop_response = db_admin.drop()
         assert db_drop_response == {"ok": 1}
 
@@ -273,8 +281,19 @@ class TestAdmin:
         # drop databases: the w one through the admin, the nw using its db-admin
         #   (this covers most cases if combined with the
         #   (w, using db-admin) of test_astra_db_database_admin)
-        db_nw_admin = admin.get_database_admin(created_db_id_nw)
-        drop_nw_response = db_nw_admin.drop(wait_until_active=False)
+        assert db_admin_nw == admin.get_database_admin(created_db_id_nw)
+        # drop db and check. We wait a little due to "nontransactional cluster md"
+        wait_until_true(
+            poll_interval=PRE_DROP_SAFETY_POLL_INTERVAL,
+            max_seconds=PRE_DROP_SAFETY_TIMEOUT,
+            condition=lambda: db_admin_nw.info().status == "ACTIVE",
+        )
+        wait_until_true(
+            poll_interval=PRE_DROP_SAFETY_POLL_INTERVAL,
+            max_seconds=PRE_DROP_SAFETY_TIMEOUT,
+            condition=lambda: db_admin_w.info().status == "ACTIVE",
+        )
+        drop_nw_response = db_admin_nw.drop(wait_until_active=False)
         assert drop_nw_response == {"ok": 1}
         drop_w_response = admin.drop_database(created_db_id_w)
         assert drop_w_response == {"ok": 1}

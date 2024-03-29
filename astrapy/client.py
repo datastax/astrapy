@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
@@ -30,6 +31,9 @@ from astrapy.admin import (
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
     from astrapy.admin import AstraDBAdmin
+
+
+logger = logging.getLogger(__name__)
 
 
 class DataAPIClient:
@@ -180,6 +184,7 @@ class DataAPIClient:
             >>> my_client.set_caller(caller_name="the_caller", caller_version="0.1.0")
         """
 
+        logger.info(f"setting caller to {caller_name}/{caller_version}")
         self._caller_name = caller_name
         self._caller_version = caller_version
 
@@ -243,12 +248,14 @@ class DataAPIClient:
             _region = region
         else:
             if this_db_info is None:
+                logger.info(f"fetching raw database info for {id}")
                 this_db_info = fetch_raw_database_info_from_id_token(
                     id=id,
                     token=self.token,
                     environment=self.environment,
                     max_time_ms=max_time_ms,
                 )
+                logger.info(f"finished fetching raw database info for {id}")
             _region = this_db_info["info"]["region"]
 
         _token = token or self.token

@@ -90,7 +90,8 @@ class TestDDLAsync:
             default_id_type=DefaultIdType.UUID,
         )
         assert (await acol.options()).default_id.default_id_type == DefaultIdType.UUID
-        await acol.insert_one({"role": "probe"})
+        i1res = await acol.insert_one({"role": "probe"})
+        assert isinstance(i1res.inserted_id, UUID)
         doc = await acol.find_one({})
         assert isinstance(doc["_id"], UUID)
         await acol.drop()
@@ -101,7 +102,9 @@ class TestDDLAsync:
             default_id_type=DefaultIdType.UUIDV6,
         )
         assert (await acol.options()).default_id.default_id_type == DefaultIdType.UUIDV6
-        await acol.insert_one({"role": "probe"})
+        i1res = await acol.insert_one({"role": "probe"})
+        assert isinstance(i1res.inserted_id, UUID)
+        assert i1res.inserted_id.version == 6
         doc = await acol.find_one({})
         assert isinstance(doc["_id"], UUID)
         assert doc["_id"].version == 6
@@ -113,7 +116,9 @@ class TestDDLAsync:
             default_id_type=DefaultIdType.UUIDV7,
         )
         assert (await acol.options()).default_id.default_id_type == DefaultIdType.UUIDV7
-        await acol.insert_one({"role": "probe"})
+        i1res = await acol.insert_one({"role": "probe"})
+        assert isinstance(i1res.inserted_id, UUID)
+        assert i1res.inserted_id.version == 7
         doc = await acol.find_one({})
         assert isinstance(doc["_id"], UUID)
         assert doc["_id"].version == 7
@@ -137,7 +142,8 @@ class TestDDLAsync:
         assert (
             await acol.options()
         ).default_id.default_id_type == DefaultIdType.OBJECTID
-        await acol.insert_one({"role": "probe"})
+        i1res = await acol.insert_one({"role": "probe"})
+        assert isinstance(i1res.inserted_id, ObjectId)
         doc = await acol.find_one({})
         assert isinstance(doc["_id"], ObjectId)
         await acol.drop()
