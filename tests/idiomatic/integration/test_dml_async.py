@@ -1491,6 +1491,42 @@ class TestDMLAsync:
         assert {"a": 10} in found
         assert {"a": 2, "b": 1} in found
 
+    @pytest.mark.skipif(
+        not is_vector_service_available(), reason="No 'service' on this database"
+    )
+    @pytest.mark.describe("test of bulk_write with vectorize, async")
+    async def test_collection_bulk_write_vectorize_async(
+        self,
+        async_empty_service_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_service_collection
+
+        bw_ops = [
+            AsyncInsertOne({"a": 1}, vectorize="The cat is on the table."),
+            AsyncInsertMany(
+                [{"a": 2}, {"z": 0}],
+                vectorize=[
+                    "That is a fine spaghetti dish!",
+                    "I am not debating the effectiveness of such approach...",
+                ],
+            ),
+            AsyncUpdateOne(
+                {},
+                {"$set": {"b": 1}},
+                vectorize="Oh, I love a nice bolognese pasta meal!",
+            ),
+            AsyncReplaceOne({}, {"a": 10}, vectorize="The kitty sits on the desk."),
+            AsyncDeleteOne({}, vectorize="I don't argue with the proposed plan..."),
+        ]
+        await acol.bulk_write(bw_ops)
+        found = [
+            {k: v for k, v in doc.items() if k != "_id"}
+            async for doc in acol.find({}, projection=["a", "b"])
+        ]
+        assert len(found) == 2
+        assert {"a": 10} in found
+        assert {"a": 2, "b": 1} in found
+
     @pytest.mark.describe("test of the various ids in the document id field, async")
     async def test_collection_ids_as_doc_id_async(
         self,
