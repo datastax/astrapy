@@ -149,7 +149,7 @@ class InsertMany(BaseOperation):
     Attributes:
         documents: the list document to insert.
         vectors: an optional list of vectors to enrich the documents at insertion.
-        vectorizes: an optional list of texts achieving the same effect as `vectors`
+        vectorize: an optional list of texts achieving the same effect as `vectors`
             except through an embedding service, if one is configured for the collection.
         ordered: whether the inserts should be done in sequence.
         chunk_size: how many documents to include in a single API request.
@@ -161,7 +161,7 @@ class InsertMany(BaseOperation):
 
     documents: Iterable[DocumentType]
     vectors: Optional[Iterable[Optional[VectorType]]]
-    vectorizes: Optional[Iterable[Optional[str]]]
+    vectorize: Optional[Iterable[Optional[str]]]
     ordered: bool
     chunk_size: Optional[int]
     concurrency: Optional[int]
@@ -171,7 +171,7 @@ class InsertMany(BaseOperation):
         documents: Iterable[DocumentType],
         *,
         vectors: Optional[Iterable[Optional[VectorType]]] = None,
-        vectorizes: Optional[Iterable[Optional[str]]] = None,
+        vectorize: Optional[Iterable[Optional[str]]] = None,
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
@@ -179,7 +179,7 @@ class InsertMany(BaseOperation):
         self.documents = documents
         self.ordered = ordered
         self.vectors = vectors
-        self.vectorizes = vectorizes
+        self.vectorize = vectorize
         self.chunk_size = chunk_size
         self.concurrency = concurrency
 
@@ -200,7 +200,7 @@ class InsertMany(BaseOperation):
         op_result: InsertManyResult = collection.insert_many(
             documents=self.documents,
             vectors=self.vectors,
-            vectorizes=self.vectorizes,
+            vectorize=self.vectorize,
             ordered=self.ordered,
             chunk_size=self.chunk_size,
             concurrency=self.concurrency,
@@ -564,7 +564,7 @@ class AsyncInsertMany(AsyncBaseOperation):
     Attributes:
         documents: the list document to insert.
         vectors: an optional list of vectors to enrich the documents at insertion.
-        vectorizes: an optional list of texts achieving the same effect as `vectors`
+        vectorize: an optional list of texts achieving the same effect as `vectors`
             except through an embedding service, if one is configured for the collection.
         ordered: whether the inserts should be done in sequence.
         chunk_size: how many documents to include in a single API request.
@@ -576,7 +576,7 @@ class AsyncInsertMany(AsyncBaseOperation):
 
     documents: Iterable[DocumentType]
     vectors: Optional[Iterable[Optional[VectorType]]]
-    vectorizes: Optional[Iterable[Optional[str]]]
+    vectorize: Optional[Iterable[Optional[str]]]
     ordered: bool
     chunk_size: Optional[int]
     concurrency: Optional[int]
@@ -586,14 +586,14 @@ class AsyncInsertMany(AsyncBaseOperation):
         documents: Iterable[DocumentType],
         *,
         vectors: Optional[Iterable[Optional[VectorType]]] = None,
-        vectorizes: Optional[Iterable[Optional[str]]] = None,
+        vectorize: Optional[Iterable[Optional[str]]] = None,
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
     ) -> None:
         self.documents = documents
         self.vectors = vectors
-        self.vectorizes = vectorizes
+        self.vectorize = vectorize
         self.ordered = ordered
         self.chunk_size = chunk_size
         self.concurrency = concurrency
@@ -615,7 +615,7 @@ class AsyncInsertMany(AsyncBaseOperation):
         op_result: InsertManyResult = await collection.insert_many(
             documents=self.documents,
             vectors=self.vectors,
-            vectorizes=self.vectorizes,
+            vectorize=self.vectorize,
             ordered=self.ordered,
             chunk_size=self.chunk_size,
             concurrency=self.concurrency,

@@ -34,6 +34,8 @@ from astrapy.operations import (
 )
 from astrapy.ids import ObjectId, UUID
 
+from ..conftest import is_vector_service_available
+
 
 class TestDMLAsync:
     @pytest.mark.describe("test of collection count_documents, async")
@@ -1299,6 +1301,9 @@ class TestDMLAsync:
         assert set(resp_pr2.keys()) == {"f"}
         await acol.delete_all()
 
+    @pytest.mark.skipif(
+        not is_vector_service_available(), reason="No 'service' on this database"
+    )
     @pytest.mark.describe("test of vectorize in collection methods, async")
     async def test_collection_methods_vectorize_async(
         self,
@@ -1312,14 +1317,14 @@ class TestDMLAsync:
 
         await acol.insert_many(
             [{"t": "guide"}, {"t": "seeds"}],
-            vectorizes=[
+            vectorize=[
                 "This is the instructions manual. Read it!",
                 "Other plants rely on wind to propagate their seeds.",
             ],
         )
         await acol.insert_many(
             [{"t": "dog"}, {"t": "cat_novector"}, {"t": "spider"}],
-            vectorizes=[
+            vectorize=[
                 None,
                 None,
                 "The eye pattern is a primary criterion to the family.",

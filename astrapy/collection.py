@@ -179,26 +179,26 @@ def _collate_vector_to_document(
 def _collate_vectors_to_documents(
     documents: Iterable[DocumentType],
     vectors: Optional[Iterable[Optional[VectorType]]],
-    vectorizes: Optional[Iterable[Optional[str]]],
+    vectorize: Optional[Iterable[Optional[str]]],
 ) -> List[DocumentType]:
-    if vectors is None and vectorizes is None:
+    if vectors is None and vectorize is None:
         return list(documents)
     else:
         _documents = list(documents)
         _ndocs = len(_documents)
         _vectors = list(vectors) if vectors else [None] * _ndocs
-        _vectorizes = list(vectorizes) if vectorizes else [None] * _ndocs
+        _vectorize = list(vectorize) if vectorize else [None] * _ndocs
         if _ndocs != len(_vectors):
             raise ValueError(
                 "The `documents` and `vectors` parameters must have the same length"
             )
-        elif _ndocs != len(_vectorizes):
+        elif _ndocs != len(_vectorize):
             raise ValueError(
-                "The `documents` and `vectorizes` parameters must have the same length"
+                "The `documents` and `vectorize` parameters must have the same length"
             )
         return [
             _collate_vector_to_document(_doc, _vec, _vecize)
-            for _doc, _vec, _vecize in zip(_documents, _vectors, _vectorizes)
+            for _doc, _vec, _vecize in zip(_documents, _vectors, _vectorize)
         ]
 
 
@@ -604,7 +604,7 @@ class Collection:
         documents: Iterable[DocumentType],
         *,
         vectors: Optional[Iterable[Optional[VectorType]]] = None,
-        vectorizes: Optional[Iterable[Optional[str]]] = None,
+        vectorize: Optional[Iterable[Optional[str]]] = None,
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
@@ -626,7 +626,7 @@ class Collection:
                 specified in their "$vector" field already.
                 Passing vectors this way is indeed equivalent to the "$vector" field
                 of the documents, however the two are mutually exclusive.
-            vectorizes: an optional list of strings to be made into as many vectors
+            vectorize: an optional list of strings to be made into as many vectors
                 (one per document), if such a service is configured for the collection.
                 Passing this parameter is equivalent to providing a `$vectorize`
                 field in the documents themselves, however the two are mutually exclusive.
@@ -719,7 +719,7 @@ class Collection:
             _chunk_size = MAX_INSERT_NUM_DOCUMENTS
         else:
             _chunk_size = chunk_size
-        _documents = _collate_vectors_to_documents(documents, vectors, vectorizes)
+        _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: List[Dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
@@ -2783,7 +2783,7 @@ class AsyncCollection:
         documents: Iterable[DocumentType],
         *,
         vectors: Optional[Iterable[Optional[VectorType]]] = None,
-        vectorizes: Optional[Iterable[Optional[str]]] = None,
+        vectorize: Optional[Iterable[Optional[str]]] = None,
         ordered: bool = True,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
@@ -2805,7 +2805,7 @@ class AsyncCollection:
                 specified in their "$vector" field already.
                 Passing vectors this way is indeed equivalent to the "$vector" field
                 of the documents, however the two are mutually exclusive.
-            vectorizes: an optional list of strings to be made into as many vectors
+            vectorize: an optional list of strings to be made into as many vectors
                 (one per document), if such a service is configured for the collection.
                 Passing this parameter is equivalent to providing a `$vectorize`
                 field in the documents themselves, however the two are mutually exclusive.
@@ -2911,7 +2911,7 @@ class AsyncCollection:
             _chunk_size = MAX_INSERT_NUM_DOCUMENTS
         else:
             _chunk_size = chunk_size
-        _documents = _collate_vectors_to_documents(documents, vectors, vectorizes)
+        _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: List[Dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
