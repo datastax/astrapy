@@ -18,7 +18,13 @@ import logging
 from typing import Any, cast, Dict, Optional, TypedDict
 
 import httpx
-from astrapy.core.api import APIRequestError, api_request, raw_api_request
+from astrapy.core.api import (
+    APIRequestError,
+    api_request,
+    async_api_request,
+    raw_api_request,
+    async_raw_api_request,
+)
 
 from astrapy.core.utils import (
     http_methods,
@@ -45,8 +51,9 @@ class AstraDBOpsConstructorParams(TypedDict):
 
 
 class AstraDBOps:
-    # Initialize the shared httpx client as a class attribute
+    # Initialize the shared httpx clients as class attributes
     client = httpx.Client()
+    async_client = httpx.AsyncClient()
 
     def __init__(
         self,
@@ -140,6 +147,31 @@ class AstraDBOps:
         )
         return raw_response
 
+    async def _async_ops_request(
+        self,
+        method: str,
+        path: str,
+        options: Optional[Dict[str, Any]] = None,
+        json_data: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
+    ) -> httpx.Response:
+        _options = {} if options is None else options
+
+        raw_response = await async_raw_api_request(
+            client=self.async_client,
+            base_url=self.base_url,
+            auth_header=DEFAULT_DEV_OPS_AUTH_HEADER,
+            token=self.token,
+            method=method,
+            json_data=json_data,
+            url_params=_options,
+            path=path,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
+            timeout=to_httpx_timeout(timeout_info),
+        )
+        return raw_response
+
     def _json_ops_request(
         self,
         method: str,
@@ -152,6 +184,32 @@ class AstraDBOps:
 
         response = api_request(
             client=self.client,
+            base_url=self.base_url,
+            auth_header="Authorization",
+            token=self.token,
+            method=method,
+            json_data=json_data,
+            url_params=_options,
+            path=path,
+            skip_error_check=False,
+            caller_name=None,
+            caller_version=None,
+            timeout=to_httpx_timeout(timeout_info),
+        )
+        return response
+
+    async def _async_json_ops_request(
+        self,
+        method: str,
+        path: str,
+        options: Optional[Dict[str, Any]] = None,
+        json_data: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
+    ) -> OPS_API_RESPONSE:
+        _options = {} if options is None else options
+
+        response = await async_api_request(
+            client=self.async_client,
             base_url=self.base_url,
             auth_header="Authorization",
             token=self.token,
@@ -189,6 +247,29 @@ class AstraDBOps:
 
         return response
 
+    async def async_get_databases(
+        self,
+        options: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
+    ) -> OPS_API_RESPONSE:
+        """
+        Retrieve a list of databases - async version of the method.
+
+        Args:
+            options (dict, optional): Additional options for the request.
+
+        Returns:
+            list: a JSON list of dictionaries, one per database.
+        """
+        response = await self._async_json_ops_request(
+            method=http_methods.GET,
+            path="/databases",
+            options=options,
+            timeout_info=timeout_info,
+        )
+
+        return response
+
     def create_database(
         self,
         database_definition: Optional[Dict[str, Any]] = None,
@@ -206,6 +287,36 @@ class AstraDBOps:
             Raises an error if not successful.
         """
         r = self._ops_request(
+            method=http_methods.POST,
+            path="/databases",
+            json_data=database_definition,
+            timeout_info=timeout_info,
+        )
+
+        if r.status_code == 201:
+            return {"id": r.headers["Location"]}
+        elif r.status_code >= 400 and r.status_code < 500:
+            raise APIRequestError(r, payload=database_definition)
+        else:
+            raise ValueError(f"[HTTP {r.status_code}] {r.text}")
+
+    async def async_create_database(
+        self,
+        database_definition: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
+    ) -> Dict[str, str]:
+        """
+        Create a new database - async version of the method.
+
+        Args:
+            database_definition (dict, optional): A dictionary defining the properties of the database to be created.
+            timeout_info: either a float (seconds) or a TimeoutInfo dict (see)
+
+        Returns:
+            dict: A dictionary such as: {"id": the ID of the created database}
+            Raises an error if not successful.
+        """
+        r = await self._async_ops_request(
             method=http_methods.POST,
             path="/databases",
             json_data=database_definition,
@@ -247,6 +358,34 @@ class AstraDBOps:
 
         return None
 
+    async def async_terminate_database(
+        self, database: str = "", timeout_info: TimeoutInfoWideType = None
+    ) -> str:
+        """
+        Terminate an existing database - async version of the method.
+
+        Args:
+            database (str): The identifier of the database to terminate.
+            timeout_info: either a float (seconds) or a TimeoutInfo dict (see)
+
+        Returns:
+            str: The identifier of the terminated database, or None if termination was unsuccessful.
+        """
+        r = await self._async_ops_request(
+            method=http_methods.POST,
+            path=f"/databases/{database}/terminate",
+            timeout_info=timeout_info,
+        )
+
+        if r.status_code == 202:
+            return database
+        elif r.status_code >= 400 and r.status_code < 500:
+            raise APIRequestError(r, payload=None)
+        else:
+            raise ValueError(f"[HTTP {r.status_code}] {r.text}")
+
+        return None
+
     def get_database(
         self,
         database: str = "",
@@ -266,6 +405,32 @@ class AstraDBOps:
         return cast(
             API_RESPONSE,
             self._json_ops_request(
+                method=http_methods.GET,
+                path=f"/databases/{database}",
+                options=options,
+                timeout_info=timeout_info,
+            ),
+        )
+
+    async def async_get_database(
+        self,
+        database: str = "",
+        options: Optional[Dict[str, Any]] = None,
+        timeout_info: TimeoutInfoWideType = None,
+    ) -> API_RESPONSE:
+        """
+        Retrieve details of a specific database - async version of the method.
+
+        Args:
+            database (str): The identifier of the database to retrieve.
+            options (dict, optional): Additional options for the request.
+
+        Returns:
+            dict: A JSON response containing the details of the specified database.
+        """
+        return cast(
+            API_RESPONSE,
+            await self._async_json_ops_request(
                 method=http_methods.GET,
                 path=f"/databases/{database}",
                 options=options,
@@ -303,6 +468,36 @@ class AstraDBOps:
         else:
             raise ValueError(f"[HTTP {r.status_code}] {r.text}")
 
+    async def async_create_keyspace(
+        self,
+        database: str = "",
+        keyspace: str = "",
+        timeout_info: TimeoutInfoWideType = None,
+    ) -> Dict[str, str]:
+        """
+        Create a keyspace in a specified database - async version of the method.
+
+        Args:
+            database (str): The identifier of the database where the keyspace will be created.
+            keyspace (str): The name of the keyspace to create.
+            timeout_info: either a float (seconds) or a TimeoutInfo dict (see)
+
+        Returns:
+            {"ok": 1} if successful. Raises errors otherwise.
+        """
+        r = await self._async_ops_request(
+            method=http_methods.POST,
+            path=f"/databases/{database}/keyspaces/{keyspace}",
+            timeout_info=timeout_info,
+        )
+
+        if r.status_code == 201:
+            return {"name": keyspace}
+        elif r.status_code >= 400 and r.status_code < 500:
+            raise APIRequestError(r, payload=None)
+        else:
+            raise ValueError(f"[HTTP {r.status_code}] {r.text}")
+
     def delete_keyspace(
         self,
         database: str = "",
@@ -321,6 +516,36 @@ class AstraDBOps:
             str: The identifier of the deleted keyspace. Otherwise raises an error.
         """
         r = self._ops_request(
+            method=http_methods.DELETE,
+            path=f"/databases/{database}/keyspaces/{keyspace}",
+            timeout_info=timeout_info,
+        )
+
+        if r.status_code == 202:
+            return keyspace
+        elif r.status_code >= 400 and r.status_code < 500:
+            raise APIRequestError(r, payload=None)
+        else:
+            raise ValueError(f"[HTTP {r.status_code}] {r.text}")
+
+    async def async_delete_keyspace(
+        self,
+        database: str = "",
+        keyspace: str = "",
+        timeout_info: TimeoutInfoWideType = None,
+    ) -> str:
+        """
+        Delete a keyspace from a database - async version of the method.
+
+        Args:
+            database (str): The identifier of the database to terminate.
+            keyspace (str): The name of the keyspace to create.
+            timeout_info: either a float (seconds) or a TimeoutInfo dict (see)
+
+        Returns:
+            str: The identifier of the deleted keyspace. Otherwise raises an error.
+        """
+        r = await self._async_ops_request(
             method=http_methods.DELETE,
             path=f"/databases/{database}/keyspaces/{keyspace}",
             timeout_info=timeout_info,

@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import time
@@ -32,6 +33,7 @@ from astrapy.exceptions import (
     base_timeout_info,
     to_dataapi_timeout_exception,
     ops_recast_method_sync,
+    ops_recast_method_async,
 )
 
 
@@ -189,6 +191,41 @@ def fetch_raw_database_info_from_id_token(
         raise to_dataapi_timeout_exception(texc)
 
 
+async def async_fetch_raw_database_info_from_id_token(
+    id: str,
+    *,
+    token: str,
+    environment: str = Environment.PROD,
+    max_time_ms: Optional[int] = None,
+) -> Dict[str, Any]:
+    """
+    Fetch database information through the DevOps API and return it in
+    full, exactly like the API gives it back.
+    Async version of the function, for use in an asyncio context.
+
+    Args:
+        id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+        token: a valid token to access the database information.
+        max_time_ms: a timeout, in milliseconds, for waiting on a response.
+
+    Returns:
+        The full response from the DevOps API about the database.
+    """
+
+    astra_db_ops = AstraDBOps(
+        token=token,
+        dev_ops_url=DEV_OPS_URL_MAP[environment],
+    )
+    try:
+        gd_response = await astra_db_ops.async_get_database(
+            database=id,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        return gd_response
+    except httpx.TimeoutException as texc:
+        raise to_dataapi_timeout_exception(texc)
+
+
 def fetch_database_info(
     api_endpoint: str, token: str, namespace: str, max_time_ms: Optional[int] = None
 ) -> Optional[DatabaseInfo]:
@@ -210,6 +247,49 @@ def fetch_database_info(
     parsed_endpoint = parse_api_endpoint(api_endpoint)
     if parsed_endpoint:
         gd_response = fetch_raw_database_info_from_id_token(
+            id=parsed_endpoint.database_id,
+            token=token,
+            environment=parsed_endpoint.environment,
+            max_time_ms=max_time_ms,
+        )
+        raw_info = gd_response["info"]
+        if namespace not in raw_info["keyspaces"]:
+            raise DevOpsAPIException(f"Namespace {namespace} not found on DB.")
+        else:
+            return DatabaseInfo(
+                id=parsed_endpoint.database_id,
+                region=parsed_endpoint.region,
+                namespace=namespace,
+                name=raw_info["name"],
+                environment=parsed_endpoint.environment,
+                raw_info=raw_info,
+            )
+    else:
+        return None
+
+
+async def async_fetch_database_info(
+    api_endpoint: str, token: str, namespace: str, max_time_ms: Optional[int] = None
+) -> Optional[DatabaseInfo]:
+    """
+    Fetch database information through the DevOps API.
+    Async version of the function, for use in an asyncio context.
+
+    Args:
+        api_endpoint: a full API endpoint for the Data Api.
+        token: a valid token to access the database information.
+        namespace: the desired namespace that will be used in the result.
+        max_time_ms: a timeout, in milliseconds, for waiting on a response.
+
+    Returns:
+        A DatabaseInfo object.
+        If the API endpoint fails to be parsed, None is returned.
+        For valid-looking endpoints, if something goes wrong an exception is raised.
+    """
+
+    parsed_endpoint = parse_api_endpoint(api_endpoint)
+    if parsed_endpoint:
+        gd_response = await async_fetch_raw_database_info_from_id_token(
             id=parsed_endpoint.database_id,
             token=token,
             environment=parsed_endpoint.environment,
@@ -483,6 +563,59 @@ class AstraDBAdmin:
                 ],
             )
 
+    @ops_recast_method_async
+    async def async_list_databases(
+        self,
+        *,
+        max_time_ms: Optional[int] = None,
+    ) -> CommandCursor[AdminDatabaseInfo]:
+        """
+        Get the list of databases, as obtained with a request to the DevOps API.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the API request.
+
+        Returns:
+            A CommandCursor to iterate over the detected databases,
+            represented as AdminDatabaseInfo objects.
+            Note that the return type is not an awaitable, rather
+            a regular iterable, e.g. for use in ordinary "for" loops.
+
+        Example:
+            >>> async def check_if_db_exists(db_id: str) -> bool:
+            ...     db_cursor = await my_astra_db_admin.async_list_databases()
+            ...     db_list = list(dd_cursor)
+            ...     return db_id in db_list
+            ...
+            >>> asyncio.run(check_if_db_exists("xyz"))
+            True
+            >>> asyncio.run(check_if_db_exists("01234567-..."))
+            False
+        """
+
+        logger.info("getting databases, async")
+        gd_list_response = await self._astra_db_ops.async_get_databases(
+            timeout_info=base_timeout_info(max_time_ms)
+        )
+        logger.info("finished getting databases, async")
+        if not isinstance(gd_list_response, list):
+            raise DevOpsAPIException(
+                "Faulty response from get-databases DevOps API command.",
+            )
+        else:
+            # we know this is a list of dicts which need a little adjusting
+            return CommandCursor(
+                address=self._astra_db_ops.base_url,
+                items=[
+                    _recast_as_admin_database_info(
+                        db_dict,
+                        environment=self.environment,
+                    )
+                    for db_dict in gd_list_response
+                ],
+            )
+
     @ops_recast_method_sync
     def database_info(
         self, id: str, *, max_time_ms: Optional[int] = None
@@ -508,12 +641,53 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
-        logger.info(f"getting database info for {id}")
+        logger.info(f"getting database info for '{id}'")
         gd_response = self._astra_db_ops.get_database(
             database=id,
             timeout_info=base_timeout_info(max_time_ms),
         )
-        logger.info(f"finished getting database info for {id}")
+        logger.info(f"finished getting database info for '{id}'")
+        if not isinstance(gd_response, dict):
+            raise DevOpsAPIException(
+                "Faulty response from get-database DevOps API command.",
+            )
+        else:
+            return _recast_as_admin_database_info(
+                gd_response,
+                environment=self.environment,
+            )
+
+    @ops_recast_method_async
+    async def async_database_info(
+        self, id: str, *, max_time_ms: Optional[int] = None
+    ) -> AdminDatabaseInfo:
+        """
+        Get the full information on a given database, through a request to the DevOps API.
+        This is an awaitable method suitable for use within an asyncio event loop.
+
+        Args:
+            id: the ID of the target database, e. g.
+                "01234567-89ab-cdef-0123-456789abcdef".
+            max_time_ms: a timeout, in milliseconds, for the API request.
+
+        Returns:
+            An AdminDatabaseInfo object.
+
+        Example:
+            >>> async def check_if_db_active(db_id: str) -> bool:
+            ...     db_info = await my_astra_db_admin.async_database_info(db_id)
+            ...     return db_info.status == "ACTIVE"
+            ...
+            >>> asyncio.run(check_if_db_active("01234567-..."))
+            True
+        """
+
+        logger.info(f"getting database info for '{id}', async")
+        gd_response = await self._astra_db_ops.async_get_database(
+            database=id,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        logger.info(f"finished getting database info for '{id}', async")
         if not isinstance(gd_response, dict):
             raise DevOpsAPIException(
                 "Faulty response from get-database DevOps API command.",
@@ -600,10 +774,11 @@ class AstraDBAdmin:
                 while last_status_seen in {STATUS_PENDING, STATUS_INITIALIZING}:
                     logger.info(f"sleeping to poll for status of '{new_database_id}'")
                     time.sleep(DATABASE_POLL_SLEEP_TIME)
-                    last_status_seen = self.database_info(
+                    last_db_info = self.database_info(
                         id=new_database_id,
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
-                    ).status
+                    )
+                    last_status_seen = last_db_info.status
                 if last_status_seen != STATUS_ACTIVE:
                     raise DevOpsAPIException(
                         f"Database {name} entered unexpected status {last_status_seen} after PENDING"
@@ -612,6 +787,106 @@ class AstraDBAdmin:
             logger.info(
                 f"finished creating database '{new_database_id}' = "
                 f"{name}/({cloud_provider}, {region})"
+            )
+            return AstraDBDatabaseAdmin.from_astra_db_admin(
+                id=new_database_id,
+                astra_db_admin=self,
+            )
+        else:
+            raise DevOpsAPIException("Could not create the database.")
+
+    @ops_recast_method_async
+    async def async_create_database(
+        self,
+        name: str,
+        *,
+        cloud_provider: str,
+        region: str,
+        namespace: Optional[str] = None,
+        wait_until_active: bool = True,
+        max_time_ms: Optional[int] = None,
+    ) -> AstraDBDatabaseAdmin:
+        """
+        Create a database as requested, optionally waiting for it to be ready.
+        This is an awaitable method suitable for use within an asyncio event loop.
+
+        Args:
+            name: the desired name for the database.
+            namespace: name for the one namespace the database starts with.
+                If omitted, DevOps API will use its default.
+            cloud_provider: one of 'aws', 'gcp' or 'azure'.
+            region: any of the available cloud regions.
+            wait_until_active: if True (default), the method returns only after
+                the newly-created database is in ACTIVE state (a few minutes,
+                usually). If False, it will return right after issuing the
+                creation request to the DevOps API, and it will be responsibility
+                of the caller to check the database status before working with it.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the creation request
+                has not reached the API server.
+
+        Returns:
+            An AstraDBDatabaseAdmin instance.
+
+        Example:
+            >>> asyncio.run(
+            ...     my_astra_db_admin.async_create_database(
+            ...         "new_database",
+            ...         cloud_provider="aws",
+            ...         region="ap-south-1",
+            ....    )
+            ... )
+            AstraDBDatabaseAdmin(id=...)
+        """
+
+        database_definition = {
+            k: v
+            for k, v in {
+                "name": name,
+                "tier": "serverless",
+                "cloudProvider": cloud_provider,
+                "region": region,
+                "capacityUnits": 1,
+                "dbType": "vector",
+                "keyspace": namespace,
+            }.items()
+            if v is not None
+        }
+        timeout_manager = MultiCallTimeoutManager(
+            overall_max_time_ms=max_time_ms, exception_type="devops_api"
+        )
+        logger.info(f"creating database {name}/({cloud_provider}, {region}), async")
+        cd_response = await self._astra_db_ops.async_create_database(
+            database_definition=database_definition,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        logger.info(
+            "devops api returned from creating database "
+            f"{name}/({cloud_provider}, {region}), async"
+        )
+        if cd_response is not None and "id" in cd_response:
+            new_database_id = cd_response["id"]
+            if wait_until_active:
+                last_status_seen = STATUS_PENDING
+                while last_status_seen in {STATUS_PENDING, STATUS_INITIALIZING}:
+                    logger.info(
+                        f"sleeping to poll for status of '{new_database_id}', async"
+                    )
+                    await asyncio.sleep(DATABASE_POLL_SLEEP_TIME)
+                    last_db_info = await self.async_database_info(
+                        id=new_database_id,
+                        max_time_ms=timeout_manager.remaining_timeout_ms(),
+                    )
+                    last_status_seen = last_db_info.status
+                if last_status_seen != STATUS_ACTIVE:
+                    raise DevOpsAPIException(
+                        f"Database {name} entered unexpected status {last_status_seen} after PENDING"
+                    )
+            # return the database instance
+            logger.info(
+                f"finished creating database '{new_database_id}' = "
+                f"{name}/({cloud_provider}, {region}), async"
             )
             return AstraDBDatabaseAdmin.from_astra_db_admin(
                 id=new_database_id,
@@ -695,6 +970,84 @@ class AstraDBAdmin:
                         f"Database {id}{_name_desc} entered unexpected status {last_status_seen} after PENDING"
                     )
             logger.info(f"finished dropping database '{id}'")
+            return {"ok": 1}
+        else:
+            raise DevOpsAPIException(
+                f"Could not issue a successful terminate-database DevOps API request for {id}."
+            )
+
+    @ops_recast_method_async
+    async def async_drop_database(
+        self,
+        id: str,
+        *,
+        wait_until_active: bool = True,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Drop a database, i.e. delete it completely and permanently with all its data.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            id: The ID of the database to drop, e. g.
+                "01234567-89ab-cdef-0123-456789abcdef".
+            wait_until_active: if True (default), the method returns only after
+                the database has actually been deleted (generally a few minutes).
+                If False, it will return right after issuing the
+                drop request to the DevOps API, and it will be responsibility
+                of the caller to check the database status/availability
+                after that, if desired.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the deletion request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> asyncio.run(
+            ...     my_astra_db_admin.async_drop_database("01234567-...")
+            ... )
+            {'ok': 1}
+        """
+
+        timeout_manager = MultiCallTimeoutManager(
+            overall_max_time_ms=max_time_ms, exception_type="devops_api"
+        )
+        logger.info(f"dropping database '{id}', async")
+        te_response = await self._astra_db_ops.async_terminate_database(
+            database=id,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        logger.info(f"devops api returned from dropping database '{id}', async")
+        if te_response == id:
+            if wait_until_active:
+                last_status_seen: Optional[str] = STATUS_TERMINATING
+                _db_name: Optional[str] = None
+                while last_status_seen == STATUS_TERMINATING:
+                    logger.info(f"sleeping to poll for status of '{id}', async")
+                    await asyncio.sleep(DATABASE_POLL_SLEEP_TIME)
+                    #
+                    detected_databases = [
+                        a_db_info
+                        for a_db_info in await self.async_list_databases(
+                            max_time_ms=timeout_manager.remaining_timeout_ms(),
+                        )
+                        if a_db_info.id == id
+                    ]
+                    if detected_databases:
+                        last_status_seen = detected_databases[0].status
+                        _db_name = detected_databases[0].info.name
+                    else:
+                        last_status_seen = None
+                if last_status_seen is not None:
+                    _name_desc = f" ({_db_name})" if _db_name else ""
+                    raise DevOpsAPIException(
+                        f"Database {id}{_name_desc} entered unexpected status {last_status_seen} after PENDING"
+                    )
+            logger.info(f"finished dropping database '{id}', async")
             return {"ok": 1}
         else:
             raise DevOpsAPIException(
@@ -870,8 +1223,35 @@ class DatabaseAdmin(ABC):
     @abstractmethod
     def drop_namespace(self, name: str, *pargs: Any, **kwargs: Any) -> Dict[str, Any]:
         """
-        Drop (delete) a namespace from the database,
-        returning {'ok': 1} if successful.
+        Drop (delete) a namespace from the database, returning {'ok': 1} if successful.
+        """
+        ...
+
+    @abstractmethod
+    async def async_list_namespaces(self, *pargs: Any, **kwargs: Any) -> List[str]:
+        """
+        Get a list of namespaces for the database.
+        (Async version of the method.)
+        """
+        ...
+
+    @abstractmethod
+    async def async_create_namespace(
+        self, name: str, *pargs: Any, **kwargs: Any
+    ) -> Dict[str, Any]:
+        """
+        Create a namespace in the database, returning {'ok': 1} if successful.
+        (Async version of the method.)
+        """
+        ...
+
+    @abstractmethod
+    async def async_drop_namespace(
+        self, name: str, *pargs: Any, **kwargs: Any
+    ) -> Dict[str, Any]:
+        """
+        Drop (delete) a namespace from the database, returning {'ok': 1} if successful.
+        (Async version of the method.)
         """
         ...
 
@@ -1182,6 +1562,37 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         logger.info(f"finished getting info ('{self.id}')")
         return req_response  # type: ignore[no-any-return]
 
+    async def async_info(
+        self, *, max_time_ms: Optional[int] = None
+    ) -> AdminDatabaseInfo:
+        """
+        Query the DevOps API for the full info on this database.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            An AdminDatabaseInfo object.
+
+        Example:
+            >>> async def wait_until_active(db_admin: AstraDBDatabaseAdmin) -> None:
+            ...     while True:
+            ...         info = await db_admin.async_info()
+            ...         if info.status == "ACTIVE":
+            ...             return
+            ...
+            >>> asyncio.run(wait_until_active(admin_for_my_db))
+        """
+
+        logger.info(f"getting info ('{self.id}'), async")
+        req_response = await self._astra_db_admin.async_database_info(
+            id=self.id,
+            max_time_ms=max_time_ms,
+        )
+        logger.info(f"finished getting info ('{self.id}'), async")
+        return req_response  # type: ignore[no-any-return]
+
     def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
         """
         Query the DevOps API for a list of the namespaces in the database.
@@ -1200,6 +1611,40 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         logger.info(f"getting namespaces ('{self.id}')")
         info = self.info(max_time_ms=max_time_ms)
         logger.info(f"finished getting namespaces ('{self.id}')")
+        if info.raw_info is None:
+            raise DevOpsAPIException("Could not get the namespace list.")
+        else:
+            return info.raw_info["info"]["keyspaces"]  # type: ignore[no-any-return]
+
+    async def async_list_namespaces(
+        self, *, max_time_ms: Optional[int] = None
+    ) -> List[str]:
+        """
+        Query the DevOps API for a list of the namespaces in the database.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A list of the namespaces, each a string, in no particular order.
+
+        Example:
+            >>> async def check_if_ns_exists(
+            ...     db_admin: AstraDBDatabaseAdmin, namespace: str
+            ... ) -> bool:
+            ...     ns_list = await db_admin.async_list_namespaces()
+            ...     return namespace in ns_list
+            ...
+            >>> asyncio.run(check_if_ns_exists(admin_for_my_db, "dragons"))
+            False
+            >>> asyncio.run(check_if_db_exists(admin_for_my_db, "app_namespace"))
+            True
+        """
+
+        logger.info(f"getting namespaces ('{self.id}'), async")
+        info = await self.async_info(max_time_ms=max_time_ms)
+        logger.info(f"finished getting namespaces ('{self.id}'), async")
         if info.raw_info is None:
             raise DevOpsAPIException("Could not get the namespace list.")
         else:
@@ -1280,6 +1725,83 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 f"Could not issue a successful create-namespace DevOps API request for {name}."
             )
 
+    # the 'override' is because the error-recast decorator washes out the signature
+    @ops_recast_method_async
+    async def async_create_namespace(  # type: ignore[override]
+        self,
+        name: str,
+        *,
+        wait_until_active: bool = True,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create a namespace in this database as requested,
+        optionally waiting for it to be ready.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            name: the namespace name. If supplying a namespace that exists
+                already, the method call proceeds as usual, no errors are
+                raised, and the whole invocation is a no-op.
+            wait_until_active: if True (default), the method returns only after
+                the target database is in ACTIVE state again (a few
+                seconds, usually). If False, it will return right after issuing the
+                creation request to the DevOps API, and it will be responsibility
+                of the caller to check the database status/namespace availability
+                before working with it.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the creation request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> asyncio.run(
+            ...     my_db_admin.async_create_namespace("app_namespace")
+            ... )
+            {'ok': 1}
+        """
+
+        timeout_manager = MultiCallTimeoutManager(
+            overall_max_time_ms=max_time_ms, exception_type="devops_api"
+        )
+        logger.info(f"creating namespace '{name}' on '{self.id}', async")
+        cn_response = await self._astra_db_admin._astra_db_ops.async_create_keyspace(
+            database=self.id,
+            keyspace=name,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        logger.info(
+            f"devops api returned from creating namespace "
+            f"'{name}' on '{self.id}', async"
+        )
+        if cn_response is not None and name == cn_response.get("name"):
+            if wait_until_active:
+                last_status_seen = STATUS_MAINTENANCE
+                while last_status_seen == STATUS_MAINTENANCE:
+                    logger.info(f"sleeping to poll for status of '{self.id}', async")
+                    await asyncio.sleep(DATABASE_POLL_NAMESPACE_SLEEP_TIME)
+                    last_db_info = await self.async_info(
+                        max_time_ms=timeout_manager.remaining_timeout_ms(),
+                    )
+                    last_status_seen = last_db_info.status
+                if last_status_seen != STATUS_ACTIVE:
+                    raise DevOpsAPIException(
+                        f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
+                    )
+                # is the namespace found?
+                if name not in await self.async_list_namespaces():
+                    raise DevOpsAPIException("Could not create the namespace.")
+            logger.info(f"finished creating namespace '{name}' on '{self.id}', async")
+            return {"ok": 1}
+        else:
+            raise DevOpsAPIException(
+                f"Could not issue a successful create-namespace DevOps API request for {name}."
+            )
+
     @ops_recast_method_sync
     def drop_namespace(
         self,
@@ -1354,6 +1876,82 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 f"Could not issue a successful delete-namespace DevOps API request for {name}."
             )
 
+    # the 'override' is because the error-recast decorator washes out the signature
+    @ops_recast_method_async
+    async def async_drop_namespace(  # type: ignore[override]
+        self,
+        name: str,
+        *,
+        wait_until_active: bool = True,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Delete a namespace from the database, optionally waiting for it
+        to become active again.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            name: the namespace to delete. If it does not exist in this database,
+                an error is raised.
+            wait_until_active: if True (default), the method returns only after
+                the target database is in ACTIVE state again (a few
+                seconds, usually). If False, it will return right after issuing the
+                deletion request to the DevOps API, and it will be responsibility
+                of the caller to check the database status/namespace availability
+                before working with it.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the deletion request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> asyncio.run(
+            ...     my_db_admin.async_drop_namespace("app_namespace")
+            ... )
+            {'ok': 1}
+        """
+
+        timeout_manager = MultiCallTimeoutManager(
+            overall_max_time_ms=max_time_ms, exception_type="devops_api"
+        )
+        logger.info(f"dropping namespace '{name}' on '{self.id}', async")
+        dk_response = await self._astra_db_admin._astra_db_ops.async_delete_keyspace(
+            database=self.id,
+            keyspace=name,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        logger.info(
+            f"devops api returned from dropping namespace "
+            f"'{name}' on '{self.id}', async"
+        )
+        if dk_response == name:
+            if wait_until_active:
+                last_status_seen = STATUS_MAINTENANCE
+                while last_status_seen == STATUS_MAINTENANCE:
+                    logger.info(f"sleeping to poll for status of '{self.id}', async")
+                    await asyncio.sleep(DATABASE_POLL_NAMESPACE_SLEEP_TIME)
+                    last_db_info = await self.async_info(
+                        max_time_ms=timeout_manager.remaining_timeout_ms(),
+                    )
+                    last_status_seen = last_db_info.status
+                if last_status_seen != STATUS_ACTIVE:
+                    raise DevOpsAPIException(
+                        f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
+                    )
+                # is the namespace found?
+                if name in await self.async_list_namespaces():
+                    raise DevOpsAPIException("Could not drop the namespace.")
+            logger.info(f"finished dropping namespace '{name}' on '{self.id}', async")
+            return {"ok": 1}
+        else:
+            raise DevOpsAPIException(
+                f"Could not issue a successful delete-namespace DevOps API request for {name}."
+            )
+
     def drop(
         self,
         *,
@@ -1404,6 +2002,55 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             max_time_ms=max_time_ms,
         )
         logger.info(f"finished dropping this database ('{self.id}')")
+
+    async def async_drop(
+        self,
+        *,
+        wait_until_active: bool = True,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Drop this database, i.e. delete it completely and permanently with all its data.
+        Async version of the method, for use in an asyncio context.
+
+        This method wraps the `drop_database` method of the AstraDBAdmin class,
+        where more information may be found.
+
+        Args:
+            wait_until_active: if True (default), the method returns only after
+                the database has actually been deleted (generally a few minutes).
+                If False, it will return right after issuing the
+                drop request to the DevOps API, and it will be responsibility
+                of the caller to check the database status/availability
+                after that, if desired.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the deletion request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> asyncio.run(my_db_admin.async_drop())
+            {'ok': 1}
+
+        Note:
+            Once the method succeeds, methods on this object -- such as `info()`,
+            or `list_namespaces()` -- can still be invoked: however, this hardly
+            makes sense as the underlying actual database is no more.
+            It is responsibility of the developer to design a correct flow
+            which avoids using a deceased database any further.
+        """
+
+        logger.info(f"dropping this database ('{self.id}'), async")
+        return await self._astra_db_admin.async_drop_database(  # type: ignore[no-any-return]
+            id=self.id,
+            wait_until_active=wait_until_active,
+            max_time_ms=max_time_ms,
+        )
+        logger.info(f"finished dropping this database ('{self.id}'), async")
 
     def get_database(
         self,
