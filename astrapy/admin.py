@@ -714,10 +714,10 @@ class AstraDBAdmin:
 
         Args:
             name: the desired name for the database.
-            namespace: name for the one namespace the database starts with.
-                If omitted, DevOps API will use its default.
             cloud_provider: one of 'aws', 'gcp' or 'azure'.
             region: any of the available cloud regions.
+            namespace: name for the one namespace the database starts with.
+                If omitted, DevOps API will use its default.
             wait_until_active: if True (default), the method returns only after
                 the newly-created database is in ACTIVE state (a few minutes,
                 usually). If False, it will return right after issuing the
@@ -812,10 +812,10 @@ class AstraDBAdmin:
 
         Args:
             name: the desired name for the database.
-            namespace: name for the one namespace the database starts with.
-                If omitted, DevOps API will use its default.
             cloud_provider: one of 'aws', 'gcp' or 'azure'.
             region: any of the available cloud regions.
+            namespace: name for the one namespace the database starts with.
+                If omitted, DevOps API will use its default.
             wait_until_active: if True (default), the method returns only after
                 the newly-created database is in ACTIVE state (a few minutes,
                 usually). If False, it will return right after issuing the
