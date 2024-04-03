@@ -715,6 +715,29 @@ def ops_recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
     return _wrapped_sync
 
 
+def ops_recast_method_async(
+    method: Callable[..., Awaitable[Any]]
+) -> Callable[..., Awaitable[Any]]:
+    """
+    Decorator for an async DevOps method liable to generate the core APIRequestError.
+    That exception is intercepted and recast as DevOpsAPIException.
+    Moreover, timeouts are also caught and converted into Data API timeouts.
+    """
+
+    @wraps(method)
+    async def _wrapped_async(*pargs: Any, **kwargs: Any) -> Any:
+        try:
+            return await method(*pargs, **kwargs)
+        except APIRequestError as exc:
+            raise DevOpsAPIResponseException.from_response(
+                command=exc.payload, raw_response=exc.response.json()
+            )
+        except httpx.TimeoutException as texc:
+            raise to_dataapi_timeout_exception(texc)
+
+    return _wrapped_async
+
+
 def base_timeout_info(max_time_ms: Optional[int]) -> Union[TimeoutInfo, None]:
     if max_time_ms is not None:
         return {"base": max_time_ms / 1000.0}
