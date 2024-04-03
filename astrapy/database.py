@@ -42,11 +42,11 @@ logger = logging.getLogger(__name__)
 
 
 def _validate_create_collection_options(
-    dimension: Optional[int] = None,
-    metric: Optional[str] = None,
-    indexing: Optional[Dict[str, Any]] = None,
-    default_id_type: Optional[str] = None,
-    additional_options: Optional[Dict[str, Any]] = None,
+    dimension: Optional[int],
+    metric: Optional[str],
+    indexing: Optional[Dict[str, Any]],
+    default_id_type: Optional[str],
+    additional_options: Optional[Dict[str, Any]],
 ) -> None:
     if additional_options:
         if "vector" in additional_options:
