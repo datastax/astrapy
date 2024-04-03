@@ -24,6 +24,7 @@ from astrapy.exceptions import (
     CollectionAlreadyExistsException,
     DataAPIFaultyResponseException,
     DevOpsAPIException,
+    MultiCallTimeoutManager,
     recast_method_sync,
     recast_method_async,
     base_timeout_info,
@@ -483,6 +484,8 @@ class Database:
             **({"defaultId": {"type": default_id_type}} if default_id_type else {}),
         }
 
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+
         if check_exists is None:
             _check_exists = True
         else:
@@ -491,10 +494,12 @@ class Database:
         if _check_exists:
             logger.info(f"checking collection existence for '{name}'")
             existing_names = self.list_collection_names(
-                namespace=namespace, max_time_ms=max_time_ms
+                namespace=namespace,
+                max_time_ms=timeout_manager.remaining_timeout_ms(),
             )
         else:
             existing_names = []
+
         driver_db = self._astra_db.copy(namespace=namespace)
         if name in existing_names:
             raise CollectionAlreadyExistsException(
@@ -509,7 +514,7 @@ class Database:
             options=_options,
             dimension=dimension,
             metric=metric,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=timeout_manager.remaining_timeout_info(),
         )
         logger.info(f"finished creating collection '{name}'")
         return self.get_collection(name, namespace=namespace)
@@ -1192,6 +1197,8 @@ class AsyncDatabase:
             **({"defaultId": {"type": default_id_type}} if default_id_type else {}),
         }
 
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+
         if check_exists is None:
             _check_exists = True
         else:
@@ -1200,7 +1207,8 @@ class AsyncDatabase:
         if _check_exists:
             logger.info(f"checking collection existence for '{name}'")
             existing_names = await self.list_collection_names(
-                namespace=namespace, max_time_ms=max_time_ms
+                namespace=namespace,
+                max_time_ms=timeout_manager.remaining_timeout_ms(),
             )
         else:
             existing_names = []
@@ -1218,7 +1226,7 @@ class AsyncDatabase:
             options=_options,
             dimension=dimension,
             metric=metric,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=timeout_manager.remaining_timeout_info(),
         )
         logger.info(f"finished creating collection '{name}'")
         return await self.get_collection(name, namespace=namespace)
