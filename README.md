@@ -375,7 +375,8 @@ from astrapy.cursors import (
 
 If your code uses the pre-1.0.0 astrapy (i.e. `from astrapy.db import Database, Collection` and so on) you are strongly advised to migrate to the current API.
 
-That being said, there are no known breakings of backward compatibility.
+That being said, there are no known breakings of backward compatibility:
+**legacy code would run with a newest astrapy version just as well.**
 Here is a recap of the minor changes that came _to the old API_ with 1.0.0:
 
 - Added methods to `[Async]AstraDBCollection`: `delete_one_filter`, 
@@ -399,5 +400,6 @@ Here is a recap of the minor changes that came _to the old API_ with 1.0.0:
 - Fixed behaviour and return type of `AstraDBOps.create_keyspace` and `AstraDBOps.terminate_db`
 - Added `AstraDBOps.delete_keyspace` method
 - Method `create_collection` of `AstraDB` relaxes checks on passing `dimensions` for vector collections
+- AstraDBOps core class acquired async methods: `async_get_databases`, `async_get_database`, `async_create_database`, `async_terminate_database`, `async_create_keyspace`, `async_delete_keyspace`
 
 Keep in mind that the pre-1.0.0 library, now dubbed "core", is what the current 1.0.0 API ("idiomatic") builds on.

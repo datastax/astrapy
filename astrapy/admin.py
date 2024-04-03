@@ -73,13 +73,13 @@ database_id_matcher = re.compile(
 )
 
 api_endpoint_parser = re.compile(
-    "https://"
-    "([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
-    "-"
-    "([a-z0-9\-]+)"
-    ".apps.astra[\-]{0,1}"
-    "(dev|test)?"
-    ".datastax.com"
+    r"https://"
+    r"([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})"
+    r"-"
+    r"([a-z0-9\-]+)"
+    r".apps.astra[\-]{0,1}"
+    r"(dev|test)?"
+    r".datastax.com"
 )
 
 
