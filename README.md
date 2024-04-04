@@ -183,7 +183,7 @@ my_collection.insert_one({"_id": astrapy.ids.uuid8()})
 
 ## For contributors
 
-First install poetry with `pip install poetry` and then the project dependencies with `poetry install`.
+First install poetry with `pip install poetry` and then the project dependencies with `poetry install --with dev`.
 
 Linter, style and typecheck should all pass for a PR:
 
