@@ -317,7 +317,7 @@ class DataAPIClient:
 
         Args:
             api_endpoint: the full "API Endpoint" string used to reach the Data API.
-                Example: "https://<database_id>-<region>.apps.astra.datastax.com"
+                Example: "https://DATABASE_ID-REGION.apps.astra.datastax.com"
             token: if supplied, is passed to the Database instead of the client token.
             namespace: if provided, is passed to the Database
                 (it is left to the default otherwise).
