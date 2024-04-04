@@ -451,6 +451,7 @@ class Database:
             service: a dictionary describing a service for
                 embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
                 Alternatively, a CollectionVectorServiceOptions object to the same effect.
+                NOTE: This feature is under current development.
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}
@@ -1178,6 +1179,7 @@ class AsyncDatabase:
             service: a dictionary describing a service for
                 embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
                 Alternatively, a CollectionVectorServiceOptions object to the same effect.
+                NOTE: This feature is under current development.
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}

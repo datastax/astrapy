@@ -542,6 +542,7 @@ class Collection:
                 equivalent to providing a `$vectorize` field in the document itself,
                 however the two are mutually exclusive.
                 Moreover, this parameter cannot coexist with `vector`.
+                NOTE: This feature is under current development.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -632,6 +633,7 @@ class Collection:
                 field in the documents themselves, however the two are mutually exclusive.
                 For any given document, this parameter cannot coexist with the
                 corresponding `vector` entry.
+                NOTE: This feature is under current development.
             ordered: if True (default), the insertions are processed sequentially.
                 If False, they can occur in arbitrary order and possibly concurrently.
             chunk_size: how many documents to include in a single API request.
@@ -898,6 +900,7 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
                 returned document. Can only be used for vector ANN search, i.e.
@@ -1054,6 +1057,7 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in the
                 returned document. Can only be used for vector ANN search, i.e.
@@ -1306,6 +1310,7 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1421,6 +1426,7 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1522,6 +1528,7 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1643,6 +1650,7 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1853,6 +1861,7 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1937,6 +1946,7 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -2718,6 +2728,7 @@ class AsyncCollection:
                 equivalent to providing a `$vectorize` field in the document itself,
                 however the two are mutually exclusive.
                 Moreover, this parameter cannot coexist with `vector`.
+                NOTE: This feature is under current development.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -2811,6 +2822,7 @@ class AsyncCollection:
                 field in the documents themselves, however the two are mutually exclusive.
                 For any given document, this parameter cannot coexist with the
                 corresponding `vector` entry.
+                NOTE: This feature is under current development.
             ordered: if True (default), the insertions are processed sequentially.
                 If False, they can occur in arbitrary order and possibly concurrently.
             chunk_size: how many documents to include in a single API request.
@@ -3082,6 +3094,7 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
                 returned document. Can only be used for vector ANN search, i.e.
@@ -3247,6 +3260,7 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in the
                 returned document. Can only be used for vector ANN search, i.e.
@@ -3525,6 +3539,7 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3645,6 +3660,7 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3762,6 +3778,7 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3889,6 +3906,7 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -4125,6 +4143,7 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -4215,6 +4234,7 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the

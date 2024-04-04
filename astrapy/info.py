@@ -166,6 +166,8 @@ class CollectionVectorServiceOptions:
     The "vector.service" component of the collection options.
     See the Data API specifications for allowed values.
 
+    NOTE: This feature is under current development.
+
     Attributes:
         provider: the name of a service provider for embedding calculation.
         model_name: the name of a specific model for use by the service.
@@ -214,6 +216,8 @@ class CollectionVectorOptions:
         dimension: an optional positive integer, the dimensionality of the vector space.
         metric: an optional metric among `VectorMetric.DOT_PRODUCT`,
             `VectorMetric.EUCLIDEAN` and `VectorMetric.COSINE`.
+        service: an optional X object in case a service is configured for the collection.
+            NOTE: This feature is under current development.
     """
 
     dimension: Optional[int]
