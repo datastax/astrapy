@@ -2,7 +2,8 @@
 
 A pythonic client for [DataStax Astra DB](https://astra.datastax.com).
 
-_This README targets AstraPy version **1.0.0+**, which introducesa a whole new API. Click [here](https://github.com/datastax/astrapy/blob/cd3f5ce8146093e10a095709c0f5c3f8e3f2c7da/README.md) for the pre-existing API (fully compatible with newer versions)._
+_This README targets AstraPy version **1.0.0+**, which introduces a a whole new API.
+Click [here](https://github.com/datastax/astrapy/blob/cd3f5ce8146093e10a095709c0f5c3f8e3f2c7da/README.md) for the pre-existing API (fully compatible with newer versions)._
 
 
 ## Quickstart
@@ -71,7 +72,7 @@ for result in cursor:
 Next steps:
 
 - More info and usage patterns are given in the docstrings of classes and methods
-- [AstraPy reference](https://docs.datastax.com/en/astra/astra-db-vector/clients/python.html)
+- [AstraPy reference](https://docs.datastax.com/en/astra/astra-db-vector/api-reference/dataapiclient.html)
 - [Data API reference](https://docs.datastax.com/en/astra/astra-db-vector/api-reference/data-api-commands.html)
 - Package on [PyPI](https://pypi.org/project/astrapy/)
 
@@ -82,7 +83,7 @@ Next steps:
 AstraPy's abstractions for working at the data and admin layers are structured
 as depicted by this diagram:
 
-![AstraPy, abstractions chart](pictures/astrapy_abstractions.png)
+![AstraPy, abstractions chart](https://gist.github.com/assets/14221764/96ce16e1-4336-4b11-95d1-32690d67e859)
 
 Here's a small admin-oriented example:
 
@@ -108,7 +109,7 @@ my_database_admin.create_namespace("my_dreamspace")
 
 The package comes with its own set of exceptions, arranged in this hierarchy:
 
-![AstraPy, exception hierarchy](pictures/astrapy_exceptions.png)
+![AstraPy, exception hierarchy](https://gist.github.com/assets/14221764/233d9563-61e6-4db4-9964-9af0808fa300)
 
 For more information, and code examples, check out the docstrings and consult
 the API reference linked above.
