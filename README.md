@@ -83,7 +83,7 @@ Next steps:
 AstraPy's abstractions for working at the data and admin layers are structured
 as depicted by this diagram:
 
-![AstraPy, abstractions chart](https://github.com/datastax/astrapy/raw/pymongo-convergence-m1/pictures/astrapy_abstractions.png?raw=true)
+![AstraPy, abstractions chart](https://github.com/datastax/astrapy/raw/main/pictures/astrapy_abstractions.png?raw=true)
 
 Here's a small admin-oriented example:
 
@@ -109,7 +109,7 @@ my_database_admin.create_namespace("my_dreamspace")
 
 The package comes with its own set of exceptions, arranged in this hierarchy:
 
-![AstraPy, exception hierarchy](https://github.com/datastax/astrapy/raw/pymongo-convergence-m1/pictures/astrapy_exceptions.png?raw=true)
+![AstraPy, exception hierarchy](https://github.com/datastax/astrapy/raw/main/pictures/astrapy_exceptions.png?raw=true)
 
 For more information, and code examples, check out the docstrings and consult
 the API reference linked above.
