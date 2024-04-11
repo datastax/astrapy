@@ -1,9 +1,10 @@
 [tool.poetry]
 name = "astrapy"
-version = "0.7.7"
-description = "AstraPy is a Pythonic SDK for DataStax Astra"
+version = "1.0.0"
+description = "AstraPy is a Pythonic SDK for DataStax Astra and its Data API"
 authors = [
-    "Kirsten Hunter <kirsten.hunter@datastax.com>"
+    "Stefano Lottini <stefano.lottini@datastax.com>",
+    "Eric Hare <eric.hare@datastax.com>",
 ]
 license = "Apache-2.0"
 readme = "README.md"
@@ -14,7 +15,7 @@ keywords = ["DataStax", "Astra"]
 homepage = "https://github.com/datastax/astrapy"
 repository = "https://github.com/datastax/astrapy"
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Build Tools",
     "License :: OSI Approved :: Apache Software License",
@@ -30,12 +31,14 @@ python = "^3.8.0"
 cassio = "~0.1.4"
 deprecation = "~2.1.0"
 toml = "^0.10.2"
+uuid6 = "~2024.1.12"
+bson = "~0.5.10"
 httpx = { version=">=0.25.2,<1", extras=["http2"] }
 
 [tool.poetry.group.dev.dependencies]
-black = "~24.2.0"
+black = "~24.3.0"
 faker = "~23.1.0"
-mypy = "~1.8.0"
+mypy = "~1.9.0"
 pre-commit = "~3.5.0"
 pytest-asyncio = "~0.23.5"
 pytest-cov = "~4.1.0"

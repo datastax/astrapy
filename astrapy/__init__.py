@@ -16,10 +16,8 @@ import toml
 import os
 import importlib.metadata
 
-from typing import Any
 
-
-def get_version() -> Any:
+def get_version() -> str:
     try:
         # Poetry will create a __version__ attribute in the package's __init__.py file
         return importlib.metadata.version(__package__)
@@ -38,11 +36,55 @@ def get_version() -> Any:
                 pyproject_data = toml.loads(file_contents)
 
                 # Return the version from the poetry section
-                return pyproject_data["tool"]["poetry"]["version"]
+                return str(pyproject_data["tool"]["poetry"]["version"])
 
         # If the pyproject.toml file does not exist or the version is not found, return unknown
         except (FileNotFoundError, KeyError):
             return "unknown"
 
 
-__version__ = get_version()
+__version__: str = get_version()
+
+
+# A circular-import issue requires this to happen at the end of this module:
+from astrapy.database import (  # noqa: E402
+    AsyncDatabase,
+    Database,
+)
+from astrapy.collection import (  # noqa: E402
+    AsyncCollection,
+    Collection,
+)
+from astrapy.admin import (  # noqa: E402
+    AstraDBAdmin,
+    AstraDBDatabaseAdmin,
+)
+from astrapy.client import (  # noqa: E402
+    DataAPIClient,
+)
+
+import astrapy.ids  # noqa: E402
+import astrapy.constants  # noqa: E402
+import astrapy.cursors  # noqa: E402
+import astrapy.operations  # noqa: F401, E402
+
+
+__all__ = [
+    "AstraDBAdmin",
+    "AstraDBDatabaseAdmin",
+    "AsyncCollection",
+    "AsyncDatabase",
+    "Collection",
+    "Database",
+    "DataAPIClient",
+    "__version__",
+]
+
+
+__pdoc__ = {
+    "api": False,
+    "core": False,
+    "db": False,
+    "ops": False,
+    "ids": False,
+}
