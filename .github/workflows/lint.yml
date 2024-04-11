@@ -4,11 +4,9 @@ on:
   push:
     branches:
       - master
-      - pymongo-convergence-m1
   pull_request:
     branches:
       - master
-      - pymongo-convergence-m1
 
 jobs:
   mypy:
