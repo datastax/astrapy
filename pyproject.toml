@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "astrapy"
-version = "1.0.0rc1"
+version = "1.0.0"
 description = "AstraPy is a Pythonic SDK for DataStax Astra and its Data API"
 authors = [
     "Stefano Lottini <stefano.lottini@datastax.com>",

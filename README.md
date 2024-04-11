@@ -199,7 +199,7 @@ naming convention and module structure).
 
 ### Running tests
 
-Full testing requires environment variables:
+"Full regular" testing requires environment variables:
 
 ```bash
 export ASTRA_DB_APPLICATION_TOKEN="AstraCS:..."
@@ -213,8 +213,6 @@ export ASTRA_DB_SECONDARY_KEYSPACE="..."
 Tests can be started in various ways:
 
 ```bash
-# test the core modules
-poetry run pytest tests/core
 # test the "idiomatic" layer
 poetry run pytest tests/idiomatic
 poetry run pytest tests/idiomatic/unit
@@ -222,11 +220,24 @@ poetry run pytest tests/idiomatic/integration
 
 # remove logging noise:
 poetry run pytest [...] -o log_cli=0
+```
+
+The above runs the regular testing (i.e. non-Admin, non-core).
+The (idiomatic) Admin part is tested manually by you, on Astra accounts with room
+for up to 3 new databases, possibly both on prod and dev, and uses specific env vars,
+as can be seen on `tests/idiomatic/integration/test_admin.py`.
+
+Should you be interested in testing the "core" modules, moreover,
+this is also something for you to run manually (do that if you touch "core"):
+
+```bash
+# test the core modules
+poetry run pytest tests/core
 
 # do not drop collections:
 TEST_SKIP_COLLECTION_DELETE=1 poetry run pytest [...]
 
-# include astrapy.core.ops testing (must cleanup after that):
+# include astrapy.core.ops testing (tester must clean up after that):
 TEST_ASTRADBOPS=1 poetry run pytest [...]
 ```
 
