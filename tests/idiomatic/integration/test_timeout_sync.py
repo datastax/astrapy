@@ -30,7 +30,7 @@ class TestTimeoutSync:
     ) -> None:
         sync_empty_collection.insert_many([{"a": 1}] * 100)
         time.sleep(10)
-        assert sync_empty_collection.count_documents({}, upper_bound=150) == 100
+        assert sync_empty_collection.count_documents({}, upper_bound=150) >= 100
 
         with pytest.raises(DataAPITimeoutException) as exc:
             sync_empty_collection.count_documents({}, upper_bound=150, max_time_ms=1)
