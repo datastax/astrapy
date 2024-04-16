@@ -2,7 +2,7 @@
 
 A pythonic client for [DataStax Astra DB](https://astra.datastax.com).
 
-_This README targets AstraPy version **1.0.0+**, which introduces a a whole new API.
+_This README targets AstraPy version **1.0.0+**, which introduces a whole new API.
 Click [here](https://github.com/datastax/astrapy/blob/cd3f5ce8146093e10a095709c0f5c3f8e3f2c7da/README.md) for the pre-existing API (fully compatible with newer versions)._
 
 
@@ -72,8 +72,8 @@ for result in cursor:
 Next steps:
 
 - More info and usage patterns are given in the docstrings of classes and methods
+- [Data API reference](https://docs.datastax.com/en/astra/astra-db-vector/api-reference/overview.html)
 - [AstraPy reference](https://docs.datastax.com/en/astra/astra-db-vector/api-reference/dataapiclient.html)
-- [Data API reference](https://docs.datastax.com/en/astra/astra-db-vector/api-reference/data-api-commands.html)
 - Package on [PyPI](https://pypi.org/project/astrapy/)
 
 ## AstraPy's API
