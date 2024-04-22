@@ -53,6 +53,19 @@ class TestDMLSync:
             == 2
         )
 
+    @pytest.mark.describe("test of collection estimated_document_count, sync")
+    def test_collection_estimated_document_count_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        sync_empty_collection.insert_one({"doc": 1, "group": "A"})
+        sync_empty_collection.insert_one({"doc": 2, "group": "B"})
+        sync_empty_collection.insert_one({"doc": 3, "group": "A"})
+        count = sync_empty_collection.estimated_document_count()
+        # it's _estimated_, no precise expectation with such short sizes/times
+        assert isinstance(count, int)
+        assert count >= 0
+
     @pytest.mark.describe("test of overflowing collection count_documents, sync")
     def test_collection_overflowing_count_documents_sync(
         self,

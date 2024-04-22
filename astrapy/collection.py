@@ -1266,6 +1266,39 @@ class Collection:
                 raw_response=cd_response,
             )
 
+    def estimated_document_count(
+        self,
+        *,
+        max_time_ms: Optional[int] = None,
+    ) -> int:
+        """
+        Query the API server for an estimate of the document count in the collection.
+
+        Contrary to `count_documents`, this method has no filtering parameters.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+
+        Returns:
+            a server-provided estimate count of the documents in the collection.
+
+        Example:
+            >>> my_coll.estimated_document_count()
+            35700
+        """
+        ed_response = self.command(
+            {"estimatedDocumentCount": {}},
+            max_time_ms=max_time_ms,
+        )
+        if "count" in ed_response.get("status", {}):
+            count: int = ed_response["status"]["count"]
+            return count
+        else:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from estimated_document_count API command.",
+                raw_response=ed_response,
+            )
+
     @recast_method_sync
     def find_one_and_replace(
         self,
@@ -3492,6 +3525,39 @@ class AsyncCollection:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from count_documents API command.",
                 raw_response=cd_response,
+            )
+
+    async def estimated_document_count(
+        self,
+        *,
+        max_time_ms: Optional[int] = None,
+    ) -> int:
+        """
+        Query the API server for an estimate of the document count in the collection.
+
+        Contrary to `count_documents`, this method has no filtering parameters.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+
+        Returns:
+            a server-provided estimate count of the documents in the collection.
+
+        Example:
+            >>> asyncio.run(my_async_coll.estimated_document_count())
+            35700
+        """
+        ed_response = await self.command(
+            {"estimatedDocumentCount": {}},
+            max_time_ms=max_time_ms,
+        )
+        if "count" in ed_response.get("status", {}):
+            count: int = ed_response["status"]["count"]
+            return count
+        else:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from estimated_document_count API command.",
+                raw_response=ed_response,
             )
 
     @recast_method_async
