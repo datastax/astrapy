@@ -66,6 +66,10 @@ class Environment:
     PROD = "prod"
     DEV = "dev"
     TEST = "test"
+    DSE = "dse"
+
+    values = {PROD, DEV, TEST, DSE}
+    astra_db_values = {PROD, DEV, TEST}
 
 
 database_id_matcher = re.compile(
@@ -82,6 +86,8 @@ api_endpoint_parser = re.compile(
     r".datastax.com"
 )
 
+generic_api_url_matcher = re.compile(r"^https?:\/\/[a-zA-Z0-9.]+(\:[0-9]{1,6}){0,1}$")
+
 
 DEV_OPS_URL_MAP = {
     Environment.PROD: "https://api.astra.datastax.com",
@@ -93,6 +99,14 @@ API_ENDPOINT_TEMPLATE_MAP = {
     Environment.PROD: "https://{database_id}-{region}.apps.astra.datastax.com",
     Environment.DEV: "https://{database_id}-{region}.apps.astra-dev.datastax.com",
     Environment.TEST: "https://{database_id}-{region}.apps.astra-test.datastax.com",
+}
+
+API_PATH_ENV_MAP = {
+    "dse": "",
+}
+
+API_VERSION_ENV_MAP = {
+    "dse": "v1",
 }
 
 
@@ -137,13 +151,37 @@ def parse_api_endpoint(api_endpoint: str) -> Optional[ParsedAPIEndpoint]:
         return None
 
 
+def parse_generic_api_url(api_endpoint: str) -> Optional[str]:
+    """
+    Validate a generic API Endpoint string,
+    such as `http://10.1.1.1:123` or `https://my.domain`.
+
+    Args:
+        api_endpoint: a string supposedly expressing a valid API Endpoint
+        (not necessarily an Astra DB one).
+
+    Returns:
+        a normalized (stripped) version of the endpoint if valid. If invalid,
+        return None.
+    """
+    if api_endpoint and api_endpoint[-1] == "/":
+        _api_endpoint = api_endpoint[:-1]
+    else:
+        _api_endpoint = api_endpoint
+    match = generic_api_url_matcher.match(_api_endpoint)
+    if match:
+        return match[0]
+    else:
+        return None
+
+
 def build_api_endpoint(environment: str, database_id: str, region: str) -> str:
     """
     Build the API Endpoint full strings from database parameters.
 
     Args:
-        environment: a label, whose value is one of Environment.PROD,
-            Environment.DEV or Environment.TEST.
+        environment: a label, whose value can be Environment.PROD
+            or another of Environment.* for which this operation makes sense.
         database_id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
         region: a region ID, such as "us-west1".
 
@@ -1269,7 +1307,7 @@ class DatabaseAdmin(ABC):
 class AstraDBDatabaseAdmin(DatabaseAdmin):
     """
     An "admin" object, able to perform administrative tasks at the namespaces level
-    (i.e. within a certani database), such as creating/listing/dropping namespaces.
+    (i.e. within a certain database), such as creating/listing/dropping namespaces.
 
     This is one layer below the AstraDBAdmin concept, in that it is tied to
     a single database and enables admin work within it. As such, it is generally
