@@ -2831,14 +2831,23 @@ class AstraDB:
         self.base_url = self.api_endpoint.strip("/")
 
         # Set the API version and path from the call
-        self.api_path = (api_path or DEFAULT_JSON_API_PATH).strip("/")
-        self.api_version = (api_version or DEFAULT_JSON_API_VERSION).strip("/")
+        self.api_path = (DEFAULT_JSON_API_PATH if api_path is None else api_path).strip(
+            "/"
+        )
+        self.api_version = (
+            DEFAULT_JSON_API_VERSION if api_version is None else api_version
+        ).strip("/")
 
         # Set the namespace
         self.namespace = namespace
 
         # Finally, construct the full base path
-        self.base_path: str = f"/{self.api_path}/{self.api_version}/{self.namespace}"
+        base_path_components = [
+            comp
+            for comp in (self.api_path, self.api_version, self.namespace)
+            if comp != ""
+        ]
+        self.base_path: str = f"/{'/'.join(base_path_components)}"
 
     def __repr__(self) -> str:
         return f'AstraDB[endpoint="{self.base_url}", keyspace="{self.namespace}"]'
@@ -3167,14 +3176,23 @@ class AsyncAstraDB:
         self.base_url = self.api_endpoint.strip("/")
 
         # Set the API version and path from the call
-        self.api_path = (api_path or DEFAULT_JSON_API_PATH).strip("/")
-        self.api_version = (api_version or DEFAULT_JSON_API_VERSION).strip("/")
+        self.api_path = (DEFAULT_JSON_API_PATH if api_path is None else api_path).strip(
+            "/"
+        )
+        self.api_version = (
+            DEFAULT_JSON_API_VERSION if api_version is None else api_version
+        ).strip("/")
 
         # Set the namespace
         self.namespace = namespace
 
         # Finally, construct the full base path
-        self.base_path: str = f"/{self.api_path}/{self.api_version}/{self.namespace}"
+        base_path_components = [
+            comp
+            for comp in (self.api_path, self.api_version, self.namespace)
+            if comp != ""
+        ]
+        self.base_path: str = f"/{'/'.join(base_path_components)}"
 
     def __repr__(self) -> str:
         return f'AsyncAstraDB[endpoint="{self.base_url}", keyspace="{self.namespace}"]'
