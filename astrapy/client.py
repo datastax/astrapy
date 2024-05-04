@@ -26,8 +26,6 @@ from astrapy.admin import (
     fetch_raw_database_info_from_id_token,
     parse_api_endpoint,
     parse_generic_api_url,
-    API_PATH_ENV_MAP,
-    API_VERSION_ENV_MAP,
 )
 
 
@@ -281,6 +279,7 @@ class DataAPIClient:
                 namespace=namespace,
                 caller_name=self._caller_name,
                 caller_version=self._caller_version,
+                environment=self.environment,
                 api_path=api_path,
                 api_version=api_version,
             )
@@ -394,6 +393,7 @@ class DataAPIClient:
                     namespace=namespace,
                     caller_name=self._caller_name,
                     caller_version=self._caller_version,
+                    environment=self.environment,
                     api_path=api_path,
                     api_version=api_version,
                 )
@@ -403,24 +403,15 @@ class DataAPIClient:
             parsed_generic_api_endpoint = parse_generic_api_url(api_endpoint)
             if parsed_generic_api_endpoint:
                 _token = token or self.token
-                _api_path: Optional[str]
-                _api_version: Optional[str]
-                if api_path is None:
-                    _api_path = API_PATH_ENV_MAP.get(self.environment)
-                else:
-                    _api_path = api_path
-                if api_version is None:
-                    _api_version = API_VERSION_ENV_MAP.get(self.environment)
-                else:
-                    _api_version = api_version
                 return Database(
                     api_endpoint=parsed_generic_api_endpoint,
                     token=_token,
                     namespace=namespace,
                     caller_name=self._caller_name,
                     caller_version=self._caller_version,
-                    api_path=_api_path,
-                    api_version=_api_version,
+                    environment=self.environment,
+                    api_path=api_path,
+                    api_version=api_version,
                 )
             else:
                 raise ValueError("Cannot parse the provided API endpoint.")

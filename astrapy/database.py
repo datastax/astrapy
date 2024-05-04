@@ -35,7 +35,14 @@ from astrapy.info import (
     CollectionDescriptor,
     CollectionVectorServiceOptions,
 )
-from astrapy.admin import parse_api_endpoint, fetch_database_info
+
+from astrapy.admin import (
+    Environment,
+    parse_api_endpoint,
+    fetch_database_info,
+    API_PATH_ENV_MAP,
+    API_VERSION_ENV_MAP,
+)
 
 if TYPE_CHECKING:
     from astrapy.collection import AsyncCollection, Collection
@@ -106,6 +113,7 @@ class Database:
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
+        environment: ENV_TODO
         api_path: path to append to the API Endpoint. In typical usage, this
             should be left to its default of "/api/json".
         api_version: version specifier to append to the API path. In typical
@@ -132,14 +140,28 @@ class Database:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        environment: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> None:
+        self.environment = (environment or Environment.PROD).lower()
+        #
+        _api_path: Optional[str]
+        _api_version: Optional[str]
+        if api_path is None:
+            _api_path = API_PATH_ENV_MAP.get(self.environment)
+        else:
+            _api_path = api_path
+        if api_version is None:
+            _api_version = API_VERSION_ENV_MAP.get(self.environment)
+        else:
+            _api_version = api_version
+        #
         self._astra_db = AstraDB(
             token=token,
             api_endpoint=api_endpoint,
-            api_path=api_path,
-            api_version=api_version,
+            api_path=_api_path,
+            api_version=_api_version,
             namespace=namespace,
             caller_name=caller_name,
             caller_version=caller_version,
@@ -172,6 +194,7 @@ class Database:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        environment: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> Database:
@@ -181,6 +204,7 @@ class Database:
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
+            environment=environment or self.environment,
             api_path=api_path or self._astra_db.api_path,
             api_version=api_version or self._astra_db.api_version,
         )
@@ -228,6 +252,7 @@ class Database:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        environment: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> AsyncDatabase:
@@ -246,6 +271,7 @@ class Database:
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
+            environment: ENV_TODO
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -265,6 +291,7 @@ class Database:
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
+            environment=environment or self.environment,
             api_path=api_path or self._astra_db.api_path,
             api_version=api_version or self._astra_db.api_version,
         )
@@ -785,14 +812,17 @@ class Database:
         # lazy importing here to avoid circular dependency
         from astrapy.admin import AstraDBDatabaseAdmin
 
-        return AstraDBDatabaseAdmin.from_api_endpoint(
-            api_endpoint=self._astra_db.api_endpoint,
-            token=token or self._astra_db.token,
-            caller_name=self._astra_db.caller_name,
-            caller_version=self._astra_db.caller_version,
-            dev_ops_url=dev_ops_url,
-            dev_ops_api_version=dev_ops_api_version,
-        )
+        if self.environment in Environment.astra_db_values:
+            return AstraDBDatabaseAdmin.from_api_endpoint(
+                api_endpoint=self._astra_db.api_endpoint,
+                token=token or self._astra_db.token,
+                caller_name=self._astra_db.caller_name,
+                caller_version=self._astra_db.caller_version,
+                dev_ops_url=dev_ops_url,
+                dev_ops_api_version=dev_ops_api_version,
+            )
+        else:
+            raise NotImplementedError("ENV_TODO")
 
 
 class AsyncDatabase:
@@ -815,6 +845,7 @@ class AsyncDatabase:
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
+        environment: ENV_TODO
         api_path: path to append to the API Endpoint. In typical usage, this
             should be left to its default of "/api/json".
         api_version: version specifier to append to the API path. In typical
@@ -841,14 +872,28 @@ class AsyncDatabase:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        environment: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> None:
+        self.environment = (environment or Environment.PROD).lower()
+        #
+        _api_path: Optional[str]
+        _api_version: Optional[str]
+        if api_path is None:
+            _api_path = API_PATH_ENV_MAP.get(self.environment)
+        else:
+            _api_path = api_path
+        if api_version is None:
+            _api_version = API_VERSION_ENV_MAP.get(self.environment)
+        else:
+            _api_version = api_version
+        #
         self._astra_db = AsyncAstraDB(
             token=token,
             api_endpoint=api_endpoint,
-            api_path=api_path,
-            api_version=api_version,
+            api_path=_api_path,
+            api_version=_api_version,
             namespace=namespace,
             caller_name=caller_name,
             caller_version=caller_version,
@@ -896,6 +941,7 @@ class AsyncDatabase:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        environment: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> AsyncDatabase:
@@ -905,6 +951,7 @@ class AsyncDatabase:
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
+            environment=environment or self.environment,
             api_path=api_path or self._astra_db.api_path,
             api_version=api_version or self._astra_db.api_version,
         )
@@ -952,6 +999,7 @@ class AsyncDatabase:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        environment: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> Database:
@@ -970,6 +1018,7 @@ class AsyncDatabase:
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
+            environment: ENV_TODO
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -990,6 +1039,7 @@ class AsyncDatabase:
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
+            environment=environment or self.environment,
             api_path=api_path or self._astra_db.api_path,
             api_version=api_version or self._astra_db.api_version,
         )
@@ -1526,11 +1576,14 @@ class AsyncDatabase:
         # lazy importing here to avoid circular dependency
         from astrapy.admin import AstraDBDatabaseAdmin
 
-        return AstraDBDatabaseAdmin.from_api_endpoint(
-            api_endpoint=self._astra_db.api_endpoint,
-            token=token or self._astra_db.token,
-            caller_name=self._astra_db.caller_name,
-            caller_version=self._astra_db.caller_version,
-            dev_ops_url=dev_ops_url,
-            dev_ops_api_version=dev_ops_api_version,
-        )
+        if self.environment in Environment.astra_db_values:
+            return AstraDBDatabaseAdmin.from_api_endpoint(
+                api_endpoint=self._astra_db.api_endpoint,
+                token=token or self._astra_db.token,
+                caller_name=self._astra_db.caller_name,
+                caller_version=self._astra_db.caller_version,
+                dev_ops_url=dev_ops_url,
+                dev_ops_api_version=dev_ops_api_version,
+            )
+        else:
+            raise NotImplementedError("ENV_TODO")

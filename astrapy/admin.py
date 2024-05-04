@@ -1207,6 +1207,7 @@ class AstraDBAdmin:
             namespace=_namespace,
             caller_name=self._caller_name,
             caller_version=self._caller_version,
+            environment=self.environment,
             api_path=api_path,
             api_version=api_version,
         )
@@ -1245,6 +1246,8 @@ class DatabaseAdmin(ABC):
     This supports generic namespace crud, as well as spawning databases,
     without committing to a specific database architecture (e.g. Astra DB).
     """
+
+    environment: str
 
     @abstractmethod
     def list_namespaces(self, *pargs: Any, **kwargs: Any) -> List[str]:
