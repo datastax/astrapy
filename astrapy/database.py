@@ -46,7 +46,7 @@ from astrapy.admin import (
 
 if TYPE_CHECKING:
     from astrapy.collection import AsyncCollection, Collection
-    from astrapy.admin import AstraDBDatabaseAdmin
+    from astrapy.admin import DatabaseAdmin
 
 
 logger = logging.getLogger(__name__)
@@ -156,7 +156,6 @@ class Database:
             _api_version = API_VERSION_ENV_MAP.get(self.environment)
         else:
             _api_version = api_version
-        #
         self._astra_db = AstraDB(
             token=token,
             api_endpoint=api_endpoint,
@@ -782,10 +781,11 @@ class Database:
         token: Optional[str] = None,
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
-    ) -> AstraDBDatabaseAdmin:
+    ) -> DatabaseAdmin:
         """
-        Return an AstraDBDatabaseAdmin object corresponding to this database, for
+        Return a DatabaseAdmin object corresponding to this database, for
         use in admin tasks such as managing namespaces.
+        ENV_TODO subclasses here
 
         Args:
             token: an access token with enough permission on the database to
@@ -795,11 +795,13 @@ class Database:
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
                 Generally it can be omitted. The environment (prod/dev/...) is
                 determined from the API Endpoint.
+                ENV_TODO => this is only for Astra-type things
             dev_ops_api_version: this can specify a custom version of the DevOps API
                 (such as "v2"). Generally not needed.
+                ENV_TODO => this is only for Astra-type things
 
         Returns:
-            An AstraDBDatabaseAdmin instance targeting this database.
+            A DatabaseAdmin instance targeting this database.
 
         Example:
             >>> my_db_admin = my_db.get_database_admin()
@@ -810,7 +812,7 @@ class Database:
         """
 
         # lazy importing here to avoid circular dependency
-        from astrapy.admin import AstraDBDatabaseAdmin
+        from astrapy.admin import AstraDBDatabaseAdmin, DataAPIDatabaseAdmin
 
         if self.environment in Environment.astra_db_values:
             return AstraDBDatabaseAdmin.from_api_endpoint(
@@ -822,7 +824,23 @@ class Database:
                 dev_ops_api_version=dev_ops_api_version,
             )
         else:
-            raise NotImplementedError("ENV_TODO")
+            if dev_ops_url is not None:
+                raise ValueError(
+                    "Parameter `dev_ops_url` not supported outside of Astra DB."
+                )
+            if dev_ops_api_version is not None:
+                raise ValueError(
+                    "Parameter `dev_ops_api_version` not supported outside of Astra DB."
+                )
+            return DataAPIDatabaseAdmin(
+                api_endpoint=self._astra_db.api_endpoint,
+                token=token or self._astra_db.token,
+                environment=self.environment,
+                api_path=self._astra_db.api_path,
+                api_version=self._astra_db.api_version,
+                caller_name=self._astra_db.caller_name,
+                caller_version=self._astra_db.caller_version,
+            )
 
 
 class AsyncDatabase:
@@ -847,7 +865,7 @@ class AsyncDatabase:
         caller_version: version of the caller.
         environment: ENV_TODO
         api_path: path to append to the API Endpoint. In typical usage, this
-            should be left to its default of "/api/json".
+            should be left to its default of "/api/json". ENV_TODO this <==
         api_version: version specifier to append to the API path. In typical
             usage, this should be left to its default of "v1".
 
@@ -1546,10 +1564,11 @@ class AsyncDatabase:
         token: Optional[str] = None,
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
-    ) -> AstraDBDatabaseAdmin:
+    ) -> DatabaseAdmin:
         """
-        Return an AstraDBDatabaseAdmin object corresponding to this database, for
+        Return a DatabaseAdmin object corresponding to this database, for
         use in admin tasks such as managing namespaces.
+        ENV_TODO subclassing
 
         Args:
             token: an access token with enough permission on the database to
@@ -1559,11 +1578,13 @@ class AsyncDatabase:
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
                 Generally it can be omitted. The environment (prod/dev/...) is
                 determined from the API Endpoint.
+                ENV_TODO => this is only for Astra-type things
             dev_ops_api_version: this can specify a custom version of the DevOps API
                 (such as "v2"). Generally not needed.
+                ENV_TODO => this is only for Astra-type things
 
         Returns:
-            An AstraDBDatabaseAdmin instance targeting this database.
+            A DatabaseAdmin instance targeting this database.
 
         Example:
             >>> my_db_admin = my_async_db.get_database_admin()
@@ -1574,7 +1595,7 @@ class AsyncDatabase:
         """
 
         # lazy importing here to avoid circular dependency
-        from astrapy.admin import AstraDBDatabaseAdmin
+        from astrapy.admin import AstraDBDatabaseAdmin, DataAPIDatabaseAdmin
 
         if self.environment in Environment.astra_db_values:
             return AstraDBDatabaseAdmin.from_api_endpoint(
@@ -1586,4 +1607,20 @@ class AsyncDatabase:
                 dev_ops_api_version=dev_ops_api_version,
             )
         else:
-            raise NotImplementedError("ENV_TODO")
+            if dev_ops_url is not None:
+                raise ValueError(
+                    "Parameter `dev_ops_url` not supported outside of Astra DB."
+                )
+            if dev_ops_api_version is not None:
+                raise ValueError(
+                    "Parameter `dev_ops_api_version` not supported outside of Astra DB."
+                )
+            return DataAPIDatabaseAdmin(
+                api_endpoint=self._astra_db.api_endpoint,
+                token=token or self._astra_db.token,
+                environment=self.environment,
+                api_path=self._astra_db.api_path,
+                api_version=self._astra_db.api_version,
+                caller_name=self._astra_db.caller_name,
+                caller_version=self._astra_db.caller_version,
+            )

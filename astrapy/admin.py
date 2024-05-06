@@ -25,11 +25,13 @@ from dataclasses import dataclass
 import httpx
 
 from astrapy.core.ops import AstraDBOps
+from astrapy.api_commander import APICommander
 from astrapy.cursors import CommandCursor
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo
 from astrapy.exceptions import (
     DevOpsAPIException,
     MultiCallTimeoutManager,
+    DataAPIFaultyResponseException,
     base_timeout_info,
     to_dataapi_timeout_exception,
     ops_recast_method_sync,
@@ -2204,6 +2206,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
     def __init__(
         self,
+        api_endpoint: str,
         *,
         token: str,
         environment: Optional[str] = None,
@@ -2212,15 +2215,29 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        self.token = token
         self.environment = environment or Environment.DSE
+        self.token = token
+        self.api_endpoint = api_endpoint
+        #
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        #
         _api_path = api_path if api_path is not None else ""
-        # ENV_TODO create internal client for calls
+        _api_version = api_version if api_version is not None else ""
+        #
+        self._api_commander = APICommander(
+            api_endpoint=api_endpoint,
+            path="/".join(comp for comp in [_api_path, _api_version] if comp),
+            token=token,
+            headers={},
+            callers=[(caller_name, caller_version)],
+            redacted_header_names=[],
+        )
 
     def __repr__(self) -> str:
         env_desc = f', environment="{self.environment}"'
         return (
-            f'{self.__class__.__name__}(id="{self.id}", '
+            f'{self.__class__.__name__}(endpoint="{self.api_endpoint}", '
             f'"{self.token[:12]}..."{env_desc})'
         )
 
@@ -2228,93 +2245,293 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         if isinstance(other, DataAPIDatabaseAdmin):
             return all(
                 [
-                    self.token == other.token,
                     self.environment == other.environment,
-                    # ENV_TODO fix this self._astra_db_admin == other._astra_db_admin,
+                    self._api_commander == other._api_commander,
                 ]
             )
         else:
             return False
 
-    # ENV_TODO from here!
-    def _copy(
-        self,
-        id: Optional[str] = None,
-        token: Optional[str] = None,
-        environment: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        dev_ops_url: Optional[str] = None,
-        dev_ops_api_version: Optional[str] = None,
-    ) -> AstraDBDatabaseAdmin:
-        return AstraDBDatabaseAdmin(
-            id=id or self.id,
-            token=token or self.token,
-            environment=environment or self.environment,
-            caller_name=caller_name or self._astra_db_admin._caller_name,
-            caller_version=caller_version or self._astra_db_admin._caller_version,
-            dev_ops_url=dev_ops_url or self._astra_db_admin._dev_ops_url,
-            dev_ops_api_version=dev_ops_api_version
-            or self._astra_db_admin._dev_ops_api_version,
-        )
+    # def _copy(
+    #     self,
+    #     id: Optional[str] = None,
+    #     token: Optional[str] = None,
+    #     environment: Optional[str] = None,
+    #     caller_name: Optional[str] = None,
+    #     caller_version: Optional[str] = None,
+    #     dev_ops_url: Optional[str] = None,
+    #     dev_ops_api_version: Optional[str] = None,
+    # ) -> DataAPIDatabaseAdmin:
+    #     return DataAPIDatabaseAdmin(
+    #         id=id or self.id,
+    #         token=token or self.token,
+    #         environment=environment or self.environment,
+    #         caller_name=caller_name or self._astra_db_admin._caller_name,
+    #         caller_version=caller_version or self._astra_db_admin._caller_version,
+    #         dev_ops_url=dev_ops_url or self._astra_db_admin._dev_ops_url,
+    #         dev_ops_api_version=dev_ops_api_version
+    #         or self._astra_db_admin._dev_ops_api_version,
+    #     )
 
-    def with_options(
+    # def with_options(
+    #     self,
+    #     *,
+    #     id: Optional[str] = None,
+    #     token: Optional[str] = None,
+    #     caller_name: Optional[str] = None,
+    #     caller_version: Optional[str] = None,
+    # ) -> DataAPIDatabaseAdmin:
+    #     """
+    #     Create a clone of this DataAPIDatabaseAdmin with some changed attributes.
+
+    #     Args:
+    #         id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+    #         token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
+    #         caller_name: name of the application, or framework, on behalf of which
+    #             the Data API and DevOps API calls are performed. This ends up in
+    #             the request user-agent.
+    #         caller_version: version of the caller.
+
+    #     Returns:
+    #         a new DataAPIDatabaseAdmin instance.
+
+    #     Example:
+    #         >>> admin_for_my_other_db = admin_for_my_db.with_options(
+    #         ...     id="abababab-0101-2323-4545-6789abcdef01",
+    #         ... )
+    #     """
+
+    #     return self._copy(
+    #         id=id,
+    #         token=token,
+    #         caller_name=caller_name,
+    #         caller_version=caller_version,
+    #     )
+
+    # def set_caller(
+    #     self,
+    #     caller_name: Optional[str] = None,
+    #     caller_version: Optional[str] = None,
+    # ) -> None:
+    #     """
+    #     Set a new identity for the application/framework on behalf of which
+    #     the DevOps API calls will be performed (the "caller").
+
+    #     New objects spawned from this client afterwards will inherit the new settings.
+
+    #     Args:
+    #         caller_name: name of the application, or framework, on behalf of which
+    #             the DevOps API calls are performed. This ends up in the request user-agent.
+    #         caller_version: version of the caller.
+
+    #     Example:
+    #         >>> admin_for_my_db.set_caller(
+    #         ...     caller_name="the_caller",
+    #         ...     caller_version="0.1.0",
+    #         ... )
+    #     """
+
+    #     logger.info(f"setting caller to {caller_name}/{caller_version}")
+    #     self._astra_db_admin.set_caller(caller_name, caller_version)
+
+    def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
+        """Get a list of namespaces for the database."""
+        logger.info("getting list of namespaces")
+        fn_response = self._api_commander.request(
+            payload={"findNamespaces": {}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if "namespaces" not in fn_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findNamespaces API command.",
+                raw_response=fn_response,
+            )
+        else:
+            logger.info("finished getting list of namespaces")
+            return fn_response["status"]["namespaces"]  # type: ignore[no-any-return]
+
+    def create_namespace(
+        self,
+        name: str,
+        *,
+        replication_options: Optional[Dict[str, Any]] = None,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create a namespace in the database, returning {'ok': 1} if successful.
+        ENV_TODO replication stuff
+        """
+        options = {
+            k: v
+            for k, v in {
+                "replication": replication_options,
+            }.items()
+            if v
+        }
+        payload = {
+            "createNamespace": {
+                **{"name": name},
+                **({"options": options} if options else {}),
+            }
+        }
+        logger.info("creating namespace")
+        cn_response = self._api_commander.request(
+            payload=payload,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if (cn_response.get("status") or {}).get("ok") != 1:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from createNamespace API command.",
+                raw_response=cn_response,
+            )
+        else:
+            logger.info("finished creating namespace")
+            return cn_response["status"]  # type: ignore[no-any-return]
+
+    def drop_namespace(
+        self,
+        name: str,
+        *,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Drop (delete) a namespace from the database, returning {'ok': 1} if successful.
+        """
+        logger.info("dropping namespace")
+        dn_response = self._api_commander.request(
+            payload={"dropNamespace": {"name": name}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if (dn_response.get("status") or {}).get("ok") != 1:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from dropNamespace API command.",
+                raw_response=dn_response,
+            )
+        else:
+            logger.info("finished dropping namespace")
+            return dn_response["status"]  # type: ignore[no-any-return]
+
+    async def async_list_namespaces(
+        self, *, max_time_ms: Optional[int] = None
+    ) -> List[str]:
+        """
+        Get a list of namespaces for the database.
+        (Async version of the method.)
+        """
+        logger.info("getting list of namespaces, async")
+        fn_response = await self._api_commander.async_request(
+            payload={"findNamespaces": {}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if "namespaces" not in fn_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findNamespaces API command.",
+                raw_response=fn_response,
+            )
+        else:
+            logger.info("finished getting list of namespaces, async")
+            return fn_response["status"]["namespaces"]  # type: ignore[no-any-return]
+
+    async def async_create_namespace(
+        self,
+        name: str,
+        *,
+        replication_options: Optional[Dict[str, Any]] = None,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create a namespace in the database, returning {'ok': 1} if successful.
+        (Async version of the method.)
+        """
+        options = {
+            k: v
+            for k, v in {
+                "replication": replication_options,
+            }.items()
+            if v
+        }
+        payload = {
+            "createNamespace": {
+                **{"name": name},
+                **({"options": options} if options else {}),
+            }
+        }
+        logger.info("creating namespace, async")
+        cn_response = await self._api_commander.async_request(
+            payload=payload,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if (cn_response.get("status") or {}).get("ok") != 1:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from createNamespace API command.",
+                raw_response=cn_response,
+            )
+        else:
+            logger.info("finished creating namespace, async")
+            return cn_response["status"]  # type: ignore[no-any-return]
+
+    async def async_drop_namespace(
+        self,
+        name: str,
+        *,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Drop (delete) a namespace from the database, returning {'ok': 1} if successful.
+        (Async version of the method.)
+        """
+        logger.info("dropping namespace")
+        dn_response = await self._api_commander.async_request(
+            payload={"dropNamespace": {"name": name}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if (dn_response.get("status") or {}).get("ok") != 1:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from dropNamespace API command.",
+                raw_response=dn_response,
+            )
+        else:
+            logger.info("finished dropping namespace")
+            return dn_response["status"]  # type: ignore[no-any-return]
+
+    def get_database(
         self,
         *,
-        id: Optional[str] = None,
         token: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-    ) -> AstraDBDatabaseAdmin:
-        """
-        Create a clone of this AstraDBDatabaseAdmin with some changed attributes.
-
-        Args:
-            id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
-            token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API and DevOps API calls are performed. This ends up in
-                the request user-agent.
-            caller_version: version of the caller.
-
-        Returns:
-            a new AstraDBDatabaseAdmin instance.
-
-        Example:
-            >>> admin_for_my_other_db = admin_for_my_db.with_options(
-            ...     id="abababab-0101-2323-4545-6789abcdef01",
-            ... )
-        """
-
-        return self._copy(
-            id=id,
-            token=token,
-            caller_name=caller_name,
-            caller_version=caller_version,
+        namespace: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> Database:
+        """Get a Database object from this database admin."""
+        return Database(
+            api_endpoint=self.api_endpoint,
+            token=token or self.token,
+            namespace=namespace,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
+            environment=self.environment,
+            api_path=api_path,
+            api_version=api_version,
         )
 
-    def set_caller(
+    def get_async_database(
         self,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-    ) -> None:
+        *,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> AsyncDatabase:
         """
-        Set a new identity for the application/framework on behalf of which
-        the DevOps API calls will be performed (the "caller").
+        Create an AsyncDatabase instance for the database, to be used
+        when doing data-level work (such as creating/managing collections).
 
-        New objects spawned from this client afterwards will inherit the new settings.
-
-        Args:
-            caller_name: name of the application, or framework, on behalf of which
-                the DevOps API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
-
-        Example:
-            >>> admin_for_my_db.set_caller(
-            ...     caller_name="the_caller",
-            ...     caller_version="0.1.0",
-            ... )
+        This method has identical behavior and signature as the sync
+        counterpart `get_database`: please see that one for more details.
         """
-
-        logger.info(f"setting caller to {caller_name}/{caller_version}")
-        self._astra_db_admin.set_caller(caller_name, caller_version)
+        return self.get_database(
+            token=token,
+            namespace=namespace,
+            api_path=api_path,
+            api_version=api_version,
+        ).to_async()
