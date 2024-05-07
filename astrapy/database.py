@@ -402,7 +402,12 @@ class Database:
         return self._astra_db.namespace
 
     def get_collection(
-        self, name: str, *, namespace: Optional[str] = None
+        self,
+        name: str,
+        *,
+        namespace: Optional[str] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
     ) -> Collection:
         """
         Spawn a `Collection` object instance representing a collection
@@ -418,6 +423,8 @@ class Database:
             name: the name of the collection.
             namespace: the namespace containing the collection. If no namespace
                 is specified, the general setting for this database is used.
+            embedding_api_key: TODO_VECTORIZE
+            collection_max_time_ms: TODO_VECTORIZE
 
         Returns:
             a `Collection` instance, representing the desired collection
@@ -437,10 +444,18 @@ class Database:
         """
 
         # lazy importing here against circular-import error
-        from astrapy.collection import Collection
+        from astrapy.collection import BaseOptions, Collection
 
         _namespace = namespace or self._astra_db.namespace
-        return Collection(self, name, namespace=_namespace)
+        return Collection(
+            self,
+            name,
+            namespace=_namespace,
+            base_options=BaseOptions(
+                embedding_api_key=embedding_api_key,
+                max_time_ms=collection_max_time_ms,
+            ),
+        )
 
     @recast_method_sync
     def create_collection(
@@ -456,6 +471,8 @@ class Database:
         additional_options: Optional[Dict[str, Any]] = None,
         check_exists: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
     ) -> Collection:
         """
         Creates a collection on the database and return the Collection
@@ -500,6 +517,8 @@ class Database:
                 preexisting collections, the command will succeed or fail
                 depending on whether the options match or not.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+            embedding_api_key: TODO_VECTORIZE
+            collection_max_time_ms: TODO_VECTORIZE
 
         Returns:
             a (synchronous) `Collection` instance, representing the
@@ -572,7 +591,12 @@ class Database:
             timeout_info=timeout_manager.remaining_timeout_info(),
         )
         logger.info(f"finished creating collection '{name}'")
-        return self.get_collection(name, namespace=namespace)
+        return self.get_collection(
+            name,
+            namespace=namespace,
+            embedding_api_key=embedding_api_key,
+            collection_max_time_ms=collection_max_time_ms,
+        )
 
     @recast_method_sync
     def drop_collection(
@@ -1169,7 +1193,12 @@ class AsyncDatabase:
         return self._astra_db.namespace
 
     async def get_collection(
-        self, name: str, *, namespace: Optional[str] = None
+        self,
+        name: str,
+        *,
+        namespace: Optional[str] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
     ) -> AsyncCollection:
         """
         Spawn an `AsyncCollection` object instance representing a collection
@@ -1185,6 +1214,8 @@ class AsyncDatabase:
             name: the name of the collection.
             namespace: the namespace containing the collection. If no namespace
                 is specified, the setting for this database is used.
+            embedding_api_key: TODO_VECTORIZE
+            collection_max_time_ms: TODO_VECTORIZE
 
         Returns:
             an `AsyncCollection` instance, representing the desired collection
@@ -1207,10 +1238,18 @@ class AsyncDatabase:
         """
 
         # lazy importing here against circular-import error
-        from astrapy.collection import AsyncCollection
+        from astrapy.collection import AsyncCollection, BaseOptions
 
         _namespace = namespace or self._astra_db.namespace
-        return AsyncCollection(self, name, namespace=_namespace)
+        return AsyncCollection(
+            self,
+            name,
+            namespace=_namespace,
+            base_options=BaseOptions(
+                embedding_api_key=embedding_api_key,
+                max_time_ms=collection_max_time_ms,
+            ),
+        )
 
     @recast_method_async
     async def create_collection(
@@ -1226,6 +1265,8 @@ class AsyncDatabase:
         additional_options: Optional[Dict[str, Any]] = None,
         check_exists: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
     ) -> AsyncCollection:
         """
         Creates a collection on the database and return the AsyncCollection
@@ -1270,6 +1311,8 @@ class AsyncDatabase:
                 preexisting collections, the command will succeed or fail
                 depending on whether the options match or not.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+            embedding_api_key: TODO_VECTORIZE
+            collection_max_time_ms: TODO_VECTORIZE
 
         Returns:
             an `AsyncCollection` instance, representing the newly-created collection.
@@ -1346,7 +1389,12 @@ class AsyncDatabase:
             timeout_info=timeout_manager.remaining_timeout_info(),
         )
         logger.info(f"finished creating collection '{name}'")
-        return await self.get_collection(name, namespace=namespace)
+        return await self.get_collection(
+            name,
+            namespace=namespace,
+            embedding_api_key=embedding_api_key,
+            collection_max_time_ms=collection_max_time_ms,
+        )
 
     @recast_method_async
     async def drop_collection(

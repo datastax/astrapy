@@ -18,6 +18,7 @@ import asyncio
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 
 from astrapy.core.db import (
@@ -202,6 +203,21 @@ def _collate_vectors_to_documents(
         ]
 
 
+@dataclass
+class BaseOptions:
+    """
+    TODO_VECTORIZE
+    """
+
+    max_time_ms: Optional[int] = None
+    embedding_api_key: Optional[str] = None
+
+    def _copy(self):
+        return BaseOptions(
+            max_time_ms=self.max_time_ms,
+            embedding_api_key=self.embedding_api_key,
+        )
+
 class Collection:
     """
     A Data API collection, the main object to interact with the Data API,
@@ -218,6 +234,7 @@ class Collection:
             collection on the database.
         namespace: this is the namespace to which the collection belongs.
             If not specified, the database's working namespace is used.
+        base_options: TODO_VECTORIZE
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -250,9 +267,14 @@ class Collection:
         name: str,
         *,
         namespace: Optional[str] = None,
+        base_options: Optional[BaseOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
+        if base_options is None:
+            self.base_options = BaseOptions()
+        else:
+            self.base_options = base_options._copy()
         self._astra_db_collection: AstraDBCollection = AstraDBCollection(
             collection_name=name,
             astra_db=database._astra_db,
@@ -273,7 +295,12 @@ class Collection:
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Collection):
-            return self._astra_db_collection == other._astra_db_collection
+            return all(
+                [
+                    self._astra_db_collection == other._astra_db_collection,
+                    self.base_options == other.base_options,
+                ]
+            )
         else:
             return False
 
@@ -291,6 +318,7 @@ class Collection:
         database: Optional[Database] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
+        base_options: Optional[BaseOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
@@ -298,6 +326,7 @@ class Collection:
             database=database or self.database._copy(),
             name=name or self.name,
             namespace=namespace or self.namespace,
+            base_options=base_options or self.base_options,
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )
@@ -306,6 +335,7 @@ class Collection:
         self,
         *,
         name: Optional[str] = None,
+        base_options: Optional[BaseOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
@@ -316,6 +346,7 @@ class Collection:
             name: the name of the collection. This parameter is useful to
                 quickly spawn Collection instances each pointing to a different
                 collection existing in the same namespace.
+            base_options: TODO_VECTORIZE
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -332,6 +363,7 @@ class Collection:
 
         return self._copy(
             name=name,
+            base_options=base_options,
             caller_name=caller_name,
             caller_version=caller_version,
         )
@@ -342,6 +374,7 @@ class Collection:
         database: Optional[AsyncDatabase] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
+        base_options: Optional[BaseOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
@@ -358,6 +391,7 @@ class Collection:
                 collection on the database.
             namespace: this is the namespace to which the collection belongs.
                 If not specified, the database's working namespace is used.
+            base_options: TODO_VECTORIZE
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -374,6 +408,7 @@ class Collection:
             database=database or self.database.to_async(),
             name=name or self.name,
             namespace=namespace or self.namespace,
+            base_options=base_options or self.base_options,
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )
@@ -2433,6 +2468,7 @@ class AsyncCollection:
             collection on the database.
         namespace: this is the namespace to which the collection belongs.
             If not specified, the database's working namespace is used.
+        base_options: TODO_VECTORIZE
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -2467,9 +2503,14 @@ class AsyncCollection:
         name: str,
         *,
         namespace: Optional[str] = None,
+        base_options: Optional[BaseOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
+        if base_options is None:
+            self.base_options = BaseOptions()
+        else:
+            self.base_options = base_options._copy()
         self._astra_db_collection: AsyncAstraDBCollection = AsyncAstraDBCollection(
             collection_name=name,
             astra_db=database._astra_db,
@@ -2490,7 +2531,12 @@ class AsyncCollection:
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AsyncCollection):
-            return self._astra_db_collection == other._astra_db_collection
+            return all(
+                [
+                    self._astra_db_collection == other._astra_db_collection,
+                    self.base_options == other.base_options,
+                ]
+            )
         else:
             return False
 
@@ -2508,6 +2554,7 @@ class AsyncCollection:
         database: Optional[AsyncDatabase] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
+        base_options: Optional[BaseOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
@@ -2515,6 +2562,7 @@ class AsyncCollection:
             database=database or self.database._copy(),
             name=name or self.name,
             namespace=namespace or self.namespace,
+            base_options=base_options or self.base_options,
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )
@@ -2523,6 +2571,7 @@ class AsyncCollection:
         self,
         *,
         name: Optional[str] = None,
+        base_options: Optional[BaseOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
@@ -2533,6 +2582,7 @@ class AsyncCollection:
             name: the name of the collection. This parameter is useful to
                 quickly spawn AsyncCollection instances each pointing to a different
                 collection existing in the same namespace.
+            base_options: TODO_VECTORIZE
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -2549,6 +2599,7 @@ class AsyncCollection:
 
         return self._copy(
             name=name,
+            base_options=base_options,
             caller_name=caller_name,
             caller_version=caller_version,
         )
@@ -2559,6 +2610,7 @@ class AsyncCollection:
         database: Optional[Database] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
+        base_options: Optional[BaseOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
@@ -2575,6 +2627,7 @@ class AsyncCollection:
                 collection on the database.
             namespace: this is the namespace to which the collection belongs.
                 If not specified, the database's working namespace is used.
+            base_options: TODO_VECTORIZE
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -2591,6 +2644,7 @@ class AsyncCollection:
             database=database or self.database.to_sync(),
             name=name or self.name,
             namespace=namespace or self.namespace,
+            base_options=base_options or self.base_options,
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )
