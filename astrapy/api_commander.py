@@ -91,9 +91,6 @@ class APICommander:
         self.caller_header: Dict[str, str] = (
             {"User-Agent": user_agent} if user_agent else {}
         )
-
-        print("self.caller_header", self.caller_header)
-
         self.full_headers: Dict[str, str] = {
             **self.headers,
             **self.caller_header,

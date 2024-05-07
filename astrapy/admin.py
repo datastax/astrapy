@@ -2509,6 +2509,10 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         api_version: Optional[str] = None,
     ) -> Database:
         """Get a Database object from this database admin."""
+
+        # lazy importing here to avoid circular dependency
+        from astrapy import Database
+
         return Database(
             api_endpoint=self.api_endpoint,
             token=token or self.token,
