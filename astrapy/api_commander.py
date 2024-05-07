@@ -19,7 +19,11 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 import json
 import httpx
 
-from astrapy.core.defaults import DEFAULT_AUTH_HEADER, DEFAULT_TIMEOUT
+from astrapy.core.defaults import (
+    DEFAULT_AUTH_HEADER,
+    DEFAULT_DEV_OPS_AUTH_HEADER,
+    DEFAULT_TIMEOUT,
+)
 from astrapy.core.utils import (
     http_methods,
     logger,
@@ -29,12 +33,40 @@ from astrapy.core.utils import (
     restore_from_api,
     TimeoutInfoWideType,
     to_httpx_timeout,
+    user_agent_astrapy,
+    user_agent_rs,
+    user_agent_string,
 )
 from astrapy.exceptions import (
     DataAPIResponseException,
     DataAPIFaultyResponseException,
     to_dataapi_timeout_exception,
 )
+
+
+DEFAULT_VECTORIZE_SECRET_HEADER = "x-embedding-key"
+DEFAULT_REDACTED_HEADER_NAMES = [
+    DEFAULT_AUTH_HEADER,
+    DEFAULT_DEV_OPS_AUTH_HEADER,
+    DEFAULT_VECTORIZE_SECRET_HEADER,
+]
+
+
+def full_user_agent(
+    callers: List[Tuple[Optional[str], Optional[str]]]
+) -> Optional[str]:
+    regular_user_agents = [
+        user_agent_string(caller[0], caller[1]) for caller in callers
+    ]
+    all_user_agents = [
+        ua_block
+        for ua_block in [user_agent_rs] + regular_user_agents + [user_agent_astrapy]
+        if ua_block
+    ]
+    if all_user_agents:
+        return " ".join(all_user_agents)
+    else:
+        return None
 
 
 class APICommander:
@@ -45,33 +77,26 @@ class APICommander:
         self,
         api_endpoint: str,
         path: str,
-        token: Optional[str],
-        token_header: str = DEFAULT_AUTH_HEADER,
         headers: Dict[str, str] = {},
         callers: List[Tuple[Optional[str], Optional[str]]] = [],
-        redacted_header_names: List[str] = [],
+        redacted_header_names: List[str] = DEFAULT_REDACTED_HEADER_NAMES,
     ) -> None:
         self.api_endpoint = api_endpoint.rstrip("/")
         self.path = path.lstrip("/")
-        self.token = token
-        self.token_header = token_header
         self.headers = headers
         self.callers = callers
-        self.redacted_header_names = {
-            header_name
-            for header_name in (redacted_header_names + [token_header])
-            if header_name is not None
-        }
-        # TODO: caller_header
-        """
-        "User-Agent": compose_user_agent(caller_name, caller_version),
-        """
-        self.caller_header: Dict[str, str] = {}
+        self.redacted_header_names = set(redacted_header_names)
+
+        user_agent = full_user_agent(self.callers)
+        self.caller_header: Dict[str, str] = (
+            {"User-Agent": user_agent} if user_agent else {}
+        )
+
+        print("self.caller_header", self.caller_header)
 
         self.full_headers: Dict[str, str] = {
             **self.headers,
             **self.caller_header,
-            **({} if self.token is None else {self.token_header: self.token}),
         }
         self._loggable_headers = {
             k: v if k not in self.redacted_header_names else "***"

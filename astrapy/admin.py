@@ -25,6 +25,7 @@ from dataclasses import dataclass
 import httpx
 
 from astrapy.core.ops import AstraDBOps
+from astrapy.core.defaults import DEFAULT_AUTH_HEADER
 from astrapy.api_commander import APICommander
 from astrapy.cursors import CommandCursor
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo
@@ -59,7 +60,8 @@ STATUS_TERMINATING = "TERMINATING"
 
 class Environment:
     """
-    Admitted values for `environment` property, such as the one denoting databases.
+    Admitted values for `environment` property,
+    denoting the targeted API deployment type.
     """
 
     def __init__(self) -> None:
@@ -69,8 +71,9 @@ class Environment:
     DEV = "dev"
     TEST = "test"
     DSE = "dse"
+    OTHER = "other"
 
-    values = {PROD, DEV, TEST, DSE}
+    values = {PROD, DEV, TEST, DSE, OTHER}
     astra_db_values = {PROD, DEV, TEST}
 
 
@@ -104,11 +107,13 @@ API_ENDPOINT_TEMPLATE_MAP = {
 }
 
 API_PATH_ENV_MAP = {
-    "dse": "",
+    Environment.DSE: "",
+    Environment.OTHER: "",
 }
 
 API_VERSION_ENV_MAP = {
-    "dse": "v1",
+    Environment.DSE: "v1",
+    Environment.OTHER: "v1",
 }
 
 
@@ -2190,7 +2195,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
     Args:
         token: an access token with enough permission to perform admin tasks.
-        environment: a label, whose value is one of Environment.DSE (default)
+        environment: a label, whose value is one of Environment.OTHER (default)
             or other non-Astra environment values in the `Environment` enum.
         api_path: path to append to the API Endpoint. In typical usage, this
             should be left to its default of "".
@@ -2215,7 +2220,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        self.environment = environment or Environment.DSE
+        self.environment = environment or Environment.OTHER
         self.token = token
         self.api_endpoint = api_endpoint
         #
@@ -2225,13 +2230,14 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         _api_path = api_path if api_path is not None else ""
         _api_version = api_version if api_version is not None else ""
         #
+        commander_headers = {
+            DEFAULT_AUTH_HEADER: token,
+        }
         self._api_commander = APICommander(
             api_endpoint=api_endpoint,
             path="/".join(comp for comp in [_api_path, _api_version] if comp),
-            token=token,
-            headers={},
+            headers=commander_headers,
             callers=[(caller_name, caller_version)],
-            redacted_header_names=[],
         )
 
     def __repr__(self) -> str:

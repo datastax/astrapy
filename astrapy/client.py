@@ -51,7 +51,7 @@ class DataAPIClient:
         token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
         environment: a string representing the target Astra environment.
             It can be left unspecified for the default value of `Environment.PROD`;
-            other values include `Environment.DSE`.
+            other values include `Environment.OTHER`, `Environment.DSE`.
         caller_name: name of the application, or framework, on behalf of which
             the Data API and DevOps API calls are performed. This ends up in
             the request user-agent.

@@ -123,15 +123,22 @@ def log_response(r: httpx.Response) -> None:
     logger.debug(f"Response content: {r.text}")
 
 
+def user_agent_string(
+    caller_name: Optional[str], caller_version: Optional[str]
+) -> Optional[str]:
+    if caller_name:
+        if caller_version:
+            return f"{caller_name}/{caller_version}"
+        else:
+            return f"{caller_name}"
+    else:
+        return None
+
+
 def compose_user_agent(
     caller_name: Optional[str], caller_version: Optional[str]
 ) -> str:
-    user_agent_caller: Optional[str] = None
-    if caller_name:
-        if caller_version:
-            user_agent_caller = f"{caller_name}/{caller_version}"
-        else:
-            user_agent_caller = f"{caller_name}"
+    user_agent_caller = user_agent_string(caller_name, caller_version)
     all_user_agents = [
         ua_block
         for ua_block in [
