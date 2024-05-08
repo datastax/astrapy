@@ -81,8 +81,7 @@ TEST_MODELS = [
             provider="cohere",
             model_name="embed-english-v2.0",
         ),
-        "enabled": False,
-        # 500 Internal Server Error
+        "enabled": True,
     },
     {
         "model_tag": "cohere_englishv3",
@@ -92,10 +91,8 @@ TEST_MODELS = [
             provider="cohere",
             model_name="embed-english-v3.0",
         ),
-        "enabled": False,
-        # 500 Internal Server Error
+        "enabled": True,
     },
-    # vertex?
     {
         "model_tag": "vertexai_gecko",
         "secret_tag": "VERTEXAI",
@@ -136,6 +133,14 @@ def local_vectorize_models() -> List[Any]:
         service_options: CollectionVectorServiceOptions
     """
     models: List[Any] = []
+    if "HEADER_EMBEDDING_MODEL_TAGS" in os.environ:
+        whitelisted_models = [
+            mt
+            for mt in os.environ["HEADER_EMBEDDING_MODEL_TAGS"].split(",")
+            if mt in MODEL_IDS
+        ]
+    else:
+        whitelisted_models = MODEL_IDS
     for model_desc in TEST_MODELS:
         secret_env_var_name = f"HEADER_EMBEDDING_API_KEY_{model_desc['secret_tag']}"
         model = {
@@ -145,6 +150,8 @@ def local_vectorize_models() -> List[Any]:
             "service_options": model_desc["service_options"],
         }
         markers = []
+        if model_desc["model_tag"] not in whitelisted_models:
+            markers.append(pytest.mark.skip(reason="model not whitelisted"))
         if not model_desc["enabled"]:
             markers.append(pytest.mark.skip(reason="model disabled in code"))
         if model["embedding_api_key"] is None:
