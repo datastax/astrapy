@@ -222,7 +222,8 @@ class CollectionVectorOptions:
         dimension: an optional positive integer, the dimensionality of the vector space.
         metric: an optional metric among `VectorMetric.DOT_PRODUCT`,
             `VectorMetric.EUCLIDEAN` and `VectorMetric.COSINE`.
-        service: an optional X object in case a service is configured for the collection.
+        service: an optional CollectionVectorServiceOptions object in case a
+            service is configured for the collection.
             NOTE: This feature is under current development.
     """
 

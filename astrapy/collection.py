@@ -918,8 +918,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             projection: used to select a subset of fields in the documents being
                 returned. The projection can be: an iterable over the field names
@@ -1085,8 +1085,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             projection: used to select a subset of fields in the documents being
                 returned. The projection can be: an iterable over the field names
@@ -1181,8 +1181,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             max_time_ms: a timeout, in milliseconds, for the operation.
 
@@ -1249,8 +1249,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             upper_bound: a required ceiling on the result of the count operation.
                 If the actual number of documents exceeds this value,
@@ -1369,8 +1369,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
             projection: used to select a subset of fields in the document being
@@ -1491,8 +1491,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
@@ -1582,8 +1582,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             update: the update prescription to apply to the document, expressed
                 as a dictionary as per Data API syntax. Examples are:
@@ -1710,8 +1710,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             update: the update prescription to apply to the document, expressed
                 as a dictionary as per Data API syntax. Examples are:
@@ -1800,8 +1800,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             update: the update prescription to apply to the documents, expressed
                 as a dictionary as per Data API syntax. Examples are:
@@ -1919,8 +1919,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             projection: used to select a subset of fields in the document being
                 returned. The projection can be: an iterable over the field names
@@ -2012,8 +2012,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
@@ -2094,8 +2094,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
                 The `delete_many` method does not accept an empty filter: see
                 `delete_all` to completely erase all contents of a collection
@@ -3164,8 +3164,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             projection: used to select a subset of fields in the documents being
                 returned. The projection can be: an iterable over the field names
@@ -3340,8 +3340,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             projection: used to select a subset of fields in the documents being
                 returned. The projection can be: an iterable over the field names
@@ -3448,8 +3448,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             max_time_ms: a timeout, in milliseconds, for the operation.
 
@@ -3524,8 +3524,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             upper_bound: a required ceiling on the result of the count operation.
                 If the actual number of documents exceeds this value,
@@ -3650,8 +3650,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
             projection: used to select a subset of fields in the document being
@@ -3777,8 +3777,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
@@ -3884,8 +3884,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             update: the update prescription to apply to the document, expressed
                 as a dictionary as per Data API syntax. Examples are:
@@ -4018,8 +4018,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             update: the update prescription to apply to the document, expressed
                 as a dictionary as per Data API syntax. Examples are:
@@ -4123,8 +4123,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             update: the update prescription to apply to the documents, expressed
                 as a dictionary as per Data API syntax. Examples are:
@@ -4253,8 +4253,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             projection: used to select a subset of fields in the document being
                 returned. The projection can be: an iterable over the field names
@@ -4352,8 +4352,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
@@ -4436,8 +4436,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
                 The `delete_many` method does not accept an empty filter: see
                 `delete_all` to completely erase all contents of a collection
