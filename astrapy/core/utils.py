@@ -32,7 +32,11 @@ import copy
 import httpx
 
 from astrapy import __version__
-from astrapy.core.defaults import DEFAULT_AUTH_HEADER, DEFAULT_TIMEOUT
+from astrapy.core.defaults import (
+    DEFAULT_AUTH_HEADER,
+    DEFAULT_VECTORIZE_SECRET_HEADER,
+    DEFAULT_TIMEOUT,
+)
 from astrapy.core.core_types import API_RESPONSE
 from astrapy.core.ids import ObjectId, UUID
 
@@ -103,7 +107,9 @@ def log_request(
     # Redact the token from the request headers
     headers_log = copy.deepcopy(headers)
     if DEFAULT_AUTH_HEADER in headers_log:
-        headers_log[DEFAULT_AUTH_HEADER] = "AstraCS:<...>"
+        headers_log[DEFAULT_AUTH_HEADER] = "***"
+    if DEFAULT_VECTORIZE_SECRET_HEADER in headers_log:
+        headers_log[DEFAULT_VECTORIZE_SECRET_HEADER] = "***"
 
     logger.debug(f"Request headers: {headers_log}")
 
@@ -186,6 +192,7 @@ def make_request(
     caller_name: Optional[str],
     caller_version: Optional[str],
     timeout: Optional[Union[httpx.Timeout, float]],
+    additional_headers: Dict[str, str],
 ) -> httpx.Response:
     """
     Make an HTTP request to a specified URL.
@@ -205,8 +212,11 @@ def make_request(
     """
     # Build the request headers from the token and user agent
     request_headers = {
-        auth_header: token,
-        "User-Agent": compose_user_agent(caller_name, caller_version),
+        **{
+            auth_header: token,
+            "User-Agent": compose_user_agent(caller_name, caller_version),
+        },
+        **additional_headers,
     }
 
     # Log the parameters of the request accordingly
@@ -240,6 +250,7 @@ async def amake_request(
     caller_name: Optional[str],
     caller_version: Optional[str],
     timeout: Optional[Union[httpx.Timeout, float]],
+    additional_headers: Dict[str, str],
 ) -> httpx.Response:
     """
     Make an HTTP request to a specified URL.
@@ -259,8 +270,11 @@ async def amake_request(
     """
     # Build the request headers from the token and user agent
     request_headers = {
-        auth_header: token,
-        "User-Agent": compose_user_agent(caller_name, caller_version),
+        **{
+            auth_header: token,
+            "User-Agent": compose_user_agent(caller_name, caller_version),
+        },
+        **additional_headers,
     }
 
     # Log the parameters of the request accordingly

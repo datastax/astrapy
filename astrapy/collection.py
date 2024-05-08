@@ -25,7 +25,10 @@ from astrapy.core.db import (
     AstraDBCollection,
     AsyncAstraDBCollection,
 )
-from astrapy.core.defaults import MAX_INSERT_NUM_DOCUMENTS
+from astrapy.core.defaults import (
+    MAX_INSERT_NUM_DOCUMENTS,
+    DEFAULT_VECTORIZE_SECRET_HEADER,
+)
 from astrapy.exceptions import (
     BulkWriteException,
     CollectionNotFoundException,
@@ -212,11 +215,12 @@ class BaseOptions:
     max_time_ms: Optional[int] = None
     embedding_api_key: Optional[str] = None
 
-    def _copy(self):
+    def _copy(self) -> BaseOptions:
         return BaseOptions(
             max_time_ms=self.max_time_ms,
             embedding_api_key=self.embedding_api_key,
         )
+
 
 class Collection:
     """
@@ -275,12 +279,20 @@ class Collection:
             self.base_options = BaseOptions()
         else:
             self.base_options = base_options._copy()
+        additional_headers = {
+            k: v
+            for k, v in {
+                DEFAULT_VECTORIZE_SECRET_HEADER: self.base_options.embedding_api_key,
+            }.items()
+            if v is not None
+        }
         self._astra_db_collection: AstraDBCollection = AstraDBCollection(
             collection_name=name,
             astra_db=database._astra_db,
             namespace=namespace,
             caller_name=caller_name,
             caller_version=caller_version,
+            additional_headers=additional_headers,
         )
         # this comes after the above, lets AstraDBCollection resolve namespace
         self._database = database._copy(

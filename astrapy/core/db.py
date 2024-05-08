@@ -84,6 +84,7 @@ class AstraDBCollection:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        additional_headers: Dict[str, str] = {},
     ) -> None:
         """
         Initialize an AstraDBCollection instance.
@@ -98,6 +99,7 @@ class AstraDBCollection:
                 If passing a client, its caller is used as fallback
             caller_version (str, optional): version of the caller code ("1.0.3")
                 If passing a client, its caller is used as fallback
+            additional_headers: TODO_VECTORIZE
         """
         # Check for presence of the Astra DB object
         if astra_db is None:
@@ -125,6 +127,7 @@ class AstraDBCollection:
         self.astra_db = astra_db
         self.caller_name: Optional[str] = self.astra_db.caller_name
         self.caller_version: Optional[str] = self.astra_db.caller_version
+        self.additional_headers = additional_headers
         self.collection_name = collection_name
         self.base_path: str = f"{self.astra_db.base_path}/{self.collection_name}"
 
@@ -139,6 +142,7 @@ class AstraDBCollection:
                     self.astra_db == other.astra_db,
                     self.caller_name == other.caller_name,
                     self.caller_version == other.caller_version,
+                    self.additional_headers == other.additional_headers,
                 ]
             )
         else:
@@ -155,6 +159,7 @@ class AstraDBCollection:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        additional_headers: Optional[Dict[str, str]] = None,
     ) -> AstraDBCollection:
         return AstraDBCollection(
             collection_name=collection_name or self.collection_name,
@@ -169,6 +174,7 @@ class AstraDBCollection:
             ),
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
+            additional_headers=additional_headers or self.additional_headers,
         )
 
     def to_async(self) -> AsyncAstraDBCollection:
@@ -177,6 +183,7 @@ class AstraDBCollection:
             astra_db=self.astra_db.to_async(),
             caller_name=self.caller_name,
             caller_version=self.caller_version,
+            additional_headers=self.additional_headers,
         )
 
     def set_caller(
@@ -213,6 +220,7 @@ class AstraDBCollection:
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             timeout=to_httpx_timeout(timeout_info),
+            additional_headers=self.additional_headers,
         )
         response = restore_from_api(direct_response)
         return response
@@ -1455,6 +1463,7 @@ class AsyncAstraDBCollection:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        additional_headers: Dict[str, str] = {},
     ) -> None:
         """
         Initialize an AstraDBCollection instance.
@@ -1469,6 +1478,7 @@ class AsyncAstraDBCollection:
                 If passing a client, its caller is used as fallback
             caller_version (str, optional): version of the caller code ("1.0.3")
                 If passing a client, its caller is used as fallback
+            additional_headers: TODO_VECTORIZE
         """
         # Check for presence of the Astra DB object
         if astra_db is None:
@@ -1496,6 +1506,7 @@ class AsyncAstraDBCollection:
         self.astra_db: AsyncAstraDB = astra_db
         self.caller_name: Optional[str] = self.astra_db.caller_name
         self.caller_version: Optional[str] = self.astra_db.caller_version
+        self.additional_headers = additional_headers
         self.client = astra_db.client
         self.collection_name = collection_name
         self.base_path: str = f"{self.astra_db.base_path}/{self.collection_name}"
@@ -1511,6 +1522,7 @@ class AsyncAstraDBCollection:
                     self.astra_db == other.astra_db,
                     self.caller_name == other.caller_name,
                     self.caller_version == other.caller_version,
+                    self.additional_headers == other.additional_headers,
                 ]
             )
         else:
@@ -1527,6 +1539,7 @@ class AsyncAstraDBCollection:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        additional_headers: Optional[Dict[str, str]] = None,
     ) -> AsyncAstraDBCollection:
         return AsyncAstraDBCollection(
             collection_name=collection_name or self.collection_name,
@@ -1541,6 +1554,7 @@ class AsyncAstraDBCollection:
             ),
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
+            additional_headers=additional_headers or self.additional_headers,
         )
 
     def set_caller(
@@ -1561,6 +1575,7 @@ class AsyncAstraDBCollection:
             astra_db=self.astra_db.to_sync(),
             caller_name=self.caller_name,
             caller_version=self.caller_version,
+            additional_headers=self.additional_headers,
         )
 
     async def _request(
@@ -1586,6 +1601,7 @@ class AsyncAstraDBCollection:
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             timeout=to_httpx_timeout(timeout_info),
+            additional_headers=self.additional_headers,
         )
         response = restore_from_api(adirect_response)
         return response
@@ -2929,6 +2945,7 @@ class AstraDB:
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             timeout=to_httpx_timeout(timeout_info),
+            additional_headers={},
         )
         response = restore_from_api(direct_response)
         return response
@@ -3285,6 +3302,7 @@ class AsyncAstraDB:
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             timeout=to_httpx_timeout(timeout_info),
+            additional_headers={},
         )
         response = restore_from_api(adirect_response)
         return response

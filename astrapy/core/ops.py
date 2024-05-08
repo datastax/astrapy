@@ -144,6 +144,7 @@ class AstraDBOps:
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             timeout=to_httpx_timeout(timeout_info),
+            additional_headers={},
         )
         return raw_response
 
@@ -169,6 +170,7 @@ class AstraDBOps:
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             timeout=to_httpx_timeout(timeout_info),
+            additional_headers={},
         )
         return raw_response
 
@@ -195,6 +197,7 @@ class AstraDBOps:
             caller_name=None,
             caller_version=None,
             timeout=to_httpx_timeout(timeout_info),
+            additional_headers={},
         )
         return response
 
@@ -221,6 +224,7 @@ class AstraDBOps:
             caller_name=None,
             caller_version=None,
             timeout=to_httpx_timeout(timeout_info),
+            additional_headers={},
         )
         return response
 

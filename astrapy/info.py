@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from dataclasses import dataclass
 
 
@@ -175,6 +175,8 @@ class CollectionVectorServiceOptions:
 
     provider: Optional[str]
     model_name: Optional[str]
+    authorization: Optional[Dict[str, Union[str, List[str]]]] = None
+    parameters: Optional[Dict[str, Any]] = None
 
     def as_dict(self) -> Dict[str, Any]:
         """Recast this object into a dictionary."""
@@ -184,6 +186,8 @@ class CollectionVectorServiceOptions:
             for k, v in {
                 "provider": self.provider,
                 "modelName": self.model_name,
+                "authorization": self.authorization,
+                "parameters": self.parameters,
             }.items()
             if v is not None
         }
@@ -201,6 +205,8 @@ class CollectionVectorServiceOptions:
             return CollectionVectorServiceOptions(
                 provider=raw_dict.get("provider"),
                 model_name=raw_dict.get("modelName"),
+                authorization=raw_dict.get("authorization"),
+                parameters=raw_dict.get("parameters"),
             )
         else:
             return None

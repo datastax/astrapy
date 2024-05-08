@@ -12,14 +12,11 @@ class AstraDBCredentials(TypedDict):
     namespace: Optional[str]
 
 
-ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
-ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
-
-ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
-
-
 @pytest.fixture(scope="session")
 def astra_db_credentials_kwargs() -> AstraDBCredentials:
+    ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
+    ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
+    ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
     astra_db_creds: AstraDBCredentials = {
         "token": ASTRA_DB_APPLICATION_TOKEN,
         "api_endpoint": ASTRA_DB_API_ENDPOINT,
@@ -31,6 +28,8 @@ def astra_db_credentials_kwargs() -> AstraDBCredentials:
 
 @pytest.fixture(scope="session")
 def astra_invalid_db_credentials_kwargs() -> AstraDBCredentials:
+    ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
+    ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
     astra_db_creds: AstraDBCredentials = {
         "token": ASTRA_DB_APPLICATION_TOKEN,
         "api_endpoint": "http://localhost:1234",

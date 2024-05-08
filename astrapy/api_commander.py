@@ -23,6 +23,7 @@ from astrapy.core.defaults import (
     DEFAULT_AUTH_HEADER,
     DEFAULT_DEV_OPS_AUTH_HEADER,
     DEFAULT_TIMEOUT,
+    DEFAULT_VECTORIZE_SECRET_HEADER,
 )
 from astrapy.core.utils import (
     http_methods,
@@ -44,7 +45,6 @@ from astrapy.exceptions import (
 )
 
 
-DEFAULT_VECTORIZE_SECRET_HEADER = "x-embedding-key"
 DEFAULT_REDACTED_HEADER_NAMES = [
     DEFAULT_AUTH_HEADER,
     DEFAULT_DEV_OPS_AUTH_HEADER,
