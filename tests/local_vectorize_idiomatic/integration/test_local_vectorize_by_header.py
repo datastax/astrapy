@@ -64,6 +64,51 @@ TEST_MODELS = [
         "enabled": True,
     },
     {
+        "model_tag": "azure_openai_textemb3small",
+        "secret_tag": "AZURE_OPENAI",
+        "dimension": 512,
+        "service_options": CollectionVectorServiceOptions(
+            provider="azureOpenAI",
+            model_name="text-embedding-3-small",
+            parameters={
+                "apiVersion": "2024-02-01",
+                "deploymentId": "text-embedding-3-small-steo",
+                "resourceName": "steo-azure-openai",
+            },
+        ),
+        "enabled": True,
+    },
+    {
+        "model_tag": "azure_openai_textemb3large",
+        "secret_tag": "AZURE_OPENAI",
+        "dimension": 1024,
+        "service_options": CollectionVectorServiceOptions(
+            provider="azureOpenAI",
+            model_name="text-embedding-3-large",
+            parameters={
+                "apiVersion": "2024-02-01",
+                "deploymentId": "text-embedding-3-large-steo",
+                "resourceName": "steo-azure-openai",
+            },
+        ),
+        "enabled": True,
+    },
+    {
+        "model_tag": "azure_openai_textembada2",
+        "secret_tag": "AZURE_OPENAI",
+        "dimension": 1536,
+        "service_options": CollectionVectorServiceOptions(
+            provider="azureOpenAI",
+            model_name="text-embedding-ada-002",
+            parameters={
+                "apiVersion": "2024-02-01",
+                "deploymentId": "ada2-steo",
+                "resourceName": "steo-azure-openai",
+            },
+        ),
+        "enabled": True,
+    },
+    {
         "model_tag": "huggingface",
         "secret_tag": "HUGGINGFACE",
         "dimension": 384,
