@@ -459,6 +459,7 @@ class Collection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a CollectionOptions instance describing the collection.
@@ -470,9 +471,10 @@ class Collection:
         """
 
         logger.info(f"getting collections in search of '{self.name}'")
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         self_descriptors = [
             coll_desc
-            for coll_desc in self.database.list_collections(max_time_ms=max_time_ms)
+            for coll_desc in self.database.list_collections(max_time_ms=_max_time_ms)
             if coll_desc.name == self.name
         ]
         logger.info(f"finished getting collections in search of '{self.name}'")
@@ -591,6 +593,7 @@ class Collection:
                 Moreover, this parameter cannot coexist with `vector`.
                 NOTE: This feature is under current development.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             an InsertOneResult object.
@@ -622,10 +625,11 @@ class Collection:
         """
 
         _document = _collate_vector_to_document(document, vector, vectorize)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"inserting one document in '{self.name}'")
         io_response = self._astra_db_collection.insert_one(
             _document,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished inserting one document in '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
@@ -689,6 +693,11 @@ class Collection:
             concurrency: maximum number of concurrent requests to the API at
                 a given time. It cannot be more than one for ordered insertions.
             max_time_ms: a timeout, in milliseconds, for the operation.
+                If not passed, the collection-level setting is used instead:
+                If many documents are being inserted, this method corresponds
+                to several HTTP requests: in such cases one may want to specify
+                a more tolerant timeout here.
+
 
         Returns:
             an InsertManyResult object.
@@ -769,9 +778,10 @@ class Collection:
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: List[Dict[str, Any]] = []
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         if ordered:
             options = {"ordered": True}
             inserted_ids: List[Any] = []
@@ -959,6 +969,7 @@ class Collection:
             max_time_ms: a timeout, in milliseconds, for each single one
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a Cursor object representing iterations over the matching documents
@@ -1047,6 +1058,7 @@ class Collection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         if include_similarity is not None and not _is_vector_sort(_sort):
             raise ValueError(
                 "Cannot use `include_similarity` when not searching through `vector`."
@@ -1056,7 +1068,7 @@ class Collection:
                 collection=self,
                 filter=filter,
                 projection=projection,
-                max_time_ms=max_time_ms,
+                max_time_ms=_max_time_ms,
                 overall_max_time_ms=None,
             )
             .skip(skip)
@@ -1113,6 +1125,7 @@ class Collection:
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a dictionary expressing the required document, otherwise None.
@@ -1139,6 +1152,7 @@ class Collection:
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         fo_cursor = self.find(
             filter=filter,
             projection=projection,
@@ -1148,7 +1162,7 @@ class Collection:
             vectorize=vectorize,
             include_similarity=include_similarity,
             sort=sort,
-            max_time_ms=max_time_ms,
+            max_time_ms=_max_time_ms,
         )
         try:
             document = fo_cursor.__next__()
@@ -1184,7 +1198,8 @@ class Collection:
                     {"price": {"$lt": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            max_time_ms: a timeout, in milliseconds, for the operation.
+            max_time_ms: a timeout, in milliseconds, with the same meaning as for `find`.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a list of all different values for `key` found across the documents
@@ -1224,12 +1239,13 @@ class Collection:
             Note of the `find` command.
         """
 
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         f_cursor = Cursor(
             collection=self,
             filter=filter,
             projection={key: True},
             max_time_ms=None,
-            overall_max_time_ms=max_time_ms,
+            overall_max_time_ms=_max_time_ms,
         )
         return f_cursor.distinct(key)  # type: ignore[no-any-return]
 
@@ -1259,6 +1275,7 @@ class Collection:
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             the exact count of matching documents.
@@ -1286,10 +1303,11 @@ class Collection:
             by this method if this limit is encountered.
         """
 
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info("calling count_documents")
         cd_response = self._astra_db_collection.count_documents(
             filter=filter,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info("finished calling count_documents")
         if "count" in cd_response.get("status", {}):
@@ -1325,6 +1343,7 @@ class Collection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a server-provided estimate count of the documents in the collection.
@@ -1333,9 +1352,10 @@ class Collection:
             >>> my_coll.estimated_document_count()
             35700
         """
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         ed_response = self.command(
             {"estimatedDocumentCount": {}},
-            max_time_ms=max_time_ms,
+            max_time_ms=_max_time_ms,
         )
         if "count" in ed_response.get("status", {}):
             count: int = ed_response["status"]["count"]
@@ -1405,6 +1425,7 @@ class Collection:
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -1448,6 +1469,7 @@ class Collection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"calling find_one_and_replace on '{self.name}'")
         fo_response = self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
@@ -1455,7 +1477,7 @@ class Collection:
             projection=normalize_optional_projection(projection),
             sort=_sort,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_replace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1516,6 +1538,7 @@ class Collection:
                 if no matches are found on the collection. If False,
                 the operation silently does nothing in case of no matches.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             an UpdateResult object summarizing the outcome of the replace operation.
@@ -1538,12 +1561,13 @@ class Collection:
             "upsert": upsert,
         }
         logger.info(f"calling find_one_and_replace on '{self.name}'")
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         fo_response = self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
             sort=_sort,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_replace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1624,6 +1648,7 @@ class Collection:
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -1667,6 +1692,7 @@ class Collection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = self._astra_db_collection.find_one_and_update(
             update=update,
@@ -1674,7 +1700,7 @@ class Collection:
             projection=normalize_optional_projection(projection),
             sort=_sort,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_update on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1741,6 +1767,7 @@ class Collection:
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
@@ -1760,13 +1787,14 @@ class Collection:
         options = {
             "upsert": upsert,
         }
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = self._astra_db_collection.find_one_and_update(
             update=update,
             sort=_sort,
             filter=filter,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_update on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1815,6 +1843,10 @@ class Collection:
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
             max_time_ms: a timeout, in milliseconds, for the operation.
+                If not passed, the collection-level setting is used instead:
+                if a large number of document updates is anticipated, it is suggested
+                to specify a larger timeout than in most other operations as the
+                update will span several HTTP calls to the API in sequence.
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
@@ -1849,8 +1881,9 @@ class Collection:
         um_responses: List[Dict[str, Any]] = []
         um_statuses: List[Dict[str, Any]] = []
         must_proceed = True
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"starting update_many on '{self.name}'")
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         while must_proceed:
             options = {**base_options, **page_state_options}
             logger.info(f"calling update_many on '{self.name}'")
@@ -1947,6 +1980,7 @@ class Collection:
                 determining what document will come first and hence be the
                 deleted one. See the `find` method for more on sorting.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             Either the document (or a projection thereof, as requested), or None
@@ -1972,11 +2006,12 @@ class Collection:
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
         logger.info(f"calling find_one_and_delete on '{self.name}'")
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         fo_response = self._astra_db_collection.find_one_and_delete(
             sort=_sort,
             filter=filter,
             projection=_projection,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_delete on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -2032,6 +2067,7 @@ class Collection:
                 determining what document will come first and hence be the
                 deleted one. See the `find` method for more on sorting.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
@@ -2055,9 +2091,10 @@ class Collection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"calling delete_one_by_predicate on '{self.name}'")
         do_response = self._astra_db_collection.delete_one_by_predicate(
-            filter=filter, timeout_info=base_timeout_info(max_time_ms), sort=_sort
+            filter=filter, timeout_info=base_timeout_info(_max_time_ms), sort=_sort
         )
         logger.info(f"finished calling delete_one_by_predicate on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
@@ -2100,6 +2137,11 @@ class Collection:
                 The `delete_many` method does not accept an empty filter: see
                 `delete_all` to completely erase all contents of a collection
             max_time_ms: a timeout, in milliseconds, for the operation.
+                If not passed, the collection-level setting is used instead:
+                keep in mind that this method entails successive HTTP requests
+                to the API, depending on how many documents are to be deleted.
+                For this reason, in most cases it is suggested to relax the
+                timeout compared to other method calls.
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
@@ -2133,7 +2175,8 @@ class Collection:
         dm_responses: List[Dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         logger.info(f"starting delete_many on '{self.name}'")
         while must_proceed:
             logger.info(f"calling delete_many on '{self.name}'")
@@ -2179,6 +2222,7 @@ class Collection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a dictionary of the form {"ok": 1} to signal successful deletion.
@@ -2197,9 +2241,10 @@ class Collection:
             Use with caution.
         """
 
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"calling unfiltered delete_many on '{self.name}'")
         dm_response = self._astra_db_collection.delete_many(
-            filter={}, timeout_info=base_timeout_info(max_time_ms)
+            filter={}, timeout_info=base_timeout_info(_max_time_ms)
         )
         logger.info(f"finished calling unfiltered delete_many on '{self.name}'")
         deleted_count = dm_response["status"]["deletedCount"]
@@ -2243,6 +2288,9 @@ class Collection:
                 Remember that, if the method call times out, then there's no
                 guarantee about what portion of the bulk write has been received
                 and successfully executed by the Data API.
+                If not passed, the collection-level setting is used instead:
+                in most cases, however, one should pass a relaxed timeout
+                if longer sequences of operations are to be executed in bulk.
 
         Returns:
             A single BulkWriteResult summarizing the whole list of requested
@@ -2274,8 +2322,9 @@ class Collection:
             _concurrency = concurrency
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered bulk_write concurrently.")
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"startng a bulk write on '{self.name}'")
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         if ordered:
             bulk_write_results: List[BulkWriteResult] = []
             for operation_i, operation in enumerate(requests):
@@ -2391,6 +2440,7 @@ class Collection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
                 Remember there is not guarantee that a request that has
                 timed out us not in fact honored.
 
@@ -2410,14 +2460,6 @@ class Collection:
         Note:
             Use with caution.
 
-
-        Note:
-            Once the method succeeds, methods on this object can still be invoked:
-            however, this hardly makes sense as the underlying actual collection
-            is no more.
-            It is responsibility of the developer to design a correct flow
-            which avoids using a deceased collection any further.
-
         Note:
             Once the method succeeds, methods on this object can still be invoked:
             however, this hardly makes sense as the underlying actual collection
@@ -2426,8 +2468,9 @@ class Collection:
             which avoids using a deceased collection any further.
         """
 
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"dropping collection '{self.name}' (self)")
-        drop_result = self.database.drop_collection(self, max_time_ms=max_time_ms)
+        drop_result = self.database.drop_collection(self, max_time_ms=_max_time_ms)
         logger.info(f"finished dropping collection '{self.name}' (self)")
         return drop_result  # type: ignore[no-any-return]
 
@@ -2444,6 +2487,7 @@ class Collection:
         Args:
             body: a JSON-serializable dictionary, the payload of the request.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a dictionary with the response of the HTTP request.
@@ -2453,12 +2497,13 @@ class Collection:
             {'status': {'count': 123}}
         """
 
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"calling command on '{self.name}'")
         command_result = self.database.command(
             body=body,
             namespace=self.namespace,
             collection_name=self.name,
-            max_time_ms=max_time_ms,
+            max_time_ms=_max_time_ms,
         )
         logger.info(f"finished calling command on '{self.name}'")
         return command_result  # type: ignore[no-any-return]
@@ -2695,6 +2740,7 @@ class AsyncCollection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a CollectionOptions instance describing the collection.
@@ -2705,11 +2751,12 @@ class AsyncCollection:
             CollectionOptions(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
 
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"getting collections in search of '{self.name}'")
         self_descriptors = [
             coll_desc
             async for coll_desc in self.database.list_collections(
-                max_time_ms=max_time_ms
+                max_time_ms=_max_time_ms
             )
             if coll_desc.name == self.name
         ]
@@ -2829,6 +2876,7 @@ class AsyncCollection:
                 Moreover, this parameter cannot coexist with `vector`.
                 NOTE: This feature is under current development.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             an InsertOneResult object.
@@ -2863,10 +2911,11 @@ class AsyncCollection:
         """
 
         _document = _collate_vector_to_document(document, vector, vectorize)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"inserting one document in '{self.name}'")
         io_response = await self._astra_db_collection.insert_one(
             _document,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished inserting one document in '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
@@ -2930,7 +2979,10 @@ class AsyncCollection:
             concurrency: maximum number of concurrent requests to the API at
                 a given time. It cannot be more than one for ordered insertions.
             max_time_ms: a timeout, in milliseconds, for the operation.
-
+                If not passed, the collection-level setting is used instead:
+                If many documents are being inserted, this method corresponds
+                to several HTTP requests: in such cases one may want to specify
+                a more tolerant timeout here.
         Returns:
             an InsertManyResult object.
 
@@ -3023,9 +3075,10 @@ class AsyncCollection:
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: List[Dict[str, Any]] = []
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         if ordered:
             options = {"ordered": True}
             inserted_ids: List[Any] = []
@@ -3205,6 +3258,7 @@ class AsyncCollection:
             max_time_ms: a timeout, in milliseconds, for each single one
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             an AsyncCursor object representing iterations over the matching documents
@@ -3302,6 +3356,7 @@ class AsyncCollection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         if include_similarity is not None and not _is_vector_sort(_sort):
             raise ValueError(
                 "Cannot use `include_similarity` when not searching through `vector`."
@@ -3311,7 +3366,7 @@ class AsyncCollection:
                 collection=self,
                 filter=filter,
                 projection=projection,
-                max_time_ms=max_time_ms,
+                max_time_ms=_max_time_ms,
                 overall_max_time_ms=None,
             )
             .skip(skip)
@@ -3368,6 +3423,7 @@ class AsyncCollection:
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a dictionary expressing the required document, otherwise None.
@@ -3406,6 +3462,7 @@ class AsyncCollection:
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         fo_cursor = self.find(
             filter=filter,
             projection=projection,
@@ -3415,7 +3472,7 @@ class AsyncCollection:
             vectorize=vectorize,
             include_similarity=include_similarity,
             sort=sort,
-            max_time_ms=max_time_ms,
+            max_time_ms=_max_time_ms,
         )
         try:
             document = await fo_cursor.__anext__()
@@ -3451,7 +3508,8 @@ class AsyncCollection:
                     {"price": {"$lt": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            max_time_ms: a timeout, in milliseconds, for the operation.
+            max_time_ms: a timeout, in milliseconds, with the same meaning as for `find`.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a list of all different values for `key` found across the documents
@@ -3499,12 +3557,13 @@ class AsyncCollection:
             Note of the `find` command.
         """
 
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         f_cursor = AsyncCursor(
             collection=self,
             filter=filter,
             projection={key: True},
             max_time_ms=None,
-            overall_max_time_ms=max_time_ms,
+            overall_max_time_ms=_max_time_ms,
         )
         return await f_cursor.distinct(key)  # type: ignore[no-any-return]
 
@@ -3534,6 +3593,7 @@ class AsyncCollection:
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             the exact count of matching documents.
@@ -3566,10 +3626,11 @@ class AsyncCollection:
             by this method if this limit is encountered.
         """
 
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info("calling count_documents")
         cd_response = await self._astra_db_collection.count_documents(
             filter=filter,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info("finished calling count_documents")
         if "count" in cd_response.get("status", {}):
@@ -3605,6 +3666,7 @@ class AsyncCollection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a server-provided estimate count of the documents in the collection.
@@ -3613,9 +3675,10 @@ class AsyncCollection:
             >>> asyncio.run(my_async_coll.estimated_document_count())
             35700
         """
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         ed_response = await self.command(
             {"estimatedDocumentCount": {}},
-            max_time_ms=max_time_ms,
+            max_time_ms=_max_time_ms,
         )
         if "count" in ed_response.get("status", {}):
             count: int = ed_response["status"]["count"]
@@ -3686,6 +3749,7 @@ class AsyncCollection:
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             A document, either the one before the replace operation or the
@@ -3734,6 +3798,7 @@ class AsyncCollection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"calling find_one_and_replace on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
@@ -3741,7 +3806,7 @@ class AsyncCollection:
             projection=normalize_optional_projection(projection),
             sort=_sort,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_replace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -3802,6 +3867,7 @@ class AsyncCollection:
                 if no matches are found on the collection. If False,
                 the operation silently does nothing in case of no matches.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             an UpdateResult object summarizing the outcome of the replace operation.
@@ -3839,13 +3905,14 @@ class AsyncCollection:
         options = {
             "upsert": upsert,
         }
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"calling find_one_and_replace on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
             sort=_sort,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_replace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -3926,6 +3993,7 @@ class AsyncCollection:
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -3975,6 +4043,7 @@ class AsyncCollection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_update(
             update=update,
@@ -3982,7 +4051,7 @@ class AsyncCollection:
             projection=normalize_optional_projection(projection),
             sort=_sort,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_update on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -4049,6 +4118,7 @@ class AsyncCollection:
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
@@ -4083,13 +4153,14 @@ class AsyncCollection:
         options = {
             "upsert": upsert,
         }
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_update(
             update=update,
             sort=_sort,
             filter=filter,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_update on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -4138,6 +4209,10 @@ class AsyncCollection:
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
             max_time_ms: a timeout, in milliseconds, for the operation.
+                If not passed, the collection-level setting is used instead:
+                if a large number of document updates is anticipated, it is suggested
+                to specify a larger timeout than in most other operations as the
+                update will span several HTTP calls to the API in sequence.
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
@@ -4183,8 +4258,9 @@ class AsyncCollection:
         um_responses: List[Dict[str, Any]] = []
         um_statuses: List[Dict[str, Any]] = []
         must_proceed = True
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"starting update_many on '{self.name}'")
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         while must_proceed:
             options = {**base_options, **page_state_options}
             logger.info(f"calling update_many on '{self.name}'")
@@ -4281,6 +4357,7 @@ class AsyncCollection:
                 determining what document will come first and hence be the
                 deleted one. See the `find` method for more on sorting.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             Either the document (or a projection thereof, as requested), or None
@@ -4311,12 +4388,13 @@ class AsyncCollection:
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"calling find_one_and_delete on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_delete(
             sort=_sort,
             filter=filter,
             projection=_projection,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_delete on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -4372,6 +4450,7 @@ class AsyncCollection:
                 determining what document will come first and hence be the
                 deleted one. See the `find` method for more on sorting.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
@@ -4395,10 +4474,11 @@ class AsyncCollection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"calling delete_one_by_predicate on '{self.name}'")
         do_response = await self._astra_db_collection.delete_one_by_predicate(
             filter=filter,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
             sort=_sort,
         )
         logger.info(f"finished calling delete_one_by_predicate on '{self.name}'")
@@ -4442,6 +4522,11 @@ class AsyncCollection:
                 The `delete_many` method does not accept an empty filter: see
                 `delete_all` to completely erase all contents of a collection
             max_time_ms: a timeout, in milliseconds, for the operation.
+                If not passed, the collection-level setting is used instead:
+                keep in mind that this method entails successive HTTP requests
+                to the API, depending on how many documents are to be deleted.
+                For this reason, in most cases it is suggested to relax the
+                timeout compared to other method calls.
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
@@ -4480,7 +4565,8 @@ class AsyncCollection:
         dm_responses: List[Dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         logger.info(f"starting delete_many on '{self.name}'")
         while must_proceed:
             logger.info(f"calling delete_many on '{self.name}'")
@@ -4526,6 +4612,7 @@ class AsyncCollection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a dictionary of the form {"ok": 1} to signal successful deletion.
@@ -4549,18 +4636,12 @@ class AsyncCollection:
 
         Note:
             Use with caution.
-
-        Note:
-            Once the method succeeds, methods on this object can still be invoked:
-            however, this hardly makes sense as the underlying actual collection
-            is no more.
-            It is responsibility of the developer to design a correct flow
-            which avoids using a deceased collection any further.
         """
 
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"calling unfiltered delete_many on '{self.name}'")
         dm_response = await self._astra_db_collection.delete_many(
-            filter={}, timeout_info=base_timeout_info(max_time_ms)
+            filter={}, timeout_info=base_timeout_info(_max_time_ms)
         )
         logger.info(f"finished calling unfiltered delete_many on '{self.name}'")
         deleted_count = dm_response["status"]["deletedCount"]
@@ -4604,6 +4685,9 @@ class AsyncCollection:
                 Remember that, if the method call times out, then there's no
                 guarantee about what portion of the bulk write has been received
                 and successfully executed by the Data API.
+                If not passed, the collection-level setting is used instead:
+                in most cases, however, one should pass a relaxed timeout
+                if longer sequences of operations are to be executed in bulk.
 
         Returns:
             A single BulkWriteResult summarizing the whole list of requested
@@ -4651,8 +4735,9 @@ class AsyncCollection:
             _concurrency = concurrency
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered bulk_write concurrently.")
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"startng a bulk write on '{self.name}'")
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         if ordered:
             bulk_write_results: List[BulkWriteResult] = []
             for operation_i, operation in enumerate(requests):
@@ -4761,6 +4846,7 @@ class AsyncCollection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
                 Remember there is not guarantee that a request that has
                 timed out us not in fact honored.
 
@@ -4793,8 +4879,11 @@ class AsyncCollection:
             which avoids using a deceased collection any further.
         """
 
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"dropping collection '{self.name}' (self)")
-        drop_result = await self.database.drop_collection(self, max_time_ms=max_time_ms)
+        drop_result = await self.database.drop_collection(
+            self, max_time_ms=_max_time_ms
+        )
         logger.info(f"finished dropping collection '{self.name}' (self)")
         return drop_result  # type: ignore[no-any-return]
 
@@ -4811,6 +4900,7 @@ class AsyncCollection:
         Args:
             body: a JSON-serializable dictionary, the payload of the request.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a dictionary with the response of the HTTP request.
@@ -4820,12 +4910,13 @@ class AsyncCollection:
             {'status': {'count': 123}}
         """
 
+        _max_time_ms = max_time_ms or self.base_options.max_time_ms
         logger.info(f"calling command on '{self.name}'")
         command_result = await self.database.command(
             body=body,
             namespace=self.namespace,
             collection_name=self.name,
-            max_time_ms=max_time_ms,
+            max_time_ms=_max_time_ms,
         )
         logger.info(f"finished calling command on '{self.name}'")
         return command_result  # type: ignore[no-any-return]
