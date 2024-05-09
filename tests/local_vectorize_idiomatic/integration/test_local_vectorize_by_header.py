@@ -152,17 +152,82 @@ TEST_MODELS = [
         "enabled": False,
         # Server failed (when doing DML: it seems there's an unresolved template variable
     },
-    #
+    # JINA not there yet
     {
-        "model_tag": "voyage_ai2",
+        "model_tag": "jinaai_base_en",
+        "secret_tag": "JINAAI",
+        "dimension": 768,
+        "service_options": CollectionVectorServiceOptions(
+            provider="jinaAI",
+            model_name="jina-embeddings-v2-base-en",
+        ),
+        "enabled": True,
+    },
+    {
+        "model_tag": "jinaai_base_de",
+        "secret_tag": "JINAAI",
+        "dimension": 768,
+        "service_options": CollectionVectorServiceOptions(
+            provider="jinaAI",
+            model_name="jina-embeddings-v2-base-de",
+        ),
+        "enabled": False,
+    },
+    {
+        "model_tag": "jinaai_base_es",
+        "secret_tag": "JINAAI",
+        "dimension": 768,
+        "service_options": CollectionVectorServiceOptions(
+            provider="jinaAI",
+            model_name="jina-embeddings-v2-base-es",
+        ),
+        "enabled": False,
+    },
+    {
+        "model_tag": "jinaai_base_code",
+        "secret_tag": "JINAAI",
+        "dimension": 768,
+        "service_options": CollectionVectorServiceOptions(
+            provider="jinaAI",
+            model_name="jina-embeddings-v2-base-code",
+        ),
+        "enabled": False,
+    },
+    {
+        "model_tag": "jinaai_base_zh",
+        "secret_tag": "JINAAI",
+        "dimension": 768,
+        "service_options": CollectionVectorServiceOptions(
+            provider="jinaAI",
+            model_name="jina-embeddings-v2-base-zh",
+        ),
+        "enabled": False,
+    },
+    # All not accepted by the API:
+    # The provided options are invalid: Model name 'jina-embeddings-v2-base-de' for provider ...
+    # END OF JINA
+    {
+        "model_tag": "voyage_ai_large2instruct",
         "secret_tag": "VOYAGEAI",
         "dimension": 1024,
         "service_options": CollectionVectorServiceOptions(
             provider="voyageAI",
-            model_name="voyage-2",
+            model_name="voyage-large-2-instruct",
         ),
         "enabled": False,
-        # The provided options are invalid: Service provider 'voyageAI' is not supported
+        # (all voyage models) Breaks on insert many with:
+        # Server failed: root cause: (java.lang.NullPointerException) Cannot invoke "io.stargate.sgv2.jsonapi.service.embedding.operation.EmbeddingProviderFactory$ProviderConstructor.create(io.stargate.sgv2.jsonapi.service.embedding.configuration.EmbeddingProviderConfigStore$RequestProperties, String, String, int, java.util.Map)" because the return value of "java.util.Map.get(Object)" is null
+    },
+    {
+        "model_tag": "mistral_embed",
+        "secret_tag": "MISTRAL",
+        "dimension": 1024,
+        "service_options": CollectionVectorServiceOptions(
+            provider="mistral",
+            model_name="mistral-embed",
+        ),
+        "enabled": False,
+        # breaks like voyage above, same API error
     },
 ]
 MODEL_IDS: List[str] = [str(model_desc["model_tag"]) for model_desc in TEST_MODELS]

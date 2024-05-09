@@ -39,6 +39,7 @@ def sync_local_database() -> Iterable[Database]:
     token = os.environ["LOCAL_DATA_API_APPLICATION_TOKEN"]
     client = DataAPIClient(token=token, environment=Environment.OTHER)
     database = client.get_database_by_api_endpoint(api_endpoint)
+    database.get_database_admin().create_namespace("default_keyspace")
     yield database
 
 
