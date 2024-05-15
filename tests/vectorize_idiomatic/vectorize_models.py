@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 from astrapy.info import CollectionVectorServiceOptions
 
 
@@ -113,28 +111,30 @@ TEST_MODELS = [
         "auth_types": ["HEADER"],
         "enabled": True,
     },
-    {
-        "model_tag": "cohere_englishv2",
-        "secret_tag": "COHERE",
-        "dimension": 4096,
-        "service_options": CollectionVectorServiceOptions(
-            provider="cohere",
-            model_name="embed-english-v2.0",
-        ),
-        "auth_types": ["HEADER"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "cohere_englishv3",
-        "secret_tag": "COHERE",
-        "dimension": 1024,
-        "service_options": CollectionVectorServiceOptions(
-            provider="cohere",
-            model_name="embed-english-v3.0",
-        ),
-        "auth_types": ["HEADER"],
-        "enabled": True,
-    },
+    # Not in scope (yet)
+    # {
+    #     "model_tag": "cohere_englishv2",
+    #     "secret_tag": "COHERE",
+    #     "dimension": 4096,
+    #     "service_options": CollectionVectorServiceOptions(
+    #         provider="cohere",
+    #         model_name="embed-english-v2.0",
+    #     ),
+    #     "auth_types": ["HEADER"],
+    #     "enabled": True,
+    # },
+    # Not in scope (yet)
+    # {
+    #     "model_tag": "cohere_englishv3",
+    #     "secret_tag": "COHERE",
+    #     "dimension": 1024,
+    #     "service_options": CollectionVectorServiceOptions(
+    #         provider="cohere",
+    #         model_name="embed-english-v3.0",
+    #     ),
+    #     "auth_types": ["HEADER"],
+    #     "enabled": True,
+    # },
     {
         "model_tag": "huggingface",
         "secret_tag": "HUGGINGFACE",
@@ -257,21 +257,22 @@ TEST_MODELS = [
         "auth_types": ["HEADER"],
         "enabled": True,
     },
-    {
-        "model_tag": "vertexai_gecko",
-        "secret_tag": "VERTEXAI",
-        "dimension": 768,
-        "service_options": CollectionVectorServiceOptions(
-            provider="vertexai",
-            model_name="textembedding-gecko@003",
-            parameters={
-                "projectId": os.environ.get("HEADER_EMBEDDING_VERTEXAI_PROJECT_ID"),
-                "autoTruncate": False,
-            },
-        ),
-        "auth_types": ["HEADER"],
-        "enabled": False,
-    },
+    # Not in scope (yet)
+    # {
+    #     "model_tag": "vertexai_gecko",
+    #     "secret_tag": "VERTEXAI",
+    #     "dimension": 768,
+    #     "service_options": CollectionVectorServiceOptions(
+    #         provider="vertexai",
+    #         model_name="textembedding-gecko@003",
+    #         parameters={
+    #             "projectId": os.environ.get("HEADER_EMBEDDING_VERTEXAI_PROJECT_ID"),
+    #             "autoTruncate": False,
+    #         },
+    #     ),
+    #     "auth_types": ["HEADER"],
+    #     "enabled": False,
+    # },
     {
         "model_tag": "voyage_ai_2",
         "secret_tag": "VOYAGEAI",
