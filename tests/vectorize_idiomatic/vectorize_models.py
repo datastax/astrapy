@@ -78,8 +78,8 @@ TEST_MODELS = [
                 "resourceName": "steo-azure-openai",
             },
         ),
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "azure_openai_textemb3small",
@@ -94,8 +94,8 @@ TEST_MODELS = [
                 "resourceName": "steo-azure-openai",
             },
         ),
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "azure_openai_textembada2",
@@ -110,8 +110,8 @@ TEST_MODELS = [
                 "resourceName": "steo-azure-openai",
             },
         ),
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "cohere_englishv2",
@@ -121,8 +121,8 @@ TEST_MODELS = [
             provider="cohere",
             model_name="embed-english-v2.0",
         ),
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "cohere_englishv3",
@@ -132,8 +132,8 @@ TEST_MODELS = [
             provider="cohere",
             model_name="embed-english-v3.0",
         ),
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "huggingface",
@@ -143,8 +143,8 @@ TEST_MODELS = [
             provider="huggingface",
             model_name="sentence-transformers/all-MiniLM-L6-v2",
         ),
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "jinaai_base_code",
@@ -155,8 +155,8 @@ TEST_MODELS = [
             model_name="jina-embeddings-v2-base-code",
         ),
         "test_assets": CODE_TEST_ASSETS,
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "jinaai_base_en",
@@ -166,8 +166,8 @@ TEST_MODELS = [
             provider="jinaAI",
             model_name="jina-embeddings-v2-base-en",
         ),
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "jinaai_base_de",
@@ -177,8 +177,8 @@ TEST_MODELS = [
             provider="jinaAI",
             model_name="jina-embeddings-v2-base-de",
         ),
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "jinaai_base_es",
@@ -188,8 +188,8 @@ TEST_MODELS = [
             provider="jinaAI",
             model_name="jina-embeddings-v2-base-es",
         ),
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "jinaai_base_zh",
@@ -199,8 +199,8 @@ TEST_MODELS = [
             provider="jinaAI",
             model_name="jina-embeddings-v2-base-zh",
         ),
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "mistral_embed",
@@ -210,8 +210,8 @@ TEST_MODELS = [
             provider="mistral",
             model_name="mistral-embed",
         ),
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "nvidia",
@@ -221,8 +221,8 @@ TEST_MODELS = [
             provider="nvidia",
             model_name="NV-Embed-QA",
         ),
+        "auth_types": ["NONE"],
         "enabled": True,
-        "cloud_only": True,
     },
     {
         "model_tag": "openai_3large",
@@ -232,8 +232,8 @@ TEST_MODELS = [
             provider="openai",
             model_name="text-embedding-3-large",
         ),
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "openai_3small",
@@ -243,8 +243,8 @@ TEST_MODELS = [
             provider="openai",
             model_name="text-embedding-3-small",
         ),
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "openai_ada002",
@@ -254,79 +254,8 @@ TEST_MODELS = [
             provider="openai",
             model_name="text-embedding-ada-002",
         ),
+        "auth_types": ["HEADER"],
         "enabled": True,
-        "cloud_only": False,
-    },
-    {
-        "model_tag": "voyage_ai_2",
-        "secret_tag": "VOYAGEAI",
-        "dimension": 1024,
-        "service_options": CollectionVectorServiceOptions(
-            provider="voyageAI",
-            model_name="voyage-2",
-            parameters={
-                "autoTruncate": True,
-            },
-        ),
-        "enabled": True,
-        "cloud_only": False,
-    },
-    {
-        "model_tag": "voyage_ai_code_2",
-        "secret_tag": "VOYAGEAI",
-        "dimension": 1536,
-        "service_options": CollectionVectorServiceOptions(
-            provider="voyageAI",
-            model_name="voyage-code-2",
-            parameters={
-                "autoTruncate": True,
-            },
-        ),
-        "test_assets": CODE_TEST_ASSETS,
-        "enabled": True,
-        "cloud_only": False,
-    },
-    {
-        "model_tag": "voyage_ai_large_2",
-        "secret_tag": "VOYAGEAI",
-        "dimension": 1536,
-        "service_options": CollectionVectorServiceOptions(
-            provider="voyageAI",
-            model_name="voyage-large-2",
-            parameters={
-                "autoTruncate": True,
-            },
-        ),
-        "enabled": True,
-        "cloud_only": False,
-    },
-    {
-        "model_tag": "voyage_ai_large_2_instruct",
-        "secret_tag": "VOYAGEAI",
-        "dimension": 1024,
-        "service_options": CollectionVectorServiceOptions(
-            provider="voyageAI",
-            model_name="voyage-large-2-instruct",
-            parameters={
-                "autoTruncate": True,
-            },
-        ),
-        "enabled": True,
-        "cloud_only": False,
-    },
-    {
-        "model_tag": "voyage_law_2",
-        "secret_tag": "VOYAGEAI",
-        "dimension": 1024,
-        "service_options": CollectionVectorServiceOptions(
-            provider="voyageAI",
-            model_name="voyage-law-2",
-            parameters={
-                "autoTruncate": True,
-            },
-        ),
-        "enabled": True,
-        "cloud_only": False,
     },
     {
         "model_tag": "vertexai_gecko",
@@ -340,7 +269,78 @@ TEST_MODELS = [
                 "autoTruncate": False,
             },
         ),
+        "auth_types": ["HEADER"],
         "enabled": False,
-        "cloud_only": False,
+    },
+    {
+        "model_tag": "voyage_ai_2",
+        "secret_tag": "VOYAGEAI",
+        "dimension": 1024,
+        "service_options": CollectionVectorServiceOptions(
+            provider="voyageAI",
+            model_name="voyage-2",
+            parameters={
+                "autoTruncate": True,
+            },
+        ),
+        "auth_types": ["HEADER", "SHARED_SECRET"],
+        "enabled": True,
+    },
+    {
+        "model_tag": "voyage_ai_code_2",
+        "secret_tag": "VOYAGEAI",
+        "dimension": 1536,
+        "service_options": CollectionVectorServiceOptions(
+            provider="voyageAI",
+            model_name="voyage-code-2",
+            parameters={
+                "autoTruncate": True,
+            },
+        ),
+        "test_assets": CODE_TEST_ASSETS,
+        "auth_types": ["HEADER", "SHARED_SECRET"],
+        "enabled": True,
+    },
+    {
+        "model_tag": "voyage_ai_large_2",
+        "secret_tag": "VOYAGEAI",
+        "dimension": 1536,
+        "service_options": CollectionVectorServiceOptions(
+            provider="voyageAI",
+            model_name="voyage-large-2",
+            parameters={
+                "autoTruncate": True,
+            },
+        ),
+        "auth_types": ["HEADER", "SHARED_SECRET"],
+        "enabled": True,
+    },
+    {
+        "model_tag": "voyage_ai_large_2_instruct",
+        "secret_tag": "VOYAGEAI",
+        "dimension": 1024,
+        "service_options": CollectionVectorServiceOptions(
+            provider="voyageAI",
+            model_name="voyage-large-2-instruct",
+            parameters={
+                "autoTruncate": True,
+            },
+        ),
+        "auth_types": ["HEADER", "SHARED_SECRET"],
+        "enabled": True,
+    },
+    {
+        "model_tag": "voyage_law_2",
+        "secret_tag": "VOYAGEAI",
+        "dimension": 1024,
+        "service_options": CollectionVectorServiceOptions(
+            provider="voyageAI",
+            model_name="voyage-law-2",
+            parameters={
+                "autoTruncate": True,
+            },
+        ),
+        "auth_types": ["HEADER", "SHARED_SECRET"],
+        "enabled": True,
     },
 ]

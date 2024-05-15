@@ -23,10 +23,7 @@ from astrapy import Database
 from ..vectorize_models import DEFAULT_TEST_ASSETS, TEST_MODELS
 
 
-MODEL_IDS: List[str] = [str(model_desc["model_tag"]) for model_desc in TEST_MODELS]
-
-
-def enabled_vectorize_models() -> List[Any]:
+def enabled_vectorize_models(auth_type: str) -> List[Any]:
     """
     This actually returns a List of `_pytest.mark.structures.ParameterSet` instances,
     each wrapping a dict with fields:
@@ -35,52 +32,66 @@ def enabled_vectorize_models() -> List[Any]:
         dimension: int
         service_options: CollectionVectorServiceOptions
     """
+    model_ids: List[str] = [
+        str(model_desc["model_tag"])
+        for model_desc in TEST_MODELS
+        if auth_type in model_desc["auth_types"]  # type: ignore[operator]
+    ]
     is_cloud = "datastax.com" in os.environ.get("ASTRA_DB_API_ENDPOINT", "")
     models: List[Any] = []
-    if "HEADER_EMBEDDING_MODEL_TAGS" in os.environ:
+    if f"{auth_type}_EMBEDDING_MODEL_TAGS" in os.environ:
         whitelisted_models = [
             _wmd.strip()
-            for _wmd in os.environ["HEADER_EMBEDDING_MODEL_TAGS"].split(",")
+            for _wmd in os.environ[f"{auth_type}_EMBEDDING_MODEL_TAGS"].split(",")
             if _wmd.strip()
         ]
     else:
-        whitelisted_models = MODEL_IDS
-    unknown_wl_models = [wmd for wmd in whitelisted_models if wmd not in MODEL_IDS]
+        whitelisted_models = model_ids
+    unknown_wl_models = [wmd for wmd in whitelisted_models if wmd not in model_ids]
     if unknown_wl_models:
-        raise ValueError(f"Unknown whitelisted model(s): {','.join(unknown_wl_models)}")
+        raise ValueError(
+            f"Unknown whitelisted model(s) for this auth type: {','.join(unknown_wl_models)}"
+        )
     for model_desc in TEST_MODELS:
-        secret_env_var_name = f"HEADER_EMBEDDING_API_KEY_{model_desc['secret_tag']}"
-        model = {
-            "model_tag": model_desc["model_tag"],
-            "embedding_api_key": os.environ.get(secret_env_var_name),
-            "dimension": model_desc["dimension"],
-            "service_options": model_desc["service_options"],
-            "test_assets": model_desc.get("test_assets", DEFAULT_TEST_ASSETS),
-        }
-        markers = []
-        if model_desc["cloud_only"] and not is_cloud:
-            markers.append(pytest.mark.skip(reason="model is cloud-only"))
-        if model_desc["model_tag"] not in whitelisted_models:
-            markers.append(pytest.mark.skip(reason="model not whitelisted"))
-        if not model_desc["enabled"]:
-            markers.append(pytest.mark.skip(reason="model disabled in code"))
-        if model["embedding_api_key"] is None:
-            markers.append(pytest.mark.skip(reason="no embedding secret in env"))
-        models.append(pytest.param(model, marks=markers))
+        if auth_type in model_desc["auth_types"]:  # type: ignore[operator]
+            secret_env_var_name = f"HEADER_EMBEDDING_API_KEY_{model_desc['secret_tag']}"
+            model = {
+                "model_tag": model_desc["model_tag"],
+                "embedding_api_key": os.environ.get(secret_env_var_name),
+                "dimension": model_desc["dimension"],
+                "service_options": model_desc["service_options"],
+                "test_assets": model_desc.get("test_assets", DEFAULT_TEST_ASSETS),
+            }
+            markers = []
+            if auth_type == "NONE" and not is_cloud:
+                markers.append(
+                    pytest.mark.skip(reason="NONE auth unavailable off-cloud")
+                )
+            if model_desc["model_tag"] not in whitelisted_models:
+                markers.append(pytest.mark.skip(reason="model not whitelisted"))
+            if not model_desc["enabled"]:
+                markers.append(pytest.mark.skip(reason="model disabled in code"))
+            if auth_type == "HEADER" and model["embedding_api_key"] is None:
+                markers.append(pytest.mark.skip(reason="no embedding secret in env"))
+            models.append(pytest.param(model, marks=markers))
     return models
 
 
 """
 The tested models can also be further restricted by:
-    HEADER_EMBEDDING_MODEL_TAGS="mt1,mt2" [...pytest command...]
+    {HEADER,NONE...}_EMBEDDING_MODEL_TAGS="mt1,mt2" [...pytest command...]
 """
 
 
-class TestVectorizeByHeader:
+class TestVectorize:
     @pytest.mark.parametrize(
         "testable_vectorize_model",
-        enabled_vectorize_models(),
-        ids=MODEL_IDS,
+        enabled_vectorize_models(auth_type="HEADER"),
+        ids=[
+            str(model["model_tag"])
+            for model in TEST_MODELS
+            if "HEADER" in model["auth_types"]  # type: ignore[operator]
+        ],
     )
     @pytest.mark.describe(
         "test of vectorize collection basic usage with header key, sync"
@@ -91,9 +102,7 @@ class TestVectorizeByHeader:
         testable_vectorize_model: Dict[str, Any],
     ) -> None:
         model_tag = testable_vectorize_model["model_tag"]
-        # reducing "" to None for key-less models (which one may want to test all the same)
-        _embedding_api_key = testable_vectorize_model["embedding_api_key"]
-        embedding_api_key = _embedding_api_key if _embedding_api_key else None
+        embedding_api_key = testable_vectorize_model["embedding_api_key"]
         dimension = testable_vectorize_model["dimension"]
         service_options = testable_vectorize_model["service_options"]
 
@@ -118,6 +127,56 @@ class TestVectorizeByHeader:
             collection_i = db.get_collection(
                 collection_name,
                 embedding_api_key=embedding_api_key,
+            )
+            # run ANN and check results
+            hits = [
+                document["tag"]
+                for document in collection_i.find(
+                    vectorize=test_assets["probe"]["text"],
+                    limit=len(test_assets["probe"]["expected"]),
+                    projection=["tag"],
+                )
+            ]
+            assert hits == test_assets["probe"]["expected"]
+        finally:
+            db.drop_collection(collection_name)
+
+    @pytest.mark.parametrize(
+        "testable_vectorize_model",
+        enabled_vectorize_models(auth_type="NONE"),
+        ids=[
+            str(model["model_tag"]) for model in TEST_MODELS if "NONE" in model["auth_types"]  # type: ignore[operator]
+        ],
+    )
+    @pytest.mark.describe("test of vectorize collection basic usage with no auth, sync")
+    def test_vectorize_usage_no_auth_sync(
+        self,
+        sync_database: Database,
+        testable_vectorize_model: Dict[str, Any],
+    ) -> None:
+        model_tag = testable_vectorize_model["model_tag"]
+        dimension = testable_vectorize_model["dimension"]
+        service_options = testable_vectorize_model["service_options"]
+
+        db = sync_database
+        collection_name = f"vectorize_by_header_{model_tag}"
+        # create with header
+        try:
+            collection = db.create_collection(
+                collection_name,
+                dimension=dimension,
+                metric="cosine",
+                service=service_options,
+            )
+            # put entries
+            test_assets = testable_vectorize_model["test_assets"]
+            collection.insert_many(
+                [{"tag": tag} for tag, _ in test_assets["samples"]],
+                vectorize=[text for _, text in test_assets["samples"]],
+            )
+            # instantiate with header
+            collection_i = db.get_collection(
+                collection_name,
             )
             # run ANN and check results
             hits = [
