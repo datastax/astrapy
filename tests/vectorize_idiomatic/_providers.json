@@ -1,0 +1,503 @@
+{
+  "status": {
+    "embeddingProviders": {
+      "cohere": {
+        "displayName": "Cohere",
+        "url": "https://api.cohere.ai/v1/",
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": false,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "parameters": [],
+        "models": [
+          {
+            "name": "embed-english-v3.0",
+            "vectorDimension": 1024,
+            "parameters": []
+          },
+          {
+            "name": "embed-english-v2.0",
+            "vectorDimension": 4096,
+            "parameters": []
+          }
+        ]
+      },
+      "openai": {
+        "displayName": "OpenAI",
+        "url": "https://api.openai.com/v1/",
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "parameters": [],
+        "models": [
+          {
+            "name": "text-embedding-3-small",
+            "vectorDimension": 0,
+            "parameters": [
+              {
+                "name": "vectorDimension",
+                "type": "number",
+                "required": true,
+                "defaultValue": "512",
+                "validation": {
+                  "numericRange": [
+                    2,
+                    1536
+                  ]
+                },
+                "help": "Vector dimension to use in the database and when calling OpenAI."
+              }
+            ]
+          },
+          {
+            "name": "text-embedding-3-large",
+            "vectorDimension": 0,
+            "parameters": [
+              {
+                "name": "vectorDimension",
+                "type": "number",
+                "required": true,
+                "defaultValue": "1024",
+                "validation": {
+                  "numericRange": [
+                    256,
+                    3072
+                  ]
+                },
+                "help": "Vector dimension to use in the database and when calling OpenAI."
+              }
+            ]
+          },
+          {
+            "name": "text-embedding-ada-002",
+            "vectorDimension": 1536,
+            "parameters": []
+          }
+        ]
+      },
+      "azureOpenAI": {
+        "displayName": "Azure OpenAI",
+        "url": "https://{resourceName}.openai.azure.com/openai/deployments/{deploymentId}/embeddings?api-version={apiVersion}",
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "api-key"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": false,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "api-key"
+              }
+            ]
+          }
+        },
+        "parameters": [
+          {
+            "name": "resourceName",
+            "type": "STRING",
+            "required": true,
+            "defaultValue": "",
+            "validation": {},
+            "help": "The name of your Azure OpenAI Resource."
+          },
+          {
+            "name": "deploymentId",
+            "type": "STRING",
+            "required": true,
+            "defaultValue": "",
+            "validation": {},
+            "help": "The name of your model deployment. You're required to first deploy a model before you can make calls."
+          },
+          {
+            "name": "apiVersion",
+            "type": "STRING",
+            "required": true,
+            "defaultValue": "2024-02-01",
+            "validation": {},
+            "help": "The API version to use for this operation. This follows the YYYY-MM-DD format."
+          }
+        ],
+        "models": [
+          {
+            "name": "text-embedding-3-small",
+            "vectorDimension": 0,
+            "parameters": [
+              {
+                "name": "vectorDimension",
+                "type": "number",
+                "required": true,
+                "defaultValue": "512",
+                "validation": {
+                  "numericRange": [
+                    2,
+                    1536
+                  ]
+                },
+                "help": "Vector dimension to use in the database and when calling Azure OpenAI."
+              }
+            ]
+          },
+          {
+            "name": "text-embedding-3-large",
+            "vectorDimension": 0,
+            "parameters": [
+              {
+                "name": "vectorDimension",
+                "type": "number",
+                "required": true,
+                "defaultValue": "1024",
+                "validation": {
+                  "numericRange": [
+                    256,
+                    3072
+                  ]
+                },
+                "help": "Vector dimension to use in the database and when calling Azure OpenAI."
+              }
+            ]
+          },
+          {
+            "name": "text-embedding-ada-002",
+            "vectorDimension": 1536,
+            "parameters": []
+          }
+        ]
+      },
+      "jinaAI": {
+        "displayName": "Jina AI",
+        "url": "https://api.jina.ai/v1/embeddings",
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "parameters": [],
+        "models": [
+          {
+            "name": "jina-embeddings-v2-base-en",
+            "vectorDimension": 768,
+            "parameters": []
+          },
+          {
+            "name": "jina-embeddings-v2-base-de",
+            "vectorDimension": 768,
+            "parameters": []
+          },
+          {
+            "name": "jina-embeddings-v2-base-es",
+            "vectorDimension": 768,
+            "parameters": []
+          },
+          {
+            "name": "jina-embeddings-v2-base-code",
+            "vectorDimension": 768,
+            "parameters": []
+          },
+          {
+            "name": "jina-embeddings-v2-base-zh",
+            "vectorDimension": 768,
+            "parameters": []
+          }
+        ]
+      },
+      "vertexai": {
+        "displayName": "Google Vertex AI",
+        "url": "https://us-central1-aiplatform.googleapis.com/v1/projects/{projectId}/locations/us-central1/publishers/google/models",
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": false,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "parameters": [
+          {
+            "name": "projectId",
+            "type": "STRING",
+            "required": true,
+            "defaultValue": "",
+            "validation": {},
+            "help": "The Google Cloud Project ID to use when calling"
+          }
+        ],
+        "models": [
+          {
+            "name": "textembedding-gecko@003",
+            "vectorDimension": 768,
+            "parameters": [
+              {
+                "name": "autoTruncate",
+                "type": "boolean",
+                "required": false,
+                "defaultValue": "true",
+                "validation": {},
+                "help": "If set to false, text that exceeds the token limit causes the request to fail. The default value is true."
+              }
+            ]
+          }
+        ]
+      },
+      "voyageAI": {
+        "displayName": "Voyage AI",
+        "url": "https://api.voyageai.com/v1/embeddings",
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "parameters": [
+          {
+            "name": "autoTruncate",
+            "type": "BOOLEAN",
+            "required": false,
+            "defaultValue": "true",
+            "validation": {},
+            "help": "Whether to truncate the input texts to fit within the context length. Defaults to true."
+          }
+        ],
+        "models": [
+          {
+            "name": "voyage-large-2-instruct",
+            "vectorDimension": 1024,
+            "parameters": []
+          },
+          {
+            "name": "voyage-law-2",
+            "vectorDimension": 1024,
+            "parameters": []
+          },
+          {
+            "name": "voyage-code-2",
+            "vectorDimension": 1536,
+            "parameters": []
+          },
+          {
+            "name": "voyage-large-2",
+            "vectorDimension": 1536,
+            "parameters": []
+          },
+          {
+            "name": "voyage-2",
+            "vectorDimension": 1024,
+            "parameters": []
+          }
+        ]
+      },
+      "huggingface": {
+        "displayName": "Hugging Face",
+        "url": "https://api-inference.huggingface.co/pipeline/feature-extraction/",
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": false,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "parameters": [],
+        "models": [
+          {
+            "name": "sentence-transformers/all-MiniLM-L6-v2",
+            "vectorDimension": 384,
+            "parameters": []
+          }
+        ]
+      },
+      "nvidia": {
+        "displayName": "Nvidia",
+        "url": "http://10.0.69.214:8080/v1/embeddings",
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": false,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": true,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": false,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "parameters": [],
+        "models": [
+          {
+            "name": "NV-Embed-QA",
+            "vectorDimension": 1024,
+            "parameters": []
+          }
+        ]
+      },
+      "mistral": {
+        "displayName": "Mistral AI",
+        "url": "https://api.mistral.ai/v1/embeddings",
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "parameters": [],
+        "models": [
+          {
+            "name": "mistral-embed",
+            "vectorDimension": 1024,
+            "parameters": []
+          }
+        ]
+      }
+    }
+  }
+}
