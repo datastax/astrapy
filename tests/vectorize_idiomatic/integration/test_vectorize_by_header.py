@@ -365,13 +365,12 @@ def enabled_vectorize_models() -> List[Any]:
     is_cloud = "datastax.com" in os.environ.get("ASTRA_DB_API_ENDPOINT", "")
     models: List[Any] = []
     if "HEADER_EMBEDDING_MODEL_TAGS" in os.environ:
-        whitelisted_models = [
-            mt
-            for mt in os.environ["HEADER_EMBEDDING_MODEL_TAGS"].split(",")
-            if mt in MODEL_IDS
-        ]
+        whitelisted_models = os.environ["HEADER_EMBEDDING_MODEL_TAGS"].split(",")
     else:
         whitelisted_models = MODEL_IDS
+    unknown_wl_models = [wmd for wmd in whitelisted_models if wmd not in MODEL_IDS]
+    if unknown_wl_models:
+        raise ValueError(f"Unknown whitelisted model(s): {','.join(unknown_wl_models)}")
     for model_desc in TEST_MODELS:
         secret_env_var_name = f"HEADER_EMBEDDING_API_KEY_{model_desc['secret_tag']}"
         model = {
