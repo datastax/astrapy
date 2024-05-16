@@ -76,7 +76,7 @@ TEST_MODELS = [
                 "resourceName": "steo-azure-openai",
             },
         ),
-        "auth_types": ["HEADER"],
+        "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
     },
     {
@@ -92,7 +92,7 @@ TEST_MODELS = [
                 "resourceName": "steo-azure-openai",
             },
         ),
-        "auth_types": ["HEADER"],
+        "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
     },
     {
@@ -108,7 +108,7 @@ TEST_MODELS = [
                 "resourceName": "steo-azure-openai",
             },
         ),
-        "auth_types": ["HEADER"],
+        "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
     },
     # Not in scope (yet)
@@ -143,7 +143,7 @@ TEST_MODELS = [
             provider="huggingface",
             model_name="sentence-transformers/all-MiniLM-L6-v2",
         ),
-        "auth_types": ["HEADER"],
+        "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
     },
     {
@@ -155,7 +155,7 @@ TEST_MODELS = [
             model_name="jina-embeddings-v2-base-code",
         ),
         "test_assets": CODE_TEST_ASSETS,
-        "auth_types": ["HEADER"],
+        "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
     },
     {
@@ -166,7 +166,7 @@ TEST_MODELS = [
             provider="jinaAI",
             model_name="jina-embeddings-v2-base-en",
         ),
-        "auth_types": ["HEADER"],
+        "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
     },
     {
@@ -177,7 +177,7 @@ TEST_MODELS = [
             provider="jinaAI",
             model_name="jina-embeddings-v2-base-de",
         ),
-        "auth_types": ["HEADER"],
+        "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
     },
     {
@@ -188,7 +188,7 @@ TEST_MODELS = [
             provider="jinaAI",
             model_name="jina-embeddings-v2-base-es",
         ),
-        "auth_types": ["HEADER"],
+        "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
     },
     {
@@ -199,7 +199,7 @@ TEST_MODELS = [
             provider="jinaAI",
             model_name="jina-embeddings-v2-base-zh",
         ),
-        "auth_types": ["HEADER"],
+        "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
     },
     {
@@ -210,7 +210,7 @@ TEST_MODELS = [
             provider="mistral",
             model_name="mistral-embed",
         ),
-        "auth_types": ["HEADER"],
+        "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
     },
     {
@@ -232,7 +232,7 @@ TEST_MODELS = [
             provider="openai",
             model_name="text-embedding-3-large",
         ),
-        "auth_types": ["HEADER"],
+        "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
     },
     {
@@ -243,7 +243,7 @@ TEST_MODELS = [
             provider="openai",
             model_name="text-embedding-3-small",
         ),
-        "auth_types": ["HEADER"],
+        "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
     },
     {
@@ -254,7 +254,7 @@ TEST_MODELS = [
             provider="openai",
             model_name="text-embedding-ada-002",
         ),
-        "auth_types": ["HEADER"],
+        "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
     },
     # Not in scope (yet)

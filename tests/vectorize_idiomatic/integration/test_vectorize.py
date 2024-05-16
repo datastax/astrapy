@@ -19,6 +19,7 @@ import pytest
 import os
 
 from astrapy import Database
+from astrapy.info import CollectionVectorServiceOptions
 
 from ..vectorize_models import DEFAULT_TEST_ASSETS, TEST_MODELS
 
@@ -57,6 +58,7 @@ def enabled_vectorize_models(auth_type: str) -> List[Any]:
             secret_env_var_name = f"HEADER_EMBEDDING_API_KEY_{model_desc['secret_tag']}"
             model = {
                 "model_tag": model_desc["model_tag"],
+                "secret_tag": model_desc["secret_tag"],
                 "embedding_api_key": os.environ.get(secret_env_var_name),
                 "dimension": model_desc["dimension"],
                 "service_options": model_desc["service_options"],
@@ -159,7 +161,7 @@ class TestVectorize:
         service_options = testable_vectorize_model["service_options"]
 
         db = sync_database
-        collection_name = f"vectorize_by_header_{model_tag}"
+        collection_name = f"vectorize_by_no_auth_{model_tag}"
         # create with header
         try:
             collection = db.create_collection(
@@ -189,4 +191,66 @@ class TestVectorize:
             ]
             assert hits == test_assets["probe"]["expected"]
         finally:
+            db.drop_collection(collection_name)
+
+    @pytest.mark.parametrize(
+        "testable_vectorize_model",
+        enabled_vectorize_models(auth_type="SHARED_SECRET"),
+        ids=[
+            str(model["model_tag"]) for model in TEST_MODELS if "SHARED_SECRET" in model["auth_types"]  # type: ignore[operator]
+        ],
+    )
+    @pytest.mark.describe(
+        "test of vectorize collection basic usage with shared_secret, sync"
+    )
+    def test_vectorize_usage_shared_secret_sync(
+        self,
+        sync_database: Database,
+        testable_vectorize_model: Dict[str, Any],
+    ) -> None:
+        model_tag = testable_vectorize_model["model_tag"]
+        secret_tag = testable_vectorize_model["secret_tag"]
+        dimension = testable_vectorize_model["dimension"]
+        base_service_options = testable_vectorize_model["service_options"]
+
+        db = sync_database
+        collection_name = f"vectorize_by_secret_{model_tag}"
+        # to create the collection, prepare a service_options with the auth info
+        service_options = CollectionVectorServiceOptions(
+            provider=base_service_options.provider,
+            model_name=base_service_options.model_name,
+            authentication={
+                "providerKey": f"SHARED_SECRET_EMBEDDING_API_KEY_{secret_tag}.providerKey",
+            },
+            parameters=base_service_options.parameters,
+        )
+        try:
+            collection = db.create_collection(
+                collection_name,
+                dimension=dimension,
+                metric="cosine",
+                service=service_options,
+            )
+            # put entries
+            test_assets = testable_vectorize_model["test_assets"]
+            collection.insert_many(
+                [{"tag": tag} for tag, _ in test_assets["samples"]],
+                vectorize=[text for _, text in test_assets["samples"]],
+            )
+            # instantiate with header
+            collection_i = db.get_collection(
+                collection_name,
+            )
+            # run ANN and check results
+            hits = [
+                document["tag"]
+                for document in collection_i.find(
+                    vectorize=test_assets["probe"]["text"],
+                    limit=len(test_assets["probe"]["expected"]),
+                    projection=["tag"],
+                )
+            ]
+            assert hits == test_assets["probe"]["expected"]
+        finally:
+            pass
             db.drop_collection(collection_name)

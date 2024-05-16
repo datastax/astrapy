@@ -175,7 +175,7 @@ class CollectionVectorServiceOptions:
 
     provider: Optional[str]
     model_name: Optional[str]
-    authorization: Optional[Dict[str, Union[str, List[str]]]] = None
+    authentication: Optional[Dict[str, Union[str, List[str]]]] = None
     parameters: Optional[Dict[str, Any]] = None
 
     def as_dict(self) -> Dict[str, Any]:
@@ -186,7 +186,7 @@ class CollectionVectorServiceOptions:
             for k, v in {
                 "provider": self.provider,
                 "modelName": self.model_name,
-                "authorization": self.authorization,
+                "authentication": self.authentication,
                 "parameters": self.parameters,
             }.items()
             if v is not None
@@ -205,7 +205,7 @@ class CollectionVectorServiceOptions:
             return CollectionVectorServiceOptions(
                 provider=raw_dict.get("provider"),
                 model_name=raw_dict.get("modelName"),
-                authorization=raw_dict.get("authorization"),
+                authentication=raw_dict.get("authentication"),
                 parameters=raw_dict.get("parameters"),
             )
         else:

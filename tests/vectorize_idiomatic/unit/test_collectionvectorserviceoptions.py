@@ -38,7 +38,7 @@ class TestCollectionVectorServiceOptions:
         dict_a = {
             "provider": "PRO",
             "modelName": "MOD",
-            "authorization": {
+            "authentication": {
                 "type": ["A_T"],
                 "field": "value",
             },
@@ -47,7 +47,7 @@ class TestCollectionVectorServiceOptions:
         assert from_dict_a == CollectionVectorServiceOptions(
             provider="PRO",
             model_name="MOD",
-            authorization={
+            authentication={
                 "type": ["A_T"],
                 "field": "value",
             },
@@ -92,7 +92,7 @@ class TestCollectionVectorServiceOptions:
         dict_ap = {
             "provider": "PRO",
             "modelName": "MOD",
-            "authorization": {
+            "authentication": {
                 "type": ["A_T"],
                 "field": "value",
             },
@@ -109,7 +109,7 @@ class TestCollectionVectorServiceOptions:
         assert from_dict_ap == CollectionVectorServiceOptions(
             provider="PRO",
             model_name="MOD",
-            authorization={
+            authentication={
                 "type": ["A_T"],
                 "field": "value",
             },
