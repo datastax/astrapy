@@ -84,6 +84,7 @@ __all__ = [
 __pdoc__ = {
     "api": False,
     "api_commander": False,
+    "api_options": False,
     "core": False,
     "db": False,
     "ops": False,

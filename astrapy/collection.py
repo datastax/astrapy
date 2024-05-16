@@ -18,7 +18,6 @@ import asyncio
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 
 from astrapy.core.db import (
@@ -29,6 +28,7 @@ from astrapy.core.defaults import (
     MAX_INSERT_NUM_DOCUMENTS,
     DEFAULT_VECTORIZE_SECRET_HEADER,
 )
+from astrapy.api_options import CollectionAPIOptions
 from astrapy.exceptions import (
     BulkWriteException,
     CollectionNotFoundException,
@@ -206,22 +206,6 @@ def _collate_vectors_to_documents(
         ]
 
 
-@dataclass
-class BaseOptions:
-    """
-    TODO_VECTORIZE
-    """
-
-    max_time_ms: Optional[int] = None
-    embedding_api_key: Optional[str] = None
-
-    def _copy(self) -> BaseOptions:
-        return BaseOptions(
-            max_time_ms=self.max_time_ms,
-            embedding_api_key=self.embedding_api_key,
-        )
-
-
 class Collection:
     """
     A Data API collection, the main object to interact with the Data API,
@@ -238,7 +222,7 @@ class Collection:
             collection on the database.
         namespace: this is the namespace to which the collection belongs.
             If not specified, the database's working namespace is used.
-        base_options: TODO_VECTORIZE
+        api_options: TODO_VECTORIZE
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -271,18 +255,18 @@ class Collection:
         name: str,
         *,
         namespace: Optional[str] = None,
-        base_options: Optional[BaseOptions] = None,
+        api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        if base_options is None:
-            self.base_options = BaseOptions()
+        if api_options is None:
+            self.api_options = CollectionAPIOptions()
         else:
-            self.base_options = base_options._copy()
+            self.api_options = api_options
         additional_headers = {
             k: v
             for k, v in {
-                DEFAULT_VECTORIZE_SECRET_HEADER: self.base_options.embedding_api_key,
+                DEFAULT_VECTORIZE_SECRET_HEADER: self.api_options.embedding_api_key,
             }.items()
             if v is not None
         }
@@ -310,7 +294,7 @@ class Collection:
             return all(
                 [
                     self._astra_db_collection == other._astra_db_collection,
-                    self.base_options == other.base_options,
+                    self.api_options == other.api_options,
                 ]
             )
         else:
@@ -330,7 +314,7 @@ class Collection:
         database: Optional[Database] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
-        base_options: Optional[BaseOptions] = None,
+        api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
@@ -338,7 +322,7 @@ class Collection:
             database=database or self.database._copy(),
             name=name or self.name,
             namespace=namespace or self.namespace,
-            base_options=base_options or self.base_options,
+            api_options=self.api_options.with_override(api_options),
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )
@@ -347,7 +331,7 @@ class Collection:
         self,
         *,
         name: Optional[str] = None,
-        base_options: Optional[BaseOptions] = None,
+        api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
@@ -358,7 +342,7 @@ class Collection:
             name: the name of the collection. This parameter is useful to
                 quickly spawn Collection instances each pointing to a different
                 collection existing in the same namespace.
-            base_options: TODO_VECTORIZE
+            api_options: TODO_VECTORIZE
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -375,7 +359,7 @@ class Collection:
 
         return self._copy(
             name=name,
-            base_options=base_options,
+            api_options=api_options,
             caller_name=caller_name,
             caller_version=caller_version,
         )
@@ -386,7 +370,7 @@ class Collection:
         database: Optional[AsyncDatabase] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
-        base_options: Optional[BaseOptions] = None,
+        api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
@@ -403,7 +387,7 @@ class Collection:
                 collection on the database.
             namespace: this is the namespace to which the collection belongs.
                 If not specified, the database's working namespace is used.
-            base_options: TODO_VECTORIZE
+            api_options: TODO_VECTORIZE
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -420,7 +404,7 @@ class Collection:
             database=database or self.database.to_async(),
             name=name or self.name,
             namespace=namespace or self.namespace,
-            base_options=base_options or self.base_options,
+            api_options=self.api_options.with_override(api_options),
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )
@@ -471,7 +455,7 @@ class Collection:
         """
 
         logger.info(f"getting collections in search of '{self.name}'")
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         self_descriptors = [
             coll_desc
             for coll_desc in self.database.list_collections(max_time_ms=_max_time_ms)
@@ -625,7 +609,7 @@ class Collection:
         """
 
         _document = _collate_vector_to_document(document, vector, vectorize)
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"inserting one document in '{self.name}'")
         io_response = self._astra_db_collection.insert_one(
             _document,
@@ -778,7 +762,7 @@ class Collection:
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: List[Dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
@@ -1058,7 +1042,7 @@ class Collection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         if include_similarity is not None and not _is_vector_sort(_sort):
             raise ValueError(
                 "Cannot use `include_similarity` when not searching through `vector`."
@@ -1152,7 +1136,7 @@ class Collection:
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_cursor = self.find(
             filter=filter,
             projection=projection,
@@ -1239,7 +1223,7 @@ class Collection:
             Note of the `find` command.
         """
 
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         f_cursor = Cursor(
             collection=self,
             filter=filter,
@@ -1303,7 +1287,7 @@ class Collection:
             by this method if this limit is encountered.
         """
 
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info("calling count_documents")
         cd_response = self._astra_db_collection.count_documents(
             filter=filter,
@@ -1352,7 +1336,7 @@ class Collection:
             >>> my_coll.estimated_document_count()
             35700
         """
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         ed_response = self.command(
             {"estimatedDocumentCount": {}},
             max_time_ms=_max_time_ms,
@@ -1469,7 +1453,7 @@ class Collection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_replace on '{self.name}'")
         fo_response = self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
@@ -1561,7 +1545,7 @@ class Collection:
             "upsert": upsert,
         }
         logger.info(f"calling find_one_and_replace on '{self.name}'")
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_response = self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
@@ -1692,7 +1676,7 @@ class Collection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = self._astra_db_collection.find_one_and_update(
             update=update,
@@ -1787,7 +1771,7 @@ class Collection:
         options = {
             "upsert": upsert,
         }
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = self._astra_db_collection.find_one_and_update(
             update=update,
@@ -1874,18 +1858,18 @@ class Collection:
             newly-inserted document will be picked up by the update_many command or not.
         """
 
-        base_options = {
+        api_options = {
             "upsert": upsert,
         }
         page_state_options: Dict[str, str] = {}
         um_responses: List[Dict[str, Any]] = []
         um_statuses: List[Dict[str, Any]] = []
         must_proceed = True
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"starting update_many on '{self.name}'")
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         while must_proceed:
-            options = {**base_options, **page_state_options}
+            options = {**api_options, **page_state_options}
             logger.info(f"calling update_many on '{self.name}'")
             this_um_response = self._astra_db_collection.update_many(
                 update=update,
@@ -2006,7 +1990,7 @@ class Collection:
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
         logger.info(f"calling find_one_and_delete on '{self.name}'")
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_response = self._astra_db_collection.find_one_and_delete(
             sort=_sort,
             filter=filter,
@@ -2091,7 +2075,7 @@ class Collection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling delete_one_by_predicate on '{self.name}'")
         do_response = self._astra_db_collection.delete_one_by_predicate(
             filter=filter, timeout_info=base_timeout_info(_max_time_ms), sort=_sort
@@ -2175,7 +2159,7 @@ class Collection:
         dm_responses: List[Dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         logger.info(f"starting delete_many on '{self.name}'")
         while must_proceed:
@@ -2241,7 +2225,7 @@ class Collection:
             Use with caution.
         """
 
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling unfiltered delete_many on '{self.name}'")
         dm_response = self._astra_db_collection.delete_many(
             filter={}, timeout_info=base_timeout_info(_max_time_ms)
@@ -2322,7 +2306,7 @@ class Collection:
             _concurrency = concurrency
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered bulk_write concurrently.")
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"startng a bulk write on '{self.name}'")
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         if ordered:
@@ -2468,7 +2452,7 @@ class Collection:
             which avoids using a deceased collection any further.
         """
 
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"dropping collection '{self.name}' (self)")
         drop_result = self.database.drop_collection(self, max_time_ms=_max_time_ms)
         logger.info(f"finished dropping collection '{self.name}' (self)")
@@ -2497,7 +2481,7 @@ class Collection:
             {'status': {'count': 123}}
         """
 
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling command on '{self.name}'")
         command_result = self.database.command(
             body=body,
@@ -2525,7 +2509,7 @@ class AsyncCollection:
             collection on the database.
         namespace: this is the namespace to which the collection belongs.
             If not specified, the database's working namespace is used.
-        base_options: TODO_VECTORIZE
+        api_options: TODO_VECTORIZE
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -2560,14 +2544,14 @@ class AsyncCollection:
         name: str,
         *,
         namespace: Optional[str] = None,
-        base_options: Optional[BaseOptions] = None,
+        api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        if base_options is None:
-            self.base_options = BaseOptions()
+        if api_options is None:
+            self.api_options = CollectionAPIOptions()
         else:
-            self.base_options = base_options._copy()
+            self.api_options = api_options
         self._astra_db_collection: AsyncAstraDBCollection = AsyncAstraDBCollection(
             collection_name=name,
             astra_db=database._astra_db,
@@ -2591,7 +2575,7 @@ class AsyncCollection:
             return all(
                 [
                     self._astra_db_collection == other._astra_db_collection,
-                    self.base_options == other.base_options,
+                    self.api_options == other.api_options,
                 ]
             )
         else:
@@ -2611,7 +2595,7 @@ class AsyncCollection:
         database: Optional[AsyncDatabase] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
-        base_options: Optional[BaseOptions] = None,
+        api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
@@ -2619,7 +2603,7 @@ class AsyncCollection:
             database=database or self.database._copy(),
             name=name or self.name,
             namespace=namespace or self.namespace,
-            base_options=base_options or self.base_options,
+            api_options=self.api_options.with_override(api_options),
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )
@@ -2628,7 +2612,7 @@ class AsyncCollection:
         self,
         *,
         name: Optional[str] = None,
-        base_options: Optional[BaseOptions] = None,
+        api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
@@ -2639,7 +2623,7 @@ class AsyncCollection:
             name: the name of the collection. This parameter is useful to
                 quickly spawn AsyncCollection instances each pointing to a different
                 collection existing in the same namespace.
-            base_options: TODO_VECTORIZE
+            api_options: TODO_VECTORIZE
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -2656,7 +2640,7 @@ class AsyncCollection:
 
         return self._copy(
             name=name,
-            base_options=base_options,
+            api_options=api_options,
             caller_name=caller_name,
             caller_version=caller_version,
         )
@@ -2667,7 +2651,7 @@ class AsyncCollection:
         database: Optional[Database] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
-        base_options: Optional[BaseOptions] = None,
+        api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
@@ -2684,7 +2668,7 @@ class AsyncCollection:
                 collection on the database.
             namespace: this is the namespace to which the collection belongs.
                 If not specified, the database's working namespace is used.
-            base_options: TODO_VECTORIZE
+            api_options: TODO_VECTORIZE
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -2701,7 +2685,7 @@ class AsyncCollection:
             database=database or self.database.to_sync(),
             name=name or self.name,
             namespace=namespace or self.namespace,
-            base_options=base_options or self.base_options,
+            api_options=self.api_options.with_override(api_options),
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )
@@ -2751,7 +2735,7 @@ class AsyncCollection:
             CollectionOptions(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
 
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"getting collections in search of '{self.name}'")
         self_descriptors = [
             coll_desc
@@ -2911,7 +2895,7 @@ class AsyncCollection:
         """
 
         _document = _collate_vector_to_document(document, vector, vectorize)
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"inserting one document in '{self.name}'")
         io_response = await self._astra_db_collection.insert_one(
             _document,
@@ -3075,7 +3059,7 @@ class AsyncCollection:
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: List[Dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
@@ -3356,7 +3340,7 @@ class AsyncCollection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         if include_similarity is not None and not _is_vector_sort(_sort):
             raise ValueError(
                 "Cannot use `include_similarity` when not searching through `vector`."
@@ -3462,7 +3446,7 @@ class AsyncCollection:
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_cursor = self.find(
             filter=filter,
             projection=projection,
@@ -3557,7 +3541,7 @@ class AsyncCollection:
             Note of the `find` command.
         """
 
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         f_cursor = AsyncCursor(
             collection=self,
             filter=filter,
@@ -3626,7 +3610,7 @@ class AsyncCollection:
             by this method if this limit is encountered.
         """
 
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info("calling count_documents")
         cd_response = await self._astra_db_collection.count_documents(
             filter=filter,
@@ -3675,7 +3659,7 @@ class AsyncCollection:
             >>> asyncio.run(my_async_coll.estimated_document_count())
             35700
         """
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         ed_response = await self.command(
             {"estimatedDocumentCount": {}},
             max_time_ms=_max_time_ms,
@@ -3798,7 +3782,7 @@ class AsyncCollection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_replace on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
@@ -3905,7 +3889,7 @@ class AsyncCollection:
         options = {
             "upsert": upsert,
         }
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_replace on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
@@ -4043,7 +4027,7 @@ class AsyncCollection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_update(
             update=update,
@@ -4153,7 +4137,7 @@ class AsyncCollection:
         options = {
             "upsert": upsert,
         }
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_update(
             update=update,
@@ -4251,18 +4235,18 @@ class AsyncCollection:
             newly-inserted document will be picked up by the update_many command or not.
         """
 
-        base_options = {
+        api_options = {
             "upsert": upsert,
         }
         page_state_options: Dict[str, str] = {}
         um_responses: List[Dict[str, Any]] = []
         um_statuses: List[Dict[str, Any]] = []
         must_proceed = True
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"starting update_many on '{self.name}'")
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         while must_proceed:
-            options = {**base_options, **page_state_options}
+            options = {**api_options, **page_state_options}
             logger.info(f"calling update_many on '{self.name}'")
             this_um_response = await self._astra_db_collection.update_many(
                 update=update,
@@ -4388,7 +4372,7 @@ class AsyncCollection:
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_delete on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_delete(
             sort=_sort,
@@ -4474,7 +4458,7 @@ class AsyncCollection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling delete_one_by_predicate on '{self.name}'")
         do_response = await self._astra_db_collection.delete_one_by_predicate(
             filter=filter,
@@ -4565,7 +4549,7 @@ class AsyncCollection:
         dm_responses: List[Dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         logger.info(f"starting delete_many on '{self.name}'")
         while must_proceed:
@@ -4638,7 +4622,7 @@ class AsyncCollection:
             Use with caution.
         """
 
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling unfiltered delete_many on '{self.name}'")
         dm_response = await self._astra_db_collection.delete_many(
             filter={}, timeout_info=base_timeout_info(_max_time_ms)
@@ -4735,7 +4719,7 @@ class AsyncCollection:
             _concurrency = concurrency
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered bulk_write concurrently.")
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"startng a bulk write on '{self.name}'")
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         if ordered:
@@ -4879,7 +4863,7 @@ class AsyncCollection:
             which avoids using a deceased collection any further.
         """
 
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"dropping collection '{self.name}' (self)")
         drop_result = await self.database.drop_collection(
             self, max_time_ms=_max_time_ms
@@ -4910,7 +4894,7 @@ class AsyncCollection:
             {'status': {'count': 123}}
         """
 
-        _max_time_ms = max_time_ms or self.base_options.max_time_ms
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling command on '{self.name}'")
         command_result = await self.database.command(
             body=body,

@@ -20,6 +20,7 @@ from types import TracebackType
 from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
 
 from astrapy.core.db import AstraDB, AsyncAstraDB
+from astrapy.api_options import CollectionAPIOptions
 from astrapy.exceptions import (
     CollectionAlreadyExistsException,
     DataAPIFaultyResponseException,
@@ -444,14 +445,14 @@ class Database:
         """
 
         # lazy importing here against circular-import error
-        from astrapy.collection import BaseOptions, Collection
+        from astrapy.collection import Collection
 
         _namespace = namespace or self._astra_db.namespace
         return Collection(
             self,
             name,
             namespace=_namespace,
-            base_options=BaseOptions(
+            api_options=CollectionAPIOptions(
                 embedding_api_key=embedding_api_key,
                 max_time_ms=collection_max_time_ms,
             ),
@@ -1238,14 +1239,14 @@ class AsyncDatabase:
         """
 
         # lazy importing here against circular-import error
-        from astrapy.collection import AsyncCollection, BaseOptions
+        from astrapy.collection import AsyncCollection
 
         _namespace = namespace or self._astra_db.namespace
         return AsyncCollection(
             self,
             name,
             namespace=_namespace,
-            base_options=BaseOptions(
+            api_options=CollectionAPIOptions(
                 embedding_api_key=embedding_api_key,
                 max_time_ms=collection_max_time_ms,
             ),
