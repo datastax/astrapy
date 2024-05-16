@@ -23,7 +23,7 @@ available as the env.vars:
 """
 
 import os
-from typing import Iterable
+from typing import Iterable, List, Tuple
 import pytest
 
 from astrapy import (
@@ -31,7 +31,39 @@ from astrapy import (
     DataAPIClient,
     Database,
 )
-from astrapy.admin import Environment
+from astrapy.admin import Environment, parse_api_endpoint
+
+
+def _parse_to_testing_environment(api_endpoint: str) -> Tuple[str, str]:
+    parsed = parse_api_endpoint(api_endpoint)
+    if parsed is not None:
+        return (parsed.environment, parsed.region)
+    else:
+        return (Environment.OTHER, "no-region")
+
+
+def _env_filter_match1(
+    api_endpoint: str, auth_type: str, env_filter: Tuple[str, str, str]
+) -> bool:
+    env, reg = _parse_to_testing_environment(api_endpoint)
+
+    def _match(s1: str, s2: str) -> bool:
+        if s1 == "*" or s2 == "*":
+            return True
+        else:
+            return s1.lower() == s2.lower()
+
+    return all(_match(pc1, pc2) for pc1, pc2 in zip((env, reg, auth_type), env_filter))
+
+
+def env_filter_match(auth_type: str, env_filters: List[Tuple[str, str, str]]) -> bool:
+    api_endpoint = os.environ.get(
+        "LOCAL_DATA_API_ENDPOINT", os.environ.get("ASTRA_DB_API_ENDPOINT", "")
+    )
+    return any(
+        _env_filter_match1(api_endpoint, auth_type, env_filter)
+        for env_filter in env_filters
+    )
 
 
 @pytest.fixture(scope="session")
@@ -64,4 +96,5 @@ def async_database(
 __all__ = [
     "sync_database",
     "async_database",
+    "env_filter_match",
 ]

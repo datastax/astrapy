@@ -223,6 +223,10 @@ TEST_MODELS = [
         ),
         "auth_types": ["NONE"],
         "enabled": True,
+        "env_filters": [
+            # environment, region, auth_type. One spec must match.
+            ("dev", "us-west-2", "*"),
+        ],
     },
     {
         "model_tag": "openai_3large",

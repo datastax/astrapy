@@ -22,6 +22,7 @@ from astrapy import Database
 from astrapy.info import CollectionVectorServiceOptions
 
 from ..vectorize_models import DEFAULT_TEST_ASSETS, TEST_MODELS
+from ..conftest import env_filter_match
 
 
 def enabled_vectorize_models(auth_type: str) -> List[Any]:
@@ -38,7 +39,6 @@ def enabled_vectorize_models(auth_type: str) -> List[Any]:
         for model_desc in TEST_MODELS
         if auth_type in model_desc["auth_types"]  # type: ignore[operator]
     ]
-    is_cloud = "datastax.com" in os.environ.get("ASTRA_DB_API_ENDPOINT", "")
     models: List[Any] = []
     if f"{auth_type}_EMBEDDING_MODEL_TAGS" in os.environ:
         whitelisted_models = [
@@ -65,9 +65,11 @@ def enabled_vectorize_models(auth_type: str) -> List[Any]:
                 "test_assets": model_desc.get("test_assets", DEFAULT_TEST_ASSETS),
             }
             markers = []
-            if auth_type == "NONE" and not is_cloud:
+            # provider exclusion logic applied here:
+            env_filters = model_desc.get("env_filters", [("*", "*", "*")])
+            if not env_filter_match(auth_type, env_filters):  # type: ignore[arg-type]
                 markers.append(
-                    pytest.mark.skip(reason="NONE auth unavailable off-cloud")
+                    pytest.mark.skip(reason="excluded by env/region/auth_type")
                 )
             if model_desc["model_tag"] not in whitelisted_models:
                 markers.append(pytest.mark.skip(reason="model not whitelisted"))
