@@ -278,6 +278,30 @@ TEST_MODELS = [
     #     "enabled": False,
     # },
     {
+        "model_tag": "upstage_solar_query",
+        "secret_tag": "UPSTAGE",
+        "dimension": 4096,
+        "service_options": CollectionVectorServiceOptions(
+            provider="upstageAI",
+            model_name="solar-1-mini-embedding-query",
+        ),
+        "auth_types": ["HEADER"],
+        "enabled": False,
+        "use_insert_one": True,
+    },
+    {
+        "model_tag": "upstage_solar_passage",
+        "secret_tag": "UPSTAGE",
+        "dimension": 4096,
+        "service_options": CollectionVectorServiceOptions(
+            provider="upstageAI",
+            model_name="solar-1-mini-embedding-passage",
+        ),
+        "auth_types": ["HEADER"],
+        "enabled": False,
+        "use_insert_one": True,
+    },
+    {
         "model_tag": "voyage_ai_2",
         "secret_tag": "VOYAGEAI",
         "dimension": 1024,

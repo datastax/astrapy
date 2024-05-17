@@ -63,6 +63,7 @@ def enabled_vectorize_models(auth_type: str) -> List[Any]:
                 "dimension": model_desc["dimension"],
                 "service_options": model_desc["service_options"],
                 "test_assets": model_desc.get("test_assets", DEFAULT_TEST_ASSETS),
+                "use_insert_one": model_desc.get("use_insert_one", False),
             }
             markers = []
             # provider exclusion logic applied here:
@@ -123,10 +124,17 @@ class TestVectorize:
             )
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
-            collection.insert_many(
-                [{"tag": tag} for tag, _ in test_assets["samples"]],
-                vectorize=[text for _, text in test_assets["samples"]],
-            )
+            if testable_vectorize_model["use_insert_one"]:
+                for test_sample_tag, test_sample_text in test_assets["samples"]:
+                    collection.insert_one(
+                        {"tag": test_sample_tag},
+                        vectorize=test_sample_text,
+                    )
+            else:
+                collection.insert_many(
+                    [{"tag": tag} for tag, _ in test_assets["samples"]],
+                    vectorize=[text for _, text in test_assets["samples"]],
+                )
             # instantiate with header
             collection_i = db.get_collection(
                 collection_name,
@@ -174,11 +182,18 @@ class TestVectorize:
             )
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
-            collection.insert_many(
-                [{"tag": tag} for tag, _ in test_assets["samples"]],
-                vectorize=[text for _, text in test_assets["samples"]],
-            )
-            # instantiate with header
+            if testable_vectorize_model["use_insert_one"]:
+                for test_sample_tag, test_sample_text in test_assets["samples"]:
+                    collection.insert_one(
+                        {"tag": test_sample_tag},
+                        vectorize=test_sample_text,
+                    )
+            else:
+                collection.insert_many(
+                    [{"tag": tag} for tag, _ in test_assets["samples"]],
+                    vectorize=[text for _, text in test_assets["samples"]],
+                )
+            # instantiate collection
             collection_i = db.get_collection(
                 collection_name,
             )
@@ -235,11 +250,18 @@ class TestVectorize:
             )
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
-            collection.insert_many(
-                [{"tag": tag} for tag, _ in test_assets["samples"]],
-                vectorize=[text for _, text in test_assets["samples"]],
-            )
-            # instantiate with header
+            if testable_vectorize_model["use_insert_one"]:
+                for test_sample_tag, test_sample_text in test_assets["samples"]:
+                    collection.insert_one(
+                        {"tag": test_sample_tag},
+                        vectorize=test_sample_text,
+                    )
+            else:
+                collection.insert_many(
+                    [{"tag": tag} for tag, _ in test_assets["samples"]],
+                    vectorize=[text for _, text in test_assets["samples"]],
+                )
+            # instantiate collection
             collection_i = db.get_collection(
                 collection_name,
             )
