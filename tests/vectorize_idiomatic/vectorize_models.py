@@ -71,7 +71,6 @@ TEST_MODELS = [
             provider="azureOpenAI",
             model_name="text-embedding-3-large",
             parameters={
-                "apiVersion": "2024-02-01",
                 "deploymentId": "text-embedding-3-large-steo",
                 "resourceName": "steo-azure-openai",
             },
@@ -87,7 +86,6 @@ TEST_MODELS = [
             provider="azureOpenAI",
             model_name="text-embedding-3-small",
             parameters={
-                "apiVersion": "2024-02-01",
                 "deploymentId": "text-embedding-3-small-steo",
                 "resourceName": "steo-azure-openai",
             },
@@ -103,7 +101,6 @@ TEST_MODELS = [
             provider="azureOpenAI",
             model_name="text-embedding-ada-002",
             parameters={
-                "apiVersion": "2024-02-01",
                 "deploymentId": "ada2-steo",
                 "resourceName": "steo-azure-openai",
             },
@@ -136,12 +133,67 @@ TEST_MODELS = [
     #     "enabled": True,
     # },
     {
-        "model_tag": "huggingface",
+        "model_tag": "huggingface_minilm",
         "secret_tag": "HUGGINGFACE",
         "dimension": 384,
         "service_options": CollectionVectorServiceOptions(
             provider="huggingface",
             model_name="sentence-transformers/all-MiniLM-L6-v2",
+        ),
+        "auth_types": ["HEADER", "SHARED_SECRET"],
+        "enabled": True,
+    },
+    {
+        "model_tag": "huggingface_mle5l",
+        "secret_tag": "HUGGINGFACE",
+        "dimension": 1024,
+        "service_options": CollectionVectorServiceOptions(
+            provider="huggingface",
+            model_name="intfloat/multilingual-e5-large",
+        ),
+        "auth_types": ["HEADER", "SHARED_SECRET"],
+        "enabled": True,
+    },
+    {
+        "model_tag": "huggingface_mle5l_instruct",
+        "secret_tag": "HUGGINGFACE",
+        "dimension": 1024,
+        "service_options": CollectionVectorServiceOptions(
+            provider="huggingface",
+            model_name="intfloat/multilingual-e5-large-instruct",
+        ),
+        "auth_types": ["HEADER", "SHARED_SECRET"],
+        "enabled": True,
+    },
+    {
+        "model_tag": "huggingface_smallen",
+        "secret_tag": "HUGGINGFACE",
+        "dimension": 384,
+        "service_options": CollectionVectorServiceOptions(
+            provider="huggingface",
+            model_name="BAAI/bge-small-en-v1.5",
+        ),
+        "auth_types": ["HEADER", "SHARED_SECRET"],
+        "enabled": True,
+    },
+    {
+        "model_tag": "huggingface_baseen",
+        "secret_tag": "HUGGINGFACE",
+        "dimension": 768,
+        "service_options": CollectionVectorServiceOptions(
+            provider="huggingface",
+            model_name="BAAI/bge-base-en-v1.5",
+        ),
+        "auth_types": ["HEADER", "SHARED_SECRET"],
+        "enabled": True,
+    },
+    {
+        "model_tag": "huggingface_largeen",
+        "secret_tag": "HUGGINGFACE",
+        "dimension": 1024,
+        "service_options": CollectionVectorServiceOptions(
+            provider="huggingface",
+            model_name="BAAI/bge-large-en-v1.5",
         ),
         "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
@@ -278,27 +330,15 @@ TEST_MODELS = [
     #     "enabled": False,
     # },
     {
-        "model_tag": "upstage_solar_query",
+        "model_tag": "upstage_solar",
         "secret_tag": "UPSTAGE",
         "dimension": 4096,
         "service_options": CollectionVectorServiceOptions(
             provider="upstageAI",
-            model_name="solar-1-mini-embedding-query",
+            model_name="solar-1-mini-embedding-",
         ),
-        "auth_types": ["HEADER"],
-        "enabled": False,
-        "use_insert_one": True,
-    },
-    {
-        "model_tag": "upstage_solar_passage",
-        "secret_tag": "UPSTAGE",
-        "dimension": 4096,
-        "service_options": CollectionVectorServiceOptions(
-            provider="upstageAI",
-            model_name="solar-1-mini-embedding-passage",
-        ),
-        "auth_types": ["HEADER"],
-        "enabled": False,
+        "auth_types": ["HEADER", "SHARED_SECRET"],
+        "enabled": True,
         "use_insert_one": True,
     },
     {

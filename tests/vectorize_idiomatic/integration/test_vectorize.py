@@ -20,6 +20,7 @@ import os
 
 from astrapy import Database
 from astrapy.info import CollectionVectorServiceOptions
+from astrapy.exceptions import InsertManyException
 
 from ..vectorize_models import DEFAULT_TEST_ASSETS, TEST_MODELS
 from ..conftest import env_filter_match
@@ -101,7 +102,7 @@ class TestVectorize:
     @pytest.mark.describe(
         "test of vectorize collection basic usage with header key, sync"
     )
-    def test_vectorize_usage_by_header_sync(
+    def test_vectorize_usage_auth_type_header_sync(
         self,
         sync_database: Database,
         testable_vectorize_model: Dict[str, Any],
@@ -129,6 +130,12 @@ class TestVectorize:
                     collection.insert_one(
                         {"tag": test_sample_tag},
                         vectorize=test_sample_text,
+                    )
+                # also test for an error if inserting many
+                with pytest.raises(InsertManyException):
+                    collection.insert_many(
+                        [{"tag": tag} for tag, _ in test_assets["samples"]],
+                        vectorize=[text for _, text in test_assets["samples"]],
                     )
             else:
                 collection.insert_many(
@@ -161,7 +168,7 @@ class TestVectorize:
         ],
     )
     @pytest.mark.describe("test of vectorize collection basic usage with no auth, sync")
-    def test_vectorize_usage_no_auth_sync(
+    def test_vectorize_usage_auth_type_none_sync(
         self,
         sync_database: Database,
         testable_vectorize_model: Dict[str, Any],
@@ -220,7 +227,7 @@ class TestVectorize:
     @pytest.mark.describe(
         "test of vectorize collection basic usage with shared_secret, sync"
     )
-    def test_vectorize_usage_shared_secret_sync(
+    def test_vectorize_usage_auth_type_shared_secret_sync(
         self,
         sync_database: Database,
         testable_vectorize_model: Dict[str, Any],

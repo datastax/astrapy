@@ -54,7 +54,7 @@ if __name__ == "__main__":
             headers=headers,
         )
         response = cmd.request(payload={"findEmbeddingProviders": {}})
-        json.dump(response, open("_providers.json", "w"), indent=2)
+        json.dump(response, open("_providers.json", "w"), indent=2, sort_keys=True)
 
     provider_map = response["status"]["embeddingProviders"]
     for provider, provider_data in sorted(provider_map.items()):
