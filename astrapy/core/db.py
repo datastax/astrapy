@@ -3027,7 +3027,6 @@ class AstraDB:
             dimension (int, optional): Dimension for vector search.
             metric (str, optional): Metric choice for vector search.
             service_dict (dict, optional): a definition for the $vectorize service
-                NOTE: This feature is under current development.
             timeout_info: a float, or a TimeoutInfo dict, for the HTTP request.
                 Note that a 'read' timeout event will not block the action taken
                 by the API server if it has received the request already.
@@ -3387,7 +3386,6 @@ class AsyncAstraDB:
             dimension (int, optional): Dimension for vector search.
             metric (str, optional): Metric choice for vector search.
             service_dict (dict, optional): a definition for the $vectorize service
-                NOTE: This feature is under current development.
             timeout_info: a float, or a TimeoutInfo dict, for the HTTP request.
                 Note that a 'read' timeout event will not block the action taken
                 by the API server if it has received the request already.

@@ -100,7 +100,6 @@ class InsertOne(BaseOperation):
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
-            NOTE: This feature is under current development.
     """
 
     document: DocumentType
@@ -152,7 +151,6 @@ class InsertMany(BaseOperation):
         vectors: an optional list of vectors to enrich the documents at insertion.
         vectorize: an optional list of texts achieving the same effect as `vectors`
             except through an embedding service, if one is configured for the collection.
-            NOTE: This feature is under current development.
         ordered: whether the inserts should be done in sequence.
         chunk_size: how many documents to include in a single API request.
             Exceeding the server maximum allowed value results in an error.
@@ -224,7 +222,6 @@ class UpdateOne(BaseOperation):
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
-            NOTE: This feature is under current development.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
@@ -342,7 +339,6 @@ class ReplaceOne(BaseOperation):
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
-            NOTE: This feature is under current development.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
@@ -409,7 +405,6 @@ class DeleteOne(BaseOperation):
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
-            NOTE: This feature is under current development.
         sort: controls ordering of results, hence which document is affected.
     """
 
@@ -520,7 +515,6 @@ class AsyncInsertOne(AsyncBaseOperation):
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
-            NOTE: This feature is under current development.
     """
 
     document: DocumentType
@@ -572,7 +566,6 @@ class AsyncInsertMany(AsyncBaseOperation):
         vectors: an optional list of vectors to enrich the documents at insertion.
         vectorize: an optional list of texts achieving the same effect as `vectors`
             except through an embedding service, if one is configured for the collection.
-            NOTE: This feature is under current development.
         ordered: whether the inserts should be done in sequence.
         chunk_size: how many documents to include in a single API request.
             Exceeding the server maximum allowed value results in an error.
@@ -644,7 +637,6 @@ class AsyncUpdateOne(AsyncBaseOperation):
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
-            NOTE: This feature is under current development.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
@@ -762,7 +754,6 @@ class AsyncReplaceOne(AsyncBaseOperation):
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
-            NOTE: This feature is under current development.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
@@ -829,7 +820,6 @@ class AsyncDeleteOne(AsyncBaseOperation):
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
-            NOTE: This feature is under current development.
         sort: controls ordering of results, hence which document is affected.
     """
 
