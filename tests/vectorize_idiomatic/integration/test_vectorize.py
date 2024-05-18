@@ -123,6 +123,13 @@ class TestVectorize:
                 service=service_options,
                 embedding_api_key=embedding_api_key,
             )
+            # test service back from collection info
+            c_descriptors = [
+                cd for cd in db.list_collections() if cd.name == collection_name
+            ]
+            assert len(c_descriptors) == 1
+            c_descriptor = c_descriptors[0]
+            assert c_descriptor.options.vector.service == service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
             if testable_vectorize_model["use_insert_one"]:
@@ -187,6 +194,13 @@ class TestVectorize:
                 metric="cosine",
                 service=service_options,
             )
+            # test service back from collection info
+            c_descriptors = [
+                cd for cd in db.list_collections() if cd.name == collection_name
+            ]
+            assert len(c_descriptors) == 1
+            c_descriptor = c_descriptors[0]
+            assert c_descriptor.options.vector.service == service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
             if testable_vectorize_model["use_insert_one"]:
@@ -255,6 +269,13 @@ class TestVectorize:
                 metric="cosine",
                 service=service_options,
             )
+            # test service back from collection info
+            c_descriptors = [
+                cd for cd in db.list_collections() if cd.name == collection_name
+            ]
+            assert len(c_descriptors) == 1
+            c_descriptor = c_descriptors[0]
+            assert c_descriptor.options.vector.service == service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
             if testable_vectorize_model["use_insert_one"]:
