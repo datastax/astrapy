@@ -915,12 +915,21 @@ class Collection:
                     {"price": {"$lt": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            projection: used to select a subset of fields in the documents being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             skip: with this integer parameter, what would be the first `skip`
                 documents returned by the query are discarded, and the results
                 start from the (skip+1)-th document.
@@ -1084,12 +1093,21 @@ class Collection:
                     {"price": {"$lt": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            projection: used to select a subset of fields in the documents being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to perform vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), extracting the most
@@ -1377,12 +1395,21 @@ class Collection:
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
-            projection: used to select a subset of fields in the document being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), as the sorting criterion.
@@ -1599,12 +1626,21 @@ class Collection:
                     {"$inc": {"counter": 10}}
                     {"$unset": {"field": ""}}
                 See the Data API documentation for the full syntax.
-            projection: used to select a subset of fields in the document being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), as the sorting criterion.
@@ -1939,14 +1975,21 @@ class Collection:
                     {"price": {"$lt": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            projection: used to select a subset of fields in the document being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                Note that the `_id` field will be returned with the document
-                in any case, regardless of what the provided `projection` requires.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), as the sorting criterion.
@@ -3204,12 +3247,21 @@ class AsyncCollection:
                     {"price": {"$lt": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            projection: used to select a subset of fields in the documents being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             skip: with this integer parameter, what would be the first `skip`
                 documents returned by the query are discarded, and the results
                 start from the (skip+1)-th document.
@@ -3382,12 +3434,21 @@ class AsyncCollection:
                     {"price": {"$lt": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            projection: used to select a subset of fields in the documents being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to perform vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), extracting the most
@@ -3701,12 +3762,21 @@ class AsyncCollection:
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
-            projection: used to select a subset of fields in the document being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), as the sorting criterion.
@@ -3944,12 +4014,21 @@ class AsyncCollection:
                     {"$inc": {"counter": 10}}
                     {"$unset": {"field": ""}}
                 See the Data API documentation for the full syntax.
-            projection: used to select a subset of fields in the document being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), as the sorting criterion.
@@ -4316,14 +4395,21 @@ class AsyncCollection:
                     {"price": {"$lt": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            projection: used to select a subset of fields in the document being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                Note that the `_id` field will be returned with the document
-                in any case, regardless of what the provided `projection` requires.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), as the sorting criterion.

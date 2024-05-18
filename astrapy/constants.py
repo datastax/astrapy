@@ -18,7 +18,13 @@ from typing import Any, Dict, Iterable, Optional, Union
 
 
 DocumentType = Dict[str, Any]
-ProjectionType = Union[Iterable[str], Dict[str, bool]]
+# ["field1", "field2"] allowed, but also:
+# {"field": True/False}
+# {"array_field": {"$slice": n}
+# {"array_field": {"$slice": [n, m]}
+ProjectionType = Union[
+    Iterable[str], Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
+]
 SortType = Dict[str, Any]
 FilterType = Dict[str, Any]
 VectorType = Iterable[float]
@@ -27,7 +33,7 @@ VectorType = Iterable[float]
 def normalize_optional_projection(
     projection: Optional[ProjectionType],
     ensure_fields: Iterable[str] = set(),
-) -> Optional[Dict[str, bool]]:
+) -> Optional[Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]]:
     _ensure_fields = set(ensure_fields)
     if projection:
         if isinstance(projection, dict):
