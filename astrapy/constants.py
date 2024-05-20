@@ -18,7 +18,13 @@ from typing import Any, Dict, Iterable, Optional, Union
 
 
 DocumentType = Dict[str, Any]
-ProjectionType = Union[Iterable[str], Dict[str, bool]]
+# ["field1", "field2"] allowed, but also:
+# {"field": True/False}
+# {"array_field": {"$slice": n}
+# {"array_field": {"$slice": [n, m]}
+ProjectionType = Union[
+    Iterable[str], Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
+]
 SortType = Dict[str, Any]
 FilterType = Dict[str, Any]
 VectorType = Iterable[float]
@@ -26,23 +32,14 @@ VectorType = Iterable[float]
 
 def normalize_optional_projection(
     projection: Optional[ProjectionType],
-    ensure_fields: Iterable[str] = set(),
-) -> Optional[Dict[str, bool]]:
-    _ensure_fields = set(ensure_fields)
+) -> Optional[Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]]:
     if projection:
         if isinstance(projection, dict):
-            if any(bool(v) for v in projection.values()):
-                # positive projection: {a: True, b: True ...}
-                return {
-                    k: projection.get(k, True)
-                    for k in list(projection.keys()) + list(_ensure_fields)
-                }
-            else:
-                # negative projection: {x: False, y: False, ...}
-                return {k: v for k, v in projection.items() if k not in _ensure_fields}
+            # already a dictionary
+            return projection
         else:
-            # an iterable over strings
-            return {field: True for field in list(projection) + list(_ensure_fields)}
+            # an iterable over strings: coerce to allow-list projection
+            return {field: True for field in projection}
     else:
         return None
 

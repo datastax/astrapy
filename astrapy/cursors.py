@@ -569,9 +569,9 @@ class Cursor(BaseCursor):
         }
 
         # recast parameters for paginated_find call
-        pf_projection: Optional[Dict[str, bool]] = normalize_optional_projection(
-            self._projection
-        )
+        pf_projection: Optional[
+            Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
+        ] = normalize_optional_projection(self._projection)
         pf_sort: Optional[Dict[str, int]]
         if self._sort:
             pf_sort = dict(self._sort)
@@ -777,9 +777,9 @@ class AsyncCursor(BaseCursor):
         }
 
         # recast parameters for paginated_find call
-        pf_projection: Optional[Dict[str, bool]] = normalize_optional_projection(
-            self._projection
-        )
+        pf_projection: Optional[
+            Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
+        ] = normalize_optional_projection(self._projection)
         pf_sort: Optional[Dict[str, int]]
         if self._sort:
             pf_sort = dict(self._sort)
