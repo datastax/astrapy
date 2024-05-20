@@ -101,6 +101,25 @@ class DefaultIdType:
     DEFAULT = "uuid"
 
 
+class Environment:
+    """
+    Admitted values for `environment` property,
+    denoting the targeted API deployment type.
+    """
+
+    def __init__(self) -> None:
+        raise NotImplementedError
+
+    PROD = "prod"
+    DEV = "dev"
+    TEST = "test"
+    DSE = "dse"
+    OTHER = "other"
+
+    values = {PROD, DEV, TEST, DSE, OTHER}
+    astra_db_values = {PROD, DEV, TEST}
+
+
 __pdoc__ = {
     "normalize_optional_projection": False,
 }

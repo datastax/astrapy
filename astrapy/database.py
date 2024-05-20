@@ -36,9 +36,8 @@ from astrapy.info import (
     CollectionDescriptor,
     CollectionVectorServiceOptions,
 )
-
+from astrapy.constants import Environment
 from astrapy.admin import (
-    Environment,
     parse_api_endpoint,
     fetch_database_info,
     API_PATH_ENV_MAP,

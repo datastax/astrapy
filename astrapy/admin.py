@@ -28,6 +28,7 @@ from astrapy.core.ops import AstraDBOps
 from astrapy.core.defaults import DEFAULT_AUTH_HEADER
 from astrapy.api_commander import APICommander
 from astrapy.cursors import CommandCursor
+from astrapy.constants import Environment
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo
 from astrapy.exceptions import (
     DevOpsAPIException,
@@ -56,25 +57,6 @@ STATUS_PENDING = "PENDING"
 STATUS_INITIALIZING = "INITIALIZING"
 STATUS_ERROR = "ERROR"
 STATUS_TERMINATING = "TERMINATING"
-
-
-class Environment:
-    """
-    Admitted values for `environment` property,
-    denoting the targeted API deployment type.
-    """
-
-    def __init__(self) -> None:
-        raise NotImplementedError
-
-    PROD = "prod"
-    DEV = "dev"
-    TEST = "test"
-    DSE = "dse"
-    OTHER = "other"
-
-    values = {PROD, DEV, TEST, DSE, OTHER}
-    astra_db_values = {PROD, DEV, TEST}
 
 
 database_id_matcher = re.compile(
@@ -434,7 +416,7 @@ class AstraDBAdmin:
         dev_ops_api_version: Optional[str] = None,
     ) -> None:
         self.token = token
-        self.environment = environment or Environment.PROD
+        self.environment = (environment or Environment.PROD).lower()
         if dev_ops_url is None:
             self.dev_ops_url = DEV_OPS_URL_MAP[self.environment]
         else:
@@ -1366,7 +1348,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     ) -> None:
         self.id = id
         self.token = token
-        self.environment = environment or Environment.PROD
+        self.environment = (environment or Environment.PROD).lower()
         self._astra_db_admin = AstraDBAdmin(
             token=self.token,
             environment=self.environment,
@@ -2188,12 +2170,12 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     that the namespace CRUD operations (and possibly other admin operations)
     are performed. Since non-Astra environment lack the concept of an overall
     admin (such as the all-databases AstraDBAdmin class), a `DataAPIDatabaseAdmin`
-    is generally created by invoking the `get_database_admin` methon of the
-    corresponding `Database` object.
-
-    ENV_TODO rest of this docstring
+    is generally created by invoking the `get_database_admin` method of the
+    corresponding `Database` object (which in turn is spawned by a DataAPIClient).
 
     Args:
+        api_endpoint: the full URI to access the Data API,
+            e.g. "http://localhost:8181".
         token: an access token with enough permission to perform admin tasks.
         environment: a label, whose value is one of Environment.OTHER (default)
             or other non-Astra environment values in the `Environment` enum.
@@ -2202,11 +2184,25 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         api_version: version specifier to append to the API path. In typical
             usage, this should be left to its default of "v1".
         caller_name: name of the application, or framework, on behalf of which
-            the DevOps API calls are performed. This ends up in the request user-agent.
+            the admin API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
 
     Example:
-        >>> ENV_TODO the example
+        >>> from astrapy import DataAPIClient
+        >>> from astrapy.constants import Environment
+        >>>
+        >>> token = "Cassandra:..."
+        >>> endpoint = "http://localhost:8181"
+        >>>
+        >>> client = DataAPIClient(
+        >>>     token="Cassandra:Y2Fzc2FuZHJh:Y2Fzc2FuZHJh",
+        >>>     environment=Environment.OTHER,
+        >>> )
+        >>> database = client.get_database_by_api_endpoint(endpoint)
+        >>> db_admin = database.get_database_admin()
+        >>>
+        >>> db_admin.list_namespaces()
+        ['namespace1', 'namespace2']
     """
 
     def __init__(
@@ -2220,24 +2216,24 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        self.environment = environment or Environment.OTHER
+        self.environment = (environment or Environment.OTHER).lower()
         self.token = token
         self.api_endpoint = api_endpoint
         #
         self.caller_name = caller_name
         self.caller_version = caller_version
         #
-        _api_path = api_path if api_path is not None else ""
-        _api_version = api_version if api_version is not None else ""
+        self._api_path = api_path if api_path is not None else ""
+        self._api_version = api_version if api_version is not None else ""
         #
-        commander_headers = {
+        self._commander_headers = {
             DEFAULT_AUTH_HEADER: token,
         }
         self._api_commander = APICommander(
-            api_endpoint=api_endpoint,
-            path="/".join(comp for comp in [_api_path, _api_version] if comp),
-            headers=commander_headers,
-            callers=[(caller_name, caller_version)],
+            api_endpoint=self.api_endpoint,
+            path="/".join(comp for comp in [self._api_path, self._api_version] if comp),
+            headers=self._commander_headers,
+            callers=[(self.caller_name, self.caller_version)],
         )
 
     def __repr__(self) -> str:
@@ -2258,87 +2254,93 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         else:
             return False
 
-    # def _copy(
-    #     self,
-    #     id: Optional[str] = None,
-    #     token: Optional[str] = None,
-    #     environment: Optional[str] = None,
-    #     caller_name: Optional[str] = None,
-    #     caller_version: Optional[str] = None,
-    #     dev_ops_url: Optional[str] = None,
-    #     dev_ops_api_version: Optional[str] = None,
-    # ) -> DataAPIDatabaseAdmin:
-    #     return DataAPIDatabaseAdmin(
-    #         id=id or self.id,
-    #         token=token or self.token,
-    #         environment=environment or self.environment,
-    #         caller_name=caller_name or self._astra_db_admin._caller_name,
-    #         caller_version=caller_version or self._astra_db_admin._caller_version,
-    #         dev_ops_url=dev_ops_url or self._astra_db_admin._dev_ops_url,
-    #         dev_ops_api_version=dev_ops_api_version
-    #         or self._astra_db_admin._dev_ops_api_version,
-    #     )
+    def _copy(
+        self,
+        api_endpoint: Optional[str] = None,
+        token: Optional[str] = None,
+        environment: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> DataAPIDatabaseAdmin:
+        return DataAPIDatabaseAdmin(
+            api_endpoint=api_endpoint or self.api_endpoint,
+            token=token or self.token,
+            environment=environment or self.environment,
+            api_path=api_path or self._api_path,
+            api_version=api_version or self._api_version,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
+        )
 
-    # def with_options(
-    #     self,
-    #     *,
-    #     id: Optional[str] = None,
-    #     token: Optional[str] = None,
-    #     caller_name: Optional[str] = None,
-    #     caller_version: Optional[str] = None,
-    # ) -> DataAPIDatabaseAdmin:
-    #     """
-    #     Create a clone of this DataAPIDatabaseAdmin with some changed attributes.
+    def with_options(
+        self,
+        *,
+        api_endpoint: Optional[str] = None,
+        token: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> DataAPIDatabaseAdmin:
+        """
+        Create a clone of this DataAPIDatabaseAdmin with some changed attributes.
 
-    #     Args:
-    #         id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
-    #         token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
-    #         caller_name: name of the application, or framework, on behalf of which
-    #             the Data API and DevOps API calls are performed. This ends up in
-    #             the request user-agent.
-    #         caller_version: version of the caller.
+        Args:
+            api_endpoint: the full URI to access the Data API,
+                e.g. "http://localhost:8181".
+            token: an access token with enough permission to perform admin tasks.
+            caller_name: name of the application, or framework, on behalf of which
+                the admin API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
 
-    #     Returns:
-    #         a new DataAPIDatabaseAdmin instance.
+        Returns:
+            a new DataAPIDatabaseAdmin instance.
 
-    #     Example:
-    #         >>> admin_for_my_other_db = admin_for_my_db.with_options(
-    #         ...     id="abababab-0101-2323-4545-6789abcdef01",
-    #         ... )
-    #     """
+        Example:
+            >>> admin_for_my_other_db = admin_for_my_db.with_options(
+            ...     api_endpoint="http://10.1.1.5:8181",
+            ... )
+        """
 
-    #     return self._copy(
-    #         id=id,
-    #         token=token,
-    #         caller_name=caller_name,
-    #         caller_version=caller_version,
-    #     )
+        return self._copy(
+            api_endpoint=api_endpoint,
+            token=token,
+            caller_name=caller_name,
+            caller_version=caller_version,
+        )
 
-    # def set_caller(
-    #     self,
-    #     caller_name: Optional[str] = None,
-    #     caller_version: Optional[str] = None,
-    # ) -> None:
-    #     """
-    #     Set a new identity for the application/framework on behalf of which
-    #     the DevOps API calls will be performed (the "caller").
+    def set_caller(
+        self,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> None:
+        """
+        Set a new identity for the application/framework on behalf of which
+        the DevOps API calls will be performed (the "caller").
 
-    #     New objects spawned from this client afterwards will inherit the new settings.
+        New objects spawned from this client afterwards will inherit the new settings.
 
-    #     Args:
-    #         caller_name: name of the application, or framework, on behalf of which
-    #             the DevOps API calls are performed. This ends up in the request user-agent.
-    #         caller_version: version of the caller.
+        Args:
+            caller_name: name of the application, or framework, on behalf of which
+                the DevOps API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
 
-    #     Example:
-    #         >>> admin_for_my_db.set_caller(
-    #         ...     caller_name="the_caller",
-    #         ...     caller_version="0.1.0",
-    #         ... )
-    #     """
+        Example:
+            >>> admin_for_my_db.set_caller(
+            ...     caller_name="the_caller",
+            ...     caller_version="0.1.0",
+            ... )
+        """
 
-    #     logger.info(f"setting caller to {caller_name}/{caller_version}")
-    #     self._astra_db_admin.set_caller(caller_name, caller_version)
+        logger.info(f"setting caller to {caller_name}/{caller_version}")
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        self._api_commander = APICommander(
+            api_endpoint=self.api_endpoint,
+            path="/".join(comp for comp in [self._api_path, self._api_version] if comp),
+            headers=self._commander_headers,
+            callers=[(self.caller_name, self.caller_version)],
+        )
 
     def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
         """Get a list of namespaces for the database."""

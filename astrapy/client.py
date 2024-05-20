@@ -19,7 +19,6 @@ import re
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from astrapy.admin import (
-    Environment,
     api_endpoint_parser,
     build_api_endpoint,
     database_id_matcher,
@@ -27,6 +26,7 @@ from astrapy.admin import (
     parse_api_endpoint,
     parse_generic_api_url,
 )
+from astrapy.constants import Environment
 
 
 if TYPE_CHECKING:
