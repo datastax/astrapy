@@ -23,7 +23,7 @@ available as the env.vars:
 """
 
 import os
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Iterable, List, Tuple
 import pytest
 
 from astrapy import (
@@ -32,7 +32,6 @@ from astrapy import (
     Database,
 )
 from astrapy.admin import Environment, parse_api_endpoint
-from astrapy.api_commander import APICommander
 
 
 def _parse_to_testing_environment(api_endpoint: str) -> Tuple[str, str]:
@@ -68,27 +67,6 @@ def env_filter_match(auth_type: str, env_filters: List[Tuple[str, str, str]]) ->
 
 
 @pytest.fixture(scope="session")
-def live_provider_info() -> Dict[str, Any]:
-    """
-    Query the API endpoint `findEmbeddingProviders` endpoint
-    for the latest information.
-    This is later used to make sure everything is mapped/tested.
-    """
-    ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
-    ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
-    api_endpoint = ASTRA_DB_API_ENDPOINT
-    path = "api/json/v1"
-    headers = {"Token": ASTRA_DB_APPLICATION_TOKEN}
-    cmd = APICommander(
-        api_endpoint=api_endpoint,
-        path=path,
-        headers=headers,
-    )
-    response = cmd.request(payload={"findEmbeddingProviders": {}})
-    return response
-
-
-@pytest.fixture(scope="session")
 def sync_database() -> Iterable[Database]:
     if "LOCAL_DATA_API_ENDPOINT" in os.environ:
         api_endpoint = os.environ["LOCAL_DATA_API_ENDPOINT"]
@@ -119,5 +97,4 @@ __all__ = [
     "sync_database",
     "async_database",
     "env_filter_match",
-    "live_provider_info",
 ]

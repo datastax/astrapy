@@ -12,7 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+from typing import Any, Dict, Iterable
+
 from astrapy.info import CollectionVectorServiceOptions
+from astrapy.api_commander import APICommander
+
+
+alphanum = set("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890")
 
 
 DEFAULT_TEST_ASSETS = {
@@ -35,6 +42,7 @@ DEFAULT_TEST_ASSETS = {
         "expected": ["car", "motorbike"],
     },
 }
+
 CODE_TEST_ASSETS = {
     "samples": [
         (
@@ -62,354 +70,222 @@ CODE_TEST_ASSETS = {
     },
 }
 
-TEST_MODELS = [
-    {
-        "model_tag": "azure_openai_textemb3large",
-        "secret_tag": "AZURE_OPENAI",
-        "dimension": 1234,
-        "service_options": CollectionVectorServiceOptions(
-            provider="azureOpenAI",
-            model_name="text-embedding-3-large",
-            parameters={
-                "deploymentId": "text-embedding-3-large-steo",
-                "resourceName": "steo-azure-openai",
-            },
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "azure_openai_textemb3small",
-        "secret_tag": "AZURE_OPENAI",
-        "dimension": 567,
-        "service_options": CollectionVectorServiceOptions(
-            provider="azureOpenAI",
-            model_name="text-embedding-3-small",
-            parameters={
-                "deploymentId": "text-embedding-3-small-steo",
-                "resourceName": "steo-azure-openai",
-            },
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "azure_openai_textembada2",
-        "secret_tag": "AZURE_OPENAI",
-        "dimension": 1536,
-        "service_options": CollectionVectorServiceOptions(
-            provider="azureOpenAI",
-            model_name="text-embedding-ada-002",
-            parameters={
-                "deploymentId": "ada2-steo",
-                "resourceName": "steo-azure-openai",
-            },
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    # Not in scope (yet)
-    # {
-    #     "model_tag": "cohere_englishv2",
-    #     "secret_tag": "COHERE",
-    #     "dimension": 4096,
-    #     "service_options": CollectionVectorServiceOptions(
-    #         provider="cohere",
-    #         model_name="embed-english-v2.0",
-    #     ),
-    #     "auth_types": ["HEADER"],
-    #     "enabled": True,
-    # },
-    # Not in scope (yet)
-    # {
-    #     "model_tag": "cohere_englishv3",
-    #     "secret_tag": "COHERE",
-    #     "dimension": 1024,
-    #     "service_options": CollectionVectorServiceOptions(
-    #         provider="cohere",
-    #         model_name="embed-english-v3.0",
-    #     ),
-    #     "auth_types": ["HEADER"],
-    #     "enabled": True,
-    # },
-    {
-        "model_tag": "huggingface_minilm",
-        "secret_tag": "HUGGINGFACE",
-        "dimension": 384,
-        "service_options": CollectionVectorServiceOptions(
-            provider="huggingface",
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "huggingface_mle5l",
-        "secret_tag": "HUGGINGFACE",
-        "dimension": 1024,
-        "service_options": CollectionVectorServiceOptions(
-            provider="huggingface",
-            model_name="intfloat/multilingual-e5-large",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "huggingface_mle5l_instruct",
-        "secret_tag": "HUGGINGFACE",
-        "dimension": 1024,
-        "service_options": CollectionVectorServiceOptions(
-            provider="huggingface",
-            model_name="intfloat/multilingual-e5-large-instruct",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "huggingface_smallen",
-        "secret_tag": "HUGGINGFACE",
-        "dimension": 384,
-        "service_options": CollectionVectorServiceOptions(
-            provider="huggingface",
-            model_name="BAAI/bge-small-en-v1.5",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "huggingface_baseen",
-        "secret_tag": "HUGGINGFACE",
-        "dimension": 768,
-        "service_options": CollectionVectorServiceOptions(
-            provider="huggingface",
-            model_name="BAAI/bge-base-en-v1.5",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "huggingface_largeen",
-        "secret_tag": "HUGGINGFACE",
-        "dimension": 1024,
-        "service_options": CollectionVectorServiceOptions(
-            provider="huggingface",
-            model_name="BAAI/bge-large-en-v1.5",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "jinaai_base_code",
-        "secret_tag": "JINAAI",
-        "dimension": 768,
-        "service_options": CollectionVectorServiceOptions(
-            provider="jinaAI",
-            model_name="jina-embeddings-v2-base-code",
-        ),
-        "test_assets": CODE_TEST_ASSETS,
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "jinaai_base_en",
-        "secret_tag": "JINAAI",
-        "dimension": 768,
-        "service_options": CollectionVectorServiceOptions(
-            provider="jinaAI",
-            model_name="jina-embeddings-v2-base-en",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "jinaai_base_de",
-        "secret_tag": "JINAAI",
-        "dimension": 768,
-        "service_options": CollectionVectorServiceOptions(
-            provider="jinaAI",
-            model_name="jina-embeddings-v2-base-de",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "jinaai_base_es",
-        "secret_tag": "JINAAI",
-        "dimension": 768,
-        "service_options": CollectionVectorServiceOptions(
-            provider="jinaAI",
-            model_name="jina-embeddings-v2-base-es",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "jinaai_base_zh",
-        "secret_tag": "JINAAI",
-        "dimension": 768,
-        "service_options": CollectionVectorServiceOptions(
-            provider="jinaAI",
-            model_name="jina-embeddings-v2-base-zh",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "mistral_embed",
-        "secret_tag": "MISTRAL",
-        "dimension": 1024,
-        "service_options": CollectionVectorServiceOptions(
-            provider="mistral",
-            model_name="mistral-embed",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "nvidia",
-        "secret_tag": "NVIDIA",
-        "dimension": 1024,
-        "service_options": CollectionVectorServiceOptions(
-            provider="nvidia",
-            model_name="NV-Embed-QA",
-        ),
-        "auth_types": ["NONE"],
-        "enabled": True,
-        "env_filters": [
-            # environment, region, auth_type. One spec must match.
-            ("dev", "us-west-2", "*"),
-        ],
-    },
-    {
-        "model_tag": "openai_3large",
-        "secret_tag": "OPENAI",
-        "dimension": 678,
-        "service_options": CollectionVectorServiceOptions(
-            provider="openai",
-            model_name="text-embedding-3-large",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "openai_3small",
-        "secret_tag": "OPENAI",
-        "dimension": 456,
-        "service_options": CollectionVectorServiceOptions(
-            provider="openai",
-            model_name="text-embedding-3-small",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "openai_ada002",
-        "secret_tag": "OPENAI",
-        "dimension": 1536,
-        "service_options": CollectionVectorServiceOptions(
-            provider="openai",
-            model_name="text-embedding-ada-002",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    # Not in scope (yet)
-    # {
-    #     "model_tag": "vertexai_gecko",
-    #     "secret_tag": "VERTEXAI",
-    #     "dimension": 768,
-    #     "service_options": CollectionVectorServiceOptions(
-    #         provider="vertexai",
-    #         model_name="textembedding-gecko@003",
-    #         parameters={
-    #             "projectId": os.environ.get("HEADER_EMBEDDING_VERTEXAI_PROJECT_ID"),
-    #             "autoTruncate": False,
-    #         },
-    #     ),
-    #     "auth_types": ["HEADER"],
-    #     "enabled": False,
-    # },
-    {
-        "model_tag": "upstage_solar",
-        "secret_tag": "UPSTAGE",
-        "dimension": 4096,
-        "service_options": CollectionVectorServiceOptions(
-            provider="upstageAI",
-            model_name="solar-1-mini-embedding",
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-        "use_insert_one": True,
-    },
-    {
-        "model_tag": "voyage_ai_2",
-        "secret_tag": "VOYAGEAI",
-        "dimension": 1024,
-        "service_options": CollectionVectorServiceOptions(
-            provider="voyageAI",
-            model_name="voyage-2",
-            parameters={
-                "autoTruncate": True,
-            },
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "voyage_ai_code_2",
-        "secret_tag": "VOYAGEAI",
-        "dimension": 1536,
-        "service_options": CollectionVectorServiceOptions(
-            provider="voyageAI",
-            model_name="voyage-code-2",
-            parameters={
-                "autoTruncate": True,
-            },
-        ),
-        "test_assets": CODE_TEST_ASSETS,
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "voyage_ai_large_2",
-        "secret_tag": "VOYAGEAI",
-        "dimension": 1536,
-        "service_options": CollectionVectorServiceOptions(
-            provider="voyageAI",
-            model_name="voyage-large-2",
-            parameters={
-                "autoTruncate": True,
-            },
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "voyage_ai_large_2_instruct",
-        "secret_tag": "VOYAGEAI",
-        "dimension": 1024,
-        "service_options": CollectionVectorServiceOptions(
-            provider="voyageAI",
-            model_name="voyage-large-2-instruct",
-            parameters={
-                "autoTruncate": True,
-            },
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-    {
-        "model_tag": "voyage_law_2",
-        "secret_tag": "VOYAGEAI",
-        "dimension": 1024,
-        "service_options": CollectionVectorServiceOptions(
-            provider="voyageAI",
-            model_name="voyage-law-2",
-            parameters={
-                "autoTruncate": True,
-            },
-        ),
-        "auth_types": ["HEADER", "SHARED_SECRET"],
-        "enabled": True,
-    },
-]
+TEST_ASSETS_MAP = {
+    ("jinaAI", "jina-embeddings-v2-base-code"): CODE_TEST_ASSETS,
+    ("voyageAI", "voyage-code-2"): CODE_TEST_ASSETS,
+}
+
+USE_INSERT_ONE_MAP = {
+    ("upstageAI", "solar-1-mini-embedding"): True,
+}
+
+# environment, region, auth_type. One spec must match.
+ENV_FILTERS_MAP = {("nvidia", "NV-Embed-QA"): [("dev", "us-west-2", "*")]}
+
+SECRET_NAME_ROOT_MAP = {
+    "azureOpenAI": "AZURE_OPENAI",
+    "huggingface": "HUGGINGFACE",
+    "jinaAI": "JINAAI",
+    "mistral": "MISTRAL",
+    "nvidia": "NVIDIA",
+    "openai": "OPENAI",
+    "upstageAI": "UPSTAGE",
+    "voyageAI": "VOYAGEAI",
+}
+
+PARAMETER_VALUE_MAP = {
+    ("azureOpenAI", "text-embedding-3-large", "deploymentId"): os.environ[
+        "AZURE_OPENAI_DEPLOY_ID_EMB3LARGE"
+    ],
+    ("azureOpenAI", "text-embedding-3-large", "resourceName"): os.environ[
+        "AZURE_OPENAI_RESNAME_EMB3LARGE"
+    ],
+    ("azureOpenAI", "text-embedding-3-small", "deploymentId"): os.environ[
+        "AZURE_OPENAI_DEPLOY_ID_EMB3SMALL"
+    ],
+    ("azureOpenAI", "text-embedding-3-small", "resourceName"): os.environ[
+        "AZURE_OPENAI_RESNAME_EMB3SMALL"
+    ],
+    ("azureOpenAI", "text-embedding-ada-002", "deploymentId"): os.environ[
+        "AZURE_OPENAI_DEPLOY_ID_ADA2"
+    ],
+    ("azureOpenAI", "text-embedding-ada-002", "resourceName"): os.environ[
+        "AZURE_OPENAI_RESNAME_ADA2"
+    ],
+    ("voyageAI", "voyage-2", "autoTruncate"): True,
+    ("voyageAI", "voyage-code-2", "autoTruncate"): True,
+    ("voyageAI", "voyage-large-2", "autoTruncate"): True,
+    ("voyageAI", "voyage-large-2-instruct", "autoTruncate"): True,
+    ("voyageAI", "voyage-law-2", "autoTruncate"): True,
+}
+
+
+def live_provider_info() -> Dict[str, Any]:
+    """
+    Query the API endpoint `findEmbeddingProviders` endpoint
+    for the latest information.
+    This is later used to make sure everything is mapped/tested.
+    """
+    ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
+    ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
+    api_endpoint = ASTRA_DB_API_ENDPOINT
+    path = "api/json/v1"
+    headers = {"Token": ASTRA_DB_APPLICATION_TOKEN}
+    cmd = APICommander(
+        api_endpoint=api_endpoint,
+        path=path,
+        headers=headers,
+    )
+    response = cmd.request(payload={"findEmbeddingProviders": {}})
+    return response
+
+
+def live_test_models() -> Iterable[Dict[str, Any]]:
+
+    def _from_validation(pspec: Dict[str, Any]) -> int:
+        assert pspec["type"] == "number"
+        if "numericRange" in pspec["validation"]:
+            m0: int = pspec["validation"]["numericRange"][0]
+            m1: int = pspec["validation"]["numericRange"][1]
+            return (m0 + m1) // 2
+        else:
+            raise ValueError("unsupported pspec")
+
+    def _collapse(longt: str) -> str:
+        if len(longt) <= 40:
+            return longt
+        else:
+            return f"{longt[:30]}_{longt[-5:]}"
+
+    # generate the full list of models based on the live provider endpoint
+    live_info = live_provider_info()["status"]["embeddingProviders"]
+    for provider_name, provider_desc in sorted(live_info.items()):
+        for model in provider_desc["models"]:
+            for auth_type_name, auth_type_desc in sorted(
+                provider_desc["supportedAuthentication"].items()
+            ):
+                if auth_type_desc["enabled"]:
+                    # test assumptions on auth type
+                    if auth_type_name == "NONE":
+                        assert auth_type_desc["tokens"] == []
+                    elif auth_type_name == "HEADER":
+                        assert {t["accepted"] for t in auth_type_desc["tokens"]} == {
+                            "x-embedding-api-key"
+                        }
+                    elif auth_type_name == "SHARED_SECRET":
+                        assert {t["accepted"] for t in auth_type_desc["tokens"]} == {
+                            "providerKey"
+                        }
+                    else:
+                        raise ValueError("Unknown auth type")
+
+                    # params
+                    collated_params = provider_desc.get("parameters", []) + model.get(
+                        "parameters", []
+                    )
+                    all_nond_params = [
+                        param
+                        for param in collated_params
+                        if param["name"] != "vectorDimension"
+                    ]
+                    required_nond_params = {
+                        param["name"] for param in all_nond_params if param["required"]
+                    }
+                    optional_nond_params = {
+                        param["name"]
+                        for param in all_nond_params
+                        if not param["required"]
+                    }
+                    #
+                    d_params = [
+                        param
+                        for param in collated_params
+                        if param["name"] == "vectorDimension"
+                    ]
+                    if d_params:
+                        d_param = d_params[0]
+                        if "defaultValue" in d_param:
+                            optional_dimension = True
+                            assert model["vectorDimension"] == 0
+                            dimension = _from_validation(d_param)
+                        else:
+                            optional_dimension = False
+                            assert model["vectorDimension"] == 0
+                            dimension = _from_validation(d_param)
+                    else:
+                        optional_dimension = False
+                        assert model["vectorDimension"] > 0
+                        dimension = model["vectorDimension"]
+
+                    model_parameters = {
+                        param_name: PARAMETER_VALUE_MAP[
+                            (provider_name, model["name"], param_name)
+                        ]
+                        for param_name in required_nond_params
+                    }
+                    optional_model_parameters = {
+                        param_name: PARAMETER_VALUE_MAP[
+                            (provider_name, model["name"], param_name)
+                        ]
+                        for param_name in optional_nond_params
+                    }
+
+                    if optional_dimension or optional_nond_params != set():
+                        # we issue a minimal-params version
+                        model_tag_0 = (
+                            f"{provider_name}/{model['name']}/{auth_type_name}/0"
+                        )
+                        this_minimal_model = {
+                            "model_tag": model_tag_0,
+                            "simple_tag": _collapse(
+                                "".join(c for c in model_tag_0 if c in alphanum)
+                            ),
+                            "auth_type_name": auth_type_name,
+                            "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
+                            "test_assets": TEST_ASSETS_MAP.get(
+                                (provider_name, model["name"]), DEFAULT_TEST_ASSETS
+                            ),
+                            "use_insert_one": USE_INSERT_ONE_MAP.get(
+                                (provider_name, model["name"]), False
+                            ),
+                            "env_filters": ENV_FILTERS_MAP.get(
+                                (provider_name, model["name"]), [("*", "*", "*")]
+                            ),
+                            "service_options": CollectionVectorServiceOptions(
+                                provider=provider_name,
+                                model_name=model["name"],
+                                parameters=model_parameters,
+                            ),
+                        }
+                        yield this_minimal_model
+
+                    # and in any case we issue a 'full-spec' one
+
+                    model_tag_f = f"{provider_name}/{model['name']}/{auth_type_name}/f"
+                    this_model = {
+                        "model_tag": model_tag_f,
+                        "simple_tag": _collapse(
+                            "".join(c for c in model_tag_f if c in alphanum)
+                        ),
+                        "auth_type_name": auth_type_name,
+                        "dimension": dimension,
+                        "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
+                        "test_assets": TEST_ASSETS_MAP.get(
+                            (provider_name, model["name"]), DEFAULT_TEST_ASSETS
+                        ),
+                        "use_insert_one": USE_INSERT_ONE_MAP.get(
+                            (provider_name, model["name"]), False
+                        ),
+                        "env_filters": ENV_FILTERS_MAP.get(
+                            (provider_name, model["name"]), [("*", "*", "*")]
+                        ),
+                        "service_options": CollectionVectorServiceOptions(
+                            provider=provider_name,
+                            model_name=model["name"],
+                            parameters={
+                                **model_parameters,
+                                **optional_model_parameters,
+                            },
+                        ),
+                    }
+                    yield this_model
