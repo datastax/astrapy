@@ -90,6 +90,7 @@ The tested models can also be further restricted by:
 
 
 class TestVectorize:
+
     @pytest.mark.parametrize(
         "testable_vectorize_model",
         enabled_vectorize_models(auth_type="HEADER"),

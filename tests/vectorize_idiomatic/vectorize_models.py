@@ -335,7 +335,7 @@ TEST_MODELS = [
         "dimension": 4096,
         "service_options": CollectionVectorServiceOptions(
             provider="upstageAI",
-            model_name="solar-1-mini-embedding-",
+            model_name="solar-1-mini-embedding",
         ),
         "auth_types": ["HEADER", "SHARED_SECRET"],
         "enabled": True,
