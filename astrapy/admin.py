@@ -2367,7 +2367,19 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     ) -> Dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
-        ENV_TODO replication stuff
+        
+        Args:
+            name: the namespace name. If supplying a namespace that exists
+                already, the method call proceeds as usual, no errors are
+                raised, and the whole invocation is a no-op.
+            replication_options: this dictionary can specify the options about
+                replication of the namespace (across database nodes). If provided,
+                it must have a structure similar to:
+                `{"class": "SimpleStrategy", "replication_factor": 1}`.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the creation request
+                has not reached the API server.
         """
         options = {
             k: v
