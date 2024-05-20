@@ -222,7 +222,8 @@ class Collection:
             collection on the database.
         namespace: this is the namespace to which the collection belongs.
             If not specified, the database's working namespace is used.
-        api_options: TODO_VECTORIZE
+        api_options: An instance of `astrapy.api_options.CollectionAPIOptions`
+            providing the general settings for interacting with the Data API.
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -331,7 +332,8 @@ class Collection:
         self,
         *,
         name: Optional[str] = None,
-        api_options: Optional[CollectionAPIOptions] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
@@ -342,7 +344,18 @@ class Collection:
             name: the name of the collection. This parameter is useful to
                 quickly spawn Collection instances each pointing to a different
                 collection existing in the same namespace.
-            api_options: TODO_VECTORIZE
+            embedding_api_key: an optional API key for interacting with the collection.
+                If an embedding service is configured, and this attribute is set,
+                each Data API call will include a "x-embedding-api-key" header
+                with the value of this attribute.
+            collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+                operation on the collection. Individual timeouts can be provided to
+                each collection method call and will take precedence, with this value
+                being an overall default.
+                Note that for some methods involving multiple API calls (such as
+                `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+                to provide a specific timeout as the default one likely wouldn't make
+                much sense.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -357,9 +370,14 @@ class Collection:
             ... )
         """
 
+        _api_options = CollectionAPIOptions(
+            embedding_api_key=embedding_api_key,
+            max_time_ms=collection_max_time_ms,
+        )
+
         return self._copy(
             name=name,
-            api_options=api_options,
+            api_options=_api_options,
             caller_name=caller_name,
             caller_version=caller_version,
         )
@@ -370,7 +388,8 @@ class Collection:
         database: Optional[AsyncDatabase] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
-        api_options: Optional[CollectionAPIOptions] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
@@ -387,7 +406,18 @@ class Collection:
                 collection on the database.
             namespace: this is the namespace to which the collection belongs.
                 If not specified, the database's working namespace is used.
-            api_options: TODO_VECTORIZE
+            embedding_api_key: an optional API key for interacting with the collection.
+                If an embedding service is configured, and this attribute is set,
+                each Data API call will include a "x-embedding-api-key" header
+                with the value of this attribute.
+            collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+                operation on the collection. Individual timeouts can be provided to
+                each collection method call and will take precedence, with this value
+                being an overall default.
+                Note that for some methods involving multiple API calls (such as
+                `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+                to provide a specific timeout as the default one likely wouldn't make
+                much sense.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -400,11 +430,16 @@ class Collection:
             77
         """
 
+        _api_options = CollectionAPIOptions(
+            embedding_api_key=embedding_api_key,
+            max_time_ms=collection_max_time_ms,
+        )
+
         return AsyncCollection(
             database=database or self.database.to_async(),
             name=name or self.name,
             namespace=namespace or self.namespace,
-            api_options=self.api_options.with_override(api_options),
+            api_options=self.api_options.with_override(_api_options),
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )
@@ -2542,7 +2577,8 @@ class AsyncCollection:
             collection on the database.
         namespace: this is the namespace to which the collection belongs.
             If not specified, the database's working namespace is used.
-        api_options: TODO_VECTORIZE
+        api_options: An instance of `astrapy.api_options.CollectionAPIOptions`
+            providing the general settings for interacting with the Data API.
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -2645,7 +2681,8 @@ class AsyncCollection:
         self,
         *,
         name: Optional[str] = None,
-        api_options: Optional[CollectionAPIOptions] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
@@ -2656,7 +2693,18 @@ class AsyncCollection:
             name: the name of the collection. This parameter is useful to
                 quickly spawn AsyncCollection instances each pointing to a different
                 collection existing in the same namespace.
-            api_options: TODO_VECTORIZE
+            embedding_api_key: an optional API key for interacting with the collection.
+                If an embedding service is configured, and this attribute is set,
+                each Data API call will include a "x-embedding-api-key" header
+                with the value of this attribute.
+            collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+                operation on the collection. Individual timeouts can be provided to
+                each collection method call and will take precedence, with this value
+                being an overall default.
+                Note that for some methods involving multiple API calls (such as
+                `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+                to provide a specific timeout as the default one likely wouldn't make
+                much sense.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -2671,9 +2719,14 @@ class AsyncCollection:
             ... )
         """
 
+        _api_options = CollectionAPIOptions(
+            embedding_api_key=embedding_api_key,
+            max_time_ms=collection_max_time_ms,
+        )
+
         return self._copy(
             name=name,
-            api_options=api_options,
+            api_options=_api_options,
             caller_name=caller_name,
             caller_version=caller_version,
         )
@@ -2684,7 +2737,8 @@ class AsyncCollection:
         database: Optional[Database] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
-        api_options: Optional[CollectionAPIOptions] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
@@ -2701,7 +2755,18 @@ class AsyncCollection:
                 collection on the database.
             namespace: this is the namespace to which the collection belongs.
                 If not specified, the database's working namespace is used.
-            api_options: TODO_VECTORIZE
+            embedding_api_key: an optional API key for interacting with the collection.
+                If an embedding service is configured, and this attribute is set,
+                each Data API call will include a "x-embedding-api-key" header
+                with the value of this attribute.
+            collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+                operation on the collection. Individual timeouts can be provided to
+                each collection method call and will take precedence, with this value
+                being an overall default.
+                Note that for some methods involving multiple API calls (such as
+                `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+                to provide a specific timeout as the default one likely wouldn't make
+                much sense.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -2714,11 +2779,16 @@ class AsyncCollection:
             77
         """
 
+        _api_options = CollectionAPIOptions(
+            embedding_api_key=embedding_api_key,
+            max_time_ms=collection_max_time_ms,
+        )
+
         return Collection(
             database=database or self.database.to_sync(),
             name=name or self.name,
             namespace=namespace or self.namespace,
-            api_options=self.api_options.with_override(api_options),
+            api_options=self.api_options.with_override(_api_options),
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )

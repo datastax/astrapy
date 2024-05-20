@@ -424,8 +424,18 @@ class Database:
             name: the name of the collection.
             namespace: the namespace containing the collection. If no namespace
                 is specified, the general setting for this database is used.
-            embedding_api_key: TODO_VECTORIZE
-            collection_max_time_ms: TODO_VECTORIZE
+        embedding_api_key: an optional API key for interacting with the collection.
+            If an embedding service is configured, and this attribute is set,
+            each Data API call will include a "x-embedding-api-key" header
+            with the value of this attribute.
+        collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+            operation on the collection. Individual timeouts can be provided to
+            each collection method call and will take precedence, with this value
+            being an overall default.
+            Note that for some methods involving multiple API calls (such as
+            `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+            to provide a specific timeout as the default one likely wouldn't make
+            much sense.
 
         Returns:
             a `Collection` instance, representing the desired collection
@@ -517,8 +527,18 @@ class Database:
                 preexisting collections, the command will succeed or fail
                 depending on whether the options match or not.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
-            embedding_api_key: TODO_VECTORIZE
-            collection_max_time_ms: TODO_VECTORIZE
+            embedding_api_key: an optional API key for interacting with the collection.
+                If an embedding service is configured, and this attribute is set,
+                each Data API call will include a "x-embedding-api-key" header
+                with the value of this attribute.
+            collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+                operation on the collection. Individual timeouts can be provided to
+                each collection method call and will take precedence, with this value
+                being an overall default.
+                Note that for some methods involving multiple API calls (such as
+                `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+                to provide a specific timeout as the default one likely wouldn't make
+                much sense.
 
         Returns:
             a (synchronous) `Collection` instance, representing the
@@ -1214,8 +1234,18 @@ class AsyncDatabase:
             name: the name of the collection.
             namespace: the namespace containing the collection. If no namespace
                 is specified, the setting for this database is used.
-            embedding_api_key: TODO_VECTORIZE
-            collection_max_time_ms: TODO_VECTORIZE
+        embedding_api_key: an optional API key for interacting with the collection.
+            If an embedding service is configured, and this attribute is set,
+            each Data API call will include a "x-embedding-api-key" header
+            with the value of this attribute.
+        collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+            operation on the collection. Individual timeouts can be provided to
+            each collection method call and will take precedence, with this value
+            being an overall default.
+            Note that for some methods involving multiple API calls (such as
+            `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+            to provide a specific timeout as the default one likely wouldn't make
+            much sense.
 
         Returns:
             an `AsyncCollection` instance, representing the desired collection
@@ -1310,8 +1340,18 @@ class AsyncDatabase:
                 preexisting collections, the command will succeed or fail
                 depending on whether the options match or not.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
-            embedding_api_key: TODO_VECTORIZE
-            collection_max_time_ms: TODO_VECTORIZE
+            embedding_api_key: an optional API key for interacting with the collection.
+                If an embedding service is configured, and this attribute is set,
+                each Data API call will include a "x-embedding-api-key" header
+                with the value of this attribute.
+            collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+                operation on the collection. Individual timeouts can be provided to
+                each collection method call and will take precedence, with this value
+                being an overall default.
+                Note that for some methods involving multiple API calls (such as
+                `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+                to provide a specific timeout as the default one likely wouldn't make
+                much sense.
 
         Returns:
             an `AsyncCollection` instance, representing the newly-created collection.

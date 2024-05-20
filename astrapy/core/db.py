@@ -99,7 +99,9 @@ class AstraDBCollection:
                 If passing a client, its caller is used as fallback
             caller_version (str, optional): version of the caller code ("1.0.3")
                 If passing a client, its caller is used as fallback
-            additional_headers: TODO_VECTORIZE
+            additional_headers (Dict[str, str]): any further set of headers,
+                in the form of key-value pairs, to be passed with the HTTP
+                requests by this collection instance.
         """
         # Check for presence of the Astra DB object
         if astra_db is None:
@@ -1478,7 +1480,9 @@ class AsyncAstraDBCollection:
                 If passing a client, its caller is used as fallback
             caller_version (str, optional): version of the caller code ("1.0.3")
                 If passing a client, its caller is used as fallback
-            additional_headers: TODO_VECTORIZE
+            additional_headers (Dict[str, str]): any further set of headers,
+                in the form of key-value pairs, to be passed with the HTTP
+                requests by this collection instance.
         """
         # Check for presence of the Astra DB object
         if astra_db is None:

@@ -24,7 +24,17 @@ AO = TypeVar("AO", bound="BaseAPIOptions")
 @dataclass
 class BaseAPIOptions:
     """
-    TODO_VECTORIZE
+    A description of the options about how to interact with the Data API.
+
+    Attributes:
+        max_time_ms: a default timeout, in millisecond, for the duration of each
+            operation on the collection. Individual timeouts can be provided to
+            each collection method call and will take precedence, with this value
+            being an overall default.
+            Note that for some methods involving multiple API calls (such as
+            `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+            to provide a specific timeout as the default one likely wouldn't make
+            much sense.
     """
 
     max_time_ms: Optional[int] = None
@@ -55,7 +65,23 @@ class BaseAPIOptions:
 @dataclass
 class CollectionAPIOptions(BaseAPIOptions):
     """
-    TODO_VECTORIZE
+    A description of the options about how to interact with the Data API
+    regarding a collection.
+    Developers should not instantiate this class directly.
+
+    Attributes:
+        max_time_ms: a default timeout, in millisecond, for the duration of each
+            operation on the collection. Individual timeouts can be provided to
+            each collection method call and will take precedence, with this value
+            being an overall default.
+            Note that for some methods involving multiple API calls (such as
+            `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+            to provide a specific timeout as the default one likely wouldn't make
+            much sense.
+        embedding_api_key: an optional API key for interacting with the collection.
+            If an embedding service is configured, and this attribute is set,
+            each Data API call will include a "x-embedding-api-key" header
+            with the value of this attribute.
     """
 
     embedding_api_key: Optional[str] = None
