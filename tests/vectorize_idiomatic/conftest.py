@@ -26,12 +26,26 @@ import os
 from typing import Iterable, List, Tuple
 import pytest
 
+from ..conftest import AstraDBCredentials
+from astrapy import AsyncCollection, Collection
 from astrapy import (
     AsyncDatabase,
     DataAPIClient,
     Database,
 )
+from astrapy.constants import VectorMetric
 from astrapy.admin import Environment, parse_api_endpoint
+
+TEST_SERVICE_COLLECTION_NAME = "test_service_collection"
+
+
+def is_nvidia_service_available() -> bool:
+    return all(
+        [
+            "us-west-2" in os.environ.get("ASTRA_DB_API_ENDPOINT", ""),
+            "astra-dev.datastax.com" in os.environ.get("ASTRA_DB_API_ENDPOINT", ""),
+        ]
+    )
 
 
 def _parse_to_testing_environment(api_endpoint: str) -> Tuple[str, str]:
@@ -93,8 +107,42 @@ def async_database(
     yield sync_database.to_async()
 
 
+@pytest.fixture(scope="session")
+def sync_service_collection(
+    astra_db_credentials_kwargs: AstraDBCredentials,
+    sync_database: Database,
+) -> Iterable[Collection]:
+    """An actual collection on DB, in the main namespace"""
+    collection = sync_database.create_collection(
+        TEST_SERVICE_COLLECTION_NAME,
+        metric=VectorMetric.DOT_PRODUCT,
+        service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
+    )
+    yield collection
+
+    sync_database.drop_collection(TEST_SERVICE_COLLECTION_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_service_collection(
+    sync_service_collection: Collection,
+) -> Iterable[Collection]:
+    """Emptied for each test function"""
+    sync_service_collection.delete_all()
+    yield sync_service_collection
+
+
+@pytest.fixture(scope="function")
+def async_empty_service_collection(
+    sync_empty_service_collection: Collection,
+) -> Iterable[AsyncCollection]:
+    """Emptied for each test function"""
+    yield sync_empty_service_collection.to_async()
+
+
 __all__ = [
     "sync_database",
     "async_database",
     "env_filter_match",
+    "is_nvidia_service_available",
 ]
