@@ -2199,9 +2199,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         >>>     environment=Environment.OTHER,
         >>> )
         >>> database = client.get_database_by_api_endpoint(endpoint)
-        >>> db_admin = database.get_database_admin()
+        >>> admin_for_my_db = database.get_database_admin()
         >>>
-        >>> db_admin.list_namespaces()
+        >>> admin_for_my_db.list_namespaces()
         ['namespace1', 'namespace2']
     """
 
@@ -2343,7 +2343,19 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         )
 
     def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
-        """Get a list of namespaces for the database."""
+        """
+        Query the API for a list of the namespaces in the database.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A list of the namespaces, each a string, in no particular order.
+
+        Example:
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace', 'staging_namespace']
+        """
         logger.info("getting list of namespaces")
         fn_response = self._api_commander.request(
             payload={"findNamespaces": {}},
@@ -2380,6 +2392,18 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
                 has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace']
+            >>> admin_for_my_db.create_namespace("that_other_one")
+            {'ok': 1}
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace', 'that_other_one']
         """
         options = {
             k: v
@@ -2415,7 +2439,27 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
-        Drop (delete) a namespace from the database, returning {'ok': 1} if successful.
+        Drop (delete) a namespace from the database.
+
+        Args:
+            name: the namespace to delete. If it does not exist in this database,
+                an error is raised.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the deletion request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace', 'that_other_one']
+            >>> admin_for_my_db.drop_namespace("that_other_one")
+            {'ok': 1}
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace']
         """
         logger.info("dropping namespace")
         dn_response = self._api_commander.request(
@@ -2435,8 +2479,18 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self, *, max_time_ms: Optional[int] = None
     ) -> List[str]:
         """
-        Get a list of namespaces for the database.
-        (Async version of the method.)
+        Query the API for a list of the namespaces in the database.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A list of the namespaces, each a string, in no particular order.
+
+        Example:
+            >>> asyncio.run(admin_for_my_db.async_list_namespaces())
+            ['default_keyspace', 'staging_namespace']
         """
         logger.info("getting list of namespaces, async")
         fn_response = await self._api_commander.async_request(
@@ -2461,7 +2515,34 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     ) -> Dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
-        (Async version of the method.)
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            name: the namespace name. If supplying a namespace that exists
+                already, the method call proceeds as usual, no errors are
+                raised, and the whole invocation is a no-op.
+            replication_options: this dictionary can specify the options about
+                replication of the namespace (across database nodes). If provided,
+                it must have a structure similar to:
+                `{"class": "SimpleStrategy", "replication_factor": 1}`.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the creation request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace']
+            >>> asyncio.run(admin_for_my_db.async_create_namespace(
+            ...     "that_other_one"
+            ... ))
+            {'ok': 1}
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace', 'that_other_one']
         """
         options = {
             k: v
@@ -2497,8 +2578,30 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
-        Drop (delete) a namespace from the database, returning {'ok': 1} if successful.
-        (Async version of the method.)
+        Drop (delete) a namespace from the database.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            name: the namespace to delete. If it does not exist in this database,
+                an error is raised.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the deletion request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> admin_for_my_db.list_namespaces()
+            ['that_other_one', 'default_keyspace']
+            >>> asyncio.run(admin_for_my_db.async_drop_namespace(
+            ...     "that_other_one"
+            ... ))
+            {'ok': 1}
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace']
         """
         logger.info("dropping namespace")
         dn_response = await self._api_commander.async_request(
@@ -2522,7 +2625,32 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> Database:
-        """Get a Database object from this database admin."""
+        """
+        Create a Database instance out of this class for working with the data in it.
+
+        Args:
+            token: if supplied, is passed to the Database instead of
+                the one set for this object. Useful if one wants to work in
+                a least-privilege manner, limiting the permissions for non-admin work.
+            namespace: an optional namespace to set in the resulting Database.
+                If not provided, the default namespace is used.
+            api_path: path to append to the API Endpoint. In typical usage, this
+                should be left to its default of "".
+            api_version: version specifier to append to the API path. In typical
+                usage, this should be left to its default of "v1".
+
+        Returns:
+            A Database object, ready to be used for working with data and collections.
+
+        Example:
+            >>> my_db = admin_for_my_db.get_database()
+            >>> my_db.list_collection_names()
+            ['movies', 'another_collection']
+
+        Note:
+            creating an instance of Database does not trigger actual creation
+            of the database itself, which should exist beforehand.
+        """
 
         # lazy importing here to avoid circular dependency
         from astrapy import Database
