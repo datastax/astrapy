@@ -211,8 +211,9 @@ class DataAPIClient:
         Get a Database object from this client, for doing data-related work.
 
         Args:
-            id: the target database ID. The database must exist for the resulting
-                object to be effectively used; in other words, this invocation
+            id: the target database ID or the corresponding API Endpoint.
+                The database must exist already for the resulting object
+                to be effectively used; in other words, this invocation
                 does not create the database, just the object instance.
                 Actual admin work can be achieved by using the AstraDBAdmin object.
             token: if supplied, is passed to the Database instead of the client token.
@@ -220,9 +221,10 @@ class DataAPIClient:
                 (it is left to the default otherwise).
             region: the region to use for connecting to the database. The
                 database must be located in that region.
-                Note that if this parameter is not passed, an additional
-                DevOps API request is made to determine the default region
-                and use it subsequently.
+                The region cannot be specified when he API endoint is used as `id`.
+                Note that if this parameter is not passed, and cannot be inferred
+                from the API endpoint, an additional DevOps API request is made
+                to determine the default region and use it subsequently.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -235,8 +237,11 @@ class DataAPIClient:
 
         Example:
             >>> my_db0 = my_client.get_database("01234567-...")
-            >>> my_db1 = my_client.get_database("01234567-...", token="AstraCS:...")
-            >>> my_db2 = my_client.get_database("01234567-...", region="us-west1")
+            >>> my_db1 = my_client.get_database(
+            ...     "https://01234567-...us-west1.apps.astra.datastax.com",
+            ... )
+            >>> my_db2 = my_client.get_database("01234567-...", token="AstraCS:...")
+            >>> my_db3 = my_client.get_database("01234567-...", region="us-west1")
             >>> my_coll = my_db0.create_collection("movies", dimension=512)
             >>> my_coll.insert_one({"title": "The Title"}, vector=...)
 
@@ -250,39 +255,54 @@ class DataAPIClient:
         from astrapy import Database
 
         if self.environment in Environment.astra_db_values:
-            # need to inspect for values?
-            this_db_info: Optional[Dict[str, Any]] = None
-            # handle overrides. Only region is needed (namespace can stay empty)
-            if region:
-                _region = region
-            else:
-                if this_db_info is None:
-                    logger.info(f"fetching raw database info for {id}")
-                    this_db_info = fetch_raw_database_info_from_id_token(
-                        id=id,
-                        token=self.token,
-                        environment=self.environment,
-                        max_time_ms=max_time_ms,
+            # handle the "endpoint passed as id" case first:
+            if re.match(api_endpoint_parser, id):
+                if region is not None:
+                    raise ValueError(
+                        "Parameter `region` not supported when supplying an API endpoint."
                     )
-                    logger.info(f"finished fetching raw database info for {id}")
-                _region = this_db_info["info"]["region"]
+                # in this case max_time_ms is ignored (no calls take place)
+                return self.get_database_by_api_endpoint(
+                    api_endpoint=id,
+                    token=token,
+                    namespace=namespace,
+                    api_path=api_path,
+                    api_version=api_version,
+                )
+            else:
+                # need to inspect for values?
+                this_db_info: Optional[Dict[str, Any]] = None
+                # handle overrides. Only region is needed (namespace can stay empty)
+                if region:
+                    _region = region
+                else:
+                    if this_db_info is None:
+                        logger.info(f"fetching raw database info for {id}")
+                        this_db_info = fetch_raw_database_info_from_id_token(
+                            id=id,
+                            token=self.token,
+                            environment=self.environment,
+                            max_time_ms=max_time_ms,
+                        )
+                        logger.info(f"finished fetching raw database info for {id}")
+                    _region = this_db_info["info"]["region"]
 
-            _token = token or self.token
-            _api_endpoint = build_api_endpoint(
-                environment=self.environment,
-                database_id=id,
-                region=_region,
-            )
-            return Database(
-                api_endpoint=_api_endpoint,
-                token=_token,
-                namespace=namespace,
-                caller_name=self._caller_name,
-                caller_version=self._caller_version,
-                environment=self.environment,
-                api_path=api_path,
-                api_version=api_version,
-            )
+                _token = token or self.token
+                _api_endpoint = build_api_endpoint(
+                    environment=self.environment,
+                    database_id=id,
+                    region=_region,
+                )
+                return Database(
+                    api_endpoint=_api_endpoint,
+                    token=_token,
+                    namespace=namespace,
+                    caller_name=self._caller_name,
+                    caller_version=self._caller_version,
+                    environment=self.environment,
+                    api_path=api_path,
+                    api_version=api_version,
+                )
         else:
             # this is an alias for get_database_by_api_endpoint
             # max_time_ms ignored

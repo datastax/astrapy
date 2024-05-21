@@ -16,6 +16,7 @@ import pytest
 import httpx
 
 from astrapy import AstraDBAdmin, AstraDBDatabaseAdmin, DataAPIClient, Database
+from astrapy.constants import Environment
 
 
 class TestAdminConversions:
@@ -72,6 +73,30 @@ class TestAdminConversions:
             dac1[d_id_string]
         with pytest.raises(ValueError):
             dac1["abc"]
+
+    @pytest.mark.describe("test of spawning databases from a DataAPIClient")
+    def test_dataapiclient_spawning_databases(self) -> None:
+        token = "the-token"
+        database_id = "00000000-1111-2222-3333-444444444444"
+        database_region = "the-region"
+        endpoint = f"https://{database_id}-{database_region}.apps.astra.datastax.com"
+
+        client = DataAPIClient(
+            token=token,
+            environment=Environment.PROD,
+            caller_name="cn",
+            caller_version="cv",
+        )
+
+        db1 = client.get_database_by_api_endpoint(endpoint)
+        db2 = client.get_database(database_id, region=database_region)
+        db3 = client.get_database(endpoint)
+
+        assert db1 == db2
+        assert db1 == db3
+
+        with pytest.raises(ValueError):
+            client.get_database(endpoint, region=database_region)
 
     @pytest.mark.describe("test of AstraDBAdmin conversions and comparison functions")
     def test_astradbadmin_conversions(self) -> None:
