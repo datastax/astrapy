@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import os
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, List, Tuple
 
 from astrapy.info import CollectionVectorServiceOptions
 from astrapy.api_commander import APICommander
@@ -81,7 +81,7 @@ USE_INSERT_ONE_MAP = {
 
 # environment, region, auth_type. One spec must match.
 #   Example: {("nvidia", "NV-Embed-QA"): [("dev", "us-west-2", "*")]}
-ENV_FILTERS_MAP = {}
+ENV_FILTERS_MAP: Dict[Tuple[str, str], List[Tuple[str, str, str]]] = {}
 
 SECRET_NAME_ROOT_MAP = {
     "azureOpenAI": "AZURE_OPENAI",
