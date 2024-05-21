@@ -169,6 +169,10 @@ class CollectionVectorServiceOptions:
     Attributes:
         provider: the name of a service provider for embedding calculation.
         model_name: the name of a specific model for use by the service.
+        authentication: a key-value dictionary for the "authentication" specification,
+            if any, in the vector service options.
+        parameters: a key-value dictionary for the "parameters" specification, if any,
+            in the vector service options.
     """
 
     provider: Optional[str]

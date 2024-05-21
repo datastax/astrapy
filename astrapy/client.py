@@ -418,7 +418,9 @@ class DataAPIClient:
                     api_version=api_version,
                 )
             else:
-                raise ValueError("Cannot parse the provided API endpoint.")
+                raise ValueError(
+                    f"Cannot parse the provided API endpoint ({api_endpoint})."
+                )
         else:
             parsed_generic_api_endpoint = parse_generic_api_url(api_endpoint)
             if parsed_generic_api_endpoint:
