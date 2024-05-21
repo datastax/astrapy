@@ -20,7 +20,7 @@ import os
 
 from astrapy import Database
 from astrapy.info import CollectionVectorServiceOptions
-from astrapy.exceptions import InsertManyException
+from astrapy.exceptions import DataAPIResponseException, InsertManyException
 
 from ..vectorize_models import live_test_models
 from ..conftest import env_filter_match
@@ -293,5 +293,13 @@ class TestVectorizeProviders:
                 )
             ]
             assert hits == test_assets["probe"]["expected"]
+
+            # test that header overrides shared secret:
+            faulty_collection_i = db.get_collection(
+                collection_name,
+                embedding_api_key="clearly-not-a-working-secret",
+            )
+            with pytest.raises(DataAPIResponseException):
+                faulty_collection_i.find_one(vectorize="Breaking sentence")
         finally:
             db.drop_collection(collection_name)

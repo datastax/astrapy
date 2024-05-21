@@ -607,6 +607,49 @@ class TestDMLSync:
         with pytest.raises(ValueError):
             sync_empty_collection.find_one({}, include_similarity=True)
 
+    @pytest.mark.describe("test of projections in collection find with vectors, sync")
+    def test_collection_find_projections_vectors_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        sync_empty_collection.insert_one(
+            {
+                "$vector": [1, 2],
+                "otherfield": "OF",
+                "anotherfield": "AF",
+                "text": "T",
+            }
+        )
+        req_projections = [
+            None,
+            {},
+            {"text": True},
+            {"$vector": True},
+            {"text": True, "$vector": True},
+        ]
+        exp_fieldsets = [
+            {"$vector", "_id", "otherfield", "anotherfield", "text"},
+            {"$vector", "_id", "otherfield", "anotherfield", "text"},
+            {"_id", "text"},
+            {"$vector", "_id"},
+            {"$vector", "_id", "text"},
+        ]
+        for include_similarity in [True, False]:
+            for req_projection, exp_fields0 in zip(req_projections, exp_fieldsets):
+                vdocs = list(
+                    sync_empty_collection.find(
+                        vector=[11, 21],
+                        limit=1,
+                        projection=req_projection,
+                        include_similarity=include_similarity,
+                    )
+                )
+                if include_similarity:
+                    exp_fields = exp_fields0 | {"$similarity"}
+                else:
+                    exp_fields = exp_fields0
+                assert set(vdocs[0].keys()) == exp_fields
+
     @pytest.mark.describe("test of collection insert_many, sync")
     def test_collection_insert_many_sync(
         self,
