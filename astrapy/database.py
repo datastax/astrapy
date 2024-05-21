@@ -95,13 +95,16 @@ def _validate_create_collection_options(
 
 class Database:
     """
-    A Data API database. This is the entry-point object for doing database-level
+    A Data API database. This is the object for doing database-level
     DML, such as creating/deleting collections, and for obtaining Collection
     objects themselves. This class has a synchronous interface.
 
-    A Database comes with an "API Endpoint", which implies a Database object
-    instance reaches a specific region (relevant point in case of multi-region
-    databases).
+    The usual way of obtaining one Database is through the `get_database`
+    method of a `DataAPIClient`.
+
+    On Astra DB, a Database comes with an "API Endpoint", which implies
+    a Database object instance reaches a specific region (relevant point in
+    case of multi-region databases).
 
     Args:
         api_endpoint: the full "API Endpoint" string used to reach the Data API.
@@ -113,9 +116,11 @@ class Database:
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
-        environment: ENV_TODO
+        environment: a string representing the target Data API environment.
+            It can be left unspecified for the default value of `Environment.PROD`;
+            other values include `Environment.OTHER`, `Environment.DSE`.
         api_path: path to append to the API Endpoint. In typical usage, this
-            should be left to its default of "/api/json".
+            should be left to its default (sensibly chosen based on the environment).
         api_version: version specifier to append to the API path. In typical
             usage, this should be left to its default of "v1".
 
@@ -270,7 +275,9 @@ class Database:
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
-            environment: ENV_TODO
+            environment: a string representing the target Data API environment.
+                Values are, for example, `Environment.PROD`, `Environment.OTHER`,
+                or `Environment.DSE`.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -828,7 +835,9 @@ class Database:
         """
         Return a DatabaseAdmin object corresponding to this database, for
         use in admin tasks such as managing namespaces.
-        ENV_TODO subclasses here
+
+        This method, depending on the environment where the database resides,
+        returns an appropriate subclass of DatabaseAdmin.
 
         Args:
             token: an access token with enough permission on the database to
@@ -838,13 +847,15 @@ class Database:
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
                 Generally it can be omitted. The environment (prod/dev/...) is
                 determined from the API Endpoint.
-                ENV_TODO => this is only for Astra-type things
+                Note that this parameter is allowed only for Astra DB environments.
             dev_ops_api_version: this can specify a custom version of the DevOps API
                 (such as "v2"). Generally not needed.
-                ENV_TODO => this is only for Astra-type things
+                Note that this parameter is allowed only for Astra DB environments.
 
         Returns:
-            A DatabaseAdmin instance targeting this database.
+            A DatabaseAdmin instance targeting this database. More precisely,
+            for Astra DB an instance of `AstraDBDatabaseAdmin` is returned;
+            for other environments, an instance of `DataAPIDatabaseAdmin` is returned.
 
         Example:
             >>> my_db_admin = my_db.get_database_admin()
@@ -888,13 +899,16 @@ class Database:
 
 class AsyncDatabase:
     """
-    A Data API database. This is the entry-point object for doing database-level
+    A Data API database. This is the object for doing database-level
     DML, such as creating/deleting collections, and for obtaining Collection
     objects themselves. This class has an asynchronous interface.
 
-    A Database comes with an "API Endpoint", which implies a Database object
-    instance reaches a specific region (relevant point in case of multi-region
-    databases).
+    The usual way of obtaining one AsyncDatabase is through the `get_async_database`
+    method of a `DataAPIClient`.
+
+    On Astra DB, an AsyncDatabase comes with an "API Endpoint", which implies
+    an AsyncDatabase object instance reaches a specific region (relevant point in
+    case of multi-region databases).
 
     Args:
         api_endpoint: the full "API Endpoint" string used to reach the Data API.
@@ -906,9 +920,11 @@ class AsyncDatabase:
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
-        environment: ENV_TODO
+        environment: a string representing the target Data API environment.
+            It can be left unspecified for the default value of `Environment.PROD`;
+            other values include `Environment.OTHER`, `Environment.DSE`.
         api_path: path to append to the API Endpoint. In typical usage, this
-            should be left to its default of "/api/json". ENV_TODO this <==
+            should be left to its default (sensibly chosen based on the environment).
         api_version: version specifier to append to the API path. In typical
             usage, this should be left to its default of "v1".
 
@@ -1079,7 +1095,9 @@ class AsyncDatabase:
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
-            environment: ENV_TODO
+            environment: a string representing the target Data API environment.
+                Values are, for example, `Environment.PROD`, `Environment.OTHER`,
+                or `Environment.DSE`.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -1654,7 +1672,9 @@ class AsyncDatabase:
         """
         Return a DatabaseAdmin object corresponding to this database, for
         use in admin tasks such as managing namespaces.
-        ENV_TODO subclassing
+
+        This method, depending on the environment where the database resides,
+        returns an appropriate subclass of DatabaseAdmin.
 
         Args:
             token: an access token with enough permission on the database to
@@ -1664,13 +1684,15 @@ class AsyncDatabase:
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
                 Generally it can be omitted. The environment (prod/dev/...) is
                 determined from the API Endpoint.
-                ENV_TODO => this is only for Astra-type things
+                Note that this parameter is allowed only for Astra DB environments.
             dev_ops_api_version: this can specify a custom version of the DevOps API
                 (such as "v2"). Generally not needed.
-                ENV_TODO => this is only for Astra-type things
+                Note that this parameter is allowed only for Astra DB environments.
 
         Returns:
-            A DatabaseAdmin instance targeting this database.
+            A DatabaseAdmin instance targeting this database. More precisely,
+            for Astra DB an instance of `AstraDBDatabaseAdmin` is returned;
+            for other environments, an instance of `DataAPIDatabaseAdmin` is returned.
 
         Example:
             >>> my_db_admin = my_async_db.get_database_admin()
