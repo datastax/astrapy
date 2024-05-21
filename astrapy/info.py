@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 
 
@@ -177,7 +177,7 @@ class CollectionVectorServiceOptions:
 
     provider: Optional[str]
     model_name: Optional[str]
-    authentication: Optional[Dict[str, Union[str, List[str]]]] = None
+    authentication: Optional[Dict[str, Any]] = None
     parameters: Optional[Dict[str, Any]] = None
 
     def as_dict(self) -> Dict[str, Any]:
