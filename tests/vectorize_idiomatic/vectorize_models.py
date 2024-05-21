@@ -80,7 +80,8 @@ USE_INSERT_ONE_MAP = {
 }
 
 # environment, region, auth_type. One spec must match.
-ENV_FILTERS_MAP = {("nvidia", "NV-Embed-QA"): [("dev", "us-west-2", "*")]}
+#   Example: {("nvidia", "NV-Embed-QA"): [("dev", "us-west-2", "*")]}
+ENV_FILTERS_MAP = {}
 
 SECRET_NAME_ROOT_MAP = {
     "azureOpenAI": "AZURE_OPENAI",
