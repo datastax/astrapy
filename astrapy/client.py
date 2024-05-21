@@ -434,7 +434,9 @@ class DataAPIClient:
                     api_version=api_version,
                 )
             else:
-                raise ValueError("Cannot parse the provided API endpoint.")
+                raise ValueError(
+                    f"Cannot parse the provided API endpoint ({api_endpoint})."
+                )
 
     def get_async_database_by_api_endpoint(
         self,

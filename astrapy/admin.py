@@ -159,7 +159,7 @@ def parse_generic_api_url(api_endpoint: str) -> Optional[str]:
         _api_endpoint = api_endpoint
     match = generic_api_url_matcher.match(_api_endpoint)
     if match:
-        return match[0]
+        return match[0].rstrip("/")
     else:
         return None
 
