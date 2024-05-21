@@ -2367,7 +2367,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     ) -> Dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
-        
+
         Args:
             name: the namespace name. If supplying a namespace that exists
                 already, the method call proceeds as usual, no errors are

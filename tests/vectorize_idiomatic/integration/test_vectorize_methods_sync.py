@@ -14,7 +14,7 @@
 
 import pytest
 
-from ..conftest import is_nvidia_service_available
+# from ..conftest import is_nvidia_service_available
 from astrapy import Collection, Database
 from astrapy.exceptions import DataAPIResponseException
 from astrapy.operations import (
@@ -27,19 +27,20 @@ from astrapy.operations import (
 
 
 class TestVectorizeMethodsSync:
-    @pytest.mark.skipif(
-        not is_nvidia_service_available(), reason="No 'service' on this database"
-    )
+    # @pytest.mark.skipif(
+    #     not is_nvidia_service_available(), reason="No 'service' on this database"
+    # )
     @pytest.mark.describe("test of vectorize in collection methods, sync")
     def test_collection_methods_vectorize_sync(
         self,
         sync_empty_service_collection: Collection,
+        service_vector_dimension: int,
     ) -> None:
         col = sync_empty_service_collection
 
         col.insert_one({"t": "tower"}, vectorize="How high is this tower?")
         col.insert_one({"t": "vectorless"})
-        col.insert_one({"t": "vectorful"}, vector=[0.01] * 1024)
+        col.insert_one({"t": "vectorful"}, vector=[0.01] * service_vector_dimension)
 
         col.insert_many(
             [{"t": "guide"}, {"t": "seeds"}],
@@ -56,7 +57,7 @@ class TestVectorizeMethodsSync:
                 "The eye pattern is a primary criterion to the family.",
             ],
             vectors=[
-                [0.01] * 1024,
+                [0.01] * service_vector_dimension,
                 None,
                 None,
             ],
@@ -123,9 +124,9 @@ class TestVectorizeMethodsSync:
         )
         assert d1res.deleted_count == 1
 
-    @pytest.mark.skipif(
-        not is_nvidia_service_available(), reason="No 'service' on this database"
-    )
+    # @pytest.mark.skipif(
+    #     not is_nvidia_service_available(), reason="No 'service' on this database"
+    # )
     @pytest.mark.describe("test of bulk_write with vectorize, sync")
     def test_collection_bulk_write_vectorize_sync(
         self,
@@ -159,9 +160,9 @@ class TestVectorizeMethodsSync:
         assert {"a": 10} in found
         assert {"a": 2, "b": 1} in found
 
-    @pytest.mark.skipif(
-        not is_nvidia_service_available(), reason="No 'service' on this database"
-    )
+    # @pytest.mark.skipif(
+    #     not is_nvidia_service_available(), reason="No 'service' on this database"
+    # )
     @pytest.mark.describe(
         "test of database create_collection dimension-mismatch failure, sync"
     )
@@ -173,5 +174,6 @@ class TestVectorizeMethodsSync:
             sync_database.create_collection(
                 "collection_name",
                 dimension=123,
-                service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
+                # service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
+                service={"provider": "openai", "modelName": "text-embedding-ada-002"},
             )

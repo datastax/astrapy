@@ -58,6 +58,7 @@ from astrapy.collection import (  # noqa: E402
 from astrapy.admin import (  # noqa: E402
     AstraDBAdmin,
     AstraDBDatabaseAdmin,
+    DataAPIDatabaseAdmin,
 )
 from astrapy.client import (  # noqa: E402
     DataAPIClient,
@@ -77,6 +78,7 @@ __all__ = [
     "Collection",
     "Database",
     "DataAPIClient",
+    "DataAPIDatabaseAdmin",
     "__version__",
 ]
 

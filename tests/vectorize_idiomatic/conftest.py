@@ -34,9 +34,10 @@ from astrapy import (
     Database,
 )
 from astrapy.constants import VectorMetric
-from astrapy.admin import Environment, parse_api_endpoint
+from astrapy.admin import parse_api_endpoint
+from astrapy.constants import Environment
 
-TEST_SERVICE_COLLECTION_NAME = "test_service_collection"
+TEST_SERVICE_COLLECTION_NAME = "test_indepth_vectorize_collection"
 
 
 def is_nvidia_service_available() -> bool:
@@ -112,15 +113,31 @@ def sync_service_collection(
     astra_db_credentials_kwargs: AstraDBCredentials,
     sync_database: Database,
 ) -> Iterable[Collection]:
-    """An actual collection on DB, in the main namespace"""
+    """
+    An actual collection on DB, in the main namespace.
+    TODO: automate that: if it's nvidia, it has to be some env/regions,
+        while if it's openai it can be all (vectorize) regions in prod.
+    """
+    # collection = sync_database.create_collection(
+    #     TEST_SERVICE_COLLECTION_NAME,
+    #     metric=VectorMetric.DOT_PRODUCT,
+    #     service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
+    # )
     collection = sync_database.create_collection(
         TEST_SERVICE_COLLECTION_NAME,
         metric=VectorMetric.DOT_PRODUCT,
-        service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
+        service={"provider": "openai", "modelName": "text-embedding-ada-002"},
+        embedding_api_key=os.environ["HEADER_EMBEDDING_API_KEY_OPENAI"],
     )
     yield collection
 
     sync_database.drop_collection(TEST_SERVICE_COLLECTION_NAME)
+
+
+@pytest.fixture(scope="session")
+def service_vector_dimension() -> Iterable[int]:
+    # yield 1024
+    yield 1536
 
 
 @pytest.fixture(scope="function")

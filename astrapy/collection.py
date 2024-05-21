@@ -2621,12 +2621,20 @@ class AsyncCollection:
             self.api_options = CollectionAPIOptions()
         else:
             self.api_options = api_options
+        additional_headers = {
+            k: v
+            for k, v in {
+                DEFAULT_VECTORIZE_SECRET_HEADER: self.api_options.embedding_api_key,
+            }.items()
+            if v is not None
+        }
         self._astra_db_collection: AsyncAstraDBCollection = AsyncAstraDBCollection(
             collection_name=name,
             astra_db=database._astra_db,
             namespace=namespace,
             caller_name=caller_name,
             caller_version=caller_version,
+            additional_headers=additional_headers,
         )
         # this comes after the above, lets AstraDBCollection resolve namespace
         self._database = database._copy(

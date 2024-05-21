@@ -54,8 +54,8 @@ class BaseAPIOptions:
         if override:
             return self.__class__(
                 **{
-                    **{k: v for k, v in self.__dict__.items() if v is not None},
-                    **override.__dict__,
+                    **self.__dict__,
+                    **{k: v for k, v in override.__dict__.items() if v is not None},
                 }
             )
         else:
