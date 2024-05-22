@@ -738,7 +738,7 @@ class Collection:
             >>> my_coll.count_documents({}, upper_bound=100)
             53
 
-            # The following are three equivalent statements:
+            >>> # The following are three equivalent statements:
             >>> my_coll.insert_many(
             ...     [{"tag": "a"}, {"tag": "b"}],
             ...     vectors=[[1, 2], [3, 4]],
@@ -1042,7 +1042,7 @@ class Collection:
             ... ]
             >>> ann_tags
             ['A', 'B', 'C']
-            # (assuming the collection has metric VectorMetric.COSINE)
+            >>> # (assuming the collection has metric VectorMetric.COSINE)
 
         Note:
             The following are example values for the `sort` parameter.
@@ -3112,7 +3112,7 @@ class AsyncCollection:
             count1 3
             count2 53
 
-            # The following are three equivalent statements:
+            >>> # The following are three equivalent statements:
             >>> asyncio.run(my_async_coll.insert_many(
             ...     [{"tag": "a"}, {"tag": "b"}],
             ...     vectors=[[1, 2], [3, 4]],
@@ -3418,7 +3418,7 @@ class AsyncCollection:
             ...
             >>> asyncio.run(run_vector_finds(my_async_coll))
             ['A', 'B', 'C']
-            # (assuming the collection has metric VectorMetric.COSINE)
+            >>> # (assuming the collection has metric VectorMetric.COSINE)
 
         Note:
             The following are example values for the `sort` parameter.
