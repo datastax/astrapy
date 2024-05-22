@@ -723,13 +723,15 @@ class Collection:
         Examples:
             >>> my_coll.count_documents({}, upper_bound=10)
             0
-            >>> my_coll.insert_many([{"a": 10}, {"a": 5}, {"b": [True, False, False]}])
+            >>> my_coll.insert_many(
+            ...     [{"a": 10}, {"a": 5}, {"b": [True, False, False]}],
+            ...     ordered=True,
+            ... )
             InsertManyResult(raw_results=..., inserted_ids=['184bb06f-...', '...', '...'])
             >>> my_coll.count_documents({}, upper_bound=100)
             3
             >>> my_coll.insert_many(
             ...     [{"seq": i} for i in range(50)],
-            ...     ordered=False,
             ...     concurrency=5,
             ... )
             InsertManyResult(raw_results=..., inserted_ids=[... ...])
@@ -3092,13 +3094,13 @@ class AsyncCollection:
             ...                     {"a": 5},
             ...                     {"b": [True, False, False]},
             ...                 ],
+            ...                 ordered=True,
             ...             )
             ...             print("inserted1", im_result1.inserted_ids)
             ...             count1 = await acol.count_documents({}, upper_bound=100)
             ...             print("count1", count1)
             ...             await acol.insert_many(
             ...                 [{"seq": i} for i in range(50)],
-            ...                 ordered=False,
             ...                 concurrency=5,
             ...             )
             ...             count2 = await acol.count_documents({}, upper_bound=100)
