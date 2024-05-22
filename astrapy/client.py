@@ -60,7 +60,7 @@ class DataAPIClient:
     Example:
         >>> from astrapy import DataAPIClient
         >>> my_client = DataAPIClient("AstraCS:...")
-        >>> my_db0 = my_client.get_database_by_api_endpoint(
+        >>> my_db0 = my_client.get_database(
         ...     "https://01234567-....apps.astra.datastax.com"
         ... )
         >>> my_coll = my_db0.create_collection("movies", dimension=512)
@@ -304,9 +304,9 @@ class DataAPIClient:
                     api_version=api_version,
                 )
         else:
-            # this is an alias for get_database_by_api_endpoint
-            # max_time_ms ignored
-            # we treat id as the endpoint (!)
+            # in this case, this call is an alias for get_database_by_api_endpoint
+            #   - max_time_ms ignored
+            #   - assume `id` is actually the endpoint
             if region is not None:
                 raise ValueError(
                     "Parameter `region` not supported outside of Astra DB."
@@ -359,6 +359,9 @@ class DataAPIClient:
         """
         Get a Database object from this client, for doing data-related work.
         The Database is specified by an API Endpoint instead of the ID and a region.
+
+        Note that using this method is generally equivalent to passing
+        an API Endpoint as parameter to the `get_database` method (see).
 
         Args:
             api_endpoint: the full "API Endpoint" string used to reach the Data API.
@@ -452,6 +455,9 @@ class DataAPIClient:
         """
         Get an AsyncDatabase object from this client, for doing data-related work.
         The Database is specified by an API Endpoint instead of the ID and a region.
+
+        Note that using this method is generally equivalent to passing
+        an API Endpoint as parameter to the `get_async_database` method (see).
 
         This method has identical behavior and signature as the sync
         counterpart `get_database_by_api_endpoint`: please see that one
