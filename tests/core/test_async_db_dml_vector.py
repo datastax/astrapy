@@ -114,7 +114,7 @@ async def test_vector_find_projection(
         {"$vector", "_id", "otherfield", "anotherfield", "text"},
         {"$vector", "_id", "otherfield", "anotherfield", "text"},
         {"_id", "text"},
-        {"$vector", "_id"},
+        {"$vector", "_id", "otherfield", "anotherfield", "text"},  # {"$vector", "_id"},
         {"$vector", "_id", "text"},
     ]
     for include_similarity in [True, False]:

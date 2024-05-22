@@ -84,6 +84,7 @@ class AstraDBCollection:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        additional_headers: Dict[str, str] = {},
     ) -> None:
         """
         Initialize an AstraDBCollection instance.
@@ -98,6 +99,9 @@ class AstraDBCollection:
                 If passing a client, its caller is used as fallback
             caller_version (str, optional): version of the caller code ("1.0.3")
                 If passing a client, its caller is used as fallback
+            additional_headers (Dict[str, str]): any further set of headers,
+                in the form of key-value pairs, to be passed with the HTTP
+                requests by this collection instance.
         """
         # Check for presence of the Astra DB object
         if astra_db is None:
@@ -125,6 +129,7 @@ class AstraDBCollection:
         self.astra_db = astra_db
         self.caller_name: Optional[str] = self.astra_db.caller_name
         self.caller_version: Optional[str] = self.astra_db.caller_version
+        self.additional_headers = additional_headers
         self.collection_name = collection_name
         self.base_path: str = f"{self.astra_db.base_path}/{self.collection_name}"
 
@@ -139,6 +144,7 @@ class AstraDBCollection:
                     self.astra_db == other.astra_db,
                     self.caller_name == other.caller_name,
                     self.caller_version == other.caller_version,
+                    self.additional_headers == other.additional_headers,
                 ]
             )
         else:
@@ -155,6 +161,7 @@ class AstraDBCollection:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        additional_headers: Optional[Dict[str, str]] = None,
     ) -> AstraDBCollection:
         return AstraDBCollection(
             collection_name=collection_name or self.collection_name,
@@ -169,6 +176,7 @@ class AstraDBCollection:
             ),
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
+            additional_headers=additional_headers or self.additional_headers,
         )
 
     def to_async(self) -> AsyncAstraDBCollection:
@@ -177,6 +185,7 @@ class AstraDBCollection:
             astra_db=self.astra_db.to_async(),
             caller_name=self.caller_name,
             caller_version=self.caller_version,
+            additional_headers=self.additional_headers,
         )
 
     def set_caller(
@@ -213,6 +222,7 @@ class AstraDBCollection:
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             timeout=to_httpx_timeout(timeout_info),
+            additional_headers=self.additional_headers,
         )
         response = restore_from_api(direct_response)
         return response
@@ -1455,6 +1465,7 @@ class AsyncAstraDBCollection:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        additional_headers: Dict[str, str] = {},
     ) -> None:
         """
         Initialize an AstraDBCollection instance.
@@ -1469,6 +1480,9 @@ class AsyncAstraDBCollection:
                 If passing a client, its caller is used as fallback
             caller_version (str, optional): version of the caller code ("1.0.3")
                 If passing a client, its caller is used as fallback
+            additional_headers (Dict[str, str]): any further set of headers,
+                in the form of key-value pairs, to be passed with the HTTP
+                requests by this collection instance.
         """
         # Check for presence of the Astra DB object
         if astra_db is None:
@@ -1496,6 +1510,7 @@ class AsyncAstraDBCollection:
         self.astra_db: AsyncAstraDB = astra_db
         self.caller_name: Optional[str] = self.astra_db.caller_name
         self.caller_version: Optional[str] = self.astra_db.caller_version
+        self.additional_headers = additional_headers
         self.client = astra_db.client
         self.collection_name = collection_name
         self.base_path: str = f"{self.astra_db.base_path}/{self.collection_name}"
@@ -1511,6 +1526,7 @@ class AsyncAstraDBCollection:
                     self.astra_db == other.astra_db,
                     self.caller_name == other.caller_name,
                     self.caller_version == other.caller_version,
+                    self.additional_headers == other.additional_headers,
                 ]
             )
         else:
@@ -1527,6 +1543,7 @@ class AsyncAstraDBCollection:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        additional_headers: Optional[Dict[str, str]] = None,
     ) -> AsyncAstraDBCollection:
         return AsyncAstraDBCollection(
             collection_name=collection_name or self.collection_name,
@@ -1541,6 +1558,7 @@ class AsyncAstraDBCollection:
             ),
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
+            additional_headers=additional_headers or self.additional_headers,
         )
 
     def set_caller(
@@ -1561,6 +1579,7 @@ class AsyncAstraDBCollection:
             astra_db=self.astra_db.to_sync(),
             caller_name=self.caller_name,
             caller_version=self.caller_version,
+            additional_headers=self.additional_headers,
         )
 
     async def _request(
@@ -1586,6 +1605,7 @@ class AsyncAstraDBCollection:
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             timeout=to_httpx_timeout(timeout_info),
+            additional_headers=self.additional_headers,
         )
         response = restore_from_api(adirect_response)
         return response
@@ -2831,14 +2851,23 @@ class AstraDB:
         self.base_url = self.api_endpoint.strip("/")
 
         # Set the API version and path from the call
-        self.api_path = (api_path or DEFAULT_JSON_API_PATH).strip("/")
-        self.api_version = (api_version or DEFAULT_JSON_API_VERSION).strip("/")
+        self.api_path = (DEFAULT_JSON_API_PATH if api_path is None else api_path).strip(
+            "/"
+        )
+        self.api_version = (
+            DEFAULT_JSON_API_VERSION if api_version is None else api_version
+        ).strip("/")
 
         # Set the namespace
         self.namespace = namespace
 
         # Finally, construct the full base path
-        self.base_path: str = f"/{self.api_path}/{self.api_version}/{self.namespace}"
+        base_path_components = [
+            comp
+            for comp in (self.api_path, self.api_version, self.namespace)
+            if comp != ""
+        ]
+        self.base_path: str = f"/{'/'.join(base_path_components)}"
 
     def __repr__(self) -> str:
         return f'AstraDB[endpoint="{self.base_url}", keyspace="{self.namespace}"]'
@@ -2920,6 +2949,7 @@ class AstraDB:
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             timeout=to_httpx_timeout(timeout_info),
+            additional_headers={},
         )
         response = restore_from_api(direct_response)
         return response
@@ -3001,7 +3031,6 @@ class AstraDB:
             dimension (int, optional): Dimension for vector search.
             metric (str, optional): Metric choice for vector search.
             service_dict (dict, optional): a definition for the $vectorize service
-                NOTE: This feature is under current development.
             timeout_info: a float, or a TimeoutInfo dict, for the HTTP request.
                 Note that a 'read' timeout event will not block the action taken
                 by the API server if it has received the request already.
@@ -3167,14 +3196,23 @@ class AsyncAstraDB:
         self.base_url = self.api_endpoint.strip("/")
 
         # Set the API version and path from the call
-        self.api_path = (api_path or DEFAULT_JSON_API_PATH).strip("/")
-        self.api_version = (api_version or DEFAULT_JSON_API_VERSION).strip("/")
+        self.api_path = (DEFAULT_JSON_API_PATH if api_path is None else api_path).strip(
+            "/"
+        )
+        self.api_version = (
+            DEFAULT_JSON_API_VERSION if api_version is None else api_version
+        ).strip("/")
 
         # Set the namespace
         self.namespace = namespace
 
         # Finally, construct the full base path
-        self.base_path: str = f"/{self.api_path}/{self.api_version}/{self.namespace}"
+        base_path_components = [
+            comp
+            for comp in (self.api_path, self.api_version, self.namespace)
+            if comp != ""
+        ]
+        self.base_path: str = f"/{'/'.join(base_path_components)}"
 
     def __repr__(self) -> str:
         return f'AsyncAstraDB[endpoint="{self.base_url}", keyspace="{self.namespace}"]'
@@ -3267,6 +3305,7 @@ class AsyncAstraDB:
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             timeout=to_httpx_timeout(timeout_info),
+            additional_headers={},
         )
         response = restore_from_api(adirect_response)
         return response
@@ -3351,7 +3390,6 @@ class AsyncAstraDB:
             dimension (int, optional): Dimension for vector search.
             metric (str, optional): Metric choice for vector search.
             service_dict (dict, optional): a definition for the $vectorize service
-                NOTE: This feature is under current development.
             timeout_info: a float, or a TimeoutInfo dict, for the HTTP request.
                 Note that a 'read' timeout event will not block the action taken
                 by the API server if it has received the request already.

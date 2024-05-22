@@ -25,11 +25,15 @@ from dataclasses import dataclass
 import httpx
 
 from astrapy.core.ops import AstraDBOps
+from astrapy.core.defaults import DEFAULT_AUTH_HEADER
+from astrapy.api_commander import APICommander
 from astrapy.cursors import CommandCursor
+from astrapy.constants import Environment
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo
 from astrapy.exceptions import (
     DevOpsAPIException,
     MultiCallTimeoutManager,
+    DataAPIFaultyResponseException,
     base_timeout_info,
     to_dataapi_timeout_exception,
     ops_recast_method_sync,
@@ -55,19 +59,6 @@ STATUS_ERROR = "ERROR"
 STATUS_TERMINATING = "TERMINATING"
 
 
-class Environment:
-    """
-    Admitted values for `environment` property, such as the one denoting databases.
-    """
-
-    def __init__(self) -> None:
-        raise NotImplementedError
-
-    PROD = "prod"
-    DEV = "dev"
-    TEST = "test"
-
-
 database_id_matcher = re.compile(
     "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 )
@@ -82,6 +73,8 @@ api_endpoint_parser = re.compile(
     r".datastax.com"
 )
 
+generic_api_url_matcher = re.compile(r"^https?:\/\/[a-zA-Z0-9.]+(\:[0-9]{1,6}){0,1}$")
+
 
 DEV_OPS_URL_MAP = {
     Environment.PROD: "https://api.astra.datastax.com",
@@ -93,6 +86,16 @@ API_ENDPOINT_TEMPLATE_MAP = {
     Environment.PROD: "https://{database_id}-{region}.apps.astra.datastax.com",
     Environment.DEV: "https://{database_id}-{region}.apps.astra-dev.datastax.com",
     Environment.TEST: "https://{database_id}-{region}.apps.astra-test.datastax.com",
+}
+
+API_PATH_ENV_MAP = {
+    Environment.DSE: "",
+    Environment.OTHER: "",
+}
+
+API_VERSION_ENV_MAP = {
+    Environment.DSE: "v1",
+    Environment.OTHER: "v1",
 }
 
 
@@ -137,13 +140,37 @@ def parse_api_endpoint(api_endpoint: str) -> Optional[ParsedAPIEndpoint]:
         return None
 
 
+def parse_generic_api_url(api_endpoint: str) -> Optional[str]:
+    """
+    Validate a generic API Endpoint string,
+    such as `http://10.1.1.1:123` or `https://my.domain`.
+
+    Args:
+        api_endpoint: a string supposedly expressing a valid API Endpoint
+        (not necessarily an Astra DB one).
+
+    Returns:
+        a normalized (stripped) version of the endpoint if valid. If invalid,
+        return None.
+    """
+    if api_endpoint and api_endpoint[-1] == "/":
+        _api_endpoint = api_endpoint[:-1]
+    else:
+        _api_endpoint = api_endpoint
+    match = generic_api_url_matcher.match(_api_endpoint)
+    if match:
+        return match[0].rstrip("/")
+    else:
+        return None
+
+
 def build_api_endpoint(environment: str, database_id: str, region: str) -> str:
     """
     Build the API Endpoint full strings from database parameters.
 
     Args:
-        environment: a label, whose value is one of Environment.PROD,
-            Environment.DEV or Environment.TEST.
+        environment: a label, whose value can be Environment.PROD
+            or another of Environment.* for which this operation makes sense.
         database_id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
         region: a region ID, such as "us-west1".
 
@@ -389,7 +416,7 @@ class AstraDBAdmin:
         dev_ops_api_version: Optional[str] = None,
     ) -> None:
         self.token = token
-        self.environment = environment or Environment.PROD
+        self.environment = (environment or Environment.PROD).lower()
         if dev_ops_url is None:
             self.dev_ops_url = DEV_OPS_URL_MAP[self.environment]
         else:
@@ -1169,6 +1196,7 @@ class AstraDBAdmin:
             namespace=_namespace,
             caller_name=self._caller_name,
             caller_version=self._caller_version,
+            environment=self.environment,
             api_path=api_path,
             api_version=api_version,
         )
@@ -1207,6 +1235,8 @@ class DatabaseAdmin(ABC):
     This supports generic namespace crud, as well as spawning databases,
     without committing to a specific database architecture (e.g. Astra DB).
     """
+
+    environment: str
 
     @abstractmethod
     def list_namespaces(self, *pargs: Any, **kwargs: Any) -> List[str]:
@@ -1269,7 +1299,7 @@ class DatabaseAdmin(ABC):
 class AstraDBDatabaseAdmin(DatabaseAdmin):
     """
     An "admin" object, able to perform administrative tasks at the namespaces level
-    (i.e. within a certani database), such as creating/listing/dropping namespaces.
+    (i.e. within a certain database), such as creating/listing/dropping namespaces.
 
     This is one layer below the AstraDBAdmin concept, in that it is tied to
     a single database and enables admin work within it. As such, it is generally
@@ -1318,7 +1348,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     ) -> None:
         self.id = id
         self.token = token
-        self.environment = environment or Environment.PROD
+        self.environment = (environment or Environment.PROD).lower()
         self._astra_db_admin = AstraDBAdmin(
             token=self.token,
             environment=self.environment,
@@ -2127,4 +2157,533 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             api_path=api_path,
             api_version=api_version,
             max_time_ms=max_time_ms,
+        ).to_async()
+
+
+class DataAPIDatabaseAdmin(DatabaseAdmin):
+    """
+    An "admin" object for non-Astra Data API environments, to perform administrative
+    tasks at the namespaces level such as creating/listing/dropping namespaces.
+
+    Conforming to the architecture of non-Astra deployments of the Data API,
+    this object works within the one existing database. It is within that database
+    that the namespace CRUD operations (and possibly other admin operations)
+    are performed. Since non-Astra environment lack the concept of an overall
+    admin (such as the all-databases AstraDBAdmin class), a `DataAPIDatabaseAdmin`
+    is generally created by invoking the `get_database_admin` method of the
+    corresponding `Database` object (which in turn is spawned by a DataAPIClient).
+
+    Args:
+        api_endpoint: the full URI to access the Data API,
+            e.g. "http://localhost:8181".
+        token: an access token with enough permission to perform admin tasks.
+        environment: a label, whose value is one of Environment.OTHER (default)
+            or other non-Astra environment values in the `Environment` enum.
+        api_path: path to append to the API Endpoint. In typical usage, this
+            should be left to its default of "".
+        api_version: version specifier to append to the API path. In typical
+            usage, this should be left to its default of "v1".
+        caller_name: name of the application, or framework, on behalf of which
+            the admin API calls are performed. This ends up in the request user-agent.
+        caller_version: version of the caller.
+
+    Example:
+        >>> from astrapy import DataAPIClient
+        >>> from astrapy.constants import Environment
+        >>>
+        >>> token = "Cassandra:..."
+        >>> endpoint = "http://localhost:8181"
+        >>>
+        >>> client = DataAPIClient(
+        >>>     token="Cassandra:Y2Fzc2FuZHJh:Y2Fzc2FuZHJh",
+        >>>     environment=Environment.OTHER,
+        >>> )
+        >>> database = client.get_database_by_api_endpoint(endpoint)
+        >>> admin_for_my_db = database.get_database_admin()
+        >>>
+        >>> admin_for_my_db.list_namespaces()
+        ['namespace1', 'namespace2']
+    """
+
+    def __init__(
+        self,
+        api_endpoint: str,
+        *,
+        token: str,
+        environment: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> None:
+        self.environment = (environment or Environment.OTHER).lower()
+        self.token = token
+        self.api_endpoint = api_endpoint
+        #
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        #
+        self._api_path = api_path if api_path is not None else ""
+        self._api_version = api_version if api_version is not None else ""
+        #
+        self._commander_headers = {
+            DEFAULT_AUTH_HEADER: token,
+        }
+        self._api_commander = APICommander(
+            api_endpoint=self.api_endpoint,
+            path="/".join(comp for comp in [self._api_path, self._api_version] if comp),
+            headers=self._commander_headers,
+            callers=[(self.caller_name, self.caller_version)],
+        )
+
+    def __repr__(self) -> str:
+        env_desc = f', environment="{self.environment}"'
+        return (
+            f'{self.__class__.__name__}(endpoint="{self.api_endpoint}", '
+            f'"{self.token[:12]}..."{env_desc})'
+        )
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, DataAPIDatabaseAdmin):
+            return all(
+                [
+                    self.environment == other.environment,
+                    self._api_commander == other._api_commander,
+                ]
+            )
+        else:
+            return False
+
+    def _copy(
+        self,
+        api_endpoint: Optional[str] = None,
+        token: Optional[str] = None,
+        environment: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> DataAPIDatabaseAdmin:
+        return DataAPIDatabaseAdmin(
+            api_endpoint=api_endpoint or self.api_endpoint,
+            token=token or self.token,
+            environment=environment or self.environment,
+            api_path=api_path or self._api_path,
+            api_version=api_version or self._api_version,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
+        )
+
+    def with_options(
+        self,
+        *,
+        api_endpoint: Optional[str] = None,
+        token: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> DataAPIDatabaseAdmin:
+        """
+        Create a clone of this DataAPIDatabaseAdmin with some changed attributes.
+
+        Args:
+            api_endpoint: the full URI to access the Data API,
+                e.g. "http://localhost:8181".
+            token: an access token with enough permission to perform admin tasks.
+            caller_name: name of the application, or framework, on behalf of which
+                the admin API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+
+        Returns:
+            a new DataAPIDatabaseAdmin instance.
+
+        Example:
+            >>> admin_for_my_other_db = admin_for_my_db.with_options(
+            ...     api_endpoint="http://10.1.1.5:8181",
+            ... )
+        """
+
+        return self._copy(
+            api_endpoint=api_endpoint,
+            token=token,
+            caller_name=caller_name,
+            caller_version=caller_version,
+        )
+
+    def set_caller(
+        self,
+        caller_name: Optional[str] = None,
+        caller_version: Optional[str] = None,
+    ) -> None:
+        """
+        Set a new identity for the application/framework on behalf of which
+        the DevOps API calls will be performed (the "caller").
+
+        New objects spawned from this client afterwards will inherit the new settings.
+
+        Args:
+            caller_name: name of the application, or framework, on behalf of which
+                the DevOps API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller.
+
+        Example:
+            >>> admin_for_my_db.set_caller(
+            ...     caller_name="the_caller",
+            ...     caller_version="0.1.0",
+            ... )
+        """
+
+        logger.info(f"setting caller to {caller_name}/{caller_version}")
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        self._api_commander = APICommander(
+            api_endpoint=self.api_endpoint,
+            path="/".join(comp for comp in [self._api_path, self._api_version] if comp),
+            headers=self._commander_headers,
+            callers=[(self.caller_name, self.caller_version)],
+        )
+
+    def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
+        """
+        Query the API for a list of the namespaces in the database.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A list of the namespaces, each a string, in no particular order.
+
+        Example:
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace', 'staging_namespace']
+        """
+        logger.info("getting list of namespaces")
+        fn_response = self._api_commander.request(
+            payload={"findNamespaces": {}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if "namespaces" not in fn_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findNamespaces API command.",
+                raw_response=fn_response,
+            )
+        else:
+            logger.info("finished getting list of namespaces")
+            return fn_response["status"]["namespaces"]  # type: ignore[no-any-return]
+
+    def create_namespace(
+        self,
+        name: str,
+        *,
+        replication_options: Optional[Dict[str, Any]] = None,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create a namespace in the database, returning {'ok': 1} if successful.
+
+        Args:
+            name: the namespace name. If supplying a namespace that exists
+                already, the method call proceeds as usual, no errors are
+                raised, and the whole invocation is a no-op.
+            replication_options: this dictionary can specify the options about
+                replication of the namespace (across database nodes). If provided,
+                it must have a structure similar to:
+                `{"class": "SimpleStrategy", "replication_factor": 1}`.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the creation request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace']
+            >>> admin_for_my_db.create_namespace("that_other_one")
+            {'ok': 1}
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace', 'that_other_one']
+        """
+        options = {
+            k: v
+            for k, v in {
+                "replication": replication_options,
+            }.items()
+            if v
+        }
+        payload = {
+            "createNamespace": {
+                **{"name": name},
+                **({"options": options} if options else {}),
+            }
+        }
+        logger.info("creating namespace")
+        cn_response = self._api_commander.request(
+            payload=payload,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if (cn_response.get("status") or {}).get("ok") != 1:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from createNamespace API command.",
+                raw_response=cn_response,
+            )
+        else:
+            logger.info("finished creating namespace")
+            return cn_response["status"]  # type: ignore[no-any-return]
+
+    def drop_namespace(
+        self,
+        name: str,
+        *,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Drop (delete) a namespace from the database.
+
+        Args:
+            name: the namespace to delete. If it does not exist in this database,
+                an error is raised.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the deletion request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace', 'that_other_one']
+            >>> admin_for_my_db.drop_namespace("that_other_one")
+            {'ok': 1}
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace']
+        """
+        logger.info("dropping namespace")
+        dn_response = self._api_commander.request(
+            payload={"dropNamespace": {"name": name}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if (dn_response.get("status") or {}).get("ok") != 1:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from dropNamespace API command.",
+                raw_response=dn_response,
+            )
+        else:
+            logger.info("finished dropping namespace")
+            return dn_response["status"]  # type: ignore[no-any-return]
+
+    async def async_list_namespaces(
+        self, *, max_time_ms: Optional[int] = None
+    ) -> List[str]:
+        """
+        Query the API for a list of the namespaces in the database.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A list of the namespaces, each a string, in no particular order.
+
+        Example:
+            >>> asyncio.run(admin_for_my_db.async_list_namespaces())
+            ['default_keyspace', 'staging_namespace']
+        """
+        logger.info("getting list of namespaces, async")
+        fn_response = await self._api_commander.async_request(
+            payload={"findNamespaces": {}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if "namespaces" not in fn_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findNamespaces API command.",
+                raw_response=fn_response,
+            )
+        else:
+            logger.info("finished getting list of namespaces, async")
+            return fn_response["status"]["namespaces"]  # type: ignore[no-any-return]
+
+    async def async_create_namespace(
+        self,
+        name: str,
+        *,
+        replication_options: Optional[Dict[str, Any]] = None,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create a namespace in the database, returning {'ok': 1} if successful.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            name: the namespace name. If supplying a namespace that exists
+                already, the method call proceeds as usual, no errors are
+                raised, and the whole invocation is a no-op.
+            replication_options: this dictionary can specify the options about
+                replication of the namespace (across database nodes). If provided,
+                it must have a structure similar to:
+                `{"class": "SimpleStrategy", "replication_factor": 1}`.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the creation request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace']
+            >>> asyncio.run(admin_for_my_db.async_create_namespace(
+            ...     "that_other_one"
+            ... ))
+            {'ok': 1}
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace', 'that_other_one']
+        """
+        options = {
+            k: v
+            for k, v in {
+                "replication": replication_options,
+            }.items()
+            if v
+        }
+        payload = {
+            "createNamespace": {
+                **{"name": name},
+                **({"options": options} if options else {}),
+            }
+        }
+        logger.info("creating namespace, async")
+        cn_response = await self._api_commander.async_request(
+            payload=payload,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if (cn_response.get("status") or {}).get("ok") != 1:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from createNamespace API command.",
+                raw_response=cn_response,
+            )
+        else:
+            logger.info("finished creating namespace, async")
+            return cn_response["status"]  # type: ignore[no-any-return]
+
+    async def async_drop_namespace(
+        self,
+        name: str,
+        *,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Drop (delete) a namespace from the database.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            name: the namespace to delete. If it does not exist in this database,
+                an error is raised.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the deletion request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> admin_for_my_db.list_namespaces()
+            ['that_other_one', 'default_keyspace']
+            >>> asyncio.run(admin_for_my_db.async_drop_namespace(
+            ...     "that_other_one"
+            ... ))
+            {'ok': 1}
+            >>> admin_for_my_db.list_namespaces()
+            ['default_keyspace']
+        """
+        logger.info("dropping namespace")
+        dn_response = await self._api_commander.async_request(
+            payload={"dropNamespace": {"name": name}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if (dn_response.get("status") or {}).get("ok") != 1:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from dropNamespace API command.",
+                raw_response=dn_response,
+            )
+        else:
+            logger.info("finished dropping namespace")
+            return dn_response["status"]  # type: ignore[no-any-return]
+
+    def get_database(
+        self,
+        *,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> Database:
+        """
+        Create a Database instance out of this class for working with the data in it.
+
+        Args:
+            token: if supplied, is passed to the Database instead of
+                the one set for this object. Useful if one wants to work in
+                a least-privilege manner, limiting the permissions for non-admin work.
+            namespace: an optional namespace to set in the resulting Database.
+                If not provided, the default namespace is used.
+            api_path: path to append to the API Endpoint. In typical usage, this
+                should be left to its default of "".
+            api_version: version specifier to append to the API path. In typical
+                usage, this should be left to its default of "v1".
+
+        Returns:
+            A Database object, ready to be used for working with data and collections.
+
+        Example:
+            >>> my_db = admin_for_my_db.get_database()
+            >>> my_db.list_collection_names()
+            ['movies', 'another_collection']
+
+        Note:
+            creating an instance of Database does not trigger actual creation
+            of the database itself, which should exist beforehand.
+        """
+
+        # lazy importing here to avoid circular dependency
+        from astrapy import Database
+
+        return Database(
+            api_endpoint=self.api_endpoint,
+            token=token or self.token,
+            namespace=namespace,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
+            environment=self.environment,
+            api_path=api_path,
+            api_version=api_version,
+        )
+
+    def get_async_database(
+        self,
+        *,
+        token: Optional[str] = None,
+        namespace: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+    ) -> AsyncDatabase:
+        """
+        Create an AsyncDatabase instance for the database, to be used
+        when doing data-level work (such as creating/managing collections).
+
+        This method has identical behavior and signature as the sync
+        counterpart `get_database`: please see that one for more details.
+        """
+        return self.get_database(
+            token=token,
+            namespace=namespace,
+            api_path=api_path,
+            api_version=api_version,
         ).to_async()

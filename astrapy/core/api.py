@@ -49,6 +49,7 @@ def raw_api_request(
     caller_name: Optional[str],
     caller_version: Optional[str],
     timeout: Optional[Union[httpx.Timeout, float]],
+    additional_headers: Dict[str, str],
 ) -> httpx.Response:
     return make_request(
         client=client,
@@ -62,6 +63,7 @@ def raw_api_request(
         caller_name=caller_name,
         caller_version=caller_version,
         timeout=timeout,
+        additional_headers=additional_headers,
     )
 
 
@@ -101,6 +103,7 @@ def api_request(
     caller_name: Optional[str],
     caller_version: Optional[str],
     timeout: Optional[Union[httpx.Timeout, float]],
+    additional_headers: Dict[str, str],
 ) -> API_RESPONSE:
     raw_response = raw_api_request(
         client=client,
@@ -114,6 +117,7 @@ def api_request(
         caller_name=caller_name,
         caller_version=caller_version,
         timeout=timeout,
+        additional_headers=additional_headers,
     )
     raw_response.raise_for_status()
     return process_raw_api_response(
@@ -134,6 +138,7 @@ async def async_raw_api_request(
     caller_name: Optional[str],
     caller_version: Optional[str],
     timeout: Optional[Union[httpx.Timeout, float]],
+    additional_headers: Dict[str, str],
 ) -> httpx.Response:
     return await amake_request(
         client=client,
@@ -147,6 +152,7 @@ async def async_raw_api_request(
         caller_name=caller_name,
         caller_version=caller_version,
         timeout=timeout,
+        additional_headers=additional_headers,
     )
 
 
@@ -186,6 +192,7 @@ async def async_api_request(
     caller_name: Optional[str],
     caller_version: Optional[str],
     timeout: Optional[Union[httpx.Timeout, float]],
+    additional_headers: Dict[str, str],
 ) -> API_RESPONSE:
     raw_response = await async_raw_api_request(
         client=client,
@@ -199,6 +206,7 @@ async def async_api_request(
         caller_name=caller_name,
         caller_version=caller_version,
         timeout=timeout,
+        additional_headers=additional_headers,
     )
     raw_response.raise_for_status()
     return await async_process_raw_api_response(

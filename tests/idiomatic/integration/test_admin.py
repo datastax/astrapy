@@ -22,6 +22,7 @@ import time
 from astrapy import DataAPIClient
 from astrapy.admin import API_ENDPOINT_TEMPLATE_MAP
 
+ENV_LIST = ["prod", "dev"]
 
 NAMESPACE_POLL_SLEEP_TIME = 2
 NAMESPACE_TIMEOUT = 30
@@ -48,7 +49,7 @@ def admin_test_envs_tokens() -> List[Any]:
     each wrapping a Tuple[str, Optional[str]] = (env, token)
     """
     envs_tokens: List[Any] = []
-    for env in ["prod", "dev"]:
+    for env in ENV_LIST:
         varname = f"{env.upper()}_ADMIN_TEST_ASTRA_DB_APPLICATION_TOKEN"
         markers = []
         pair: Tuple[str, Optional[str]]
@@ -84,7 +85,7 @@ async def await_until_true(
 
 @pytest.mark.skipif(not DO_IDIOMATIC_ADMIN_TESTS, reason="Admin tests are suppressed")
 class TestAdmin:
-    @pytest.mark.parametrize("env_token", admin_test_envs_tokens())
+    @pytest.mark.parametrize("env_token", admin_test_envs_tokens(), ids=ENV_LIST)
     @pytest.mark.describe("test of the full tour with AstraDBDatabaseAdmin, sync")
     def test_astra_db_database_admin_sync(self, env_token: Tuple[str, str]) -> None:
         """
@@ -196,7 +197,7 @@ class TestAdmin:
         db_ids = {db.id for db in admin.list_databases()}
         assert created_db_id not in db_ids
 
-    @pytest.mark.parametrize("env_token", admin_test_envs_tokens())
+    @pytest.mark.parametrize("env_token", admin_test_envs_tokens(), ids=ENV_LIST)
     @pytest.mark.describe(
         "test of the full tour with AstraDBAdmin and client methods, sync"
     )
@@ -320,7 +321,7 @@ class TestAdmin:
             condition=_waiter2,
         )
 
-    @pytest.mark.parametrize("env_token", admin_test_envs_tokens())
+    @pytest.mark.parametrize("env_token", admin_test_envs_tokens(), ids=ENV_LIST)
     @pytest.mark.describe("test of the full tour with AstraDBDatabaseAdmin, async")
     async def test_astra_db_database_admin_async(
         self, env_token: Tuple[str, str]
@@ -447,7 +448,7 @@ class TestAdmin:
         db_ids = {db.id for db in (await admin.async_list_databases())}
         assert created_db_id not in db_ids
 
-    @pytest.mark.parametrize("env_token", admin_test_envs_tokens())
+    @pytest.mark.parametrize("env_token", admin_test_envs_tokens(), ids=ENV_LIST)
     @pytest.mark.describe(
         "test of the full tour with AstraDBAdmin and client methods, async"
     )

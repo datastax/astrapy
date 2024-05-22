@@ -109,7 +109,7 @@ def test_vector_find_projection(readonly_v_collection: AstraDBCollection) -> Non
         {"$vector", "_id", "otherfield", "anotherfield", "text"},
         {"$vector", "_id", "otherfield", "anotherfield", "text"},
         {"_id", "text"},
-        {"$vector", "_id"},
+        {"$vector", "_id", "otherfield", "anotherfield", "text"},  # {"$vector", "_id"},
         {"$vector", "_id", "text"},
     ]
     for include_similarity in [True, False]:

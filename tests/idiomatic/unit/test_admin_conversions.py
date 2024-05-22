@@ -16,6 +16,7 @@ import pytest
 import httpx
 
 from astrapy import AstraDBAdmin, AstraDBDatabaseAdmin, DataAPIClient, Database
+from astrapy.constants import Environment
 
 
 class TestAdminConversions:
@@ -30,12 +31,12 @@ class TestAdminConversions:
         assert dac1 == dac2
 
         assert dac1 != dac1._copy(token="x")
-        assert dac1 != dac1._copy(environment="x")
+        assert dac1 != dac1._copy(environment="test")
         assert dac1 != dac1._copy(caller_name="x")
         assert dac1 != dac1._copy(caller_version="x")
 
         assert dac1 == dac1._copy(token="x")._copy(token="t1")
-        assert dac1 == dac1._copy(environment="x")._copy(environment="dev")
+        assert dac1 == dac1._copy(environment="test")._copy(environment="dev")
         assert dac1 == dac1._copy(caller_name="x")._copy(caller_name="cn")
         assert dac1 == dac1._copy(caller_version="x")._copy(caller_version="cv")
 
@@ -73,6 +74,30 @@ class TestAdminConversions:
         with pytest.raises(ValueError):
             dac1["abc"]
 
+    @pytest.mark.describe("test of spawning databases from a DataAPIClient")
+    def test_dataapiclient_spawning_databases(self) -> None:
+        token = "the-token"
+        database_id = "00000000-1111-2222-3333-444444444444"
+        database_region = "the-region"
+        endpoint = f"https://{database_id}-{database_region}.apps.astra.datastax.com"
+
+        client = DataAPIClient(
+            token=token,
+            environment=Environment.PROD,
+            caller_name="cn",
+            caller_version="cv",
+        )
+
+        db1 = client.get_database_by_api_endpoint(endpoint)
+        db2 = client.get_database(database_id, region=database_region)
+        db3 = client.get_database(endpoint)
+
+        assert db1 == db2
+        assert db1 == db3
+
+        with pytest.raises(ValueError):
+            client.get_database(endpoint, region=database_region)
+
     @pytest.mark.describe("test of AstraDBAdmin conversions and comparison functions")
     def test_astradbadmin_conversions(self) -> None:
         adm1 = AstraDBAdmin(
@@ -94,14 +119,14 @@ class TestAdminConversions:
         assert adm1 == adm2
 
         assert adm1 != adm1._copy(token="x")
-        assert adm1 != adm1._copy(environment="x")
+        assert adm1 != adm1._copy(environment="test")
         assert adm1 != adm1._copy(caller_name="x")
         assert adm1 != adm1._copy(caller_version="x")
         assert adm1 != adm1._copy(dev_ops_url="x")
         assert adm1 != adm1._copy(dev_ops_api_version="x")
 
         assert adm1 == adm1._copy(token="x")._copy(token="t1")
-        assert adm1 == adm1._copy(environment="x")._copy(environment="dev")
+        assert adm1 == adm1._copy(environment="test")._copy(environment="dev")
         assert adm1 == adm1._copy(caller_name="x")._copy(caller_name="cn")
         assert adm1 == adm1._copy(caller_version="x")._copy(caller_version="cv")
         assert adm1 == adm1._copy(dev_ops_url="x")._copy(dev_ops_url="dou")
@@ -151,7 +176,7 @@ class TestAdminConversions:
 
         assert adda1 != adda1._copy(id="x")
         assert adda1 != adda1._copy(token="x")
-        assert adda1 != adda1._copy(environment="x")
+        assert adda1 != adda1._copy(environment="test")
         assert adda1 != adda1._copy(caller_name="x")
         assert adda1 != adda1._copy(caller_version="x")
         assert adda1 != adda1._copy(dev_ops_url="x")
@@ -159,7 +184,7 @@ class TestAdminConversions:
 
         assert adda1 == adda1._copy(id="x")._copy(id="i1")
         assert adda1 == adda1._copy(token="x")._copy(token="t1")
-        assert adda1 == adda1._copy(environment="x")._copy(environment="dev")
+        assert adda1 == adda1._copy(environment="test")._copy(environment="dev")
         assert adda1 == adda1._copy(caller_name="x")._copy(caller_name="cn")
         assert adda1 == adda1._copy(caller_version="x")._copy(caller_version="cv")
         assert adda1 == adda1._copy(dev_ops_url="x")._copy(dev_ops_url="dou")

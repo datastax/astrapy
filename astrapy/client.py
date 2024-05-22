@@ -19,13 +19,14 @@ import re
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from astrapy.admin import (
-    Environment,
     api_endpoint_parser,
     build_api_endpoint,
     database_id_matcher,
     fetch_raw_database_info_from_id_token,
     parse_api_endpoint,
+    parse_generic_api_url,
 )
+from astrapy.constants import Environment
 
 
 if TYPE_CHECKING:
@@ -48,9 +49,9 @@ class DataAPIClient:
 
     Args:
         token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
-        environment: a string representing the target Astra environment.
+        environment: a string representing the target Data API environment.
             It can be left unspecified for the default value of `Environment.PROD`;
-            other values are `Environment.DEV` and `Environment.TEST`.
+            other values include `Environment.OTHER`, `Environment.DSE`.
         caller_name: name of the application, or framework, on behalf of which
             the Data API and DevOps API calls are performed. This ends up in
             the request user-agent.
@@ -80,7 +81,11 @@ class DataAPIClient:
         caller_version: Optional[str] = None,
     ) -> None:
         self.token = token
-        self.environment = environment or Environment.PROD
+        self.environment = (environment or Environment.PROD).lower()
+
+        if self.environment not in Environment.values:
+            raise ValueError(f"Unsupported `environment` value: '{self.environment}'.")
+
         self._caller_name = caller_name
         self._caller_version = caller_version
 
@@ -106,15 +111,18 @@ class DataAPIClient:
             return False
 
     def __getitem__(self, database_id_or_api_endpoint: str) -> Database:
-        if re.match(database_id_matcher, database_id_or_api_endpoint):
-            return self.get_database(database_id_or_api_endpoint)
-        elif re.match(api_endpoint_parser, database_id_or_api_endpoint):
-            return self.get_database_by_api_endpoint(database_id_or_api_endpoint)
+        if self.environment in Environment.astra_db_values:
+            if re.match(database_id_matcher, database_id_or_api_endpoint):
+                return self.get_database(database_id_or_api_endpoint)
+            elif re.match(api_endpoint_parser, database_id_or_api_endpoint):
+                return self.get_database_by_api_endpoint(database_id_or_api_endpoint)
+            else:
+                raise ValueError(
+                    "The provided input does not look like either a database ID "
+                    f"or an API endpoint ('{database_id_or_api_endpoint}')."
+                )
         else:
-            raise ValueError(
-                "The provided input does not look like either a database ID "
-                f"or an API endpoint ('{database_id_or_api_endpoint}')."
-            )
+            return self.get_database_by_api_endpoint(database_id_or_api_endpoint)
 
     def _copy(
         self,
@@ -203,8 +211,9 @@ class DataAPIClient:
         Get a Database object from this client, for doing data-related work.
 
         Args:
-            id: the target database ID. The database must exist for the resulting
-                object to be effectively used; in other words, this invocation
+            id: the target database ID or the corresponding API Endpoint.
+                The database must exist already for the resulting object
+                to be effectively used; in other words, this invocation
                 does not create the database, just the object instance.
                 Actual admin work can be achieved by using the AstraDBAdmin object.
             token: if supplied, is passed to the Database instead of the client token.
@@ -212,9 +221,10 @@ class DataAPIClient:
                 (it is left to the default otherwise).
             region: the region to use for connecting to the database. The
                 database must be located in that region.
-                Note that if this parameter is not passed, an additional
-                DevOps API request is made to determine the default region
-                and use it subsequently.
+                The region cannot be specified when he API endoint is used as `id`.
+                Note that if this parameter is not passed, and cannot be inferred
+                from the API endpoint, an additional DevOps API request is made
+                to determine the default region and use it subsequently.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -227,8 +237,11 @@ class DataAPIClient:
 
         Example:
             >>> my_db0 = my_client.get_database("01234567-...")
-            >>> my_db1 = my_client.get_database("01234567-...", token="AstraCS:...")
-            >>> my_db2 = my_client.get_database("01234567-...", region="us-west1")
+            >>> my_db1 = my_client.get_database(
+            ...     "https://01234567-...us-west1.apps.astra.datastax.com",
+            ... )
+            >>> my_db2 = my_client.get_database("01234567-...", token="AstraCS:...")
+            >>> my_db3 = my_client.get_database("01234567-...", region="us-west1")
             >>> my_coll = my_db0.create_collection("movies", dimension=512)
             >>> my_coll.insert_one({"title": "The Title"}, vector=...)
 
@@ -241,38 +254,70 @@ class DataAPIClient:
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
-        # need to inspect for values?
-        this_db_info: Optional[Dict[str, Any]] = None
-        # handle overrides. Only region is needed (namespace can stay empty)
-        if region:
-            _region = region
-        else:
-            if this_db_info is None:
-                logger.info(f"fetching raw database info for {id}")
-                this_db_info = fetch_raw_database_info_from_id_token(
-                    id=id,
-                    token=self.token,
-                    environment=self.environment,
-                    max_time_ms=max_time_ms,
+        if self.environment in Environment.astra_db_values:
+            # handle the "endpoint passed as id" case first:
+            if re.match(api_endpoint_parser, id):
+                if region is not None:
+                    raise ValueError(
+                        "Parameter `region` not supported when supplying an API endpoint."
+                    )
+                # in this case max_time_ms is ignored (no calls take place)
+                return self.get_database_by_api_endpoint(
+                    api_endpoint=id,
+                    token=token,
+                    namespace=namespace,
+                    api_path=api_path,
+                    api_version=api_version,
                 )
-                logger.info(f"finished fetching raw database info for {id}")
-            _region = this_db_info["info"]["region"]
+            else:
+                # need to inspect for values?
+                this_db_info: Optional[Dict[str, Any]] = None
+                # handle overrides. Only region is needed (namespace can stay empty)
+                if region:
+                    _region = region
+                else:
+                    if this_db_info is None:
+                        logger.info(f"fetching raw database info for {id}")
+                        this_db_info = fetch_raw_database_info_from_id_token(
+                            id=id,
+                            token=self.token,
+                            environment=self.environment,
+                            max_time_ms=max_time_ms,
+                        )
+                        logger.info(f"finished fetching raw database info for {id}")
+                    _region = this_db_info["info"]["region"]
 
-        _token = token or self.token
-        _api_endpoint = build_api_endpoint(
-            environment=self.environment,
-            database_id=id,
-            region=_region,
-        )
-        return Database(
-            api_endpoint=_api_endpoint,
-            token=_token,
-            namespace=namespace,
-            caller_name=self._caller_name,
-            caller_version=self._caller_version,
-            api_path=api_path,
-            api_version=api_version,
-        )
+                _token = token or self.token
+                _api_endpoint = build_api_endpoint(
+                    environment=self.environment,
+                    database_id=id,
+                    region=_region,
+                )
+                return Database(
+                    api_endpoint=_api_endpoint,
+                    token=_token,
+                    namespace=namespace,
+                    caller_name=self._caller_name,
+                    caller_version=self._caller_version,
+                    environment=self.environment,
+                    api_path=api_path,
+                    api_version=api_version,
+                )
+        else:
+            # this is an alias for get_database_by_api_endpoint
+            # max_time_ms ignored
+            # we treat id as the endpoint (!)
+            if region is not None:
+                raise ValueError(
+                    "Parameter `region` not supported outside of Astra DB."
+                )
+            return self.get_database_by_api_endpoint(
+                api_endpoint=id,
+                token=token,
+                namespace=namespace,
+                api_path=api_path,
+                api_version=api_version,
+            )
 
     def get_async_database(
         self,
@@ -351,27 +396,49 @@ class DataAPIClient:
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
-        parsed_api_endpoint = parse_api_endpoint(api_endpoint)
-        if parsed_api_endpoint is not None:
-            if parsed_api_endpoint.environment != self.environment:
-                raise ValueError(
-                    "Environment mismatch between client and provided "
-                    "API endpoint. You can try adding "
-                    f'`environment="{parsed_api_endpoint.environment}"` '
-                    "to the DataAPIClient creation statement."
+        if self.environment in Environment.astra_db_values:
+            parsed_api_endpoint = parse_api_endpoint(api_endpoint)
+            if parsed_api_endpoint is not None:
+                if parsed_api_endpoint.environment != self.environment:
+                    raise ValueError(
+                        "Environment mismatch between client and provided "
+                        "API endpoint. You can try adding "
+                        f'`environment="{parsed_api_endpoint.environment}"` '
+                        "to the DataAPIClient creation statement."
+                    )
+                _token = token or self.token
+                return Database(
+                    api_endpoint=api_endpoint,
+                    token=_token,
+                    namespace=namespace,
+                    caller_name=self._caller_name,
+                    caller_version=self._caller_version,
+                    environment=self.environment,
+                    api_path=api_path,
+                    api_version=api_version,
                 )
-            _token = token or self.token
-            return Database(
-                api_endpoint=api_endpoint,
-                token=_token,
-                namespace=namespace,
-                caller_name=self._caller_name,
-                caller_version=self._caller_version,
-                api_path=api_path,
-                api_version=api_version,
-            )
+            else:
+                raise ValueError(
+                    f"Cannot parse the provided API endpoint ({api_endpoint})."
+                )
         else:
-            raise ValueError("Cannot parse the provided API endpoint.")
+            parsed_generic_api_endpoint = parse_generic_api_url(api_endpoint)
+            if parsed_generic_api_endpoint:
+                _token = token or self.token
+                return Database(
+                    api_endpoint=parsed_generic_api_endpoint,
+                    token=_token,
+                    namespace=namespace,
+                    caller_name=self._caller_name,
+                    caller_version=self._caller_version,
+                    environment=self.environment,
+                    api_path=api_path,
+                    api_version=api_version,
+                )
+            else:
+                raise ValueError(
+                    f"Cannot parse the provided API endpoint ({api_endpoint})."
+                )
 
     def get_async_database_by_api_endpoint(
         self,
@@ -440,6 +507,9 @@ class DataAPIClient:
 
         # lazy importing here to avoid circular dependency
         from astrapy.admin import AstraDBAdmin
+
+        if self.environment not in Environment.astra_db_values:
+            raise ValueError("Method not supported outside of Astra DB.")
 
         return AstraDBAdmin(
             token=token or self.token,

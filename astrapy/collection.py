@@ -24,7 +24,11 @@ from astrapy.core.db import (
     AstraDBCollection,
     AsyncAstraDBCollection,
 )
-from astrapy.core.defaults import MAX_INSERT_NUM_DOCUMENTS
+from astrapy.core.defaults import (
+    MAX_INSERT_NUM_DOCUMENTS,
+    DEFAULT_VECTORIZE_SECRET_HEADER,
+)
+from astrapy.api_options import CollectionAPIOptions
 from astrapy.exceptions import (
     BulkWriteException,
     CollectionNotFoundException,
@@ -218,6 +222,8 @@ class Collection:
             collection on the database.
         namespace: this is the namespace to which the collection belongs.
             If not specified, the database's working namespace is used.
+        api_options: An instance of `astrapy.api_options.CollectionAPIOptions`
+            providing the general settings for interacting with the Data API.
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -250,15 +256,28 @@ class Collection:
         name: str,
         *,
         namespace: Optional[str] = None,
+        api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
+        if api_options is None:
+            self.api_options = CollectionAPIOptions()
+        else:
+            self.api_options = api_options
+        additional_headers = {
+            k: v
+            for k, v in {
+                DEFAULT_VECTORIZE_SECRET_HEADER: self.api_options.embedding_api_key,
+            }.items()
+            if v is not None
+        }
         self._astra_db_collection: AstraDBCollection = AstraDBCollection(
             collection_name=name,
             astra_db=database._astra_db,
             namespace=namespace,
             caller_name=caller_name,
             caller_version=caller_version,
+            additional_headers=additional_headers,
         )
         # this comes after the above, lets AstraDBCollection resolve namespace
         self._database = database._copy(
@@ -273,7 +292,12 @@ class Collection:
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Collection):
-            return self._astra_db_collection == other._astra_db_collection
+            return all(
+                [
+                    self._astra_db_collection == other._astra_db_collection,
+                    self.api_options == other.api_options,
+                ]
+            )
         else:
             return False
 
@@ -291,6 +315,7 @@ class Collection:
         database: Optional[Database] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
+        api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
@@ -298,6 +323,7 @@ class Collection:
             database=database or self.database._copy(),
             name=name or self.name,
             namespace=namespace or self.namespace,
+            api_options=self.api_options.with_override(api_options),
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )
@@ -306,6 +332,8 @@ class Collection:
         self,
         *,
         name: Optional[str] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
@@ -316,6 +344,18 @@ class Collection:
             name: the name of the collection. This parameter is useful to
                 quickly spawn Collection instances each pointing to a different
                 collection existing in the same namespace.
+            embedding_api_key: an optional API key for interacting with the collection.
+                If an embedding service is configured, and this attribute is set,
+                each Data API call will include a "x-embedding-api-key" header
+                with the value of this attribute.
+            collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+                operation on the collection. Individual timeouts can be provided to
+                each collection method call and will take precedence, with this value
+                being an overall default.
+                Note that for some methods involving multiple API calls (such as
+                `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+                to provide a specific timeout as the default one likely wouldn't make
+                much sense.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -330,8 +370,14 @@ class Collection:
             ... )
         """
 
+        _api_options = CollectionAPIOptions(
+            embedding_api_key=embedding_api_key,
+            max_time_ms=collection_max_time_ms,
+        )
+
         return self._copy(
             name=name,
+            api_options=_api_options,
             caller_name=caller_name,
             caller_version=caller_version,
         )
@@ -342,6 +388,8 @@ class Collection:
         database: Optional[AsyncDatabase] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
@@ -358,6 +406,18 @@ class Collection:
                 collection on the database.
             namespace: this is the namespace to which the collection belongs.
                 If not specified, the database's working namespace is used.
+            embedding_api_key: an optional API key for interacting with the collection.
+                If an embedding service is configured, and this attribute is set,
+                each Data API call will include a "x-embedding-api-key" header
+                with the value of this attribute.
+            collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+                operation on the collection. Individual timeouts can be provided to
+                each collection method call and will take precedence, with this value
+                being an overall default.
+                Note that for some methods involving multiple API calls (such as
+                `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+                to provide a specific timeout as the default one likely wouldn't make
+                much sense.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -370,10 +430,16 @@ class Collection:
             77
         """
 
+        _api_options = CollectionAPIOptions(
+            embedding_api_key=embedding_api_key,
+            max_time_ms=collection_max_time_ms,
+        )
+
         return AsyncCollection(
             database=database or self.database.to_async(),
             name=name or self.name,
             namespace=namespace or self.namespace,
+            api_options=self.api_options.with_override(_api_options),
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )
@@ -412,6 +478,7 @@ class Collection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a CollectionOptions instance describing the collection.
@@ -423,9 +490,10 @@ class Collection:
         """
 
         logger.info(f"getting collections in search of '{self.name}'")
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         self_descriptors = [
             coll_desc
-            for coll_desc in self.database.list_collections(max_time_ms=max_time_ms)
+            for coll_desc in self.database.list_collections(max_time_ms=_max_time_ms)
             if coll_desc.name == self.name
         ]
         logger.info(f"finished getting collections in search of '{self.name}'")
@@ -535,15 +603,15 @@ class Collection:
                 case it will be created automatically.
             vector: a vector (a list of numbers appropriate for the collection)
                 for the document. Passing this parameter is equivalent to
-                providing the vector in the "$vector" field of the document itself,
+                providing a `$vector` field within the document itself,
                 however the two are mutually exclusive.
             vectorize: a string to be made into a vector, if such a service
                 is configured for the collection. Passing this parameter is
                 equivalent to providing a `$vectorize` field in the document itself,
                 however the two are mutually exclusive.
                 Moreover, this parameter cannot coexist with `vector`.
-                NOTE: This feature is under current development.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             an InsertOneResult object.
@@ -575,10 +643,11 @@ class Collection:
         """
 
         _document = _collate_vector_to_document(document, vector, vectorize)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"inserting one document in '{self.name}'")
         io_response = self._astra_db_collection.insert_one(
             _document,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished inserting one document in '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
@@ -606,7 +675,7 @@ class Collection:
         *,
         vectors: Optional[Iterable[Optional[VectorType]]] = None,
         vectorize: Optional[Iterable[Optional[str]]] = None,
-        ordered: bool = True,
+        ordered: bool = False,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
         max_time_ms: Optional[int] = None,
@@ -632,16 +701,21 @@ class Collection:
                 Passing this parameter is equivalent to providing a `$vectorize`
                 field in the documents themselves, however the two are mutually exclusive.
                 For any given document, this parameter cannot coexist with the
-                corresponding `vector` entry.
-                NOTE: This feature is under current development.
-            ordered: if True (default), the insertions are processed sequentially.
-                If False, they can occur in arbitrary order and possibly concurrently.
+                corresponding entry in `vectors`.
+            ordered: if False (default), the insertions can occur in arbitrary order
+                and possibly concurrently. If True, they are processed sequentially.
+                If there are no specific reasons against it, unordered insertions are to
+                be preferred as they complete much faster.
             chunk_size: how many documents to include in a single API request.
                 Exceeding the server maximum allowed value results in an error.
                 Leave it unspecified (recommended) to use the system default.
             concurrency: maximum number of concurrent requests to the API at
                 a given time. It cannot be more than one for ordered insertions.
             max_time_ms: a timeout, in milliseconds, for the operation.
+                If not passed, the collection-level setting is used instead:
+                If many documents are being inserted, this method corresponds
+                to several HTTP requests: in such cases one may want to specify
+                a more tolerant timeout here.
 
         Returns:
             an InsertManyResult object.
@@ -649,20 +723,22 @@ class Collection:
         Examples:
             >>> my_coll.count_documents({}, upper_bound=10)
             0
-            >>> my_coll.insert_many([{"a": 10}, {"a": 5}, {"b": [True, False, False]}])
+            >>> my_coll.insert_many(
+            ...     [{"a": 10}, {"a": 5}, {"b": [True, False, False]}],
+            ...     ordered=True,
+            ... )
             InsertManyResult(raw_results=..., inserted_ids=['184bb06f-...', '...', '...'])
             >>> my_coll.count_documents({}, upper_bound=100)
             3
             >>> my_coll.insert_many(
             ...     [{"seq": i} for i in range(50)],
-            ...     ordered=False,
             ...     concurrency=5,
             ... )
             InsertManyResult(raw_results=..., inserted_ids=[... ...])
             >>> my_coll.count_documents({}, upper_bound=100)
             53
 
-            # The following are three equivalent statements:
+            >>> # The following are three equivalent statements:
             >>> my_coll.insert_many(
             ...     [{"tag": "a"}, {"tag": "b"}],
             ...     vectors=[[1, 2], [3, 4]],
@@ -722,9 +798,10 @@ class Collection:
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: List[Dict[str, Any]] = []
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         if ordered:
             options = {"ordered": True}
             inserted_ids: List[Any] = []
@@ -871,15 +948,24 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            projection: used to select a subset of fields in the documents being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             skip: with this integer parameter, what would be the first `skip`
                 documents returned by the query are discarded, and the results
                 start from the (skip+1)-th document.
@@ -900,7 +986,6 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
                 returned document. Can only be used for vector ANN search, i.e.
@@ -912,6 +997,7 @@ class Collection:
             max_time_ms: a timeout, in milliseconds, for each single one
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a Cursor object representing iterations over the matching documents
@@ -956,7 +1042,7 @@ class Collection:
             ... ]
             >>> ann_tags
             ['A', 'B', 'C']
-            # (assuming the collection has metric VectorMetric.COSINE)
+            >>> # (assuming the collection has metric VectorMetric.COSINE)
 
         Note:
             The following are example values for the `sort` parameter.
@@ -1000,6 +1086,7 @@ class Collection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         if include_similarity is not None and not _is_vector_sort(_sort):
             raise ValueError(
                 "Cannot use `include_similarity` when not searching through `vector`."
@@ -1009,7 +1096,7 @@ class Collection:
                 collection=self,
                 filter=filter,
                 projection=projection,
-                max_time_ms=max_time_ms,
+                max_time_ms=_max_time_ms,
                 overall_max_time_ms=None,
             )
             .skip(skip)
@@ -1038,15 +1125,24 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            projection: used to select a subset of fields in the documents being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to perform vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), extracting the most
@@ -1057,7 +1153,6 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in the
                 returned document. Can only be used for vector ANN search, i.e.
@@ -1066,6 +1161,7 @@ class Collection:
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a dictionary expressing the required document, otherwise None.
@@ -1084,7 +1180,7 @@ class Collection:
             ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
             ... )
             {'_id': '97e85f81-...', 'seq': 69}
-            >>> my_coll.find_one({}, vector=[1, 0])
+            >>> my_coll.find_one({}, vector=[1, 0], projection={"*": True})
             {'_id': '...', 'tag': 'D', '$vector': [4.0, 1.0]}
 
         Note:
@@ -1092,6 +1188,7 @@ class Collection:
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_cursor = self.find(
             filter=filter,
             projection=projection,
@@ -1101,7 +1198,7 @@ class Collection:
             vectorize=vectorize,
             include_similarity=include_similarity,
             sort=sort,
-            max_time_ms=max_time_ms,
+            max_time_ms=_max_time_ms,
         )
         try:
             document = fo_cursor.__next__()
@@ -1134,10 +1231,11 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            max_time_ms: a timeout, in milliseconds, for the operation.
+            max_time_ms: a timeout, in milliseconds, with the same meaning as for `find`.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a list of all different values for `key` found across the documents
@@ -1177,12 +1275,13 @@ class Collection:
             Note of the `find` command.
         """
 
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         f_cursor = Cursor(
             collection=self,
             filter=filter,
             projection={key: True},
             max_time_ms=None,
-            overall_max_time_ms=max_time_ms,
+            overall_max_time_ms=_max_time_ms,
         )
         return f_cursor.distinct(key)  # type: ignore[no-any-return]
 
@@ -1202,8 +1301,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             upper_bound: a required ceiling on the result of the count operation.
                 If the actual number of documents exceeds this value,
@@ -1212,6 +1311,7 @@ class Collection:
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             the exact count of matching documents.
@@ -1239,10 +1339,11 @@ class Collection:
             by this method if this limit is encountered.
         """
 
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info("calling count_documents")
         cd_response = self._astra_db_collection.count_documents(
             filter=filter,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info("finished calling count_documents")
         if "count" in cd_response.get("status", {}):
@@ -1278,6 +1379,7 @@ class Collection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a server-provided estimate count of the documents in the collection.
@@ -1286,9 +1388,10 @@ class Collection:
             >>> my_coll.estimated_document_count()
             35700
         """
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         ed_response = self.command(
             {"estimatedDocumentCount": {}},
-            max_time_ms=max_time_ms,
+            max_time_ms=_max_time_ms,
         )
         if "count" in ed_response.get("status", {}):
             count: int = ed_response["status"]["count"]
@@ -1322,16 +1425,25 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
-            projection: used to select a subset of fields in the document being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), as the sorting criterion.
@@ -1343,7 +1455,6 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1358,6 +1469,7 @@ class Collection:
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -1401,6 +1513,7 @@ class Collection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_replace on '{self.name}'")
         fo_response = self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
@@ -1408,7 +1521,7 @@ class Collection:
             projection=normalize_optional_projection(projection),
             sort=_sort,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_replace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1444,8 +1557,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
@@ -1459,7 +1572,6 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1469,6 +1581,7 @@ class Collection:
                 if no matches are found on the collection. If False,
                 the operation silently does nothing in case of no matches.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             an UpdateResult object summarizing the outcome of the replace operation.
@@ -1491,12 +1604,13 @@ class Collection:
             "upsert": upsert,
         }
         logger.info(f"calling find_one_and_replace on '{self.name}'")
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_response = self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
             sort=_sort,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_replace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1535,8 +1649,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             update: the update prescription to apply to the document, expressed
                 as a dictionary as per Data API syntax. Examples are:
@@ -1544,12 +1658,21 @@ class Collection:
                     {"$inc": {"counter": 10}}
                     {"$unset": {"field": ""}}
                 See the Data API documentation for the full syntax.
-            projection: used to select a subset of fields in the document being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), as the sorting criterion.
@@ -1561,7 +1684,6 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1577,6 +1699,7 @@ class Collection:
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -1620,6 +1743,7 @@ class Collection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = self._astra_db_collection.find_one_and_update(
             update=update,
@@ -1627,7 +1751,7 @@ class Collection:
             projection=normalize_optional_projection(projection),
             sort=_sort,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_update on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1663,8 +1787,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             update: the update prescription to apply to the document, expressed
                 as a dictionary as per Data API syntax. Examples are:
@@ -1683,7 +1807,6 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1694,6 +1817,7 @@ class Collection:
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
@@ -1713,13 +1837,14 @@ class Collection:
         options = {
             "upsert": upsert,
         }
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = self._astra_db_collection.find_one_and_update(
             update=update,
             sort=_sort,
             filter=filter,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_update on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1753,8 +1878,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             update: the update prescription to apply to the documents, expressed
                 as a dictionary as per Data API syntax. Examples are:
@@ -1768,6 +1893,10 @@ class Collection:
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
             max_time_ms: a timeout, in milliseconds, for the operation.
+                If not passed, the collection-level setting is used instead:
+                if a large number of document updates is anticipated, it is suggested
+                to specify a larger timeout than in most other operations as the
+                update will span several HTTP calls to the API in sequence.
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
@@ -1795,17 +1924,18 @@ class Collection:
             newly-inserted document will be picked up by the update_many command or not.
         """
 
-        base_options = {
+        api_options = {
             "upsert": upsert,
         }
         page_state_options: Dict[str, str] = {}
         um_responses: List[Dict[str, Any]] = []
         um_statuses: List[Dict[str, Any]] = []
         must_proceed = True
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"starting update_many on '{self.name}'")
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         while must_proceed:
-            options = {**base_options, **page_state_options}
+            options = {**api_options, **page_state_options}
             logger.info(f"calling update_many on '{self.name}'")
             this_um_response = self._astra_db_collection.update_many(
                 update=update,
@@ -1872,17 +2002,24 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            projection: used to select a subset of fields in the document being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                Note that the `_id` field will be returned with the document
-                in any case, regardless of what the provided `projection` requires.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), as the sorting criterion.
@@ -1894,12 +2031,12 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
                 deleted one. See the `find` method for more on sorting.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             Either the document (or a projection thereof, as requested), or None
@@ -1925,11 +2062,12 @@ class Collection:
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
         logger.info(f"calling find_one_and_delete on '{self.name}'")
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_response = self._astra_db_collection.find_one_and_delete(
             sort=_sort,
             filter=filter,
             projection=_projection,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_delete on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1965,8 +2103,8 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
@@ -1979,12 +2117,12 @@ class Collection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
                 deleted one. See the `find` method for more on sorting.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
@@ -2008,9 +2146,10 @@ class Collection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling delete_one_by_predicate on '{self.name}'")
         do_response = self._astra_db_collection.delete_one_by_predicate(
-            filter=filter, timeout_info=base_timeout_info(max_time_ms), sort=_sort
+            filter=filter, timeout_info=base_timeout_info(_max_time_ms), sort=_sort
         )
         logger.info(f"finished calling delete_one_by_predicate on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
@@ -2047,12 +2186,17 @@ class Collection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
                 The `delete_many` method does not accept an empty filter: see
                 `delete_all` to completely erase all contents of a collection
             max_time_ms: a timeout, in milliseconds, for the operation.
+                If not passed, the collection-level setting is used instead:
+                keep in mind that this method entails successive HTTP requests
+                to the API, depending on how many documents are to be deleted.
+                For this reason, in most cases it is suggested to relax the
+                timeout compared to other method calls.
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
@@ -2086,7 +2230,8 @@ class Collection:
         dm_responses: List[Dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         logger.info(f"starting delete_many on '{self.name}'")
         while must_proceed:
             logger.info(f"calling delete_many on '{self.name}'")
@@ -2132,6 +2277,7 @@ class Collection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a dictionary of the form {"ok": 1} to signal successful deletion.
@@ -2150,9 +2296,10 @@ class Collection:
             Use with caution.
         """
 
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling unfiltered delete_many on '{self.name}'")
         dm_response = self._astra_db_collection.delete_many(
-            filter={}, timeout_info=base_timeout_info(max_time_ms)
+            filter={}, timeout_info=base_timeout_info(_max_time_ms)
         )
         logger.info(f"finished calling unfiltered delete_many on '{self.name}'")
         deleted_count = dm_response["status"]["deletedCount"]
@@ -2168,7 +2315,7 @@ class Collection:
         self,
         requests: Iterable[BaseOperation],
         *,
-        ordered: bool = True,
+        ordered: bool = False,
         concurrency: Optional[int] = None,
         max_time_ms: Optional[int] = None,
     ) -> BulkWriteResult:
@@ -2188,7 +2335,7 @@ class Collection:
                 would the corresponding collection method.
             ordered: whether to launch the `requests` one after the other or
                 in arbitrary order, possibly in a concurrent fashion. For
-                performance reasons, `ordered=False` should be preferred
+                performance reasons, False (default) should be preferred
                 when compatible with the needs of the application flow.
             concurrency: maximum number of concurrent operations executing at
                 a given time. It cannot be more than one for ordered bulk writes.
@@ -2196,6 +2343,9 @@ class Collection:
                 Remember that, if the method call times out, then there's no
                 guarantee about what portion of the bulk write has been received
                 and successfully executed by the Data API.
+                If not passed, the collection-level setting is used instead:
+                in most cases, however, one should pass a relaxed timeout
+                if longer sequences of operations are to be executed in bulk.
 
         Returns:
             A single BulkWriteResult summarizing the whole list of requested
@@ -2227,8 +2377,9 @@ class Collection:
             _concurrency = concurrency
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered bulk_write concurrently.")
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"startng a bulk write on '{self.name}'")
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         if ordered:
             bulk_write_results: List[BulkWriteResult] = []
             for operation_i, operation in enumerate(requests):
@@ -2344,6 +2495,7 @@ class Collection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
                 Remember there is not guarantee that a request that has
                 timed out us not in fact honored.
 
@@ -2363,14 +2515,6 @@ class Collection:
         Note:
             Use with caution.
 
-
-        Note:
-            Once the method succeeds, methods on this object can still be invoked:
-            however, this hardly makes sense as the underlying actual collection
-            is no more.
-            It is responsibility of the developer to design a correct flow
-            which avoids using a deceased collection any further.
-
         Note:
             Once the method succeeds, methods on this object can still be invoked:
             however, this hardly makes sense as the underlying actual collection
@@ -2379,8 +2523,9 @@ class Collection:
             which avoids using a deceased collection any further.
         """
 
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"dropping collection '{self.name}' (self)")
-        drop_result = self.database.drop_collection(self, max_time_ms=max_time_ms)
+        drop_result = self.database.drop_collection(self, max_time_ms=_max_time_ms)
         logger.info(f"finished dropping collection '{self.name}' (self)")
         return drop_result  # type: ignore[no-any-return]
 
@@ -2397,6 +2542,7 @@ class Collection:
         Args:
             body: a JSON-serializable dictionary, the payload of the request.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a dictionary with the response of the HTTP request.
@@ -2406,12 +2552,13 @@ class Collection:
             {'status': {'count': 123}}
         """
 
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling command on '{self.name}'")
         command_result = self.database.command(
             body=body,
             namespace=self.namespace,
             collection_name=self.name,
-            max_time_ms=max_time_ms,
+            max_time_ms=_max_time_ms,
         )
         logger.info(f"finished calling command on '{self.name}'")
         return command_result  # type: ignore[no-any-return]
@@ -2433,6 +2580,8 @@ class AsyncCollection:
             collection on the database.
         namespace: this is the namespace to which the collection belongs.
             If not specified, the database's working namespace is used.
+        api_options: An instance of `astrapy.api_options.CollectionAPIOptions`
+            providing the general settings for interacting with the Data API.
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -2467,15 +2616,28 @@ class AsyncCollection:
         name: str,
         *,
         namespace: Optional[str] = None,
+        api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
+        if api_options is None:
+            self.api_options = CollectionAPIOptions()
+        else:
+            self.api_options = api_options
+        additional_headers = {
+            k: v
+            for k, v in {
+                DEFAULT_VECTORIZE_SECRET_HEADER: self.api_options.embedding_api_key,
+            }.items()
+            if v is not None
+        }
         self._astra_db_collection: AsyncAstraDBCollection = AsyncAstraDBCollection(
             collection_name=name,
             astra_db=database._astra_db,
             namespace=namespace,
             caller_name=caller_name,
             caller_version=caller_version,
+            additional_headers=additional_headers,
         )
         # this comes after the above, lets AstraDBCollection resolve namespace
         self._database = database._copy(
@@ -2490,7 +2652,12 @@ class AsyncCollection:
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AsyncCollection):
-            return self._astra_db_collection == other._astra_db_collection
+            return all(
+                [
+                    self._astra_db_collection == other._astra_db_collection,
+                    self.api_options == other.api_options,
+                ]
+            )
         else:
             return False
 
@@ -2508,6 +2675,7 @@ class AsyncCollection:
         database: Optional[AsyncDatabase] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
+        api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
@@ -2515,6 +2683,7 @@ class AsyncCollection:
             database=database or self.database._copy(),
             name=name or self.name,
             namespace=namespace or self.namespace,
+            api_options=self.api_options.with_override(api_options),
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )
@@ -2523,6 +2692,8 @@ class AsyncCollection:
         self,
         *,
         name: Optional[str] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
@@ -2533,6 +2704,18 @@ class AsyncCollection:
             name: the name of the collection. This parameter is useful to
                 quickly spawn AsyncCollection instances each pointing to a different
                 collection existing in the same namespace.
+            embedding_api_key: an optional API key for interacting with the collection.
+                If an embedding service is configured, and this attribute is set,
+                each Data API call will include a "x-embedding-api-key" header
+                with the value of this attribute.
+            collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+                operation on the collection. Individual timeouts can be provided to
+                each collection method call and will take precedence, with this value
+                being an overall default.
+                Note that for some methods involving multiple API calls (such as
+                `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+                to provide a specific timeout as the default one likely wouldn't make
+                much sense.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -2547,8 +2730,14 @@ class AsyncCollection:
             ... )
         """
 
+        _api_options = CollectionAPIOptions(
+            embedding_api_key=embedding_api_key,
+            max_time_ms=collection_max_time_ms,
+        )
+
         return self._copy(
             name=name,
+            api_options=_api_options,
             caller_name=caller_name,
             caller_version=caller_version,
         )
@@ -2559,6 +2748,8 @@ class AsyncCollection:
         database: Optional[Database] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
@@ -2575,6 +2766,18 @@ class AsyncCollection:
                 collection on the database.
             namespace: this is the namespace to which the collection belongs.
                 If not specified, the database's working namespace is used.
+            embedding_api_key: an optional API key for interacting with the collection.
+                If an embedding service is configured, and this attribute is set,
+                each Data API call will include a "x-embedding-api-key" header
+                with the value of this attribute.
+            collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+                operation on the collection. Individual timeouts can be provided to
+                each collection method call and will take precedence, with this value
+                being an overall default.
+                Note that for some methods involving multiple API calls (such as
+                `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+                to provide a specific timeout as the default one likely wouldn't make
+                much sense.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -2587,10 +2790,16 @@ class AsyncCollection:
             77
         """
 
+        _api_options = CollectionAPIOptions(
+            embedding_api_key=embedding_api_key,
+            max_time_ms=collection_max_time_ms,
+        )
+
         return Collection(
             database=database or self.database.to_sync(),
             name=name or self.name,
             namespace=namespace or self.namespace,
+            api_options=self.api_options.with_override(_api_options),
             caller_name=caller_name or self._astra_db_collection.caller_name,
             caller_version=caller_version or self._astra_db_collection.caller_version,
         )
@@ -2629,6 +2838,7 @@ class AsyncCollection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a CollectionOptions instance describing the collection.
@@ -2639,11 +2849,12 @@ class AsyncCollection:
             CollectionOptions(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
 
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"getting collections in search of '{self.name}'")
         self_descriptors = [
             coll_desc
             async for coll_desc in self.database.list_collections(
-                max_time_ms=max_time_ms
+                max_time_ms=_max_time_ms
             )
             if coll_desc.name == self.name
         ]
@@ -2754,15 +2965,15 @@ class AsyncCollection:
                 case it will be created automatically.
             vector: a vector (a list of numbers appropriate for the collection)
                 for the document. Passing this parameter is equivalent to
-                providing the vector in the "$vector" field of the document itself,
+                providing a `$vector` field within the document itself,
                 however the two are mutually exclusive.
             vectorize: a string to be made into a vector, if such a service
                 is configured for the collection. Passing this parameter is
                 equivalent to providing a `$vectorize` field in the document itself,
                 however the two are mutually exclusive.
                 Moreover, this parameter cannot coexist with `vector`.
-                NOTE: This feature is under current development.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             an InsertOneResult object.
@@ -2797,10 +3008,11 @@ class AsyncCollection:
         """
 
         _document = _collate_vector_to_document(document, vector, vectorize)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"inserting one document in '{self.name}'")
         io_response = await self._astra_db_collection.insert_one(
             _document,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished inserting one document in '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
@@ -2828,7 +3040,7 @@ class AsyncCollection:
         *,
         vectors: Optional[Iterable[Optional[VectorType]]] = None,
         vectorize: Optional[Iterable[Optional[str]]] = None,
-        ordered: bool = True,
+        ordered: bool = False,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
         max_time_ms: Optional[int] = None,
@@ -2854,17 +3066,21 @@ class AsyncCollection:
                 Passing this parameter is equivalent to providing a `$vectorize`
                 field in the documents themselves, however the two are mutually exclusive.
                 For any given document, this parameter cannot coexist with the
-                corresponding `vector` entry.
-                NOTE: This feature is under current development.
-            ordered: if True (default), the insertions are processed sequentially.
-                If False, they can occur in arbitrary order and possibly concurrently.
+                corresponding entry in `vectors`.
+            ordered: if False (default), the insertions can occur in arbitrary order
+                and possibly concurrently. If True, they are processed sequentially.
+                If there are no specific reasons against it, unordered insertions are to
+                be preferred as they complete much faster.
             chunk_size: how many documents to include in a single API request.
                 Exceeding the server maximum allowed value results in an error.
                 Leave it unspecified (recommended) to use the system default.
             concurrency: maximum number of concurrent requests to the API at
                 a given time. It cannot be more than one for ordered insertions.
             max_time_ms: a timeout, in milliseconds, for the operation.
-
+                If not passed, the collection-level setting is used instead:
+                If many documents are being inserted, this method corresponds
+                to several HTTP requests: in such cases one may want to specify
+                a more tolerant timeout here.
         Returns:
             an InsertManyResult object.
 
@@ -2878,13 +3094,13 @@ class AsyncCollection:
             ...                     {"a": 5},
             ...                     {"b": [True, False, False]},
             ...                 ],
+            ...                 ordered=True,
             ...             )
             ...             print("inserted1", im_result1.inserted_ids)
             ...             count1 = await acol.count_documents({}, upper_bound=100)
             ...             print("count1", count1)
             ...             await acol.insert_many(
             ...                 [{"seq": i} for i in range(50)],
-            ...                 ordered=False,
             ...                 concurrency=5,
             ...             )
             ...             count2 = await acol.count_documents({}, upper_bound=100)
@@ -2896,7 +3112,7 @@ class AsyncCollection:
             count1 3
             count2 53
 
-            # The following are three equivalent statements:
+            >>> # The following are three equivalent statements:
             >>> asyncio.run(my_async_coll.insert_many(
             ...     [{"tag": "a"}, {"tag": "b"}],
             ...     vectors=[[1, 2], [3, 4]],
@@ -2957,9 +3173,10 @@ class AsyncCollection:
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: List[Dict[str, Any]] = []
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         if ordered:
             options = {"ordered": True}
             inserted_ids: List[Any] = []
@@ -3098,15 +3315,24 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            projection: used to select a subset of fields in the documents being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             skip: with this integer parameter, what would be the first `skip`
                 documents returned by the query are discarded, and the results
                 start from the (skip+1)-th document.
@@ -3127,7 +3353,6 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
                 returned document. Can only be used for vector ANN search, i.e.
@@ -3139,6 +3364,7 @@ class AsyncCollection:
             max_time_ms: a timeout, in milliseconds, for each single one
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             an AsyncCursor object representing iterations over the matching documents
@@ -3192,7 +3418,7 @@ class AsyncCollection:
             ...
             >>> asyncio.run(run_vector_finds(my_async_coll))
             ['A', 'B', 'C']
-            # (assuming the collection has metric VectorMetric.COSINE)
+            >>> # (assuming the collection has metric VectorMetric.COSINE)
 
         Note:
             The following are example values for the `sort` parameter.
@@ -3236,6 +3462,7 @@ class AsyncCollection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         if include_similarity is not None and not _is_vector_sort(_sort):
             raise ValueError(
                 "Cannot use `include_similarity` when not searching through `vector`."
@@ -3245,7 +3472,7 @@ class AsyncCollection:
                 collection=self,
                 filter=filter,
                 projection=projection,
-                max_time_ms=max_time_ms,
+                max_time_ms=_max_time_ms,
                 overall_max_time_ms=None,
             )
             .skip(skip)
@@ -3274,15 +3501,24 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            projection: used to select a subset of fields in the documents being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to perform vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), extracting the most
@@ -3293,7 +3529,6 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in the
                 returned document. Can only be used for vector ANN search, i.e.
@@ -3302,6 +3537,7 @@ class AsyncCollection:
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a dictionary expressing the required document, otherwise None.
@@ -3332,7 +3568,11 @@ class AsyncCollection:
             result3 {'_id': '479c7ce8-...'}
             result4 {'_id': 'd656cd9d-...', 'seq': 49}
 
-            >>> asyncio.run(my_async_coll.find_one({}, vector=[1, 0]))
+            >>> asyncio.run(my_async_coll.find_one(
+            ...     {},
+            ...     vector=[1, 0],
+            ...     projection={"*": True},
+            ... ))
             {'_id': '...', 'tag': 'D', '$vector': [4.0, 1.0]}
 
         Note:
@@ -3340,6 +3580,7 @@ class AsyncCollection:
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_cursor = self.find(
             filter=filter,
             projection=projection,
@@ -3349,7 +3590,7 @@ class AsyncCollection:
             vectorize=vectorize,
             include_similarity=include_similarity,
             sort=sort,
-            max_time_ms=max_time_ms,
+            max_time_ms=_max_time_ms,
         )
         try:
             document = await fo_cursor.__anext__()
@@ -3382,10 +3623,11 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            max_time_ms: a timeout, in milliseconds, for the operation.
+            max_time_ms: a timeout, in milliseconds, with the same meaning as for `find`.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a list of all different values for `key` found across the documents
@@ -3433,12 +3675,13 @@ class AsyncCollection:
             Note of the `find` command.
         """
 
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         f_cursor = AsyncCursor(
             collection=self,
             filter=filter,
             projection={key: True},
             max_time_ms=None,
-            overall_max_time_ms=max_time_ms,
+            overall_max_time_ms=_max_time_ms,
         )
         return await f_cursor.distinct(key)  # type: ignore[no-any-return]
 
@@ -3458,8 +3701,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             upper_bound: a required ceiling on the result of the count operation.
                 If the actual number of documents exceeds this value,
@@ -3468,6 +3711,7 @@ class AsyncCollection:
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             the exact count of matching documents.
@@ -3500,10 +3744,11 @@ class AsyncCollection:
             by this method if this limit is encountered.
         """
 
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info("calling count_documents")
         cd_response = await self._astra_db_collection.count_documents(
             filter=filter,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info("finished calling count_documents")
         if "count" in cd_response.get("status", {}):
@@ -3539,6 +3784,7 @@ class AsyncCollection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a server-provided estimate count of the documents in the collection.
@@ -3547,9 +3793,10 @@ class AsyncCollection:
             >>> asyncio.run(my_async_coll.estimated_document_count())
             35700
         """
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         ed_response = await self.command(
             {"estimatedDocumentCount": {}},
-            max_time_ms=max_time_ms,
+            max_time_ms=_max_time_ms,
         )
         if "count" in ed_response.get("status", {}):
             count: int = ed_response["status"]["count"]
@@ -3584,16 +3831,25 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
-            projection: used to select a subset of fields in the document being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), as the sorting criterion.
@@ -3605,7 +3861,6 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3620,6 +3875,7 @@ class AsyncCollection:
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             A document, either the one before the replace operation or the
@@ -3668,6 +3924,7 @@ class AsyncCollection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_replace on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
@@ -3675,7 +3932,7 @@ class AsyncCollection:
             projection=normalize_optional_projection(projection),
             sort=_sort,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_replace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -3711,8 +3968,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
@@ -3726,7 +3983,6 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3736,6 +3992,7 @@ class AsyncCollection:
                 if no matches are found on the collection. If False,
                 the operation silently does nothing in case of no matches.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             an UpdateResult object summarizing the outcome of the replace operation.
@@ -3773,13 +4030,14 @@ class AsyncCollection:
         options = {
             "upsert": upsert,
         }
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_replace on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_replace(
             replacement=replacement,
             filter=filter,
             sort=_sort,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_replace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -3818,8 +4076,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             update: the update prescription to apply to the document, expressed
                 as a dictionary as per Data API syntax. Examples are:
@@ -3827,12 +4085,21 @@ class AsyncCollection:
                     {"$inc": {"counter": 10}}
                     {"$unset": {"field": ""}}
                 See the Data API documentation for the full syntax.
-            projection: used to select a subset of fields in the document being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), as the sorting criterion.
@@ -3844,7 +4111,6 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3860,6 +4126,7 @@ class AsyncCollection:
                 `ReturnDocument.AFTER`, or the string "after", the new
                 document is returned. The default is "before".
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -3909,6 +4176,7 @@ class AsyncCollection:
             "returnDocument": return_document,
             "upsert": upsert,
         }
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_update(
             update=update,
@@ -3916,7 +4184,7 @@ class AsyncCollection:
             projection=normalize_optional_projection(projection),
             sort=_sort,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_update on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -3952,8 +4220,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             update: the update prescription to apply to the document, expressed
                 as a dictionary as per Data API syntax. Examples are:
@@ -3972,7 +4240,6 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3983,6 +4250,7 @@ class AsyncCollection:
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
@@ -4017,13 +4285,14 @@ class AsyncCollection:
         options = {
             "upsert": upsert,
         }
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_update on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_update(
             update=update,
             sort=_sort,
             filter=filter,
             options=options,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_update on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -4057,8 +4326,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             update: the update prescription to apply to the documents, expressed
                 as a dictionary as per Data API syntax. Examples are:
@@ -4072,6 +4341,10 @@ class AsyncCollection:
                 the collection. If False, the operation silently does nothing
                 in case of no matches.
             max_time_ms: a timeout, in milliseconds, for the operation.
+                If not passed, the collection-level setting is used instead:
+                if a large number of document updates is anticipated, it is suggested
+                to specify a larger timeout than in most other operations as the
+                update will span several HTTP calls to the API in sequence.
 
         Returns:
             an UpdateResult object summarizing the outcome of the update operation.
@@ -4110,17 +4383,18 @@ class AsyncCollection:
             newly-inserted document will be picked up by the update_many command or not.
         """
 
-        base_options = {
+        api_options = {
             "upsert": upsert,
         }
         page_state_options: Dict[str, str] = {}
         um_responses: List[Dict[str, Any]] = []
         um_statuses: List[Dict[str, Any]] = []
         must_proceed = True
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"starting update_many on '{self.name}'")
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         while must_proceed:
-            options = {**base_options, **page_state_options}
+            options = {**api_options, **page_state_options}
             logger.info(f"calling update_many on '{self.name}'")
             this_um_response = await self._astra_db_collection.update_many(
                 update=update,
@@ -4187,17 +4461,24 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            projection: used to select a subset of fields in the document being
-                returned. The projection can be: an iterable over the field names
-                to return; a dictionary {field_name: True} to positively select
-                certain fields; or a dictionary {field_name: False} if one wants
-                to discard some fields from the response.
-                Note that the `_id` field will be returned with the document
-                in any case, regardless of what the provided `projection` requires.
-                The default is to return the whole documents.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` field, which can be associated to both
+                True or False independently of the rest of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), as the sorting criterion.
@@ -4209,12 +4490,12 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
                 deleted one. See the `find` method for more on sorting.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             Either the document (or a projection thereof, as requested), or None
@@ -4245,12 +4526,13 @@ class AsyncCollection:
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling find_one_and_delete on '{self.name}'")
         fo_response = await self._astra_db_collection.find_one_and_delete(
             sort=_sort,
             filter=filter,
             projection=_projection,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished calling find_one_and_delete on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -4286,8 +4568,8 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
                 dimensionality, to use vector search (i.e. ANN,
@@ -4300,12 +4582,12 @@ class AsyncCollection:
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
-                NOTE: This feature is under current development.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
                 deleted one. See the `find` method for more on sorting.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
@@ -4329,10 +4611,11 @@ class AsyncCollection:
         """
 
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling delete_one_by_predicate on '{self.name}'")
         do_response = await self._astra_db_collection.delete_one_by_predicate(
             filter=filter,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_max_time_ms),
             sort=_sort,
         )
         logger.info(f"finished calling delete_one_by_predicate on '{self.name}'")
@@ -4370,12 +4653,17 @@ class AsyncCollection:
                 Data API filter syntax. Examples are:
                     {}
                     {"name": "John"}
-                    {"price": {"$le": 100}}
-                    {"$and": [{"name": "John"}, {"price": {"$le": 100}}]}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
                 The `delete_many` method does not accept an empty filter: see
                 `delete_all` to completely erase all contents of a collection
             max_time_ms: a timeout, in milliseconds, for the operation.
+                If not passed, the collection-level setting is used instead:
+                keep in mind that this method entails successive HTTP requests
+                to the API, depending on how many documents are to be deleted.
+                For this reason, in most cases it is suggested to relax the
+                timeout compared to other method calls.
 
         Returns:
             a DeleteResult object summarizing the outcome of the delete operation.
@@ -4414,7 +4702,8 @@ class AsyncCollection:
         dm_responses: List[Dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         logger.info(f"starting delete_many on '{self.name}'")
         while must_proceed:
             logger.info(f"calling delete_many on '{self.name}'")
@@ -4460,6 +4749,7 @@ class AsyncCollection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a dictionary of the form {"ok": 1} to signal successful deletion.
@@ -4483,18 +4773,12 @@ class AsyncCollection:
 
         Note:
             Use with caution.
-
-        Note:
-            Once the method succeeds, methods on this object can still be invoked:
-            however, this hardly makes sense as the underlying actual collection
-            is no more.
-            It is responsibility of the developer to design a correct flow
-            which avoids using a deceased collection any further.
         """
 
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling unfiltered delete_many on '{self.name}'")
         dm_response = await self._astra_db_collection.delete_many(
-            filter={}, timeout_info=base_timeout_info(max_time_ms)
+            filter={}, timeout_info=base_timeout_info(_max_time_ms)
         )
         logger.info(f"finished calling unfiltered delete_many on '{self.name}'")
         deleted_count = dm_response["status"]["deletedCount"]
@@ -4510,7 +4794,7 @@ class AsyncCollection:
         self,
         requests: Iterable[AsyncBaseOperation],
         *,
-        ordered: bool = True,
+        ordered: bool = False,
         concurrency: Optional[int] = None,
         max_time_ms: Optional[int] = None,
     ) -> BulkWriteResult:
@@ -4530,7 +4814,7 @@ class AsyncCollection:
                 would the corresponding collection method.
             ordered: whether to launch the `requests` one after the other or
                 in arbitrary order, possibly in a concurrent fashion. For
-                performance reasons, `ordered=False` should be preferred
+                performance reasons, False (default) should be preferred
                 when compatible with the needs of the application flow.
             concurrency: maximum number of concurrent operations executing at
                 a given time. It cannot be more than one for ordered bulk writes.
@@ -4538,6 +4822,9 @@ class AsyncCollection:
                 Remember that, if the method call times out, then there's no
                 guarantee about what portion of the bulk write has been received
                 and successfully executed by the Data API.
+                If not passed, the collection-level setting is used instead:
+                in most cases, however, one should pass a relaxed timeout
+                if longer sequences of operations are to be executed in bulk.
 
         Returns:
             A single BulkWriteResult summarizing the whole list of requested
@@ -4585,8 +4872,9 @@ class AsyncCollection:
             _concurrency = concurrency
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered bulk_write concurrently.")
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"startng a bulk write on '{self.name}'")
+        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         if ordered:
             bulk_write_results: List[BulkWriteResult] = []
             for operation_i, operation in enumerate(requests):
@@ -4695,6 +4983,7 @@ class AsyncCollection:
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
                 Remember there is not guarantee that a request that has
                 timed out us not in fact honored.
 
@@ -4727,8 +5016,11 @@ class AsyncCollection:
             which avoids using a deceased collection any further.
         """
 
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"dropping collection '{self.name}' (self)")
-        drop_result = await self.database.drop_collection(self, max_time_ms=max_time_ms)
+        drop_result = await self.database.drop_collection(
+            self, max_time_ms=_max_time_ms
+        )
         logger.info(f"finished dropping collection '{self.name}' (self)")
         return drop_result  # type: ignore[no-any-return]
 
@@ -4745,6 +5037,7 @@ class AsyncCollection:
         Args:
             body: a JSON-serializable dictionary, the payload of the request.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+                If not passed, the collection-level setting is used instead.
 
         Returns:
             a dictionary with the response of the HTTP request.
@@ -4754,12 +5047,13 @@ class AsyncCollection:
             {'status': {'count': 123}}
         """
 
+        _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling command on '{self.name}'")
         command_result = await self.database.command(
             body=body,
             namespace=self.namespace,
             collection_name=self.name,
-            max_time_ms=max_time_ms,
+            max_time_ms=_max_time_ms,
         )
         logger.info(f"finished calling command on '{self.name}'")
         return command_result  # type: ignore[no-any-return]

@@ -77,6 +77,7 @@ def test_imports() -> None:
         SortDocuments,
         VectorMetric,
         DefaultIdType,
+        Environment,
     )
     from astrapy.info import (  # noqa: F401
         AdminDatabaseInfo,
@@ -89,7 +90,6 @@ def test_imports() -> None:
         CollectionDescriptor,
     )
     from astrapy.admin import (  # noqa: F401
-        Environment,
         ParsedAPIEndpoint,
     )
     from astrapy.cursors import (  # noqa: F401
@@ -137,6 +137,7 @@ def test_imports() -> None:
         AsyncCollection,
         AstraDBAdmin,
         AstraDBDatabaseAdmin,
+        DataAPIDatabaseAdmin,
         DataAPIClient,
     )
 
@@ -152,6 +153,7 @@ def test_imports() -> None:
     from astrapy.admin import (  # noqa: F401
         AstraDBAdmin as AstraDBAdmin2,
         AstraDBDatabaseAdmin as AstraDBDatabaseAdmin2,
+        DataAPIDatabaseAdmin as DataAPIDatabaseAdmin2,
     )
     from astrapy.client import (  # noqa: F401
         DataAPIClient as DataAPIClient2,

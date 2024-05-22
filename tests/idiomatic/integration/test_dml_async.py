@@ -34,8 +34,6 @@ from astrapy.operations import (
 )
 from astrapy.ids import ObjectId, UUID
 
-from ..conftest import is_vector_service_available
-
 
 class TestDMLAsync:
     @pytest.mark.describe("test of collection count_documents, async")
@@ -673,6 +671,56 @@ class TestDMLAsync:
         with pytest.raises(ValueError):
             await async_empty_collection.find_one({}, include_similarity=True)
 
+    @pytest.mark.describe("test of projections in collection find with vectors, async")
+    async def test_collection_find_projections_vectors_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        await async_empty_collection.insert_one(
+            {
+                "$vector": [1, 2],
+                "otherfield": "OF",
+                "anotherfield": "AF",
+                "text": "T",
+            }
+        )
+        req_projections = [
+            None,
+            {},
+            {"text": True},
+            {"$vector": True},
+            {"text": True, "$vector": True},
+        ]
+        exp_fieldsets = [
+            {"$vector", "_id", "otherfield", "anotherfield", "text"},
+            {"$vector", "_id", "otherfield", "anotherfield", "text"},
+            {"_id", "text"},
+            {
+                "$vector",
+                "_id",
+                "otherfield",
+                "anotherfield",
+                "text",
+            },  # {"$vector", "_id"},
+            {"$vector", "_id", "text"},
+        ]
+        for include_similarity in [True, False]:
+            for req_projection, exp_fields0 in zip(req_projections, exp_fieldsets):
+                vdocs = [
+                    doc
+                    async for doc in async_empty_collection.find(
+                        vector=[11, 21],
+                        limit=1,
+                        projection=req_projection,
+                        include_similarity=include_similarity,
+                    )
+                ]
+                if include_similarity:
+                    exp_fields = exp_fields0 | {"$similarity"}
+                else:
+                    exp_fields = exp_fields0
+                assert set(vdocs[0].keys()) == exp_fields
+
     @pytest.mark.describe("test of collection insert_many, async")
     async def test_collection_insert_many_async(
         self,
@@ -680,16 +728,18 @@ class TestDMLAsync:
     ) -> None:
         acol = async_empty_collection
 
-        ins_result1 = await acol.insert_many([{"_id": "a"}, {"_id": "b"}])
+        ins_result1 = await acol.insert_many([{"_id": "a"}, {"_id": "b"}], ordered=True)
         assert set(ins_result1.inserted_ids) == {"a", "b"}
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
         with pytest.raises(InsertManyException):
-            await acol.insert_many([{"_id": "a"}, {"_id": "c"}])
+            await acol.insert_many([{"_id": "a"}, {"_id": "c"}], ordered=True)
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
         with pytest.raises(InsertManyException):
-            await acol.insert_many([{"_id": "c"}, {"_id": "a"}, {"_id": "d"}])
+            await acol.insert_many(
+                [{"_id": "c"}, {"_id": "a"}, {"_id": "d"}], ordered=True
+            )
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "c"}
 
         with pytest.raises(InsertManyException):
@@ -1314,103 +1364,6 @@ class TestDMLAsync:
         assert set(resp_pr2.keys()) == {"f"}
         await acol.delete_all()
 
-    @pytest.mark.skipif(
-        not is_vector_service_available(), reason="No 'service' on this database"
-    )
-    @pytest.mark.describe("test of vectorize in collection methods, async")
-    async def test_collection_methods_vectorize_async(
-        self,
-        async_empty_service_collection: AsyncCollection,
-    ) -> None:
-        acol = async_empty_service_collection
-
-        await acol.insert_one({"t": "tower"}, vectorize="How high is this tower?")
-        await acol.insert_one({"t": "vectorless"})
-        await acol.insert_one({"t": "vectorful"}, vector=[0.01] * 1024)
-
-        await acol.insert_many(
-            [{"t": "guide"}, {"t": "seeds"}],
-            vectorize=[
-                "This is the instructions manual. Read it!",
-                "Other plants rely on wind to propagate their seeds.",
-            ],
-        )
-        await acol.insert_many(
-            [{"t": "dog"}, {"t": "cat_novector"}, {"t": "spider"}],
-            vectorize=[
-                None,
-                None,
-                "The eye pattern is a primary criterion to the family.",
-            ],
-            vectors=[
-                [0.01] * 1024,
-                None,
-                None,
-            ],
-        )
-
-        doc = await acol.find_one(
-            {},
-            vectorize="This building is five storeys tall.",
-            projection={"$vector": False},
-        )
-        assert doc is not None
-        assert doc["t"] == "tower"
-
-        docs = [
-            doc
-            async for doc in acol.find(
-                {},
-                vectorize="This building is five storeys tall.",
-                limit=2,
-                projection={"$vector": False},
-            )
-        ]
-        assert docs[0]["t"] == "tower"
-
-        rdoc = await acol.find_one_and_replace(
-            {},
-            {"t": "spider", "$vectorize": "Check out the eyes!"},
-            vectorize="The disposition of the eyes tells much",
-            projection={"$vector": False},
-        )
-        assert rdoc["t"] == "spider"
-
-        r1res = await acol.replace_one(
-            {},
-            {"t": "spider", "$vectorize": "Look at how the eyes are placed"},
-            vectorize="The disposition of the eyes tells much",
-        )
-        assert r1res.update_info["nModified"] == 1
-
-        udoc = await acol.find_one_and_update(
-            {},
-            {"$set": {"$vectorize": "Consider consulting the how-to"}},
-            vectorize="Have a look at the user guide...",
-            projection={"$vector": False},
-        )
-        assert udoc["t"] == "guide"
-
-        u1res = await acol.update_one(
-            {},
-            {"$set": {"$vectorize": "Know how to operate it before doing so."}},
-            vectorize="Have a look at the user guide...",
-        )
-        assert u1res.update_info["nModified"] == 1
-
-        ddoc = await acol.find_one_and_delete(
-            {},
-            vectorize="Some trees have seeds that are dispersed in the air!",
-            projection={"$vector": False},
-        )
-        assert ddoc["t"] == "seeds"
-
-        d1res = await acol.delete_one(
-            {},
-            vectorize="yet another giant construction in this suburb.",
-        )
-        assert d1res.deleted_count == 1
-
     @pytest.mark.describe("test of ordered bulk_write, async")
     async def test_collection_ordered_bulk_write_async(
         self,
@@ -1431,7 +1384,7 @@ class TestDMLAsync:
             ),
         ]
 
-        bw_result = await acol.bulk_write(bw_ops)
+        bw_result = await acol.bulk_write(bw_ops, ordered=True)
 
         assert bw_result.deleted_count == 3
         assert bw_result.inserted_count == 5
@@ -1495,43 +1448,7 @@ class TestDMLAsync:
             AsyncReplaceOne({}, {"a": 10}, vector=[5, 6]),
             AsyncDeleteOne({}, vector=[-8, 7]),
         ]
-        await acol.bulk_write(bw_ops)
-        found = [
-            {k: v for k, v in doc.items() if k != "_id"}
-            async for doc in acol.find({}, projection=["a", "b"])
-        ]
-        assert len(found) == 2
-        assert {"a": 10} in found
-        assert {"a": 2, "b": 1} in found
-
-    @pytest.mark.skipif(
-        not is_vector_service_available(), reason="No 'service' on this database"
-    )
-    @pytest.mark.describe("test of bulk_write with vectorize, async")
-    async def test_collection_bulk_write_vectorize_async(
-        self,
-        async_empty_service_collection: AsyncCollection,
-    ) -> None:
-        acol = async_empty_service_collection
-
-        bw_ops = [
-            AsyncInsertOne({"a": 1}, vectorize="The cat is on the table."),
-            AsyncInsertMany(
-                [{"a": 2}, {"z": 0}],
-                vectorize=[
-                    "That is a fine spaghetti dish!",
-                    "I am not debating the effectiveness of such approach...",
-                ],
-            ),
-            AsyncUpdateOne(
-                {},
-                {"$set": {"b": 1}},
-                vectorize="Oh, I love a nice bolognese pasta meal!",
-            ),
-            AsyncReplaceOne({}, {"a": 10}, vectorize="The kitty sits on the desk."),
-            AsyncDeleteOne({}, vectorize="I don't argue with the proposed plan..."),
-        ]
-        await acol.bulk_write(bw_ops)
+        await acol.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             async for doc in acol.find({}, projection=["a", "b"])

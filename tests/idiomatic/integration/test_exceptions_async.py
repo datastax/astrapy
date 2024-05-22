@@ -32,7 +32,7 @@ from astrapy.exceptions import (
 from astrapy.constants import DocumentType
 from astrapy.cursors import AsyncCursor
 
-from ..conftest import AstraDBCredentials, is_vector_service_available
+from ..conftest import AstraDBCredentials
 
 
 class TestExceptionsAsync:
@@ -196,7 +196,7 @@ class TestExceptionsAsync:
         i3 = AsyncInsertOne({"_id": "z"})
 
         with pytest.raises(BulkWriteException) as exc:
-            await async_empty_collection.bulk_write([i1, i1, i3])
+            await async_empty_collection.bulk_write([i1, i1, i3], ordered=True)
         assert set(exc.value.partial_result.bulk_api_results.keys()) == {0}
         assert exc.value.partial_result.deleted_count == 0
         assert exc.value.partial_result.inserted_count == 1
@@ -282,23 +282,6 @@ class TestExceptionsAsync:
             )
 
         await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
-
-    @pytest.mark.skipif(
-        not is_vector_service_available(), reason="No 'service' on this database"
-    )
-    @pytest.mark.describe(
-        "test of database create_collection dimension-mismatch failure, async"
-    )
-    async def test_database_create_collection_dimension_mismatch_failure_async(
-        self,
-        async_database: AsyncDatabase,
-    ) -> None:
-        with pytest.raises(DataAPIResponseException):
-            await async_database.create_collection(
-                "collection_name",
-                dimension=123,
-                service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
-            )
 
     @pytest.mark.describe("test of database one-request method failures, async")
     async def test_database_method_failures_async(

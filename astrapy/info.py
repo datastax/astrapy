@@ -30,8 +30,8 @@ class DatabaseInfo:
         namespace: the namespace this DB is set to work with.
         name: the database name. Not necessarily unique: there can be multiple
             databases with the same name.
-        environment: a label, whose value is one of Environment.PROD, Environment.DEV
-            or Environment.TEST.
+        environment: a label, whose value can be `Environment.PROD`,
+            or another value in `Environment.*`.
         raw_info: the full response from the DevOPS API call to get this info.
 
     Note:
@@ -166,15 +166,19 @@ class CollectionVectorServiceOptions:
     The "vector.service" component of the collection options.
     See the Data API specifications for allowed values.
 
-    NOTE: This feature is under current development.
-
     Attributes:
         provider: the name of a service provider for embedding calculation.
         model_name: the name of a specific model for use by the service.
+        authentication: a key-value dictionary for the "authentication" specification,
+            if any, in the vector service options.
+        parameters: a key-value dictionary for the "parameters" specification, if any,
+            in the vector service options.
     """
 
     provider: Optional[str]
     model_name: Optional[str]
+    authentication: Optional[Dict[str, Any]] = None
+    parameters: Optional[Dict[str, Any]] = None
 
     def as_dict(self) -> Dict[str, Any]:
         """Recast this object into a dictionary."""
@@ -184,6 +188,8 @@ class CollectionVectorServiceOptions:
             for k, v in {
                 "provider": self.provider,
                 "modelName": self.model_name,
+                "authentication": self.authentication,
+                "parameters": self.parameters,
             }.items()
             if v is not None
         }
@@ -201,6 +207,8 @@ class CollectionVectorServiceOptions:
             return CollectionVectorServiceOptions(
                 provider=raw_dict.get("provider"),
                 model_name=raw_dict.get("modelName"),
+                authentication=raw_dict.get("authentication"),
+                parameters=raw_dict.get("parameters"),
             )
         else:
             return None
@@ -216,8 +224,8 @@ class CollectionVectorOptions:
         dimension: an optional positive integer, the dimensionality of the vector space.
         metric: an optional metric among `VectorMetric.DOT_PRODUCT`,
             `VectorMetric.EUCLIDEAN` and `VectorMetric.COSINE`.
-        service: an optional X object in case a service is configured for the collection.
-            NOTE: This feature is under current development.
+        service: an optional CollectionVectorServiceOptions object in case a
+            service is configured for the collection.
     """
 
     dimension: Optional[int]

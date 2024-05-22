@@ -20,6 +20,7 @@ from types import TracebackType
 from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
 
 from astrapy.core.db import AstraDB, AsyncAstraDB
+from astrapy.api_options import CollectionAPIOptions
 from astrapy.exceptions import (
     CollectionAlreadyExistsException,
     DataAPIFaultyResponseException,
@@ -35,11 +36,17 @@ from astrapy.info import (
     CollectionDescriptor,
     CollectionVectorServiceOptions,
 )
-from astrapy.admin import parse_api_endpoint, fetch_database_info
+from astrapy.constants import Environment
+from astrapy.admin import (
+    parse_api_endpoint,
+    fetch_database_info,
+    API_PATH_ENV_MAP,
+    API_VERSION_ENV_MAP,
+)
 
 if TYPE_CHECKING:
     from astrapy.collection import AsyncCollection, Collection
-    from astrapy.admin import AstraDBDatabaseAdmin
+    from astrapy.admin import DatabaseAdmin
 
 
 logger = logging.getLogger(__name__)
@@ -88,13 +95,16 @@ def _validate_create_collection_options(
 
 class Database:
     """
-    A Data API database. This is the entry-point object for doing database-level
+    A Data API database. This is the object for doing database-level
     DML, such as creating/deleting collections, and for obtaining Collection
     objects themselves. This class has a synchronous interface.
 
-    A Database comes with an "API Endpoint", which implies a Database object
-    instance reaches a specific region (relevant point in case of multi-region
-    databases).
+    The usual way of obtaining one Database is through the `get_database`
+    method of a `DataAPIClient`.
+
+    On Astra DB, a Database comes with an "API Endpoint", which implies
+    a Database object instance reaches a specific region (relevant point in
+    case of multi-region databases).
 
     Args:
         api_endpoint: the full "API Endpoint" string used to reach the Data API.
@@ -106,8 +116,11 @@ class Database:
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
+        environment: a string representing the target Data API environment.
+            It can be left unspecified for the default value of `Environment.PROD`;
+            other values include `Environment.OTHER`, `Environment.DSE`.
         api_path: path to append to the API Endpoint. In typical usage, this
-            should be left to its default of "/api/json".
+            should be left to its default (sensibly chosen based on the environment).
         api_version: version specifier to append to the API path. In typical
             usage, this should be left to its default of "v1".
 
@@ -132,14 +145,27 @@ class Database:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        environment: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> None:
+        self.environment = (environment or Environment.PROD).lower()
+        #
+        _api_path: Optional[str]
+        _api_version: Optional[str]
+        if api_path is None:
+            _api_path = API_PATH_ENV_MAP.get(self.environment)
+        else:
+            _api_path = api_path
+        if api_version is None:
+            _api_version = API_VERSION_ENV_MAP.get(self.environment)
+        else:
+            _api_version = api_version
         self._astra_db = AstraDB(
             token=token,
             api_endpoint=api_endpoint,
-            api_path=api_path,
-            api_version=api_version,
+            api_path=_api_path,
+            api_version=_api_version,
             namespace=namespace,
             caller_name=caller_name,
             caller_version=caller_version,
@@ -172,6 +198,7 @@ class Database:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        environment: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> Database:
@@ -181,6 +208,7 @@ class Database:
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
+            environment=environment or self.environment,
             api_path=api_path or self._astra_db.api_path,
             api_version=api_version or self._astra_db.api_version,
         )
@@ -228,6 +256,7 @@ class Database:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        environment: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> AsyncDatabase:
@@ -246,6 +275,9 @@ class Database:
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
+            environment: a string representing the target Data API environment.
+                Values are, for example, `Environment.PROD`, `Environment.OTHER`,
+                or `Environment.DSE`.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -265,6 +297,7 @@ class Database:
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
+            environment=environment or self.environment,
             api_path=api_path or self._astra_db.api_path,
             api_version=api_version or self._astra_db.api_version,
         )
@@ -376,7 +409,12 @@ class Database:
         return self._astra_db.namespace
 
     def get_collection(
-        self, name: str, *, namespace: Optional[str] = None
+        self,
+        name: str,
+        *,
+        namespace: Optional[str] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
     ) -> Collection:
         """
         Spawn a `Collection` object instance representing a collection
@@ -392,6 +430,18 @@ class Database:
             name: the name of the collection.
             namespace: the namespace containing the collection. If no namespace
                 is specified, the general setting for this database is used.
+        embedding_api_key: an optional API key for interacting with the collection.
+            If an embedding service is configured, and this attribute is set,
+            each Data API call will include a "x-embedding-api-key" header
+            with the value of this attribute.
+        collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+            operation on the collection. Individual timeouts can be provided to
+            each collection method call and will take precedence, with this value
+            being an overall default.
+            Note that for some methods involving multiple API calls (such as
+            `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+            to provide a specific timeout as the default one likely wouldn't make
+            much sense.
 
         Returns:
             a `Collection` instance, representing the desired collection
@@ -414,7 +464,15 @@ class Database:
         from astrapy.collection import Collection
 
         _namespace = namespace or self._astra_db.namespace
-        return Collection(self, name, namespace=_namespace)
+        return Collection(
+            self,
+            name,
+            namespace=_namespace,
+            api_options=CollectionAPIOptions(
+                embedding_api_key=embedding_api_key,
+                max_time_ms=collection_max_time_ms,
+            ),
+        )
 
     @recast_method_sync
     def create_collection(
@@ -430,6 +488,8 @@ class Database:
         additional_options: Optional[Dict[str, Any]] = None,
         check_exists: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
     ) -> Collection:
         """
         Creates a collection on the database and return the Collection
@@ -451,7 +511,6 @@ class Database:
             service: a dictionary describing a service for
                 embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
                 Alternatively, a CollectionVectorServiceOptions object to the same effect.
-                NOTE: This feature is under current development.
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}
@@ -474,6 +533,18 @@ class Database:
                 preexisting collections, the command will succeed or fail
                 depending on whether the options match or not.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+            embedding_api_key: an optional API key for interacting with the collection.
+                If an embedding service is configured, and this attribute is set,
+                each Data API call will include a "x-embedding-api-key" header
+                with the value of this attribute.
+            collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+                operation on the collection. Individual timeouts can be provided to
+                each collection method call and will take precedence, with this value
+                being an overall default.
+                Note that for some methods involving multiple API calls (such as
+                `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+                to provide a specific timeout as the default one likely wouldn't make
+                much sense.
 
         Returns:
             a (synchronous) `Collection` instance, representing the
@@ -546,7 +617,12 @@ class Database:
             timeout_info=timeout_manager.remaining_timeout_info(),
         )
         logger.info(f"finished creating collection '{name}'")
-        return self.get_collection(name, namespace=namespace)
+        return self.get_collection(
+            name,
+            namespace=namespace,
+            embedding_api_key=embedding_api_key,
+            collection_max_time_ms=collection_max_time_ms,
+        )
 
     @recast_method_sync
     def drop_collection(
@@ -755,10 +831,13 @@ class Database:
         token: Optional[str] = None,
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
-    ) -> AstraDBDatabaseAdmin:
+    ) -> DatabaseAdmin:
         """
-        Return an AstraDBDatabaseAdmin object corresponding to this database, for
+        Return a DatabaseAdmin object corresponding to this database, for
         use in admin tasks such as managing namespaces.
+
+        This method, depending on the environment where the database resides,
+        returns an appropriate subclass of DatabaseAdmin.
 
         Args:
             token: an access token with enough permission on the database to
@@ -768,11 +847,15 @@ class Database:
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
                 Generally it can be omitted. The environment (prod/dev/...) is
                 determined from the API Endpoint.
+                Note that this parameter is allowed only for Astra DB environments.
             dev_ops_api_version: this can specify a custom version of the DevOps API
                 (such as "v2"). Generally not needed.
+                Note that this parameter is allowed only for Astra DB environments.
 
         Returns:
-            An AstraDBDatabaseAdmin instance targeting this database.
+            A DatabaseAdmin instance targeting this database. More precisely,
+            for Astra DB an instance of `AstraDBDatabaseAdmin` is returned;
+            for other environments, an instance of `DataAPIDatabaseAdmin` is returned.
 
         Example:
             >>> my_db_admin = my_db.get_database_admin()
@@ -783,27 +866,49 @@ class Database:
         """
 
         # lazy importing here to avoid circular dependency
-        from astrapy.admin import AstraDBDatabaseAdmin
+        from astrapy.admin import AstraDBDatabaseAdmin, DataAPIDatabaseAdmin
 
-        return AstraDBDatabaseAdmin.from_api_endpoint(
-            api_endpoint=self._astra_db.api_endpoint,
-            token=token or self._astra_db.token,
-            caller_name=self._astra_db.caller_name,
-            caller_version=self._astra_db.caller_version,
-            dev_ops_url=dev_ops_url,
-            dev_ops_api_version=dev_ops_api_version,
-        )
+        if self.environment in Environment.astra_db_values:
+            return AstraDBDatabaseAdmin.from_api_endpoint(
+                api_endpoint=self._astra_db.api_endpoint,
+                token=token or self._astra_db.token,
+                caller_name=self._astra_db.caller_name,
+                caller_version=self._astra_db.caller_version,
+                dev_ops_url=dev_ops_url,
+                dev_ops_api_version=dev_ops_api_version,
+            )
+        else:
+            if dev_ops_url is not None:
+                raise ValueError(
+                    "Parameter `dev_ops_url` not supported outside of Astra DB."
+                )
+            if dev_ops_api_version is not None:
+                raise ValueError(
+                    "Parameter `dev_ops_api_version` not supported outside of Astra DB."
+                )
+            return DataAPIDatabaseAdmin(
+                api_endpoint=self._astra_db.api_endpoint,
+                token=token or self._astra_db.token,
+                environment=self.environment,
+                api_path=self._astra_db.api_path,
+                api_version=self._astra_db.api_version,
+                caller_name=self._astra_db.caller_name,
+                caller_version=self._astra_db.caller_version,
+            )
 
 
 class AsyncDatabase:
     """
-    A Data API database. This is the entry-point object for doing database-level
+    A Data API database. This is the object for doing database-level
     DML, such as creating/deleting collections, and for obtaining Collection
     objects themselves. This class has an asynchronous interface.
 
-    A Database comes with an "API Endpoint", which implies a Database object
-    instance reaches a specific region (relevant point in case of multi-region
-    databases).
+    The usual way of obtaining one AsyncDatabase is through the `get_async_database`
+    method of a `DataAPIClient`.
+
+    On Astra DB, an AsyncDatabase comes with an "API Endpoint", which implies
+    an AsyncDatabase object instance reaches a specific region (relevant point in
+    case of multi-region databases).
 
     Args:
         api_endpoint: the full "API Endpoint" string used to reach the Data API.
@@ -815,8 +920,11 @@ class AsyncDatabase:
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
+        environment: a string representing the target Data API environment.
+            It can be left unspecified for the default value of `Environment.PROD`;
+            other values include `Environment.OTHER`, `Environment.DSE`.
         api_path: path to append to the API Endpoint. In typical usage, this
-            should be left to its default of "/api/json".
+            should be left to its default (sensibly chosen based on the environment).
         api_version: version specifier to append to the API path. In typical
             usage, this should be left to its default of "v1".
 
@@ -841,14 +949,28 @@ class AsyncDatabase:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        environment: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> None:
+        self.environment = (environment or Environment.PROD).lower()
+        #
+        _api_path: Optional[str]
+        _api_version: Optional[str]
+        if api_path is None:
+            _api_path = API_PATH_ENV_MAP.get(self.environment)
+        else:
+            _api_path = api_path
+        if api_version is None:
+            _api_version = API_VERSION_ENV_MAP.get(self.environment)
+        else:
+            _api_version = api_version
+        #
         self._astra_db = AsyncAstraDB(
             token=token,
             api_endpoint=api_endpoint,
-            api_path=api_path,
-            api_version=api_version,
+            api_path=_api_path,
+            api_version=_api_version,
             namespace=namespace,
             caller_name=caller_name,
             caller_version=caller_version,
@@ -896,6 +1018,7 @@ class AsyncDatabase:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        environment: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> AsyncDatabase:
@@ -905,6 +1028,7 @@ class AsyncDatabase:
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
+            environment=environment or self.environment,
             api_path=api_path or self._astra_db.api_path,
             api_version=api_version or self._astra_db.api_version,
         )
@@ -952,6 +1076,7 @@ class AsyncDatabase:
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        environment: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> Database:
@@ -970,6 +1095,9 @@ class AsyncDatabase:
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
+            environment: a string representing the target Data API environment.
+                Values are, for example, `Environment.PROD`, `Environment.OTHER`,
+                or `Environment.DSE`.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -990,6 +1118,7 @@ class AsyncDatabase:
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
+            environment=environment or self.environment,
             api_path=api_path or self._astra_db.api_path,
             api_version=api_version or self._astra_db.api_version,
         )
@@ -1101,7 +1230,12 @@ class AsyncDatabase:
         return self._astra_db.namespace
 
     async def get_collection(
-        self, name: str, *, namespace: Optional[str] = None
+        self,
+        name: str,
+        *,
+        namespace: Optional[str] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
     ) -> AsyncCollection:
         """
         Spawn an `AsyncCollection` object instance representing a collection
@@ -1117,6 +1251,18 @@ class AsyncDatabase:
             name: the name of the collection.
             namespace: the namespace containing the collection. If no namespace
                 is specified, the setting for this database is used.
+        embedding_api_key: an optional API key for interacting with the collection.
+            If an embedding service is configured, and this attribute is set,
+            each Data API call will include a "x-embedding-api-key" header
+            with the value of this attribute.
+        collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+            operation on the collection. Individual timeouts can be provided to
+            each collection method call and will take precedence, with this value
+            being an overall default.
+            Note that for some methods involving multiple API calls (such as
+            `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+            to provide a specific timeout as the default one likely wouldn't make
+            much sense.
 
         Returns:
             an `AsyncCollection` instance, representing the desired collection
@@ -1142,7 +1288,15 @@ class AsyncDatabase:
         from astrapy.collection import AsyncCollection
 
         _namespace = namespace or self._astra_db.namespace
-        return AsyncCollection(self, name, namespace=_namespace)
+        return AsyncCollection(
+            self,
+            name,
+            namespace=_namespace,
+            api_options=CollectionAPIOptions(
+                embedding_api_key=embedding_api_key,
+                max_time_ms=collection_max_time_ms,
+            ),
+        )
 
     @recast_method_async
     async def create_collection(
@@ -1158,6 +1312,8 @@ class AsyncDatabase:
         additional_options: Optional[Dict[str, Any]] = None,
         check_exists: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
+        embedding_api_key: Optional[str] = None,
+        collection_max_time_ms: Optional[int] = None,
     ) -> AsyncCollection:
         """
         Creates a collection on the database and return the AsyncCollection
@@ -1179,7 +1335,6 @@ class AsyncDatabase:
             service: a dictionary describing a service for
                 embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
                 Alternatively, a CollectionVectorServiceOptions object to the same effect.
-                NOTE: This feature is under current development.
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}
@@ -1202,6 +1357,18 @@ class AsyncDatabase:
                 preexisting collections, the command will succeed or fail
                 depending on whether the options match or not.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+            embedding_api_key: an optional API key for interacting with the collection.
+                If an embedding service is configured, and this attribute is set,
+                each Data API call will include a "x-embedding-api-key" header
+                with the value of this attribute.
+            collection_max_time_ms: a default timeout, in millisecond, for the duration of each
+                operation on the collection. Individual timeouts can be provided to
+                each collection method call and will take precedence, with this value
+                being an overall default.
+                Note that for some methods involving multiple API calls (such as
+                `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
+                to provide a specific timeout as the default one likely wouldn't make
+                much sense.
 
         Returns:
             an `AsyncCollection` instance, representing the newly-created collection.
@@ -1278,7 +1445,12 @@ class AsyncDatabase:
             timeout_info=timeout_manager.remaining_timeout_info(),
         )
         logger.info(f"finished creating collection '{name}'")
-        return await self.get_collection(name, namespace=namespace)
+        return await self.get_collection(
+            name,
+            namespace=namespace,
+            embedding_api_key=embedding_api_key,
+            collection_max_time_ms=collection_max_time_ms,
+        )
 
     @recast_method_async
     async def drop_collection(
@@ -1496,10 +1668,13 @@ class AsyncDatabase:
         token: Optional[str] = None,
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
-    ) -> AstraDBDatabaseAdmin:
+    ) -> DatabaseAdmin:
         """
-        Return an AstraDBDatabaseAdmin object corresponding to this database, for
+        Return a DatabaseAdmin object corresponding to this database, for
         use in admin tasks such as managing namespaces.
+
+        This method, depending on the environment where the database resides,
+        returns an appropriate subclass of DatabaseAdmin.
 
         Args:
             token: an access token with enough permission on the database to
@@ -1509,11 +1684,15 @@ class AsyncDatabase:
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
                 Generally it can be omitted. The environment (prod/dev/...) is
                 determined from the API Endpoint.
+                Note that this parameter is allowed only for Astra DB environments.
             dev_ops_api_version: this can specify a custom version of the DevOps API
                 (such as "v2"). Generally not needed.
+                Note that this parameter is allowed only for Astra DB environments.
 
         Returns:
-            An AstraDBDatabaseAdmin instance targeting this database.
+            A DatabaseAdmin instance targeting this database. More precisely,
+            for Astra DB an instance of `AstraDBDatabaseAdmin` is returned;
+            for other environments, an instance of `DataAPIDatabaseAdmin` is returned.
 
         Example:
             >>> my_db_admin = my_async_db.get_database_admin()
@@ -1524,13 +1703,32 @@ class AsyncDatabase:
         """
 
         # lazy importing here to avoid circular dependency
-        from astrapy.admin import AstraDBDatabaseAdmin
+        from astrapy.admin import AstraDBDatabaseAdmin, DataAPIDatabaseAdmin
 
-        return AstraDBDatabaseAdmin.from_api_endpoint(
-            api_endpoint=self._astra_db.api_endpoint,
-            token=token or self._astra_db.token,
-            caller_name=self._astra_db.caller_name,
-            caller_version=self._astra_db.caller_version,
-            dev_ops_url=dev_ops_url,
-            dev_ops_api_version=dev_ops_api_version,
-        )
+        if self.environment in Environment.astra_db_values:
+            return AstraDBDatabaseAdmin.from_api_endpoint(
+                api_endpoint=self._astra_db.api_endpoint,
+                token=token or self._astra_db.token,
+                caller_name=self._astra_db.caller_name,
+                caller_version=self._astra_db.caller_version,
+                dev_ops_url=dev_ops_url,
+                dev_ops_api_version=dev_ops_api_version,
+            )
+        else:
+            if dev_ops_url is not None:
+                raise ValueError(
+                    "Parameter `dev_ops_url` not supported outside of Astra DB."
+                )
+            if dev_ops_api_version is not None:
+                raise ValueError(
+                    "Parameter `dev_ops_api_version` not supported outside of Astra DB."
+                )
+            return DataAPIDatabaseAdmin(
+                api_endpoint=self._astra_db.api_endpoint,
+                token=token or self._astra_db.token,
+                environment=self.environment,
+                api_path=self._astra_db.api_path,
+                api_version=self._astra_db.api_version,
+                caller_name=self._astra_db.caller_name,
+                caller_version=self._astra_db.caller_version,
+            )
