@@ -603,7 +603,7 @@ class Collection:
                 case it will be created automatically.
             vector: a vector (a list of numbers appropriate for the collection)
                 for the document. Passing this parameter is equivalent to
-                providing the vector in the "$vector" field of the document itself,
+                providing a `$vector` field within the document itself,
                 however the two are mutually exclusive.
             vectorize: a string to be made into a vector, if such a service
                 is configured for the collection. Passing this parameter is
@@ -675,7 +675,7 @@ class Collection:
         *,
         vectors: Optional[Iterable[Optional[VectorType]]] = None,
         vectorize: Optional[Iterable[Optional[str]]] = None,
-        ordered: bool = True,
+        ordered: bool = False,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
         max_time_ms: Optional[int] = None,
@@ -701,9 +701,11 @@ class Collection:
                 Passing this parameter is equivalent to providing a `$vectorize`
                 field in the documents themselves, however the two are mutually exclusive.
                 For any given document, this parameter cannot coexist with the
-                corresponding `vector` entry.
-            ordered: if True (default), the insertions are processed sequentially.
-                If False, they can occur in arbitrary order and possibly concurrently.
+                corresponding entry in `vectors`.
+            ordered: if False (default), the insertions can occur in arbitrary order
+                and possibly concurrently. If True, they are processed sequentially.
+                If there are no specific reasons against it, unordered insertions are to
+                be preferred as they complete much faster.
             chunk_size: how many documents to include in a single API request.
                 Exceeding the server maximum allowed value results in an error.
                 Leave it unspecified (recommended) to use the system default.
@@ -714,7 +716,6 @@ class Collection:
                 If many documents are being inserted, this method corresponds
                 to several HTTP requests: in such cases one may want to specify
                 a more tolerant timeout here.
-
 
         Returns:
             an InsertManyResult object.
@@ -2312,7 +2313,7 @@ class Collection:
         self,
         requests: Iterable[BaseOperation],
         *,
-        ordered: bool = True,
+        ordered: bool = False,
         concurrency: Optional[int] = None,
         max_time_ms: Optional[int] = None,
     ) -> BulkWriteResult:
@@ -2332,7 +2333,7 @@ class Collection:
                 would the corresponding collection method.
             ordered: whether to launch the `requests` one after the other or
                 in arbitrary order, possibly in a concurrent fashion. For
-                performance reasons, `ordered=False` should be preferred
+                performance reasons, False (default) should be preferred
                 when compatible with the needs of the application flow.
             concurrency: maximum number of concurrent operations executing at
                 a given time. It cannot be more than one for ordered bulk writes.
@@ -2962,7 +2963,7 @@ class AsyncCollection:
                 case it will be created automatically.
             vector: a vector (a list of numbers appropriate for the collection)
                 for the document. Passing this parameter is equivalent to
-                providing the vector in the "$vector" field of the document itself,
+                providing a `$vector` field within the document itself,
                 however the two are mutually exclusive.
             vectorize: a string to be made into a vector, if such a service
                 is configured for the collection. Passing this parameter is
@@ -3037,7 +3038,7 @@ class AsyncCollection:
         *,
         vectors: Optional[Iterable[Optional[VectorType]]] = None,
         vectorize: Optional[Iterable[Optional[str]]] = None,
-        ordered: bool = True,
+        ordered: bool = False,
         chunk_size: Optional[int] = None,
         concurrency: Optional[int] = None,
         max_time_ms: Optional[int] = None,
@@ -3063,9 +3064,11 @@ class AsyncCollection:
                 Passing this parameter is equivalent to providing a `$vectorize`
                 field in the documents themselves, however the two are mutually exclusive.
                 For any given document, this parameter cannot coexist with the
-                corresponding `vector` entry.
-            ordered: if True (default), the insertions are processed sequentially.
-                If False, they can occur in arbitrary order and possibly concurrently.
+                corresponding entry in `vectors`.
+            ordered: if False (default), the insertions can occur in arbitrary order
+                and possibly concurrently. If True, they are processed sequentially.
+                If there are no specific reasons against it, unordered insertions are to
+                be preferred as they complete much faster.
             chunk_size: how many documents to include in a single API request.
                 Exceeding the server maximum allowed value results in an error.
                 Leave it unspecified (recommended) to use the system default.
@@ -4789,7 +4792,7 @@ class AsyncCollection:
         self,
         requests: Iterable[AsyncBaseOperation],
         *,
-        ordered: bool = True,
+        ordered: bool = False,
         concurrency: Optional[int] = None,
         max_time_ms: Optional[int] = None,
     ) -> BulkWriteResult:
@@ -4809,7 +4812,7 @@ class AsyncCollection:
                 would the corresponding collection method.
             ordered: whether to launch the `requests` one after the other or
                 in arbitrary order, possibly in a concurrent fashion. For
-                performance reasons, `ordered=False` should be preferred
+                performance reasons, False (default) should be preferred
                 when compatible with the needs of the application flow.
             concurrency: maximum number of concurrent operations executing at
                 a given time. It cannot be more than one for ordered bulk writes.

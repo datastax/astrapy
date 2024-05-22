@@ -663,16 +663,16 @@ class TestDMLSync:
     ) -> None:
         col = sync_empty_collection
 
-        ins_result1 = col.insert_many([{"_id": "a"}, {"_id": "b"}])
+        ins_result1 = col.insert_many([{"_id": "a"}, {"_id": "b"}], ordered=True)
         assert set(ins_result1.inserted_ids) == {"a", "b"}
         assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
         with pytest.raises(InsertManyException):
-            col.insert_many([{"_id": "a"}, {"_id": "c"}])
+            col.insert_many([{"_id": "a"}, {"_id": "c"}], ordered=True)
         assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
         with pytest.raises(InsertManyException):
-            col.insert_many([{"_id": "c"}, {"_id": "a"}, {"_id": "d"}])
+            col.insert_many([{"_id": "c"}, {"_id": "a"}, {"_id": "d"}], ordered=True)
         assert {doc["_id"] for doc in col.find()} == {"a", "b", "c"}
 
         with pytest.raises(InsertManyException):
@@ -1283,7 +1283,7 @@ class TestDMLSync:
             ),
         ]
 
-        bw_result = col.bulk_write(bw_ops)
+        bw_result = col.bulk_write(bw_ops, ordered=True)
 
         assert bw_result.deleted_count == 3
         assert bw_result.inserted_count == 5
@@ -1347,7 +1347,7 @@ class TestDMLSync:
             ReplaceOne({}, {"a": 10}, vector=[5, 6]),
             DeleteOne({}, vector=[-8, 7]),
         ]
-        col.bulk_write(bw_ops)
+        col.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             for doc in col.find({}, projection=["a", "b"])

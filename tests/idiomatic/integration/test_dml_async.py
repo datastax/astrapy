@@ -728,16 +728,18 @@ class TestDMLAsync:
     ) -> None:
         acol = async_empty_collection
 
-        ins_result1 = await acol.insert_many([{"_id": "a"}, {"_id": "b"}])
+        ins_result1 = await acol.insert_many([{"_id": "a"}, {"_id": "b"}], ordered=True)
         assert set(ins_result1.inserted_ids) == {"a", "b"}
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
         with pytest.raises(InsertManyException):
-            await acol.insert_many([{"_id": "a"}, {"_id": "c"}])
+            await acol.insert_many([{"_id": "a"}, {"_id": "c"}], ordered=True)
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
         with pytest.raises(InsertManyException):
-            await acol.insert_many([{"_id": "c"}, {"_id": "a"}, {"_id": "d"}])
+            await acol.insert_many(
+                [{"_id": "c"}, {"_id": "a"}, {"_id": "d"}], ordered=True
+            )
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "c"}
 
         with pytest.raises(InsertManyException):
@@ -1382,7 +1384,7 @@ class TestDMLAsync:
             ),
         ]
 
-        bw_result = await acol.bulk_write(bw_ops)
+        bw_result = await acol.bulk_write(bw_ops, ordered=True)
 
         assert bw_result.deleted_count == 3
         assert bw_result.inserted_count == 5
@@ -1446,7 +1448,7 @@ class TestDMLAsync:
             AsyncReplaceOne({}, {"a": 10}, vector=[5, 6]),
             AsyncDeleteOne({}, vector=[-8, 7]),
         ]
-        await acol.bulk_write(bw_ops)
+        await acol.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             async for doc in acol.find({}, projection=["a", "b"])

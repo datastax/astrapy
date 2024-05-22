@@ -187,7 +187,7 @@ class TestExceptionsSync:
         i3 = InsertOne({"_id": "z"})
 
         with pytest.raises(BulkWriteException) as exc:
-            sync_empty_collection.bulk_write([i1, i1, i3])
+            sync_empty_collection.bulk_write([i1, i1, i3], ordered=True)
         assert set(exc.value.partial_result.bulk_api_results.keys()) == {0}
         assert exc.value.partial_result.deleted_count == 0
         assert exc.value.partial_result.inserted_count == 1
