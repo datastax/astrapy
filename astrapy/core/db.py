@@ -49,7 +49,7 @@ from astrapy.core.defaults import (
     DEFAULT_JSON_API_PATH,
     DEFAULT_JSON_API_VERSION,
     DEFAULT_KEYSPACE_NAME,
-    MAX_INSERT_NUM_DOCUMENTS,
+    DEFAULT_INSERT_NUM_DOCUMENTS,
 )
 from astrapy.core.utils import (
     convert_vector_to_floats,
@@ -975,7 +975,7 @@ class AstraDBCollection:
         documents: List[API_DOC],
         options: Optional[Dict[str, Any]] = None,
         partial_failures_allowed: bool = False,
-        chunk_size: int = MAX_INSERT_NUM_DOCUMENTS,
+        chunk_size: int = DEFAULT_INSERT_NUM_DOCUMENTS,
         concurrency: int = 1,
         timeout_info: TimeoutInfoWideType = None,
     ) -> List[Union[API_RESPONSE, Exception]]:
@@ -2357,7 +2357,7 @@ class AsyncAstraDBCollection:
         documents: List[API_DOC],
         options: Optional[Dict[str, Any]] = None,
         partial_failures_allowed: bool = False,
-        chunk_size: int = MAX_INSERT_NUM_DOCUMENTS,
+        chunk_size: int = DEFAULT_INSERT_NUM_DOCUMENTS,
         concurrency: int = 1,
         timeout_info: TimeoutInfoWideType = None,
     ) -> List[Union[API_RESPONSE, Exception]]:

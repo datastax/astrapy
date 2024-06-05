@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 from typing import List
 
 import pytest
@@ -36,19 +35,13 @@ from ..conftest import AstraDBCredentials
 
 
 class TestExceptionsAsync:
-    @pytest.mark.describe("test of collection insert_many failure modes, async")
-    async def test_collection_insert_many_failures_async(
+    @pytest.mark.describe("test of collection insert_many type-failure modes, async")
+    async def test_collection_insert_many_type_failures_async(
         self,
         async_empty_collection: AsyncCollection,
     ) -> None:
-
-        async def _alist(acursor: AsyncCursor) -> List[DocumentType]:
-            return [doc async for doc in acursor]
-
         acol = async_empty_collection
         bad_docs = [{"_id": tid} for tid in ["a", "b", "c", ValueError, "e", "f"]]
-        dup_docs = [{"_id": tid} for tid in ["a", "b", "b", "d", "a", "b", "e", "f"]]
-        ok_docs = [{"_id": tid} for tid in ["a", "b", "c", "d", "e", "f"]]
 
         with pytest.raises(ValueError):
             await acol.insert_many([], ordered=True, concurrency=2)
@@ -62,8 +55,19 @@ class TestExceptionsAsync:
         with pytest.raises(TypeError):
             await acol.insert_many(bad_docs, ordered=False, chunk_size=2, concurrency=2)
 
-        await acol.delete_all()
-        await asyncio.sleep(2)
+    @pytest.mark.describe("test of collection insert_many insert-failure modes, async")
+    async def test_collection_insert_many_insert_failures_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+
+        async def _alist(acursor: AsyncCursor) -> List[DocumentType]:
+            return [doc async for doc in acursor]
+
+        acol = async_empty_collection
+        dup_docs = [{"_id": tid} for tid in ["a", "b", "b", "d", "a", "b", "e", "f"]]
+        ok_docs = [{"_id": tid} for tid in ["a", "b", "c", "d", "e", "f"]]
+
         im_result1 = await acol.insert_many(
             ok_docs, ordered=True, chunk_size=2, concurrency=1
         )

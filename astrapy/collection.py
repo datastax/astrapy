@@ -25,7 +25,7 @@ from astrapy.core.db import (
     AsyncAstraDBCollection,
 )
 from astrapy.core.defaults import (
-    MAX_INSERT_NUM_DOCUMENTS,
+    DEFAULT_INSERT_NUM_DOCUMENTS,
     DEFAULT_VECTORIZE_SECRET_HEADER,
 )
 from astrapy.api_options import CollectionAPIOptions
@@ -794,7 +794,7 @@ class Collection:
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered insert_many concurrently.")
         if chunk_size is None:
-            _chunk_size = MAX_INSERT_NUM_DOCUMENTS
+            _chunk_size = DEFAULT_INSERT_NUM_DOCUMENTS
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
@@ -3174,7 +3174,7 @@ class AsyncCollection:
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered insert_many concurrently.")
         if chunk_size is None:
-            _chunk_size = MAX_INSERT_NUM_DOCUMENTS
+            _chunk_size = DEFAULT_INSERT_NUM_DOCUMENTS
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
