@@ -25,7 +25,7 @@ from astrapy.core.db import (
     AsyncAstraDBCollection,
 )
 from astrapy.core.defaults import (
-    MAX_INSERT_NUM_DOCUMENTS,
+    DEFAULT_INSERT_NUM_DOCUMENTS,
     DEFAULT_VECTORIZE_SECRET_HEADER,
 )
 from astrapy.api_options import CollectionAPIOptions
@@ -231,7 +231,7 @@ class Collection:
     Examples:
         >>> from astrapy import DataAPIClient, Collection
         >>> my_client = astrapy.DataAPIClient("AstraCS:...")
-        >>> my_db = my_client.get_database_by_api_endpoint(
+        >>> my_db = my_client.get_database(
         ...    "https://01234567-....apps.astra.datastax.com"
         ... )
         >>> my_coll_1 = Collection(database=my_db, name="my_collection")
@@ -794,7 +794,7 @@ class Collection:
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered insert_many concurrently.")
         if chunk_size is None:
-            _chunk_size = MAX_INSERT_NUM_DOCUMENTS
+            _chunk_size = DEFAULT_INSERT_NUM_DOCUMENTS
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
@@ -954,8 +954,9 @@ class Collection:
             projection: it controls which parts of the document are returned.
                 It can be an allow-list: `{"f1": True, "f2": True}`,
                 or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
-                (except for the `_id` field, which can be associated to both
-                True or False independently of the rest of the specification).
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
                 The special star-projections `{"*": True}` and `{"*": False}`
                 have the effect of returning the whole document and `{}` respectively.
                 For lists in documents, slice directives can be passed to select
@@ -963,7 +964,7 @@ class Collection:
                 `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
                 `{"array": {"$slice": [-4, 2]}}`.
                 An iterable over strings will be treated implicitly as an allow-list.
-                The default projection if this parameter is not passed) does not
+                The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
             skip: with this integer parameter, what would be the first `skip`
@@ -1131,8 +1132,9 @@ class Collection:
             projection: it controls which parts of the document are returned.
                 It can be an allow-list: `{"f1": True, "f2": True}`,
                 or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
-                (except for the `_id` field, which can be associated to both
-                True or False independently of the rest of the specification).
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
                 The special star-projections `{"*": True}` and `{"*": False}`
                 have the effect of returning the whole document and `{}` respectively.
                 For lists in documents, slice directives can be passed to select
@@ -1140,7 +1142,7 @@ class Collection:
                 `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
                 `{"array": {"$slice": [-4, 2]}}`.
                 An iterable over strings will be treated implicitly as an allow-list.
-                The default projection if this parameter is not passed) does not
+                The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
@@ -1432,8 +1434,9 @@ class Collection:
             projection: it controls which parts of the document are returned.
                 It can be an allow-list: `{"f1": True, "f2": True}`,
                 or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
-                (except for the `_id` field, which can be associated to both
-                True or False independently of the rest of the specification).
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
                 The special star-projections `{"*": True}` and `{"*": False}`
                 have the effect of returning the whole document and `{}` respectively.
                 For lists in documents, slice directives can be passed to select
@@ -1441,7 +1444,7 @@ class Collection:
                 `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
                 `{"array": {"$slice": [-4, 2]}}`.
                 An iterable over strings will be treated implicitly as an allow-list.
-                The default projection if this parameter is not passed) does not
+                The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
@@ -1661,8 +1664,9 @@ class Collection:
             projection: it controls which parts of the document are returned.
                 It can be an allow-list: `{"f1": True, "f2": True}`,
                 or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
-                (except for the `_id` field, which can be associated to both
-                True or False independently of the rest of the specification).
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
                 The special star-projections `{"*": True}` and `{"*": False}`
                 have the effect of returning the whole document and `{}` respectively.
                 For lists in documents, slice directives can be passed to select
@@ -1670,7 +1674,7 @@ class Collection:
                 `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
                 `{"array": {"$slice": [-4, 2]}}`.
                 An iterable over strings will be treated implicitly as an allow-list.
-                The default projection if this parameter is not passed) does not
+                The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
@@ -2008,8 +2012,9 @@ class Collection:
             projection: it controls which parts of the document are returned.
                 It can be an allow-list: `{"f1": True, "f2": True}`,
                 or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
-                (except for the `_id` field, which can be associated to both
-                True or False independently of the rest of the specification).
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
                 The special star-projections `{"*": True}` and `{"*": False}`
                 have the effect of returning the whole document and `{}` respectively.
                 For lists in documents, slice directives can be passed to select
@@ -2017,7 +2022,7 @@ class Collection:
                 `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
                 `{"array": {"$slice": [-4, 2]}}`.
                 An iterable over strings will be treated implicitly as an allow-list.
-                The default projection if this parameter is not passed) does not
+                The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
@@ -2589,7 +2594,7 @@ class AsyncCollection:
     Examples:
         >>> from astrapy import DataAPIClient, AsyncCollection
         >>> my_client = astrapy.DataAPIClient("AstraCS:...")
-        >>> my_async_db = my_client.get_async_database_by_api_endpoint(
+        >>> my_async_db = my_client.get_async_database(
         ...    "https://01234567-....apps.astra.datastax.com"
         ... )
         >>> my_async_coll_1 = AsyncCollection(database=my_async_db, name="my_collection")
@@ -3169,7 +3174,7 @@ class AsyncCollection:
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered insert_many concurrently.")
         if chunk_size is None:
-            _chunk_size = MAX_INSERT_NUM_DOCUMENTS
+            _chunk_size = DEFAULT_INSERT_NUM_DOCUMENTS
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
@@ -3321,8 +3326,9 @@ class AsyncCollection:
             projection: it controls which parts of the document are returned.
                 It can be an allow-list: `{"f1": True, "f2": True}`,
                 or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
-                (except for the `_id` field, which can be associated to both
-                True or False independently of the rest of the specification).
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
                 The special star-projections `{"*": True}` and `{"*": False}`
                 have the effect of returning the whole document and `{}` respectively.
                 For lists in documents, slice directives can be passed to select
@@ -3330,7 +3336,7 @@ class AsyncCollection:
                 `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
                 `{"array": {"$slice": [-4, 2]}}`.
                 An iterable over strings will be treated implicitly as an allow-list.
-                The default projection if this parameter is not passed) does not
+                The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
             skip: with this integer parameter, what would be the first `skip`
@@ -3507,8 +3513,9 @@ class AsyncCollection:
             projection: it controls which parts of the document are returned.
                 It can be an allow-list: `{"f1": True, "f2": True}`,
                 or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
-                (except for the `_id` field, which can be associated to both
-                True or False independently of the rest of the specification).
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
                 The special star-projections `{"*": True}` and `{"*": False}`
                 have the effect of returning the whole document and `{}` respectively.
                 For lists in documents, slice directives can be passed to select
@@ -3516,7 +3523,7 @@ class AsyncCollection:
                 `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
                 `{"array": {"$slice": [-4, 2]}}`.
                 An iterable over strings will be treated implicitly as an allow-list.
-                The default projection if this parameter is not passed) does not
+                The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
@@ -3838,8 +3845,9 @@ class AsyncCollection:
             projection: it controls which parts of the document are returned.
                 It can be an allow-list: `{"f1": True, "f2": True}`,
                 or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
-                (except for the `_id` field, which can be associated to both
-                True or False independently of the rest of the specification).
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
                 The special star-projections `{"*": True}` and `{"*": False}`
                 have the effect of returning the whole document and `{}` respectively.
                 For lists in documents, slice directives can be passed to select
@@ -3847,7 +3855,7 @@ class AsyncCollection:
                 `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
                 `{"array": {"$slice": [-4, 2]}}`.
                 An iterable over strings will be treated implicitly as an allow-list.
-                The default projection if this parameter is not passed) does not
+                The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
@@ -4088,8 +4096,9 @@ class AsyncCollection:
             projection: it controls which parts of the document are returned.
                 It can be an allow-list: `{"f1": True, "f2": True}`,
                 or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
-                (except for the `_id` field, which can be associated to both
-                True or False independently of the rest of the specification).
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
                 The special star-projections `{"*": True}` and `{"*": False}`
                 have the effect of returning the whole document and `{}` respectively.
                 For lists in documents, slice directives can be passed to select
@@ -4097,7 +4106,7 @@ class AsyncCollection:
                 `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
                 `{"array": {"$slice": [-4, 2]}}`.
                 An iterable over strings will be treated implicitly as an allow-list.
-                The default projection if this parameter is not passed) does not
+                The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate
@@ -4467,8 +4476,9 @@ class AsyncCollection:
             projection: it controls which parts of the document are returned.
                 It can be an allow-list: `{"f1": True, "f2": True}`,
                 or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
-                (except for the `_id` field, which can be associated to both
-                True or False independently of the rest of the specification).
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
                 The special star-projections `{"*": True}` and `{"*": False}`
                 have the effect of returning the whole document and `{}` respectively.
                 For lists in documents, slice directives can be passed to select
@@ -4476,7 +4486,7 @@ class AsyncCollection:
                 `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
                 `{"array": {"$slice": [-4, 2]}}`.
                 An iterable over strings will be treated implicitly as an allow-list.
-                The default projection if this parameter is not passed) does not
+                The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
             vector: a suitable vector, i.e. a list of float numbers of the appropriate

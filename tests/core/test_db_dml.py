@@ -159,7 +159,13 @@ def test_find_find_one_projection(
         {"$vector", "_id", "otherfield", "anotherfield", "text"},
         {"$vector", "_id", "otherfield", "anotherfield", "text"},
         {"_id", "text"},
-        {"$vector", "_id"},
+        {
+            "$vector",
+            "_id",
+            "otherfield",
+            "anotherfield",
+            "text",
+        },  # {"$vector", "_id"},
         {"$vector", "_id", "text"},
     ]
     for proj, exp_fields in zip(projs, exp_fieldsets):

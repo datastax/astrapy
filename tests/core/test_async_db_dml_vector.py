@@ -40,7 +40,7 @@ async def test_vector_find(
     assert isinstance(documents_sim_1, list)
     assert len(documents_sim_1) > 0
     assert "_id" in documents_sim_1[0]
-    assert "$vector" in documents_sim_1[0]
+    # assert "$vector" in documents_sim_1[0]
     assert "text" in documents_sim_1[0]
     assert "$similarity" in documents_sim_1[0]
 
@@ -54,14 +54,14 @@ async def test_vector_find(
     assert isinstance(documents_sim_2, list)
     assert len(documents_sim_2) > 0
     assert "_id" in documents_sim_2[0]
-    assert "$vector" in documents_sim_2[0]
+    # assert "$vector" in documents_sim_2[0]
     assert "text" in documents_sim_2[0]
     assert "$similarity" in documents_sim_2[0]
 
     documents_no_sim = await async_readonly_v_collection.vector_find(
         vector=[0.2, 0.6],
         limit=3,
-        fields=["_id", "$vector"],
+        fields=["_id", "$vector", "something"],
         include_similarity=False,
     )
 

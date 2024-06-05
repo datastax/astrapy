@@ -17,11 +17,11 @@ Try the following code after replacing the connection parameters:
 ```python
 import astrapy
 
+ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
+ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
 
-my_client = astrapy.DataAPIClient("AstraCS:...")
-my_database = my_client.get_database_by_api_endpoint(
-   "https://01234567-....apps.astra.datastax.com"
-)
+my_client = astrapy.DataAPIClient(ASTRA_DB_APPLICATION_TOKEN)
+my_database = my_client.get_database(ASTRA_DB_API_ENDPOINT)
 
 my_collection = my_database.create_collection(
     "dreams",
@@ -29,23 +29,29 @@ my_collection = my_database.create_collection(
     metric=astrapy.constants.VectorMetric.COSINE,
 )
 
-my_collection.insert_one({"summary": "I was flying"}, vector=[-0.4, 0.7, 0])
+my_collection.insert_one({"summary": "I was flying", "$vector": [-0.4, 0.7, 0]})
 
 my_collection.insert_many(
     [
         {
             "_id": astrapy.ids.UUID("018e65c9-e33d-749b-9386-e848739582f0"),
             "summary": "A dinner on the Moon",
+            "$vector": [0.2, -0.3, -0.5],
         },
-        {"summary": "Riding the waves", "tags": ["sport"]},
-        {"summary": "Friendly aliens in town", "tags": ["scifi"]},
-        {"summary": "Meeting Beethoven at the dentist"},
-    ],
-    vectors=[
-        [0.2, -0.3, -0.5],
-        [0, 0.2, 1],
-        [-0.3, 0, 0.8],
-        [0.2, 0.6, 0],
+        {
+            "summary": "Riding the waves",
+            "tags": ["sport"],
+            "$vector": [0, 0.2, 1],
+        },
+        {
+            "summary": "Friendly aliens in town",
+            "tags": ["scifi"],
+            "$vector": [-0.3, 0, 0.8],
+        },
+        {
+            "summary": "Meeting Beethoven at the dentist",
+            "$vector": [0.2, 0.6, 0],
+        },
     ],
 )
 
@@ -90,7 +96,10 @@ Here's a small admin-oriented example:
 ```python
 import astrapy
 
-my_client = astrapy.DataAPIClient("AstraCS:...")
+
+ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
+
+my_client = astrapy.DataAPIClient(ASTRA_DB_APPLICATION_TOKEN)
 
 my_astra_admin = my_client.get_admin()
 
@@ -123,10 +132,12 @@ Date and datetime objects, i.e. instances of the standard library
 import datetime
 import astrapy
 
-my_client = astrapy.DataAPIClient("AstraCS:...")
-my_database = my_client.get_database_by_api_endpoint(
-   "https://01234567-....apps.astra.datastax.com"
-)
+
+ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
+ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
+
+my_client = astrapy.DataAPIClient(ASTRA_DB_APPLICATION_TOKEN)
+my_database = my_client.get_database(ASTRA_DB_API_ENDPOINT)
 my_collection = my_database.dreams
 
 my_collection.insert_one({"when": datetime.datetime.now()})
@@ -162,6 +173,12 @@ to use any ID type for any document:
 ```python
 import astrapy
 import bson
+
+ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
+ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
+
+my_client = astrapy.DataAPIClient(ASTRA_DB_APPLICATION_TOKEN)
+my_database = my_client.get_database(ASTRA_DB_API_ENDPOINT)
 
 my_collection = my_database.create_collection(
     "ecommerce",
@@ -227,6 +244,11 @@ The (idiomatic) Admin part is tested manually by you, on Astra accounts with roo
 for up to 3 new databases, possibly both on prod and dev, and uses specific env vars,
 as can be seen on `tests/idiomatic/integration/test_admin.py`.
 
+Vectorize tests are confined in `tests/vectorize_idiomatic` and are run
+separately. A separate set of credentials is required to do the full testing:
+refer to `tests/.vectorize.env.template` for the complete listing, including
+the secrets that should be added to the database beforehand, through the UI.
+
 Should you be interested in testing the "core" modules, moreover,
 this is also something for you to run manually (do that if you touch "core"):
 
@@ -256,6 +278,7 @@ from astrapy import (
     AsyncCollection,
     AstraDBAdmin,
     AstraDBDatabaseAdmin,
+    DataAPIDatabaseAdmin,
 )
 ```
 
@@ -267,6 +290,7 @@ from astrapy.constants import (
     SortDocuments,
     VectorMetric,
     DefaultIdType,
+    Environment,
 )
 ```
 
@@ -366,7 +390,6 @@ Admin-related classes and constants:
 
 ```python
 from astrapy.admin import (
-    Environment,
     ParsedAPIEndpoint,
 )
 ```

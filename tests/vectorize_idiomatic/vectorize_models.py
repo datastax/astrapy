@@ -75,8 +75,8 @@ TEST_ASSETS_MAP = {
     ("voyageAI", "voyage-code-2"): CODE_TEST_ASSETS,
 }
 
-USE_INSERT_ONE_MAP = {
-    ("upstageAI", "solar-1-mini-embedding"): True,
+USE_INSERT_ONE_MAP: Dict[Tuple[str, str], bool] = {
+    # ("upstageAI", "solar-1-mini-embedding"): True,
 }
 
 # environment, region, auth_type. One spec must match.
@@ -85,6 +85,7 @@ ENV_FILTERS_MAP: Dict[Tuple[str, str], List[Tuple[str, str, str]]] = {}
 
 SECRET_NAME_ROOT_MAP = {
     "azureOpenAI": "AZURE_OPENAI",
+    "cohere": "COHERE",
     "huggingface": "HUGGINGFACE",
     "jinaAI": "JINAAI",
     "mistral": "MISTRAL",
@@ -207,14 +208,15 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                         d_param = d_params[0]
                         if "defaultValue" in d_param:
                             optional_dimension = True
-                            assert model["vectorDimension"] == 0
+                            assert model["vectorDimension"] is None
                             dimension = _from_validation(d_param)
                         else:
                             optional_dimension = False
-                            assert model["vectorDimension"] == 0
+                            assert model["vectorDimension"] is None
                             dimension = _from_validation(d_param)
                     else:
                         optional_dimension = False
+                        assert model["vectorDimension"] is not None
                         assert model["vectorDimension"] > 0
                         dimension = model["vectorDimension"]
 

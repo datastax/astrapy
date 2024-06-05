@@ -127,7 +127,7 @@ class Database:
     Example:
         >>> from astrapy import DataAPIClient
         >>> my_client = astrapy.DataAPIClient("AstraCS:...")
-        >>> my_db = my_client.get_database_by_api_endpoint(
+        >>> my_db = my_client.get_database(
         ...    "https://01234567-....apps.astra.datastax.com"
         ... )
 
@@ -931,7 +931,7 @@ class AsyncDatabase:
     Example:
         >>> from astrapy import DataAPIClient
         >>> my_client = astrapy.DataAPIClient("AstraCS:...")
-        >>> my_db = my_client.get_async_database_by_api_endpoint(
+        >>> my_db = my_client.get_async_database(
         ...    "https://01234567-....apps.astra.datastax.com"
         ... )
 

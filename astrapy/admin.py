@@ -2198,7 +2198,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         >>>     token="Cassandra:Y2Fzc2FuZHJh:Y2Fzc2FuZHJh",
         >>>     environment=Environment.OTHER,
         >>> )
-        >>> database = client.get_database_by_api_endpoint(endpoint)
+        >>> database = client.get_database(endpoint)
         >>> admin_for_my_db = database.get_database_admin()
         >>>
         >>> admin_for_my_db.list_namespaces()

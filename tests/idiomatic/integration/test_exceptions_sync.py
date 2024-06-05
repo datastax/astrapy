@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
 import pytest
 
 from astrapy import Collection, Database
@@ -32,15 +31,13 @@ from ..conftest import AstraDBCredentials
 
 
 class TestExceptionsSync:
-    @pytest.mark.describe("test of collection insert_many failure modes, sync")
-    def test_collection_insert_many_failures_sync(
+    @pytest.mark.describe("test of collection insert_many type-failure modes, sync")
+    def test_collection_insert_many_type_failures_sync(
         self,
         sync_empty_collection: Collection,
     ) -> None:
         col = sync_empty_collection
         bad_docs = [{"_id": tid} for tid in ["a", "b", "c", ValueError, "e", "f"]]
-        dup_docs = [{"_id": tid} for tid in ["a", "b", "b", "d", "a", "b", "e", "f"]]
-        ok_docs = [{"_id": tid} for tid in ["a", "b", "c", "d", "e", "f"]]
 
         with pytest.raises(ValueError):
             col.insert_many([], ordered=True, concurrency=2)
@@ -54,8 +51,15 @@ class TestExceptionsSync:
         with pytest.raises(TypeError):
             col.insert_many(bad_docs, ordered=False, chunk_size=2, concurrency=2)
 
-        col.delete_all()
-        time.sleep(2)
+    @pytest.mark.describe("test of collection insert_many insert-failure modes, sync")
+    def test_collection_insert_many_insert_failures_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+        dup_docs = [{"_id": tid} for tid in ["a", "b", "b", "d", "a", "b", "e", "f"]]
+        ok_docs = [{"_id": tid} for tid in ["a", "b", "c", "d", "e", "f"]]
+
         im_result1 = col.insert_many(ok_docs, ordered=True, chunk_size=2, concurrency=1)
         assert len(im_result1.inserted_ids) == 6
         assert len(list(col.find({}))) == 6
