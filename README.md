@@ -21,7 +21,7 @@ ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
 ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
 
 my_client = astrapy.DataAPIClient(ASTRA_DB_APPLICATION_TOKEN)
-my_database = my_client.get_database_by_api_endpoint(ASTRA_DB_API_ENDPOINT)
+my_database = my_client.get_database(ASTRA_DB_API_ENDPOINT)
 
 my_collection = my_database.create_collection(
     "dreams",
@@ -137,7 +137,7 @@ ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
 ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
 
 my_client = astrapy.DataAPIClient(ASTRA_DB_APPLICATION_TOKEN)
-my_database = my_client.get_database_by_api_endpoint(ASTRA_DB_API_ENDPOINT)
+my_database = my_client.get_database(ASTRA_DB_API_ENDPOINT)
 my_collection = my_database.dreams
 
 my_collection.insert_one({"when": datetime.datetime.now()})
@@ -178,7 +178,7 @@ ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
 ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
 
 my_client = astrapy.DataAPIClient(ASTRA_DB_APPLICATION_TOKEN)
-my_database = my_client.get_database_by_api_endpoint(ASTRA_DB_API_ENDPOINT)
+my_database = my_client.get_database(ASTRA_DB_API_ENDPOINT)
 
 my_collection = my_database.create_collection(
     "ecommerce",
