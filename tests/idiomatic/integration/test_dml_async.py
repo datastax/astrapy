@@ -188,16 +188,12 @@ class TestDMLAsync:
             await async_empty_collection.count_documents(filter={}, upper_bound=100)
             == 1
         )
-        with pytest.raises(ValueError):
-            await async_empty_collection.delete_many(filter={})
 
         await async_empty_collection.delete_all()
         await async_empty_collection.insert_many([{"a": 1} for _ in range(50)])
         do_result2 = await async_empty_collection.delete_many({"a": 1})
         assert do_result2.deleted_count == 50
         assert await async_empty_collection.count_documents({}, upper_bound=100) == 0
-        with pytest.raises(ValueError):
-            await async_empty_collection.delete_many(filter={})
 
         await async_empty_collection.delete_all()
         await async_empty_collection.insert_many([{"a": 1} for _ in range(50)])

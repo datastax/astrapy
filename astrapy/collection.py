@@ -2194,8 +2194,9 @@ class Collection:
                     {"price": {"$lt": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-                The `delete_many` method does not accept an empty filter: see
-                `delete_all` to completely erase all contents of a collection
+                Passing an empty filter, `{}`, completely erases all contents
+                of the collection. An equivalent result is obtained with
+                the `delete_all` method.
             max_time_ms: a timeout, in milliseconds, for the operation.
                 If not passed, the collection-level setting is used instead:
                 keep in mind that this method entails successive HTTP requests
@@ -2217,21 +2218,14 @@ class Collection:
             DeleteResult(raw_results=..., deleted_count=0)
 
         Note:
-            This operation is not atomic. Depending on the amount of matching
-            documents, it can keep running (in a blocking way) for a macroscopic
-            time. In that case, new documents that are meanwhile inserted
-            (e.g. from another process/application) will be deleted during
-            the execution of this method call until the collection is devoid
-            of matches.
+            This operation is in general not atomic. Depending on the amount
+            of matching documents, it can keep running (in a blocking way)
+            for a macroscopic time. In that case, new documents that are
+            meanwhile inserted (e.g. from another process/application) will be
+            deleted during the execution of this method call until the
+            collection is devoid of matches.
+            An exception is the `filter={}` case, whereby the operation is atomic.
         """
-
-        if not filter:
-            raise ValueError(
-                "The `filter` parameter to method `delete_many` cannot be "
-                "empty. In order to completely clear the contents of a "
-                "collection, please use the `delete_all` method."
-            )
-
         dm_responses: List[Dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
@@ -2260,7 +2254,7 @@ class Collection:
                 )
             else:
                 this_dc = this_dm_response.get("status", {}).get("deletedCount")
-                if this_dc is None or this_dc < 0:
+                if this_dc is None:
                     raise DataAPIFaultyResponseException(
                         text="Faulty response from delete_many API command.",
                         raw_response=this_dm_response,
@@ -2275,7 +2269,6 @@ class Collection:
             raw_results=dm_responses,
         )
 
-    @recast_method_sync
     def delete_all(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Delete all documents in a collection.
@@ -2300,20 +2293,13 @@ class Collection:
         Note:
             Use with caution.
         """
-
-        _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling unfiltered delete_many on '{self.name}'")
-        dm_response = self._astra_db_collection.delete_many(
-            filter={}, timeout_info=base_timeout_info(_max_time_ms)
-        )
-        logger.info(f"finished calling unfiltered delete_many on '{self.name}'")
-        deleted_count = dm_response["status"]["deletedCount"]
-        if deleted_count == -1:
+        dm_result = self.delete_many(filter={}, max_time_ms=max_time_ms)
+        if dm_result.deleted_count == -1:
             return {"ok": 1}
         else:
             raise DataAPIFaultyResponseException(
-                text="Faulty response from delete_many API command.",
-                raw_response=dm_response,
+                text="Unexpected response from collection.delete_many({}).",
+                raw_response=None,
             )
 
     def bulk_write(
@@ -4666,8 +4652,9 @@ class AsyncCollection:
                     {"price": {"$lt": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-                The `delete_many` method does not accept an empty filter: see
-                `delete_all` to completely erase all contents of a collection
+                Passing an empty filter, `{}`, completely erases all contents
+                of the collection. An equivalent result is obtained with
+                the `delete_all` method.
             max_time_ms: a timeout, in milliseconds, for the operation.
                 If not passed, the collection-level setting is used instead:
                 keep in mind that this method entails successive HTTP requests
@@ -4694,21 +4681,14 @@ class AsyncCollection:
             delete_result2.deleted_count 0
 
         Note:
-            This operation is not atomic. Depending on the amount of matching
-            documents, it can keep running (in a blocking way) for a macroscopic
-            time. In that case, new documents that are meanwhile inserted
-            (e.g. from another process/application) will be deleted during
-            the execution of this method call until the collection is devoid
-            of matches.
+            This operation is in general not atomic. Depending on the amount
+            of matching documents, it can keep running (in a blocking way)
+            for a macroscopic time. In that case, new documents that are
+            meanwhile inserted (e.g. from another process/application) will be
+            deleted during the execution of this method call until the
+            collection is devoid of matches.
+            An exception is the `filter={}` case, whereby the operation is atomic.
         """
-
-        if not filter:
-            raise ValueError(
-                "The `filter` parameter to method `delete_many` cannot be "
-                "empty. In order to completely clear the contents of a "
-                "collection, please use the `delete_all` method."
-            )
-
         dm_responses: List[Dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
@@ -4737,7 +4717,7 @@ class AsyncCollection:
                 )
             else:
                 this_dc = this_dm_response.get("status", {}).get("deletedCount")
-                if this_dc is None or this_dc < 0:
+                if this_dc is None:
                     raise DataAPIFaultyResponseException(
                         text="Faulty response from delete_many API command.",
                         raw_response=this_dm_response,
@@ -4752,7 +4732,6 @@ class AsyncCollection:
             raw_results=dm_responses,
         )
 
-    @recast_method_async
     async def delete_all(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Delete all documents in a collection.
@@ -4784,20 +4763,13 @@ class AsyncCollection:
         Note:
             Use with caution.
         """
-
-        _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling unfiltered delete_many on '{self.name}'")
-        dm_response = await self._astra_db_collection.delete_many(
-            filter={}, timeout_info=base_timeout_info(_max_time_ms)
-        )
-        logger.info(f"finished calling unfiltered delete_many on '{self.name}'")
-        deleted_count = dm_response["status"]["deletedCount"]
-        if deleted_count == -1:
+        dm_result = await self.delete_many(filter={}, max_time_ms=max_time_ms)
+        if dm_result.deleted_count == -1:
             return {"ok": 1}
         else:
             raise DataAPIFaultyResponseException(
-                text="Faulty response from delete_many API command.",
-                raw_response=dm_response,
+                text="Unexpected response from collection.delete_many({}).",
+                raw_response=None,
             )
 
     async def bulk_write(

@@ -151,8 +151,6 @@ class TestDMLSync:
         assert isinstance(do_result1, DeleteResult)
         assert do_result1.deleted_count == 2
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 1
-        with pytest.raises(ValueError):
-            sync_empty_collection.delete_many(filter={})
 
         sync_empty_collection.delete_all()
         sync_empty_collection.insert_many([{"a": 1} for _ in range(50)])
