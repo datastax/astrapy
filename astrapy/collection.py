@@ -2309,6 +2309,14 @@ class Collection:
                 raw_response=None,
             )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.3.0",
+        current_version=__version__,
+        details=(
+            "This functionality may be changed/retired in a future release. "
+            "Please switch to an application-level implementation."
+        ),
+    )
     def bulk_write(
         self,
         requests: Iterable[BaseOperation],
@@ -2324,6 +2332,9 @@ class Collection:
         This method does not execute atomically, i.e. individual operations are
         each performed in the same way as the corresponding collection method,
         and each one is a different and unrelated database mutation.
+
+        Note: this method is deprecated starting on version 1.3. It is suggested,
+        if needed, to implement the same behaviour at the application level.
 
         Args:
             requests: an iterable over concrete subclasses of `BaseOperation`,
@@ -4784,6 +4795,14 @@ class AsyncCollection:
                 raw_response=None,
             )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.3.0",
+        current_version=__version__,
+        details=(
+            "This functionality may be changed/retired in a future release. "
+            "Please switch to an application-level implementation."
+        ),
+    )
     async def bulk_write(
         self,
         requests: Iterable[AsyncBaseOperation],
@@ -4799,6 +4818,9 @@ class AsyncCollection:
         This method does not execute atomically, i.e. individual operations are
         each performed in the same way as the corresponding collection method,
         and each one is a different and unrelated database mutation.
+
+        Note: this method is deprecated starting on version 1.3. It is suggested,
+        if needed, to implement the same behaviour at the application level.
 
         Args:
             requests: an iterable over concrete subclasses of `BaseOperation`,

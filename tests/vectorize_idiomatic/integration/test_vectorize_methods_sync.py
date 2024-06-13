@@ -14,7 +14,6 @@
 
 import pytest
 
-# from ..conftest import is_nvidia_service_available
 from astrapy import Collection, Database
 from astrapy.exceptions import DataAPIResponseException
 from astrapy.operations import (
@@ -151,7 +150,8 @@ class TestVectorizeMethodsSync:
             ReplaceOne({}, {"a": 10}, vectorize="The kitty sits on the desk."),
             DeleteOne({}, vectorize="I don't argue with the proposed plan..."),
         ]
-        col.bulk_write(bw_ops, ordered=True)
+        with pytest.warns(DeprecationWarning):
+            col.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             for doc in col.find({}, projection=["a", "b"])

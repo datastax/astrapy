@@ -18,8 +18,6 @@ from typing import Any, Dict, List
 
 import pytest
 
-from ..conftest import sync_fail_if_not_removed
-
 from astrapy import Collection
 from astrapy.results import DeleteResult, InsertOneResult
 from astrapy.exceptions import InsertManyException, DataAPIResponseException
@@ -34,6 +32,8 @@ from astrapy.operations import (
     DeleteMany,
 )
 from astrapy.ids import ObjectId, UUID
+
+from ..conftest import sync_fail_if_not_removed
 
 
 class TestDMLSync:
@@ -1285,7 +1285,8 @@ class TestDMLSync:
             ),
         ]
 
-        bw_result = col.bulk_write(bw_ops, ordered=True)
+        with pytest.warns(DeprecationWarning):
+            bw_result = col.bulk_write(bw_ops, ordered=True)
 
         assert bw_result.deleted_count == 3
         assert bw_result.inserted_count == 5
@@ -1318,7 +1319,8 @@ class TestDMLSync:
             DeleteMany({"x": 100}),
         ]
 
-        bw_u_result = col.bulk_write(bw_u_ops, ordered=False, concurrency=4)
+        with pytest.warns(DeprecationWarning):
+            bw_u_result = col.bulk_write(bw_u_ops, ordered=False, concurrency=4)
 
         assert bw_u_result.deleted_count == 0
         assert bw_u_result.inserted_count == 2
@@ -1349,7 +1351,8 @@ class TestDMLSync:
             ReplaceOne({}, {"a": 10}, vector=[5, 6]),
             DeleteOne({}, vector=[-8, 7]),
         ]
-        col.bulk_write(bw_ops, ordered=True)
+        with pytest.warns(DeprecationWarning):
+            col.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             for doc in col.find({}, projection=["a", "b"])

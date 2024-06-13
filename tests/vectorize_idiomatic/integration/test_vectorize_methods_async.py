@@ -154,7 +154,8 @@ class TestVectorizeMethodsAsync:
             AsyncReplaceOne({}, {"a": 10}, vectorize="The kitty sits on the desk."),
             AsyncDeleteOne({}, vectorize="I don't argue with the proposed plan..."),
         ]
-        await acol.bulk_write(bw_ops, ordered=True)
+        with pytest.warns(DeprecationWarning):
+            await acol.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             async for doc in acol.find({}, projection=["a", "b"])
