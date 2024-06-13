@@ -4,6 +4,7 @@ Introduce CHANGES file.
 Allow delete_many({}) with empty filter
 Deprecation of collection delete_all method in favour of delete_many(filter={})
     Introduction of a custom deprecation decorator for async method removal tests
+Deprecation of collection method bulk_write (in favour of app-side implementation).
 Remove several long-deprecated methods from **core API** (i.e. internal changes):
     AstraDBCollection.delete          => delete_one
     AstraDBCollection.upsert          => upsert_one
