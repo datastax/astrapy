@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import asyncio
-import deprecation
 import httpx
 import logging
 import json
@@ -42,7 +41,6 @@ from typing import (
     Type,
 )
 
-from astrapy import __version__
 from astrapy.core.api import APIRequestError, api_request, async_api_request
 from astrapy.core.defaults import (
     DEFAULT_AUTH_HEADER,
@@ -1147,15 +1145,6 @@ class AstraDBCollection:
         """
         return self._put(path=path, document=document, timeout_info=timeout_info)
 
-    @deprecation.deprecated(  # type: ignore
-        deprecated_in="0.7.0",
-        removed_in="1.0.0",
-        current_version=__version__,
-        details="Use the 'delete_one' method instead",
-    )
-    def delete(self, id: str, timeout_info: TimeoutInfoWideType = None) -> API_RESPONSE:
-        return self.delete_one(id, timeout_info=timeout_info)
-
     def delete_one(
         self,
         id: str,
@@ -1337,17 +1326,6 @@ class AstraDBCollection:
 
         return response
 
-    @deprecation.deprecated(  # type: ignore
-        deprecated_in="0.7.0",
-        removed_in="1.0.0",
-        current_version=__version__,
-        details="Use the 'upsert_one' method instead",
-    )
-    def upsert(
-        self, document: API_DOC, timeout_info: TimeoutInfoWideType = None
-    ) -> str:
-        return self.upsert_one(document, timeout_info=timeout_info)
-
     def upsert_one(
         self, document: API_DOC, timeout_info: TimeoutInfoWideType = None
     ) -> str:
@@ -1438,7 +1416,7 @@ class AstraDBCollection:
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
             # Submit the jobs
             futures = [
-                executor.submit(self.upsert, document, timeout_info=timeout_info)
+                executor.submit(self.upsert_one, document, timeout_info=timeout_info)
                 for document in documents
             ]
 
@@ -2701,17 +2679,6 @@ class AsyncAstraDBCollection:
 
         return response
 
-    @deprecation.deprecated(  # type: ignore
-        deprecated_in="0.7.0",
-        removed_in="1.0.0",
-        current_version=__version__,
-        details="Use the 'upsert_one' method instead",
-    )
-    async def upsert(
-        self, document: API_DOC, timeout_info: TimeoutInfoWideType = None
-    ) -> str:
-        return await self.upsert_one(document, timeout_info=timeout_info)
-
     async def upsert_one(
         self,
         document: API_DOC,
@@ -3115,41 +3082,6 @@ class AstraDB:
 
         return response
 
-    @deprecation.deprecated(  # type: ignore
-        deprecated_in="0.7.0",
-        removed_in="1.0.0",
-        current_version=__version__,
-        details="Use the 'AstraDBCollection.clear()' method instead",
-    )
-    def truncate_collection(
-        self, collection_name: str, timeout_info: TimeoutInfoWideType = None
-    ) -> AstraDBCollection:
-        """
-        Clear a collection in the database, deleting all stored documents.
-
-        Args:
-            collection_name (str): The name of the collection to clear.
-            timeout_info: a float, or a TimeoutInfo dict, for the HTTP request.
-                Note that a 'read' timeout event will not block the action taken
-                by the API server if it has received the request already.
-
-        Returns:
-            collection: an AstraDBCollection instance
-        """
-        collection = AstraDBCollection(
-            collection_name=collection_name,
-            astra_db=self,
-        )
-        clear_response = collection.clear(timeout_info=timeout_info)
-
-        if clear_response.get("status", {}).get("deletedCount") != -1:
-            raise ValueError(
-                f"Could not issue a truncation API command (response: {json.dumps(clear_response)})."
-            )
-
-        # return the collection itself
-        return collection
-
 
 class AsyncAstraDB:
     def __init__(
@@ -3473,39 +3405,3 @@ class AsyncAstraDB:
         )
 
         return response
-
-    @deprecation.deprecated(  # type: ignore
-        deprecated_in="0.7.0",
-        removed_in="1.0.0",
-        current_version=__version__,
-        details="Use the 'AsyncAstraDBCollection.clear()' method instead",
-    )
-    async def truncate_collection(
-        self, collection_name: str, timeout_info: TimeoutInfoWideType = None
-    ) -> AsyncAstraDBCollection:
-        """
-        Clear a collection in the database, deleting all stored documents.
-
-        Args:
-            collection_name (str): The name of the collection to clear.
-            timeout_info: a float, or a TimeoutInfo dict, for the HTTP request.
-                Note that a 'read' timeout event will not block the action taken
-                by the API server if it has received the request already.
-
-        Returns:
-            collection: an AsyncAstraDBCollection instance
-        """
-
-        collection = AsyncAstraDBCollection(
-            collection_name=collection_name,
-            astra_db=self,
-        )
-        clear_response = await collection.clear(timeout_info=timeout_info)
-
-        if clear_response.get("status", {}).get("deletedCount") != -1:
-            raise ValueError(
-                f"Could not issue a truncation API command (response: {json.dumps(clear_response)})."
-            )
-
-        # return the collection itself
-        return collection

@@ -18,6 +18,8 @@ from typing import Any, Dict, List
 
 import pytest
 
+from ..conftest import async_fail_if_not_removed
+
 from astrapy import AsyncCollection
 from astrapy.results import DeleteResult, InsertOneResult
 from astrapy.exceptions import InsertManyException, DataAPIResponseException
@@ -189,18 +191,19 @@ class TestDMLAsync:
             == 1
         )
 
-        await async_empty_collection.delete_all()
+        await async_empty_collection.delete_many({})
         await async_empty_collection.insert_many([{"a": 1} for _ in range(50)])
         do_result2 = await async_empty_collection.delete_many({"a": 1})
         assert do_result2.deleted_count == 50
         assert await async_empty_collection.count_documents({}, upper_bound=100) == 0
 
-        await async_empty_collection.delete_all()
+        await async_empty_collection.delete_many({})
         await async_empty_collection.insert_many([{"a": 1} for _ in range(50)])
         do_result2 = await async_empty_collection.delete_many({"a": 1})
         assert do_result2.deleted_count == 50
         assert await async_empty_collection.count_documents({}, upper_bound=100) == 0
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of collection delete_all, async")
     async def test_collection_delete_all_async(
         self,
@@ -835,35 +838,35 @@ class TestDMLAsync:
         resp0010 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
         assert resp0010 is None
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         resp0011 = await acol.find_one_and_replace(
             {"f": 0}, {"r": 1}, upsert=True, sort={"x": 1}
         )
         assert resp0011 is None
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0100 = await acol.find_one_and_replace({"f": 0}, {"r": 1})
         assert resp0100 is not None
         assert resp0100["f"] == 0
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0101 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, sort={"x": 1})
         assert resp0101 is not None
         assert resp0101["f"] == 0
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0110 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
         assert resp0110 is not None
         assert resp0110["f"] == 0
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0111 = await acol.find_one_and_replace(
@@ -872,7 +875,7 @@ class TestDMLAsync:
         assert resp0111 is not None
         assert resp0111["f"] == 0
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         resp1000 = await acol.find_one_and_replace(
             {"f": 0}, {"r": 1}, return_document=ReturnDocument.AFTER
@@ -892,7 +895,7 @@ class TestDMLAsync:
         assert resp1010 is not None
         assert resp1010["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         resp1011 = await acol.find_one_and_replace(
             {"f": 0},
@@ -904,7 +907,7 @@ class TestDMLAsync:
         assert resp1011 is not None
         assert resp1011["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1100 = await acol.find_one_and_replace(
@@ -913,7 +916,7 @@ class TestDMLAsync:
         assert resp1100 is not None
         assert resp1100["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1101 = await acol.find_one_and_replace(
@@ -922,7 +925,7 @@ class TestDMLAsync:
         assert resp1101 is not None
         assert resp1101["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1110 = await acol.find_one_and_replace(
@@ -931,7 +934,7 @@ class TestDMLAsync:
         assert resp1110 is not None
         assert resp1110["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1111 = await acol.find_one_and_replace(
@@ -944,7 +947,7 @@ class TestDMLAsync:
         assert resp1111 is not None
         assert resp1111["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         # projection
         await acol.insert_one({"f": 100, "name": "apple", "mode": "old"})
@@ -964,7 +967,7 @@ class TestDMLAsync:
         )
         assert resp_pr2 is not None
         assert set(resp_pr2.keys()) == {"mode"}
-        await acol.delete_all()
+        await acol.delete_many({})
 
     @pytest.mark.describe("test of replace_one, async")
     async def test_collection_replace_one_async(
@@ -1209,14 +1212,14 @@ class TestDMLAsync:
         )
         assert resp0010 is None
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         resp0011 = await acol.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, upsert=True, sort={"x": 1}
         )
         assert resp0011 is None
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0100 = await acol.find_one_and_update({"f": 0}, {"$set": {"n": 1}})
@@ -1224,7 +1227,7 @@ class TestDMLAsync:
         assert resp0100["f"] == 0
         assert "n" not in resp0100
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0101 = await acol.find_one_and_update(
@@ -1234,7 +1237,7 @@ class TestDMLAsync:
         assert resp0101["f"] == 0
         assert "n" not in resp0101
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0110 = await acol.find_one_and_update(
@@ -1244,7 +1247,7 @@ class TestDMLAsync:
         assert resp0110["f"] == 0
         assert "n" not in resp0110
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0111 = await acol.find_one_and_update(
@@ -1254,7 +1257,7 @@ class TestDMLAsync:
         assert resp0111["f"] == 0
         assert "n" not in resp0111
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         resp1000 = await acol.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, return_document=ReturnDocument.AFTER
@@ -1280,7 +1283,7 @@ class TestDMLAsync:
         assert resp1010 is not None
         assert resp1010["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         resp1011 = await acol.find_one_and_update(
             {"f": 0},
@@ -1292,7 +1295,7 @@ class TestDMLAsync:
         assert resp1011 is not None
         assert resp1011["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1100 = await acol.find_one_and_update(
@@ -1301,7 +1304,7 @@ class TestDMLAsync:
         assert resp1100 is not None
         assert resp1100["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1101 = await acol.find_one_and_update(
@@ -1313,7 +1316,7 @@ class TestDMLAsync:
         assert resp1101 is not None
         assert resp1101["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1110 = await acol.find_one_and_update(
@@ -1325,7 +1328,7 @@ class TestDMLAsync:
         assert resp1110 is not None
         assert resp1110["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1111 = await acol.find_one_and_update(
@@ -1338,7 +1341,7 @@ class TestDMLAsync:
         assert resp1111 is not None
         assert resp1111["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         # projection
         await acol.insert_one({"f": 100, "name": "apple", "mode": "old"})
@@ -1358,7 +1361,7 @@ class TestDMLAsync:
         )
         assert resp_pr2 is not None
         assert set(resp_pr2.keys()) == {"f"}
-        await acol.delete_all()
+        await acol.delete_many({})
 
     @pytest.mark.describe("test of ordered bulk_write, async")
     async def test_collection_ordered_bulk_write_async(

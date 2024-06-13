@@ -18,7 +18,12 @@ import os
 from typing import Iterable
 import pytest
 
-from ..conftest import AstraDBCredentials
+from ..conftest import (
+    AstraDBCredentials,
+    async_fail_if_not_removed,
+    sync_fail_if_not_removed,
+)
+
 from astrapy import AsyncCollection, AsyncDatabase, Collection, Database
 from astrapy.constants import VectorMetric
 
@@ -82,7 +87,7 @@ def sync_collection(
 @pytest.fixture(scope="function")
 def sync_empty_collection(sync_collection: Collection) -> Iterable[Collection]:
     """Emptied for each test function"""
-    sync_collection.delete_all()
+    sync_collection.delete_many({})
     yield sync_collection
 
 
@@ -105,5 +110,7 @@ def async_empty_collection(
 __all__ = [
     "AstraDBCredentials",
     "sync_database",
+    "sync_fail_if_not_removed",
     "async_database",
+    "async_fail_if_not_removed",
 ]

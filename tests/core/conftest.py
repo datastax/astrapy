@@ -220,7 +220,7 @@ def allowindex_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
             },
         },
     )
-    collection.upsert(INDEXING_SAMPLE_DOCUMENT)
+    collection.upsert_one(INDEXING_SAMPLE_DOCUMENT)
 
     yield collection
 
@@ -249,7 +249,7 @@ def denyindex_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
             },
         },
     )
-    collection.upsert(INDEXING_SAMPLE_DOCUMENT)
+    collection.upsert_one(INDEXING_SAMPLE_DOCUMENT)
 
     yield collection
 

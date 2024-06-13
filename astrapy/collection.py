@@ -15,11 +15,13 @@
 from __future__ import annotations
 
 import asyncio
+import deprecation
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 
+from astrapy import __version__
 from astrapy.core.db import (
     AstraDBCollection,
     AsyncAstraDBCollection,
@@ -2195,8 +2197,7 @@ class Collection:
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
                 Passing an empty filter, `{}`, completely erases all contents
-                of the collection. An equivalent result is obtained with
-                the `delete_all` method.
+                of the collection.
             max_time_ms: a timeout, in milliseconds, for the operation.
                 If not passed, the collection-level setting is used instead:
                 keep in mind that this method entails successive HTTP requests
@@ -2269,6 +2270,12 @@ class Collection:
             raw_results=dm_responses,
         )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.3.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details="Use delete_many with filter={} instead.",
+    )
     def delete_all(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Delete all documents in a collection.
@@ -4653,8 +4660,7 @@ class AsyncCollection:
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
                 Passing an empty filter, `{}`, completely erases all contents
-                of the collection. An equivalent result is obtained with
-                the `delete_all` method.
+                of the collection.
             max_time_ms: a timeout, in milliseconds, for the operation.
                 If not passed, the collection-level setting is used instead:
                 keep in mind that this method entails successive HTTP requests
@@ -4732,6 +4738,12 @@ class AsyncCollection:
             raw_results=dm_responses,
         )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.3.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details="Use delete_many with filter={} instead.",
+    )
     async def delete_all(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Delete all documents in a collection.

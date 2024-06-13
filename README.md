@@ -62,7 +62,7 @@ my_collection.update_one(
 
 cursor = my_collection.find(
     {},
-    vector=[0, 0.2, 0.4],
+    sort={"$vector": [0, 0.2, 0.4]},
     limit=2,
     include_similarity=True,
 )

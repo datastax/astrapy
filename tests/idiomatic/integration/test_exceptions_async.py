@@ -74,21 +74,21 @@ class TestExceptionsAsync:
         assert len(im_result1.inserted_ids) == 6
         assert len(await _alist(acol.find({}))) == 6
 
-        await acol.delete_all()
+        await acol.delete_many({})
         im_result2 = await acol.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=1
         )
         assert len(im_result2.inserted_ids) == 6
         assert len(await _alist(acol.find({}))) == 6
 
-        await acol.delete_all()
+        await acol.delete_many({})
         im_result3 = await acol.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=2
         )
         assert len(im_result3.inserted_ids) == 6
         assert len(await _alist(acol.find({}))) == 6
 
-        await acol.delete_all()
+        await acol.delete_many({})
         with pytest.raises(InsertManyException) as exc:
             await acol.insert_many(dup_docs, ordered=True, chunk_size=2, concurrency=1)
         assert len(exc.value.error_descriptors) == 1
@@ -98,7 +98,7 @@ class TestExceptionsAsync:
         assert len(exc.value.partial_result.raw_results) == 2
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
-        await acol.delete_all()
+        await acol.delete_many({})
         with pytest.raises(InsertManyException) as exc:
             await acol.insert_many(dup_docs, ordered=False, chunk_size=2, concurrency=1)
         assert len(exc.value.error_descriptors) == 3
@@ -109,7 +109,7 @@ class TestExceptionsAsync:
         assert len(exc.value.partial_result.raw_results) == 4
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "d", "e", "f"}
 
-        await acol.delete_all()
+        await acol.delete_many({})
         with pytest.raises(InsertManyException) as exc:
             im_result3 = await acol.insert_many(
                 dup_docs, ordered=False, chunk_size=2, concurrency=2
@@ -177,7 +177,7 @@ class TestExceptionsAsync:
         acol._astra_db_collection.collection_name += "_hacked"
         acol._astra_db_collection.base_path += "_hacked"
         with pytest.raises(DataAPIResponseException):
-            await acol.delete_all()
+            await acol.delete_many({})
         with pytest.raises(DataAPIResponseException):
             await acol.delete_one({"a": 1})
         with pytest.raises(DataAPIResponseException):

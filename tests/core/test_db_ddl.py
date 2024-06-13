@@ -91,7 +91,7 @@ def test_create_use_destroy_nonvector_collection(db: AstraDB) -> None:
     assert "second" in ids
     assert "first" not in ids
     auto_id = [id for id in ids if id not in {"second", "last"}][0]
-    col.delete(auto_id)
+    col.delete_one(auto_id)
     assert col.find_one(filter={"name": "c"})["data"]["document"] is None
     del_res = db.delete_collection(TEST_CREATE_DELETE_NONVECTOR_COLLECTION_NAME)
     assert del_res["status"]["ok"] == 1

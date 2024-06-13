@@ -64,21 +64,21 @@ class TestExceptionsSync:
         assert len(im_result1.inserted_ids) == 6
         assert len(list(col.find({}))) == 6
 
-        col.delete_all()
+        col.delete_many({})
         im_result2 = col.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=1
         )
         assert len(im_result2.inserted_ids) == 6
         assert len(list(col.find({}))) == 6
 
-        col.delete_all()
+        col.delete_many({})
         im_result3 = col.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=2
         )
         assert len(im_result3.inserted_ids) == 6
         assert len(list(col.find({}))) == 6
 
-        col.delete_all()
+        col.delete_many({})
         with pytest.raises(InsertManyException) as exc:
             col.insert_many(dup_docs, ordered=True, chunk_size=2, concurrency=1)
         assert len(exc.value.error_descriptors) == 1
@@ -88,7 +88,7 @@ class TestExceptionsSync:
         assert len(exc.value.partial_result.raw_results) == 2
         assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
-        col.delete_all()
+        col.delete_many({})
         with pytest.raises(InsertManyException) as exc:
             col.insert_many(dup_docs, ordered=False, chunk_size=2, concurrency=1)
         assert len(exc.value.error_descriptors) == 3
@@ -99,7 +99,7 @@ class TestExceptionsSync:
         assert len(exc.value.partial_result.raw_results) == 4
         assert {doc["_id"] for doc in col.find()} == {"a", "b", "d", "e", "f"}
 
-        col.delete_all()
+        col.delete_many({})
         with pytest.raises(InsertManyException) as exc:
             im_result3 = col.insert_many(
                 dup_docs, ordered=False, chunk_size=2, concurrency=2
@@ -168,7 +168,7 @@ class TestExceptionsSync:
         col._astra_db_collection.collection_name += "_hacked"
         col._astra_db_collection.base_path += "_hacked"
         with pytest.raises(DataAPIResponseException):
-            col.delete_all()
+            col.delete_many({})
         with pytest.raises(DataAPIResponseException):
             col.delete_one({"a": 1})
         with pytest.raises(DataAPIResponseException):
