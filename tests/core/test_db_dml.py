@@ -22,7 +22,7 @@ import datetime
 import logging
 import json
 import httpx
-from typing import cast, Dict, Iterable, List, Literal, Optional, Set
+from typing import cast, Any, Dict, Iterable, List, Literal, Optional, Set
 
 import pytest
 
@@ -32,6 +32,10 @@ from astrapy.core.db import AstraDB, AstraDBCollection
 
 
 logger = logging.getLogger(__name__)
+
+
+def _cleanvec(doc: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: v for k, v in doc.items() if k != "$vector"}
 
 
 @pytest.mark.describe("should fail clearing a non-existent collection")
@@ -67,21 +71,24 @@ def test_find_one_filter_novector(readonly_v_collection: AstraDBCollection) -> N
     )
     document = response["data"]["document"]
     assert document["text"] == "Sample entry number <1>"
-    assert (
-        document.keys() ^ {"_id", "text", "otherfield", "anotherfield", "$vector"}
-        == set()
-    )
+    assert (set(document.keys()) - {"$vector"}) ^ {
+        "_id",
+        "text",
+        "otherfield",
+        "anotherfield",
+    } == set()
 
     response_not_by_id = readonly_v_collection.find_one(
         filter={"text": "Sample entry number <1>"},
     )
     document_not_by_id = response_not_by_id["data"]["document"]
     assert document_not_by_id["_id"] == "1"
-    assert (
-        document_not_by_id.keys()
-        ^ {"_id", "text", "otherfield", "anotherfield", "$vector"}
-        == set()
-    )
+    assert (set(document_not_by_id.keys()) - {"$vector"}) ^ {
+        "_id",
+        "text",
+        "otherfield",
+        "anotherfield",
+    } == set()
 
     response_no = readonly_v_collection.find_one(
         filter={"_id": "Z"},
@@ -139,19 +146,27 @@ def test_find_find_one_projection(
             "otherfield",
             "anotherfield",
             "text",
-        },  # {"$vector", "_id"},
+        },
         {"$vector", "_id", "text"},
     ]
     for proj, exp_fields in zip(projs, exp_fieldsets):
         response_n = readonly_v_collection.find(
             sort=sort, options=options, projection=proj
         )
-        fields = set(response_n["data"]["documents"][0].keys())
-        assert fields == exp_fields
+        vkeys_novec = set(response_n["data"]["documents"][0].keys()) - {"$vector"}
+        expkeys_novec = exp_fields - {"$vector"}
+        assert vkeys_novec == expkeys_novec
+        # but in some cases $vector must be there:
+        if "$vector" in (proj or set()):
+            assert "$vector" in response_n["data"]["documents"][0]
         #
         response_1 = readonly_v_collection.find_one(sort=sort, projection=proj)
-        fields = set(response_1["data"]["document"].keys())
-        assert fields == exp_fields
+        vkeys_novec = set(response_1["data"]["document"].keys()) - {"$vector"}
+        expkeys_novec = exp_fields - {"$vector"}
+        assert vkeys_novec == expkeys_novec
+        # but in some cases $vector must be there:
+        if "$vector" in (proj or set()):
+            assert "$vector" in response_1["data"]["document"]
 
 
 @pytest.mark.describe("should coerce vectors in the find sort argument")
@@ -367,7 +382,7 @@ def test_chunked_insert_many(
 
     response0a = writable_v_collection.find_one(filter={"_id": _ids0[0]})
     assert response0a is not None
-    assert response0a["data"]["document"] == documents0[0]
+    assert _cleanvec(response0a["data"]["document"]) == _cleanvec(documents0[0])
 
     # partial overlap of IDs for failure modes
     _ids1 = [
@@ -450,7 +465,7 @@ def test_concurrent_chunked_insert_many(
 
     response0a = writable_v_collection.find_one(filter={"_id": _ids0[0]})
     assert response0a is not None
-    assert response0a["data"]["document"] == documents0[0]
+    assert _cleanvec(response0a["data"]["document"]) == _cleanvec(documents0[0])
 
     # partial overlap of IDs for failure modes
     _ids1 = [
@@ -1043,7 +1058,7 @@ def test_find_one_and_replace_vector(
 ) -> None:
     sort = {"$vector": [0.2, 0.6]}
 
-    response0 = disposable_v_collection.find_one(sort=sort)
+    response0 = disposable_v_collection.find_one(sort=sort, projection={"*": 1})
     assert response0 is not None
     assert "anotherfield" in response0["data"]["document"]
 

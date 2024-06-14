@@ -107,12 +107,12 @@ class TestDMLSync:
         sync_empty_collection: Collection,
     ) -> None:
         sync_empty_collection.insert_one({"tag": "v1"}, vector=[-1, -2])
-        retrieved1 = sync_empty_collection.find_one({"tag": "v1"})
+        retrieved1 = sync_empty_collection.find_one({"tag": "v1"}, projection={"*": 1})
         assert retrieved1 is not None
         assert retrieved1["$vector"] == [-1, -2]
 
         sync_empty_collection.insert_one({"tag": "v2", "$vector": [-3, -4]})
-        retrieved2 = sync_empty_collection.find_one({"tag": "v2"})
+        retrieved2 = sync_empty_collection.find_one({"tag": "v2"}, projection={"*": 1})
         assert retrieved2 is not None
         assert retrieved2["$vector"] == [-3, -4]
 
@@ -638,7 +638,7 @@ class TestDMLSync:
                 "otherfield",
                 "anotherfield",
                 "text",
-            },  # {"$vector", "_id"},
+            },
             {"$vector", "_id", "text"},
         ]
         for include_similarity in [True, False]:
@@ -655,7 +655,14 @@ class TestDMLSync:
                     exp_fields = exp_fields0 | {"$similarity"}
                 else:
                     exp_fields = exp_fields0
-                assert set(vdocs[0].keys()) == exp_fields
+                # this test should not concern whether $vector is found or not
+                # (abiding by the '$vector may or may not be returned' tenet)
+                vkeys_novec = set(vdocs[0].keys()) - {"$vector"}
+                expkeys_novec = exp_fields - {"$vector"}
+                assert vkeys_novec == expkeys_novec
+                # but in some cases $vector must be there:
+                if "$vector" in (req_projection or set()):
+                    assert "$vector" in vdocs[0]
 
     @pytest.mark.describe("test of collection insert_many, sync")
     def test_collection_insert_many_sync(
@@ -696,7 +703,9 @@ class TestDMLSync:
             vectors=[None, None],
         )
 
-        assert all(len(doc["$vector"]) == 2 for doc in col.find({}))
+        assert all(
+            len(doc["$vector"]) == 2 for doc in col.find({}, projection={"*": 1})
+        )
 
         with pytest.raises(ValueError):
             col.insert_many(

@@ -126,12 +126,16 @@ class TestDMLAsync:
         async_empty_collection: AsyncCollection,
     ) -> None:
         await async_empty_collection.insert_one({"tag": "v1"}, vector=[-1, -2])
-        retrieved1 = await async_empty_collection.find_one({"tag": "v1"})
+        retrieved1 = await async_empty_collection.find_one(
+            {"tag": "v1"}, projection={"*": 1}
+        )
         assert retrieved1 is not None
         assert retrieved1["$vector"] == [-1, -2]
 
         await async_empty_collection.insert_one({"tag": "v2", "$vector": [-3, -4]})
-        retrieved2 = await async_empty_collection.find_one({"tag": "v2"})
+        retrieved2 = await async_empty_collection.find_one(
+            {"tag": "v2"}, projection={"*": 1}
+        )
         assert retrieved2 is not None
         assert retrieved2["$vector"] == [-3, -4]
 
@@ -702,7 +706,7 @@ class TestDMLAsync:
                 "otherfield",
                 "anotherfield",
                 "text",
-            },  # {"$vector", "_id"},
+            },
             {"$vector", "_id", "text"},
         ]
         for include_similarity in [True, False]:
@@ -720,7 +724,14 @@ class TestDMLAsync:
                     exp_fields = exp_fields0 | {"$similarity"}
                 else:
                     exp_fields = exp_fields0
-                assert set(vdocs[0].keys()) == exp_fields
+                # this test should not concern whether $vector is found or not
+                # (abiding by the '$vector may or may not be returned' tenet)
+                vkeys_novec = set(vdocs[0].keys()) - {"$vector"}
+                expkeys_novec = exp_fields - {"$vector"}
+                assert vkeys_novec == expkeys_novec
+                # but in some cases $vector must be there:
+                if "$vector" in (req_projection or set()):
+                    assert "$vector" in vdocs[0]
 
     @pytest.mark.describe("test of collection insert_many, async")
     async def test_collection_insert_many_async(
@@ -765,7 +776,7 @@ class TestDMLAsync:
             vectors=[None, None],
         )
 
-        vectors = [doc["$vector"] async for doc in acol.find({})]
+        vectors = [doc["$vector"] async for doc in acol.find({}, projection={"*": 1})]
         assert all(len(vec) == 2 for vec in vectors)
 
         with pytest.raises(ValueError):

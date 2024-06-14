@@ -83,9 +83,10 @@ async def test_vector_find_float32(
             yield f"{v}"
 
     documents_sim_1 = await async_readonly_v_collection.vector_find(
-        # we surreptitously trick typing here
+        # we surreptitiously trick typing here
         vector=cast(List[float], ite()),
         limit=3,
+        fields=["*"],
     )
 
     assert documents_sim_1 is not None
@@ -114,7 +115,7 @@ async def test_vector_find_projection(
         {"$vector", "_id", "otherfield", "anotherfield", "text"},
         {"$vector", "_id", "otherfield", "anotherfield", "text"},
         {"_id", "text"},
-        {"$vector", "_id", "otherfield", "anotherfield", "text"},  # {"$vector", "_id"},
+        {"$vector", "_id", "otherfield", "anotherfield", "text"},
         {"$vector", "_id", "text"},
     ]
     for include_similarity in [True, False]:
@@ -129,7 +130,12 @@ async def test_vector_find_projection(
                 exp_fields = exp_fields0 | {"$similarity"}
             else:
                 exp_fields = exp_fields0
-            assert set(vdocs[0].keys()) == exp_fields
+            vkeys_cl = set(vdocs[0].keys()) - {"$vector"}
+            ekeys_cl = exp_fields - {"$vector"}
+            assert vkeys_cl == ekeys_cl
+            # but in some cases $vector must be there:
+            if "$vector" in (req_fields or set()):
+                assert "$vector" in vdocs[0]
 
 
 @pytest.mark.describe("vector_find with filters (async)")
@@ -160,6 +166,7 @@ async def test_vector_find_one(
 ) -> None:
     document0 = await async_readonly_v_collection.vector_find_one(
         [0.2, 0.6],
+        fields=["*"],
     )
 
     assert document0 is not None
@@ -171,6 +178,7 @@ async def test_vector_find_one(
     document_w_sim = await async_readonly_v_collection.vector_find_one(
         [0.2, 0.6],
         include_similarity=True,
+        fields=["*"],
     )
 
     assert document_w_sim is not None
@@ -182,6 +190,7 @@ async def test_vector_find_one(
     document_no_sim = await async_readonly_v_collection.vector_find_one(
         [0.2, 0.6],
         include_similarity=False,
+        fields=["*"],
     )
 
     assert document_no_sim is not None
