@@ -87,6 +87,7 @@ SECRET_NAME_ROOT_MAP = {
     "azureOpenAI": "AZURE_OPENAI",
     "cohere": "COHERE",
     "huggingface": "HUGGINGFACE",
+    "huggingfaceDedicated": "HUGGINGFACEDEDICATED",
     "jinaAI": "JINAAI",
     "mistral": "MISTRAL",
     "nvidia": "NVIDIA",
@@ -119,6 +120,17 @@ PARAMETER_VALUE_MAP = {
     ("voyageAI", "voyage-large-2", "autoTruncate"): True,
     ("voyageAI", "voyage-large-2-instruct", "autoTruncate"): True,
     ("voyageAI", "voyage-law-2", "autoTruncate"): True,
+    #
+    ("huggingfaceDedicated", "endpoint-defined-model", "endpointName"): "bb",
+    ("huggingfaceDedicated", "endpoint-defined-model", "regionName"): "bb",
+    ("huggingfaceDedicated", "endpoint-defined-model", "cloudName"): "bb",
+    #
+    ("openai", "text-embedding-3-large", "organizationId"): "bb",
+    ("openai", "text-embedding-3-large", "projectId"): "bb",
+    ("openai", "text-embedding-3-small", "organizationId"): "bb",
+    ("openai", "text-embedding-3-small", "projectId"): "bb",
+    ("openai", "text-embedding-ada-002", "organizationId"): "bb",
+    ("openai", "text-embedding-ada-002", "projectId"): "bb",
 }
 
 

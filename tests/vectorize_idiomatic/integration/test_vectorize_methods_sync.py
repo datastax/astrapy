@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Dict
+
 import pytest
 
 from astrapy import Collection, Database
@@ -26,16 +28,14 @@ from astrapy.operations import (
 
 
 class TestVectorizeMethodsSync:
-    # @pytest.mark.skipif(
-    #     not is_nvidia_service_available(), reason="No 'service' on this database"
-    # )
     @pytest.mark.describe("test of vectorize in collection methods, sync")
     def test_collection_methods_vectorize_sync(
         self,
         sync_empty_service_collection: Collection,
-        service_vector_dimension: int,
+        service_collection_parameters: Dict[str, Any],
     ) -> None:
         col = sync_empty_service_collection
+        service_vector_dimension = service_collection_parameters["dimension"]
 
         col.insert_one({"t": "tower", "$vectorize": "How high is this tower?"})
         col.insert_one({"t": "vectorless"})
@@ -128,9 +128,6 @@ class TestVectorizeMethodsSync:
         )
         assert d1res.deleted_count == 1
 
-    # @pytest.mark.skipif(
-    #     not is_nvidia_service_available(), reason="No 'service' on this database"
-    # )
     @pytest.mark.describe("test of bulk_write with vectorize, sync")
     def test_collection_bulk_write_vectorize_sync(
         self,
@@ -165,20 +162,20 @@ class TestVectorizeMethodsSync:
         assert {"a": 10} in found
         assert {"a": 2, "b": 1} in found
 
-    # @pytest.mark.skipif(
-    #     not is_nvidia_service_available(), reason="No 'service' on this database"
-    # )
     @pytest.mark.describe(
         "test of database create_collection dimension-mismatch failure, sync"
     )
     def test_database_create_collection_dimension_mismatch_failure_sync(
         self,
         sync_database: Database,
+        service_collection_parameters: Dict[str, Any],
     ) -> None:
         with pytest.raises(DataAPIResponseException):
             sync_database.create_collection(
                 "collection_name",
-                dimension=123,
-                # service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
-                service={"provider": "openai", "modelName": "text-embedding-ada-002"},
+                dimension=service_collection_parameters["dimension"] + 10,
+                service={
+                    "provider": service_collection_parameters["provider"],
+                    "modelName": service_collection_parameters["modelName"],
+                },
             )

@@ -23,7 +23,7 @@ available as the env.vars:
 """
 
 import os
-from typing import Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 import pytest
 
 from ..conftest import AstraDBCredentials
@@ -38,15 +38,6 @@ from astrapy.admin import parse_api_endpoint
 from astrapy.constants import Environment
 
 TEST_SERVICE_COLLECTION_NAME = "test_indepth_vectorize_collection"
-
-
-def is_nvidia_service_available() -> bool:
-    return all(
-        [
-            "us-west-2" in os.environ.get("ASTRA_DB_API_ENDPOINT", ""),
-            "astra-dev.datastax.com" in os.environ.get("ASTRA_DB_API_ENDPOINT", ""),
-        ]
-    )
 
 
 def _parse_to_testing_environment(api_endpoint: str) -> Tuple[str, str]:
@@ -109,35 +100,34 @@ def async_database(
 
 
 @pytest.fixture(scope="session")
+def service_collection_parameters() -> Iterable[Dict[str, Any]]:
+    yield {
+        "dimension": 1536,
+        "provider": "openai",
+        "modelName": "text-embedding-ada-002",
+        "api_key": os.environ["HEADER_EMBEDDING_API_KEY_OPENAI"],
+    }
+
+
+@pytest.fixture(scope="session")
 def sync_service_collection(
     astra_db_credentials_kwargs: AstraDBCredentials,
     sync_database: Database,
+    service_collection_parameters: Dict[str, Any],
 ) -> Iterable[Collection]:
     """
     An actual collection on DB, in the main namespace.
-    TODO: automate that: if it's nvidia, it has to be some env/regions,
-        while if it's openai it can be all (vectorize) regions in prod.
     """
-    # collection = sync_database.create_collection(
-    #     TEST_SERVICE_COLLECTION_NAME,
-    #     metric=VectorMetric.DOT_PRODUCT,
-    #     service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
-    # )
+    params = service_collection_parameters
     collection = sync_database.create_collection(
         TEST_SERVICE_COLLECTION_NAME,
         metric=VectorMetric.DOT_PRODUCT,
-        service={"provider": "openai", "modelName": "text-embedding-ada-002"},
-        embedding_api_key=os.environ["HEADER_EMBEDDING_API_KEY_OPENAI"],
+        service={"provider": params["provider"], "modelName": params["modelName"]},
+        embedding_api_key=params["api_key"],
     )
     yield collection
 
     sync_database.drop_collection(TEST_SERVICE_COLLECTION_NAME)
-
-
-@pytest.fixture(scope="session")
-def service_vector_dimension() -> Iterable[int]:
-    # yield 1024
-    yield 1536
 
 
 @pytest.fixture(scope="function")
@@ -161,5 +151,4 @@ __all__ = [
     "sync_database",
     "async_database",
     "env_filter_match",
-    "is_nvidia_service_available",
 ]

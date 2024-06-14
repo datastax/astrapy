@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Dict
+
 import pytest
 
-# from ..conftest import is_nvidia_service_available
 from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.exceptions import DataAPIResponseException
 from astrapy.operations import (
@@ -27,16 +28,14 @@ from astrapy.operations import (
 
 
 class TestVectorizeMethodsAsync:
-    # @pytest.mark.skipif(
-    #     not is_nvidia_service_available(), reason="No 'service' on this database"
-    # )
     @pytest.mark.describe("test of vectorize in collection methods, async")
     async def test_collection_methods_vectorize_async(
         self,
         async_empty_service_collection: AsyncCollection,
-        service_vector_dimension: int,
+        service_collection_parameters: Dict[str, Any],
     ) -> None:
         acol = async_empty_service_collection
+        service_vector_dimension = service_collection_parameters["dimension"]
 
         await acol.insert_one({"t": "tower", "$vectorize": "How high is this tower?"})
         await acol.insert_one({"t": "vectorless"})
@@ -132,9 +131,6 @@ class TestVectorizeMethodsAsync:
         )
         assert d1res.deleted_count == 1
 
-    # @pytest.mark.skipif(
-    #     not is_nvidia_service_available(), reason="No 'service' on this database"
-    # )
     @pytest.mark.describe("test of bulk_write with vectorize, async")
     async def test_collection_bulk_write_vectorize_async(
         self,
@@ -169,20 +165,20 @@ class TestVectorizeMethodsAsync:
         assert {"a": 10} in found
         assert {"a": 2, "b": 1} in found
 
-    # @pytest.mark.skipif(
-    #     not is_nvidia_service_available(), reason="No 'service' on this database"
-    # )
     @pytest.mark.describe(
         "test of database create_collection dimension-mismatch failure, async"
     )
     async def test_database_create_collection_dimension_mismatch_failure_async(
         self,
         async_database: AsyncDatabase,
+        service_collection_parameters: Dict[str, Any],
     ) -> None:
         with pytest.raises(DataAPIResponseException):
             await async_database.create_collection(
                 "collection_name",
-                dimension=123,
-                service={"provider": "openai", "modelName": "text-embedding-ada-002"},
-                # service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
+                dimension=service_collection_parameters["dimension"] + 10,
+                service={
+                    "provider": service_collection_parameters["provider"],
+                    "modelName": service_collection_parameters["modelName"],
+                },
             )
