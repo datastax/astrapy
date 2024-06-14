@@ -557,9 +557,9 @@ class TestDMLSync:
         hits = list(
             sync_empty_collection.find(
                 {},
+                sort={"$vector": q_vector},
                 projection=["tag"],
                 limit=3,
-                vector=q_vector,
             )
         )
         assert [hit["tag"] for hit in hits] == ["A", "B", "C"]
@@ -569,21 +569,20 @@ class TestDMLSync:
                 sync_empty_collection.find(
                     {},
                     projection=["tag"],
+                    sort={"$vector": q_vector, "tag": SortDocuments.DESCENDING},
                     limit=3,
-                    vector=q_vector,
-                    sort={"tag": SortDocuments.DESCENDING},
                 )
             )
 
-        top_doc = sync_empty_collection.find_one({}, vector=[1, 0])
+        top_doc = sync_empty_collection.find_one({}, sort={"$vector": [1, 0]})
         assert top_doc is not None
         assert top_doc["tag"] == "D"
 
         fdoc_no_s = sync_empty_collection.find(
-            {}, vector=[1, 1], include_similarity=False
+            {}, sort={"$vector": [1, 1]}, include_similarity=False
         ).__next__()
         fdoc_wi_s = sync_empty_collection.find(
-            {}, vector=[1, 1], include_similarity=True
+            {}, sort={"$vector": [1, 1]}, include_similarity=True
         ).__next__()
         assert fdoc_no_s is not None
         assert fdoc_wi_s is not None
@@ -592,10 +591,10 @@ class TestDMLSync:
         assert fdoc_wi_s["$similarity"] > 0.0
 
         f1doc_no_s = sync_empty_collection.find_one(
-            {}, vector=[1, 1], include_similarity=False
+            {}, sort={"$vector": [1, 1]}, include_similarity=False
         )
         f1doc_wi_s = sync_empty_collection.find_one(
-            {}, vector=[1, 1], include_similarity=True
+            {}, sort={"$vector": [1, 1]}, include_similarity=True
         )
         assert f1doc_no_s is not None
         assert f1doc_wi_s is not None
@@ -646,7 +645,7 @@ class TestDMLSync:
             for req_projection, exp_fields0 in zip(req_projections, exp_fieldsets):
                 vdocs = list(
                     sync_empty_collection.find(
-                        vector=[11, 21],
+                        sort={"$vector": [11, 21]},
                         limit=1,
                         projection=req_projection,
                         include_similarity=include_similarity,
@@ -952,7 +951,7 @@ class TestDMLSync:
                 {"tag": "v", "$vector": [2, 20]},
             ]
         )
-        result = col.replace_one({}, {"new_doc": True}, vector=[0, 1])
+        result = col.replace_one({}, {"new_doc": True}, sort={"$vector": [0, 1]})
         assert result.update_info["updatedExisting"]
 
         assert col.find_one({"tag": "h"}) is not None
@@ -1096,7 +1095,7 @@ class TestDMLSync:
                 {"tag": "v", "$vector": [2, 20]},
             ]
         )
-        deleted = col.find_one_and_delete({}, vector=[0, 1])
+        deleted = col.find_one_and_delete({}, sort={"$vector": [0, 1]})
         assert deleted is not None
         assert deleted["tag"] == "v"
 
@@ -1345,11 +1344,11 @@ class TestDMLSync:
         col = sync_empty_collection
 
         bw_ops = [
-            InsertOne({"a": 1}, vector=[1, 1]),
+            InsertOne({"a": 1, "$vector": [1, 1]}),
             InsertMany([{"a": 2}, {"z": 0}], vectors=[[1, 10], [-1, 1]]),
-            UpdateOne({}, {"$set": {"b": 1}}, vector=[1, 15]),
-            ReplaceOne({}, {"a": 10}, vector=[5, 6]),
-            DeleteOne({}, vector=[-8, 7]),
+            UpdateOne({}, {"$set": {"b": 1}}, sort={"$vector": [1, 15]}),
+            ReplaceOne({}, {"a": 10}, sort={"$vector": [5, 6]}),
+            DeleteOne({}, sort={"$vector": [-8, 7]}),
         ]
         with pytest.warns(DeprecationWarning):
             col.bulk_write(bw_ops, ordered=True)

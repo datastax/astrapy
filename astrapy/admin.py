@@ -765,8 +765,8 @@ class AstraDBAdmin:
             ...     region="ap-south-1",
             ... )
             >>> my_new_db = my_new_db_admin.get_database()
-            >>> my_coll = my_new_db.create_collection("movies", dimension=512)
-            >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+            >>> my_coll = my_new_db.create_collection("movies", dimension=2)
+            >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.2]})
         """
 
         database_definition = {
@@ -1156,8 +1156,8 @@ class AstraDBAdmin:
             ...     "01234567-...",
             ...     region="us-east1",
             ... )
-            >>> coll = my_db.create_collection("movies", dimension=512)
-            >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+            >>> coll = my_db.create_collection("movies", dimension=2)
+            >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
 
         Note:
             This method does not perform any admin-level operation through

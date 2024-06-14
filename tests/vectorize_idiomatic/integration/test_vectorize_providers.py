@@ -121,19 +121,22 @@ class TestVectorizeProviders:
             if testable_vectorize_model["use_insert_one"]:
                 for test_sample_tag, test_sample_text in test_assets["samples"]:
                     collection.insert_one(
-                        {"tag": test_sample_tag},
-                        vectorize=test_sample_text,
+                        {"tag": test_sample_tag, "$vectorize": test_sample_text},
                     )
                 # also test for an error if inserting many
                 with pytest.raises(InsertManyException):
                     collection.insert_many(
-                        [{"tag": tag} for tag, _ in test_assets["samples"]],
-                        vectorize=[text for _, text in test_assets["samples"]],
+                        [
+                            {"tag": tag, "$vectorize": text}
+                            for tag, text in test_assets["samples"]
+                        ],
                     )
             else:
                 collection.insert_many(
-                    [{"tag": tag} for tag, _ in test_assets["samples"]],
-                    vectorize=[text for _, text in test_assets["samples"]],
+                    [
+                        {"tag": tag, "$vectorize": text}
+                        for tag, text in test_assets["samples"]
+                    ],
                 )
             # instantiate with header
             collection_i = db.get_collection(
@@ -144,7 +147,7 @@ class TestVectorizeProviders:
             hits = [
                 document["tag"]
                 for document in collection_i.find(
-                    vectorize=test_assets["probe"]["text"],
+                    sort={"$vectorize": test_assets["probe"]["text"]},
                     limit=len(test_assets["probe"]["expected"]),
                     projection=["tag"],
                 )
@@ -194,13 +197,14 @@ class TestVectorizeProviders:
             if testable_vectorize_model["use_insert_one"]:
                 for test_sample_tag, test_sample_text in test_assets["samples"]:
                     collection.insert_one(
-                        {"tag": test_sample_tag},
-                        vectorize=test_sample_text,
+                        {"tag": test_sample_tag, "$vectorize": test_sample_text},
                     )
             else:
                 collection.insert_many(
-                    [{"tag": tag} for tag, _ in test_assets["samples"]],
-                    vectorize=[text for _, text in test_assets["samples"]],
+                    [
+                        {"tag": tag, "$vectorize": text}
+                        for tag, text in test_assets["samples"]
+                    ],
                 )
             # instantiate collection
             collection_i = db.get_collection(
@@ -210,7 +214,7 @@ class TestVectorizeProviders:
             hits = [
                 document["tag"]
                 for document in collection_i.find(
-                    vectorize=test_assets["probe"]["text"],
+                    sort={"$vectorize": test_assets["probe"]["text"]},
                     limit=len(test_assets["probe"]["expected"]),
                     projection=["tag"],
                 )
@@ -271,13 +275,14 @@ class TestVectorizeProviders:
             if testable_vectorize_model["use_insert_one"]:
                 for test_sample_tag, test_sample_text in test_assets["samples"]:
                     collection.insert_one(
-                        {"tag": test_sample_tag},
-                        vectorize=test_sample_text,
+                        {"tag": test_sample_tag, "$vectorize": test_sample_text},
                     )
             else:
                 collection.insert_many(
-                    [{"tag": tag} for tag, _ in test_assets["samples"]],
-                    vectorize=[text for _, text in test_assets["samples"]],
+                    [
+                        {"tag": tag, "$vectorize": text}
+                        for tag, text in test_assets["samples"]
+                    ],
                 )
             # instantiate collection
             collection_i = db.get_collection(
@@ -287,7 +292,7 @@ class TestVectorizeProviders:
             hits = [
                 document["tag"]
                 for document in collection_i.find(
-                    vectorize=test_assets["probe"]["text"],
+                    sort={"$vectorize": test_assets["probe"]["text"]},
                     limit=len(test_assets["probe"]["expected"]),
                     projection=["tag"],
                 )
@@ -300,6 +305,6 @@ class TestVectorizeProviders:
                 embedding_api_key="clearly-not-a-working-secret",
             )
             with pytest.raises(DataAPIResponseException):
-                faulty_collection_i.find_one(vectorize="Breaking sentence")
+                faulty_collection_i.find_one(sort={"$vectorize": "Breaking sentence"})
         finally:
             db.drop_collection(collection_name)

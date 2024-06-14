@@ -552,7 +552,7 @@ class Database:
 
         Example:
             >>> new_col = my_db.create_collection("my_v_col", dimension=3)
-            >>> new_col.insert_one({"name": "the_row"}, vector=[0.4, 0.5, 0.7])
+            >>> new_col.insert_one({"name": "the_row", "$vector": [0.4, 0.5, 0.7]})
             InsertOneResult(raw_results=..., inserted_id='e22dd65e-...-...-...')
 
         Note:
@@ -1377,8 +1377,7 @@ class AsyncDatabase:
             >>> async def create_and_insert(adb: AsyncDatabase) -> Dict[str, Any]:
             ...     new_a_col = await adb.create_collection("my_v_col", dimension=3)
             ...     return await new_a_col.insert_one(
-            ...         {"name": "the_row"},
-            ...         vector=[0.4, 0.5, 0.7],
+            ...         {"name": "the_row", "$vector": [0.4, 0.5, 0.7]},
             ...     )
             ...
             >>> asyncio.run(create_and_insert(my_async_db))

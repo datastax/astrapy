@@ -620,9 +620,9 @@ class TestDMLAsync:
             hit
             async for hit in async_empty_collection.find(
                 {},
+                sort={"$vector": q_vector},
                 projection=["tag"],
                 limit=3,
-                vector=q_vector,
             )
         ]
         assert [hit["tag"] for hit in hits] == ["A", "B", "C"]
@@ -630,21 +630,23 @@ class TestDMLAsync:
         with pytest.raises(ValueError):
             await async_empty_collection.find(
                 {},
+                sort={
+                    "$vector": q_vector,
+                    "tag": SortDocuments.DESCENDING,
+                },
                 projection=["tag"],
                 limit=3,
-                vector=q_vector,
-                sort={"tag": SortDocuments.DESCENDING},
             ).distinct("tag")
 
-        top_doc = await async_empty_collection.find_one({}, vector=[1, 0])
+        top_doc = await async_empty_collection.find_one({}, sort={"$vector": [1, 0]})
         assert top_doc is not None
         assert top_doc["tag"] == "D"
 
         fdoc_no_s = await async_empty_collection.find(
-            {}, vector=[1, 1], include_similarity=False
+            {}, sort={"$vector": [1, 1]}, include_similarity=False
         ).__anext__()
         fdoc_wi_s = await async_empty_collection.find(
-            {}, vector=[1, 1], include_similarity=True
+            {}, sort={"$vector": [1, 1]}, include_similarity=True
         ).__anext__()
         assert fdoc_no_s is not None
         assert fdoc_wi_s is not None
@@ -653,10 +655,10 @@ class TestDMLAsync:
         assert fdoc_wi_s["$similarity"] > 0.0
 
         f1doc_no_s = await async_empty_collection.find_one(
-            {}, vector=[1, 1], include_similarity=False
+            {}, sort={"$vector": [1, 1]}, include_similarity=False
         )
         f1doc_wi_s = await async_empty_collection.find_one(
-            {}, vector=[1, 1], include_similarity=True
+            {}, sort={"$vector": [1, 1]}, include_similarity=True
         )
         assert f1doc_no_s is not None
         assert f1doc_wi_s is not None
@@ -708,7 +710,7 @@ class TestDMLAsync:
                 vdocs = [
                     doc
                     async for doc in async_empty_collection.find(
-                        vector=[11, 21],
+                        sort={"$vector": [11, 21]},
                         limit=1,
                         projection=req_projection,
                         include_similarity=include_similarity,
@@ -1028,7 +1030,7 @@ class TestDMLAsync:
                 {"tag": "v", "$vector": [2, 20]},
             ]
         )
-        result = await acol.replace_one({}, {"new_doc": True}, vector=[0, 1])
+        result = await acol.replace_one({}, {"new_doc": True}, sort={"$vector": [0, 1]})
         assert result.update_info["updatedExisting"]
 
         assert (await acol.find_one({"tag": "h"})) is not None
@@ -1186,7 +1188,7 @@ class TestDMLAsync:
                 {"tag": "v", "$vector": [2, 20]},
             ]
         )
-        deleted = await acol.find_one_and_delete({}, vector=[0, 1])
+        deleted = await acol.find_one_and_delete({}, sort={"$vector": [0, 1]})
         assert deleted is not None
         assert deleted["tag"] == "v"
 

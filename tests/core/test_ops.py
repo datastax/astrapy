@@ -35,7 +35,7 @@ ASTRA_DB_APPLICATION_TOKEN = os.environ.get(
     "ASTRA_DB_OPS_APPLICATION_TOKEN",
     os.environ.get("ASTRA_DB_APPLICATION_TOKEN", "no_token!"),
 )
-ASTRA_DB_ID = os.environ["ASTRA_DB_ID"]
+ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID", "")
 ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
 ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION", DEFAULT_REGION)
 

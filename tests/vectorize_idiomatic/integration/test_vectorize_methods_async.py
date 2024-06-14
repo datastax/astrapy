@@ -38,17 +38,22 @@ class TestVectorizeMethodsAsync:
     ) -> None:
         acol = async_empty_service_collection
 
-        await acol.insert_one({"t": "tower"}, vectorize="How high is this tower?")
+        await acol.insert_one({"t": "tower", "$vectorize": "How high is this tower?"})
         await acol.insert_one({"t": "vectorless"})
         await acol.insert_one(
-            {"t": "vectorful"}, vector=[0.01] * service_vector_dimension
+            {"t": "vectorful", "$vector": [0.01] * service_vector_dimension},
         )
 
         await acol.insert_many(
-            [{"t": "guide"}, {"t": "seeds"}],
-            vectorize=[
-                "This is the instructions manual. Read it!",
-                "Other plants rely on wind to propagate their seeds.",
+            [
+                {
+                    "t": "guide",
+                    "$vectorize": "This is the instructions manual. Read it!",
+                },
+                {
+                    "t": "seeds",
+                    "$vectorize": "Other plants rely on wind to propagate their seeds.",
+                },
             ],
         )
         await acol.insert_many(
@@ -67,7 +72,7 @@ class TestVectorizeMethodsAsync:
 
         doc = await acol.find_one(
             {},
-            vectorize="This building is five storeys tall.",
+            sort={"$vectorize": "This building is five storeys tall."},
             projection={"$vector": False},
         )
         assert doc is not None
@@ -77,7 +82,7 @@ class TestVectorizeMethodsAsync:
             doc
             async for doc in acol.find(
                 {},
-                vectorize="This building is five storeys tall.",
+                sort={"$vectorize": "This building is five storeys tall."},
                 limit=2,
                 projection={"$vector": False},
             )
@@ -87,7 +92,7 @@ class TestVectorizeMethodsAsync:
         rdoc = await acol.find_one_and_replace(
             {},
             {"t": "spider", "$vectorize": "Check out the eyes!"},
-            vectorize="The disposition of the eyes tells much",
+            sort={"$vectorize": "The disposition of the eyes tells much"},
             projection={"$vector": False},
         )
         assert rdoc["t"] == "spider"
@@ -95,14 +100,14 @@ class TestVectorizeMethodsAsync:
         r1res = await acol.replace_one(
             {},
             {"t": "spider", "$vectorize": "Look at how the eyes are placed"},
-            vectorize="The disposition of the eyes tells much",
+            sort={"$vectorize": "The disposition of the eyes tells much"},
         )
         assert r1res.update_info["nModified"] == 1
 
         udoc = await acol.find_one_and_update(
             {},
             {"$set": {"$vectorize": "Consider consulting the how-to"}},
-            vectorize="Have a look at the user guide...",
+            sort={"$vectorize": "Have a look at the user guide..."},
             projection={"$vector": False},
         )
         assert udoc["t"] == "guide"
@@ -110,20 +115,20 @@ class TestVectorizeMethodsAsync:
         u1res = await acol.update_one(
             {},
             {"$set": {"$vectorize": "Know how to operate it before doing so."}},
-            vectorize="Have a look at the user guide...",
+            sort={"$vectorize": "Have a look at the user guide..."},
         )
         assert u1res.update_info["nModified"] == 1
 
         ddoc = await acol.find_one_and_delete(
             {},
-            vectorize="Some trees have seeds that are dispersed in the air!",
+            sort={"$vectorize": "Some trees have seeds that are dispersed in the air!"},
             projection={"$vector": False},
         )
         assert ddoc["t"] == "seeds"
 
         d1res = await acol.delete_one(
             {},
-            vectorize="yet another giant construction in this suburb.",
+            sort={"$vectorize": "yet another giant construction in this suburb."},
         )
         assert d1res.deleted_count == 1
 

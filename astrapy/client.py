@@ -63,8 +63,8 @@ class DataAPIClient:
         >>> my_db0 = my_client.get_database(
         ...     "https://01234567-....apps.astra.datastax.com"
         ... )
-        >>> my_coll = my_db0.create_collection("movies", dimension=512)
-        >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+        >>> my_coll = my_db0.create_collection("movies", dimension=2)
+        >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.3]})
         >>> my_db1 = my_client.get_database("01234567-...")
         >>> my_db2 = my_client.get_database("01234567-...", region="us-east1")
         >>> my_adm0 = my_client.get_admin()
@@ -242,8 +242,8 @@ class DataAPIClient:
             ... )
             >>> my_db2 = my_client.get_database("01234567-...", token="AstraCS:...")
             >>> my_db3 = my_client.get_database("01234567-...", region="us-west1")
-            >>> my_coll = my_db0.create_collection("movies", dimension=512)
-            >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+            >>> my_coll = my_db0.create_collection("movies", dimension=2)
+            >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
 
         Note:
             This method does not perform any admin-level operation through
@@ -387,8 +387,8 @@ class DataAPIClient:
             ...     "https://01234567-....apps.astra.datastax.com",
             ...     namespace="the_other_namespace",
             ... )
-            >>> my_coll = my_db0.create_collection("movies", dimension=512)
-            >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+            >>> my_coll = my_db0.create_collection("movies", dimension=2)
+            >>> my_coll.insert_one({"title": "The Title", "$vector": [0.5, 0.6]})
 
         Note:
             This method does not perform any admin-level operation through
