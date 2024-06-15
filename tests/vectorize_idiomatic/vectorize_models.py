@@ -96,6 +96,7 @@ SECRET_NAME_ROOT_MAP = {
     "voyageAI": "VOYAGEAI",
 }
 
+PARAM_SKIP_MARKER = "__SKIP_ME__"
 PARAMETER_VALUE_MAP = {
     ("azureOpenAI", "text-embedding-3-large", "deploymentId"): os.environ[
         "AZURE_OPENAI_DEPLOY_ID_EMB3LARGE"
@@ -121,18 +122,33 @@ PARAMETER_VALUE_MAP = {
     ("voyageAI", "voyage-large-2-instruct", "autoTruncate"): True,
     ("voyageAI", "voyage-law-2", "autoTruncate"): True,
     #
-    ("huggingfaceDedicated", "endpoint-defined-model", "endpointName"): "bb",
-    ("huggingfaceDedicated", "endpoint-defined-model", "regionName"): "bb",
-    ("huggingfaceDedicated", "endpoint-defined-model", "cloudName"): "bb",
+    ("huggingfaceDedicated", "endpoint-defined-model", "endpointName"): os.environ[
+        "HUGGINGFACEDED_ENDPOINTNAME"
+    ],
+    ("huggingfaceDedicated", "endpoint-defined-model", "regionName"): os.environ[
+        "HUGGINGFACEDED_REGIONNAME"
+    ],
+    ("huggingfaceDedicated", "endpoint-defined-model", "cloudName"): os.environ[
+        "HUGGINGFACEDED_CLOUDNAME"
+    ],
     #
-    ("openai", "text-embedding-3-large", "organizationId"): "bb",
-    ("openai", "text-embedding-3-large", "projectId"): "bb",
-    ("openai", "text-embedding-3-small", "organizationId"): "bb",
-    ("openai", "text-embedding-3-small", "projectId"): "bb",
-    ("openai", "text-embedding-ada-002", "organizationId"): "bb",
-    ("openai", "text-embedding-ada-002", "projectId"): "bb",
+    # this is a way to suppress/limit certain combinations of
+    # "full param" testing from the start.
+    # If even one param is PARAM_SKIP_MARKER, the combination is not emitted at all.
+    ("openai", "text-embedding-3-large", "organizationId"): PARAM_SKIP_MARKER,
+    ("openai", "text-embedding-3-large", "projectId"): "whatever",
+    ("openai", "text-embedding-3-small", "organizationId"): PARAM_SKIP_MARKER,
+    ("openai", "text-embedding-3-small", "projectId"): "whatever",
+    ("openai", "text-embedding-ada-002", "organizationId"): PARAM_SKIP_MARKER,
+    ("openai", "text-embedding-ada-002", "projectId"): "whatever",
 }
 
+# this is ad-hoc for HF dedicated. Models here, though "optional" dimension,
+# do not undergo the f/0 optional dimension because of that, rather have
+# a forced fixed, provided dimension.
+FORCE_DIMENSION_MAP = {
+    ("huggingfaceDedicated", "endpoint-defined-model"): int(os.environ["HUGGINGFACEDED_DIMENSION"]),
+}
 
 def live_provider_info() -> Dict[str, Any]:
     """
@@ -219,9 +235,13 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                     if d_params:
                         d_param = d_params[0]
                         if "defaultValue" in d_param:
-                            optional_dimension = True
-                            assert model["vectorDimension"] is None
-                            dimension = _from_validation(d_param)
+                            if (provider_name, model["name"]) in FORCE_DIMENSION_MAP:
+                                optional_dimension = False
+                                dimension = FORCE_DIMENSION_MAP[(provider_name, model["name"])]
+                            else:
+                                optional_dimension = True
+                                assert model["vectorDimension"] is None
+                                dimension = _from_validation(d_param)
                         else:
                             optional_dimension = False
                             assert model["vectorDimension"] is None
@@ -274,33 +294,34 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                         }
                         yield this_minimal_model
 
-                    # and in any case we issue a 'full-spec' one
-
-                    model_tag_f = f"{provider_name}/{model['name']}/{auth_type_name}/f"
-                    this_model = {
-                        "model_tag": model_tag_f,
-                        "simple_tag": _collapse(
-                            "".join(c for c in model_tag_f if c in alphanum)
-                        ),
-                        "auth_type_name": auth_type_name,
-                        "dimension": dimension,
-                        "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
-                        "test_assets": TEST_ASSETS_MAP.get(
-                            (provider_name, model["name"]), DEFAULT_TEST_ASSETS
-                        ),
-                        "use_insert_one": USE_INSERT_ONE_MAP.get(
-                            (provider_name, model["name"]), False
-                        ),
-                        "env_filters": ENV_FILTERS_MAP.get(
-                            (provider_name, model["name"]), [("*", "*", "*")]
-                        ),
-                        "service_options": CollectionVectorServiceOptions(
-                            provider=provider_name,
-                            model_name=model["name"],
-                            parameters={
-                                **model_parameters,
-                                **optional_model_parameters,
-                            },
-                        ),
-                    }
-                    yield this_model
+                    # and in any case we issue a 'full-spec' one ...
+                    # ... unless explicitly marked as skipped
+                    if all(v != PARAM_SKIP_MARKER for v in optional_model_parameters.values()):
+                        model_tag_f = f"{provider_name}/{model['name']}/{auth_type_name}/f"
+                        this_model = {
+                            "model_tag": model_tag_f,
+                            "simple_tag": _collapse(
+                                "".join(c for c in model_tag_f if c in alphanum)
+                            ),
+                            "auth_type_name": auth_type_name,
+                            "dimension": dimension,
+                            "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
+                            "test_assets": TEST_ASSETS_MAP.get(
+                                (provider_name, model["name"]), DEFAULT_TEST_ASSETS
+                            ),
+                            "use_insert_one": USE_INSERT_ONE_MAP.get(
+                                (provider_name, model["name"]), False
+                            ),
+                            "env_filters": ENV_FILTERS_MAP.get(
+                                (provider_name, model["name"]), [("*", "*", "*")]
+                            ),
+                            "service_options": CollectionVectorServiceOptions(
+                                provider=provider_name,
+                                model_name=model["name"],
+                                parameters={
+                                    **model_parameters,
+                                    **optional_model_parameters,
+                                },
+                            ),
+                        }
+                        yield this_model
