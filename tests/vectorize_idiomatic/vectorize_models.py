@@ -87,7 +87,7 @@ SECRET_NAME_ROOT_MAP = {
     "azureOpenAI": "AZURE_OPENAI",
     "cohere": "COHERE",
     "huggingface": "HUGGINGFACE",
-    "huggingfaceDedicated": "HUGGINGFACEDEDICATED",
+    "huggingfaceDedicated": "HUGGINGFACEDED",
     "jinaAI": "JINAAI",
     "mistral": "MISTRAL",
     "nvidia": "NVIDIA",
