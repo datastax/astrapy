@@ -147,8 +147,18 @@ PARAMETER_VALUE_MAP = {
 # do not undergo the f/0 optional dimension because of that, rather have
 # a forced fixed, provided dimension.
 FORCE_DIMENSION_MAP = {
-    ("huggingfaceDedicated", "endpoint-defined-model"): int(os.environ["HUGGINGFACEDED_DIMENSION"]),
+    ("huggingfaceDedicated", "endpoint-defined-model"): int(
+        os.environ["HUGGINGFACEDED_DIMENSION"]
+    ),
 }
+# this defines (prov, model) pairs where the modelName
+# is mutated (to another string, to None/absent), however instructing
+# the test to expect the original model name when checking the collection data.
+# In practice this is ad-hoc for HF dedicated.
+MUTATE_MODELNAME_CASES = {
+    ("huggingfaceDedicated", "endpoint-defined-model"),
+}
+
 
 def live_provider_info() -> Dict[str, Any]:
     """
@@ -237,7 +247,9 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                         if "defaultValue" in d_param:
                             if (provider_name, model["name"]) in FORCE_DIMENSION_MAP:
                                 optional_dimension = False
-                                dimension = FORCE_DIMENSION_MAP[(provider_name, model["name"])]
+                                dimension = FORCE_DIMENSION_MAP[
+                                    (provider_name, model["name"])
+                                ]
                             else:
                                 optional_dimension = True
                                 assert model["vectorDimension"] is None
@@ -296,13 +308,11 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
 
                     # and in any case we issue a 'full-spec' one ...
                     # ... unless explicitly marked as skipped
-                    if all(v != PARAM_SKIP_MARKER for v in optional_model_parameters.values()):
-                        model_tag_f = f"{provider_name}/{model['name']}/{auth_type_name}/f"
-                        this_model = {
-                            "model_tag": model_tag_f,
-                            "simple_tag": _collapse(
-                                "".join(c for c in model_tag_f if c in alphanum)
-                            ),
+                    if all(
+                        v != PARAM_SKIP_MARKER
+                        for v in optional_model_parameters.values()
+                    ):
+                        root_model = {
                             "auth_type_name": auth_type_name,
                             "dimension": dimension,
                             "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
@@ -315,6 +325,16 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                             "env_filters": ENV_FILTERS_MAP.get(
                                 (provider_name, model["name"]), [("*", "*", "*")]
                             ),
+                        }
+
+                        model_tag_f = (
+                            f"{provider_name}/{model['name']}/{auth_type_name}/f"
+                        )
+                        this_model = {
+                            "model_tag": model_tag_f,
+                            "simple_tag": _collapse(
+                                "".join(c for c in model_tag_f if c in alphanum)
+                            ),
                             "service_options": CollectionVectorServiceOptions(
                                 provider=provider_name,
                                 model_name=model["name"],
@@ -323,5 +343,49 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                                     **optional_model_parameters,
                                 },
                             ),
+                            **root_model,
                         }
                         yield this_model
+
+                        if (provider_name, model["name"]) in MUTATE_MODELNAME_CASES:
+                            model_tag_n = (
+                                f"{provider_name}/{model['name']}/{auth_type_name}/n"
+                            )
+                            this_model_n = {
+                                "model_tag": model_tag_n,
+                                "simple_tag": _collapse(
+                                    "".join(c for c in model_tag_n if c in alphanum)
+                                ),
+                                "service_options": CollectionVectorServiceOptions(
+                                    provider=provider_name,
+                                    model_name=None,
+                                    parameters={
+                                        **model_parameters,
+                                        **optional_model_parameters,
+                                    },
+                                ),
+                                "expected_model_name": model["name"],
+                                **root_model,
+                            }
+                            yield this_model_n
+
+                            model_tag_z = (
+                                f"{provider_name}/{model['name']}/{auth_type_name}/z"
+                            )
+                            this_model_z = {
+                                "model_tag": model_tag_z,
+                                "simple_tag": _collapse(
+                                    "".join(c for c in model_tag_z if c in alphanum)
+                                ),
+                                "service_options": CollectionVectorServiceOptions(
+                                    provider=provider_name,
+                                    model_name="my-made-up-name",
+                                    parameters={
+                                        **model_parameters,
+                                        **optional_model_parameters,
+                                    },
+                                ),
+                                "expected_model_name": model["name"],
+                                **root_model,
+                            }
+                            yield this_model_z
