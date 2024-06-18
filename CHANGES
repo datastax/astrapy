@@ -2,9 +2,11 @@ v. 1.3.0
 ========
 Introduce CHANGES file.
 Allow delete_many({}) with empty filter
+Added HCD and CASSANDRA Environment values (besides the other non-Astra DSE and OTHER)
+Clearer string repr of cursors ('retrieved' => 'yielded so far')
 Deprecation of collection delete_all method in favour of delete_many(filter={})
     Introduction of a custom deprecation decorator for async method removal tests
-Deprecation of collection method bulk_write (in favour of app-side implementation).
+Deprecation of vector,vectors and vectorize params from collections and Operations
 Remove several long-deprecated methods from **core API** (i.e. internal changes):
     AstraDBCollection.delete          => delete_one
     AstraDBCollection.upsert          => upsert_one

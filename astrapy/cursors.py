@@ -222,7 +222,7 @@ class BaseCursor:
         return (
             f'{self.__class__.__name__}("{self._collection.name}", '
             f"{self.state}, "
-            f"retrieved: {self.retrieved})"
+            f"retrieved so far: {self.retrieved})"
         )
 
     def _item_at_index(self, index: int) -> DocumentType:
