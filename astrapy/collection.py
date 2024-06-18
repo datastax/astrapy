@@ -1299,7 +1299,7 @@ class Collection:
     @recast_method_sync
     def count_documents(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         upper_bound: int,
         max_time_ms: Optional[int] = None,
@@ -1416,7 +1416,7 @@ class Collection:
     @recast_method_sync
     def find_one_and_replace(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         replacement: DocumentType,
         *,
         projection: Optional[ProjectionType] = None,
@@ -1556,7 +1556,7 @@ class Collection:
     @recast_method_sync
     def replace_one(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         replacement: DocumentType,
         *,
         vector: Optional[VectorType] = None,
@@ -1651,7 +1651,7 @@ class Collection:
     @recast_method_sync
     def find_one_and_update(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         update: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
@@ -1797,7 +1797,7 @@ class Collection:
     @recast_method_sync
     def update_one(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         update: Dict[str, Any],
         *,
         vector: Optional[VectorType] = None,
@@ -1896,7 +1896,7 @@ class Collection:
     @recast_method_sync
     def update_many(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         update: Dict[str, Any],
         *,
         upsert: bool = False,
@@ -2018,7 +2018,7 @@ class Collection:
     @recast_method_sync
     def find_one_and_delete(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         projection: Optional[ProjectionType] = None,
         vector: Optional[VectorType] = None,
@@ -2123,7 +2123,7 @@ class Collection:
     @recast_method_sync
     def delete_one(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         vector: Optional[VectorType] = None,
         vectorize: Optional[str] = None,
@@ -2214,7 +2214,7 @@ class Collection:
     @recast_method_sync
     def delete_many(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
@@ -3738,7 +3738,7 @@ class AsyncCollection:
     @recast_method_async
     async def count_documents(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         upper_bound: int,
         max_time_ms: Optional[int] = None,
@@ -3860,7 +3860,7 @@ class AsyncCollection:
     @recast_method_async
     async def find_one_and_replace(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         replacement: DocumentType,
         *,
         projection: Optional[ProjectionType] = None,
@@ -4010,7 +4010,7 @@ class AsyncCollection:
     @recast_method_async
     async def replace_one(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         replacement: DocumentType,
         *,
         vector: Optional[VectorType] = None,
@@ -4125,7 +4125,7 @@ class AsyncCollection:
     @recast_method_async
     async def find_one_and_update(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         update: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
@@ -4281,7 +4281,7 @@ class AsyncCollection:
     @recast_method_async
     async def update_one(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         update: Dict[str, Any],
         *,
         vector: Optional[VectorType] = None,
@@ -4399,7 +4399,7 @@ class AsyncCollection:
     @recast_method_async
     async def update_many(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         update: Dict[str, Any],
         *,
         upsert: bool = False,
@@ -4532,7 +4532,7 @@ class AsyncCollection:
     @recast_method_async
     async def find_one_and_delete(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         projection: Optional[ProjectionType] = None,
         vector: Optional[VectorType] = None,
@@ -4649,7 +4649,7 @@ class AsyncCollection:
     @recast_method_async
     async def delete_one(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         vector: Optional[VectorType] = None,
         vectorize: Optional[str] = None,
@@ -4748,7 +4748,7 @@ class AsyncCollection:
     @recast_method_async
     async def delete_many(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
