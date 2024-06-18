@@ -151,12 +151,10 @@ FORCE_DIMENSION_MAP = {
         os.environ["HUGGINGFACEDED_DIMENSION"]
     ),
 }
-# this defines (prov, model) pairs where the modelName
-# is mutated (to another string, to None/absent), however instructing
-# the test to expect the original model name when checking the collection data.
-# In practice this is ad-hoc for HF dedicated.
-MUTATE_MODELNAME_CASES = {
-    ("huggingfaceDedicated", "endpoint-defined-model"),
+# similarly, this is to cope with the data api accepting non-null model name
+# for HF dedicated.
+NULLABLE_MODEL_NAMES = {
+    "endpoint-defined-model",
 }
 
 
@@ -300,7 +298,11 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                             ),
                             "service_options": CollectionVectorServiceOptions(
                                 provider=provider_name,
-                                model_name=model["name"],
+                                model_name=(
+                                    None
+                                    if model["name"] in NULLABLE_MODEL_NAMES
+                                    else model["name"]
+                                ),
                                 parameters=model_parameters,
                             ),
                         }
@@ -330,6 +332,7 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                         model_tag_f = (
                             f"{provider_name}/{model['name']}/{auth_type_name}/f"
                         )
+
                         this_model = {
                             "model_tag": model_tag_f,
                             "simple_tag": _collapse(
@@ -347,10 +350,12 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                         }
                         yield this_model
 
-                        if (provider_name, model["name"]) in MUTATE_MODELNAME_CASES:
+                        if model["name"] in NULLABLE_MODEL_NAMES:
+                            # an additional case with 'n' suffix, for "null model name"
                             model_tag_n = (
                                 f"{provider_name}/{model['name']}/{auth_type_name}/n"
                             )
+
                             this_model_n = {
                                 "model_tag": model_tag_n,
                                 "simple_tag": _collapse(
@@ -368,24 +373,3 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                                 **root_model,
                             }
                             yield this_model_n
-
-                            model_tag_z = (
-                                f"{provider_name}/{model['name']}/{auth_type_name}/z"
-                            )
-                            this_model_z = {
-                                "model_tag": model_tag_z,
-                                "simple_tag": _collapse(
-                                    "".join(c for c in model_tag_z if c in alphanum)
-                                ),
-                                "service_options": CollectionVectorServiceOptions(
-                                    provider=provider_name,
-                                    model_name="my-made-up-name",
-                                    parameters={
-                                        **model_parameters,
-                                        **optional_model_parameters,
-                                    },
-                                ),
-                                "expected_model_name": model["name"],
-                                **root_model,
-                            }
-                            yield this_model_z
