@@ -90,11 +90,15 @@ API_ENDPOINT_TEMPLATE_MAP = {
 
 API_PATH_ENV_MAP = {
     Environment.DSE: "",
+    Environment.HCD: "",
+    Environment.CASSANDRA: "",
     Environment.OTHER: "",
 }
 
 API_VERSION_ENV_MAP = {
     Environment.DSE: "v1",
+    Environment.HCD: "v1",
+    Environment.CASSANDRA: "v1",
     Environment.OTHER: "v1",
 }
 
