@@ -152,8 +152,7 @@ class TestVectorizeMethodsSync:
             ReplaceOne({}, {"a": 10}, vectorize="The kitty sits on the desk."),
             DeleteOne({}, vectorize="I don't argue with the proposed plan..."),
         ]
-        with pytest.warns(DeprecationWarning):
-            col.bulk_write(bw_ops, ordered=True)
+        col.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             for doc in col.find({}, projection=["a", "b"])

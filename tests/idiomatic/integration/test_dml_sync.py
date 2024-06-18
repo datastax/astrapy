@@ -1293,8 +1293,7 @@ class TestDMLSync:
             ),
         ]
 
-        with pytest.warns(DeprecationWarning):
-            bw_result = col.bulk_write(bw_ops, ordered=True)
+        bw_result = col.bulk_write(bw_ops, ordered=True)
 
         assert bw_result.deleted_count == 3
         assert bw_result.inserted_count == 5
@@ -1327,8 +1326,7 @@ class TestDMLSync:
             DeleteMany({"x": 100}),
         ]
 
-        with pytest.warns(DeprecationWarning):
-            bw_u_result = col.bulk_write(bw_u_ops, ordered=False, concurrency=4)
+        bw_u_result = col.bulk_write(bw_u_ops, ordered=False, concurrency=4)
 
         assert bw_u_result.deleted_count == 0
         assert bw_u_result.inserted_count == 2
@@ -1359,8 +1357,7 @@ class TestDMLSync:
             ReplaceOne({}, {"a": 10}, sort={"$vector": [5, 6]}),
             DeleteOne({}, sort={"$vector": [-8, 7]}),
         ]
-        with pytest.warns(DeprecationWarning):
-            col.bulk_write(bw_ops, ordered=True)
+        col.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             for doc in col.find({}, projection=["a", "b"])

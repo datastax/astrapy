@@ -166,12 +166,10 @@ class TestTimeoutSync:
         im_b = InsertMany([{"seq": i, "group": "B"} for i in range(100)])
         dm = DeleteMany(filter={"group": "A"})
 
-        with pytest.warns(DeprecationWarning):
-            sync_empty_collection.bulk_write([im_a, im_b, dm], ordered=True)
-        with pytest.warns(DeprecationWarning):
-            sync_empty_collection.bulk_write(
-                [im_a, im_b, dm], ordered=True, max_time_ms=50000
-            )
+        sync_empty_collection.bulk_write([im_a, im_b, dm], ordered=True)
+        sync_empty_collection.bulk_write(
+            [im_a, im_b, dm], ordered=True, max_time_ms=50000
+        )
         with pytest.raises(DataAPITimeoutException):
             sync_empty_collection.bulk_write(
                 [im_a, im_b, dm], ordered=True, max_time_ms=500
@@ -186,12 +184,10 @@ class TestTimeoutSync:
         im_b = InsertMany([{"seq": i, "group": "B"} for i in range(100)])
         dm = DeleteMany(filter={"group": "A"})
 
-        with pytest.warns(DeprecationWarning):
-            sync_empty_collection.bulk_write([im_a, im_b, dm], ordered=False)
-        with pytest.warns(DeprecationWarning):
-            sync_empty_collection.bulk_write(
-                [im_a, im_b, dm], ordered=False, max_time_ms=50000
-            )
+        sync_empty_collection.bulk_write([im_a, im_b, dm], ordered=False)
+        sync_empty_collection.bulk_write(
+            [im_a, im_b, dm], ordered=False, max_time_ms=50000
+        )
         with pytest.raises(DataAPITimeoutException):
             sync_empty_collection.bulk_write(
                 [im_a, im_b, dm], ordered=False, max_time_ms=5

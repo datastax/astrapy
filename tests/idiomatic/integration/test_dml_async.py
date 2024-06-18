@@ -1396,8 +1396,7 @@ class TestDMLAsync:
             ),
         ]
 
-        with pytest.warns(DeprecationWarning):
-            bw_result = await acol.bulk_write(bw_ops, ordered=True)
+        bw_result = await acol.bulk_write(bw_ops, ordered=True)
 
         assert bw_result.deleted_count == 3
         assert bw_result.inserted_count == 5
@@ -1430,8 +1429,7 @@ class TestDMLAsync:
             AsyncDeleteMany({"x": 100}),
         ]
 
-        with pytest.warns(DeprecationWarning):
-            bw_u_result = await acol.bulk_write(bw_u_ops, ordered=False, concurrency=4)
+        bw_u_result = await acol.bulk_write(bw_u_ops, ordered=False, concurrency=4)
 
         assert bw_u_result.deleted_count == 0
         assert bw_u_result.inserted_count == 2
@@ -1462,8 +1460,7 @@ class TestDMLAsync:
             AsyncReplaceOne({}, {"a": 10}, vector=[5, 6]),
             AsyncDeleteOne({}, vector=[-8, 7]),
         ]
-        with pytest.warns(DeprecationWarning):
-            await acol.bulk_write(bw_ops, ordered=True)
+        await acol.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             async for doc in acol.find({}, projection=["a", "b"])
