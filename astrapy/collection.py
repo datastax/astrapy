@@ -924,6 +924,7 @@ class Collection:
         vector: Optional[VectorType] = None,
         vectorize: Optional[str] = None,
         include_similarity: Optional[bool] = None,
+        include_sort_vector: Optional[bool] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> Cursor:
@@ -991,6 +992,10 @@ class Collection:
                 returned document. Can only be used for vector ANN search, i.e.
                 when either `vector` is supplied or the `sort` parameter has the
                 shape {"$vector": ...}.
+            include_sort_vector: a boolean to request query vector used in this search.
+                If set to True (and if the invocation is a vector search), calling
+                the `get_sort_vector` method on the returned cursor will yield
+                the vector used for the ANN search.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting, as well as
                 the one about upper bounds, for details.
@@ -1108,6 +1113,7 @@ class Collection:
             .limit(limit)
             .sort(_sort)
             .include_similarity(include_similarity)
+            .include_sort_vector(include_sort_vector)
         )
 
     def find_one(
@@ -2061,10 +2067,14 @@ class Collection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -2150,10 +2160,14 @@ class Collection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -3326,6 +3340,7 @@ class AsyncCollection:
         vector: Optional[VectorType] = None,
         vectorize: Optional[str] = None,
         include_similarity: Optional[bool] = None,
+        include_sort_vector: Optional[bool] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> AsyncCursor:
@@ -3393,6 +3408,10 @@ class AsyncCollection:
                 returned document. Can only be used for vector ANN search, i.e.
                 when either `vector` is supplied or the `sort` parameter has the
                 shape {"$vector": ...}.
+            include_sort_vector: a boolean to request query vector used in this search.
+                If set to True (and if the invocation is a vector search), calling
+                the `get_sort_vector` method on the returned cursor will yield
+                the vector used for the ANN search.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting, as well as
                 the one about upper bounds, for details.
@@ -3519,6 +3538,7 @@ class AsyncCollection:
             .limit(limit)
             .sort(_sort)
             .include_similarity(include_similarity)
+            .include_sort_vector(include_sort_vector)
         )
 
     async def find_one(

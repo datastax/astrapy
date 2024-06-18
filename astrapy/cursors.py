@@ -177,6 +177,7 @@ class BaseCursor:
     _limit: Optional[int]
     _skip: Optional[int]
     _include_similarity: Optional[bool]
+    _include_sort_vector: Optional[bool]
     _sort: Optional[Dict[str, Any]]
     _started: bool
     _retrieved: int
@@ -253,6 +254,7 @@ class BaseCursor:
         limit: Optional[int] = None,
         skip: Optional[int] = None,
         include_similarity: Optional[bool] = None,
+        include_sort_vector: Optional[bool] = None,
         started: Optional[bool] = None,
         sort: Optional[Dict[str, Any]] = None,
     ) -> BC:
@@ -270,6 +272,11 @@ class BaseCursor:
             include_similarity
             if include_similarity is not None
             else self._include_similarity
+        )
+        new_cursor._include_sort_vector = (
+            include_sort_vector
+            if include_sort_vector is not None
+            else self._include_sort_vector
         )
         new_cursor._started = started if started is not None else self._started
         new_cursor._sort = sort if sort is not None else self._sort
@@ -388,6 +395,22 @@ class BaseCursor:
         self._ensure_not_started()
         self._ensure_alive()
         self._include_similarity = include_similarity
+        return self
+
+    def include_sort_vector(self: BC, include_sort_vector: Optional[bool]) -> BC:
+        """
+        Set a new `include_sort_vector` value for this cursor.
+
+        Args:
+            include_sort_vector: the new value to set
+
+        Returns:
+            this cursor itself.
+        """
+
+        self._ensure_not_started()
+        self._ensure_alive()
+        self._include_sort_vector = include_sort_vector
         return self
 
     @property
@@ -522,6 +545,7 @@ class Cursor(BaseCursor):
         self._limit: Optional[int] = None
         self._skip: Optional[int] = None
         self._include_similarity: Optional[bool] = None
+        self._include_sort_vector: Optional[bool] = None
         self._sort: Optional[Dict[str, Any]] = None
         self._started = False
         self._retrieved = 0
@@ -581,6 +605,7 @@ class Cursor(BaseCursor):
                 "limit": self._limit,
                 "skip": self._skip,
                 "includeSimilarity": self._include_similarity,
+                "includeSortVector": self._include_sort_vector,
             }.items()
             if v is not None
         }
@@ -736,6 +761,7 @@ class AsyncCursor(BaseCursor):
         self._limit: Optional[int] = None
         self._skip: Optional[int] = None
         self._include_similarity: Optional[bool] = None
+        self._include_sort_vector: Optional[bool] = None
         self._sort: Optional[Dict[str, Any]] = None
         self._started = False
         self._retrieved = 0
@@ -795,6 +821,7 @@ class AsyncCursor(BaseCursor):
                 "limit": self._limit,
                 "skip": self._skip,
                 "includeSimilarity": self._include_similarity,
+                "includeSortVector": self._include_sort_vector,
             }.items()
             if v is not None
         }
@@ -833,6 +860,7 @@ class AsyncCursor(BaseCursor):
         limit: Optional[int] = None,
         skip: Optional[int] = None,
         include_similarity: Optional[bool] = None,
+        include_sort_vector: Optional[bool] = None,
         started: Optional[bool] = None,
         sort: Optional[Dict[str, Any]] = None,
     ) -> Cursor:
@@ -850,6 +878,11 @@ class AsyncCursor(BaseCursor):
             include_similarity
             if include_similarity is not None
             else self._include_similarity
+        )
+        new_cursor._include_sort_vector = (
+            include_sort_vector
+            if include_sort_vector is not None
+            else self._include_sort_vector
         )
         new_cursor._started = started if started is not None else self._started
         new_cursor._sort = sort if sort is not None else self._sort
