@@ -53,19 +53,20 @@ class TestVectorizeMethodsSync:
                 },
             ],
         )
-        col.insert_many(
-            [{"t": "dog"}, {"t": "cat_novector"}, {"t": "spider"}],
-            vectorize=[
-                None,
-                None,
-                "The eye pattern is a primary criterion to the family.",
-            ],
-            vectors=[
-                [0.01] * service_vector_dimension,
-                None,
-                None,
-            ],
-        )
+        with pytest.warns(DeprecationWarning):
+            col.insert_many(
+                [{"t": "dog"}, {"t": "cat_novector"}, {"t": "spider"}],
+                vectorize=[
+                    None,
+                    None,
+                    "The eye pattern is a primary criterion to the family.",
+                ],
+                vectors=[
+                    [0.01] * service_vector_dimension,
+                    None,
+                    None,
+                ],
+            )
 
         doc = col.find_one(
             {},
@@ -135,24 +136,26 @@ class TestVectorizeMethodsSync:
     ) -> None:
         col = sync_empty_service_collection
 
-        bw_ops = [
-            InsertOne({"a": 1}, vectorize="The cat is on the table."),
-            InsertMany(
-                [{"a": 2}, {"z": 0}],
-                vectorize=[
-                    "That is a fine spaghetti dish!",
-                    "I am not debating the effectiveness of such approach...",
-                ],
-            ),
-            UpdateOne(
-                {},
-                {"$set": {"b": 1}},
-                vectorize="Oh, I love a nice bolognese pasta meal!",
-            ),
-            ReplaceOne({}, {"a": 10}, vectorize="The kitty sits on the desk."),
-            DeleteOne({}, vectorize="I don't argue with the proposed plan..."),
-        ]
-        col.bulk_write(bw_ops, ordered=True)
+        with pytest.warns(DeprecationWarning):
+            bw_ops = [
+                InsertOne({"a": 1}, vectorize="The cat is on the table."),
+                InsertMany(
+                    [{"a": 2}, {"z": 0}],
+                    vectorize=[
+                        "That is a fine spaghetti dish!",
+                        "I am not debating the effectiveness of such approach...",
+                    ],
+                ),
+                UpdateOne(
+                    {},
+                    {"$set": {"b": 1}},
+                    vectorize="Oh, I love a nice bolognese pasta meal!",
+                ),
+                ReplaceOne({}, {"a": 10}, vectorize="The kitty sits on the desk."),
+                DeleteOne({}, vectorize="I don't argue with the proposed plan..."),
+            ]
+        with pytest.warns(DeprecationWarning):
+            col.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             for doc in col.find({}, projection=["a", "b"])

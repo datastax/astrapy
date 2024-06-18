@@ -106,7 +106,8 @@ class TestDMLSync:
         self,
         sync_empty_collection: Collection,
     ) -> None:
-        sync_empty_collection.insert_one({"tag": "v1"}, vector=[-1, -2])
+        with pytest.warns(DeprecationWarning):
+            sync_empty_collection.insert_one({"tag": "v1"}, vector=[-1, -2])
         retrieved1 = sync_empty_collection.find_one({"tag": "v1"}, projection={"*": 1})
         assert retrieved1 is not None
         assert retrieved1["$vector"] == [-1, -2]
@@ -696,12 +697,17 @@ class TestDMLSync:
         sync_empty_collection: Collection,
     ) -> None:
         col = sync_empty_collection
-        col.insert_many([{"t": 0}, {"t": 1}], vectors=[[0, 1], [1, 0]])
-        col.insert_many([{"t": 2, "$vector": [0, 2]}, {"t": 3}], vectors=[None, [2, 0]])
-        col.insert_many(
-            [{"t": 4, "$vector": [0, 3]}, {"t": 5, "$vector": [3, 0]}],
-            vectors=[None, None],
-        )
+        with pytest.warns(DeprecationWarning):
+            col.insert_many([{"t": 0}, {"t": 1}], vectors=[[0, 1], [1, 0]])
+        with pytest.warns(DeprecationWarning):
+            col.insert_many(
+                [{"t": 2, "$vector": [0, 2]}, {"t": 3}], vectors=[None, [2, 0]]
+            )
+        with pytest.warns(DeprecationWarning):
+            col.insert_many(
+                [{"t": 4, "$vector": [0, 3]}, {"t": 5, "$vector": [3, 0]}],
+                vectors=[None, None],
+            )
 
         assert all(
             len(doc["$vector"]) == 2 for doc in col.find({}, projection={"*": 1})
@@ -1350,14 +1356,16 @@ class TestDMLSync:
     ) -> None:
         col = sync_empty_collection
 
-        bw_ops = [
-            InsertOne({"a": 1, "$vector": [1, 1]}),
-            InsertMany([{"a": 2}, {"z": 0}], vectors=[[1, 10], [-1, 1]]),
-            UpdateOne({}, {"$set": {"b": 1}}, sort={"$vector": [1, 15]}),
-            ReplaceOne({}, {"a": 10}, sort={"$vector": [5, 6]}),
-            DeleteOne({}, sort={"$vector": [-8, 7]}),
-        ]
-        col.bulk_write(bw_ops, ordered=True)
+        with pytest.warns(DeprecationWarning):
+            bw_ops = [
+                InsertOne({"a": 1, "$vector": [1, 1]}),
+                InsertMany([{"a": 2}, {"z": 0}], vectors=[[1, 10], [-1, 1]]),
+                UpdateOne({}, {"$set": {"b": 1}}, sort={"$vector": [1, 15]}),
+                ReplaceOne({}, {"a": 10}, sort={"$vector": [5, 6]}),
+                DeleteOne({}, sort={"$vector": [-8, 7]}),
+            ]
+        with pytest.warns(DeprecationWarning):
+            col.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             for doc in col.find({}, projection=["a", "b"])

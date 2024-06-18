@@ -125,7 +125,8 @@ class TestDMLAsync:
         self,
         async_empty_collection: AsyncCollection,
     ) -> None:
-        await async_empty_collection.insert_one({"tag": "v1"}, vector=[-1, -2])
+        with pytest.warns(DeprecationWarning):
+            await async_empty_collection.insert_one({"tag": "v1"}, vector=[-1, -2])
         retrieved1 = await async_empty_collection.find_one(
             {"tag": "v1"}, projection={"*": 1}
         )
@@ -767,14 +768,17 @@ class TestDMLAsync:
         async_empty_collection: AsyncCollection,
     ) -> None:
         acol = async_empty_collection
-        await acol.insert_many([{"t": 0}, {"t": 1}], vectors=[[0, 1], [1, 0]])
-        await acol.insert_many(
-            [{"t": 2, "$vector": [0, 2]}, {"t": 3}], vectors=[None, [2, 0]]
-        )
-        await acol.insert_many(
-            [{"t": 4, "$vector": [0, 3]}, {"t": 5, "$vector": [3, 0]}],
-            vectors=[None, None],
-        )
+        with pytest.warns(DeprecationWarning):
+            await acol.insert_many([{"t": 0}, {"t": 1}], vectors=[[0, 1], [1, 0]])
+        with pytest.warns(DeprecationWarning):
+            await acol.insert_many(
+                [{"t": 2, "$vector": [0, 2]}, {"t": 3}], vectors=[None, [2, 0]]
+            )
+        with pytest.warns(DeprecationWarning):
+            await acol.insert_many(
+                [{"t": 4, "$vector": [0, 3]}, {"t": 5, "$vector": [3, 0]}],
+                vectors=[None, None],
+            )
 
         vectors = [doc["$vector"] async for doc in acol.find({}, projection={"*": 1})]
         assert all(len(vec) == 2 for vec in vectors)
@@ -1453,14 +1457,16 @@ class TestDMLAsync:
     ) -> None:
         acol = async_empty_collection
 
-        bw_ops = [
-            AsyncInsertOne({"a": 1}, vector=[1, 1]),
-            AsyncInsertMany([{"a": 2}, {"z": 0}], vectors=[[1, 10], [-1, 1]]),
-            AsyncUpdateOne({}, {"$set": {"b": 1}}, vector=[1, 15]),
-            AsyncReplaceOne({}, {"a": 10}, vector=[5, 6]),
-            AsyncDeleteOne({}, vector=[-8, 7]),
-        ]
-        await acol.bulk_write(bw_ops, ordered=True)
+        with pytest.warns(DeprecationWarning):
+            bw_ops = [
+                AsyncInsertOne({"a": 1, "$vector": [1, 1]}),
+                AsyncInsertMany([{"a": 2}, {"z": 0}], vectors=[[1, 10], [-1, 1]]),
+                AsyncUpdateOne({}, {"$set": {"b": 1}}, sort={"$vector": [1, 15]}),
+                AsyncReplaceOne({}, {"a": 10}, sort={"$vector": [5, 6]}),
+                AsyncDeleteOne({}, sort={"$vector": [-8, 7]}),
+            ]
+        with pytest.warns(DeprecationWarning):
+            await acol.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             async for doc in acol.find({}, projection=["a", "b"])
