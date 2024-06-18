@@ -26,6 +26,7 @@ def check_deprecated_vector_ize(
     vectorize: Any,
     kind: str,
     from_async_method: bool = False,
+    from_operation_class: bool = False,
 ) -> None:
     # Version check is not done at all - it will be a manual handling once this
     # deprecation becomes a removal.
@@ -57,8 +58,19 @@ def check_deprecated_vector_ize(
             removed_in="2.0.0",
             details=message,
         )
+        # trying to surface the warning at the rick stack level to best inform user:
+        # (considering both the error-recast wrap decorator and the internals)
+        if from_async_method:
+            if from_operation_class:
+                s_level = 3
+            else:
+                s_level = 2
+        else:
+            if from_operation_class:
+                s_level = 3
+            else:
+                s_level = 4
         warnings.warn(
             the_warning,
-            # this 4 is tailored to match the @recast_method_sync method wrapper
-            stacklevel=4 if not from_async_method else 2,
+            stacklevel=s_level,
         )
