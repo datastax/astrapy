@@ -184,6 +184,7 @@ class BaseCursor:
     _iterator: Optional[Union[Iterator[DocumentType], AsyncIterator[DocumentType]]] = (
         None
     )
+    _api_response_status: Optional[Dict[str, Any]]
 
     def __init__(
         self,
@@ -342,6 +343,21 @@ class BaseCursor:
 
         return id(self)
 
+    def get_sort_vector(self) -> Optional[List[float]]:
+        """
+        Return the vector used in this ANN search, if applicable.
+        If this is not an ANN search, or it was invoked without the
+        `include_sort_vector` parameter, return None.
+
+        Invoking this method on a pristine cursor will trigger an API call
+        to get the first page of results.
+        """
+
+        if self._api_response_status:
+            return self._api_response_status.get("sortVector")
+        else:
+            return None
+
     def limit(self: BC, limit: Optional[int]) -> BC:
         """
         Set a new `limit` value for this cursor.
@@ -377,7 +393,7 @@ class BaseCursor:
     @property
     def retrieved(self) -> int:
         """
-        The number of documents retrieved so far.
+        The number of documents retrieved so far by the code consuming the cursor.
         """
 
         return self._retrieved
@@ -512,6 +528,7 @@ class Cursor(BaseCursor):
         self._alive = True
         #
         self._iterator: Optional[Iterator[DocumentType]] = None
+        self._api_response_status: Optional[Dict[str, Any]] = None
 
     def __iter__(self) -> Cursor:
         self._ensure_alive()
@@ -578,6 +595,10 @@ class Cursor(BaseCursor):
         else:
             pf_sort = None
 
+        def _response_setter_callback(raw_response: Dict[str, Any]) -> None:
+            status = raw_response.get("status")
+            self._api_response_status = status
+
         logger.info(f"creating iterator on '{self._collection.name}'")
         iterator = self._collection._astra_db_collection.paginated_find(
             filter=self._filter,
@@ -586,6 +607,7 @@ class Cursor(BaseCursor):
             options=_options,
             prefetched=0,
             timeout_info=base_timeout_info(self._max_time_ms),
+            raw_response_callback=_response_setter_callback,
         )
         logger.info(f"finished creating iterator on '{self._collection.name}'")
         self._started_time_s = time.time()
@@ -720,6 +742,7 @@ class AsyncCursor(BaseCursor):
         self._alive = True
         #
         self._iterator: Optional[AsyncIterator[DocumentType]] = None
+        self._api_response_status: Optional[Dict[str, Any]] = None
 
     def __aiter__(self) -> AsyncCursor:
         self._ensure_alive()
@@ -786,6 +809,10 @@ class AsyncCursor(BaseCursor):
         else:
             pf_sort = None
 
+        def _response_setter_callback(raw_response: Dict[str, Any]) -> None:
+            status = raw_response.get("status")
+            self._api_response_status = status
+
         logger.info(f"creating iterator on '{self._collection.name}'")
         iterator = self._collection._astra_db_collection.paginated_find(
             filter=self._filter,
@@ -794,6 +821,7 @@ class AsyncCursor(BaseCursor):
             options=_options,
             prefetched=0,
             timeout_info=base_timeout_info(self._max_time_ms),
+            raw_response_callback=_response_setter_callback,
         )
         logger.info(f"finished creating iterator on '{self._collection.name}'")
         self._started_time_s = time.time()
