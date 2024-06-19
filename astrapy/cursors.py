@@ -160,6 +160,68 @@ def _hash_document(document: Dict[str, Any]) -> str:
     return _item_hash
 
 
+class _PrefetchIterator:
+    def __init__(self, iterator: Iterator[DocumentType]):
+        self.iterator = iterator
+        self.prefetched_item: Optional[DocumentType] = None
+        self.has_prefetched = False
+        self.prefetch_exhausted = False
+
+    def __iter__(self) -> Iterator[DocumentType]:
+        return self
+
+    def __next__(self) -> DocumentType:
+        if self.has_prefetched:
+            self.has_prefetched = False
+            if self.prefetch_exhausted:
+                raise StopIteration
+            # if this runs, prefetched_item is filled with a document:
+            return self.prefetched_item  # type: ignore[return-value]
+        else:
+            return next(self.iterator)
+
+    def prefetch(self) -> None:
+        if not self.has_prefetched and not self.prefetch_exhausted:
+            try:
+                self.prefetched_item = next(self.iterator)
+                self.has_prefetched = True
+            except StopIteration:
+                self.prefetched_item = None
+                self.has_prefetched = False
+                self.prefetch_exhausted = True
+
+
+class _AsyncPrefetchIterator:
+    def __init__(self, async_iterator: AsyncIterator[DocumentType]):
+        self.async_iterator = async_iterator
+        self.prefetched_item: Optional[DocumentType] = None
+        self.has_prefetched = False
+        self.prefetch_exhausted = False
+
+    def __aiter__(self) -> AsyncIterator[DocumentType]:
+        return self
+
+    async def __anext__(self) -> DocumentType:
+        if self.has_prefetched:
+            self.has_prefetched = False
+            if self.prefetch_exhausted:
+                raise StopAsyncIteration
+            # if this runs, prefetched_item is filled with a document:
+            return self.prefetched_item  # type: ignore[return-value]
+        else:
+            return await self.async_iterator.__anext__()
+
+    async def prefetch(self) -> None:
+        if not self.has_prefetched and not self.prefetch_exhausted:
+            try:
+                self.prefetched_item = await self.async_iterator.__anext__()
+                self.has_prefetched = True
+            except StopAsyncIteration:
+                self.prefetched_item = None
+                self.has_prefetched = False
+                self.prefetch_exhausted = True
+
+
 class BaseCursor:
     """
     Represents a generic Cursor over query results, regardless of whether
@@ -636,7 +698,7 @@ class Cursor(BaseCursor):
         )
         logger.info(f"finished creating iterator on '{self._collection.name}'")
         self._started_time_s = time.time()
-        return iterator
+        return _PrefetchIterator(iterator)
 
     @property
     def collection(self) -> Collection:
@@ -852,7 +914,7 @@ class AsyncCursor(BaseCursor):
         )
         logger.info(f"finished creating iterator on '{self._collection.name}'")
         self._started_time_s = time.time()
-        return iterator
+        return _AsyncPrefetchIterator(iterator)
 
     def _to_sync(
         self: AsyncCursor,
@@ -1118,3 +1180,9 @@ class AsyncCommandCursor(Generic[T]):
         """
 
         self._alive = False
+
+
+__pdoc__ = {
+    "_PrefetchIterator": False,
+    "_AsyncPrefetchIterator": False,
+}
