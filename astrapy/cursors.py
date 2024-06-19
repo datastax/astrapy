@@ -244,9 +244,7 @@ class BaseCursor:
     _started: bool
     _retrieved: int
     _alive: bool
-    _iterator: Optional[Union[Iterator[DocumentType], AsyncIterator[DocumentType]]] = (
-        None
-    )
+    _iterator: Optional[Union[_PrefetchIterator, _AsyncPrefetchIterator]] = None
     _api_response_status: Optional[Dict[str, Any]]
 
     def __init__(
@@ -411,21 +409,6 @@ class BaseCursor:
         """
 
         return id(self)
-
-    def get_sort_vector(self) -> Optional[List[float]]:
-        """
-        Return the vector used in this ANN search, if applicable.
-        If this is not an ANN search, or it was invoked without the
-        `include_sort_vector` parameter, return None.
-
-        Invoking this method on a pristine cursor will trigger an API call
-        to get the first page of results.
-        """
-
-        if self._api_response_status:
-            return self._api_response_status.get("sortVector")
-        else:
-            return None
 
     def limit(self: BC, limit: Optional[int]) -> BC:
         """
@@ -613,7 +596,7 @@ class Cursor(BaseCursor):
         self._retrieved = 0
         self._alive = True
         #
-        self._iterator: Optional[Iterator[DocumentType]] = None
+        self._iterator: Optional[_PrefetchIterator] = None
         self._api_response_status: Optional[Dict[str, Any]] = None
 
     def __iter__(self) -> Cursor:
@@ -649,6 +632,25 @@ class Cursor(BaseCursor):
             self._alive = False
             raise
 
+    def get_sort_vector(self) -> Optional[List[float]]:
+        """
+        Return the vector used in this ANN search, if applicable.
+        If this is not an ANN search, or it was invoked without the
+        `include_sort_vector` parameter, return None.
+
+        Invoking this method on a pristine cursor will trigger an API call
+        to get the first page of results.
+        """
+
+        if self._iterator is None:
+            self._iterator = self._create_iterator()
+            self._started = True
+        self._iterator.prefetch()
+        if self._api_response_status:
+            return self._api_response_status.get("sortVector")
+        else:
+            return None
+
     def _item_at_index(self, index: int) -> DocumentType:
         finder_cursor = self._copy().skip(index).limit(1)
         items = list(finder_cursor)
@@ -658,7 +660,7 @@ class Cursor(BaseCursor):
             raise IndexError("no such item for Cursor instance")
 
     @recast_method_sync
-    def _create_iterator(self) -> Iterator[DocumentType]:
+    def _create_iterator(self) -> _PrefetchIterator:
         self._ensure_not_started()
         self._ensure_alive()
         _options = {
@@ -829,7 +831,7 @@ class AsyncCursor(BaseCursor):
         self._retrieved = 0
         self._alive = True
         #
-        self._iterator: Optional[AsyncIterator[DocumentType]] = None
+        self._iterator: Optional[_AsyncPrefetchIterator] = None
         self._api_response_status: Optional[Dict[str, Any]] = None
 
     def __aiter__(self) -> AsyncCursor:
@@ -865,6 +867,25 @@ class AsyncCursor(BaseCursor):
             self._alive = False
             raise
 
+    async def get_sort_vector(self) -> Optional[List[float]]:
+        """
+        Return the vector used in this ANN search, if applicable.
+        If this is not an ANN search, or it was invoked without the
+        `include_sort_vector` parameter, return None.
+
+        Invoking this method on a pristine cursor will trigger an API call
+        to get the first page of results.
+        """
+
+        if self._iterator is None:
+            self._iterator = self._create_iterator()
+            self._started = True
+        await self._iterator.prefetch()
+        if self._api_response_status:
+            return self._api_response_status.get("sortVector")
+        else:
+            return None
+
     def _item_at_index(self, index: int) -> DocumentType:
         finder_cursor = self._to_sync().skip(index).limit(1)
         items = list(finder_cursor)
@@ -874,7 +895,7 @@ class AsyncCursor(BaseCursor):
             raise IndexError("no such item for AsyncCursor instance")
 
     @recast_method_sync
-    def _create_iterator(self) -> AsyncIterator[DocumentType]:
+    def _create_iterator(self) -> _AsyncPrefetchIterator:
         self._ensure_not_started()
         self._ensure_alive()
         _options = {
