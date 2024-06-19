@@ -109,24 +109,21 @@ class TestVectorizeProviders:
                 service=service_options,
                 embedding_api_key=embedding_api_key,
             )
+            # this is to cope with the Data API normalizing options
+            expected_service_options = CollectionVectorServiceOptions(
+                provider=service_options.provider,
+                model_name=testable_vectorize_model.get(
+                    "expected_model_name", service_options.model_name
+                ),
+                parameters=service_options.parameters,
+            )
             # test service back from collection info
             c_descriptors = [
                 cd for cd in db.list_collections() if cd.name == collection_name
             ]
             assert len(c_descriptors) == 1
             c_descriptor = c_descriptors[0]
-            # to cope with the possibly different model_name (by the API)
-            t_service_options = CollectionVectorServiceOptions.from_dict(
-                {
-                    **(service_options.as_dict()),
-                    **{
-                        "modelName": testable_vectorize_model.get(
-                            "expected_model_name", service_options.model_name
-                        )
-                    },
-                }
-            )
-            assert c_descriptor.options.vector.service == t_service_options
+            assert c_descriptor.options.vector.service == expected_service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
             if testable_vectorize_model["use_insert_one"]:
@@ -196,24 +193,21 @@ class TestVectorizeProviders:
                 metric="cosine",
                 service=service_options,
             )
+            # this is to cope with the Data API normalizing options
+            expected_service_options = CollectionVectorServiceOptions(
+                provider=service_options.provider,
+                model_name=testable_vectorize_model.get(
+                    "expected_model_name", service_options.model_name
+                ),
+                parameters=service_options.parameters,
+            )
             # test service back from collection info
             c_descriptors = [
                 cd for cd in db.list_collections() if cd.name == collection_name
             ]
             assert len(c_descriptors) == 1
             c_descriptor = c_descriptors[0]
-            # to cope with the possibly different model_name (by the API)
-            t_service_options = CollectionVectorServiceOptions.from_dict(
-                {
-                    **(service_options.as_dict()),
-                    **{
-                        "modelName": testable_vectorize_model.get(
-                            "expected_model_name", service_options.model_name
-                        )
-                    },
-                }
-            )
-            assert c_descriptor.options.vector.service == t_service_options
+            assert c_descriptor.options.vector.service == expected_service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
             if testable_vectorize_model["use_insert_one"]:
@@ -274,6 +268,17 @@ class TestVectorizeProviders:
             provider=base_service_options.provider,
             model_name=base_service_options.model_name,
             authentication={
+                "providerKey": f"SHARED_SECRET_EMBEDDING_API_KEY_{secret_tag}",
+            },
+            parameters=base_service_options.parameters,
+        )
+        # this is to cope with the Data API normalizing options
+        expected_service_options = CollectionVectorServiceOptions(
+            provider=base_service_options.provider,
+            model_name=testable_vectorize_model.get(
+                "expected_model_name", service_options.model_name
+            ),
+            authentication={
                 "providerKey": f"SHARED_SECRET_EMBEDDING_API_KEY_{secret_tag}.providerKey",
             },
             parameters=base_service_options.parameters,
@@ -291,18 +296,7 @@ class TestVectorizeProviders:
             ]
             assert len(c_descriptors) == 1
             c_descriptor = c_descriptors[0]
-            # to cope with the possibly different model_name (by the API)
-            t_service_options = CollectionVectorServiceOptions.from_dict(
-                {
-                    **(service_options.as_dict()),
-                    **{
-                        "modelName": testable_vectorize_model.get(
-                            "expected_model_name", service_options.model_name
-                        )
-                    },
-                }
-            )
-            assert c_descriptor.options.vector.service == t_service_options
+            assert c_descriptor.options.vector.service == expected_service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
             if testable_vectorize_model["use_insert_one"]:

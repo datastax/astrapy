@@ -151,11 +151,6 @@ FORCE_DIMENSION_MAP = {
         os.environ["HUGGINGFACEDED_DIMENSION"]
     ),
 }
-# similarly, this is to cope with the data api accepting non-null model name
-# for HF dedicated.
-NULLABLE_MODEL_NAMES = {
-    "endpoint-defined-model",
-}
 
 
 def live_provider_info() -> Dict[str, Any]:
@@ -298,11 +293,7 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                             ),
                             "service_options": CollectionVectorServiceOptions(
                                 provider=provider_name,
-                                model_name=(
-                                    None
-                                    if model["name"] in NULLABLE_MODEL_NAMES
-                                    else model["name"]
-                                ),
+                                model_name=model["name"],
                                 parameters=model_parameters,
                             ),
                         }
@@ -349,27 +340,3 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                             **root_model,
                         }
                         yield this_model
-
-                        if model["name"] in NULLABLE_MODEL_NAMES:
-                            # an additional case with 'n' suffix, for "null model name"
-                            model_tag_n = (
-                                f"{provider_name}/{model['name']}/{auth_type_name}/n"
-                            )
-
-                            this_model_n = {
-                                "model_tag": model_tag_n,
-                                "simple_tag": _collapse(
-                                    "".join(c for c in model_tag_n if c in alphanum)
-                                ),
-                                "service_options": CollectionVectorServiceOptions(
-                                    provider=provider_name,
-                                    model_name=None,
-                                    parameters={
-                                        **model_parameters,
-                                        **optional_model_parameters,
-                                    },
-                                ),
-                                "expected_model_name": model["name"],
-                                **root_model,
-                            }
-                            yield this_model_n
