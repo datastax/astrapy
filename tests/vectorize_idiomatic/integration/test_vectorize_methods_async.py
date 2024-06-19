@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.exceptions import DataAPIResponseException
+from astrapy.constants import DocumentType
+from astrapy.cursors import AsyncCursor
 from astrapy.operations import (
     AsyncInsertOne,
     AsyncInsertMany,
@@ -166,6 +168,100 @@ class TestVectorizeMethodsAsync:
         assert len(found) == 2
         assert {"a": 10} in found
         assert {"a": 2, "b": 1} in found
+
+    @pytest.mark.describe(
+        "test of include_sort_vector in collection vectorize find, async"
+    )
+    async def test_collection_include_sort_vector_vectorize_find_async(
+        self,
+        async_empty_service_collection: AsyncCollection,
+    ) -> None:
+        # with empty collection
+        q_text = "A sentence for searching."
+
+        def _is_vector(v: Any) -> bool:
+            return isinstance(v, list) and isinstance(v[0], float)
+
+        async def _alist(acursor: AsyncCursor) -> List[DocumentType]:
+            return [doc async for doc in acursor]
+
+        for include_sv in [False, True]:
+            for sort_cl_label in ["vze"]:
+                sort_cl_e: Dict[str, Any] = {"$vectorize": q_text}
+                vec_expected = include_sv and sort_cl_label == "vze"
+                # pristine iterator
+                this_ite_1 = async_empty_service_collection.find(
+                    {}, sort=sort_cl_e, include_sort_vector=include_sv
+                )
+                if vec_expected:
+                    assert _is_vector(await this_ite_1.get_sort_vector())
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # after exhaustion with empty
+                all_items_1 = await _alist(this_ite_1)
+                assert all_items_1 == []
+                if vec_expected:
+                    assert _is_vector(await this_ite_1.get_sort_vector())
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # directly exhausted before calling get_sort_vector
+                this_ite_2 = async_empty_service_collection.find(
+                    {}, sort=sort_cl_e, include_sort_vector=include_sv
+                )
+                all_items_2 = await _alist(this_ite_2)
+                assert all_items_2 == []
+                if vec_expected:
+                    assert _is_vector(await this_ite_2.get_sort_vector())
+                else:
+                    assert (await this_ite_2.get_sort_vector()) is None
+        await async_empty_service_collection.insert_many(
+            [
+                {"seq": i, "$vectorize": f"This is sentence number {i}"}
+                for i in range(10)
+            ]
+        )
+        # with non-empty collection
+        for include_sv in [False, True]:
+            for sort_cl_label in ["vze"]:
+                sort_cl_f: Dict[str, Any] = {"$vectorize": q_text}
+                vec_expected = include_sv and sort_cl_label == "vze"
+                # pristine iterator
+                this_ite_1 = async_empty_service_collection.find(
+                    {}, sort=sort_cl_f, include_sort_vector=include_sv
+                )
+                if vec_expected:
+                    assert _is_vector(await this_ite_1.get_sort_vector())
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # after consuming one item
+                first_seqs = [
+                    doc["seq"]
+                    for doc in [
+                        await this_ite_1.__anext__(),
+                        await this_ite_1.__anext__(),
+                    ]
+                ]
+                if vec_expected:
+                    assert _is_vector(await this_ite_1.get_sort_vector())
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # after exhaustion with the rest
+                last_seqs = [doc["seq"] async for doc in this_ite_1]
+                assert len(set(last_seqs + first_seqs)) == 10
+                assert len(last_seqs + first_seqs) == 10
+                if vec_expected:
+                    assert _is_vector(await this_ite_1.get_sort_vector())
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # directly exhausted before calling get_sort_vector
+                this_ite_2 = async_empty_service_collection.find(
+                    {}, sort=sort_cl_f, include_sort_vector=include_sv
+                )
+                await _alist(this_ite_2)
+                if vec_expected:
+                    assert _is_vector(await this_ite_2.get_sort_vector())
+                else:
+                    assert (await this_ite_2.get_sort_vector()) is None
 
     @pytest.mark.describe(
         "test of database create_collection dimension-mismatch failure, async"

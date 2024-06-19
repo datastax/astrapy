@@ -165,6 +165,93 @@ class TestVectorizeMethodsSync:
         assert {"a": 2, "b": 1} in found
 
     @pytest.mark.describe(
+        "test of include_sort_vector in collection vectorize find, sync"
+    )
+    def test_collection_include_sort_vector_vectorize_find_sync(
+        self,
+        sync_empty_service_collection: Collection,
+    ) -> None:
+        # with empty collection
+        q_text = "A sentence for searching."
+
+        def _is_vector(v: Any) -> bool:
+            return isinstance(v, list) and isinstance(v[0], float)
+
+        for include_sv in [False, True]:
+            for sort_cl_label in ["vze"]:
+                sort_cl_e: Dict[str, Any] = {"$vectorize": q_text}
+                vec_expected = include_sv and sort_cl_label == "vze"
+                # pristine iterator
+                this_ite_1 = sync_empty_service_collection.find(
+                    {}, sort=sort_cl_e, include_sort_vector=include_sv
+                )
+                if vec_expected:
+                    assert _is_vector(this_ite_1.get_sort_vector())
+                else:
+                    assert this_ite_1.get_sort_vector() is None
+                # after exhaustion with empty
+                all_items_1 = list(this_ite_1)
+                assert all_items_1 == []
+                if vec_expected:
+                    assert _is_vector(this_ite_1.get_sort_vector())
+                else:
+                    assert this_ite_1.get_sort_vector() is None
+                # directly exhausted before calling get_sort_vector
+                this_ite_2 = sync_empty_service_collection.find(
+                    {}, sort=sort_cl_e, include_sort_vector=include_sv
+                )
+                all_items_2 = list(this_ite_2)
+                assert all_items_2 == []
+                if vec_expected:
+                    assert _is_vector(this_ite_2.get_sort_vector())
+                else:
+                    assert this_ite_2.get_sort_vector() is None
+        sync_empty_service_collection.insert_many(
+            [
+                {"seq": i, "$vectorize": f"This is sentence number {i}"}
+                for i in range(10)
+            ]
+        )
+        # with non-empty collection
+        for include_sv in [False, True]:
+            for sort_cl_label in ["vze"]:
+                sort_cl_f: Dict[str, Any] = {"$vectorize": q_text}
+                vec_expected = include_sv and sort_cl_label == "vze"
+                # pristine iterator
+                this_ite_1 = sync_empty_service_collection.find(
+                    {}, sort=sort_cl_f, include_sort_vector=include_sv
+                )
+                if vec_expected:
+                    assert _is_vector(this_ite_1.get_sort_vector())
+                else:
+                    assert this_ite_1.get_sort_vector() is None
+                # after consuming one item
+                first_seqs = [
+                    doc["seq"] for doc in [this_ite_1.__next__(), this_ite_1.__next__()]
+                ]
+                if vec_expected:
+                    assert _is_vector(this_ite_1.get_sort_vector())
+                else:
+                    assert this_ite_1.get_sort_vector() is None
+                # after exhaustion with the rest
+                last_seqs = [doc["seq"] for doc in list(this_ite_1)]
+                assert len(set(last_seqs + first_seqs)) == 10
+                assert len(last_seqs + first_seqs) == 10
+                if vec_expected:
+                    assert _is_vector(this_ite_1.get_sort_vector())
+                else:
+                    assert this_ite_1.get_sort_vector() is None
+                # directly exhausted before calling get_sort_vector
+                this_ite_2 = sync_empty_service_collection.find(
+                    {}, sort=sort_cl_f, include_sort_vector=include_sv
+                )
+                list(this_ite_2)
+                if vec_expected:
+                    assert _is_vector(this_ite_2.get_sort_vector())
+                else:
+                    assert this_ite_2.get_sort_vector() is None
+
+    @pytest.mark.describe(
         "test of database create_collection dimension-mismatch failure, sync"
     )
     def test_database_create_collection_dimension_mismatch_failure_sync(
