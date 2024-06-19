@@ -1051,6 +1051,17 @@ class Collection:
             ['A', 'B', 'C']
             >>> # (assuming the collection has metric VectorMetric.COSINE)
 
+            >>> cursor = my_coll.find(
+            ...     sort={"$vector": [3, 3]},
+            ...     limit=3,
+            ...     include_sort_vector=True,
+            ... )
+            >>> cursor.get_sort_vector()
+            [3.0, 3.0]
+            >>> matches = list(cursor)
+            >>> cursor.get_sort_vector()
+            [3.0, 3.0]
+
         Note:
             The following are example values for the `sort` parameter.
             When no particular order is required:
@@ -3475,6 +3486,18 @@ class AsyncCollection:
             >>> asyncio.run(run_vector_finds(my_async_coll))
             ['A', 'B', 'C']
             >>> # (assuming the collection has metric VectorMetric.COSINE)
+
+            >>> async_cursor = my_async_coll.find(
+            ...     sort={"$vector": [3, 3]},
+            ...     limit=3,
+            ...     include_sort_vector=True,
+            ... )
+            >>> asyncio.run(async_cursor.get_sort_vector())
+            [3.0, 3.0]
+            >>> asyncio.run(async_cursor.__anext__())
+            {'_id': 'b13ce177-738e-47ec-bce1-77738ee7ec93', 'tag': 'A'}
+            >>> asyncio.run(async_cursor.get_sort_vector())
+            [3.0, 3.0]
 
         Note:
             The following are example values for the `sort` parameter.
