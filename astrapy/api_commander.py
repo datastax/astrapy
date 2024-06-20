@@ -94,6 +94,7 @@ class APICommander:
         self.full_headers: Dict[str, str] = {
             **self.headers,
             **self.caller_header,
+            **{"Content-Type": "application/json"},
         }
         self._loggable_headers = {
             k: v if k not in self.redacted_header_names else "***"

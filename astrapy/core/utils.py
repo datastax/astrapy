@@ -215,6 +215,7 @@ def make_request(
         **{
             auth_header: token,
             "User-Agent": compose_user_agent(caller_name, caller_version),
+            "Content-Type": "application/json",
         },
         **additional_headers,
     }
@@ -273,6 +274,7 @@ async def amake_request(
         **{
             auth_header: token,
             "User-Agent": compose_user_agent(caller_name, caller_version),
+            "Content-Type": "application/json",
         },
         **additional_headers,
     }
