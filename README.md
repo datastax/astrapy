@@ -414,6 +414,7 @@ That being said, there are no known breakings of backward compatibility:
 **legacy code would run with a newest astrapy version just as well.**
 Here is a recap of the minor changes that came _to the old API_ with 1.0.0:
 
+- Added Content-Type header to all HTTP requests to the API
 - Added methods to `[Async]AstraDBCollection`: `delete_one_filter`, 
 - Paginated find methods (sync/async) type change from Iterable to Generator
 - Bugfix: handling of the mutable caller identity in copy and convert (sync/async) methods

@@ -3,6 +3,7 @@ v. 1.3.0
 Introduce CHANGES file.
 Allow delete_many({}) with empty filter
 Implement include_sort_vector option to Collection.find and get_sort_vector to cursors
+Add Content-Type header to all API requests
 Added HCD and CASSANDRA Environment values (besides the other non-Astra DSE and OTHER)
 Clearer string repr of cursors ('retrieved' => 'yielded so far')
 Deprecation of collection delete_all method in favour of delete_many(filter={})
