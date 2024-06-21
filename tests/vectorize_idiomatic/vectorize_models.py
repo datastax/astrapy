@@ -136,11 +136,17 @@ PARAMETER_VALUE_MAP = {
         "HUGGINGFACEDED_CLOUDNAME"
     ],
     #
-    ("openai", "text-embedding-3-large", "organizationId"): os.environ["OPENAI_ORGANIZATION_ID"],
+    ("openai", "text-embedding-3-large", "organizationId"): os.environ[
+        "OPENAI_ORGANIZATION_ID"
+    ],
     ("openai", "text-embedding-3-large", "projectId"): os.environ["OPENAI_PROJECT_ID"],
-    ("openai", "text-embedding-3-small", "organizationId"): os.environ["OPENAI_ORGANIZATION_ID"],
+    ("openai", "text-embedding-3-small", "organizationId"): os.environ[
+        "OPENAI_ORGANIZATION_ID"
+    ],
     ("openai", "text-embedding-3-small", "projectId"): os.environ["OPENAI_PROJECT_ID"],
-    ("openai", "text-embedding-ada-002", "organizationId"): os.environ["OPENAI_ORGANIZATION_ID"],
+    ("openai", "text-embedding-ada-002", "organizationId"): os.environ[
+        "OPENAI_ORGANIZATION_ID"
+    ],
     ("openai", "text-embedding-ada-002", "projectId"): os.environ["OPENAI_PROJECT_ID"],
 }
 

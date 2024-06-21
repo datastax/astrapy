@@ -164,9 +164,9 @@ class Database:
             _api_version = API_VERSION_ENV_MAP.get(self.environment)
         else:
             _api_version = api_version
-        self.token = coerce_token_provider(token)
+        self.token_provider = coerce_token_provider(token)
         self._astra_db = AstraDB(
-            token=self.token.get_token(),
+            token=self.token_provider.get_token(),
             api_endpoint=api_endpoint,
             api_path=_api_path,
             api_version=_api_version,
@@ -185,7 +185,7 @@ class Database:
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}(api_endpoint="{self._astra_db.api_endpoint}", '
-            f'token="{str(self.token)[:12]}...", namespace="{self._astra_db.namespace}")'
+            f'token="{str(self.token_provider)[:12]}...", namespace="{self._astra_db.namespace}")'
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -208,7 +208,7 @@ class Database:
     ) -> Database:
         return Database(
             api_endpoint=api_endpoint or self._astra_db.api_endpoint,
-            token=coerce_token_provider(token) or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
@@ -298,7 +298,7 @@ class Database:
 
         return AsyncDatabase(
             api_endpoint=api_endpoint or self._astra_db.api_endpoint,
-            token=coerce_token_provider(token) or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
@@ -354,7 +354,7 @@ class Database:
         logger.info("getting database info")
         database_info = fetch_database_info(
             self._astra_db.api_endpoint,
-            token=self.token.get_token(),
+            token=self.token_provider.get_token(),
             namespace=self.namespace,
         )
         if database_info is not None:
@@ -877,7 +877,7 @@ class Database:
         if self.environment in Environment.astra_db_values:
             return AstraDBDatabaseAdmin.from_api_endpoint(
                 api_endpoint=self._astra_db.api_endpoint,
-                token=coerce_token_provider(token) or self.token,
+                token=coerce_token_provider(token) or self.token_provider,
                 caller_name=self._astra_db.caller_name,
                 caller_version=self._astra_db.caller_version,
                 dev_ops_url=dev_ops_url,
@@ -894,7 +894,7 @@ class Database:
                 )
             return DataAPIDatabaseAdmin(
                 api_endpoint=self._astra_db.api_endpoint,
-                token=coerce_token_provider(token) or self.token,
+                token=coerce_token_provider(token) or self.token_provider,
                 environment=self.environment,
                 api_path=self._astra_db.api_path,
                 api_version=self._astra_db.api_version,
@@ -973,9 +973,9 @@ class AsyncDatabase:
         else:
             _api_version = api_version
         #
-        self.token = coerce_token_provider(token)
+        self.token_provider = coerce_token_provider(token)
         self._astra_db = AsyncAstraDB(
-            token=self.token.get_token(),
+            token=self.token_provider.get_token(),
             api_endpoint=api_endpoint,
             api_path=_api_path,
             api_version=_api_version,
@@ -994,7 +994,7 @@ class AsyncDatabase:
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}(api_endpoint="{self._astra_db.api_endpoint}", '
-            f'token="{str(self.token)[:12]}...", namespace="{self._astra_db.namespace}")'
+            f'token="{str(self.token_provider)[:12]}...", namespace="{self._astra_db.namespace}")'
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -1032,7 +1032,7 @@ class AsyncDatabase:
     ) -> AsyncDatabase:
         return AsyncDatabase(
             api_endpoint=api_endpoint or self._astra_db.api_endpoint,
-            token=coerce_token_provider(token) or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
@@ -1123,7 +1123,7 @@ class AsyncDatabase:
 
         return Database(
             api_endpoint=api_endpoint or self._astra_db.api_endpoint,
-            token=coerce_token_provider(token) or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
@@ -1179,7 +1179,7 @@ class AsyncDatabase:
         logger.info("getting database info")
         database_info = fetch_database_info(
             self._astra_db.api_endpoint,
-            token=self.token.get_token(),
+            token=self.token_provider.get_token(),
             namespace=self.namespace,
         )
         if database_info is not None:
@@ -1717,7 +1717,7 @@ class AsyncDatabase:
         if self.environment in Environment.astra_db_values:
             return AstraDBDatabaseAdmin.from_api_endpoint(
                 api_endpoint=self._astra_db.api_endpoint,
-                token=coerce_token_provider(token) or self.token,
+                token=coerce_token_provider(token) or self.token_provider,
                 caller_name=self._astra_db.caller_name,
                 caller_version=self._astra_db.caller_version,
                 dev_ops_url=dev_ops_url,
@@ -1734,7 +1734,7 @@ class AsyncDatabase:
                 )
             return DataAPIDatabaseAdmin(
                 api_endpoint=self._astra_db.api_endpoint,
-                token=coerce_token_provider(token) or self.token,
+                token=coerce_token_provider(token) or self.token_provider,
                 environment=self.environment,
                 api_path=self._astra_db.api_path,
                 api_version=self._astra_db.api_version,

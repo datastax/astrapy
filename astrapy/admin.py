@@ -428,7 +428,7 @@ class AstraDBAdmin:
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
     ) -> None:
-        self.token = coerce_token_provider(token)
+        self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
         if dev_ops_url is None:
             self.dev_ops_url = DEV_OPS_URL_MAP[self.environment]
@@ -439,7 +439,7 @@ class AstraDBAdmin:
         self._dev_ops_url = dev_ops_url
         self._dev_ops_api_version = dev_ops_api_version
         self._astra_db_ops = AstraDBOps(
-            token=self.token.get_token(),
+            token=self.token_provider.get_token(),
             dev_ops_url=self.dev_ops_url,
             dev_ops_api_version=dev_ops_api_version,
             caller_name=caller_name,
@@ -452,13 +452,15 @@ class AstraDBAdmin:
             env_desc = ""
         else:
             env_desc = f', environment="{self.environment}"'
-        return f'{self.__class__.__name__}("{str(self.token)[:12]}..."{env_desc})'
+        return (
+            f'{self.__class__.__name__}("{str(self.token_provider)[:12]}..."{env_desc})'
+        )
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AstraDBAdmin):
             return all(
                 [
-                    self.token == other.token,
+                    self.token_provider == other.token_provider,
                     self.environment == other.environment,
                     self.dev_ops_url == other.dev_ops_url,
                     self.dev_ops_url == other.dev_ops_url,
@@ -483,7 +485,7 @@ class AstraDBAdmin:
         dev_ops_api_version: Optional[str] = None,
     ) -> AstraDBAdmin:
         return AstraDBAdmin(
-            token=coerce_token_provider(token) or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
             caller_name=caller_name or self._caller_name,
             caller_version=caller_version or self._caller_version,
@@ -1186,7 +1188,7 @@ class AstraDBAdmin:
         # need to inspect for values?
         this_db_info: Optional[AdminDatabaseInfo] = None
         # handle overrides
-        _token = coerce_token_provider(token) or self.token
+        _token = coerce_token_provider(token) or self.token_provider
         if namespace:
             _namespace = namespace
         else:
@@ -1363,10 +1365,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         dev_ops_api_version: Optional[str] = None,
     ) -> None:
         self.id = id
-        self.token = coerce_token_provider(token)
+        self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
         self._astra_db_admin = AstraDBAdmin(
-            token=self.token,
+            token=self.token_provider,
             environment=self.environment,
             caller_name=caller_name,
             caller_version=caller_version,
@@ -1382,7 +1384,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             env_desc = f', environment="{self.environment}"'
         return (
             f'{self.__class__.__name__}(id="{self.id}", '
-            f'"{str(self.token)[:12]}..."{env_desc})'
+            f'"{str(self.token_provider)[:12]}..."{env_desc})'
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -1390,7 +1392,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             return all(
                 [
                     self.id == other.id,
-                    self.token == other.token,
+                    self.token_provider == other.token_provider,
                     self.environment == other.environment,
                     self._astra_db_admin == other._astra_db_admin,
                 ]
@@ -1410,7 +1412,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     ) -> AstraDBDatabaseAdmin:
         return AstraDBDatabaseAdmin(
             id=id or self.id,
-            token=coerce_token_provider(token) or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
             caller_name=caller_name or self._astra_db_admin._caller_name,
             caller_version=caller_version or self._astra_db_admin._caller_version,
@@ -1515,7 +1517,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         return AstraDBDatabaseAdmin(
             id=id,
-            token=astra_db_admin.token,
+            token=astra_db_admin.token_provider,
             environment=astra_db_admin.environment,
             caller_name=astra_db_admin._caller_name,
             caller_version=astra_db_admin._caller_version,
@@ -2238,7 +2240,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         caller_version: Optional[str] = None,
     ) -> None:
         self.environment = (environment or Environment.OTHER).lower()
-        self.token = coerce_token_provider(token)
+        self.token_provider = coerce_token_provider(token)
         self.api_endpoint = api_endpoint
         #
         self.caller_name = caller_name
@@ -2248,7 +2250,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self._api_version = api_version if api_version is not None else ""
         #
         self._commander_headers = {
-            DEFAULT_AUTH_HEADER: self.token.get_token(),
+            DEFAULT_AUTH_HEADER: self.token_provider.get_token(),
         }
         self._api_commander = APICommander(
             api_endpoint=self.api_endpoint,
@@ -2261,7 +2263,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         env_desc = f', environment="{self.environment}"'
         return (
             f'{self.__class__.__name__}(endpoint="{self.api_endpoint}", '
-            f'"{str(self.token)[:12]}..."{env_desc})'
+            f'"{str(self.token_provider)[:12]}..."{env_desc})'
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -2287,7 +2289,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     ) -> DataAPIDatabaseAdmin:
         return DataAPIDatabaseAdmin(
             api_endpoint=api_endpoint or self.api_endpoint,
-            token=coerce_token_provider(token) or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
             api_path=api_path or self._api_path,
             api_version=api_version or self._api_version,
@@ -2680,7 +2682,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
         return Database(
             api_endpoint=self.api_endpoint,
-            token=coerce_token_provider(token) or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             namespace=namespace,
             caller_name=self.caller_name,
             caller_version=self.caller_version,

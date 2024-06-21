@@ -83,7 +83,7 @@ class DataAPIClient:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        self.token = coerce_token_provider(token)
+        self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
 
         if self.environment not in Environment.values:
@@ -98,13 +98,15 @@ class DataAPIClient:
             env_desc = ""
         else:
             env_desc = f', environment="{self.environment}"'
-        return f'{self.__class__.__name__}("{str(self.token)[:12]}..."{env_desc})'
+        return (
+            f'{self.__class__.__name__}("{str(self.token_provider)[:12]}..."{env_desc})'
+        )
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, DataAPIClient):
             return all(
                 [
-                    self.token == other.token,
+                    self.token_provider == other.token_provider,
                     self.environment == other.environment,
                     self._caller_name == other._caller_name,
                     self._caller_version == other._caller_version,
@@ -136,7 +138,7 @@ class DataAPIClient:
         caller_version: Optional[str] = None,
     ) -> DataAPIClient:
         return DataAPIClient(
-            token=coerce_token_provider(token) or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
             caller_name=caller_name or self._caller_name,
             caller_version=caller_version or self._caller_version,
@@ -285,14 +287,14 @@ class DataAPIClient:
                         logger.info(f"fetching raw database info for {id}")
                         this_db_info = fetch_raw_database_info_from_id_token(
                             id=id,
-                            token=self.token.get_token(),
+                            token=self.token_provider.get_token(),
                             environment=self.environment,
                             max_time_ms=max_time_ms,
                         )
                         logger.info(f"finished fetching raw database info for {id}")
                     _region = this_db_info["info"]["region"]
 
-                _token = coerce_token_provider(token) or self.token
+                _token = coerce_token_provider(token) or self.token_provider
                 _api_endpoint = build_api_endpoint(
                     environment=self.environment,
                     database_id=id,
@@ -415,7 +417,7 @@ class DataAPIClient:
                         f'`environment="{parsed_api_endpoint.environment}"` '
                         "to the DataAPIClient creation statement."
                     )
-                _token = coerce_token_provider(token) or self.token
+                _token = coerce_token_provider(token) or self.token_provider
                 return Database(
                     api_endpoint=api_endpoint,
                     token=_token,
@@ -433,7 +435,7 @@ class DataAPIClient:
         else:
             parsed_generic_api_endpoint = parse_generic_api_url(api_endpoint)
             if parsed_generic_api_endpoint:
-                _token = coerce_token_provider(token) or self.token
+                _token = coerce_token_provider(token) or self.token_provider
                 return Database(
                     api_endpoint=parsed_generic_api_endpoint,
                     token=_token,
@@ -525,7 +527,7 @@ class DataAPIClient:
             raise ValueError("Method not supported outside of Astra DB.")
 
         return AstraDBAdmin(
-            token=coerce_token_provider(token) or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             environment=self.environment,
             caller_name=self._caller_name,
             caller_version=self._caller_version,
