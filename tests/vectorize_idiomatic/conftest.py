@@ -20,7 +20,7 @@ import os
 from typing import Any, Dict, Iterable
 import pytest
 
-from ..conftest import AstraDBCredentials, AstraDBCredentialsInfo
+from ..conftest import AstraDBCredentials, AstraDBCredentialsInfo, IS_ASTRA_DB
 from astrapy import (
     AsyncCollection,
     AsyncDatabase,
@@ -106,4 +106,5 @@ def async_empty_service_collection(
 __all__ = [
     "sync_database",
     "async_database",
+    "IS_ASTRA_DB",
 ]

@@ -1,5 +1,6 @@
 v. 1.3.0
 ========
+Integration testing covers Astra and nonAstra smoothly (idiomatic, vectorize_idiomatic)
 Add the TokenProvider abstract class => and StaticTokenProvider, UsernamePasswordTokenProvider
 Introduce CHANGES file.
 Add __eq__ and _copy methods to APICommander class

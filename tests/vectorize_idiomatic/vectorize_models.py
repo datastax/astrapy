@@ -18,6 +18,8 @@ from typing import Any, Dict, Iterable, Optional, Tuple
 from astrapy.info import CollectionVectorServiceOptions
 from astrapy.api_commander import APICommander
 
+from .conftest import IS_ASTRA_DB
+
 
 alphanum = set("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890")
 
@@ -162,17 +164,37 @@ def live_provider_info() -> Dict[str, Any]:
     for the latest information.
     This is later used to make sure everything is mapped/tested.
     """
-    ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
-    ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
-    api_endpoint = ASTRA_DB_API_ENDPOINT
-    path = "api/json/v1"
-    headers: Dict[str, Optional[str]] = {"Token": ASTRA_DB_APPLICATION_TOKEN}
-    cmd = APICommander(
-        api_endpoint=api_endpoint,
-        path=path,
-        headers=headers,
-    )
-    response = cmd.request(payload={"findEmbeddingProviders": {}})
+    response: Dict[str, Any]
+
+    if IS_ASTRA_DB:
+        ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
+        ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
+        api_endpoint = ASTRA_DB_API_ENDPOINT
+        path = "api/json/v1"
+        headers_a: Dict[str, Optional[str]] = {"Token": ASTRA_DB_APPLICATION_TOKEN}
+        cmd = APICommander(
+            api_endpoint=api_endpoint,
+            path=path,
+            headers=headers_a,
+        )
+        response = cmd.request(payload={"findEmbeddingProviders": {}})
+    else:
+        LOCAL_DATA_API_APPLICATION_TOKEN = os.environ[
+            "LOCAL_DATA_API_APPLICATION_TOKEN"
+        ]
+        LOCAL_DATA_API_ENDPOINT = os.environ["LOCAL_DATA_API_ENDPOINT"]
+        api_endpoint = LOCAL_DATA_API_ENDPOINT
+        path = "v1"
+        headers_l: Dict[str, Optional[str]] = {
+            "Token": LOCAL_DATA_API_APPLICATION_TOKEN
+        }
+        cmd = APICommander(
+            api_endpoint=api_endpoint,
+            path=path,
+            headers=headers_l,
+        )
+        response = cmd.request(payload={"findEmbeddingProviders": {}})
+
     return response
 
 

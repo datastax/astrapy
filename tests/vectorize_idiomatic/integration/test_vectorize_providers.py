@@ -24,6 +24,8 @@ from astrapy.exceptions import DataAPIResponseException, InsertManyException
 
 from ..vectorize_models import live_test_models
 
+from ..conftest import IS_ASTRA_DB
+
 
 def enabled_vectorize_models(auth_type: str) -> List[Any]:
     """
@@ -160,6 +162,7 @@ class TestVectorizeProviders:
         finally:
             db.drop_collection(collection_name)
 
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.parametrize(
         "testable_vectorize_model",
         enabled_vectorize_models(auth_type="NONE"),
@@ -235,6 +238,7 @@ class TestVectorizeProviders:
         finally:
             db.drop_collection(collection_name)
 
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.parametrize(
         "testable_vectorize_model",
         enabled_vectorize_models(auth_type="SHARED_SECRET"),
