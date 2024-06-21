@@ -96,7 +96,7 @@ class TestAdminConversions:
             caller_version="cv",
         )
 
-        db1 = client.get_database_by_api_endpoint(endpoint)
+        db1 = client.get_database(endpoint)
         db2 = client.get_database(database_id, region=database_region)
         db3 = client.get_database(endpoint)
 
@@ -238,12 +238,12 @@ class TestAdminConversions:
             a_e_string, token=token_f
         ) == client_f.get_database(a_e_string)
 
-        assert client_t.get_database_by_api_endpoint(
+        assert client_t.get_database(
             a_e_string, token=token_f
-        ) == client_f.get_database_by_api_endpoint(a_e_string)
-        assert client_0.get_database_by_api_endpoint(
+        ) == client_f.get_database(a_e_string)
+        assert client_0.get_database(
             a_e_string, token=token_f
-        ) == client_f.get_database_by_api_endpoint(a_e_string)
+        ) == client_f.get_database(a_e_string)
 
         assert client_t.get_admin(token=token_f) == client_f.get_admin()
         assert client_0.get_admin(token=token_f) == client_f.get_admin()

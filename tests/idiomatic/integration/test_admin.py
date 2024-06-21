@@ -272,10 +272,10 @@ class TestAdmin:
         )
         db_w_d = client.get_database(created_db_id_w)
         db_w_r = client.get_database(created_db_id_w, region=db_region)
-        db_w_e = client.get_database_by_api_endpoint(synthetic_api_endpoint)
+        db_w_e = client.get_database(synthetic_api_endpoint)
         adb_w_d = client.get_async_database(created_db_id_w)
         adb_w_r = client.get_async_database(created_db_id_w, region=db_region)
-        adb_w_e = client.get_async_database_by_api_endpoint(synthetic_api_endpoint)
+        adb_w_e = client.get_async_database(synthetic_api_endpoint)
         assert isinstance(db_w_d.list_collection_names(), list)
         assert db_w_r == db_w_d
         assert db_w_e == db_w_d
@@ -523,10 +523,10 @@ class TestAdmin:
         )
         adb_w_d = client.get_async_database(created_db_id_w)
         adb_w_r = client.get_async_database(created_db_id_w, region=db_region)
-        adb_w_e = client.get_async_database_by_api_endpoint(synthetic_api_endpoint)
+        adb_w_e = client.get_async_database(synthetic_api_endpoint)
         db_w_d = client.get_database(created_db_id_w)
         db_w_r = client.get_database(created_db_id_w, region=db_region)
-        db_w_e = client.get_database_by_api_endpoint(synthetic_api_endpoint)
+        db_w_e = client.get_database(synthetic_api_endpoint)
         assert isinstance(await adb_w_d.list_collection_names(), list)
         assert adb_w_r == adb_w_d
         assert adb_w_e == adb_w_d

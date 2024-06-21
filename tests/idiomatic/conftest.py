@@ -20,11 +20,12 @@ import pytest
 
 from ..conftest import (
     AstraDBCredentials,
+    AstraDBCredentialsInfo,
     async_fail_if_not_removed,
     sync_fail_if_not_removed,
 )
 
-from astrapy import AsyncCollection, AsyncDatabase, Collection, Database
+from astrapy import AsyncCollection, AsyncDatabase, Collection, DataAPIClient, Database
 from astrapy.constants import VectorMetric
 
 TEST_COLLECTION_INSTANCE_NAME = "test_coll_instance"
@@ -36,8 +37,16 @@ ASTRA_DB_SECONDARY_KEYSPACE = os.environ.get("ASTRA_DB_SECONDARY_KEYSPACE")
 @pytest.fixture(scope="session")
 def sync_database(
     astra_db_credentials_kwargs: AstraDBCredentials,
+    astra_db_credentials_info: AstraDBCredentialsInfo,
 ) -> Iterable[Database]:
-    yield Database(**astra_db_credentials_kwargs)
+    env = astra_db_credentials_info["environment"]
+    client = DataAPIClient(environment=env)
+    database = client.get_database(
+        astra_db_credentials_kwargs["api_endpoint"],
+        token=astra_db_credentials_kwargs["token"],
+        namespace=astra_db_credentials_kwargs["namespace"],
+    )
+    yield database
 
 
 @pytest.fixture(scope="function")
@@ -53,10 +62,7 @@ def sync_collection_instance(
     sync_database: Database,
 ) -> Iterable[Collection]:
     """Just an instance of the class, no DB-level stuff."""
-    yield Collection(
-        sync_database,
-        TEST_COLLECTION_INSTANCE_NAME,
-    )
+    yield sync_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)
 
 
 @pytest.fixture(scope="function")
@@ -109,6 +115,7 @@ def async_empty_collection(
 
 __all__ = [
     "AstraDBCredentials",
+    "AstraDBCredentialsInfo",
     "sync_database",
     "sync_fail_if_not_removed",
     "async_database",

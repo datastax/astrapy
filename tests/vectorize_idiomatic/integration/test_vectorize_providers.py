@@ -23,7 +23,6 @@ from astrapy.info import CollectionVectorServiceOptions
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 
 from ..vectorize_models import live_test_models
-from ..conftest import env_filter_match
 
 
 def enabled_vectorize_models(auth_type: str) -> List[Any]:
@@ -64,9 +63,6 @@ def enabled_vectorize_models(auth_type: str) -> List[Any]:
     for model in at_test_models:
         markers = []
         # provider exclusion logic applied here:
-        env_filters = model["env_filters"]
-        if not env_filter_match(auth_type, env_filters):
-            markers.append(pytest.mark.skip(reason="excluded by env/region/auth_type"))
         if model["model_tag"] not in whitelisted_models:
             markers.append(pytest.mark.skip(reason="model not whitelisted"))
         at_chosen_models.append(pytest.param(model, marks=markers))

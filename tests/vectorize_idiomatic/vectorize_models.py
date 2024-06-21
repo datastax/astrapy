@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import os
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, Optional, Tuple
 
 from astrapy.info import CollectionVectorServiceOptions
 from astrapy.api_commander import APICommander
@@ -78,10 +78,6 @@ TEST_ASSETS_MAP = {
 USE_INSERT_ONE_MAP: Dict[Tuple[str, str], bool] = {
     # ("upstageAI", "solar-1-mini-embedding"): True,
 }
-
-# environment, region, auth_type. One spec must match.
-#   Example: {("nvidia", "NV-Embed-QA"): [("dev", "us-west-2", "*")]}
-ENV_FILTERS_MAP: Dict[Tuple[str, str], List[Tuple[str, str, str]]] = {}
 
 SECRET_NAME_ROOT_MAP = {
     "azureOpenAI": "AZURE_OPENAI",
@@ -295,9 +291,6 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                             "use_insert_one": USE_INSERT_ONE_MAP.get(
                                 (provider_name, model["name"]), False
                             ),
-                            "env_filters": ENV_FILTERS_MAP.get(
-                                (provider_name, model["name"]), [("*", "*", "*")]
-                            ),
                             "service_options": CollectionVectorServiceOptions(
                                 provider=provider_name,
                                 model_name=model["name"],
@@ -321,9 +314,6 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                             ),
                             "use_insert_one": USE_INSERT_ONE_MAP.get(
                                 (provider_name, model["name"]), False
-                            ),
-                            "env_filters": ENV_FILTERS_MAP.get(
-                                (provider_name, model["name"]), [("*", "*", "*")]
                             ),
                         }
 

@@ -23,69 +23,42 @@ available as the env.vars:
 """
 
 import os
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable
 import pytest
 
-from ..conftest import AstraDBCredentials
-from astrapy import AsyncCollection, Collection
+from ..conftest import AstraDBCredentials, AstraDBCredentialsInfo
 from astrapy import (
+    AsyncCollection,
     AsyncDatabase,
+    Collection,
     DataAPIClient,
     Database,
 )
 from astrapy.constants import VectorMetric
-from astrapy.admin import parse_api_endpoint
 from astrapy.constants import Environment
 
 TEST_SERVICE_COLLECTION_NAME = "test_indepth_vectorize_collection"
 
 
-def _parse_to_testing_environment(api_endpoint: str) -> Tuple[str, str]:
-    parsed = parse_api_endpoint(api_endpoint)
-    if parsed is not None:
-        return (parsed.environment, parsed.region)
-    else:
-        return (Environment.OTHER, "no-region")
-
-
-def _env_filter_match1(
-    api_endpoint: str, auth_type: str, env_filter: Tuple[str, str, str]
-) -> bool:
-    env, reg = _parse_to_testing_environment(api_endpoint)
-
-    def _match(s1: str, s2: str) -> bool:
-        if s1 == "*" or s2 == "*":
-            return True
-        else:
-            return s1.lower() == s2.lower()
-
-    return all(_match(pc1, pc2) for pc1, pc2 in zip((env, reg, auth_type), env_filter))
-
-
-def env_filter_match(auth_type: str, env_filters: List[Tuple[str, str, str]]) -> bool:
-    api_endpoint = os.environ.get(
-        "LOCAL_DATA_API_ENDPOINT", os.environ.get("ASTRA_DB_API_ENDPOINT", "")
-    )
-    return any(
-        _env_filter_match1(api_endpoint, auth_type, env_filter)
-        for env_filter in env_filters
-    )
-
-
 @pytest.fixture(scope="session")
-def sync_database() -> Iterable[Database]:
+def sync_database(
+    astra_db_credentials_kwargs: AstraDBCredentials,
+    astra_db_credentials_info: AstraDBCredentialsInfo,
+) -> Iterable[Database]:
     if "LOCAL_DATA_API_ENDPOINT" in os.environ:
         api_endpoint = os.environ["LOCAL_DATA_API_ENDPOINT"]
         token = os.environ["LOCAL_DATA_API_APPLICATION_TOKEN"]
         client = DataAPIClient(token=token, environment=Environment.OTHER)
-        database = client.get_database_by_api_endpoint(api_endpoint)
+        database = client.get_database(api_endpoint)
         database.get_database_admin().create_namespace("default_keyspace")
     elif "ASTRA_DB_API_ENDPOINT" in os.environ:
         # regular Astra DB instance
-        database = Database(
-            api_endpoint=os.environ["ASTRA_DB_API_ENDPOINT"],
-            token=os.environ["ASTRA_DB_APPLICATION_TOKEN"],
-            namespace=os.environ.get("ASTRA_DB_KEYSPACE"),
+        env = astra_db_credentials_info["environment"]
+        client = DataAPIClient(environment=env)
+        database = client.get_database(
+            astra_db_credentials_kwargs["api_endpoint"],
+            token=astra_db_credentials_kwargs["token"],
+            namespace=astra_db_credentials_kwargs["namespace"],
         )
     else:
         raise ValueError("No credentials.")
@@ -150,5 +123,4 @@ def async_empty_service_collection(
 __all__ = [
     "sync_database",
     "async_database",
-    "env_filter_match",
 ]

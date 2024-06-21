@@ -18,6 +18,7 @@ import time
 
 from ..conftest import (
     AstraDBCredentials,
+    AstraDBCredentialsInfo,
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
 )
@@ -27,7 +28,7 @@ from astrapy.info import (
 )
 from astrapy.constants import DefaultIdType, VectorMetric
 from astrapy.ids import ObjectId, UUID
-from astrapy import Collection, Database
+from astrapy import Collection, DataAPIClient, Database
 
 
 class TestDDLSync:
@@ -284,3 +285,15 @@ class TestDDLSync:
         cmd1 = sync_collection.command({"countDocuments": {}})
         assert isinstance(cmd1, dict)
         assert isinstance(cmd1["status"]["count"], int)
+
+    @pytest.mark.describe("test of tokenless client creation, sync")
+    def test_tokenless_client_sync(
+        self,
+        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_info: AstraDBCredentialsInfo,
+    ) -> None:
+        api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
+        token = astra_db_credentials_kwargs["token"]
+        client = DataAPIClient(environment=astra_db_credentials_info["environment"])
+        database = client.get_database(api_endpoint, token=token)
+        assert isinstance(database.list_collection_names(), list)
