@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import json
 import httpx
@@ -77,7 +77,7 @@ class APICommander:
         self,
         api_endpoint: str,
         path: str,
-        headers: Dict[str, str] = {},
+        headers: Dict[str, Union[str, None]] = {},
         callers: List[Tuple[Optional[str], Optional[str]]] = [],
         redacted_header_names: List[str] = DEFAULT_REDACTED_HEADER_NAMES,
     ) -> None:
@@ -92,7 +92,7 @@ class APICommander:
             {"User-Agent": user_agent} if user_agent else {}
         )
         self.full_headers: Dict[str, str] = {
-            **self.headers,
+            **{k: v for k, v in self.headers.items() if v is not None},
             **self.caller_header,
             **{"Content-Type": "application/json"},
         }

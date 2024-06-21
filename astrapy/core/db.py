@@ -104,8 +104,8 @@ class AstraDBCollection:
         """
         # Check for presence of the Astra DB object
         if astra_db is None:
-            if token is None or api_endpoint is None:
-                raise AssertionError("Must provide token and api_endpoint")
+            if api_endpoint is None:
+                raise AssertionError("Must provide api_endpoint")
 
             astra_db = AstraDB(
                 token=token,
@@ -1478,8 +1478,8 @@ class AsyncAstraDBCollection:
         """
         # Check for presence of the Astra DB object
         if astra_db is None:
-            if token is None or api_endpoint is None:
-                raise AssertionError("Must provide token and api_endpoint")
+            if api_endpoint is None:
+                raise AssertionError("Must provide api_endpoint")
 
             astra_db = AsyncAstraDB(
                 token=token,
@@ -2804,7 +2804,7 @@ class AstraDB:
 
     def __init__(
         self,
-        token: str,
+        token: Optional[str],
         api_endpoint: str,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -2827,8 +2827,8 @@ class AstraDB:
         self.caller_name = caller_name
         self.caller_version = caller_version
 
-        if token is None or api_endpoint is None:
-            raise AssertionError("Must provide token and api_endpoint")
+        if api_endpoint is None:
+            raise AssertionError("Must provide api_endpoint")
 
         if namespace is None:
             logger.info(
@@ -3113,7 +3113,7 @@ class AstraDB:
 class AsyncAstraDB:
     def __init__(
         self,
-        token: str,
+        token: Optional[str],
         api_endpoint: str,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -3137,8 +3137,8 @@ class AsyncAstraDB:
         self.caller_version = caller_version
 
         self.client = httpx.AsyncClient()
-        if token is None or api_endpoint is None:
-            raise AssertionError("Must provide token and api_endpoint")
+        if api_endpoint is None:
+            raise AssertionError("Must provide api_endpoint")
 
         if namespace is None:
             logger.info(

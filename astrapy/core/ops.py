@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, cast, Dict, Optional, TypedDict
+from typing import Any, cast, Dict, Optional, TypedDict, Union
 
 import httpx
 from astrapy.core.api import (
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 
 class AstraDBOpsConstructorParams(TypedDict):
-    token: str
+    token: Union[str, None]
     dev_ops_url: Optional[str]
     dev_ops_api_version: Optional[str]
     caller_name: Optional[str]
@@ -57,7 +57,7 @@ class AstraDBOps:
 
     def __init__(
         self,
-        token: str,
+        token: Union[str, None],
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
         caller_name: Optional[str] = None,
@@ -79,7 +79,11 @@ class AstraDBOps:
             dev_ops_api_version or DEFAULT_DEV_OPS_API_VERSION
         ).strip("/")
 
-        self.token = "Bearer " + token
+        self.token: Union[str, None]
+        if token is not None:
+            self.token = "Bearer " + token
+        else:
+            self.token = None
         self.base_url = f"{dev_ops_url}/{dev_ops_api_version}"
 
     def __eq__(self, other: Any) -> bool:

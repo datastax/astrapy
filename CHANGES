@@ -16,7 +16,7 @@ Remove several long-deprecated methods from **core API** (i.e. internal changes)
     AsyncAstraDBCollection.upsert     => upsert_one
     AstraDB.truncate_collection       => AstraDBCollection.clear
     AsyncAstraDB.truncate_collection  => AsyncAstraDBCollectionclear
-
+Add support for null tokens in the core library
 
 v. 1.2.1
 ========
