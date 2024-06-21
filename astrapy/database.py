@@ -112,7 +112,8 @@ class Database:
         api_endpoint: the full "API Endpoint" string used to reach the Data API.
             Example: "https://<database_id>-<region>.apps.astra.datastax.com"
         token: an Access Token to the database. Example: "AstraCS:xyz..."
-            This can be either a literal token string or a subclass of TokenProvider.
+            This can be either a literal token string or a subclass of
+            `astrapy.authentication.TokenProvider`.
         namespace: this is the namespace all method calls will target, unless
             one is explicitly specified in the call. If no namespace is supplied
             when creating a Database, the name "default_namespace" is set.
@@ -273,7 +274,8 @@ class Database:
             api_endpoint: the full "API Endpoint" string used to reach the Data API.
                 Example: "https://<database_id>-<region>.apps.astra.datastax.com"
             token: an Access Token to the database. Example: "AstraCS:xyz..."
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             namespace: this is the namespace all method calls will target, unless
                 one is explicitly specified in the call. If no namespace is supplied
                 when creating a Database, the name "default_namespace" is set.
@@ -848,7 +850,8 @@ class Database:
             token: an access token with enough permission on the database to
                 perform the desired tasks. If omitted (as it can generally be done),
                 the token of this Database is used.
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             dev_ops_url: in case of custom deployments, this can be used to specify
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
                 Generally it can be omitted. The environment (prod/dev/...) is
@@ -920,7 +923,8 @@ class AsyncDatabase:
         api_endpoint: the full "API Endpoint" string used to reach the Data API.
             Example: "https://<database_id>-<region>.apps.astra.datastax.com"
         token: an Access Token to the database. Example: "AstraCS:xyz..."
-            This can be either a literal token string or a subclass of TokenProvider.
+            This can be either a literal token string or a subclass of
+            `astrapy.authentication.TokenProvider`.
         namespace: this is the namespace all method calls will target, unless
             one is explicitly specified in the call. If no namespace is supplied
             when creating a Database, the name "default_namespace" is set.
@@ -1097,7 +1101,8 @@ class AsyncDatabase:
             api_endpoint: the full "API Endpoint" string used to reach the Data API.
                 Example: "https://<database_id>-<region>.apps.astra.datastax.com"
             token: an Access Token to the database. Example: "AstraCS:xyz..."
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             namespace: this is the namespace all method calls will target, unless
                 one is explicitly specified in the call. If no namespace is supplied
                 when creating a Database, the name "default_namespace" is set.
@@ -1688,7 +1693,8 @@ class AsyncDatabase:
             token: an access token with enough permission on the database to
                 perform the desired tasks. If omitted (as it can generally be done),
                 the token of this Database is used.
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             dev_ops_url: in case of custom deployments, this can be used to specify
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
                 Generally it can be omitted. The environment (prod/dev/...) is

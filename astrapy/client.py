@@ -51,7 +51,8 @@ class DataAPIClient:
 
     Args:
         token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
-            This can be either a literal token string or a subclass of TokenProvider.
+            This can be either a literal token string or a subclass of
+            `astrapy.authentication.TokenProvider`.
         environment: a string representing the target Data API environment.
             It can be left unspecified for the default value of `Environment.PROD`;
             other values include `Environment.OTHER`, `Environment.DSE`.
@@ -156,7 +157,8 @@ class DataAPIClient:
 
         Args:
             token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API and DevOps API calls are performed. This ends up in
                 the request user-agent.
@@ -223,7 +225,8 @@ class DataAPIClient:
                 does not create the database, just the object instance.
                 Actual admin work can be achieved by using the AstraDBAdmin object.
             token: if supplied, is passed to the Database instead of the client token.
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             namespace: if provided, is passed to the Database
                 (it is left to the default otherwise).
             region: the region to use for connecting to the database. The
@@ -374,7 +377,8 @@ class DataAPIClient:
             api_endpoint: the full "API Endpoint" string used to reach the Data API.
                 Example: "https://DATABASE_ID-REGION.apps.astra.datastax.com"
             token: if supplied, is passed to the Database instead of the client token.
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             namespace: if provided, is passed to the Database
                 (it is left to the default otherwise).
             api_path: path to append to the API Endpoint. In typical usage, this
@@ -495,7 +499,8 @@ class DataAPIClient:
             token: if supplied, is passed to the Astra DB Admin instead of the
                 client token. This may be useful when switching to a more powerful,
                 admin-capable permission set.
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             dev_ops_url: in case of custom deployments, this can be used to specify
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
                 Generally it can be omitted. The environment (prod/dev/...) is

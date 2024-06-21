@@ -391,7 +391,8 @@ class AstraDBAdmin:
 
     Args:
         token: an access token with enough permission to perform admin tasks.
-            This can be either a literal token string or a subclass of TokenProvider.
+            This can be either a literal token string or a subclass of
+            `astrapy.authentication.TokenProvider`.
         environment: a label, whose value is one of Environment.PROD (default),
             Environment.DEV or Environment.TEST.
         caller_name: name of the application, or framework, on behalf of which
@@ -505,7 +506,8 @@ class AstraDBAdmin:
 
         Args:
             token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API and DevOps API calls are performed. This ends up in
                 the request user-agent.
@@ -1146,7 +1148,8 @@ class AstraDBAdmin:
             id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
             token: if supplied, is passed to the Database instead of
                 the one set for this object.
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             namespace: used to specify a certain namespace the resulting
                 Database will primarily work on. If not specified, similar
                 as for `region`, an additional DevOps API call reveals
@@ -1325,7 +1328,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     Args:
         id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
         token: an access token with enough permission to perform admin tasks.
-            This can be either a literal token string or a subclass of TokenProvider.
+            This can be either a literal token string or a subclass of
+            `astrapy.authentication.TokenProvider`.
         environment: a label, whose value is one of Environment.PROD (default),
             Environment.DEV or Environment.TEST.
         caller_name: name of the application, or framework, on behalf of which
@@ -1435,7 +1439,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Args:
             id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
             token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API and DevOps API calls are performed. This ends up in
                 the request user-agent.
@@ -1541,7 +1546,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Args:
             api_endpoint: a full API endpoint for the Data Api.
             token: an access token with enough permissions to do admin work.
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             caller_name: name of the application, or framework, on behalf of which
                 the DevOps API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -2119,7 +2125,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             token: if supplied, is passed to the Database instead of
                 the one set for this object. Useful if one wants to work in
                 a least-privilege manner, limiting the permissions for non-admin work.
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             namespace: an optional namespace to set in the resulting Database.
                 The same default logic as for `AstraDBAdmin.get_database` applies.
             region: an optional region for connecting to the database Data API endpoint.
@@ -2198,7 +2205,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         api_endpoint: the full URI to access the Data API,
             e.g. "http://localhost:8181".
         token: an access token with enough permission to perform admin tasks.
-            This can be either a literal token string or a subclass of TokenProvider.
+            This can be either a literal token string or a subclass of
+            `astrapy.authentication.TokenProvider`.
         environment: a label, whose value is one of Environment.OTHER (default)
             or other non-Astra environment values in the `Environment` enum.
         api_path: path to append to the API Endpoint. In typical usage, this
@@ -2312,7 +2320,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             api_endpoint: the full URI to access the Data API,
                 e.g. "http://localhost:8181".
             token: an access token with enough permission to perform admin tasks.
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             caller_name: name of the application, or framework, on behalf of which
                 the admin API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -2656,7 +2665,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             token: if supplied, is passed to the Database instead of
                 the one set for this object. Useful if one wants to work in
                 a least-privilege manner, limiting the permissions for non-admin work.
-                This can be either a literal token string or a subclass of TokenProvider.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             namespace: an optional namespace to set in the resulting Database.
                 If not provided, the default namespace is used.
             api_path: path to append to the API Endpoint. In typical usage, this
