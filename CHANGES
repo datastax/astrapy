@@ -2,6 +2,7 @@ v. 1.3.0
 ========
 Add the TokenProvider abstract class => and StaticTokenProvider, UsernamePasswordTokenProvider
 Introduce CHANGES file.
+Add __eq__ and _copy methods to APICommander class
 Allow delete_many({}) with empty filter
 Implement include_sort_vector option to Collection.find and get_sort_vector to cursors
 Add Content-Type header to all API requests
