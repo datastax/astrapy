@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast
 
 import json
 import httpx
@@ -79,7 +79,7 @@ class APICommander:
         path: str,
         headers: Dict[str, Union[str, None]] = {},
         callers: List[Tuple[Optional[str], Optional[str]]] = [],
-        redacted_header_names: List[str] = DEFAULT_REDACTED_HEADER_NAMES,
+        redacted_header_names: Iterable[str] = DEFAULT_REDACTED_HEADER_NAMES,
     ) -> None:
         self.api_endpoint = api_endpoint.rstrip("/")
         self.path = path.lstrip("/")
@@ -103,10 +103,42 @@ class APICommander:
         self.full_path = ("/".join([self.api_endpoint, self.path])).rstrip("/")
 
     def __eq__(self, other: Any) -> bool:
+        if isinstance(other, APICommander):
+            return all(
+                [
+                    self.api_endpoint == other.api_endpoint,
+                    self.path == other.path,
+                    self.headers == other.headers,
+                    self.callers == other.callers,
+                    self.redacted_header_names == other.redacted_header_names,
+                ]
+            )
+        else:
+            return False
         raise NotImplementedError
 
-    def _copy(self) -> None:
-        raise NotImplementedError
+    def _copy(
+        self,
+        api_endpoint: Optional[str] = None,
+        path: Optional[str] = None,
+        headers: Optional[Dict[str, Union[str, None]]] = None,
+        callers: Optional[List[Tuple[Optional[str], Optional[str]]]] = None,
+        redacted_header_names: Optional[List[str]] = None,
+    ) -> APICommander:
+        # some care in allowing e.g. {} to override (but not None):
+        return APICommander(
+            api_endpoint=(
+                api_endpoint if api_endpoint is not None else self.api_endpoint
+            ),
+            path=path if path is not None else self.path,
+            headers=headers if headers is not None else self.headers,
+            callers=callers if callers is not None else self.callers,
+            redacted_header_names=(
+                redacted_header_names
+                if redacted_header_names is not None
+                else self.redacted_header_names
+            ),
+        )
 
     def raw_request(
         self,
