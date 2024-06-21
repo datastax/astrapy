@@ -27,7 +27,7 @@ from astrapy.exceptions import (
     TooManyDocumentsToCountException,
 )
 
-from ..conftest import AstraDBCredentials
+from ..conftest import AstraDBCredentials, IS_ASTRA_DB
 
 
 class TestExceptionsSync:
@@ -284,8 +284,9 @@ class TestExceptionsSync:
         sync_database: Database,
     ) -> None:
         f_database = sync_database._copy(namespace="nonexisting")
-        with pytest.raises(DataAPIResponseException):
-            f_database.drop_collection("nonexisting")
+        if IS_ASTRA_DB:
+            with pytest.raises(DataAPIResponseException):
+                f_database.drop_collection("nonexisting")
         with pytest.raises(DataAPIResponseException):
             sync_database.command(body={"myCommand": {"k": "v"}})
         with pytest.raises(DataAPIResponseException):

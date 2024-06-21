@@ -21,6 +21,7 @@ from ..conftest import (
     AstraDBCredentialsInfo,
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
+    IS_ASTRA_DB,
 )
 from astrapy.info import (
     CollectionDescriptor,
@@ -163,6 +164,7 @@ class TestDDLAsync:
             await async_database.list_collection_names()
         )
 
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.describe("test of database metainformation, async")
     async def test_get_database_info_async(
         self,
@@ -175,6 +177,7 @@ class TestDDLAsync:
         assert isinstance(async_database.info(), DatabaseInfo)
         assert isinstance(async_database.info().raw_info, dict)
 
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.describe("test of collection metainformation, async")
     async def test_get_collection_info_async(
         self,
@@ -225,13 +228,14 @@ class TestDDLAsync:
     async def test_collection_namespace_async(
         self,
         async_database: AsyncDatabase,
+        client: DataAPIClient,
         astra_db_credentials_kwargs: AstraDBCredentials,
     ) -> None:
         TEST_LOCAL_COLLECTION_NAME1 = "test_crossns_coll1"
         TEST_LOCAL_COLLECTION_NAME2 = "test_crossns_coll2"
-        database_on_secondary = AsyncDatabase(
+        database_on_secondary = client.get_async_database(
             astra_db_credentials_kwargs["api_endpoint"],
-            astra_db_credentials_kwargs["token"],
+            token=astra_db_credentials_kwargs["token"],
             namespace=ASTRA_DB_SECONDARY_KEYSPACE,
         )
         await async_database.create_collection(

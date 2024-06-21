@@ -21,6 +21,7 @@ from ..conftest import (
     AstraDBCredentialsInfo,
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
+    IS_ASTRA_DB,
 )
 from astrapy.info import (
     CollectionDescriptor,
@@ -157,6 +158,7 @@ class TestDDLSync:
         assert del_res["ok"] == 1
         assert "sync_collection_to_drop" not in sync_database.list_collection_names()
 
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.describe("test of database metainformation, sync")
     def test_get_database_info_sync(
         self,
@@ -169,6 +171,7 @@ class TestDDLSync:
         assert isinstance(sync_database.info(), DatabaseInfo)
         assert isinstance(sync_database.info().raw_info, dict)
 
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.describe("test of collection metainformation, sync")
     def test_get_collection_info_sync(
         self,
@@ -215,13 +218,14 @@ class TestDDLSync:
     def test_collection_namespace_sync(
         self,
         sync_database: Database,
+        client: DataAPIClient,
         astra_db_credentials_kwargs: AstraDBCredentials,
     ) -> None:
         TEST_LOCAL_COLLECTION_NAME1 = "test_crossns_coll1"
         TEST_LOCAL_COLLECTION_NAME2 = "test_crossns_coll2"
-        database_on_secondary = Database(
+        database_on_secondary = client.get_database(
             astra_db_credentials_kwargs["api_endpoint"],
-            astra_db_credentials_kwargs["token"],
+            token=astra_db_credentials_kwargs["token"],
             namespace=ASTRA_DB_SECONDARY_KEYSPACE,
         )
         sync_database.create_collection(

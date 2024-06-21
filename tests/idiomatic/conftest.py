@@ -23,6 +23,7 @@ from ..conftest import (
     AstraDBCredentialsInfo,
     async_fail_if_not_removed,
     sync_fail_if_not_removed,
+    IS_ASTRA_DB,
 )
 
 from astrapy import AsyncCollection, AsyncDatabase, Collection, DataAPIClient, Database
@@ -35,17 +36,33 @@ ASTRA_DB_SECONDARY_KEYSPACE = os.environ.get("ASTRA_DB_SECONDARY_KEYSPACE")
 
 
 @pytest.fixture(scope="session")
+def client(
+    astra_db_credentials_info: AstraDBCredentialsInfo,
+) -> Iterable[DataAPIClient]:
+    env = astra_db_credentials_info["environment"]
+    client = DataAPIClient(environment=env)
+    yield client
+
+
+@pytest.fixture(scope="session")
 def sync_database(
     astra_db_credentials_kwargs: AstraDBCredentials,
     astra_db_credentials_info: AstraDBCredentialsInfo,
+    client: DataAPIClient,
 ) -> Iterable[Database]:
-    env = astra_db_credentials_info["environment"]
-    client = DataAPIClient(environment=env)
     database = client.get_database(
         astra_db_credentials_kwargs["api_endpoint"],
         token=astra_db_credentials_kwargs["token"],
         namespace=astra_db_credentials_kwargs["namespace"],
     )
+
+    if not IS_ASTRA_DB:
+        # ensure keyspace(s) exist
+        database_admin = database.get_database_admin()
+        database_admin.create_namespace(astra_db_credentials_kwargs["namespace"])
+        if ASTRA_DB_SECONDARY_KEYSPACE:
+            database_admin.create_namespace(ASTRA_DB_SECONDARY_KEYSPACE)
+
     yield database
 
 
@@ -120,4 +137,5 @@ __all__ = [
     "sync_fail_if_not_removed",
     "async_database",
     "async_fail_if_not_removed",
+    "IS_ASTRA_DB",
 ]

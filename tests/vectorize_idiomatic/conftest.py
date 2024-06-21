@@ -14,12 +14,6 @@
 
 """
 Fixtures specific to testing on vectorize-ready Data API.
-
-This whole directory of tests can be run with a docker-compose
-local Data API running. In that case, its endpoint and token must be made
-available as the env.vars:
-    LOCAL_DATA_API_ENDPOINT
-    LOCAL_DATA_API_APPLICATION_TOKEN
 """
 
 import os
@@ -35,7 +29,6 @@ from astrapy import (
     Database,
 )
 from astrapy.constants import VectorMetric
-from astrapy.constants import Environment
 
 TEST_SERVICE_COLLECTION_NAME = "test_indepth_vectorize_collection"
 
@@ -45,23 +38,13 @@ def sync_database(
     astra_db_credentials_kwargs: AstraDBCredentials,
     astra_db_credentials_info: AstraDBCredentialsInfo,
 ) -> Iterable[Database]:
-    if "LOCAL_DATA_API_ENDPOINT" in os.environ:
-        api_endpoint = os.environ["LOCAL_DATA_API_ENDPOINT"]
-        token = os.environ["LOCAL_DATA_API_APPLICATION_TOKEN"]
-        client = DataAPIClient(token=token, environment=Environment.OTHER)
-        database = client.get_database(api_endpoint)
-        database.get_database_admin().create_namespace("default_keyspace")
-    elif "ASTRA_DB_API_ENDPOINT" in os.environ:
-        # regular Astra DB instance
-        env = astra_db_credentials_info["environment"]
-        client = DataAPIClient(environment=env)
-        database = client.get_database(
-            astra_db_credentials_kwargs["api_endpoint"],
-            token=astra_db_credentials_kwargs["token"],
-            namespace=astra_db_credentials_kwargs["namespace"],
-        )
-    else:
-        raise ValueError("No credentials.")
+    env = astra_db_credentials_info["environment"]
+    client = DataAPIClient(environment=env)
+    database = client.get_database(
+        astra_db_credentials_kwargs["api_endpoint"],
+        token=astra_db_credentials_kwargs["token"],
+        namespace=astra_db_credentials_kwargs["namespace"],
+    )
     yield database
 
 

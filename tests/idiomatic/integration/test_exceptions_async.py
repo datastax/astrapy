@@ -31,7 +31,7 @@ from astrapy.exceptions import (
 from astrapy.constants import DocumentType
 from astrapy.cursors import AsyncCursor
 
-from ..conftest import AstraDBCredentials
+from ..conftest import AstraDBCredentials, IS_ASTRA_DB
 
 
 class TestExceptionsAsync:
@@ -293,8 +293,9 @@ class TestExceptionsAsync:
         async_database: AsyncDatabase,
     ) -> None:
         f_database = async_database._copy(namespace="nonexisting")
-        with pytest.raises(DataAPIResponseException):
-            await f_database.drop_collection("nonexisting")
+        if IS_ASTRA_DB:
+            with pytest.raises(DataAPIResponseException):
+                await f_database.drop_collection("nonexisting")
         with pytest.raises(DataAPIResponseException):
             await async_database.command(body={"myCommand": {"k": "v"}})
         with pytest.raises(DataAPIResponseException):

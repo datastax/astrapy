@@ -4,17 +4,26 @@ import os
 import pytest
 import warnings
 from deprecation import UnsupportedWarning
-from typing import Any, Awaitable, Callable, Optional, Tuple, TypedDict
+from typing import Any, Awaitable, Callable, Tuple, TypedDict
 
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
 from astrapy.constants import Environment
 from astrapy.admin import parse_api_endpoint
 
 
+IS_ASTRA_DB: bool
+if "LOCAL_DATA_API_ENDPOINT" in os.environ:
+    IS_ASTRA_DB = False
+elif "ASTRA_DB_API_ENDPOINT" in os.environ:
+    IS_ASTRA_DB = True
+else:
+    raise ValueError("No credentials.")
+
+
 class AstraDBCredentials(TypedDict):
     token: str
     api_endpoint: str
-    namespace: Optional[str]
+    namespace: str
 
 
 class AstraDBCredentialsInfo(TypedDict):
@@ -91,16 +100,28 @@ def sync_fail_if_not_removed(method: Callable[..., Any]) -> Callable[..., Any]:
 
 @pytest.fixture(scope="session")
 def astra_db_credentials_kwargs() -> AstraDBCredentials:
-    ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
-    ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
-    ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
-    astra_db_creds: AstraDBCredentials = {
-        "token": ASTRA_DB_APPLICATION_TOKEN,
-        "api_endpoint": ASTRA_DB_API_ENDPOINT,
-        "namespace": ASTRA_DB_KEYSPACE,
-    }
-
-    return astra_db_creds
+    if IS_ASTRA_DB:
+        ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
+        ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
+        ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
+        astra_db_creds: AstraDBCredentials = {
+            "token": ASTRA_DB_APPLICATION_TOKEN,
+            "api_endpoint": ASTRA_DB_API_ENDPOINT,
+            "namespace": ASTRA_DB_KEYSPACE,
+        }
+        return astra_db_creds
+    else:
+        LOCAL_DATA_API_APPLICATION_TOKEN = os.environ[
+            "LOCAL_DATA_API_APPLICATION_TOKEN"
+        ]
+        LOCAL_DATA_API_ENDPOINT = os.environ["LOCAL_DATA_API_ENDPOINT"]
+        LOCAL_DATA_KEYSPACE = os.environ.get("LOCAL_DATA_KEYSPACE", "default_keyspace")
+        local_db_creds: AstraDBCredentials = {
+            "token": LOCAL_DATA_API_APPLICATION_TOKEN,
+            "api_endpoint": LOCAL_DATA_API_ENDPOINT,
+            "namespace": LOCAL_DATA_KEYSPACE,
+        }
+        return local_db_creds
 
 
 @pytest.fixture(scope="session")
