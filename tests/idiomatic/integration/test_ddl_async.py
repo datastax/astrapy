@@ -17,8 +17,8 @@ import pytest
 import time
 
 from ..conftest import (
-    AstraDBCredentials,
-    AstraDBCredentialsInfo,
+    DataAPICredentials,
+    DataAPICredentialsInfo,
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
     IS_ASTRA_DB,
@@ -169,7 +169,7 @@ class TestDDLAsync:
     async def test_get_database_info_async(
         self,
         async_database: AsyncDatabase,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         assert isinstance(async_database.id, str)
         assert isinstance(async_database.name(), str)
@@ -229,7 +229,7 @@ class TestDDLAsync:
         self,
         async_database: AsyncDatabase,
         client: DataAPIClient,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         TEST_LOCAL_COLLECTION_NAME1 = "test_crossns_coll1"
         TEST_LOCAL_COLLECTION_NAME2 = "test_crossns_coll2"
@@ -304,8 +304,8 @@ class TestDDLAsync:
     @pytest.mark.describe("test of tokenless client creation, async")
     async def test_tokenless_client_async(
         self,
-        astra_db_credentials_kwargs: AstraDBCredentials,
-        astra_db_credentials_info: AstraDBCredentialsInfo,
+        astra_db_credentials_kwargs: DataAPICredentials,
+        astra_db_credentials_info: DataAPICredentialsInfo,
     ) -> None:
         api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
         token = astra_db_credentials_kwargs["token"]

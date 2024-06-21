@@ -15,7 +15,7 @@
 import pytest
 
 from ..conftest import (
-    AstraDBCredentials,
+    DataAPICredentials,
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_INSTANCE_NAME,
 )
@@ -28,7 +28,7 @@ class TestDatabasesSync:
     @pytest.mark.describe("test of instantiating Database, sync")
     def test_instantiate_database_sync(
         self,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         db1 = Database(
             caller_name="c_n",
@@ -45,7 +45,7 @@ class TestDatabasesSync:
     @pytest.mark.describe("test of Database conversions, sync")
     def test_convert_database_sync(
         self,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         db1 = Database(
             caller_name="c_n",
@@ -161,7 +161,7 @@ class TestDatabasesSync:
     @pytest.mark.describe("test of Database set_caller, sync")
     def test_database_set_caller_sync(
         self,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         db1 = Database(
             caller_name="c_n1",
@@ -184,7 +184,7 @@ class TestDatabasesSync:
         self,
         sync_database: Database,
         sync_collection_instance: Collection,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         collection = sync_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)
         assert collection == sync_collection_instance
@@ -204,7 +204,7 @@ class TestDatabasesSync:
     @pytest.mark.describe("test database conversions with caller mutableness, sync")
     def test_database_conversions_caller_mutableness_sync(
         self,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         db1 = Database(
             caller_name="c_n1",
@@ -229,7 +229,7 @@ class TestDatabasesSync:
     @pytest.mark.describe("test database namespace property, sync")
     def test_database_namespace_sync(
         self,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         db1 = Database(
             **astra_db_credentials_kwargs,

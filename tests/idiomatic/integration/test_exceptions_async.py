@@ -31,7 +31,7 @@ from astrapy.exceptions import (
 from astrapy.constants import DocumentType
 from astrapy.cursors import AsyncCursor
 
-from ..conftest import AstraDBCredentials, IS_ASTRA_DB
+from ..conftest import DataAPICredentials, IS_ASTRA_DB
 
 
 class TestExceptionsAsync:
@@ -313,7 +313,7 @@ class TestExceptionsAsync:
     async def test_get_database_info_failures_async(
         self,
         async_database: AsyncDatabase,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         hacked_ns = (astra_db_credentials_kwargs["namespace"] or "") + "_hacked"
         with pytest.raises(DevOpsAPIException):

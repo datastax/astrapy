@@ -27,7 +27,7 @@ from astrapy.exceptions import (
     TooManyDocumentsToCountException,
 )
 
-from ..conftest import AstraDBCredentials, IS_ASTRA_DB
+from ..conftest import DataAPICredentials, IS_ASTRA_DB
 
 
 class TestExceptionsSync:
@@ -304,7 +304,7 @@ class TestExceptionsSync:
     def test_get_database_info_failures_sync(
         self,
         sync_database: Database,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         hacked_ns = (astra_db_credentials_kwargs["namespace"] or "") + "_hacked"
         with pytest.raises(DevOpsAPIException):

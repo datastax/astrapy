@@ -19,8 +19,8 @@ from typing import Iterable
 import pytest
 
 from ..conftest import (
-    AstraDBCredentials,
-    AstraDBCredentialsInfo,
+    DataAPICredentials,
+    DataAPICredentialsInfo,
     async_fail_if_not_removed,
     sync_fail_if_not_removed,
     IS_ASTRA_DB,
@@ -37,7 +37,7 @@ ASTRA_DB_SECONDARY_KEYSPACE = os.environ.get("ASTRA_DB_SECONDARY_KEYSPACE")
 
 @pytest.fixture(scope="session")
 def client(
-    astra_db_credentials_info: AstraDBCredentialsInfo,
+    astra_db_credentials_info: DataAPICredentialsInfo,
 ) -> Iterable[DataAPIClient]:
     env = astra_db_credentials_info["environment"]
     client = DataAPIClient(environment=env)
@@ -46,8 +46,8 @@ def client(
 
 @pytest.fixture(scope="session")
 def sync_database(
-    astra_db_credentials_kwargs: AstraDBCredentials,
-    astra_db_credentials_info: AstraDBCredentialsInfo,
+    astra_db_credentials_kwargs: DataAPICredentials,
+    astra_db_credentials_info: DataAPICredentialsInfo,
     client: DataAPIClient,
 ) -> Iterable[Database]:
     database = client.get_database(
@@ -75,7 +75,7 @@ def async_database(
 
 @pytest.fixture(scope="session")
 def sync_collection_instance(
-    astra_db_credentials_kwargs: AstraDBCredentials,
+    astra_db_credentials_kwargs: DataAPICredentials,
     sync_database: Database,
 ) -> Iterable[Collection]:
     """Just an instance of the class, no DB-level stuff."""
@@ -92,7 +92,7 @@ def async_collection_instance(
 
 @pytest.fixture(scope="session")
 def sync_collection(
-    astra_db_credentials_kwargs: AstraDBCredentials,
+    astra_db_credentials_kwargs: DataAPICredentials,
     sync_database: Database,
 ) -> Iterable[Collection]:
     """An actual collection on DB, in the main namespace"""
@@ -131,8 +131,8 @@ def async_empty_collection(
 
 
 __all__ = [
-    "AstraDBCredentials",
-    "AstraDBCredentialsInfo",
+    "DataAPICredentials",
+    "DataAPICredentialsInfo",
     "sync_database",
     "sync_fail_if_not_removed",
     "async_database",

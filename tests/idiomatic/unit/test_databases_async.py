@@ -15,7 +15,7 @@
 import pytest
 
 from ..conftest import (
-    AstraDBCredentials,
+    DataAPICredentials,
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_INSTANCE_NAME,
 )
@@ -28,7 +28,7 @@ class TestDatabasesAsync:
     @pytest.mark.describe("test of instantiating Database, async")
     async def test_instantiate_database_async(
         self,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         db1 = AsyncDatabase(
             caller_name="c_n",
@@ -45,7 +45,7 @@ class TestDatabasesAsync:
     @pytest.mark.describe("test of Database conversions, async")
     async def test_convert_database_async(
         self,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         db1 = AsyncDatabase(
             caller_name="c_n",
@@ -161,7 +161,7 @@ class TestDatabasesAsync:
     @pytest.mark.describe("test of Database set_caller, async")
     async def test_database_set_caller_async(
         self,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         db1 = AsyncDatabase(
             caller_name="c_n1",
@@ -203,7 +203,7 @@ class TestDatabasesAsync:
     @pytest.mark.describe("test database conversions with caller mutableness, async")
     async def test_database_conversions_caller_mutableness_async(
         self,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         db1 = AsyncDatabase(
             caller_name="c_n1",
@@ -228,7 +228,7 @@ class TestDatabasesAsync:
     @pytest.mark.describe("test database namespace property, async")
     async def test_database_namespace_async(
         self,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         db1 = AsyncDatabase(
             **astra_db_credentials_kwargs,

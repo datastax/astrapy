@@ -17,8 +17,8 @@ import pytest
 import time
 
 from ..conftest import (
-    AstraDBCredentials,
-    AstraDBCredentialsInfo,
+    DataAPICredentials,
+    DataAPICredentialsInfo,
     ASTRA_DB_SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
     IS_ASTRA_DB,
@@ -163,7 +163,7 @@ class TestDDLSync:
     def test_get_database_info_sync(
         self,
         sync_database: Database,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         assert isinstance(sync_database.id, str)
         assert isinstance(sync_database.name(), str)
@@ -219,7 +219,7 @@ class TestDDLSync:
         self,
         sync_database: Database,
         client: DataAPIClient,
-        astra_db_credentials_kwargs: AstraDBCredentials,
+        astra_db_credentials_kwargs: DataAPICredentials,
     ) -> None:
         TEST_LOCAL_COLLECTION_NAME1 = "test_crossns_coll1"
         TEST_LOCAL_COLLECTION_NAME2 = "test_crossns_coll2"
@@ -293,8 +293,8 @@ class TestDDLSync:
     @pytest.mark.describe("test of tokenless client creation, sync")
     def test_tokenless_client_sync(
         self,
-        astra_db_credentials_kwargs: AstraDBCredentials,
-        astra_db_credentials_info: AstraDBCredentialsInfo,
+        astra_db_credentials_kwargs: DataAPICredentials,
+        astra_db_credentials_info: DataAPICredentialsInfo,
     ) -> None:
         api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
         token = astra_db_credentials_kwargs["token"]

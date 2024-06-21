@@ -20,7 +20,7 @@ import logging
 
 import pytest
 
-from ..conftest import AstraDBCredentials
+from ..conftest import DataAPICredentials
 from .conftest import TEST_SKIP_COLLECTION_DELETE
 from astrapy.core.db import AstraDB, AstraDBCollection
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.describe("should confirm path handling in constructor")
-def test_path_handling(astra_db_credentials_kwargs: AstraDBCredentials) -> None:
+def test_path_handling(astra_db_credentials_kwargs: DataAPICredentials) -> None:
     token = astra_db_credentials_kwargs["token"]
     api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
     namespace = astra_db_credentials_kwargs.get("namespace")

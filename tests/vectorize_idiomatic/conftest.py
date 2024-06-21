@@ -20,7 +20,7 @@ import os
 from typing import Any, Dict, Iterable
 import pytest
 
-from ..conftest import AstraDBCredentials, AstraDBCredentialsInfo, IS_ASTRA_DB
+from ..conftest import DataAPICredentials, DataAPICredentialsInfo, IS_ASTRA_DB
 from astrapy import (
     AsyncCollection,
     AsyncDatabase,
@@ -35,8 +35,8 @@ TEST_SERVICE_COLLECTION_NAME = "test_indepth_vectorize_collection"
 
 @pytest.fixture(scope="session")
 def sync_database(
-    astra_db_credentials_kwargs: AstraDBCredentials,
-    astra_db_credentials_info: AstraDBCredentialsInfo,
+    astra_db_credentials_kwargs: DataAPICredentials,
+    astra_db_credentials_info: DataAPICredentialsInfo,
 ) -> Iterable[Database]:
     env = astra_db_credentials_info["environment"]
     client = DataAPIClient(environment=env)
@@ -67,7 +67,7 @@ def service_collection_parameters() -> Iterable[Dict[str, Any]]:
 
 @pytest.fixture(scope="session")
 def sync_service_collection(
-    astra_db_credentials_kwargs: AstraDBCredentials,
+    astra_db_credentials_kwargs: DataAPICredentials,
     sync_database: Database,
     service_collection_parameters: Dict[str, Any],
 ) -> Iterable[Collection]:
