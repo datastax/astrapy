@@ -16,7 +16,7 @@ import json
 import os
 import sys
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from astrapy.api_commander import APICommander
 
@@ -47,7 +47,7 @@ if __name__ == "__main__":
         ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
         api_endpoint = ASTRA_DB_API_ENDPOINT
         path = "api/json/v1"
-        headers = {"Token": ASTRA_DB_APPLICATION_TOKEN}
+        headers: Dict[str, Optional[str]] = {"Token": ASTRA_DB_APPLICATION_TOKEN}
         cmd = APICommander(
             api_endpoint=api_endpoint,
             path=path,

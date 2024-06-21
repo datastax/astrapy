@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import os
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from astrapy.info import CollectionVectorServiceOptions
 from astrapy.api_commander import APICommander
@@ -96,7 +96,11 @@ SECRET_NAME_ROOT_MAP = {
     "voyageAI": "VOYAGEAI",
 }
 
+# this is a way to suppress/limit certain combinations of
+# "full param" testing from the start. If even one of the optional params
+# in a test model is PARAM_SKIP_MARKER, the combination is not emitted at all.
 PARAM_SKIP_MARKER = "__SKIP_ME__"
+
 PARAMETER_VALUE_MAP = {
     ("azureOpenAI", "text-embedding-3-large", "deploymentId"): os.environ[
         "AZURE_OPENAI_DEPLOY_ID_EMB3LARGE"
@@ -132,15 +136,12 @@ PARAMETER_VALUE_MAP = {
         "HUGGINGFACEDED_CLOUDNAME"
     ],
     #
-    # this is a way to suppress/limit certain combinations of
-    # "full param" testing from the start.
-    # If even one param is PARAM_SKIP_MARKER, the combination is not emitted at all.
-    ("openai", "text-embedding-3-large", "organizationId"): PARAM_SKIP_MARKER,
-    ("openai", "text-embedding-3-large", "projectId"): "whatever",
-    ("openai", "text-embedding-3-small", "organizationId"): PARAM_SKIP_MARKER,
-    ("openai", "text-embedding-3-small", "projectId"): "whatever",
-    ("openai", "text-embedding-ada-002", "organizationId"): PARAM_SKIP_MARKER,
-    ("openai", "text-embedding-ada-002", "projectId"): "whatever",
+    ("openai", "text-embedding-3-large", "organizationId"): os.environ["OPENAI_ORGANIZATION_ID"],
+    ("openai", "text-embedding-3-large", "projectId"): os.environ["OPENAI_PROJECT_ID"],
+    ("openai", "text-embedding-3-small", "organizationId"): os.environ["OPENAI_ORGANIZATION_ID"],
+    ("openai", "text-embedding-3-small", "projectId"): os.environ["OPENAI_PROJECT_ID"],
+    ("openai", "text-embedding-ada-002", "organizationId"): os.environ["OPENAI_ORGANIZATION_ID"],
+    ("openai", "text-embedding-ada-002", "projectId"): os.environ["OPENAI_PROJECT_ID"],
 }
 
 # this is ad-hoc for HF dedicated. Models here, though "optional" dimension,
@@ -163,7 +164,7 @@ def live_provider_info() -> Dict[str, Any]:
     ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
     api_endpoint = ASTRA_DB_API_ENDPOINT
     path = "api/json/v1"
-    headers = {"Token": ASTRA_DB_APPLICATION_TOKEN}
+    headers: Dict[str, Optional[str]] = {"Token": ASTRA_DB_APPLICATION_TOKEN}
     cmd = APICommander(
         api_endpoint=api_endpoint,
         path=path,
