@@ -33,11 +33,11 @@ logger = logging.getLogger(__name__)
 
 @pytest.mark.describe("should confirm path handling in constructor (async)")
 async def test_path_handling(
-    astra_db_credentials_kwargs: DataAPICredentials,
+    data_api_credentials_kwargs: DataAPICredentials,
 ) -> None:
-    token = astra_db_credentials_kwargs["token"]
-    api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
-    namespace = astra_db_credentials_kwargs.get("namespace")
+    token = data_api_credentials_kwargs["token"]
+    api_endpoint = data_api_credentials_kwargs["api_endpoint"]
+    namespace = data_api_credentials_kwargs.get("namespace")
 
     if token is None or api_endpoint is None:
         raise ValueError("Required ASTRA DB configuration is missing")

@@ -1,6 +1,9 @@
 v. 1.3.0
 ========
-Integration testing covers Astra and nonAstra smoothly (idiomatic, vectorize_idiomatic)
+Integration testing covers Astra and nonAstra smoothly:
+    - idiomatic library
+    - vectorize_idiomatic
+    - nonAstra admin, i.e. namespace crud
 Add the TokenProvider abstract class => and StaticTokenProvider, UsernamePasswordTokenProvider
 Introduce CHANGES file.
 Add __eq__ and _copy methods to APICommander class

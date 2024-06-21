@@ -35,15 +35,15 @@ TEST_SERVICE_COLLECTION_NAME = "test_indepth_vectorize_collection"
 
 @pytest.fixture(scope="session")
 def sync_database(
-    astra_db_credentials_kwargs: DataAPICredentials,
-    astra_db_credentials_info: DataAPICredentialsInfo,
+    data_api_credentials_kwargs: DataAPICredentials,
+    data_api_credentials_info: DataAPICredentialsInfo,
 ) -> Iterable[Database]:
-    env = astra_db_credentials_info["environment"]
+    env = data_api_credentials_info["environment"]
     client = DataAPIClient(environment=env)
     database = client.get_database(
-        astra_db_credentials_kwargs["api_endpoint"],
-        token=astra_db_credentials_kwargs["token"],
-        namespace=astra_db_credentials_kwargs["namespace"],
+        data_api_credentials_kwargs["api_endpoint"],
+        token=data_api_credentials_kwargs["token"],
+        namespace=data_api_credentials_kwargs["namespace"],
     )
     yield database
 
@@ -67,7 +67,7 @@ def service_collection_parameters() -> Iterable[Dict[str, Any]]:
 
 @pytest.fixture(scope="session")
 def sync_service_collection(
-    astra_db_credentials_kwargs: DataAPICredentials,
+    data_api_credentials_kwargs: DataAPICredentials,
     sync_database: Database,
     service_collection_parameters: Dict[str, Any],
 ) -> Iterable[Collection]:

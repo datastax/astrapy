@@ -313,9 +313,9 @@ class TestExceptionsAsync:
     async def test_get_database_info_failures_async(
         self,
         async_database: AsyncDatabase,
-        astra_db_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_kwargs: DataAPICredentials,
     ) -> None:
-        hacked_ns = (astra_db_credentials_kwargs["namespace"] or "") + "_hacked"
+        hacked_ns = (data_api_credentials_kwargs["namespace"] or "") + "_hacked"
         with pytest.raises(DevOpsAPIException):
             async_database._copy(namespace=hacked_ns).info()
 

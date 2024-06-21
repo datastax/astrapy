@@ -4,7 +4,7 @@ import os
 import pytest
 import warnings
 from deprecation import UnsupportedWarning
-from typing import Any, Awaitable, Callable, Tuple, TypedDict
+from typing import Any, Awaitable, Callable, Optional, Tuple, TypedDict
 
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
 from astrapy.constants import Environment
@@ -12,10 +12,13 @@ from astrapy.admin import parse_api_endpoint
 
 
 IS_ASTRA_DB: bool
+SECONDARY_NAMESPACE: Optional[str]
 if "LOCAL_DATA_API_ENDPOINT" in os.environ:
     IS_ASTRA_DB = False
+    SECONDARY_NAMESPACE = os.environ.get("LOCAL_DATA_API_SECONDARY_KEYSPACE")
 elif "ASTRA_DB_API_ENDPOINT" in os.environ:
     IS_ASTRA_DB = True
+    SECONDARY_NAMESPACE = os.environ.get("ASTRA_DB_SECONDARY_KEYSPACE")
 else:
     raise ValueError("No credentials.")
 
@@ -29,6 +32,7 @@ class DataAPICredentials(TypedDict):
 class DataAPICredentialsInfo(TypedDict):
     environment: str
     region: str
+    secondary_namespace: Optional[str]
 
 
 def env_region_from_endpoint(api_endpoint: str) -> Tuple[str, str]:
@@ -99,7 +103,7 @@ def sync_fail_if_not_removed(method: Callable[..., Any]) -> Callable[..., Any]:
 
 
 @pytest.fixture(scope="session")
-def astra_db_credentials_kwargs() -> DataAPICredentials:
+def data_api_credentials_kwargs() -> DataAPICredentials:
     if IS_ASTRA_DB:
         ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
         ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
@@ -115,25 +119,28 @@ def astra_db_credentials_kwargs() -> DataAPICredentials:
             "LOCAL_DATA_API_APPLICATION_TOKEN"
         ]
         LOCAL_DATA_API_ENDPOINT = os.environ["LOCAL_DATA_API_ENDPOINT"]
-        LOCAL_DATA_KEYSPACE = os.environ.get("LOCAL_DATA_KEYSPACE", "default_keyspace")
+        LOCAL_DATA_API_KEYSPACE = os.environ.get(
+            "LOCAL_DATA_API_KEYSPACE", "default_keyspace"
+        )
         local_db_creds: DataAPICredentials = {
             "token": LOCAL_DATA_API_APPLICATION_TOKEN,
             "api_endpoint": LOCAL_DATA_API_ENDPOINT,
-            "namespace": LOCAL_DATA_KEYSPACE,
+            "namespace": LOCAL_DATA_API_KEYSPACE,
         }
         return local_db_creds
 
 
 @pytest.fixture(scope="session")
-def astra_db_credentials_info(
-    astra_db_credentials_kwargs: DataAPICredentials,
+def data_api_credentials_info(
+    data_api_credentials_kwargs: DataAPICredentials,
 ) -> DataAPICredentialsInfo:
-    api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
+    api_endpoint = data_api_credentials_kwargs["api_endpoint"]
     env, reg = env_region_from_endpoint(api_endpoint)
 
     astra_db_cred_info: DataAPICredentialsInfo = {
         "environment": env,
         "region": reg,
+        "secondary_namespace": SECONDARY_NAMESPACE,
     }
 
     return astra_db_cred_info
@@ -141,11 +148,11 @@ def astra_db_credentials_info(
 
 @pytest.fixture(scope="session")
 def astra_invalid_db_credentials_kwargs(
-    astra_db_credentials_kwargs: DataAPICredentials,
+    data_api_credentials_kwargs: DataAPICredentials,
 ) -> DataAPICredentials:
     astra_db_creds: DataAPICredentials = {
-        "token": astra_db_credentials_kwargs["token"],
-        "namespace": astra_db_credentials_kwargs["namespace"],
+        "token": data_api_credentials_kwargs["token"],
+        "namespace": data_api_credentials_kwargs["namespace"],
         "api_endpoint": "http://localhost:1234",
     }
 

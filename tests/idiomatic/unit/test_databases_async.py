@@ -16,7 +16,8 @@ import pytest
 
 from ..conftest import (
     DataAPICredentials,
-    ASTRA_DB_SECONDARY_KEYSPACE,
+    DataAPICredentialsInfo,
+    SECONDARY_NAMESPACE,
     TEST_COLLECTION_INSTANCE_NAME,
 )
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
@@ -28,29 +29,29 @@ class TestDatabasesAsync:
     @pytest.mark.describe("test of instantiating Database, async")
     async def test_instantiate_database_async(
         self,
-        astra_db_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_kwargs: DataAPICredentials,
     ) -> None:
         db1 = AsyncDatabase(
             caller_name="c_n",
             caller_version="c_v",
-            **astra_db_credentials_kwargs,
+            **data_api_credentials_kwargs,
         )
         db2 = AsyncDatabase(
             caller_name="c_n",
             caller_version="c_v",
-            **astra_db_credentials_kwargs,
+            **data_api_credentials_kwargs,
         )
         assert db1 == db2
 
     @pytest.mark.describe("test of Database conversions, async")
     async def test_convert_database_async(
         self,
-        astra_db_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_kwargs: DataAPICredentials,
     ) -> None:
         db1 = AsyncDatabase(
             caller_name="c_n",
             caller_version="c_v",
-            **astra_db_credentials_kwargs,
+            **data_api_credentials_kwargs,
         )
         assert db1 == db1._copy()
         assert db1 == db1.with_options()
@@ -161,17 +162,17 @@ class TestDatabasesAsync:
     @pytest.mark.describe("test of Database set_caller, async")
     async def test_database_set_caller_async(
         self,
-        astra_db_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_kwargs: DataAPICredentials,
     ) -> None:
         db1 = AsyncDatabase(
             caller_name="c_n1",
             caller_version="c_v1",
-            **astra_db_credentials_kwargs,
+            **data_api_credentials_kwargs,
         )
         db2 = AsyncDatabase(
             caller_name="c_n2",
             caller_version="c_v2",
-            **astra_db_credentials_kwargs,
+            **data_api_credentials_kwargs,
         )
         db2.set_caller(
             caller_name="c_n1",
@@ -203,12 +204,12 @@ class TestDatabasesAsync:
     @pytest.mark.describe("test database conversions with caller mutableness, async")
     async def test_database_conversions_caller_mutableness_async(
         self,
-        astra_db_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_kwargs: DataAPICredentials,
     ) -> None:
         db1 = AsyncDatabase(
             caller_name="c_n1",
             caller_version="c_v1",
-            **astra_db_credentials_kwargs,
+            **data_api_credentials_kwargs,
         )
         db1.set_caller(
             caller_name="c_n2",
@@ -217,30 +218,31 @@ class TestDatabasesAsync:
         db2 = AsyncDatabase(
             caller_name="c_n2",
             caller_version="c_v2",
-            **astra_db_credentials_kwargs,
+            **data_api_credentials_kwargs,
         )
         assert db1.to_sync().to_async() == db2
         assert db1._copy() == db2
 
     @pytest.mark.skipif(
-        ASTRA_DB_SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
+        SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
     )
     @pytest.mark.describe("test database namespace property, async")
     async def test_database_namespace_async(
         self,
-        astra_db_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
         db1 = AsyncDatabase(
-            **astra_db_credentials_kwargs,
+            **data_api_credentials_kwargs,
         )
         assert db1.namespace == DEFAULT_KEYSPACE_NAME
 
         db2 = AsyncDatabase(
-            token=astra_db_credentials_kwargs["token"],
-            api_endpoint=astra_db_credentials_kwargs["api_endpoint"],
-            namespace=ASTRA_DB_SECONDARY_KEYSPACE,
+            token=data_api_credentials_kwargs["token"],
+            api_endpoint=data_api_credentials_kwargs["api_endpoint"],
+            namespace=data_api_credentials_info["secondary_namespace"],
         )
-        assert db2.namespace == ASTRA_DB_SECONDARY_KEYSPACE
+        assert db2.namespace == data_api_credentials_info["secondary_namespace"]
 
     @pytest.mark.describe("test database id, async")
     async def test_database_id_async(self) -> None:
