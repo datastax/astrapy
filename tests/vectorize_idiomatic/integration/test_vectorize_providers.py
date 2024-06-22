@@ -23,7 +23,8 @@ from astrapy.info import CollectionVectorServiceOptions
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 
 from ..vectorize_models import live_test_models
-from ..conftest import env_filter_match
+
+from ..conftest import IS_ASTRA_DB
 
 
 def enabled_vectorize_models(auth_type: str) -> List[Any]:
@@ -64,9 +65,6 @@ def enabled_vectorize_models(auth_type: str) -> List[Any]:
     for model in at_test_models:
         markers = []
         # provider exclusion logic applied here:
-        env_filters = model["env_filters"]
-        if not env_filter_match(auth_type, env_filters):
-            markers.append(pytest.mark.skip(reason="excluded by env/region/auth_type"))
         if model["model_tag"] not in whitelisted_models:
             markers.append(pytest.mark.skip(reason="model not whitelisted"))
         at_chosen_models.append(pytest.param(model, marks=markers))
@@ -109,31 +107,42 @@ class TestVectorizeProviders:
                 service=service_options,
                 embedding_api_key=embedding_api_key,
             )
+            # this is to cope with the Data API normalizing options
+            expected_service_options = CollectionVectorServiceOptions(
+                provider=service_options.provider,
+                model_name=testable_vectorize_model.get(
+                    "expected_model_name", service_options.model_name
+                ),
+                parameters=service_options.parameters,
+            )
             # test service back from collection info
             c_descriptors = [
                 cd for cd in db.list_collections() if cd.name == collection_name
             ]
             assert len(c_descriptors) == 1
             c_descriptor = c_descriptors[0]
-            assert c_descriptor.options.vector.service == service_options
+            assert c_descriptor.options.vector.service == expected_service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
             if testable_vectorize_model["use_insert_one"]:
                 for test_sample_tag, test_sample_text in test_assets["samples"]:
                     collection.insert_one(
-                        {"tag": test_sample_tag},
-                        vectorize=test_sample_text,
+                        {"tag": test_sample_tag, "$vectorize": test_sample_text},
                     )
                 # also test for an error if inserting many
                 with pytest.raises(InsertManyException):
                     collection.insert_many(
-                        [{"tag": tag} for tag, _ in test_assets["samples"]],
-                        vectorize=[text for _, text in test_assets["samples"]],
+                        [
+                            {"tag": tag, "$vectorize": text}
+                            for tag, text in test_assets["samples"]
+                        ],
                     )
             else:
                 collection.insert_many(
-                    [{"tag": tag} for tag, _ in test_assets["samples"]],
-                    vectorize=[text for _, text in test_assets["samples"]],
+                    [
+                        {"tag": tag, "$vectorize": text}
+                        for tag, text in test_assets["samples"]
+                    ],
                 )
             # instantiate with header
             collection_i = db.get_collection(
@@ -144,7 +153,7 @@ class TestVectorizeProviders:
             hits = [
                 document["tag"]
                 for document in collection_i.find(
-                    vectorize=test_assets["probe"]["text"],
+                    sort={"$vectorize": test_assets["probe"]["text"]},
                     limit=len(test_assets["probe"]["expected"]),
                     projection=["tag"],
                 )
@@ -153,6 +162,7 @@ class TestVectorizeProviders:
         finally:
             db.drop_collection(collection_name)
 
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.parametrize(
         "testable_vectorize_model",
         enabled_vectorize_models(auth_type="NONE"),
@@ -182,25 +192,34 @@ class TestVectorizeProviders:
                 metric="cosine",
                 service=service_options,
             )
+            # this is to cope with the Data API normalizing options
+            expected_service_options = CollectionVectorServiceOptions(
+                provider=service_options.provider,
+                model_name=testable_vectorize_model.get(
+                    "expected_model_name", service_options.model_name
+                ),
+                parameters=service_options.parameters,
+            )
             # test service back from collection info
             c_descriptors = [
                 cd for cd in db.list_collections() if cd.name == collection_name
             ]
             assert len(c_descriptors) == 1
             c_descriptor = c_descriptors[0]
-            assert c_descriptor.options.vector.service == service_options
+            assert c_descriptor.options.vector.service == expected_service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
             if testable_vectorize_model["use_insert_one"]:
                 for test_sample_tag, test_sample_text in test_assets["samples"]:
                     collection.insert_one(
-                        {"tag": test_sample_tag},
-                        vectorize=test_sample_text,
+                        {"tag": test_sample_tag, "$vectorize": test_sample_text},
                     )
             else:
                 collection.insert_many(
-                    [{"tag": tag} for tag, _ in test_assets["samples"]],
-                    vectorize=[text for _, text in test_assets["samples"]],
+                    [
+                        {"tag": tag, "$vectorize": text}
+                        for tag, text in test_assets["samples"]
+                    ],
                 )
             # instantiate collection
             collection_i = db.get_collection(
@@ -210,7 +229,7 @@ class TestVectorizeProviders:
             hits = [
                 document["tag"]
                 for document in collection_i.find(
-                    vectorize=test_assets["probe"]["text"],
+                    sort={"$vectorize": test_assets["probe"]["text"]},
                     limit=len(test_assets["probe"]["expected"]),
                     projection=["tag"],
                 )
@@ -219,6 +238,7 @@ class TestVectorizeProviders:
         finally:
             db.drop_collection(collection_name)
 
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.parametrize(
         "testable_vectorize_model",
         enabled_vectorize_models(auth_type="SHARED_SECRET"),
@@ -248,6 +268,17 @@ class TestVectorizeProviders:
             provider=base_service_options.provider,
             model_name=base_service_options.model_name,
             authentication={
+                "providerKey": f"SHARED_SECRET_EMBEDDING_API_KEY_{secret_tag}",
+            },
+            parameters=base_service_options.parameters,
+        )
+        # this is to cope with the Data API normalizing options
+        expected_service_options = CollectionVectorServiceOptions(
+            provider=base_service_options.provider,
+            model_name=testable_vectorize_model.get(
+                "expected_model_name", service_options.model_name
+            ),
+            authentication={
                 "providerKey": f"SHARED_SECRET_EMBEDDING_API_KEY_{secret_tag}.providerKey",
             },
             parameters=base_service_options.parameters,
@@ -265,19 +296,20 @@ class TestVectorizeProviders:
             ]
             assert len(c_descriptors) == 1
             c_descriptor = c_descriptors[0]
-            assert c_descriptor.options.vector.service == service_options
+            assert c_descriptor.options.vector.service == expected_service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
             if testable_vectorize_model["use_insert_one"]:
                 for test_sample_tag, test_sample_text in test_assets["samples"]:
                     collection.insert_one(
-                        {"tag": test_sample_tag},
-                        vectorize=test_sample_text,
+                        {"tag": test_sample_tag, "$vectorize": test_sample_text},
                     )
             else:
                 collection.insert_many(
-                    [{"tag": tag} for tag, _ in test_assets["samples"]],
-                    vectorize=[text for _, text in test_assets["samples"]],
+                    [
+                        {"tag": tag, "$vectorize": text}
+                        for tag, text in test_assets["samples"]
+                    ],
                 )
             # instantiate collection
             collection_i = db.get_collection(
@@ -287,7 +319,7 @@ class TestVectorizeProviders:
             hits = [
                 document["tag"]
                 for document in collection_i.find(
-                    vectorize=test_assets["probe"]["text"],
+                    sort={"$vectorize": test_assets["probe"]["text"]},
                     limit=len(test_assets["probe"]["expected"]),
                     projection=["tag"],
                 )
@@ -300,6 +332,6 @@ class TestVectorizeProviders:
                 embedding_api_key="clearly-not-a-working-secret",
             )
             with pytest.raises(DataAPIResponseException):
-                faulty_collection_i.find_one(vectorize="Breaking sentence")
+                faulty_collection_i.find_one(sort={"$vectorize": "Breaking sentence"})
         finally:
             db.drop_collection(collection_name)

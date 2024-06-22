@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
 
 from astrapy.core.db import AstraDB, AsyncAstraDB
 from astrapy.api_options import CollectionAPIOptions
+from astrapy.authentication import coerce_token_provider
 from astrapy.exceptions import (
     CollectionAlreadyExistsException,
     DataAPIFaultyResponseException,
@@ -47,6 +48,7 @@ from astrapy.admin import (
 if TYPE_CHECKING:
     from astrapy.collection import AsyncCollection, Collection
     from astrapy.admin import DatabaseAdmin
+    from astrapy.authentication import TokenProvider
 
 
 logger = logging.getLogger(__name__)
@@ -110,6 +112,8 @@ class Database:
         api_endpoint: the full "API Endpoint" string used to reach the Data API.
             Example: "https://<database_id>-<region>.apps.astra.datastax.com"
         token: an Access Token to the database. Example: "AstraCS:xyz..."
+            This can be either a literal token string or a subclass of
+            `astrapy.authentication.TokenProvider`.
         namespace: this is the namespace all method calls will target, unless
             one is explicitly specified in the call. If no namespace is supplied
             when creating a Database, the name "default_namespace" is set.
@@ -140,7 +144,7 @@ class Database:
     def __init__(
         self,
         api_endpoint: str,
-        token: str,
+        token: Optional[Union[str, TokenProvider]] = None,
         *,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
@@ -161,8 +165,9 @@ class Database:
             _api_version = API_VERSION_ENV_MAP.get(self.environment)
         else:
             _api_version = api_version
+        self.token_provider = coerce_token_provider(token)
         self._astra_db = AstraDB(
-            token=token,
+            token=self.token_provider.get_token(),
             api_endpoint=api_endpoint,
             api_path=_api_path,
             api_version=_api_version,
@@ -181,7 +186,7 @@ class Database:
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}(api_endpoint="{self._astra_db.api_endpoint}", '
-            f'token="{self._astra_db.token[:12]}...", namespace="{self._astra_db.namespace}")'
+            f'token="{str(self.token_provider)[:12]}...", namespace="{self._astra_db.namespace}")'
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -194,7 +199,7 @@ class Database:
         self,
         *,
         api_endpoint: Optional[str] = None,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -204,7 +209,7 @@ class Database:
     ) -> Database:
         return Database(
             api_endpoint=api_endpoint or self._astra_db.api_endpoint,
-            token=token or self._astra_db.token,
+            token=coerce_token_provider(token) or self.token_provider,
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
@@ -252,7 +257,7 @@ class Database:
         self,
         *,
         api_endpoint: Optional[str] = None,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -269,6 +274,8 @@ class Database:
             api_endpoint: the full "API Endpoint" string used to reach the Data API.
                 Example: "https://<database_id>-<region>.apps.astra.datastax.com"
             token: an Access Token to the database. Example: "AstraCS:xyz..."
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             namespace: this is the namespace all method calls will target, unless
                 one is explicitly specified in the call. If no namespace is supplied
                 when creating a Database, the name "default_namespace" is set.
@@ -293,7 +300,7 @@ class Database:
 
         return AsyncDatabase(
             api_endpoint=api_endpoint or self._astra_db.api_endpoint,
-            token=token or self._astra_db.token,
+            token=coerce_token_provider(token) or self.token_provider,
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
@@ -349,7 +356,7 @@ class Database:
         logger.info("getting database info")
         database_info = fetch_database_info(
             self._astra_db.api_endpoint,
-            token=self._astra_db.token,
+            token=self.token_provider.get_token(),
             namespace=self.namespace,
         )
         if database_info is not None:
@@ -552,7 +559,7 @@ class Database:
 
         Example:
             >>> new_col = my_db.create_collection("my_v_col", dimension=3)
-            >>> new_col.insert_one({"name": "the_row"}, vector=[0.4, 0.5, 0.7])
+            >>> new_col.insert_one({"name": "the_row", "$vector": [0.4, 0.5, 0.7]})
             InsertOneResult(raw_results=..., inserted_id='e22dd65e-...-...-...')
 
         Note:
@@ -828,7 +835,7 @@ class Database:
     def get_database_admin(
         self,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
     ) -> DatabaseAdmin:
@@ -843,6 +850,8 @@ class Database:
             token: an access token with enough permission on the database to
                 perform the desired tasks. If omitted (as it can generally be done),
                 the token of this Database is used.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             dev_ops_url: in case of custom deployments, this can be used to specify
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
                 Generally it can be omitted. The environment (prod/dev/...) is
@@ -871,7 +880,7 @@ class Database:
         if self.environment in Environment.astra_db_values:
             return AstraDBDatabaseAdmin.from_api_endpoint(
                 api_endpoint=self._astra_db.api_endpoint,
-                token=token or self._astra_db.token,
+                token=coerce_token_provider(token) or self.token_provider,
                 caller_name=self._astra_db.caller_name,
                 caller_version=self._astra_db.caller_version,
                 dev_ops_url=dev_ops_url,
@@ -888,7 +897,7 @@ class Database:
                 )
             return DataAPIDatabaseAdmin(
                 api_endpoint=self._astra_db.api_endpoint,
-                token=token or self._astra_db.token,
+                token=coerce_token_provider(token) or self.token_provider,
                 environment=self.environment,
                 api_path=self._astra_db.api_path,
                 api_version=self._astra_db.api_version,
@@ -914,6 +923,8 @@ class AsyncDatabase:
         api_endpoint: the full "API Endpoint" string used to reach the Data API.
             Example: "https://<database_id>-<region>.apps.astra.datastax.com"
         token: an Access Token to the database. Example: "AstraCS:xyz..."
+            This can be either a literal token string or a subclass of
+            `astrapy.authentication.TokenProvider`.
         namespace: this is the namespace all method calls will target, unless
             one is explicitly specified in the call. If no namespace is supplied
             when creating a Database, the name "default_namespace" is set.
@@ -944,7 +955,7 @@ class AsyncDatabase:
     def __init__(
         self,
         api_endpoint: str,
-        token: str,
+        token: Optional[Union[str, TokenProvider]] = None,
         *,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
@@ -966,8 +977,9 @@ class AsyncDatabase:
         else:
             _api_version = api_version
         #
+        self.token_provider = coerce_token_provider(token)
         self._astra_db = AsyncAstraDB(
-            token=token,
+            token=self.token_provider.get_token(),
             api_endpoint=api_endpoint,
             api_path=_api_path,
             api_version=_api_version,
@@ -986,7 +998,7 @@ class AsyncDatabase:
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}(api_endpoint="{self._astra_db.api_endpoint}", '
-            f'token="{self._astra_db.token[:12]}...", namespace="{self._astra_db.namespace}")'
+            f'token="{str(self.token_provider)[:12]}...", namespace="{self._astra_db.namespace}")'
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -1014,7 +1026,7 @@ class AsyncDatabase:
         self,
         *,
         api_endpoint: Optional[str] = None,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -1024,7 +1036,7 @@ class AsyncDatabase:
     ) -> AsyncDatabase:
         return AsyncDatabase(
             api_endpoint=api_endpoint or self._astra_db.api_endpoint,
-            token=token or self._astra_db.token,
+            token=coerce_token_provider(token) or self.token_provider,
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
@@ -1072,7 +1084,7 @@ class AsyncDatabase:
         self,
         *,
         api_endpoint: Optional[str] = None,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -1089,6 +1101,8 @@ class AsyncDatabase:
             api_endpoint: the full "API Endpoint" string used to reach the Data API.
                 Example: "https://<database_id>-<region>.apps.astra.datastax.com"
             token: an Access Token to the database. Example: "AstraCS:xyz..."
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             namespace: this is the namespace all method calls will target, unless
                 one is explicitly specified in the call. If no namespace is supplied
                 when creating a Database, the name "default_namespace" is set.
@@ -1114,7 +1128,7 @@ class AsyncDatabase:
 
         return Database(
             api_endpoint=api_endpoint or self._astra_db.api_endpoint,
-            token=token or self._astra_db.token,
+            token=coerce_token_provider(token) or self.token_provider,
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
             caller_version=caller_version or self._astra_db.caller_version,
@@ -1170,7 +1184,7 @@ class AsyncDatabase:
         logger.info("getting database info")
         database_info = fetch_database_info(
             self._astra_db.api_endpoint,
-            token=self._astra_db.token,
+            token=self.token_provider.get_token(),
             namespace=self.namespace,
         )
         if database_info is not None:
@@ -1377,8 +1391,7 @@ class AsyncDatabase:
             >>> async def create_and_insert(adb: AsyncDatabase) -> Dict[str, Any]:
             ...     new_a_col = await adb.create_collection("my_v_col", dimension=3)
             ...     return await new_a_col.insert_one(
-            ...         {"name": "the_row"},
-            ...         vector=[0.4, 0.5, 0.7],
+            ...         {"name": "the_row", "$vector": [0.4, 0.5, 0.7]},
             ...     )
             ...
             >>> asyncio.run(create_and_insert(my_async_db))
@@ -1665,7 +1678,7 @@ class AsyncDatabase:
     def get_database_admin(
         self,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
     ) -> DatabaseAdmin:
@@ -1680,6 +1693,8 @@ class AsyncDatabase:
             token: an access token with enough permission on the database to
                 perform the desired tasks. If omitted (as it can generally be done),
                 the token of this Database is used.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             dev_ops_url: in case of custom deployments, this can be used to specify
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
                 Generally it can be omitted. The environment (prod/dev/...) is
@@ -1708,7 +1723,7 @@ class AsyncDatabase:
         if self.environment in Environment.astra_db_values:
             return AstraDBDatabaseAdmin.from_api_endpoint(
                 api_endpoint=self._astra_db.api_endpoint,
-                token=token or self._astra_db.token,
+                token=coerce_token_provider(token) or self.token_provider,
                 caller_name=self._astra_db.caller_name,
                 caller_version=self._astra_db.caller_version,
                 dev_ops_url=dev_ops_url,
@@ -1725,7 +1740,7 @@ class AsyncDatabase:
                 )
             return DataAPIDatabaseAdmin(
                 api_endpoint=self._astra_db.api_endpoint,
-                token=token or self._astra_db.token,
+                token=coerce_token_provider(token) or self.token_provider,
                 environment=self.environment,
                 api_path=self._astra_db.api_path,
                 api_version=self._astra_db.api_version,

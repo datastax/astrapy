@@ -15,11 +15,13 @@
 from __future__ import annotations
 
 import asyncio
+import deprecation
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
 
+from astrapy import __version__
 from astrapy.core.db import (
     AstraDBCollection,
     AsyncAstraDBCollection,
@@ -63,6 +65,7 @@ from astrapy.results import (
 )
 from astrapy.cursors import AsyncCursor, Cursor
 from astrapy.info import CollectionInfo, CollectionOptions
+from astrapy.meta import check_deprecated_vector_ize
 
 
 if TYPE_CHECKING:
@@ -605,11 +608,13 @@ class Collection:
                 for the document. Passing this parameter is equivalent to
                 providing a `$vector` field within the document itself,
                 however the two are mutually exclusive.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the document instead.
             vectorize: a string to be made into a vector, if such a service
                 is configured for the collection. Passing this parameter is
                 equivalent to providing a `$vectorize` field in the document itself,
                 however the two are mutually exclusive.
                 Moreover, this parameter cannot coexist with `vector`.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the document instead.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
                 If not passed, the collection-level setting is used instead.
 
@@ -633,7 +638,7 @@ class Collection:
             >>> my_coll.count_documents({}, upper_bound=10)
             2
 
-            >>> my_coll.insert_one({"tag": v"}, vector=[10, 11])
+            >>> my_coll.insert_one({"tag": "v", "$vector": [10, 11]})
             InsertOneResult(...)
 
         Note:
@@ -642,6 +647,9 @@ class Collection:
             the insertion fails.
         """
 
+        check_deprecated_vector_ize(
+            vector=vector, vectors=None, vectorize=vectorize, kind="insert"
+        )
         _document = _collate_vector_to_document(document, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"inserting one document in '{self.name}'")
@@ -690,18 +698,14 @@ class Collection:
                 case it will be added automatically.
             vectors: an optional list of vectors (as many vectors as the provided
                 documents) to associate to the documents when inserting.
-                Each vector is added to the corresponding document prior to
-                insertion on database. The list can be a mixture of None and vectors,
-                in which case some documents will not have a vector, unless it is
-                specified in their "$vector" field already.
                 Passing vectors this way is indeed equivalent to the "$vector" field
                 of the documents, however the two are mutually exclusive.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the documents instead.
             vectorize: an optional list of strings to be made into as many vectors
                 (one per document), if such a service is configured for the collection.
                 Passing this parameter is equivalent to providing a `$vectorize`
                 field in the documents themselves, however the two are mutually exclusive.
-                For any given document, this parameter cannot coexist with the
-                corresponding entry in `vectors`.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the documents instead.
             ordered: if False (default), the insertions can occur in arbitrary order
                 and possibly concurrently. If True, they are processed sequentially.
                 If there are no specific reasons against it, unordered insertions are to
@@ -737,18 +741,6 @@ class Collection:
             InsertManyResult(raw_results=..., inserted_ids=[... ...])
             >>> my_coll.count_documents({}, upper_bound=100)
             53
-
-            >>> # The following are three equivalent statements:
-            >>> my_coll.insert_many(
-            ...     [{"tag": "a"}, {"tag": "b"}],
-            ...     vectors=[[1, 2], [3, 4]],
-            ... )
-            InsertManyResult(...)
-            >>> my_coll.insert_many(
-            ...     [{"tag": "a", "$vector": [1, 2]}, {"tag": "b"}],
-            ...     vectors=[None, [3, 4]],
-            ... )
-            InsertManyResult(...)
             >>> my_coll.insert_many(
             ...     [
             ...         {"tag": "a", "$vector": [1, 2]},
@@ -784,6 +776,9 @@ class Collection:
             have made their way to the database.
         """
 
+        check_deprecated_vector_ize(
+            vector=None, vectors=vectors, vectorize=vectorize, kind="insert"
+        )
         if concurrency is None:
             if ordered:
                 _concurrency = 1
@@ -929,6 +924,7 @@ class Collection:
         vector: Optional[VectorType] = None,
         vectorize: Optional[str] = None,
         include_similarity: Optional[bool] = None,
+        include_sort_vector: Optional[bool] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> Cursor:
@@ -983,18 +979,28 @@ class Collection:
                 criteria can be specified. Moreover, there is an upper bound
                 to the number of documents that can be returned. For details,
                 see the Note about upper bounds and the Data API documentation.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
                 returned document. Can only be used for vector ANN search, i.e.
                 when either `vector` is supplied or the `sort` parameter has the
                 shape {"$vector": ...}.
+            include_sort_vector: a boolean to request query vector used in this search.
+                If set to True (and if the invocation is a vector search), calling
+                the `get_sort_vector` method on the returned cursor will yield
+                the vector used for the ANN search.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting, as well as
                 the one about upper bounds, for details.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
             max_time_ms: a timeout, in milliseconds, for each single one
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
@@ -1037,13 +1043,24 @@ class Collection:
             ...     document["tag"]
             ...     for document in my_coll.find(
             ...         {},
+            ...         sort={"$vector": [3, 3]},
             ...         limit=3,
-            ...         vector=[3, 3],
             ...     )
             ... ]
             >>> ann_tags
             ['A', 'B', 'C']
             >>> # (assuming the collection has metric VectorMetric.COSINE)
+
+            >>> cursor = my_coll.find(
+            ...     sort={"$vector": [3, 3]},
+            ...     limit=3,
+            ...     include_sort_vector=True,
+            ... )
+            >>> cursor.get_sort_vector()
+            [3.0, 3.0]
+            >>> matches = list(cursor)
+            >>> cursor.get_sort_vector()
+            [3.0, 3.0]
 
         Note:
             The following are example values for the `sort` parameter.
@@ -1086,6 +1103,9 @@ class Collection:
             changes in the data would be picked up by the cursor.
         """
 
+        check_deprecated_vector_ize(
+            vector=vector, vectors=None, vectorize=vectorize, kind="find"
+        )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         if include_similarity is not None and not _is_vector_sort(_sort):
@@ -1104,6 +1124,7 @@ class Collection:
             .limit(limit)
             .sort(_sort)
             .include_similarity(include_similarity)
+            .include_sort_vector(include_sort_vector)
         )
 
     def find_one(
@@ -1149,12 +1170,12 @@ class Collection:
                 dimensionality, to perform vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), extracting the most
                 similar document in the collection matching the filter.
-                This parameter cannot be used together with `sort`.
-                See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
+                Using vectorize assumes a suitable service is configured for the collection.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in the
                 returned document. Can only be used for vector ANN search, i.e.
@@ -1162,6 +1183,8 @@ class Collection:
                 shape {"$vector": ...}.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
                 If not passed, the collection-level setting is used instead.
 
@@ -1182,7 +1205,7 @@ class Collection:
             ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
             ... )
             {'_id': '97e85f81-...', 'seq': 69}
-            >>> my_coll.find_one({}, vector=[1, 0], projection={"*": True})
+            >>> my_coll.find_one({}, sort={"$vector": [1, 0]}, projection={"*": True})
             {'_id': '...', 'tag': 'D', '$vector': [4.0, 1.0]}
 
         Note:
@@ -1190,6 +1213,9 @@ class Collection:
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
+        check_deprecated_vector_ize(
+            vector=vector, vectors=None, vectorize=vectorize, kind="find"
+        )
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_cursor = self.find(
             filter=filter,
@@ -1290,7 +1316,7 @@ class Collection:
     @recast_method_sync
     def count_documents(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         upper_bound: int,
         max_time_ms: Optional[int] = None,
@@ -1407,7 +1433,7 @@ class Collection:
     @recast_method_sync
     def find_one_and_replace(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         replacement: DocumentType,
         *,
         projection: Optional[ProjectionType] = None,
@@ -1452,16 +1478,18 @@ class Collection:
                 or "approximate nearest-neighbours" search), as the sorting criterion.
                 In this way, the matched document (if any) will be the one
                 that is most similar to the provided vector.
-                This parameter cannot be used together with `sort`.
-                See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
+                Using vectorize assumes a suitable service is configured for the collection.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
                 replaced one. See the `find` method for more on sorting.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, `replacement` is inserted as a new document
                 if no matches are found on the collection. If False,
@@ -1511,6 +1539,9 @@ class Collection:
             {'text': 'F=ma'}
         """
 
+        check_deprecated_vector_ize(
+            vector=vector, vectors=None, vectorize=vectorize, kind="find"
+        )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "returnDocument": return_document,
@@ -1542,7 +1573,7 @@ class Collection:
     @recast_method_sync
     def replace_one(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         replacement: DocumentType,
         *,
         vector: Optional[VectorType] = None,
@@ -1569,16 +1600,18 @@ class Collection:
                 or "approximate nearest-neighbours" search), as the sorting criterion.
                 In this way, the matched document (if any) will be the one
                 that is most similar to the provided vector.
-                This parameter cannot be used together with `sort`.
-                See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
+                Using vectorize assumes a suitable service is configured for the collection.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
                 replaced one. See the `find` method for more on sorting.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, `replacement` is inserted as a new document
                 if no matches are found on the collection. If False,
@@ -1602,6 +1635,9 @@ class Collection:
             UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '931b47d6-...'})
         """
 
+        check_deprecated_vector_ize(
+            vector=vector, vectors=None, vectorize=vectorize, kind="find"
+        )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "upsert": upsert,
@@ -1632,7 +1668,7 @@ class Collection:
     @recast_method_sync
     def find_one_and_update(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         update: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
@@ -1682,16 +1718,18 @@ class Collection:
                 or "approximate nearest-neighbours" search), as the sorting criterion.
                 In this way, the matched document (if any) will be the one
                 that is most similar to the provided vector.
-                This parameter cannot be used together with `sort`.
-                See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
+                Using vectorize assumes a suitable service is configured for the collection.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
-                updated one. See the `find` method for more on sorting.
+                replaced one. See the `find` method for more on sorting.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, a new document (resulting from applying the `update`
                 to an empty document) is inserted if no matches are found on
@@ -1742,6 +1780,9 @@ class Collection:
             {'_id': 'cb4ef2ab-...', 'name': 'Johnny', 'rank': 0}
         """
 
+        check_deprecated_vector_ize(
+            vector=vector, vectors=None, vectorize=vectorize, kind="find"
+        )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "returnDocument": return_document,
@@ -1773,7 +1814,7 @@ class Collection:
     @recast_method_sync
     def update_one(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         update: Dict[str, Any],
         *,
         vector: Optional[VectorType] = None,
@@ -1805,16 +1846,18 @@ class Collection:
                 or "approximate nearest-neighbours" search), as the sorting criterion.
                 In this way, the matched document (if any) will be the one
                 that is most similar to the provided vector.
-                This parameter cannot be used together with `sort`.
-                See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
+                Using vectorize assumes a suitable service is configured for the collection.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
-                updated one. See the `find` method for more on sorting.
+                replaced one. See the `find` method for more on sorting.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, a new document (resulting from applying the `update`
                 to an empty document) is inserted if no matches are found on
@@ -1837,6 +1880,9 @@ class Collection:
             UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '2a45ff60-...'})
         """
 
+        check_deprecated_vector_ize(
+            vector=vector, vectors=None, vectorize=vectorize, kind="find"
+        )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "upsert": upsert,
@@ -1867,7 +1913,7 @@ class Collection:
     @recast_method_sync
     def update_many(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         update: Dict[str, Any],
         *,
         upsert: bool = False,
@@ -1989,7 +2035,7 @@ class Collection:
     @recast_method_sync
     def find_one_and_delete(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         projection: Optional[ProjectionType] = None,
         vector: Optional[VectorType] = None,
@@ -2032,10 +2078,14 @@ class Collection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -2064,6 +2114,9 @@ class Collection:
             >>> # (returns None for no matches)
         """
 
+        check_deprecated_vector_ize(
+            vector=vector, vectors=None, vectorize=vectorize, kind="find"
+        )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
         logger.info(f"calling find_one_and_delete on '{self.name}'")
@@ -2091,7 +2144,7 @@ class Collection:
     @recast_method_sync
     def delete_one(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         vector: Optional[VectorType] = None,
         vectorize: Optional[str] = None,
@@ -2118,10 +2171,14 @@ class Collection:
                 that is most similar to the provided vector.
                 This parameter cannot be used together with `sort`.
                 See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -2150,6 +2207,9 @@ class Collection:
             DeleteResult(raw_results=..., deleted_count=0)
         """
 
+        check_deprecated_vector_ize(
+            vector=vector, vectors=None, vectorize=vectorize, kind="find"
+        )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling delete_one_by_predicate on '{self.name}'")
@@ -2179,7 +2239,7 @@ class Collection:
     @recast_method_sync
     def delete_many(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
@@ -2194,8 +2254,8 @@ class Collection:
                     {"price": {"$lt": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-                The `delete_many` method does not accept an empty filter: see
-                `delete_all` to completely erase all contents of a collection
+                Passing an empty filter, `{}`, completely erases all contents
+                of the collection.
             max_time_ms: a timeout, in milliseconds, for the operation.
                 If not passed, the collection-level setting is used instead:
                 keep in mind that this method entails successive HTTP requests
@@ -2217,21 +2277,14 @@ class Collection:
             DeleteResult(raw_results=..., deleted_count=0)
 
         Note:
-            This operation is not atomic. Depending on the amount of matching
-            documents, it can keep running (in a blocking way) for a macroscopic
-            time. In that case, new documents that are meanwhile inserted
-            (e.g. from another process/application) will be deleted during
-            the execution of this method call until the collection is devoid
-            of matches.
+            This operation is in general not atomic. Depending on the amount
+            of matching documents, it can keep running (in a blocking way)
+            for a macroscopic time. In that case, new documents that are
+            meanwhile inserted (e.g. from another process/application) will be
+            deleted during the execution of this method call until the
+            collection is devoid of matches.
+            An exception is the `filter={}` case, whereby the operation is atomic.
         """
-
-        if not filter:
-            raise ValueError(
-                "The `filter` parameter to method `delete_many` cannot be "
-                "empty. In order to completely clear the contents of a "
-                "collection, please use the `delete_all` method."
-            )
-
         dm_responses: List[Dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
@@ -2260,7 +2313,7 @@ class Collection:
                 )
             else:
                 this_dc = this_dm_response.get("status", {}).get("deletedCount")
-                if this_dc is None or this_dc < 0:
+                if this_dc is None:
                     raise DataAPIFaultyResponseException(
                         text="Faulty response from delete_many API command.",
                         raw_response=this_dm_response,
@@ -2275,7 +2328,12 @@ class Collection:
             raw_results=dm_responses,
         )
 
-    @recast_method_sync
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.3.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details="Use delete_many with filter={} instead.",
+    )
     def delete_all(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Delete all documents in a collection.
@@ -2300,20 +2358,13 @@ class Collection:
         Note:
             Use with caution.
         """
-
-        _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling unfiltered delete_many on '{self.name}'")
-        dm_response = self._astra_db_collection.delete_many(
-            filter={}, timeout_info=base_timeout_info(_max_time_ms)
-        )
-        logger.info(f"finished calling unfiltered delete_many on '{self.name}'")
-        deleted_count = dm_response["status"]["deletedCount"]
-        if deleted_count == -1:
+        dm_result = self.delete_many(filter={}, max_time_ms=max_time_ms)
+        if dm_result.deleted_count == -1:
             return {"ok": 1}
         else:
             raise DataAPIFaultyResponseException(
-                text="Faulty response from delete_many API command.",
-                raw_response=dm_response,
+                text="Unexpected response from collection.delete_many({}).",
+                raw_response=None,
             )
 
     def bulk_write(
@@ -2972,11 +3023,13 @@ class AsyncCollection:
                 for the document. Passing this parameter is equivalent to
                 providing a `$vector` field within the document itself,
                 however the two are mutually exclusive.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the document instead.
             vectorize: a string to be made into a vector, if such a service
                 is configured for the collection. Passing this parameter is
                 equivalent to providing a `$vectorize` field in the document itself,
                 however the two are mutually exclusive.
                 Moreover, this parameter cannot coexist with `vector`.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the document instead.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
                 If not passed, the collection-level setting is used instead.
 
@@ -3003,7 +3056,7 @@ class AsyncCollection:
             count0 0
             count1 2
 
-            >>> asyncio.run(my_async_coll.insert_one({"tag": v"}, vector=[10, 11]))
+            >>> asyncio.run(my_async_coll.insert_one({"tag": v", "$vector": [10, 11]}))
             InsertOneResult(...)
 
         Note:
@@ -3012,6 +3065,13 @@ class AsyncCollection:
             the insertion fails.
         """
 
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="insert",
+            from_async_method=True,
+        )
         _document = _collate_vector_to_document(document, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"inserting one document in '{self.name}'")
@@ -3060,18 +3120,14 @@ class AsyncCollection:
                 case it will be added automatically.
             vectors: an optional list of vectors (as many vectors as the provided
                 documents) to associate to the documents when inserting.
-                Each vector is added to the corresponding document prior to
-                insertion on database. The list can be a mixture of None and vectors,
-                in which case some documents will not have a vector, unless it is
-                specified in their "$vector" field already.
                 Passing vectors this way is indeed equivalent to the "$vector" field
                 of the documents, however the two are mutually exclusive.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the documents instead.
             vectorize: an optional list of strings to be made into as many vectors
                 (one per document), if such a service is configured for the collection.
                 Passing this parameter is equivalent to providing a `$vectorize`
                 field in the documents themselves, however the two are mutually exclusive.
-                For any given document, this parameter cannot coexist with the
-                corresponding entry in `vectors`.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the documents instead.
             ordered: if False (default), the insertions can occur in arbitrary order
                 and possibly concurrently. If True, they are processed sequentially.
                 If there are no specific reasons against it, unordered insertions are to
@@ -3116,18 +3172,6 @@ class AsyncCollection:
             inserted1 ['e3c2a684-...', '1de4949f-...', '167dacc3-...']
             count1 3
             count2 53
-
-            >>> # The following are three equivalent statements:
-            >>> asyncio.run(my_async_coll.insert_many(
-            ...     [{"tag": "a"}, {"tag": "b"}],
-            ...     vectors=[[1, 2], [3, 4]],
-            ... ))
-            InsertManyResult(...)
-            >>> asyncio.run(my_async_coll.insert_many(
-            ...     [{"tag": "a", "$vector": [1, 2]}, {"tag": "b"}],
-            ...     vectors=[None, [3, 4]],
-            ... ))
-            InsertManyResult(...)
             >>> asyncio.run(my_async_coll.insert_many(
             ...     [
             ...         {"tag": "a", "$vector": [1, 2]},
@@ -3135,7 +3179,6 @@ class AsyncCollection:
             ...     ]
             ... ))
             InsertManyResult(...)
-
 
         Note:
             Unordered insertions are executed with some degree of concurrency,
@@ -3164,6 +3207,13 @@ class AsyncCollection:
             have made their way to the database.
         """
 
+        check_deprecated_vector_ize(
+            vector=None,
+            vectors=vectors,
+            vectorize=vectorize,
+            kind="insert",
+            from_async_method=True,
+        )
         if concurrency is None:
             if ordered:
                 _concurrency = 1
@@ -3301,6 +3351,7 @@ class AsyncCollection:
         vector: Optional[VectorType] = None,
         vectorize: Optional[str] = None,
         include_similarity: Optional[bool] = None,
+        include_sort_vector: Optional[bool] = None,
         sort: Optional[SortType] = None,
         max_time_ms: Optional[int] = None,
     ) -> AsyncCursor:
@@ -3355,18 +3406,28 @@ class AsyncCollection:
                 criteria can be specified. Moreover, there is an upper bound
                 to the number of documents that can be returned. For details,
                 see the Note about upper bounds and the Data API documentation.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
                 This can be supplied in (exclusive) alternative to `vector`,
                 provided such a service is configured for the collection,
                 and achieves the same effect.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
                 returned document. Can only be used for vector ANN search, i.e.
                 when either `vector` is supplied or the `sort` parameter has the
                 shape {"$vector": ...}.
+            include_sort_vector: a boolean to request query vector used in this search.
+                If set to True (and if the invocation is a vector search), calling
+                the `get_sort_vector` method on the returned cursor will yield
+                the vector used for the ANN search.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting, as well as
                 the one about upper bounds, for details.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
             max_time_ms: a timeout, in milliseconds, for each single one
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
@@ -3416,8 +3477,8 @@ class AsyncCollection:
             ...         document["tag"]
             ...         async for document in acol.find(
             ...             {},
+            ...             sort={"$vector": [3, 3]},
             ...             limit=3,
-            ...             vector=[3, 3],
             ...         )
             ...     ]
             ...     return ann_tags
@@ -3425,6 +3486,18 @@ class AsyncCollection:
             >>> asyncio.run(run_vector_finds(my_async_coll))
             ['A', 'B', 'C']
             >>> # (assuming the collection has metric VectorMetric.COSINE)
+
+            >>> async_cursor = my_async_coll.find(
+            ...     sort={"$vector": [3, 3]},
+            ...     limit=3,
+            ...     include_sort_vector=True,
+            ... )
+            >>> asyncio.run(async_cursor.get_sort_vector())
+            [3.0, 3.0]
+            >>> asyncio.run(async_cursor.__anext__())
+            {'_id': 'b13ce177-738e-47ec-bce1-77738ee7ec93', 'tag': 'A'}
+            >>> asyncio.run(async_cursor.get_sort_vector())
+            [3.0, 3.0]
 
         Note:
             The following are example values for the `sort` parameter.
@@ -3467,6 +3540,9 @@ class AsyncCollection:
             changes in the data would be picked up by the cursor.
         """
 
+        check_deprecated_vector_ize(
+            vector=vector, vectors=None, vectorize=vectorize, kind="find"
+        )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         if include_similarity is not None and not _is_vector_sort(_sort):
@@ -3485,6 +3561,7 @@ class AsyncCollection:
             .limit(limit)
             .sort(_sort)
             .include_similarity(include_similarity)
+            .include_sort_vector(include_sort_vector)
         )
 
     async def find_one(
@@ -3530,12 +3607,12 @@ class AsyncCollection:
                 dimensionality, to perform vector search (i.e. ANN,
                 or "approximate nearest-neighbours" search), extracting the most
                 similar document in the collection matching the filter.
-                This parameter cannot be used together with `sort`.
-                See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
+                Using vectorize assumes a suitable service is configured for the collection.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in the
                 returned document. Can only be used for vector ANN search, i.e.
@@ -3543,6 +3620,8 @@ class AsyncCollection:
                 shape {"$vector": ...}.
             sort: with this dictionary parameter one can control the order
                 the documents are returned. See the Note about sorting for details.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
                 If not passed, the collection-level setting is used instead.
 
@@ -3577,7 +3656,7 @@ class AsyncCollection:
 
             >>> asyncio.run(my_async_coll.find_one(
             ...     {},
-            ...     vector=[1, 0],
+            ...     sort={"$vector": [1, 0]},
             ...     projection={"*": True},
             ... ))
             {'_id': '...', 'tag': 'D', '$vector': [4.0, 1.0]}
@@ -3587,6 +3666,13 @@ class AsyncCollection:
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="find",
+            from_async_method=True,
+        )
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_cursor = self.find(
             filter=filter,
@@ -3695,7 +3781,7 @@ class AsyncCollection:
     @recast_method_async
     async def count_documents(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         upper_bound: int,
         max_time_ms: Optional[int] = None,
@@ -3817,7 +3903,7 @@ class AsyncCollection:
     @recast_method_async
     async def find_one_and_replace(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         replacement: DocumentType,
         *,
         projection: Optional[ProjectionType] = None,
@@ -3863,16 +3949,18 @@ class AsyncCollection:
                 or "approximate nearest-neighbours" search), as the sorting criterion.
                 In this way, the matched document (if any) will be the one
                 that is most similar to the provided vector.
-                This parameter cannot be used together with `sort`.
-                See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
+                Using vectorize assumes a suitable service is configured for the collection.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
                 replaced one. See the `find` method for more on sorting.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, `replacement` is inserted as a new document
                 if no matches are found on the collection. If False,
@@ -3927,6 +4015,13 @@ class AsyncCollection:
             result3 {'text': 'F=ma'}
         """
 
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="find",
+            from_async_method=True,
+        )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "returnDocument": return_document,
@@ -3958,7 +4053,7 @@ class AsyncCollection:
     @recast_method_async
     async def replace_one(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         replacement: DocumentType,
         *,
         vector: Optional[VectorType] = None,
@@ -3985,16 +4080,18 @@ class AsyncCollection:
                 or "approximate nearest-neighbours" search), as the sorting criterion.
                 In this way, the matched document (if any) will be the one
                 that is most similar to the provided vector.
-                This parameter cannot be used together with `sort`.
-                See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
+                Using vectorize assumes a suitable service is configured for the collection.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
                 replaced one. See the `find` method for more on sorting.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, `replacement` is inserted as a new document
                 if no matches are found on the collection. If False,
@@ -4034,6 +4131,13 @@ class AsyncCollection:
             result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '30e34e00-...'}
         """
 
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="find",
+            from_async_method=True,
+        )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "upsert": upsert,
@@ -4064,7 +4168,7 @@ class AsyncCollection:
     @recast_method_async
     async def find_one_and_update(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         update: Dict[str, Any],
         *,
         projection: Optional[ProjectionType] = None,
@@ -4114,16 +4218,18 @@ class AsyncCollection:
                 or "approximate nearest-neighbours" search), as the sorting criterion.
                 In this way, the matched document (if any) will be the one
                 that is most similar to the provided vector.
-                This parameter cannot be used together with `sort`.
-                See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
+                Using vectorize assumes a suitable service is configured for the collection.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
-                updated one. See the `find` method for more on sorting.
+                replaced one. See the `find` method for more on sorting.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, a new document (resulting from applying the `update`
                 to an empty document) is inserted if no matches are found on
@@ -4180,6 +4286,13 @@ class AsyncCollection:
             result3 {'_id': 'db3d678d-14d4-4caa-82d2-d5fb77dab7ec', 'name': 'Johnny', 'rank': 0}
         """
 
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="find",
+            from_async_method=True,
+        )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "returnDocument": return_document,
@@ -4211,7 +4324,7 @@ class AsyncCollection:
     @recast_method_async
     async def update_one(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         update: Dict[str, Any],
         *,
         vector: Optional[VectorType] = None,
@@ -4243,16 +4356,18 @@ class AsyncCollection:
                 or "approximate nearest-neighbours" search), as the sorting criterion.
                 In this way, the matched document (if any) will be the one
                 that is most similar to the provided vector.
-                This parameter cannot be used together with `sort`.
-                See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
+                Using vectorize assumes a suitable service is configured for the collection.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
-                updated one. See the `find` method for more on sorting.
+                replaced one. See the `find` method for more on sorting.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
             upsert: this parameter controls the behavior in absence of matches.
                 If True, a new document (resulting from applying the `update`
                 to an empty document) is inserted if no matches are found on
@@ -4290,6 +4405,13 @@ class AsyncCollection:
             result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '75748092-...'}
         """
 
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="find",
+            from_async_method=True,
+        )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "upsert": upsert,
@@ -4320,7 +4442,7 @@ class AsyncCollection:
     @recast_method_async
     async def update_many(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         update: Dict[str, Any],
         *,
         upsert: bool = False,
@@ -4453,7 +4575,7 @@ class AsyncCollection:
     @recast_method_async
     async def find_one_and_delete(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         projection: Optional[ProjectionType] = None,
         vector: Optional[VectorType] = None,
@@ -4494,16 +4616,18 @@ class AsyncCollection:
                 or "approximate nearest-neighbours" search), as the sorting criterion.
                 In this way, the matched document (if any) will be the one
                 that is most similar to the provided vector.
-                This parameter cannot be used together with `sort`.
-                See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
+                Using vectorize assumes a suitable service is configured for the collection.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
-                deleted one. See the `find` method for more on sorting.
+                replaced one. See the `find` method for more on sorting.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
                 If not passed, the collection-level setting is used instead.
 
@@ -4534,6 +4658,13 @@ class AsyncCollection:
             delete_result1 None
         """
 
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="find",
+            from_async_method=True,
+        )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
@@ -4561,7 +4692,7 @@ class AsyncCollection:
     @recast_method_async
     async def delete_one(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         vector: Optional[VectorType] = None,
         vectorize: Optional[str] = None,
@@ -4586,16 +4717,18 @@ class AsyncCollection:
                 or "approximate nearest-neighbours" search), as the sorting criterion.
                 In this way, the matched document (if any) will be the one
                 that is most similar to the provided vector.
-                This parameter cannot be used together with `sort`.
-                See the `find` method for more details on this parameter.
+                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+                sort clause dict instead.
             vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
+                Using vectorize assumes a suitable service is configured for the collection.
+                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
-                deleted one. See the `find` method for more on sorting.
+                replaced one. See the `find` method for more on sorting.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
                 If not passed, the collection-level setting is used instead.
 
@@ -4620,6 +4753,13 @@ class AsyncCollection:
             DeleteResult(raw_results=..., deleted_count=0)
         """
 
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="find",
+            from_async_method=True,
+        )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling delete_one_by_predicate on '{self.name}'")
@@ -4651,7 +4791,7 @@ class AsyncCollection:
     @recast_method_async
     async def delete_many(
         self,
-        filter: Dict[str, Any],
+        filter: FilterType,
         *,
         max_time_ms: Optional[int] = None,
     ) -> DeleteResult:
@@ -4666,8 +4806,8 @@ class AsyncCollection:
                     {"price": {"$lt": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-                The `delete_many` method does not accept an empty filter: see
-                `delete_all` to completely erase all contents of a collection
+                Passing an empty filter, `{}`, completely erases all contents
+                of the collection.
             max_time_ms: a timeout, in milliseconds, for the operation.
                 If not passed, the collection-level setting is used instead:
                 keep in mind that this method entails successive HTTP requests
@@ -4694,21 +4834,14 @@ class AsyncCollection:
             delete_result2.deleted_count 0
 
         Note:
-            This operation is not atomic. Depending on the amount of matching
-            documents, it can keep running (in a blocking way) for a macroscopic
-            time. In that case, new documents that are meanwhile inserted
-            (e.g. from another process/application) will be deleted during
-            the execution of this method call until the collection is devoid
-            of matches.
+            This operation is in general not atomic. Depending on the amount
+            of matching documents, it can keep running (in a blocking way)
+            for a macroscopic time. In that case, new documents that are
+            meanwhile inserted (e.g. from another process/application) will be
+            deleted during the execution of this method call until the
+            collection is devoid of matches.
+            An exception is the `filter={}` case, whereby the operation is atomic.
         """
-
-        if not filter:
-            raise ValueError(
-                "The `filter` parameter to method `delete_many` cannot be "
-                "empty. In order to completely clear the contents of a "
-                "collection, please use the `delete_all` method."
-            )
-
         dm_responses: List[Dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
@@ -4737,7 +4870,7 @@ class AsyncCollection:
                 )
             else:
                 this_dc = this_dm_response.get("status", {}).get("deletedCount")
-                if this_dc is None or this_dc < 0:
+                if this_dc is None:
                     raise DataAPIFaultyResponseException(
                         text="Faulty response from delete_many API command.",
                         raw_response=this_dm_response,
@@ -4752,7 +4885,12 @@ class AsyncCollection:
             raw_results=dm_responses,
         )
 
-    @recast_method_async
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.3.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details="Use delete_many with filter={} instead.",
+    )
     async def delete_all(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
         """
         Delete all documents in a collection.
@@ -4784,20 +4922,13 @@ class AsyncCollection:
         Note:
             Use with caution.
         """
-
-        _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling unfiltered delete_many on '{self.name}'")
-        dm_response = await self._astra_db_collection.delete_many(
-            filter={}, timeout_info=base_timeout_info(_max_time_ms)
-        )
-        logger.info(f"finished calling unfiltered delete_many on '{self.name}'")
-        deleted_count = dm_response["status"]["deletedCount"]
-        if deleted_count == -1:
+        dm_result = await self.delete_many(filter={}, max_time_ms=max_time_ms)
+        if dm_result.deleted_count == -1:
             return {"ok": 1}
         else:
             raise DataAPIFaultyResponseException(
-                text="Faulty response from delete_many API command.",
-                raw_response=dm_response,
+                text="Unexpected response from collection.delete_many({}).",
+                raw_response=None,
             )
 
     async def bulk_write(

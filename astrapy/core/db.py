@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import asyncio
-import deprecation
 import httpx
 import logging
 import json
@@ -33,6 +32,7 @@ from queue import Queue
 from types import TracebackType
 from typing import (
     Any,
+    Callable,
     cast,
     Dict,
     List,
@@ -42,7 +42,6 @@ from typing import (
     Type,
 )
 
-from astrapy import __version__
 from astrapy.core.api import APIRequestError, api_request, async_api_request
 from astrapy.core.defaults import (
     DEFAULT_AUTH_HEADER,
@@ -105,8 +104,8 @@ class AstraDBCollection:
         """
         # Check for presence of the Astra DB object
         if astra_db is None:
-            if token is None or api_endpoint is None:
-                raise AssertionError("Must provide token and api_endpoint")
+            if api_endpoint is None:
+                raise AssertionError("Must provide api_endpoint")
 
             astra_db = AstraDB(
                 token=token,
@@ -421,6 +420,7 @@ class AstraDBCollection:
         request_method: PaginableRequestMethod,
         options: Optional[Dict[str, Any]],
         prefetched: Optional[int] = None,
+        raw_response_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> Generator[API_DOC, None, None]:
         """
         Generate paginated results for a given database query method.
@@ -429,12 +429,17 @@ class AstraDBCollection:
             request_method (function): The database query method to paginate.
             options (dict, optional): Options for the database query.
             prefetched (int, optional): Number of pre-fetched documents.
+            raw_response_callback: an optional callback invoked at each new
+                response coming from the API. The only argument is the raw
+                API response and the callback must return None.
 
         Yields:
             dict: The next document in the paginated result set.
         """
         _options = options or {}
         response0 = request_method(options=_options)
+        if raw_response_callback:
+            raw_response_callback(response0)
         next_page_state = response0["data"]["nextPageState"]
         options0 = _options
         if next_page_state is not None and prefetched:
@@ -471,6 +476,8 @@ class AstraDBCollection:
             while next_page_state is not None and not prefetched:
                 options1 = {**options0, **{"pageState": next_page_state}}
                 response1 = request_method(options=options1)
+                if raw_response_callback:
+                    raw_response_callback(response1)
                 for document in response1["data"]["documents"]:
                     yield document
                 next_page_state = response1["data"]["nextPageState"]
@@ -483,6 +490,7 @@ class AstraDBCollection:
         options: Optional[Dict[str, Any]] = None,
         prefetched: Optional[int] = None,
         timeout_info: TimeoutInfoWideType = None,
+        raw_response_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> Iterator[API_DOC]:
         """
         Perform a paginated search in the collection.
@@ -499,6 +507,9 @@ class AstraDBCollection:
                 needs more data. This parameter controls a single request.
                 Note that a 'read' timeout event will not block the action taken
                 by the API server if it has received the request already.
+            raw_response_callback: an optional callback invoked at each new
+                response coming from the API. The only argument is the raw
+                API response and the callback must return None.
 
         Returns:
             generator: A generator yielding documents in the paginated result set.
@@ -514,6 +525,7 @@ class AstraDBCollection:
             request_method=partialed_find,
             options=options,
             prefetched=prefetched,
+            raw_response_callback=raw_response_callback,
         )
 
     def pop(
@@ -1147,15 +1159,6 @@ class AstraDBCollection:
         """
         return self._put(path=path, document=document, timeout_info=timeout_info)
 
-    @deprecation.deprecated(  # type: ignore
-        deprecated_in="0.7.0",
-        removed_in="1.0.0",
-        current_version=__version__,
-        details="Use the 'delete_one' method instead",
-    )
-    def delete(self, id: str, timeout_info: TimeoutInfoWideType = None) -> API_RESPONSE:
-        return self.delete_one(id, timeout_info=timeout_info)
-
     def delete_one(
         self,
         id: str,
@@ -1337,17 +1340,6 @@ class AstraDBCollection:
 
         return response
 
-    @deprecation.deprecated(  # type: ignore
-        deprecated_in="0.7.0",
-        removed_in="1.0.0",
-        current_version=__version__,
-        details="Use the 'upsert_one' method instead",
-    )
-    def upsert(
-        self, document: API_DOC, timeout_info: TimeoutInfoWideType = None
-    ) -> str:
-        return self.upsert_one(document, timeout_info=timeout_info)
-
     def upsert_one(
         self, document: API_DOC, timeout_info: TimeoutInfoWideType = None
     ) -> str:
@@ -1438,7 +1430,7 @@ class AstraDBCollection:
         with ThreadPoolExecutor(max_workers=concurrency) as executor:
             # Submit the jobs
             futures = [
-                executor.submit(self.upsert, document, timeout_info=timeout_info)
+                executor.submit(self.upsert_one, document, timeout_info=timeout_info)
                 for document in documents
             ]
 
@@ -1486,8 +1478,8 @@ class AsyncAstraDBCollection:
         """
         # Check for presence of the Astra DB object
         if astra_db is None:
-            if token is None or api_endpoint is None:
-                raise AssertionError("Must provide token and api_endpoint")
+            if api_endpoint is None:
+                raise AssertionError("Must provide api_endpoint")
 
             astra_db = AsyncAstraDB(
                 token=token,
@@ -1805,6 +1797,7 @@ class AsyncAstraDBCollection:
         options: Optional[Dict[str, Any]],
         prefetched: Optional[int] = None,
         timeout_info: TimeoutInfoWideType = None,
+        raw_response_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> AsyncGenerator[API_DOC, None]:
         """
         Generate paginated results for a given database query method.
@@ -1816,12 +1809,17 @@ class AsyncAstraDBCollection:
             timeout_info: a float, or a TimeoutInfo dict, for the HTTP request.
                 Note that a 'read' timeout event will not block the action taken
                 by the API server if it has received the request already.
+            raw_response_callback: an optional callback invoked at each new
+                response coming from the API. The only argument is the raw
+                API response and the callback must return None.
 
         Yields:
             dict: The next document in the paginated result set.
         """
         _options = options or {}
         response0 = await request_method(options=_options)
+        if raw_response_callback:
+            raw_response_callback(response0)
         next_page_state = response0["data"]["nextPageState"]
         options0 = _options
         if next_page_state is not None and prefetched:
@@ -1854,6 +1852,8 @@ class AsyncAstraDBCollection:
             while next_page_state is not None:
                 options1 = {**options0, **{"pageState": next_page_state}}
                 response1 = await request_method(options=options1)
+                if raw_response_callback:
+                    raw_response_callback(response1)
                 for document in response1["data"]["documents"]:
                     yield document
                 next_page_state = response1["data"]["nextPageState"]
@@ -1866,6 +1866,7 @@ class AsyncAstraDBCollection:
         options: Optional[Dict[str, Any]] = None,
         prefetched: Optional[int] = None,
         timeout_info: TimeoutInfoWideType = None,
+        raw_response_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> AsyncIterator[API_DOC]:
         """
         Perform a paginated search in the collection.
@@ -1882,6 +1883,9 @@ class AsyncAstraDBCollection:
                 needs more data. This parameter controls a single request.
                 Note that a 'read' timeout event will not block the action taken
                 by the API server if it has received the request already.
+            raw_response_callback: an optional callback invoked at each new
+                response coming from the API. The only argument is the raw
+                API response and the callback must return None.
 
         Returns:
             generator: A generator yielding documents in the paginated result set.
@@ -1897,6 +1901,7 @@ class AsyncAstraDBCollection:
             request_method=partialed_find,
             options=options,
             prefetched=prefetched,
+            raw_response_callback=raw_response_callback,
         )
 
     async def pop(
@@ -2701,17 +2706,6 @@ class AsyncAstraDBCollection:
 
         return response
 
-    @deprecation.deprecated(  # type: ignore
-        deprecated_in="0.7.0",
-        removed_in="1.0.0",
-        current_version=__version__,
-        details="Use the 'upsert_one' method instead",
-    )
-    async def upsert(
-        self, document: API_DOC, timeout_info: TimeoutInfoWideType = None
-    ) -> str:
-        return await self.upsert_one(document, timeout_info=timeout_info)
-
     async def upsert_one(
         self,
         document: API_DOC,
@@ -2810,7 +2804,7 @@ class AstraDB:
 
     def __init__(
         self,
-        token: str,
+        token: Optional[str],
         api_endpoint: str,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -2833,8 +2827,8 @@ class AstraDB:
         self.caller_name = caller_name
         self.caller_version = caller_version
 
-        if token is None or api_endpoint is None:
-            raise AssertionError("Must provide token and api_endpoint")
+        if api_endpoint is None:
+            raise AssertionError("Must provide api_endpoint")
 
         if namespace is None:
             logger.info(
@@ -3115,46 +3109,11 @@ class AstraDB:
 
         return response
 
-    @deprecation.deprecated(  # type: ignore
-        deprecated_in="0.7.0",
-        removed_in="1.0.0",
-        current_version=__version__,
-        details="Use the 'AstraDBCollection.clear()' method instead",
-    )
-    def truncate_collection(
-        self, collection_name: str, timeout_info: TimeoutInfoWideType = None
-    ) -> AstraDBCollection:
-        """
-        Clear a collection in the database, deleting all stored documents.
-
-        Args:
-            collection_name (str): The name of the collection to clear.
-            timeout_info: a float, or a TimeoutInfo dict, for the HTTP request.
-                Note that a 'read' timeout event will not block the action taken
-                by the API server if it has received the request already.
-
-        Returns:
-            collection: an AstraDBCollection instance
-        """
-        collection = AstraDBCollection(
-            collection_name=collection_name,
-            astra_db=self,
-        )
-        clear_response = collection.clear(timeout_info=timeout_info)
-
-        if clear_response.get("status", {}).get("deletedCount") != -1:
-            raise ValueError(
-                f"Could not issue a truncation API command (response: {json.dumps(clear_response)})."
-            )
-
-        # return the collection itself
-        return collection
-
 
 class AsyncAstraDB:
     def __init__(
         self,
-        token: str,
+        token: Optional[str],
         api_endpoint: str,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -3178,8 +3137,8 @@ class AsyncAstraDB:
         self.caller_version = caller_version
 
         self.client = httpx.AsyncClient()
-        if token is None or api_endpoint is None:
-            raise AssertionError("Must provide token and api_endpoint")
+        if api_endpoint is None:
+            raise AssertionError("Must provide api_endpoint")
 
         if namespace is None:
             logger.info(
@@ -3473,39 +3432,3 @@ class AsyncAstraDB:
         )
 
         return response
-
-    @deprecation.deprecated(  # type: ignore
-        deprecated_in="0.7.0",
-        removed_in="1.0.0",
-        current_version=__version__,
-        details="Use the 'AsyncAstraDBCollection.clear()' method instead",
-    )
-    async def truncate_collection(
-        self, collection_name: str, timeout_info: TimeoutInfoWideType = None
-    ) -> AsyncAstraDBCollection:
-        """
-        Clear a collection in the database, deleting all stored documents.
-
-        Args:
-            collection_name (str): The name of the collection to clear.
-            timeout_info: a float, or a TimeoutInfo dict, for the HTTP request.
-                Note that a 'read' timeout event will not block the action taken
-                by the API server if it has received the request already.
-
-        Returns:
-            collection: an AsyncAstraDBCollection instance
-        """
-
-        collection = AsyncAstraDBCollection(
-            collection_name=collection_name,
-            astra_db=self,
-        )
-        clear_response = await collection.clear(timeout_info=timeout_info)
-
-        if clear_response.get("status", {}).get("deletedCount") != -1:
-            raise ValueError(
-                f"Could not issue a truncation API command (response: {json.dumps(clear_response)})."
-            )
-
-        # return the collection itself
-        return collection

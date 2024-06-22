@@ -104,7 +104,7 @@ def log_request(
     logger.debug(f"Request method: {method}")
     logger.debug(f"Request params: {params}")
 
-    # Redact the token from the request headers
+    # Redact known secrets from the request headers
     headers_log = copy.deepcopy(headers)
     if DEFAULT_AUTH_HEADER in headers_log:
         headers_log[DEFAULT_AUTH_HEADER] = "***"
@@ -184,7 +184,7 @@ def make_request(
     client: httpx.Client,
     base_url: str,
     auth_header: str,
-    token: str,
+    token: Optional[str],
     method: str,
     json_data: Optional[Dict[str, Any]],
     url_params: Optional[Dict[str, Any]],
@@ -213,8 +213,13 @@ def make_request(
     # Build the request headers from the token and user agent
     request_headers = {
         **{
-            auth_header: token,
-            "User-Agent": compose_user_agent(caller_name, caller_version),
+            k: v
+            for k, v in {
+                auth_header: token,
+                "User-Agent": compose_user_agent(caller_name, caller_version),
+                "Content-Type": "application/json",
+            }.items()
+            if v is not None
         },
         **additional_headers,
     }
@@ -242,7 +247,7 @@ async def amake_request(
     client: httpx.AsyncClient,
     base_url: str,
     auth_header: str,
-    token: str,
+    token: Optional[str],
     method: str,
     path: Optional[str],
     json_data: Optional[Dict[str, Any]],
@@ -271,8 +276,13 @@ async def amake_request(
     # Build the request headers from the token and user agent
     request_headers = {
         **{
-            auth_header: token,
-            "User-Agent": compose_user_agent(caller_name, caller_version),
+            k: v
+            for k, v in {
+                auth_header: token,
+                "User-Agent": compose_user_agent(caller_name, caller_version),
+                "Content-Type": "application/json",
+            }.items()
+            if v is not None
         },
         **additional_headers,
     }

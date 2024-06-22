@@ -34,6 +34,7 @@ from astrapy.results import (
     UpdateResult,
 )
 from astrapy.collection import AsyncCollection, Collection
+from astrapy.meta import check_deprecated_vector_ize
 
 
 def reduce_bulk_write_results(results: List[BulkWriteResult]) -> BulkWriteResult:
@@ -97,9 +98,11 @@ class InsertOne(BaseOperation):
     Attributes:
         document: the document to insert.
         vector: an optional suitable vector to enrich the document at insertion.
+            *DEPRECATED* (removal in 2.0). Use a `$vector` key in the document instead.
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
+            *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the documents instead.
     """
 
     document: DocumentType
@@ -114,6 +117,13 @@ class InsertOne(BaseOperation):
         vectorize: Optional[str] = None,
     ) -> None:
         self.document = document
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="insert",
+            from_operation_class=True,
+        )
         self.vector = vector
         self.vectorize = vectorize
 
@@ -149,8 +159,10 @@ class InsertMany(BaseOperation):
     Attributes:
         documents: the list document to insert.
         vectors: an optional list of vectors to enrich the documents at insertion.
+            *DEPRECATED* (removal in 2.0). Use a `$vector` key in the documents instead.
         vectorize: an optional list of texts achieving the same effect as `vectors`
             except through an embedding service, if one is configured for the collection.
+            *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the documents instead.
         ordered: whether the inserts should be done in sequence.
         chunk_size: how many documents to include in a single API request.
             Exceeding the server maximum allowed value results in an error.
@@ -178,6 +190,13 @@ class InsertMany(BaseOperation):
     ) -> None:
         self.documents = documents
         self.ordered = ordered
+        check_deprecated_vector_ize(
+            vector=None,
+            vectors=vectors,
+            vectorize=vectorize,
+            kind="insert",
+            from_operation_class=True,
+        )
         self.vectors = vectors
         self.vectorize = vectorize
         self.chunk_size = chunk_size
@@ -219,9 +238,13 @@ class UpdateOne(BaseOperation):
         filter: a filter condition to select a target document.
         update: an update prescription to apply to the document.
         vector: a vector of numbers to use for ANN (vector-search) sorting.
+            *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+            sort clause dict instead.
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
+            *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+            sort clause dict instead.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
@@ -245,6 +268,13 @@ class UpdateOne(BaseOperation):
     ) -> None:
         self.filter = filter
         self.update = update
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="find",
+            from_operation_class=True,
+        )
         self.vector = vector
         self.vectorize = vectorize
         self.sort = sort
@@ -336,9 +366,13 @@ class ReplaceOne(BaseOperation):
         filter: a filter condition to select a target document.
         replacement: the replacement document.
         vector: a vector of numbers to use for ANN (vector-search) sorting.
+            *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+            sort clause dict instead.
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
+            *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+            sort clause dict instead.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
@@ -362,6 +396,13 @@ class ReplaceOne(BaseOperation):
     ) -> None:
         self.filter = filter
         self.replacement = replacement
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="find",
+            from_operation_class=True,
+        )
         self.vector = vector
         self.vectorize = vectorize
         self.sort = sort
@@ -402,9 +443,13 @@ class DeleteOne(BaseOperation):
     Attributes:
         filter: a filter condition to select a target document.
         vector: a vector of numbers to use for ANN (vector-search) sorting.
+            *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+            sort clause dict instead.
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
+            *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+            sort clause dict instead.
         sort: controls ordering of results, hence which document is affected.
     """
 
@@ -422,6 +467,13 @@ class DeleteOne(BaseOperation):
         sort: Optional[SortType] = None,
     ) -> None:
         self.filter = filter
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="find",
+            from_operation_class=True,
+        )
         self.vector = vector
         self.vectorize = vectorize
         self.sort = sort
@@ -512,9 +564,11 @@ class AsyncInsertOne(AsyncBaseOperation):
     Attributes:
         document: the document to insert.
         vector: an optional suitable vector to enrich the document at insertion.
+            *DEPRECATED* (removal in 2.0). Use a `$vector` key in the document instead.
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
+            *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the document instead.
     """
 
     document: DocumentType
@@ -529,6 +583,14 @@ class AsyncInsertOne(AsyncBaseOperation):
         vectorize: Optional[str] = None,
     ) -> None:
         self.document = document
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="insert",
+            from_async_method=True,
+            from_operation_class=True,
+        )
         self.vector = vector
         self.vectorize = vectorize
 
@@ -564,8 +626,10 @@ class AsyncInsertMany(AsyncBaseOperation):
     Attributes:
         documents: the list document to insert.
         vectors: an optional list of vectors to enrich the documents at insertion.
+            *DEPRECATED* (removal in 2.0). Use a `$vector` key in the documents instead.
         vectorize: an optional list of texts achieving the same effect as `vectors`
             except through an embedding service, if one is configured for the collection.
+            *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the documents instead.
         ordered: whether the inserts should be done in sequence.
         chunk_size: how many documents to include in a single API request.
             Exceeding the server maximum allowed value results in an error.
@@ -592,6 +656,14 @@ class AsyncInsertMany(AsyncBaseOperation):
         concurrency: Optional[int] = None,
     ) -> None:
         self.documents = documents
+        check_deprecated_vector_ize(
+            vector=None,
+            vectors=vectors,
+            vectorize=vectorize,
+            kind="insert",
+            from_async_method=True,
+            from_operation_class=True,
+        )
         self.vectors = vectors
         self.vectorize = vectorize
         self.ordered = ordered
@@ -634,9 +706,13 @@ class AsyncUpdateOne(AsyncBaseOperation):
         filter: a filter condition to select a target document.
         update: an update prescription to apply to the document.
         vector: a vector of numbers to use for ANN (vector-search) sorting.
+            *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+            sort clause dict instead.
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
+            *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+            sort clause dict instead.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
@@ -660,6 +736,14 @@ class AsyncUpdateOne(AsyncBaseOperation):
     ) -> None:
         self.filter = filter
         self.update = update
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="find",
+            from_async_method=True,
+            from_operation_class=True,
+        )
         self.vector = vector
         self.vectorize = vectorize
         self.sort = sort
@@ -751,9 +835,13 @@ class AsyncReplaceOne(AsyncBaseOperation):
         filter: a filter condition to select a target document.
         replacement: the replacement document.
         vector: a vector of numbers to use for ANN (vector-search) sorting.
+            *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+            sort clause dict instead.
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
+            *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+            sort clause dict instead.
         sort: controls ordering of results, hence which document is affected.
         upsert: controls what to do when no documents are found.
     """
@@ -777,6 +865,14 @@ class AsyncReplaceOne(AsyncBaseOperation):
     ) -> None:
         self.filter = filter
         self.replacement = replacement
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="find",
+            from_async_method=True,
+            from_operation_class=True,
+        )
         self.vector = vector
         self.vectorize = vectorize
         self.sort = sort
@@ -817,9 +913,13 @@ class AsyncDeleteOne(AsyncBaseOperation):
     Attributes:
         filter: a filter condition to select a target document.
         vector: a vector of numbers to use for ANN (vector-search) sorting.
+            *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
+            sort clause dict instead.
         vectorize: a string to be made into a vector, with the same result as the
             `vector` attribute, through an embedding service, assuming one is
             configured for the collection.
+            *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
+            sort clause dict instead.
         sort: controls ordering of results, hence which document is affected.
     """
 
@@ -837,6 +937,14 @@ class AsyncDeleteOne(AsyncBaseOperation):
         sort: Optional[SortType] = None,
     ) -> None:
         self.filter = filter
+        check_deprecated_vector_ize(
+            vector=vector,
+            vectors=None,
+            vectorize=vectorize,
+            kind="find",
+            from_async_method=True,
+            from_operation_class=True,
+        )
         self.vector = vector
         self.vectorize = vectorize
         self.sort = sort

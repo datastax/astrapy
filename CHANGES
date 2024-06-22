@@ -1,0 +1,105 @@
+v. 1.3.0
+========
+Integration testing covers Astra and nonAstra smoothly:
+    - idiomatic library
+    - vectorize_idiomatic
+    - nonAstra admin, i.e. namespace crud
+Add the TokenProvider abstract class => and StaticTokenProvider, UsernamePasswordTokenProvider
+Introduce CHANGES file.
+Add __eq__ and _copy methods to APICommander class
+Allow delete_many({}) with empty filter
+Implement include_sort_vector option to Collection.find and get_sort_vector to cursors
+Add Content-Type header to all API requests
+Added HCD and CASSANDRA Environment values (besides the other non-Astra DSE and OTHER)
+Clearer string repr of cursors ('retrieved' => 'yielded so far')
+Deprecation of collection delete_all method in favour of delete_many(filter={})
+    Introduction of a custom deprecation decorator for async method removal tests
+Deprecation of vector,vectors and vectorize params from collections and Operations
+Remove several long-deprecated methods from **core API** (i.e. internal changes):
+    AstraDBCollection.delete          => delete_one
+    AstraDBCollection.upsert          => upsert_one
+    AsyncAstraDBCollection.upsert     => upsert_one
+    AstraDB.truncate_collection       => AstraDBCollection.clear
+    AsyncAstraDB.truncate_collection  => AsyncAstraDBCollectionclear
+Add support for null tokens in the core library
+
+v. 1.2.1
+========
+Raise default chunk size for insert_many to 50
+Improvements in docstrings, testing, support for latest responses from vectorize.
+
+
+v. 1.2.0
+========
+Non-Astra environment awareness:
+    astrapy.constants.Environment enum for the "environment" parameter to client, etc
+    flexibility and adaptive defaults for data api url
+    environment knowledge trickles throughout all classes (client, admins, databases)
+    DataAPIDatabaseAdmin class (i.e. for namespace CRUD)
+(internal) astrapy.api_commander.APICommander
+(internal) astrapy.api_options.{BaseAPIOptions, CollectionAPIOptions}
+$vectorize support:
+    "service options" for creating/retrieving collections, covering $vectorize needs
+    embedding_api_key parameter to collection (for "header" usage)
+collection-level timeout parameter (overridable in single method calls)
+expand "projection" type to include slice projections
+client.get_database can accept an API endpoint directly
+insert_many and bulk_write default to ordered=False
+
+
+v. 1.1.0
+========
+Adds estimated_document_count method to Collection class.
+
+
+v. 1.0.0
+========
+(Introduction of the "idiomatic API", relegating "core" to become non-user-facing.)
+
+Split classes, modules, tests to keep the "idiomatic" layer well separate and not touch the "astrapy" layer
+DDL and some DML methods to m1
+Passing secondary keyspace to action workflows
+Fix bug in copy and to_[a]sync when set_caller is later used
+Full cross-namespace management in DDL
+More DDL methods and signature adjustments for Database
+Sl overridable copy methods
+Cursor/AsyncCursor, find and distinct
+Remove all 'unsupported' clutter; implement find_one (a/sync)
+DML for idiomatic + necessary changes around
+Bulk_write method
+More management methods
+Sl collateral commands
+Commandcursor (+async), used in list_collections
+Sl collection options + cap-aware count_documents
+Fix #245: Delete CHANGES.md
+Collection.drop + database/collection info and related methods/properties (metadata)
+Adapt to latest choices in API semantics
+More syntax changes as discussed + all docstrings
+Full support for dotted key names in distinct
+Refactor to feature 'idiomatic' first, with full back-compat with 'astrapy'
+Add sorting in hashing for distinct and factor it away
+Exception management with a hierarchy of Exception classes
+Full timeout support
+Sl api refinements
+ObjectIDs and UUIDs handled throughout (+ tests)
+Admin interfaces and classes
+Docstrings for all the admin/client parts + minor improvements to docstrings around
+Readme overhaul
+Exporting logger for back-compatibility
+Sl adjustments
+Custom payload serialization for httpx to block NaNs
+Improved docstrings (minor stuff)
+Methods repr/str to all objects for graceful display
+Full test suite on client/admin classes
+Abstract DatabaseAdmin, admin standard utility conversion/methods + tests thereof
+Collection options is a dataclass and not a dict anymore
+Pdoc annotations to control auto-docs
+Logging, create_database signature
+Added async support for admin, as alternate methods on original classes
+Use MultiCallTimeoutManager in create_collection methods
+V1.0.0 ("pm convergenge m1") gets to master
+
+
+(prior to 1.0.0)
+================
+What is now dubbed the "core API" and is not supposed to be used directly at all.

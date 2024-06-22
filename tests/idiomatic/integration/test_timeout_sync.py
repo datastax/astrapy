@@ -21,6 +21,8 @@ from astrapy.exceptions import DataAPITimeoutException
 from astrapy.operations import DeleteMany, InsertMany
 from astrapy.admin import fetch_database_info
 
+from ..conftest import IS_ASTRA_DB
+
 
 class TestTimeoutSync:
     @pytest.mark.describe("test of collection count_documents timeout, sync")
@@ -38,24 +40,27 @@ class TestTimeoutSync:
         assert exc.value.endpoint is not None
         assert exc.value.raw_payload is not None
 
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.describe("test of database info timeout, sync")
     def test_database_info_timeout_sync(
         self,
         sync_database: Database,
     ) -> None:
-        fetch_database_info(
+        info = fetch_database_info(
             sync_database._astra_db.api_endpoint,
             token=sync_database._astra_db.token,
             namespace=sync_database.namespace,
         )
+        assert info is not None
 
         with pytest.raises(DataAPITimeoutException) as exc:
-            fetch_database_info(
+            info = fetch_database_info(
                 sync_database._astra_db.api_endpoint,
                 token=sync_database._astra_db.token,
                 namespace=sync_database.namespace,
                 max_time_ms=1,
             )
+            assert info is not None
         assert exc.value.timeout_type in {"connect", "read"}
         assert exc.value.endpoint is not None
         assert exc.value.raw_payload is not None
@@ -172,7 +177,7 @@ class TestTimeoutSync:
         )
         with pytest.raises(DataAPITimeoutException):
             sync_empty_collection.bulk_write(
-                [im_a, im_b, dm], ordered=True, max_time_ms=500
+                [im_a, im_b, dm], ordered=True, max_time_ms=1
             )
 
     @pytest.mark.describe("test of bulk_write timeouts, sync")

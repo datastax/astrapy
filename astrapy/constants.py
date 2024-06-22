@@ -114,9 +114,11 @@ class Environment:
     DEV = "dev"
     TEST = "test"
     DSE = "dse"
+    HCD = "hcd"
+    CASSANDRA = "cassandra"
     OTHER = "other"
 
-    values = {PROD, DEV, TEST, DSE, OTHER}
+    values = {PROD, DEV, TEST, DSE, HCD, CASSANDRA, OTHER}
     astra_db_values = {PROD, DEV, TEST}
 
 

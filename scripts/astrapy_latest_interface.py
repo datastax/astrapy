@@ -17,7 +17,7 @@ api_endpoint = os.environ["ASTRA_DB_API_ENDPOINT"]
 
 # Initialize our vector db
 my_client = astrapy.DataAPIClient(token)
-my_database = my_client.get_database_by_api_endpoint(api_endpoint)
+my_database = my_client.get_database(api_endpoint)
 
 # In case we already have the collection, let's clear it out
 my_database.drop_collection("collection_test")
@@ -31,13 +31,13 @@ my_collection.insert_one(
         "_id": "1",
         "name": "Coded Cleats Copy",
         "description": "ChatGPT integrated sneakers that talk to you",
+        "$vector": [0.25, 0.25, 0.25, 0.25, 0.25],
     },
-    vector=[0.25, 0.25, 0.25, 0.25, 0.25],
 )
 
 cursor = my_collection.find(
     {},
-    vector=[0, 0.2, 0.4, 0.6, 0.8],
+    sort={"$vector": [0, 0.2, 0.4, 0.6, 0.8]},
     limit=2,
     include_similarity=True,
 )

@@ -15,8 +15,16 @@
 import pytest
 import httpx
 
-from astrapy import AstraDBAdmin, AstraDBDatabaseAdmin, DataAPIClient, Database
+from astrapy import (
+    AstraDBAdmin,
+    AstraDBDatabaseAdmin,
+    AsyncDatabase,
+    DataAPIClient,
+    DataAPIDatabaseAdmin,
+    Database,
+)
 from astrapy.constants import Environment
+from astrapy.authentication import StaticTokenProvider, UsernamePasswordTokenProvider
 
 
 class TestAdminConversions:
@@ -88,7 +96,7 @@ class TestAdminConversions:
             caller_version="cv",
         )
 
-        db1 = client.get_database_by_api_endpoint(endpoint)
+        db1 = client.get_database(endpoint)
         db2 = client.get_database(database_id, region=database_region)
         db3 = client.get_database(endpoint)
 
@@ -211,3 +219,123 @@ class TestAdminConversions:
         assert adda1b != adda1
         adda1b.set_caller("cn", "cv")
         assert adda1b == adda1
+
+    @pytest.mark.describe("test of token inheritance in spawning from DataAPIClient")
+    def test_dataapiclient_token_inheritance(self) -> None:
+        client_t = DataAPIClient(token=StaticTokenProvider("static"))
+        client_0 = DataAPIClient()
+        token_f = UsernamePasswordTokenProvider(username="u", password="p")
+        client_f = DataAPIClient(token=token_f)
+        a_e_string = (
+            "https://01234567-89ab-cdef-0123-456789abcdef-us-east1"
+            ".apps.astra.datastax.com"
+        )
+
+        assert client_t.get_database(
+            a_e_string, token=token_f
+        ) == client_f.get_database(a_e_string)
+        assert client_0.get_database(
+            a_e_string, token=token_f
+        ) == client_f.get_database(a_e_string)
+
+        assert client_t.get_database(
+            a_e_string, token=token_f
+        ) == client_f.get_database(a_e_string)
+        assert client_0.get_database(
+            a_e_string, token=token_f
+        ) == client_f.get_database(a_e_string)
+
+        assert client_t.get_admin(token=token_f) == client_f.get_admin()
+        assert client_0.get_admin(token=token_f) == client_f.get_admin()
+
+    @pytest.mark.describe("test of token inheritance in spawning from AstraDBAdmin")
+    def test_astradbadmin_token_inheritance(self) -> None:
+        admin_t = AstraDBAdmin(token=StaticTokenProvider("static"))
+        admin_0 = AstraDBAdmin()
+        token_f = UsernamePasswordTokenProvider(username="u", password="p")
+        admin_f = AstraDBAdmin(token=token_f)
+        db_id_string = "01234567-89ab-cdef-0123-456789abcdef"
+
+        assert admin_t.get_database(
+            db_id_string, token=token_f, namespace="n", region="r"
+        ) == admin_f.get_database(db_id_string, namespace="n", region="r")
+        assert admin_0.get_database(
+            db_id_string, token=token_f, namespace="n", region="r"
+        ) == admin_f.get_database(db_id_string, namespace="n", region="r")
+
+    @pytest.mark.describe(
+        "test of token inheritance in spawning from AstraDBDatabaseAdmin"
+    )
+    def test_astradbdatabaseadmin_token_inheritance(self) -> None:
+        db_id_string = "01234567-89ab-cdef-0123-456789abcdef"
+        adbadmin_t = AstraDBDatabaseAdmin(
+            db_id_string, token=StaticTokenProvider("static")
+        )
+        adbadmin_0 = AstraDBDatabaseAdmin(db_id_string)
+        token_f = UsernamePasswordTokenProvider(username="u", password="p")
+        adbadmin_f = AstraDBDatabaseAdmin(db_id_string, token=token_f)
+
+        assert adbadmin_t.get_database(
+            token=token_f, namespace="n", region="r"
+        ) == adbadmin_f.get_database(namespace="n", region="r")
+        assert adbadmin_0.get_database(
+            token=token_f, namespace="n", region="r"
+        ) == adbadmin_f.get_database(namespace="n", region="r")
+
+    @pytest.mark.describe(
+        "test of token inheritance in spawning from DataAPIDatabaseAdmin"
+    )
+    def test_dataapidatabaseadmin_token_inheritance(self) -> None:
+        a_e_string = "http://x.y:123"
+        dadbadmin_t = DataAPIDatabaseAdmin(
+            a_e_string, token=StaticTokenProvider("static")
+        )
+        dadbadmin_0 = DataAPIDatabaseAdmin(a_e_string)
+        token_f = UsernamePasswordTokenProvider(username="u", password="p")
+        dadbadmin_f = DataAPIDatabaseAdmin(a_e_string, token=token_f)
+
+        assert dadbadmin_t.get_database(
+            token=token_f, namespace="n"
+        ) == dadbadmin_f.get_database(namespace="n")
+        assert dadbadmin_0.get_database(
+            token=token_f, namespace="n"
+        ) == dadbadmin_f.get_database(namespace="n")
+
+    @pytest.mark.describe("test of token inheritance in spawning from Database")
+    def test_database_token_inheritance(self) -> None:
+        a_e_string = "http://x.y:123"
+        database_t = Database(
+            a_e_string,
+            token=StaticTokenProvider("static"),
+            environment=Environment.OTHER,
+        )
+        a_database_t = AsyncDatabase(
+            a_e_string,
+            token=StaticTokenProvider("static"),
+            environment=Environment.OTHER,
+        )
+        database_0 = Database(a_e_string, environment=Environment.OTHER)
+        a_database_0 = AsyncDatabase(a_e_string, environment=Environment.OTHER)
+        token_f = UsernamePasswordTokenProvider(username="u", password="p")
+        database_f = Database(a_e_string, token=token_f, environment=Environment.OTHER)
+        a_database_f = AsyncDatabase(
+            a_e_string, token=token_f, environment=Environment.OTHER
+        )
+
+        assert (
+            database_t.get_database_admin(token=token_f)
+            == database_f.get_database_admin()
+        )
+        assert (
+            database_0.get_database_admin(token=token_f)
+            == database_f.get_database_admin()
+        )
+
+        assert (
+            a_database_t.get_database_admin(token=token_f)
+            == a_database_f.get_database_admin()
+        )
+        assert (
+            a_database_0.get_database_admin(token=token_f)
+            == a_database_f.get_database_admin()
+        )

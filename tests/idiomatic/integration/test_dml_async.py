@@ -18,6 +18,8 @@ from typing import Any, Dict, List
 
 import pytest
 
+from ..conftest import async_fail_if_not_removed
+
 from astrapy import AsyncCollection
 from astrapy.results import DeleteResult, InsertOneResult
 from astrapy.exceptions import InsertManyException, DataAPIResponseException
@@ -123,13 +125,18 @@ class TestDMLAsync:
         self,
         async_empty_collection: AsyncCollection,
     ) -> None:
-        await async_empty_collection.insert_one({"tag": "v1"}, vector=[-1, -2])
-        retrieved1 = await async_empty_collection.find_one({"tag": "v1"})
+        with pytest.warns(DeprecationWarning):
+            await async_empty_collection.insert_one({"tag": "v1"}, vector=[-1, -2])
+        retrieved1 = await async_empty_collection.find_one(
+            {"tag": "v1"}, projection={"*": 1}
+        )
         assert retrieved1 is not None
         assert retrieved1["$vector"] == [-1, -2]
 
         await async_empty_collection.insert_one({"tag": "v2", "$vector": [-3, -4]})
-        retrieved2 = await async_empty_collection.find_one({"tag": "v2"})
+        retrieved2 = await async_empty_collection.find_one(
+            {"tag": "v2"}, projection={"*": 1}
+        )
         assert retrieved2 is not None
         assert retrieved2["$vector"] == [-3, -4]
 
@@ -188,23 +195,20 @@ class TestDMLAsync:
             await async_empty_collection.count_documents(filter={}, upper_bound=100)
             == 1
         )
-        with pytest.raises(ValueError):
-            await async_empty_collection.delete_many(filter={})
 
-        await async_empty_collection.delete_all()
-        await async_empty_collection.insert_many([{"a": 1} for _ in range(50)])
-        do_result2 = await async_empty_collection.delete_many({"a": 1})
-        assert do_result2.deleted_count == 50
-        assert await async_empty_collection.count_documents({}, upper_bound=100) == 0
-        with pytest.raises(ValueError):
-            await async_empty_collection.delete_many(filter={})
-
-        await async_empty_collection.delete_all()
+        await async_empty_collection.delete_many({})
         await async_empty_collection.insert_many([{"a": 1} for _ in range(50)])
         do_result2 = await async_empty_collection.delete_many({"a": 1})
         assert do_result2.deleted_count == 50
         assert await async_empty_collection.count_documents({}, upper_bound=100) == 0
 
+        await async_empty_collection.delete_many({})
+        await async_empty_collection.insert_many([{"a": 1} for _ in range(50)])
+        do_result2 = await async_empty_collection.delete_many({"a": 1})
+        assert do_result2.deleted_count == 50
+        assert await async_empty_collection.count_documents({}, upper_bound=100) == 0
+
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of collection delete_all, async")
     async def test_collection_delete_all_async(
         self,
@@ -588,7 +592,7 @@ class TestDMLAsync:
         assert await acol.distinct("x.0.0") == ["ZERO"]
 
     @pytest.mark.describe("test of unacceptable paths for distinct, async")
-    async def test_collection_wrong_paths_distinc_async(
+    async def test_collection_wrong_paths_distinct_async(
         self,
         async_empty_collection: AsyncCollection,
     ) -> None:
@@ -621,9 +625,9 @@ class TestDMLAsync:
             hit
             async for hit in async_empty_collection.find(
                 {},
+                sort={"$vector": q_vector},
                 projection=["tag"],
                 limit=3,
-                vector=q_vector,
             )
         ]
         assert [hit["tag"] for hit in hits] == ["A", "B", "C"]
@@ -631,21 +635,23 @@ class TestDMLAsync:
         with pytest.raises(ValueError):
             await async_empty_collection.find(
                 {},
+                sort={
+                    "$vector": q_vector,
+                    "tag": SortDocuments.DESCENDING,
+                },
                 projection=["tag"],
                 limit=3,
-                vector=q_vector,
-                sort={"tag": SortDocuments.DESCENDING},
             ).distinct("tag")
 
-        top_doc = await async_empty_collection.find_one({}, vector=[1, 0])
+        top_doc = await async_empty_collection.find_one({}, sort={"$vector": [1, 0]})
         assert top_doc is not None
         assert top_doc["tag"] == "D"
 
         fdoc_no_s = await async_empty_collection.find(
-            {}, vector=[1, 1], include_similarity=False
+            {}, sort={"$vector": [1, 1]}, include_similarity=False
         ).__anext__()
         fdoc_wi_s = await async_empty_collection.find(
-            {}, vector=[1, 1], include_similarity=True
+            {}, sort={"$vector": [1, 1]}, include_similarity=True
         ).__anext__()
         assert fdoc_no_s is not None
         assert fdoc_wi_s is not None
@@ -654,10 +660,10 @@ class TestDMLAsync:
         assert fdoc_wi_s["$similarity"] > 0.0
 
         f1doc_no_s = await async_empty_collection.find_one(
-            {}, vector=[1, 1], include_similarity=False
+            {}, sort={"$vector": [1, 1]}, include_similarity=False
         )
         f1doc_wi_s = await async_empty_collection.find_one(
-            {}, vector=[1, 1], include_similarity=True
+            {}, sort={"$vector": [1, 1]}, include_similarity=True
         )
         assert f1doc_no_s is not None
         assert f1doc_wi_s is not None
@@ -670,6 +676,96 @@ class TestDMLAsync:
 
         with pytest.raises(ValueError):
             await async_empty_collection.find_one({}, include_similarity=True)
+
+    @pytest.mark.describe("test of include_sort_vector in collection find, async")
+    async def test_collection_include_sort_vector_find_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        q_vector = [10, 9]
+
+        async def _alist(acursor: AsyncCursor) -> List[DocumentType]:
+            return [doc async for doc in acursor]
+
+        # with empty collection
+        for include_sv in [False, True]:
+            for sort_cl_label in ["reg", "vec"]:
+                sort_cl_e: Dict[str, Any] = (
+                    {} if sort_cl_label == "reg" else {"$vector": q_vector}
+                )
+                vec_expected = include_sv and sort_cl_label == "vec"
+                # pristine iterator
+                this_ite_1 = async_empty_collection.find(
+                    {}, sort=sort_cl_e, include_sort_vector=include_sv
+                )
+                if vec_expected:
+                    assert (await this_ite_1.get_sort_vector()) == q_vector
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # after exhaustion with empty
+                all_items_1 = await _alist(this_ite_1)
+                assert all_items_1 == []
+                if vec_expected:
+                    assert (await this_ite_1.get_sort_vector()) == q_vector
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # directly exhausted before calling get_sort_vector
+                this_ite_2 = async_empty_collection.find(
+                    {}, sort=sort_cl_e, include_sort_vector=include_sv
+                )
+                all_items_2 = await _alist(this_ite_2)
+                assert all_items_2 == []
+                if vec_expected:
+                    assert (await this_ite_1.get_sort_vector()) == q_vector
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+        await async_empty_collection.insert_many(
+            [{"seq": i, "$vector": [i, i + 1]} for i in range(10)]
+        )
+        # with non-empty collection
+        for include_sv in [False, True]:
+            for sort_cl_label in ["reg", "vec"]:
+                sort_cl_f: Dict[str, Any] = (
+                    {} if sort_cl_label == "reg" else {"$vector": q_vector}
+                )
+                vec_expected = include_sv and sort_cl_label == "vec"
+                # pristine iterator
+                this_ite_1 = async_empty_collection.find(
+                    {}, sort=sort_cl_f, include_sort_vector=include_sv
+                )
+                if vec_expected:
+                    assert (await this_ite_1.get_sort_vector()) == q_vector
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # after consuming one item
+                first_seqs = [
+                    doc["seq"]
+                    for doc in [
+                        await this_ite_1.__anext__(),
+                        await this_ite_1.__anext__(),
+                    ]
+                ]
+                if vec_expected:
+                    assert (await this_ite_1.get_sort_vector()) == q_vector
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # after exhaustion with the rest
+                last_seqs = [doc["seq"] async for doc in this_ite_1]
+                assert len(set(last_seqs + first_seqs)) == 10
+                assert len(last_seqs + first_seqs) == 10
+                if vec_expected:
+                    assert (await this_ite_1.get_sort_vector()) == q_vector
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # directly exhausted before calling get_sort_vector
+                this_ite_2 = async_empty_collection.find(
+                    {}, sort=sort_cl_f, include_sort_vector=include_sv
+                )
+                await _alist(this_ite_2)
+                if vec_expected:
+                    assert (await this_ite_1.get_sort_vector()) == q_vector
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
 
     @pytest.mark.describe("test of projections in collection find with vectors, async")
     async def test_collection_find_projections_vectors_async(
@@ -701,7 +797,7 @@ class TestDMLAsync:
                 "otherfield",
                 "anotherfield",
                 "text",
-            },  # {"$vector", "_id"},
+            },
             {"$vector", "_id", "text"},
         ]
         for include_similarity in [True, False]:
@@ -709,7 +805,7 @@ class TestDMLAsync:
                 vdocs = [
                     doc
                     async for doc in async_empty_collection.find(
-                        vector=[11, 21],
+                        sort={"$vector": [11, 21]},
                         limit=1,
                         projection=req_projection,
                         include_similarity=include_similarity,
@@ -719,7 +815,14 @@ class TestDMLAsync:
                     exp_fields = exp_fields0 | {"$similarity"}
                 else:
                     exp_fields = exp_fields0
-                assert set(vdocs[0].keys()) == exp_fields
+                # this test should not concern whether $vector is found or not
+                # (abiding by the '$vector may or may not be returned' tenet)
+                vkeys_novec = set(vdocs[0].keys()) - {"$vector"}
+                expkeys_novec = exp_fields - {"$vector"}
+                assert vkeys_novec == expkeys_novec
+                # but in some cases $vector must be there:
+                if "$vector" in (req_projection or set()):
+                    assert "$vector" in vdocs[0]
 
     @pytest.mark.describe("test of collection insert_many, async")
     async def test_collection_insert_many_async(
@@ -755,16 +858,19 @@ class TestDMLAsync:
         async_empty_collection: AsyncCollection,
     ) -> None:
         acol = async_empty_collection
-        await acol.insert_many([{"t": 0}, {"t": 1}], vectors=[[0, 1], [1, 0]])
-        await acol.insert_many(
-            [{"t": 2, "$vector": [0, 2]}, {"t": 3}], vectors=[None, [2, 0]]
-        )
-        await acol.insert_many(
-            [{"t": 4, "$vector": [0, 3]}, {"t": 5, "$vector": [3, 0]}],
-            vectors=[None, None],
-        )
+        with pytest.warns(DeprecationWarning):
+            await acol.insert_many([{"t": 0}, {"t": 1}], vectors=[[0, 1], [1, 0]])
+        with pytest.warns(DeprecationWarning):
+            await acol.insert_many(
+                [{"t": 2, "$vector": [0, 2]}, {"t": 3}], vectors=[None, [2, 0]]
+            )
+        with pytest.warns(DeprecationWarning):
+            await acol.insert_many(
+                [{"t": 4, "$vector": [0, 3]}, {"t": 5, "$vector": [3, 0]}],
+                vectors=[None, None],
+            )
 
-        vectors = [doc["$vector"] async for doc in acol.find({})]
+        vectors = [doc["$vector"] async for doc in acol.find({}, projection={"*": 1})]
         assert all(len(vec) == 2 for vec in vectors)
 
         with pytest.raises(ValueError):
@@ -839,35 +945,35 @@ class TestDMLAsync:
         resp0010 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
         assert resp0010 is None
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         resp0011 = await acol.find_one_and_replace(
             {"f": 0}, {"r": 1}, upsert=True, sort={"x": 1}
         )
         assert resp0011 is None
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0100 = await acol.find_one_and_replace({"f": 0}, {"r": 1})
         assert resp0100 is not None
         assert resp0100["f"] == 0
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0101 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, sort={"x": 1})
         assert resp0101 is not None
         assert resp0101["f"] == 0
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0110 = await acol.find_one_and_replace({"f": 0}, {"r": 1}, upsert=True)
         assert resp0110 is not None
         assert resp0110["f"] == 0
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0111 = await acol.find_one_and_replace(
@@ -876,7 +982,7 @@ class TestDMLAsync:
         assert resp0111 is not None
         assert resp0111["f"] == 0
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         resp1000 = await acol.find_one_and_replace(
             {"f": 0}, {"r": 1}, return_document=ReturnDocument.AFTER
@@ -896,7 +1002,7 @@ class TestDMLAsync:
         assert resp1010 is not None
         assert resp1010["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         resp1011 = await acol.find_one_and_replace(
             {"f": 0},
@@ -908,7 +1014,7 @@ class TestDMLAsync:
         assert resp1011 is not None
         assert resp1011["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1100 = await acol.find_one_and_replace(
@@ -917,7 +1023,7 @@ class TestDMLAsync:
         assert resp1100 is not None
         assert resp1100["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1101 = await acol.find_one_and_replace(
@@ -926,7 +1032,7 @@ class TestDMLAsync:
         assert resp1101 is not None
         assert resp1101["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1110 = await acol.find_one_and_replace(
@@ -935,7 +1041,7 @@ class TestDMLAsync:
         assert resp1110 is not None
         assert resp1110["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1111 = await acol.find_one_and_replace(
@@ -948,7 +1054,7 @@ class TestDMLAsync:
         assert resp1111 is not None
         assert resp1111["r"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         # projection
         await acol.insert_one({"f": 100, "name": "apple", "mode": "old"})
@@ -968,7 +1074,7 @@ class TestDMLAsync:
         )
         assert resp_pr2 is not None
         assert set(resp_pr2.keys()) == {"mode"}
-        await acol.delete_all()
+        await acol.delete_many({})
 
     @pytest.mark.describe("test of replace_one, async")
     async def test_collection_replace_one_async(
@@ -1029,7 +1135,7 @@ class TestDMLAsync:
                 {"tag": "v", "$vector": [2, 20]},
             ]
         )
-        result = await acol.replace_one({}, {"new_doc": True}, vector=[0, 1])
+        result = await acol.replace_one({}, {"new_doc": True}, sort={"$vector": [0, 1]})
         assert result.update_info["updatedExisting"]
 
         assert (await acol.find_one({"tag": "h"})) is not None
@@ -1187,7 +1293,7 @@ class TestDMLAsync:
                 {"tag": "v", "$vector": [2, 20]},
             ]
         )
-        deleted = await acol.find_one_and_delete({}, vector=[0, 1])
+        deleted = await acol.find_one_and_delete({}, sort={"$vector": [0, 1]})
         assert deleted is not None
         assert deleted["tag"] == "v"
 
@@ -1213,14 +1319,14 @@ class TestDMLAsync:
         )
         assert resp0010 is None
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         resp0011 = await acol.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, upsert=True, sort={"x": 1}
         )
         assert resp0011 is None
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0100 = await acol.find_one_and_update({"f": 0}, {"$set": {"n": 1}})
@@ -1228,7 +1334,7 @@ class TestDMLAsync:
         assert resp0100["f"] == 0
         assert "n" not in resp0100
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0101 = await acol.find_one_and_update(
@@ -1238,7 +1344,7 @@ class TestDMLAsync:
         assert resp0101["f"] == 0
         assert "n" not in resp0101
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0110 = await acol.find_one_and_update(
@@ -1248,7 +1354,7 @@ class TestDMLAsync:
         assert resp0110["f"] == 0
         assert "n" not in resp0110
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp0111 = await acol.find_one_and_update(
@@ -1258,7 +1364,7 @@ class TestDMLAsync:
         assert resp0111["f"] == 0
         assert "n" not in resp0111
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         resp1000 = await acol.find_one_and_update(
             {"f": 0}, {"$set": {"n": 1}}, return_document=ReturnDocument.AFTER
@@ -1284,7 +1390,7 @@ class TestDMLAsync:
         assert resp1010 is not None
         assert resp1010["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         resp1011 = await acol.find_one_and_update(
             {"f": 0},
@@ -1296,7 +1402,7 @@ class TestDMLAsync:
         assert resp1011 is not None
         assert resp1011["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1100 = await acol.find_one_and_update(
@@ -1305,7 +1411,7 @@ class TestDMLAsync:
         assert resp1100 is not None
         assert resp1100["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1101 = await acol.find_one_and_update(
@@ -1317,7 +1423,7 @@ class TestDMLAsync:
         assert resp1101 is not None
         assert resp1101["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1110 = await acol.find_one_and_update(
@@ -1329,7 +1435,7 @@ class TestDMLAsync:
         assert resp1110 is not None
         assert resp1110["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         await acol.insert_one({"f": 0})
         resp1111 = await acol.find_one_and_update(
@@ -1342,7 +1448,7 @@ class TestDMLAsync:
         assert resp1111 is not None
         assert resp1111["n"] == 1
         assert await acol.count_documents({}, upper_bound=100) == 1
-        await acol.delete_all()
+        await acol.delete_many({})
 
         # projection
         await acol.insert_one({"f": 100, "name": "apple", "mode": "old"})
@@ -1362,7 +1468,7 @@ class TestDMLAsync:
         )
         assert resp_pr2 is not None
         assert set(resp_pr2.keys()) == {"f"}
-        await acol.delete_all()
+        await acol.delete_many({})
 
     @pytest.mark.describe("test of ordered bulk_write, async")
     async def test_collection_ordered_bulk_write_async(
@@ -1441,14 +1547,16 @@ class TestDMLAsync:
     ) -> None:
         acol = async_empty_collection
 
-        bw_ops = [
-            AsyncInsertOne({"a": 1}, vector=[1, 1]),
-            AsyncInsertMany([{"a": 2}, {"z": 0}], vectors=[[1, 10], [-1, 1]]),
-            AsyncUpdateOne({}, {"$set": {"b": 1}}, vector=[1, 15]),
-            AsyncReplaceOne({}, {"a": 10}, vector=[5, 6]),
-            AsyncDeleteOne({}, vector=[-8, 7]),
-        ]
-        await acol.bulk_write(bw_ops, ordered=True)
+        with pytest.warns(DeprecationWarning):
+            bw_ops = [
+                AsyncInsertOne({"a": 1, "$vector": [1, 1]}),
+                AsyncInsertMany([{"a": 2}, {"z": 0}], vectors=[[1, 10], [-1, 1]]),
+                AsyncUpdateOne({}, {"$set": {"b": 1}}, sort={"$vector": [1, 15]}),
+                AsyncReplaceOne({}, {"a": 10}, sort={"$vector": [5, 6]}),
+                AsyncDeleteOne({}, sort={"$vector": [-8, 7]}),
+            ]
+        with pytest.warns(DeprecationWarning):
+            await acol.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             async for doc in acol.find({}, projection=["a", "b"])

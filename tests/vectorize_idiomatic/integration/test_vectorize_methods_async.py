@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Dict, List
+
 import pytest
 
-# from ..conftest import is_nvidia_service_available
 from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.exceptions import DataAPIResponseException
+from astrapy.constants import DocumentType
+from astrapy.cursors import AsyncCursor
 from astrapy.operations import (
     AsyncInsertOne,
     AsyncInsertMany,
@@ -27,47 +30,51 @@ from astrapy.operations import (
 
 
 class TestVectorizeMethodsAsync:
-    # @pytest.mark.skipif(
-    #     not is_nvidia_service_available(), reason="No 'service' on this database"
-    # )
     @pytest.mark.describe("test of vectorize in collection methods, async")
     async def test_collection_methods_vectorize_async(
         self,
         async_empty_service_collection: AsyncCollection,
-        service_vector_dimension: int,
+        service_collection_parameters: Dict[str, Any],
     ) -> None:
         acol = async_empty_service_collection
+        service_vector_dimension = service_collection_parameters["dimension"]
 
-        await acol.insert_one({"t": "tower"}, vectorize="How high is this tower?")
+        await acol.insert_one({"t": "tower", "$vectorize": "How high is this tower?"})
         await acol.insert_one({"t": "vectorless"})
         await acol.insert_one(
-            {"t": "vectorful"}, vector=[0.01] * service_vector_dimension
+            {"t": "vectorful", "$vector": [0.01] * service_vector_dimension},
         )
 
         await acol.insert_many(
-            [{"t": "guide"}, {"t": "seeds"}],
-            vectorize=[
-                "This is the instructions manual. Read it!",
-                "Other plants rely on wind to propagate their seeds.",
+            [
+                {
+                    "t": "guide",
+                    "$vectorize": "This is the instructions manual. Read it!",
+                },
+                {
+                    "t": "seeds",
+                    "$vectorize": "Other plants rely on wind to propagate their seeds.",
+                },
             ],
         )
-        await acol.insert_many(
-            [{"t": "dog"}, {"t": "cat_novector"}, {"t": "spider"}],
-            vectorize=[
-                None,
-                None,
-                "The eye pattern is a primary criterion to the family.",
-            ],
-            vectors=[
-                [0.01] * service_vector_dimension,
-                None,
-                None,
-            ],
-        )
+        with pytest.warns(DeprecationWarning):
+            await acol.insert_many(
+                [{"t": "dog"}, {"t": "cat_novector"}, {"t": "spider"}],
+                vectorize=[
+                    None,
+                    None,
+                    "The eye pattern is a primary criterion to the family.",
+                ],
+                vectors=[
+                    [0.01] * service_vector_dimension,
+                    None,
+                    None,
+                ],
+            )
 
         doc = await acol.find_one(
             {},
-            vectorize="This building is five storeys tall.",
+            sort={"$vectorize": "This building is five storeys tall."},
             projection={"$vector": False},
         )
         assert doc is not None
@@ -77,7 +84,7 @@ class TestVectorizeMethodsAsync:
             doc
             async for doc in acol.find(
                 {},
-                vectorize="This building is five storeys tall.",
+                sort={"$vectorize": "This building is five storeys tall."},
                 limit=2,
                 projection={"$vector": False},
             )
@@ -87,7 +94,7 @@ class TestVectorizeMethodsAsync:
         rdoc = await acol.find_one_and_replace(
             {},
             {"t": "spider", "$vectorize": "Check out the eyes!"},
-            vectorize="The disposition of the eyes tells much",
+            sort={"$vectorize": "The disposition of the eyes tells much"},
             projection={"$vector": False},
         )
         assert rdoc["t"] == "spider"
@@ -95,14 +102,14 @@ class TestVectorizeMethodsAsync:
         r1res = await acol.replace_one(
             {},
             {"t": "spider", "$vectorize": "Look at how the eyes are placed"},
-            vectorize="The disposition of the eyes tells much",
+            sort={"$vectorize": "The disposition of the eyes tells much"},
         )
         assert r1res.update_info["nModified"] == 1
 
         udoc = await acol.find_one_and_update(
             {},
             {"$set": {"$vectorize": "Consider consulting the how-to"}},
-            vectorize="Have a look at the user guide...",
+            sort={"$vectorize": "Have a look at the user guide..."},
             projection={"$vector": False},
         )
         assert udoc["t"] == "guide"
@@ -110,26 +117,23 @@ class TestVectorizeMethodsAsync:
         u1res = await acol.update_one(
             {},
             {"$set": {"$vectorize": "Know how to operate it before doing so."}},
-            vectorize="Have a look at the user guide...",
+            sort={"$vectorize": "Have a look at the user guide..."},
         )
         assert u1res.update_info["nModified"] == 1
 
         ddoc = await acol.find_one_and_delete(
             {},
-            vectorize="Some trees have seeds that are dispersed in the air!",
+            sort={"$vectorize": "Some trees have seeds that are dispersed in the air!"},
             projection={"$vector": False},
         )
         assert ddoc["t"] == "seeds"
 
         d1res = await acol.delete_one(
             {},
-            vectorize="yet another giant construction in this suburb.",
+            sort={"$vectorize": "yet another giant construction in this suburb."},
         )
         assert d1res.deleted_count == 1
 
-    # @pytest.mark.skipif(
-    #     not is_nvidia_service_available(), reason="No 'service' on this database"
-    # )
     @pytest.mark.describe("test of bulk_write with vectorize, async")
     async def test_collection_bulk_write_vectorize_async(
         self,
@@ -137,24 +141,26 @@ class TestVectorizeMethodsAsync:
     ) -> None:
         acol = async_empty_service_collection
 
-        bw_ops = [
-            AsyncInsertOne({"a": 1}, vectorize="The cat is on the table."),
-            AsyncInsertMany(
-                [{"a": 2}, {"z": 0}],
-                vectorize=[
-                    "That is a fine spaghetti dish!",
-                    "I am not debating the effectiveness of such approach...",
-                ],
-            ),
-            AsyncUpdateOne(
-                {},
-                {"$set": {"b": 1}},
-                vectorize="Oh, I love a nice bolognese pasta meal!",
-            ),
-            AsyncReplaceOne({}, {"a": 10}, vectorize="The kitty sits on the desk."),
-            AsyncDeleteOne({}, vectorize="I don't argue with the proposed plan..."),
-        ]
-        await acol.bulk_write(bw_ops, ordered=True)
+        with pytest.warns(DeprecationWarning):
+            bw_ops = [
+                AsyncInsertOne({"a": 1}, vectorize="The cat is on the table."),
+                AsyncInsertMany(
+                    [{"a": 2}, {"z": 0}],
+                    vectorize=[
+                        "That is a fine spaghetti dish!",
+                        "I am not debating the effectiveness of such approach...",
+                    ],
+                ),
+                AsyncUpdateOne(
+                    {},
+                    {"$set": {"b": 1}},
+                    vectorize="Oh, I love a nice bolognese pasta meal!",
+                ),
+                AsyncReplaceOne({}, {"a": 10}, vectorize="The kitty sits on the desk."),
+                AsyncDeleteOne({}, vectorize="I don't argue with the proposed plan..."),
+            ]
+        with pytest.warns(DeprecationWarning):
+            await acol.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             async for doc in acol.find({}, projection=["a", "b"])
@@ -163,20 +169,114 @@ class TestVectorizeMethodsAsync:
         assert {"a": 10} in found
         assert {"a": 2, "b": 1} in found
 
-    # @pytest.mark.skipif(
-    #     not is_nvidia_service_available(), reason="No 'service' on this database"
-    # )
+    @pytest.mark.describe(
+        "test of include_sort_vector in collection vectorize find, async"
+    )
+    async def test_collection_include_sort_vector_vectorize_find_async(
+        self,
+        async_empty_service_collection: AsyncCollection,
+    ) -> None:
+        # with empty collection
+        q_text = "A sentence for searching."
+
+        def _is_vector(v: Any) -> bool:
+            return isinstance(v, list) and isinstance(v[0], float)
+
+        async def _alist(acursor: AsyncCursor) -> List[DocumentType]:
+            return [doc async for doc in acursor]
+
+        for include_sv in [False, True]:
+            for sort_cl_label in ["vze"]:
+                sort_cl_e: Dict[str, Any] = {"$vectorize": q_text}
+                vec_expected = include_sv and sort_cl_label == "vze"
+                # pristine iterator
+                this_ite_1 = async_empty_service_collection.find(
+                    {}, sort=sort_cl_e, include_sort_vector=include_sv
+                )
+                if vec_expected:
+                    assert _is_vector(await this_ite_1.get_sort_vector())
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # after exhaustion with empty
+                all_items_1 = await _alist(this_ite_1)
+                assert all_items_1 == []
+                if vec_expected:
+                    assert _is_vector(await this_ite_1.get_sort_vector())
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # directly exhausted before calling get_sort_vector
+                this_ite_2 = async_empty_service_collection.find(
+                    {}, sort=sort_cl_e, include_sort_vector=include_sv
+                )
+                all_items_2 = await _alist(this_ite_2)
+                assert all_items_2 == []
+                if vec_expected:
+                    assert _is_vector(await this_ite_2.get_sort_vector())
+                else:
+                    assert (await this_ite_2.get_sort_vector()) is None
+        await async_empty_service_collection.insert_many(
+            [
+                {"seq": i, "$vectorize": f"This is sentence number {i}"}
+                for i in range(10)
+            ]
+        )
+        # with non-empty collection
+        for include_sv in [False, True]:
+            for sort_cl_label in ["vze"]:
+                sort_cl_f: Dict[str, Any] = {"$vectorize": q_text}
+                vec_expected = include_sv and sort_cl_label == "vze"
+                # pristine iterator
+                this_ite_1 = async_empty_service_collection.find(
+                    {}, sort=sort_cl_f, include_sort_vector=include_sv
+                )
+                if vec_expected:
+                    assert _is_vector(await this_ite_1.get_sort_vector())
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # after consuming one item
+                first_seqs = [
+                    doc["seq"]
+                    for doc in [
+                        await this_ite_1.__anext__(),
+                        await this_ite_1.__anext__(),
+                    ]
+                ]
+                if vec_expected:
+                    assert _is_vector(await this_ite_1.get_sort_vector())
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # after exhaustion with the rest
+                last_seqs = [doc["seq"] async for doc in this_ite_1]
+                assert len(set(last_seqs + first_seqs)) == 10
+                assert len(last_seqs + first_seqs) == 10
+                if vec_expected:
+                    assert _is_vector(await this_ite_1.get_sort_vector())
+                else:
+                    assert (await this_ite_1.get_sort_vector()) is None
+                # directly exhausted before calling get_sort_vector
+                this_ite_2 = async_empty_service_collection.find(
+                    {}, sort=sort_cl_f, include_sort_vector=include_sv
+                )
+                await _alist(this_ite_2)
+                if vec_expected:
+                    assert _is_vector(await this_ite_2.get_sort_vector())
+                else:
+                    assert (await this_ite_2.get_sort_vector()) is None
+
     @pytest.mark.describe(
         "test of database create_collection dimension-mismatch failure, async"
     )
     async def test_database_create_collection_dimension_mismatch_failure_async(
         self,
         async_database: AsyncDatabase,
+        service_collection_parameters: Dict[str, Any],
     ) -> None:
         with pytest.raises(DataAPIResponseException):
             await async_database.create_collection(
                 "collection_name",
-                dimension=123,
-                service={"provider": "openai", "modelName": "text-embedding-ada-002"},
-                # service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
+                dimension=service_collection_parameters["dimension"] + 10,
+                service={
+                    "provider": service_collection_parameters["provider"],
+                    "modelName": service_collection_parameters["modelName"],
+                },
             )

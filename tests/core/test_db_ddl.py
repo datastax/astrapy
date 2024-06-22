@@ -20,7 +20,7 @@ import logging
 
 import pytest
 
-from ..conftest import AstraDBCredentials
+from ..conftest import DataAPICredentials
 from .conftest import TEST_SKIP_COLLECTION_DELETE
 from astrapy.core.db import AstraDB, AstraDBCollection
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
@@ -32,10 +32,10 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.describe("should confirm path handling in constructor")
-def test_path_handling(astra_db_credentials_kwargs: AstraDBCredentials) -> None:
-    token = astra_db_credentials_kwargs["token"]
-    api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
-    namespace = astra_db_credentials_kwargs.get("namespace")
+def test_path_handling(data_api_credentials_kwargs: DataAPICredentials) -> None:
+    token = data_api_credentials_kwargs["token"]
+    api_endpoint = data_api_credentials_kwargs["api_endpoint"]
+    namespace = data_api_credentials_kwargs.get("namespace")
 
     if token is None or api_endpoint is None:
         raise ValueError("Required ASTRA DB configuration is missing")
@@ -91,7 +91,7 @@ def test_create_use_destroy_nonvector_collection(db: AstraDB) -> None:
     assert "second" in ids
     assert "first" not in ids
     auto_id = [id for id in ids if id not in {"second", "last"}][0]
-    col.delete(auto_id)
+    col.delete_one(auto_id)
     assert col.find_one(filter={"name": "c"})["data"]["document"] is None
     del_res = db.delete_collection(TEST_CREATE_DELETE_NONVECTOR_COLLECTION_NAME)
     assert del_res["status"]["ok"] == 1

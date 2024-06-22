@@ -32,44 +32,14 @@ from astrapy.core.db import AsyncAstraDB, AsyncAstraDBCollection
 logger = logging.getLogger(__name__)
 
 
+def _cleanvec(doc: Dict[str, Any]) -> Dict[str, Any]:
+    return {k: v for k, v in doc.items() if k != "$vector"}
+
+
 @pytest.mark.describe("should fail clearing a non-existent collection (async)")
 async def test_clear_collection_fail(async_db: AsyncAstraDB) -> None:
     with pytest.raises(APIRequestError):
         await (await async_db.collection("this$does%not exist!!!")).clear()
-
-
-@pytest.mark.describe("should truncate a nonvector collection through AstraDB (async)")
-async def test_truncate_nonvector_collection_through_astradb(
-    async_db: AsyncAstraDB,
-    async_empty_nonv_collection: AsyncAstraDBCollection,
-) -> None:
-    await async_empty_nonv_collection.insert_one({"a": 1})
-    assert len((await async_empty_nonv_collection.find())["data"]["documents"]) == 1
-    with pytest.warns(DeprecationWarning):
-        tr_response_col = await async_db.truncate_collection(
-            async_empty_nonv_collection.collection_name
-        )
-    assert len((await async_empty_nonv_collection.find())["data"]["documents"]) == 0
-    assert isinstance(tr_response_col, AsyncAstraDBCollection)
-    assert (
-        tr_response_col.collection_name == async_empty_nonv_collection.collection_name
-    )
-
-
-@pytest.mark.describe("should truncate a collection through AstraDB (async)")
-async def test_truncate_vector_collection_through_astradb(
-    async_db: AsyncAstraDB,
-    async_empty_v_collection: AsyncAstraDBCollection,
-) -> None:
-    await async_empty_v_collection.insert_one({"a": 1, "$vector": [0.1, 0.2]})
-    assert len((await async_empty_v_collection.find())["data"]["documents"]) == 1
-    with pytest.warns(DeprecationWarning):
-        tr_response_col = await async_db.truncate_collection(
-            async_empty_v_collection.collection_name
-        )
-    assert len((await async_empty_v_collection.find())["data"]["documents"]) == 0
-    assert isinstance(tr_response_col, AsyncAstraDBCollection)
-    assert tr_response_col.collection_name == async_empty_v_collection.collection_name
 
 
 @pytest.mark.describe("should clear a nonvector collection (async)")
@@ -103,21 +73,24 @@ async def test_find_one_filter_novector(
     )
     document = response["data"]["document"]
     assert document["text"] == "Sample entry number <1>"
-    assert (
-        document.keys() ^ {"_id", "text", "otherfield", "anotherfield", "$vector"}
-        == set()
-    )
+    assert (set(document.keys()) - {"$vector"}) ^ {
+        "_id",
+        "text",
+        "otherfield",
+        "anotherfield",
+    } == set()
 
     response_not_by_id = await async_readonly_v_collection.find_one(
         filter={"text": "Sample entry number <1>"},
     )
     document_not_by_id = response_not_by_id["data"]["document"]
     assert document_not_by_id["_id"] == "1"
-    assert (
-        document_not_by_id.keys()
-        ^ {"_id", "text", "otherfield", "anotherfield", "$vector"}
-        == set()
-    )
+    assert (set(document_not_by_id.keys()) - {"$vector"}) ^ {
+        "_id",
+        "text",
+        "otherfield",
+        "anotherfield",
+    } == set()
 
     response_no = await async_readonly_v_collection.find_one(
         filter={"_id": "Z"},
@@ -178,21 +151,29 @@ async def test_find_find_one_projection(
             "otherfield",
             "anotherfield",
             "text",
-        },  # {"$vector", "_id"},
+        },
         {"$vector", "_id", "text"},
     ]
     for proj, exp_fields in zip(projs, exp_fieldsets):
         response_n = await async_readonly_v_collection.find(
             sort=sort, options=options, projection=proj
         )
-        fields = set(response_n["data"]["documents"][0].keys())
-        assert fields == exp_fields
+        vkeys_novec = set(response_n["data"]["documents"][0].keys()) - {"$vector"}
+        expkeys_novec = exp_fields - {"$vector"}
+        assert vkeys_novec == expkeys_novec
+        # but in some cases $vector must be there:
+        if "$vector" in (proj or set()):
+            assert "$vector" in response_n["data"]["documents"][0]
         #
         response_1 = await async_readonly_v_collection.find_one(
             sort=sort, projection=proj
         )
-        fields = set(response_1["data"]["document"].keys())
-        assert fields == exp_fields
+        vkeys_novec = set(response_1["data"]["document"].keys()) - {"$vector"}
+        expkeys_novec = exp_fields - {"$vector"}
+        assert vkeys_novec == expkeys_novec
+        # but in some cases $vector must be there:
+        if "$vector" in (proj or set()):
+            assert "$vector" in response_1["data"]["document"]
 
 
 @pytest.mark.describe("should coerce vectors in the find sort argument (async)")
@@ -420,7 +401,7 @@ async def test_chunked_insert_many(
 
     response0a = await async_writable_v_collection.find_one(filter={"_id": _ids0[0]})
     assert response0a is not None
-    assert response0a["data"]["document"] == documents0[0]
+    assert _cleanvec(response0a["data"]["document"]) == _cleanvec(documents0[0])
 
     # partial overlap of IDs for failure modes
     _ids1 = [
@@ -505,7 +486,7 @@ async def test_concurrent_chunked_insert_many(
 
     response0a = await async_writable_v_collection.find_one(filter={"_id": _ids0[0]})
     assert response0a is not None
-    assert response0a["data"]["document"] == documents0[0]
+    assert _cleanvec(response0a["data"]["document"]) == _cleanvec(documents0[0])
 
     # partial overlap of IDs for failure modes
     _ids1 = [
@@ -1044,7 +1025,9 @@ async def test_find_one_and_replace_vector(
 ) -> None:
     sort = {"$vector": [0.2, 0.6]}
 
-    response0 = await async_disposable_v_collection.find_one(sort=sort)
+    response0 = await async_disposable_v_collection.find_one(
+        sort=sort, projection={"*": 1}
+    )
     assert response0 is not None
     assert "anotherfield" in response0["data"]["document"]
 

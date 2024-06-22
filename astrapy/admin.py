@@ -19,7 +19,7 @@ import logging
 import re
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 from dataclasses import dataclass
 
 import httpx
@@ -27,6 +27,7 @@ import httpx
 from astrapy.core.ops import AstraDBOps
 from astrapy.core.defaults import DEFAULT_AUTH_HEADER
 from astrapy.api_commander import APICommander
+from astrapy.authentication import coerce_token_provider
 from astrapy.cursors import CommandCursor
 from astrapy.constants import Environment
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo
@@ -43,6 +44,7 @@ from astrapy.exceptions import (
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
+    from astrapy.authentication import TokenProvider
 
 
 logger = logging.getLogger(__name__)
@@ -90,11 +92,15 @@ API_ENDPOINT_TEMPLATE_MAP = {
 
 API_PATH_ENV_MAP = {
     Environment.DSE: "",
+    Environment.HCD: "",
+    Environment.CASSANDRA: "",
     Environment.OTHER: "",
 }
 
 API_VERSION_ENV_MAP = {
     Environment.DSE: "v1",
+    Environment.HCD: "v1",
+    Environment.CASSANDRA: "v1",
     Environment.OTHER: "v1",
 }
 
@@ -187,7 +193,7 @@ def build_api_endpoint(environment: str, database_id: str, region: str) -> str:
 def fetch_raw_database_info_from_id_token(
     id: str,
     *,
-    token: str,
+    token: Optional[str],
     environment: str = Environment.PROD,
     max_time_ms: Optional[int] = None,
 ) -> Dict[str, Any]:
@@ -221,7 +227,7 @@ def fetch_raw_database_info_from_id_token(
 async def async_fetch_raw_database_info_from_id_token(
     id: str,
     *,
-    token: str,
+    token: Optional[str],
     environment: str = Environment.PROD,
     max_time_ms: Optional[int] = None,
 ) -> Dict[str, Any]:
@@ -254,7 +260,10 @@ async def async_fetch_raw_database_info_from_id_token(
 
 
 def fetch_database_info(
-    api_endpoint: str, token: str, namespace: str, max_time_ms: Optional[int] = None
+    api_endpoint: str,
+    token: Optional[str],
+    namespace: str,
+    max_time_ms: Optional[int] = None,
 ) -> Optional[DatabaseInfo]:
     """
     Fetch database information through the DevOps API.
@@ -296,7 +305,10 @@ def fetch_database_info(
 
 
 async def async_fetch_database_info(
-    api_endpoint: str, token: str, namespace: str, max_time_ms: Optional[int] = None
+    api_endpoint: str,
+    token: Optional[str],
+    namespace: str,
+    max_time_ms: Optional[int] = None,
 ) -> Optional[DatabaseInfo]:
     """
     Fetch database information through the DevOps API.
@@ -379,6 +391,8 @@ class AstraDBAdmin:
 
     Args:
         token: an access token with enough permission to perform admin tasks.
+            This can be either a literal token string or a subclass of
+            `astrapy.authentication.TokenProvider`.
         environment: a label, whose value is one of Environment.PROD (default),
             Environment.DEV or Environment.TEST.
         caller_name: name of the application, or framework, on behalf of which
@@ -407,7 +421,7 @@ class AstraDBAdmin:
 
     def __init__(
         self,
-        token: str,
+        token: Optional[Union[str, TokenProvider]] = None,
         *,
         environment: Optional[str] = None,
         caller_name: Optional[str] = None,
@@ -415,7 +429,7 @@ class AstraDBAdmin:
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
     ) -> None:
-        self.token = token
+        self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
         if dev_ops_url is None:
             self.dev_ops_url = DEV_OPS_URL_MAP[self.environment]
@@ -426,7 +440,7 @@ class AstraDBAdmin:
         self._dev_ops_url = dev_ops_url
         self._dev_ops_api_version = dev_ops_api_version
         self._astra_db_ops = AstraDBOps(
-            token=self.token,
+            token=self.token_provider.get_token(),
             dev_ops_url=self.dev_ops_url,
             dev_ops_api_version=dev_ops_api_version,
             caller_name=caller_name,
@@ -439,13 +453,15 @@ class AstraDBAdmin:
             env_desc = ""
         else:
             env_desc = f', environment="{self.environment}"'
-        return f'{self.__class__.__name__}("{self.token[:12]}..."{env_desc})'
+        return (
+            f'{self.__class__.__name__}("{str(self.token_provider)[:12]}..."{env_desc})'
+        )
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AstraDBAdmin):
             return all(
                 [
-                    self.token == other.token,
+                    self.token_provider == other.token_provider,
                     self.environment == other.environment,
                     self.dev_ops_url == other.dev_ops_url,
                     self.dev_ops_url == other.dev_ops_url,
@@ -462,7 +478,7 @@ class AstraDBAdmin:
     def _copy(
         self,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         environment: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -470,7 +486,7 @@ class AstraDBAdmin:
         dev_ops_api_version: Optional[str] = None,
     ) -> AstraDBAdmin:
         return AstraDBAdmin(
-            token=token or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
             caller_name=caller_name or self._caller_name,
             caller_version=caller_version or self._caller_version,
@@ -481,7 +497,7 @@ class AstraDBAdmin:
     def with_options(
         self,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AstraDBAdmin:
@@ -490,6 +506,8 @@ class AstraDBAdmin:
 
         Args:
             token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API and DevOps API calls are performed. This ends up in
                 the request user-agent.
@@ -765,8 +783,8 @@ class AstraDBAdmin:
             ...     region="ap-south-1",
             ... )
             >>> my_new_db = my_new_db_admin.get_database()
-            >>> my_coll = my_new_db.create_collection("movies", dimension=512)
-            >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+            >>> my_coll = my_new_db.create_collection("movies", dimension=2)
+            >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.2]})
         """
 
         database_definition = {
@@ -1115,7 +1133,7 @@ class AstraDBAdmin:
         self,
         id: str,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -1130,6 +1148,8 @@ class AstraDBAdmin:
             id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
             token: if supplied, is passed to the Database instead of
                 the one set for this object.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             namespace: used to specify a certain namespace the resulting
                 Database will primarily work on. If not specified, similar
                 as for `region`, an additional DevOps API call reveals
@@ -1156,8 +1176,8 @@ class AstraDBAdmin:
             ...     "01234567-...",
             ...     region="us-east1",
             ... )
-            >>> coll = my_db.create_collection("movies", dimension=512)
-            >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+            >>> coll = my_db.create_collection("movies", dimension=2)
+            >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
 
         Note:
             This method does not perform any admin-level operation through
@@ -1171,7 +1191,7 @@ class AstraDBAdmin:
         # need to inspect for values?
         this_db_info: Optional[AdminDatabaseInfo] = None
         # handle overrides
-        _token = token or self.token
+        _token = coerce_token_provider(token) or self.token_provider
         if namespace:
             _namespace = namespace
         else:
@@ -1205,7 +1225,7 @@ class AstraDBAdmin:
         self,
         id: str,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -1308,6 +1328,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     Args:
         id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
         token: an access token with enough permission to perform admin tasks.
+            This can be either a literal token string or a subclass of
+            `astrapy.authentication.TokenProvider`.
         environment: a label, whose value is one of Environment.PROD (default),
             Environment.DEV or Environment.TEST.
         caller_name: name of the application, or framework, on behalf of which
@@ -1339,7 +1361,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         id: str,
         *,
-        token: str,
+        token: Optional[Union[str, TokenProvider]] = None,
         environment: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -1347,10 +1369,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         dev_ops_api_version: Optional[str] = None,
     ) -> None:
         self.id = id
-        self.token = token
+        self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
         self._astra_db_admin = AstraDBAdmin(
-            token=self.token,
+            token=self.token_provider,
             environment=self.environment,
             caller_name=caller_name,
             caller_version=caller_version,
@@ -1366,7 +1388,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             env_desc = f', environment="{self.environment}"'
         return (
             f'{self.__class__.__name__}(id="{self.id}", '
-            f'"{self.token[:12]}..."{env_desc})'
+            f'"{str(self.token_provider)[:12]}..."{env_desc})'
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -1374,7 +1396,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             return all(
                 [
                     self.id == other.id,
-                    self.token == other.token,
+                    self.token_provider == other.token_provider,
                     self.environment == other.environment,
                     self._astra_db_admin == other._astra_db_admin,
                 ]
@@ -1385,7 +1407,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def _copy(
         self,
         id: Optional[str] = None,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         environment: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -1394,7 +1416,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     ) -> AstraDBDatabaseAdmin:
         return AstraDBDatabaseAdmin(
             id=id or self.id,
-            token=token or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
             caller_name=caller_name or self._astra_db_admin._caller_name,
             caller_version=caller_version or self._astra_db_admin._caller_version,
@@ -1407,7 +1429,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         id: Optional[str] = None,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AstraDBDatabaseAdmin:
@@ -1417,6 +1439,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Args:
             id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
             token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API and DevOps API calls are performed. This ends up in
                 the request user-agent.
@@ -1498,7 +1522,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         return AstraDBDatabaseAdmin(
             id=id,
-            token=astra_db_admin.token,
+            token=astra_db_admin.token_provider,
             environment=astra_db_admin.environment,
             caller_name=astra_db_admin._caller_name,
             caller_version=astra_db_admin._caller_version,
@@ -1510,7 +1534,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def from_api_endpoint(
         api_endpoint: str,
         *,
-        token: str,
+        token: Optional[Union[str, TokenProvider]] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
         dev_ops_url: Optional[str] = None,
@@ -1522,6 +1546,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Args:
             api_endpoint: a full API endpoint for the Data Api.
             token: an access token with enough permissions to do admin work.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             caller_name: name of the application, or framework, on behalf of which
                 the DevOps API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -2085,7 +2111,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def get_database(
         self,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -2099,6 +2125,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             token: if supplied, is passed to the Database instead of
                 the one set for this object. Useful if one wants to work in
                 a least-privilege manner, limiting the permissions for non-admin work.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             namespace: an optional namespace to set in the resulting Database.
                 The same default logic as for `AstraDBAdmin.get_database` applies.
             region: an optional region for connecting to the database Data API endpoint.
@@ -2135,7 +2163,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def get_async_database(
         self,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -2177,6 +2205,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         api_endpoint: the full URI to access the Data API,
             e.g. "http://localhost:8181".
         token: an access token with enough permission to perform admin tasks.
+            This can be either a literal token string or a subclass of
+            `astrapy.authentication.TokenProvider`.
         environment: a label, whose value is one of Environment.OTHER (default)
             or other non-Astra environment values in the `Environment` enum.
         api_path: path to append to the API Endpoint. In typical usage, this
@@ -2190,12 +2220,13 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     Example:
         >>> from astrapy import DataAPIClient
         >>> from astrapy.constants import Environment
+        >>> from astrapy.authentication import UsernamePasswordTokenProvider
         >>>
-        >>> token = "Cassandra:..."
+        >>> token_provider = UsernamePasswordTokenProvider("username", "password")
         >>> endpoint = "http://localhost:8181"
         >>>
         >>> client = DataAPIClient(
-        >>>     token="Cassandra:Y2Fzc2FuZHJh:Y2Fzc2FuZHJh",
+        >>>     token=token_provider,
         >>>     environment=Environment.OTHER,
         >>> )
         >>> database = client.get_database(endpoint)
@@ -2209,7 +2240,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         api_endpoint: str,
         *,
-        token: str,
+        token: Optional[Union[str, TokenProvider]] = None,
         environment: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -2217,7 +2248,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         caller_version: Optional[str] = None,
     ) -> None:
         self.environment = (environment or Environment.OTHER).lower()
-        self.token = token
+        self.token_provider = coerce_token_provider(token)
         self.api_endpoint = api_endpoint
         #
         self.caller_name = caller_name
@@ -2227,7 +2258,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self._api_version = api_version if api_version is not None else ""
         #
         self._commander_headers = {
-            DEFAULT_AUTH_HEADER: token,
+            DEFAULT_AUTH_HEADER: self.token_provider.get_token(),
         }
         self._api_commander = APICommander(
             api_endpoint=self.api_endpoint,
@@ -2240,7 +2271,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         env_desc = f', environment="{self.environment}"'
         return (
             f'{self.__class__.__name__}(endpoint="{self.api_endpoint}", '
-            f'"{self.token[:12]}..."{env_desc})'
+            f'"{str(self.token_provider)[:12]}..."{env_desc})'
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -2257,7 +2288,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     def _copy(
         self,
         api_endpoint: Optional[str] = None,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         environment: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -2266,7 +2297,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     ) -> DataAPIDatabaseAdmin:
         return DataAPIDatabaseAdmin(
             api_endpoint=api_endpoint or self.api_endpoint,
-            token=token or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
             api_path=api_path or self._api_path,
             api_version=api_version or self._api_version,
@@ -2278,7 +2309,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         api_endpoint: Optional[str] = None,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> DataAPIDatabaseAdmin:
@@ -2289,6 +2320,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             api_endpoint: the full URI to access the Data API,
                 e.g. "http://localhost:8181".
             token: an access token with enough permission to perform admin tasks.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             caller_name: name of the application, or framework, on behalf of which
                 the admin API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -2620,7 +2653,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     def get_database(
         self,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -2632,6 +2665,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             token: if supplied, is passed to the Database instead of
                 the one set for this object. Useful if one wants to work in
                 a least-privilege manner, limiting the permissions for non-admin work.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             namespace: an optional namespace to set in the resulting Database.
                 If not provided, the default namespace is used.
             api_path: path to append to the API Endpoint. In typical usage, this
@@ -2657,7 +2692,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
         return Database(
             api_endpoint=self.api_endpoint,
-            token=token or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             namespace=namespace,
             caller_name=self.caller_name,
             caller_version=self.caller_version,
@@ -2669,7 +2704,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     def get_async_database(
         self,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,

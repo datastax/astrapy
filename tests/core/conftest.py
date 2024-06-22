@@ -18,7 +18,7 @@ from typing import (
 
 import pytest_asyncio
 
-from ..conftest import AstraDBCredentials
+from ..conftest import DataAPICredentials
 from astrapy.core.db import (
     AstraDB,
     AstraDBCollection,
@@ -95,10 +95,10 @@ def _batch_iterable(iterable: Iterable[T], batch_size: int) -> Iterable[Iterable
 
 
 @pytest.fixture(scope="session")
-def db(astra_db_credentials_kwargs: AstraDBCredentials) -> AstraDB:
-    token = astra_db_credentials_kwargs["token"]
-    api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
-    namespace = astra_db_credentials_kwargs.get("namespace")
+def db(data_api_credentials_kwargs: DataAPICredentials) -> AstraDB:
+    token = data_api_credentials_kwargs["token"]
+    api_endpoint = data_api_credentials_kwargs["api_endpoint"]
+    namespace = data_api_credentials_kwargs.get("namespace")
 
     if token is None or api_endpoint is None:
         raise ValueError("Required ASTRA DB configuration is missing")
@@ -108,11 +108,11 @@ def db(astra_db_credentials_kwargs: AstraDBCredentials) -> AstraDB:
 
 @pytest_asyncio.fixture(scope="function")
 async def async_db(
-    astra_db_credentials_kwargs: AstraDBCredentials,
+    data_api_credentials_kwargs: DataAPICredentials,
 ) -> AsyncIterable[AsyncAstraDB]:
-    token = astra_db_credentials_kwargs["token"]
-    api_endpoint = astra_db_credentials_kwargs["api_endpoint"]
-    namespace = astra_db_credentials_kwargs.get("namespace")
+    token = data_api_credentials_kwargs["token"]
+    api_endpoint = data_api_credentials_kwargs["api_endpoint"]
+    namespace = data_api_credentials_kwargs.get("namespace")
 
     if token is None or api_endpoint is None:
         raise ValueError("Required ASTRA DB configuration is missing")
@@ -220,7 +220,7 @@ def allowindex_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
             },
         },
     )
-    collection.upsert(INDEXING_SAMPLE_DOCUMENT)
+    collection.upsert_one(INDEXING_SAMPLE_DOCUMENT)
 
     yield collection
 
@@ -249,7 +249,7 @@ def denyindex_nonv_collection(db: AstraDB) -> Iterable[AstraDBCollection]:
             },
         },
     )
-    collection.upsert(INDEXING_SAMPLE_DOCUMENT)
+    collection.upsert_one(INDEXING_SAMPLE_DOCUMENT)
 
     yield collection
 

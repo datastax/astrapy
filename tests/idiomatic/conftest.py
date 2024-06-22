@@ -14,25 +14,56 @@
 
 """Fixtures specific to the non-core-side testing."""
 
-import os
 from typing import Iterable
 import pytest
 
-from ..conftest import AstraDBCredentials
-from astrapy import AsyncCollection, AsyncDatabase, Collection, Database
+from ..conftest import (
+    DataAPICredentials,
+    DataAPICredentialsInfo,
+    async_fail_if_not_removed,
+    sync_fail_if_not_removed,
+    IS_ASTRA_DB,
+    SECONDARY_NAMESPACE,
+)
+
+from astrapy import AsyncCollection, AsyncDatabase, Collection, DataAPIClient, Database
 from astrapy.constants import VectorMetric
 
 TEST_COLLECTION_INSTANCE_NAME = "test_coll_instance"
 TEST_COLLECTION_NAME = "id_test_collection"
 
-ASTRA_DB_SECONDARY_KEYSPACE = os.environ.get("ASTRA_DB_SECONDARY_KEYSPACE")
+
+@pytest.fixture(scope="session")
+def client(
+    data_api_credentials_info: DataAPICredentialsInfo,
+) -> Iterable[DataAPIClient]:
+    env = data_api_credentials_info["environment"]
+    client = DataAPIClient(environment=env)
+    yield client
 
 
 @pytest.fixture(scope="session")
 def sync_database(
-    astra_db_credentials_kwargs: AstraDBCredentials,
+    data_api_credentials_kwargs: DataAPICredentials,
+    data_api_credentials_info: DataAPICredentialsInfo,
+    client: DataAPIClient,
 ) -> Iterable[Database]:
-    yield Database(**astra_db_credentials_kwargs)
+    database = client.get_database(
+        data_api_credentials_kwargs["api_endpoint"],
+        token=data_api_credentials_kwargs["token"],
+        namespace=data_api_credentials_kwargs["namespace"],
+    )
+
+    if not IS_ASTRA_DB:
+        # ensure keyspace(s) exist
+        database_admin = database.get_database_admin()
+        database_admin.create_namespace(data_api_credentials_kwargs["namespace"])
+        if data_api_credentials_info["secondary_namespace"]:
+            database_admin.create_namespace(
+                data_api_credentials_info["secondary_namespace"]
+            )
+
+    yield database
 
 
 @pytest.fixture(scope="function")
@@ -44,14 +75,11 @@ def async_database(
 
 @pytest.fixture(scope="session")
 def sync_collection_instance(
-    astra_db_credentials_kwargs: AstraDBCredentials,
+    data_api_credentials_kwargs: DataAPICredentials,
     sync_database: Database,
 ) -> Iterable[Collection]:
     """Just an instance of the class, no DB-level stuff."""
-    yield Collection(
-        sync_database,
-        TEST_COLLECTION_INSTANCE_NAME,
-    )
+    yield sync_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)
 
 
 @pytest.fixture(scope="function")
@@ -64,7 +92,7 @@ def async_collection_instance(
 
 @pytest.fixture(scope="session")
 def sync_collection(
-    astra_db_credentials_kwargs: AstraDBCredentials,
+    data_api_credentials_kwargs: DataAPICredentials,
     sync_database: Database,
 ) -> Iterable[Collection]:
     """An actual collection on DB, in the main namespace"""
@@ -82,7 +110,7 @@ def sync_collection(
 @pytest.fixture(scope="function")
 def sync_empty_collection(sync_collection: Collection) -> Iterable[Collection]:
     """Emptied for each test function"""
-    sync_collection.delete_all()
+    sync_collection.delete_many({})
     yield sync_collection
 
 
@@ -103,7 +131,12 @@ def async_empty_collection(
 
 
 __all__ = [
-    "AstraDBCredentials",
+    "DataAPICredentials",
+    "DataAPICredentialsInfo",
     "sync_database",
+    "sync_fail_if_not_removed",
     "async_database",
+    "async_fail_if_not_removed",
+    "IS_ASTRA_DB",
+    "SECONDARY_NAMESPACE",
 ]

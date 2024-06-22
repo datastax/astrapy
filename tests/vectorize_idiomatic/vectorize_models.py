@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import os
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, Optional, Tuple
 
 from astrapy.info import CollectionVectorServiceOptions
 from astrapy.api_commander import APICommander
+
+from .conftest import IS_ASTRA_DB
 
 
 alphanum = set("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890")
@@ -79,14 +81,11 @@ USE_INSERT_ONE_MAP: Dict[Tuple[str, str], bool] = {
     # ("upstageAI", "solar-1-mini-embedding"): True,
 }
 
-# environment, region, auth_type. One spec must match.
-#   Example: {("nvidia", "NV-Embed-QA"): [("dev", "us-west-2", "*")]}
-ENV_FILTERS_MAP: Dict[Tuple[str, str], List[Tuple[str, str, str]]] = {}
-
 SECRET_NAME_ROOT_MAP = {
     "azureOpenAI": "AZURE_OPENAI",
     "cohere": "COHERE",
     "huggingface": "HUGGINGFACE",
+    "huggingfaceDedicated": "HUGGINGFACEDED",
     "jinaAI": "JINAAI",
     "mistral": "MISTRAL",
     "nvidia": "NVIDIA",
@@ -94,6 +93,11 @@ SECRET_NAME_ROOT_MAP = {
     "upstageAI": "UPSTAGE",
     "voyageAI": "VOYAGEAI",
 }
+
+# this is a way to suppress/limit certain combinations of
+# "full param" testing from the start. If even one of the optional params
+# in a test model is PARAM_SKIP_MARKER, the combination is not emitted at all.
+PARAM_SKIP_MARKER = "__SKIP_ME__"
 
 PARAMETER_VALUE_MAP = {
     ("azureOpenAI", "text-embedding-3-large", "deploymentId"): os.environ[
@@ -119,6 +123,38 @@ PARAMETER_VALUE_MAP = {
     ("voyageAI", "voyage-large-2", "autoTruncate"): True,
     ("voyageAI", "voyage-large-2-instruct", "autoTruncate"): True,
     ("voyageAI", "voyage-law-2", "autoTruncate"): True,
+    #
+    ("huggingfaceDedicated", "endpoint-defined-model", "endpointName"): os.environ[
+        "HUGGINGFACEDED_ENDPOINTNAME"
+    ],
+    ("huggingfaceDedicated", "endpoint-defined-model", "regionName"): os.environ[
+        "HUGGINGFACEDED_REGIONNAME"
+    ],
+    ("huggingfaceDedicated", "endpoint-defined-model", "cloudName"): os.environ[
+        "HUGGINGFACEDED_CLOUDNAME"
+    ],
+    #
+    ("openai", "text-embedding-3-large", "organizationId"): os.environ[
+        "OPENAI_ORGANIZATION_ID"
+    ],
+    ("openai", "text-embedding-3-large", "projectId"): os.environ["OPENAI_PROJECT_ID"],
+    ("openai", "text-embedding-3-small", "organizationId"): os.environ[
+        "OPENAI_ORGANIZATION_ID"
+    ],
+    ("openai", "text-embedding-3-small", "projectId"): os.environ["OPENAI_PROJECT_ID"],
+    ("openai", "text-embedding-ada-002", "organizationId"): os.environ[
+        "OPENAI_ORGANIZATION_ID"
+    ],
+    ("openai", "text-embedding-ada-002", "projectId"): os.environ["OPENAI_PROJECT_ID"],
+}
+
+# this is ad-hoc for HF dedicated. Models here, though "optional" dimension,
+# do not undergo the f/0 optional dimension because of that, rather have
+# a forced fixed, provided dimension.
+FORCE_DIMENSION_MAP = {
+    ("huggingfaceDedicated", "endpoint-defined-model"): int(
+        os.environ["HUGGINGFACEDED_DIMENSION"]
+    ),
 }
 
 
@@ -128,17 +164,37 @@ def live_provider_info() -> Dict[str, Any]:
     for the latest information.
     This is later used to make sure everything is mapped/tested.
     """
-    ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
-    ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
-    api_endpoint = ASTRA_DB_API_ENDPOINT
-    path = "api/json/v1"
-    headers = {"Token": ASTRA_DB_APPLICATION_TOKEN}
-    cmd = APICommander(
-        api_endpoint=api_endpoint,
-        path=path,
-        headers=headers,
-    )
-    response = cmd.request(payload={"findEmbeddingProviders": {}})
+    response: Dict[str, Any]
+
+    if IS_ASTRA_DB:
+        ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
+        ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
+        api_endpoint = ASTRA_DB_API_ENDPOINT
+        path = "api/json/v1"
+        headers_a: Dict[str, Optional[str]] = {"Token": ASTRA_DB_APPLICATION_TOKEN}
+        cmd = APICommander(
+            api_endpoint=api_endpoint,
+            path=path,
+            headers=headers_a,
+        )
+        response = cmd.request(payload={"findEmbeddingProviders": {}})
+    else:
+        LOCAL_DATA_API_APPLICATION_TOKEN = os.environ[
+            "LOCAL_DATA_API_APPLICATION_TOKEN"
+        ]
+        LOCAL_DATA_API_ENDPOINT = os.environ["LOCAL_DATA_API_ENDPOINT"]
+        api_endpoint = LOCAL_DATA_API_ENDPOINT
+        path = "v1"
+        headers_l: Dict[str, Optional[str]] = {
+            "Token": LOCAL_DATA_API_APPLICATION_TOKEN
+        }
+        cmd = APICommander(
+            api_endpoint=api_endpoint,
+            path=path,
+            headers=headers_l,
+        )
+        response = cmd.request(payload={"findEmbeddingProviders": {}})
+
     return response
 
 
@@ -207,9 +263,15 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                     if d_params:
                         d_param = d_params[0]
                         if "defaultValue" in d_param:
-                            optional_dimension = True
-                            assert model["vectorDimension"] is None
-                            dimension = _from_validation(d_param)
+                            if (provider_name, model["name"]) in FORCE_DIMENSION_MAP:
+                                optional_dimension = False
+                                dimension = FORCE_DIMENSION_MAP[
+                                    (provider_name, model["name"])
+                                ]
+                            else:
+                                optional_dimension = True
+                                assert model["vectorDimension"] is None
+                                dimension = _from_validation(d_param)
                         else:
                             optional_dimension = False
                             assert model["vectorDimension"] is None
@@ -251,9 +313,6 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                             "use_insert_one": USE_INSERT_ONE_MAP.get(
                                 (provider_name, model["name"]), False
                             ),
-                            "env_filters": ENV_FILTERS_MAP.get(
-                                (provider_name, model["name"]), [("*", "*", "*")]
-                            ),
                             "service_options": CollectionVectorServiceOptions(
                                 provider=provider_name,
                                 model_name=model["name"],
@@ -262,33 +321,41 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                         }
                         yield this_minimal_model
 
-                    # and in any case we issue a 'full-spec' one
+                    # and in any case we issue a 'full-spec' one ...
+                    # ... unless explicitly marked as skipped
+                    if all(
+                        v != PARAM_SKIP_MARKER
+                        for v in optional_model_parameters.values()
+                    ):
+                        root_model = {
+                            "auth_type_name": auth_type_name,
+                            "dimension": dimension,
+                            "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
+                            "test_assets": TEST_ASSETS_MAP.get(
+                                (provider_name, model["name"]), DEFAULT_TEST_ASSETS
+                            ),
+                            "use_insert_one": USE_INSERT_ONE_MAP.get(
+                                (provider_name, model["name"]), False
+                            ),
+                        }
 
-                    model_tag_f = f"{provider_name}/{model['name']}/{auth_type_name}/f"
-                    this_model = {
-                        "model_tag": model_tag_f,
-                        "simple_tag": _collapse(
-                            "".join(c for c in model_tag_f if c in alphanum)
-                        ),
-                        "auth_type_name": auth_type_name,
-                        "dimension": dimension,
-                        "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
-                        "test_assets": TEST_ASSETS_MAP.get(
-                            (provider_name, model["name"]), DEFAULT_TEST_ASSETS
-                        ),
-                        "use_insert_one": USE_INSERT_ONE_MAP.get(
-                            (provider_name, model["name"]), False
-                        ),
-                        "env_filters": ENV_FILTERS_MAP.get(
-                            (provider_name, model["name"]), [("*", "*", "*")]
-                        ),
-                        "service_options": CollectionVectorServiceOptions(
-                            provider=provider_name,
-                            model_name=model["name"],
-                            parameters={
-                                **model_parameters,
-                                **optional_model_parameters,
-                            },
-                        ),
-                    }
-                    yield this_model
+                        model_tag_f = (
+                            f"{provider_name}/{model['name']}/{auth_type_name}/f"
+                        )
+
+                        this_model = {
+                            "model_tag": model_tag_f,
+                            "simple_tag": _collapse(
+                                "".join(c for c in model_tag_f if c in alphanum)
+                            ),
+                            "service_options": CollectionVectorServiceOptions(
+                                provider=provider_name,
+                                model_name=model["name"],
+                                parameters={
+                                    **model_parameters,
+                                    **optional_model_parameters,
+                                },
+                            ),
+                            **root_model,
+                        }
+                        yield this_model

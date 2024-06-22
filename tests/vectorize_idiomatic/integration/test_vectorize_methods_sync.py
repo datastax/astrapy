@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Dict
+
 import pytest
 
-# from ..conftest import is_nvidia_service_available
 from astrapy import Collection, Database
 from astrapy.exceptions import DataAPIResponseException
 from astrapy.operations import (
@@ -27,45 +28,49 @@ from astrapy.operations import (
 
 
 class TestVectorizeMethodsSync:
-    # @pytest.mark.skipif(
-    #     not is_nvidia_service_available(), reason="No 'service' on this database"
-    # )
     @pytest.mark.describe("test of vectorize in collection methods, sync")
     def test_collection_methods_vectorize_sync(
         self,
         sync_empty_service_collection: Collection,
-        service_vector_dimension: int,
+        service_collection_parameters: Dict[str, Any],
     ) -> None:
         col = sync_empty_service_collection
+        service_vector_dimension = service_collection_parameters["dimension"]
 
-        col.insert_one({"t": "tower"}, vectorize="How high is this tower?")
+        col.insert_one({"t": "tower", "$vectorize": "How high is this tower?"})
         col.insert_one({"t": "vectorless"})
-        col.insert_one({"t": "vectorful"}, vector=[0.01] * service_vector_dimension)
+        col.insert_one({"t": "vectorful", "$vector": [0.01] * service_vector_dimension})
 
         col.insert_many(
-            [{"t": "guide"}, {"t": "seeds"}],
-            vectorize=[
-                "This is the instructions manual. Read it!",
-                "Other plants rely on wind to propagate their seeds.",
+            [
+                {
+                    "t": "guide",
+                    "$vectorize": "This is the instructions manual. Read it!",
+                },
+                {
+                    "t": "seeds",
+                    "$vectorize": "Other plants rely on wind to propagate their seeds.",
+                },
             ],
         )
-        col.insert_many(
-            [{"t": "dog"}, {"t": "cat_novector"}, {"t": "spider"}],
-            vectorize=[
-                None,
-                None,
-                "The eye pattern is a primary criterion to the family.",
-            ],
-            vectors=[
-                [0.01] * service_vector_dimension,
-                None,
-                None,
-            ],
-        )
+        with pytest.warns(DeprecationWarning):
+            col.insert_many(
+                [{"t": "dog"}, {"t": "cat_novector"}, {"t": "spider"}],
+                vectorize=[
+                    None,
+                    None,
+                    "The eye pattern is a primary criterion to the family.",
+                ],
+                vectors=[
+                    [0.01] * service_vector_dimension,
+                    None,
+                    None,
+                ],
+            )
 
         doc = col.find_one(
             {},
-            vectorize="This building is five storeys tall.",
+            sort={"$vectorize": "This building is five storeys tall."},
             projection={"$vector": False},
         )
         assert doc is not None
@@ -74,7 +79,7 @@ class TestVectorizeMethodsSync:
         docs = list(
             col.find(
                 {},
-                vectorize="This building is five storeys tall.",
+                sort={"$vectorize": "This building is five storeys tall."},
                 limit=2,
                 projection={"$vector": False},
             )
@@ -84,7 +89,7 @@ class TestVectorizeMethodsSync:
         rdoc = col.find_one_and_replace(
             {},
             {"t": "spider", "$vectorize": "Check out the eyes!"},
-            vectorize="The disposition of the eyes tells much",
+            sort={"$vectorize": "The disposition of the eyes tells much"},
             projection={"$vector": False},
         )
         assert rdoc["t"] == "spider"
@@ -92,14 +97,14 @@ class TestVectorizeMethodsSync:
         r1res = col.replace_one(
             {},
             {"t": "spider", "$vectorize": "Look at how the eyes are placed"},
-            vectorize="The disposition of the eyes tells much",
+            sort={"$vectorize": "The disposition of the eyes tells much"},
         )
         assert r1res.update_info["nModified"] == 1
 
         udoc = col.find_one_and_update(
             {},
             {"$set": {"$vectorize": "Consider consulting the how-to"}},
-            vectorize="Have a look at the user guide...",
+            sort={"$vectorize": "Have a look at the user guide..."},
             projection={"$vector": False},
         )
         assert udoc["t"] == "guide"
@@ -107,26 +112,23 @@ class TestVectorizeMethodsSync:
         u1res = col.update_one(
             {},
             {"$set": {"$vectorize": "Know how to operate it before doing so."}},
-            vectorize="Have a look at the user guide...",
+            sort={"$vectorize": "Have a look at the user guide..."},
         )
         assert u1res.update_info["nModified"] == 1
 
         ddoc = col.find_one_and_delete(
             {},
-            vectorize="Some trees have seeds that are dispersed in the air!",
+            sort={"$vectorize": "Some trees have seeds that are dispersed in the air!"},
             projection={"$vector": False},
         )
         assert ddoc["t"] == "seeds"
 
         d1res = col.delete_one(
             {},
-            vectorize="yet another giant construction in this suburb.",
+            sort={"$vectorize": "yet another giant construction in this suburb."},
         )
         assert d1res.deleted_count == 1
 
-    # @pytest.mark.skipif(
-    #     not is_nvidia_service_available(), reason="No 'service' on this database"
-    # )
     @pytest.mark.describe("test of bulk_write with vectorize, sync")
     def test_collection_bulk_write_vectorize_sync(
         self,
@@ -134,24 +136,26 @@ class TestVectorizeMethodsSync:
     ) -> None:
         col = sync_empty_service_collection
 
-        bw_ops = [
-            InsertOne({"a": 1}, vectorize="The cat is on the table."),
-            InsertMany(
-                [{"a": 2}, {"z": 0}],
-                vectorize=[
-                    "That is a fine spaghetti dish!",
-                    "I am not debating the effectiveness of such approach...",
-                ],
-            ),
-            UpdateOne(
-                {},
-                {"$set": {"b": 1}},
-                vectorize="Oh, I love a nice bolognese pasta meal!",
-            ),
-            ReplaceOne({}, {"a": 10}, vectorize="The kitty sits on the desk."),
-            DeleteOne({}, vectorize="I don't argue with the proposed plan..."),
-        ]
-        col.bulk_write(bw_ops, ordered=True)
+        with pytest.warns(DeprecationWarning):
+            bw_ops = [
+                InsertOne({"a": 1}, vectorize="The cat is on the table."),
+                InsertMany(
+                    [{"a": 2}, {"z": 0}],
+                    vectorize=[
+                        "That is a fine spaghetti dish!",
+                        "I am not debating the effectiveness of such approach...",
+                    ],
+                ),
+                UpdateOne(
+                    {},
+                    {"$set": {"b": 1}},
+                    vectorize="Oh, I love a nice bolognese pasta meal!",
+                ),
+                ReplaceOne({}, {"a": 10}, vectorize="The kitty sits on the desk."),
+                DeleteOne({}, vectorize="I don't argue with the proposed plan..."),
+            ]
+        with pytest.warns(DeprecationWarning):
+            col.bulk_write(bw_ops, ordered=True)
         found = [
             {k: v for k, v in doc.items() if k != "_id"}
             for doc in col.find({}, projection=["a", "b"])
@@ -160,20 +164,107 @@ class TestVectorizeMethodsSync:
         assert {"a": 10} in found
         assert {"a": 2, "b": 1} in found
 
-    # @pytest.mark.skipif(
-    #     not is_nvidia_service_available(), reason="No 'service' on this database"
-    # )
+    @pytest.mark.describe(
+        "test of include_sort_vector in collection vectorize find, sync"
+    )
+    def test_collection_include_sort_vector_vectorize_find_sync(
+        self,
+        sync_empty_service_collection: Collection,
+    ) -> None:
+        # with empty collection
+        q_text = "A sentence for searching."
+
+        def _is_vector(v: Any) -> bool:
+            return isinstance(v, list) and isinstance(v[0], float)
+
+        for include_sv in [False, True]:
+            for sort_cl_label in ["vze"]:
+                sort_cl_e: Dict[str, Any] = {"$vectorize": q_text}
+                vec_expected = include_sv and sort_cl_label == "vze"
+                # pristine iterator
+                this_ite_1 = sync_empty_service_collection.find(
+                    {}, sort=sort_cl_e, include_sort_vector=include_sv
+                )
+                if vec_expected:
+                    assert _is_vector(this_ite_1.get_sort_vector())
+                else:
+                    assert this_ite_1.get_sort_vector() is None
+                # after exhaustion with empty
+                all_items_1 = list(this_ite_1)
+                assert all_items_1 == []
+                if vec_expected:
+                    assert _is_vector(this_ite_1.get_sort_vector())
+                else:
+                    assert this_ite_1.get_sort_vector() is None
+                # directly exhausted before calling get_sort_vector
+                this_ite_2 = sync_empty_service_collection.find(
+                    {}, sort=sort_cl_e, include_sort_vector=include_sv
+                )
+                all_items_2 = list(this_ite_2)
+                assert all_items_2 == []
+                if vec_expected:
+                    assert _is_vector(this_ite_2.get_sort_vector())
+                else:
+                    assert this_ite_2.get_sort_vector() is None
+        sync_empty_service_collection.insert_many(
+            [
+                {"seq": i, "$vectorize": f"This is sentence number {i}"}
+                for i in range(10)
+            ]
+        )
+        # with non-empty collection
+        for include_sv in [False, True]:
+            for sort_cl_label in ["vze"]:
+                sort_cl_f: Dict[str, Any] = {"$vectorize": q_text}
+                vec_expected = include_sv and sort_cl_label == "vze"
+                # pristine iterator
+                this_ite_1 = sync_empty_service_collection.find(
+                    {}, sort=sort_cl_f, include_sort_vector=include_sv
+                )
+                if vec_expected:
+                    assert _is_vector(this_ite_1.get_sort_vector())
+                else:
+                    assert this_ite_1.get_sort_vector() is None
+                # after consuming one item
+                first_seqs = [
+                    doc["seq"] for doc in [this_ite_1.__next__(), this_ite_1.__next__()]
+                ]
+                if vec_expected:
+                    assert _is_vector(this_ite_1.get_sort_vector())
+                else:
+                    assert this_ite_1.get_sort_vector() is None
+                # after exhaustion with the rest
+                last_seqs = [doc["seq"] for doc in list(this_ite_1)]
+                assert len(set(last_seqs + first_seqs)) == 10
+                assert len(last_seqs + first_seqs) == 10
+                if vec_expected:
+                    assert _is_vector(this_ite_1.get_sort_vector())
+                else:
+                    assert this_ite_1.get_sort_vector() is None
+                # directly exhausted before calling get_sort_vector
+                this_ite_2 = sync_empty_service_collection.find(
+                    {}, sort=sort_cl_f, include_sort_vector=include_sv
+                )
+                list(this_ite_2)
+                if vec_expected:
+                    assert _is_vector(this_ite_2.get_sort_vector())
+                else:
+                    assert this_ite_2.get_sort_vector() is None
+
     @pytest.mark.describe(
         "test of database create_collection dimension-mismatch failure, sync"
     )
     def test_database_create_collection_dimension_mismatch_failure_sync(
         self,
         sync_database: Database,
+        service_collection_parameters: Dict[str, Any],
     ) -> None:
         with pytest.raises(DataAPIResponseException):
             sync_database.create_collection(
                 "collection_name",
-                dimension=123,
-                # service={"provider": "nvidia", "modelName": "NV-Embed-QA"},
-                service={"provider": "openai", "modelName": "text-embedding-ada-002"},
+                dimension=service_collection_parameters["dimension"] + 10,
+                service={
+                    "provider": service_collection_parameters["provider"],
+                    "modelName": service_collection_parameters["modelName"],
+                },
             )

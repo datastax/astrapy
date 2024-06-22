@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional, Union, TYPE_CHECKING
 
 from astrapy.admin import (
     api_endpoint_parser,
@@ -26,12 +26,14 @@ from astrapy.admin import (
     parse_api_endpoint,
     parse_generic_api_url,
 )
+from astrapy.authentication import coerce_token_provider
 from astrapy.constants import Environment
 
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
     from astrapy.admin import AstraDBAdmin
+    from astrapy.authentication import TokenProvider
 
 
 logger = logging.getLogger(__name__)
@@ -42,13 +44,15 @@ class DataAPIClient:
     A client for using the Data API. This is the main entry point and sits
     at the top of the conceptual "client -> database -> collection" hierarchy.
 
-    The client is created by passing a suitable Access Token. Starting from the
-    client:
+    A client is created first, optionally passing it a suitable Access Token.
+    Starting from the client, then:
         - databases (Database and AsyncDatabase) are created for working with data
         - AstraDBAdmin objects can be created for admin-level work
 
     Args:
         token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
+            This can be either a literal token string or a subclass of
+            `astrapy.authentication.TokenProvider`.
         environment: a string representing the target Data API environment.
             It can be left unspecified for the default value of `Environment.PROD`;
             other values include `Environment.OTHER`, `Environment.DSE`.
@@ -63,8 +67,8 @@ class DataAPIClient:
         >>> my_db0 = my_client.get_database(
         ...     "https://01234567-....apps.astra.datastax.com"
         ... )
-        >>> my_coll = my_db0.create_collection("movies", dimension=512)
-        >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+        >>> my_coll = my_db0.create_collection("movies", dimension=2)
+        >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.3]})
         >>> my_db1 = my_client.get_database("01234567-...")
         >>> my_db2 = my_client.get_database("01234567-...", region="us-east1")
         >>> my_adm0 = my_client.get_admin()
@@ -74,13 +78,13 @@ class DataAPIClient:
 
     def __init__(
         self,
-        token: str,
+        token: Optional[Union[str, TokenProvider]] = None,
         *,
         environment: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        self.token = token
+        self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
 
         if self.environment not in Environment.values:
@@ -95,13 +99,15 @@ class DataAPIClient:
             env_desc = ""
         else:
             env_desc = f', environment="{self.environment}"'
-        return f'{self.__class__.__name__}("{self.token[:12]}..."{env_desc})'
+        return (
+            f'{self.__class__.__name__}("{str(self.token_provider)[:12]}..."{env_desc})'
+        )
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, DataAPIClient):
             return all(
                 [
-                    self.token == other.token,
+                    self.token_provider == other.token_provider,
                     self.environment == other.environment,
                     self._caller_name == other._caller_name,
                     self._caller_version == other._caller_version,
@@ -127,13 +133,13 @@ class DataAPIClient:
     def _copy(
         self,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         environment: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> DataAPIClient:
         return DataAPIClient(
-            token=token or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
             caller_name=caller_name or self._caller_name,
             caller_version=caller_version or self._caller_version,
@@ -142,7 +148,7 @@ class DataAPIClient:
     def with_options(
         self,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> DataAPIClient:
@@ -151,6 +157,8 @@ class DataAPIClient:
 
         Args:
             token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API and DevOps API calls are performed. This ends up in
                 the request user-agent.
@@ -200,7 +208,7 @@ class DataAPIClient:
         self,
         id: str,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -217,6 +225,8 @@ class DataAPIClient:
                 does not create the database, just the object instance.
                 Actual admin work can be achieved by using the AstraDBAdmin object.
             token: if supplied, is passed to the Database instead of the client token.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             namespace: if provided, is passed to the Database
                 (it is left to the default otherwise).
             region: the region to use for connecting to the database. The
@@ -242,8 +252,8 @@ class DataAPIClient:
             ... )
             >>> my_db2 = my_client.get_database("01234567-...", token="AstraCS:...")
             >>> my_db3 = my_client.get_database("01234567-...", region="us-west1")
-            >>> my_coll = my_db0.create_collection("movies", dimension=512)
-            >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+            >>> my_coll = my_db0.create_collection("movies", dimension=2)
+            >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
 
         Note:
             This method does not perform any admin-level operation through
@@ -280,14 +290,14 @@ class DataAPIClient:
                         logger.info(f"fetching raw database info for {id}")
                         this_db_info = fetch_raw_database_info_from_id_token(
                             id=id,
-                            token=self.token,
+                            token=self.token_provider.get_token(),
                             environment=self.environment,
                             max_time_ms=max_time_ms,
                         )
                         logger.info(f"finished fetching raw database info for {id}")
                     _region = this_db_info["info"]["region"]
 
-                _token = token or self.token
+                _token = coerce_token_provider(token) or self.token_provider
                 _api_endpoint = build_api_endpoint(
                     environment=self.environment,
                     database_id=id,
@@ -323,7 +333,7 @@ class DataAPIClient:
         self,
         id: str,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -351,7 +361,7 @@ class DataAPIClient:
         self,
         api_endpoint: str,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -367,6 +377,8 @@ class DataAPIClient:
             api_endpoint: the full "API Endpoint" string used to reach the Data API.
                 Example: "https://DATABASE_ID-REGION.apps.astra.datastax.com"
             token: if supplied, is passed to the Database instead of the client token.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             namespace: if provided, is passed to the Database
                 (it is left to the default otherwise).
             api_path: path to append to the API Endpoint. In typical usage, this
@@ -387,8 +399,8 @@ class DataAPIClient:
             ...     "https://01234567-....apps.astra.datastax.com",
             ...     namespace="the_other_namespace",
             ... )
-            >>> my_coll = my_db0.create_collection("movies", dimension=512)
-            >>> my_coll.insert_one({"title": "The Title"}, vector=...)
+            >>> my_coll = my_db0.create_collection("movies", dimension=2)
+            >>> my_coll.insert_one({"title": "The Title", "$vector": [0.5, 0.6]})
 
         Note:
             This method does not perform any admin-level operation through
@@ -409,7 +421,7 @@ class DataAPIClient:
                         f'`environment="{parsed_api_endpoint.environment}"` '
                         "to the DataAPIClient creation statement."
                     )
-                _token = token or self.token
+                _token = coerce_token_provider(token) or self.token_provider
                 return Database(
                     api_endpoint=api_endpoint,
                     token=_token,
@@ -427,7 +439,7 @@ class DataAPIClient:
         else:
             parsed_generic_api_endpoint = parse_generic_api_url(api_endpoint)
             if parsed_generic_api_endpoint:
-                _token = token or self.token
+                _token = coerce_token_provider(token) or self.token_provider
                 return Database(
                     api_endpoint=parsed_generic_api_endpoint,
                     token=_token,
@@ -447,7 +459,7 @@ class DataAPIClient:
         self,
         api_endpoint: str,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -475,7 +487,7 @@ class DataAPIClient:
     def get_admin(
         self,
         *,
-        token: Optional[str] = None,
+        token: Optional[Union[str, TokenProvider]] = None,
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
     ) -> AstraDBAdmin:
@@ -487,6 +499,8 @@ class DataAPIClient:
             token: if supplied, is passed to the Astra DB Admin instead of the
                 client token. This may be useful when switching to a more powerful,
                 admin-capable permission set.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             dev_ops_url: in case of custom deployments, this can be used to specify
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
                 Generally it can be omitted. The environment (prod/dev/...) is
@@ -518,7 +532,7 @@ class DataAPIClient:
             raise ValueError("Method not supported outside of Astra DB.")
 
         return AstraDBAdmin(
-            token=token or self.token,
+            token=coerce_token_provider(token) or self.token_provider,
             environment=self.environment,
             caller_name=self._caller_name,
             caller_version=self._caller_version,

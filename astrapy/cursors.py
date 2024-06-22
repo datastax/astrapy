@@ -160,6 +160,68 @@ def _hash_document(document: Dict[str, Any]) -> str:
     return _item_hash
 
 
+class _PrefetchIterator:
+    def __init__(self, iterator: Iterator[DocumentType]):
+        self.iterator = iterator
+        self.prefetched_item: Optional[DocumentType] = None
+        self.has_prefetched = False
+        self.prefetch_exhausted = False
+
+    def __iter__(self) -> Iterator[DocumentType]:
+        return self
+
+    def __next__(self) -> DocumentType:
+        if self.has_prefetched:
+            self.has_prefetched = False
+            if self.prefetch_exhausted:
+                raise StopIteration
+            # if this runs, prefetched_item is filled with a document:
+            return self.prefetched_item  # type: ignore[return-value]
+        else:
+            return next(self.iterator)
+
+    def prefetch(self) -> None:
+        if not self.has_prefetched and not self.prefetch_exhausted:
+            try:
+                self.prefetched_item = next(self.iterator)
+                self.has_prefetched = True
+            except StopIteration:
+                self.prefetched_item = None
+                self.has_prefetched = False
+                self.prefetch_exhausted = True
+
+
+class _AsyncPrefetchIterator:
+    def __init__(self, async_iterator: AsyncIterator[DocumentType]):
+        self.async_iterator = async_iterator
+        self.prefetched_item: Optional[DocumentType] = None
+        self.has_prefetched = False
+        self.prefetch_exhausted = False
+
+    def __aiter__(self) -> AsyncIterator[DocumentType]:
+        return self
+
+    async def __anext__(self) -> DocumentType:
+        if self.has_prefetched:
+            self.has_prefetched = False
+            if self.prefetch_exhausted:
+                raise StopAsyncIteration
+            # if this runs, prefetched_item is filled with a document:
+            return self.prefetched_item  # type: ignore[return-value]
+        else:
+            return await self.async_iterator.__anext__()
+
+    async def prefetch(self) -> None:
+        if not self.has_prefetched and not self.prefetch_exhausted:
+            try:
+                self.prefetched_item = await self.async_iterator.__anext__()
+                self.has_prefetched = True
+            except StopAsyncIteration:
+                self.prefetched_item = None
+                self.has_prefetched = False
+                self.prefetch_exhausted = True
+
+
 class BaseCursor:
     """
     Represents a generic Cursor over query results, regardless of whether
@@ -177,13 +239,13 @@ class BaseCursor:
     _limit: Optional[int]
     _skip: Optional[int]
     _include_similarity: Optional[bool]
+    _include_sort_vector: Optional[bool]
     _sort: Optional[Dict[str, Any]]
     _started: bool
     _retrieved: int
     _alive: bool
-    _iterator: Optional[Union[Iterator[DocumentType], AsyncIterator[DocumentType]]] = (
-        None
-    )
+    _iterator: Optional[Union[_PrefetchIterator, _AsyncPrefetchIterator]] = None
+    _api_response_status: Optional[Dict[str, Any]]
 
     def __init__(
         self,
@@ -222,7 +284,7 @@ class BaseCursor:
         return (
             f'{self.__class__.__name__}("{self._collection.name}", '
             f"{self.state}, "
-            f"retrieved: {self.retrieved})"
+            f"retrieved so far: {self.retrieved})"
         )
 
     def _item_at_index(self, index: int) -> DocumentType:
@@ -252,6 +314,7 @@ class BaseCursor:
         limit: Optional[int] = None,
         skip: Optional[int] = None,
         include_similarity: Optional[bool] = None,
+        include_sort_vector: Optional[bool] = None,
         started: Optional[bool] = None,
         sort: Optional[Dict[str, Any]] = None,
     ) -> BC:
@@ -269,6 +332,11 @@ class BaseCursor:
             include_similarity
             if include_similarity is not None
             else self._include_similarity
+        )
+        new_cursor._include_sort_vector = (
+            include_sort_vector
+            if include_sort_vector is not None
+            else self._include_sort_vector
         )
         new_cursor._started = started if started is not None else self._started
         new_cursor._sort = sort if sort is not None else self._sort
@@ -374,10 +442,26 @@ class BaseCursor:
         self._include_similarity = include_similarity
         return self
 
+    def include_sort_vector(self: BC, include_sort_vector: Optional[bool]) -> BC:
+        """
+        Set a new `include_sort_vector` value for this cursor.
+
+        Args:
+            include_sort_vector: the new value to set
+
+        Returns:
+            this cursor itself.
+        """
+
+        self._ensure_not_started()
+        self._ensure_alive()
+        self._include_sort_vector = include_sort_vector
+        return self
+
     @property
     def retrieved(self) -> int:
         """
-        The number of documents retrieved so far.
+        The number of documents retrieved so far by the code consuming the cursor.
         """
 
         return self._retrieved
@@ -506,12 +590,14 @@ class Cursor(BaseCursor):
         self._limit: Optional[int] = None
         self._skip: Optional[int] = None
         self._include_similarity: Optional[bool] = None
+        self._include_sort_vector: Optional[bool] = None
         self._sort: Optional[Dict[str, Any]] = None
         self._started = False
         self._retrieved = 0
         self._alive = True
         #
-        self._iterator: Optional[Iterator[DocumentType]] = None
+        self._iterator: Optional[_PrefetchIterator] = None
+        self._api_response_status: Optional[Dict[str, Any]] = None
 
     def __iter__(self) -> Cursor:
         self._ensure_alive()
@@ -546,6 +632,25 @@ class Cursor(BaseCursor):
             self._alive = False
             raise
 
+    def get_sort_vector(self) -> Optional[List[float]]:
+        """
+        Return the vector used in this ANN search, if applicable.
+        If this is not an ANN search, or it was invoked without the
+        `include_sort_vector` parameter, return None.
+
+        Invoking this method on a pristine cursor will trigger an API call
+        to get the first page of results.
+        """
+
+        if self._iterator is None:
+            self._iterator = self._create_iterator()
+            self._started = True
+        self._iterator.prefetch()
+        if self._api_response_status:
+            return self._api_response_status.get("sortVector")
+        else:
+            return None
+
     def _item_at_index(self, index: int) -> DocumentType:
         finder_cursor = self._copy().skip(index).limit(1)
         items = list(finder_cursor)
@@ -555,7 +660,7 @@ class Cursor(BaseCursor):
             raise IndexError("no such item for Cursor instance")
 
     @recast_method_sync
-    def _create_iterator(self) -> Iterator[DocumentType]:
+    def _create_iterator(self) -> _PrefetchIterator:
         self._ensure_not_started()
         self._ensure_alive()
         _options = {
@@ -564,6 +669,7 @@ class Cursor(BaseCursor):
                 "limit": self._limit,
                 "skip": self._skip,
                 "includeSimilarity": self._include_similarity,
+                "includeSortVector": self._include_sort_vector,
             }.items()
             if v is not None
         }
@@ -578,6 +684,10 @@ class Cursor(BaseCursor):
         else:
             pf_sort = None
 
+        def _response_setter_callback(raw_response: Dict[str, Any]) -> None:
+            status = raw_response.get("status")
+            self._api_response_status = status
+
         logger.info(f"creating iterator on '{self._collection.name}'")
         iterator = self._collection._astra_db_collection.paginated_find(
             filter=self._filter,
@@ -586,10 +696,11 @@ class Cursor(BaseCursor):
             options=_options,
             prefetched=0,
             timeout_info=base_timeout_info(self._max_time_ms),
+            raw_response_callback=_response_setter_callback,
         )
         logger.info(f"finished creating iterator on '{self._collection.name}'")
         self._started_time_s = time.time()
-        return iterator
+        return _PrefetchIterator(iterator)
 
     @property
     def collection(self) -> Collection:
@@ -714,12 +825,14 @@ class AsyncCursor(BaseCursor):
         self._limit: Optional[int] = None
         self._skip: Optional[int] = None
         self._include_similarity: Optional[bool] = None
+        self._include_sort_vector: Optional[bool] = None
         self._sort: Optional[Dict[str, Any]] = None
         self._started = False
         self._retrieved = 0
         self._alive = True
         #
-        self._iterator: Optional[AsyncIterator[DocumentType]] = None
+        self._iterator: Optional[_AsyncPrefetchIterator] = None
+        self._api_response_status: Optional[Dict[str, Any]] = None
 
     def __aiter__(self) -> AsyncCursor:
         self._ensure_alive()
@@ -754,6 +867,25 @@ class AsyncCursor(BaseCursor):
             self._alive = False
             raise
 
+    async def get_sort_vector(self) -> Optional[List[float]]:
+        """
+        Return the vector used in this ANN search, if applicable.
+        If this is not an ANN search, or it was invoked without the
+        `include_sort_vector` parameter, return None.
+
+        Invoking this method on a pristine cursor will trigger an API call
+        to get the first page of results.
+        """
+
+        if self._iterator is None:
+            self._iterator = self._create_iterator()
+            self._started = True
+        await self._iterator.prefetch()
+        if self._api_response_status:
+            return self._api_response_status.get("sortVector")
+        else:
+            return None
+
     def _item_at_index(self, index: int) -> DocumentType:
         finder_cursor = self._to_sync().skip(index).limit(1)
         items = list(finder_cursor)
@@ -763,7 +895,7 @@ class AsyncCursor(BaseCursor):
             raise IndexError("no such item for AsyncCursor instance")
 
     @recast_method_sync
-    def _create_iterator(self) -> AsyncIterator[DocumentType]:
+    def _create_iterator(self) -> _AsyncPrefetchIterator:
         self._ensure_not_started()
         self._ensure_alive()
         _options = {
@@ -772,6 +904,7 @@ class AsyncCursor(BaseCursor):
                 "limit": self._limit,
                 "skip": self._skip,
                 "includeSimilarity": self._include_similarity,
+                "includeSortVector": self._include_sort_vector,
             }.items()
             if v is not None
         }
@@ -786,6 +919,10 @@ class AsyncCursor(BaseCursor):
         else:
             pf_sort = None
 
+        def _response_setter_callback(raw_response: Dict[str, Any]) -> None:
+            status = raw_response.get("status")
+            self._api_response_status = status
+
         logger.info(f"creating iterator on '{self._collection.name}'")
         iterator = self._collection._astra_db_collection.paginated_find(
             filter=self._filter,
@@ -794,10 +931,11 @@ class AsyncCursor(BaseCursor):
             options=_options,
             prefetched=0,
             timeout_info=base_timeout_info(self._max_time_ms),
+            raw_response_callback=_response_setter_callback,
         )
         logger.info(f"finished creating iterator on '{self._collection.name}'")
         self._started_time_s = time.time()
-        return iterator
+        return _AsyncPrefetchIterator(iterator)
 
     def _to_sync(
         self: AsyncCursor,
@@ -805,6 +943,7 @@ class AsyncCursor(BaseCursor):
         limit: Optional[int] = None,
         skip: Optional[int] = None,
         include_similarity: Optional[bool] = None,
+        include_sort_vector: Optional[bool] = None,
         started: Optional[bool] = None,
         sort: Optional[Dict[str, Any]] = None,
     ) -> Cursor:
@@ -822,6 +961,11 @@ class AsyncCursor(BaseCursor):
             include_similarity
             if include_similarity is not None
             else self._include_similarity
+        )
+        new_cursor._include_sort_vector = (
+            include_sort_vector
+            if include_sort_vector is not None
+            else self._include_sort_vector
         )
         new_cursor._started = started if started is not None else self._started
         new_cursor._sort = sort if sort is not None else self._sort
@@ -1057,3 +1201,9 @@ class AsyncCommandCursor(Generic[T]):
         """
 
         self._alive = False
+
+
+__pdoc__ = {
+    "_PrefetchIterator": False,
+    "_AsyncPrefetchIterator": False,
+}
