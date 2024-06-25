@@ -206,10 +206,10 @@ First install poetry with `pip install poetry` and then the project dependencies
 Linter, style and typecheck should all pass for a PR:
 
 ```bash
-poetry run black --check astrapy && poetry run ruff astrapy && poetry run mypy astrapy
-
-poetry run black --check tests && poetry run ruff tests && poetry run mypy tests
+make format
 ```
+
+With `make format-fix` the style and imports are autofixed (by `black` and `isort` resp.)
 
 Features must be thoroughly covered in tests (see `tests/idiomatic/*` for
 naming convention and module structure).
@@ -227,7 +227,9 @@ export ASTRA_DB_KEYSPACE="default_keyspace"
 export ASTRA_DB_SECONDARY_KEYSPACE="..."
 ```
 
-Tests can be started in various ways:
+#### "Idiomatic" testing
+
+Tests can be started in various ways: mostly `make tests-idiomatic`, but also:
 
 ```bash
 # test the "idiomatic" layer
@@ -243,6 +245,8 @@ The above runs the regular testing (i.e. non-Admin, non-core).
 The (idiomatic) Admin part is tested manually by you, on Astra accounts with room
 for up to 3 new databases, possibly both on prod and dev, and uses specific env vars,
 as can be seen on `tests/idiomatic/integration/test_admin.py`.
+
+#### Other tests
 
 Vectorize tests are confined in `tests/vectorize_idiomatic` and are run
 separately. A separate set of credentials is required to do the full testing:
