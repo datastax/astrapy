@@ -16,7 +16,7 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
 
-from ..conftest import DataAPICredentialsInfo, SECONDARY_NAMESPACE
+from ..conftest import SECONDARY_NAMESPACE, DataAPICredentialsInfo
 
 
 class TestCollectionsAsync:

@@ -18,17 +18,13 @@ Fixtures specific to testing on vectorize-ready Data API.
 
 import os
 from typing import Any, Dict, Iterable
+
 import pytest
 
-from ..conftest import DataAPICredentials, DataAPICredentialsInfo, IS_ASTRA_DB
-from astrapy import (
-    AsyncCollection,
-    AsyncDatabase,
-    Collection,
-    DataAPIClient,
-    Database,
-)
+from astrapy import AsyncCollection, AsyncDatabase, Collection, DataAPIClient, Database
 from astrapy.constants import VectorMetric
+
+from ..conftest import IS_ASTRA_DB, DataAPICredentials, DataAPICredentialsInfo
 
 TEST_SERVICE_COLLECTION_NAME = "test_indepth_vectorize_collection"
 

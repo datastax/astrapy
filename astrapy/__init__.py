@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import toml
-import os
 import importlib.metadata
+import os
+
+import toml
 
 
 def get_version() -> str:
@@ -46,29 +47,20 @@ def get_version() -> str:
 __version__: str = get_version()
 
 
-# A circular-import issue requires this to happen at the end of this module:
-from astrapy.database import (  # noqa: E402
-    AsyncDatabase,
-    Database,
-)
-from astrapy.collection import (  # noqa: E402
-    AsyncCollection,
-    Collection,
-)
+import astrapy.constants  # noqa: E402
+import astrapy.cursors  # noqa: E402
+import astrapy.ids  # noqa: E402
+import astrapy.operations  # noqa: F401, E402
 from astrapy.admin import (  # noqa: E402
     AstraDBAdmin,
     AstraDBDatabaseAdmin,
     DataAPIDatabaseAdmin,
 )
-from astrapy.client import (  # noqa: E402
-    DataAPIClient,
-)
+from astrapy.client import DataAPIClient  # noqa: E402
+from astrapy.collection import AsyncCollection, Collection  # noqa: E402
 
-import astrapy.ids  # noqa: E402
-import astrapy.constants  # noqa: E402
-import astrapy.cursors  # noqa: E402
-import astrapy.operations  # noqa: F401, E402
-
+# A circular-import issue requires this to happen at the end of this module:
+from astrapy.database import AsyncDatabase, Database  # noqa: E402
 
 __all__ = [
     "AstraDBAdmin",

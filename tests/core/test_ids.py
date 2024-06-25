@@ -16,15 +16,15 @@
 Unit tests for the ObjectIds and UUIDn conversions
 """
 
-import pytest
-
 import json
 import uuid as lib_uuid
 
-import uuid6 as lib_uuid6
 import bson as lib_bson
+import pytest
+import uuid6 as lib_uuid6
 
 from astrapy.core.ids import (
+    UUID,
     ObjectId,
     uuid1,
     uuid3,
@@ -33,7 +33,6 @@ from astrapy.core.ids import (
     uuid6,
     uuid7,
     uuid8,
-    UUID,
 )
 from astrapy.core.utils import normalize_for_api, restore_from_api
 

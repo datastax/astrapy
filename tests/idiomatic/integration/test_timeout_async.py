@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import asyncio
+
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
-
+from astrapy.admin import fetch_database_info
 from astrapy.exceptions import DataAPITimeoutException
 from astrapy.operations import AsyncDeleteMany, AsyncInsertMany
-from astrapy.admin import fetch_database_info
 
 from ..conftest import IS_ASTRA_DB
 

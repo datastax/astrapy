@@ -14,9 +14,9 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast
 
-import json
 import httpx
 
 from astrapy.core.defaults import (
@@ -26,24 +26,23 @@ from astrapy.core.defaults import (
     DEFAULT_VECTORIZE_SECRET_HEADER,
 )
 from astrapy.core.utils import (
+    TimeoutInfoWideType,
     http_methods,
-    logger,
     log_request,
     log_response,
+    logger,
     normalize_for_api,
     restore_from_api,
-    TimeoutInfoWideType,
     to_httpx_timeout,
     user_agent_astrapy,
     user_agent_rs,
     user_agent_string,
 )
 from astrapy.exceptions import (
-    DataAPIResponseException,
     DataAPIFaultyResponseException,
+    DataAPIResponseException,
     to_dataapi_timeout_exception,
 )
-
 
 DEFAULT_REDACTED_HEADER_NAMES = [
     DEFAULT_AUTH_HEADER,

@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from astrapy.core.ids import (
+    UUID,
     ObjectId,
     uuid1,
     uuid3,
@@ -23,7 +24,6 @@ from astrapy.core.ids import (
     uuid6,
     uuid7,
     uuid8,
-    UUID,
 )
 
 __all__ = [

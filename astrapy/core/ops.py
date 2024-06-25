@@ -15,29 +15,24 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, cast, Dict, Optional, TypedDict, Union
+from typing import Any, Dict, Optional, TypedDict, Union, cast
 
 import httpx
+
 from astrapy.core.api import (
     APIRequestError,
     api_request,
     async_api_request,
-    raw_api_request,
     async_raw_api_request,
-)
-
-from astrapy.core.utils import (
-    http_methods,
-    to_httpx_timeout,
-    TimeoutInfoWideType,
-)
-from astrapy.core.defaults import (
-    DEFAULT_DEV_OPS_AUTH_HEADER,
-    DEFAULT_DEV_OPS_API_VERSION,
-    DEFAULT_DEV_OPS_URL,
+    raw_api_request,
 )
 from astrapy.core.core_types import API_RESPONSE, OPS_API_RESPONSE
-
+from astrapy.core.defaults import (
+    DEFAULT_DEV_OPS_API_VERSION,
+    DEFAULT_DEV_OPS_AUTH_HEADER,
+    DEFAULT_DEV_OPS_URL,
+)
+from astrapy.core.utils import TimeoutInfoWideType, http_methods, to_httpx_timeout
 
 logger = logging.getLogger(__name__)
 

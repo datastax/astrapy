@@ -12,19 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from typing import Any, Dict, List
 
 import pytest
 
-import os
-
 from astrapy import Database
-from astrapy.info import CollectionVectorServiceOptions
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
-
-from ..vectorize_models import live_test_models
+from astrapy.info import CollectionVectorServiceOptions
 
 from ..conftest import IS_ASTRA_DB
+from ..vectorize_models import live_test_models
 
 
 def enabled_vectorize_models(auth_type: str) -> List[Any]:

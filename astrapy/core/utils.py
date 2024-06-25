@@ -13,32 +13,24 @@
 # limitations under the License.
 
 from __future__ import annotations
-from typing import (
-    Any,
-    cast,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    TypedDict,
-    Union,
-)
-import json
-import time
-import datetime
-import logging
+
 import copy
+import datetime
+import json
+import logging
+import time
+from typing import Any, Dict, Iterable, List, Optional, TypedDict, Union, cast
 
 import httpx
 
 from astrapy import __version__
+from astrapy.core.core_types import API_RESPONSE
 from astrapy.core.defaults import (
     DEFAULT_AUTH_HEADER,
-    DEFAULT_VECTORIZE_SECRET_HEADER,
     DEFAULT_TIMEOUT,
+    DEFAULT_VECTORIZE_SECRET_HEADER,
 )
-from astrapy.core.core_types import API_RESPONSE
-from astrapy.core.ids import ObjectId, UUID
+from astrapy.core.ids import UUID, ObjectId
 
 
 class CustomLogger(logging.Logger):

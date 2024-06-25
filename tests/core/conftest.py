@@ -2,23 +2,13 @@
 Test fixtures
 """
 
-import os
 import math
+import os
+from typing import AsyncIterable, Dict, Iterable, List, Optional, Set, TypeVar
 
 import pytest
-from typing import (
-    AsyncIterable,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Set,
-    TypeVar,
-)
-
 import pytest_asyncio
 
-from ..conftest import DataAPICredentials
 from astrapy.core.db import (
     AstraDB,
     AstraDBCollection,
@@ -26,6 +16,7 @@ from astrapy.core.db import (
     AsyncAstraDBCollection,
 )
 
+from ..conftest import DataAPICredentials
 
 T = TypeVar("T")
 

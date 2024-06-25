@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 from astrapy.admin import (
     api_endpoint_parser,
@@ -28,7 +28,6 @@ from astrapy.admin import (
 )
 from astrapy.authentication import coerce_token_provider
 from astrapy.constants import Environment
-
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database

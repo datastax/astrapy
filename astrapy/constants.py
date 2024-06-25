@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, Optional, Union
 
-
 DocumentType = Dict[str, Any]
 # ["field1", "field2"] allowed, but also:
 # {"field": True/False}

@@ -13,28 +13,27 @@
 # limitations under the License.
 
 import datetime
-
 from typing import Any, Dict, List
 
 import pytest
 
-from ..conftest import async_fail_if_not_removed
-
 from astrapy import AsyncCollection
-from astrapy.results import DeleteResult, InsertOneResult
-from astrapy.exceptions import InsertManyException, DataAPIResponseException
 from astrapy.constants import DocumentType, ReturnDocument, SortDocuments
 from astrapy.cursors import AsyncCursor
+from astrapy.exceptions import DataAPIResponseException, InsertManyException
+from astrapy.ids import UUID, ObjectId
 from astrapy.operations import (
-    AsyncInsertOne,
-    AsyncInsertMany,
-    AsyncUpdateOne,
-    AsyncUpdateMany,
-    AsyncReplaceOne,
-    AsyncDeleteOne,
     AsyncDeleteMany,
+    AsyncDeleteOne,
+    AsyncInsertMany,
+    AsyncInsertOne,
+    AsyncReplaceOne,
+    AsyncUpdateMany,
+    AsyncUpdateOne,
 )
-from astrapy.ids import ObjectId, UUID
+from astrapy.results import DeleteResult, InsertOneResult
+
+from ..conftest import async_fail_if_not_removed
 
 
 class TestDMLAsync:

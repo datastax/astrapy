@@ -18,8 +18,8 @@ Tests for the `db.py` parts related to DML & client creation
 
 import logging
 
-import pytest
 import httpx
+import pytest
 
 from astrapy.core.db import (
     AstraDB,

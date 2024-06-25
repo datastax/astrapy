@@ -19,28 +19,27 @@ import logging
 import re
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union, TYPE_CHECKING
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import httpx
 
-from astrapy.core.ops import AstraDBOps
-from astrapy.core.defaults import DEFAULT_AUTH_HEADER
 from astrapy.api_commander import APICommander
 from astrapy.authentication import coerce_token_provider
-from astrapy.cursors import CommandCursor
 from astrapy.constants import Environment
-from astrapy.info import AdminDatabaseInfo, DatabaseInfo
+from astrapy.core.defaults import DEFAULT_AUTH_HEADER
+from astrapy.core.ops import AstraDBOps
+from astrapy.cursors import CommandCursor
 from astrapy.exceptions import (
+    DataAPIFaultyResponseException,
     DevOpsAPIException,
     MultiCallTimeoutManager,
-    DataAPIFaultyResponseException,
     base_timeout_info,
-    to_dataapi_timeout_exception,
-    ops_recast_method_sync,
     ops_recast_method_async,
+    ops_recast_method_sync,
+    to_dataapi_timeout_exception,
 )
-
+from astrapy.info import AdminDatabaseInfo, DatabaseInfo
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database

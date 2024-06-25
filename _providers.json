@@ -1,0 +1,553 @@
+{
+  "status": {
+    "embeddingProviders": {
+      "azureOpenAI": {
+        "displayName": "Azure OpenAI",
+        "models": [
+          {
+            "name": "text-embedding-3-small",
+            "parameters": [
+              {
+                "defaultValue": "1536",
+                "help": "Vector dimension to use in the database and when calling Azure OpenAI.",
+                "name": "vectorDimension",
+                "required": true,
+                "type": "number",
+                "validation": {
+                  "numericRange": [
+                    2,
+                    1536
+                  ]
+                }
+              }
+            ],
+            "vectorDimension": null
+          },
+          {
+            "name": "text-embedding-3-large",
+            "parameters": [
+              {
+                "defaultValue": "3072",
+                "help": "Vector dimension to use in the database and when calling Azure OpenAI.",
+                "name": "vectorDimension",
+                "required": true,
+                "type": "number",
+                "validation": {
+                  "numericRange": [
+                    256,
+                    3072
+                  ]
+                }
+              }
+            ],
+            "vectorDimension": null
+          },
+          {
+            "name": "text-embedding-ada-002",
+            "parameters": [],
+            "vectorDimension": 1536
+          }
+        ],
+        "parameters": [
+          {
+            "defaultValue": "",
+            "help": "The name of your Azure OpenAI Resource.",
+            "name": "resourceName",
+            "required": true,
+            "type": "STRING",
+            "validation": {}
+          },
+          {
+            "defaultValue": "",
+            "help": "The name of your model deployment. You're required to first deploy a model before you can make calls.",
+            "name": "deploymentId",
+            "required": true,
+            "type": "STRING",
+            "validation": {}
+          }
+        ],
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "api-key"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "api-key"
+              }
+            ]
+          }
+        },
+        "url": "https://{resourceName}.openai.azure.com/openai/deployments/{deploymentId}/embeddings?api-version=2024-02-01"
+      },
+      "huggingface": {
+        "displayName": "Hugging Face - Serverless",
+        "models": [
+          {
+            "name": "sentence-transformers/all-MiniLM-L6-v2",
+            "parameters": [],
+            "vectorDimension": 384
+          },
+          {
+            "name": "intfloat/multilingual-e5-large",
+            "parameters": [],
+            "vectorDimension": 1024
+          },
+          {
+            "name": "intfloat/multilingual-e5-large-instruct",
+            "parameters": [],
+            "vectorDimension": 1024
+          },
+          {
+            "name": "BAAI/bge-small-en-v1.5",
+            "parameters": [],
+            "vectorDimension": 384
+          },
+          {
+            "name": "BAAI/bge-base-en-v1.5",
+            "parameters": [],
+            "vectorDimension": 768
+          },
+          {
+            "name": "BAAI/bge-large-en-v1.5",
+            "parameters": [],
+            "vectorDimension": 1024
+          }
+        ],
+        "parameters": [],
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "url": "https://api-inference.huggingface.co/pipeline/feature-extraction/"
+      },
+      "huggingfaceDedicated": {
+        "displayName": "Hugging Face - Dedicated",
+        "models": [
+          {
+            "name": "endpoint-defined-model",
+            "parameters": [
+              {
+                "defaultValue": "",
+                "help": "Vector dimension to use in the database, should be the same as the model used by the endpoint.",
+                "name": "vectorDimension",
+                "required": true,
+                "type": "number",
+                "validation": {
+                  "numericRange": [
+                    2,
+                    3072
+                  ]
+                }
+              }
+            ],
+            "vectorDimension": null
+          }
+        ],
+        "parameters": [
+          {
+            "defaultValue": "",
+            "help": "The name of your Hugging Face dedicated endpoint, the first part of the Endpoint URL.",
+            "name": "endpointName",
+            "required": true,
+            "type": "STRING",
+            "validation": {}
+          },
+          {
+            "defaultValue": "",
+            "help": "The region your Hugging Face dedicated endpoint is deployed to, the second part of the Endpoint URL.",
+            "name": "regionName",
+            "required": true,
+            "type": "STRING",
+            "validation": {}
+          },
+          {
+            "defaultValue": "",
+            "help": "The cloud your Hugging Face dedicated endpoint is deployed to, the third part of the Endpoint URL.",
+            "name": "cloudName",
+            "required": true,
+            "type": "STRING",
+            "validation": {}
+          }
+        ],
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "url": "https://{endpointName}.{regionName}.{cloudName}.endpoints.huggingface.cloud/embeddings"
+      },
+      "jinaAI": {
+        "displayName": "Jina AI",
+        "models": [
+          {
+            "name": "jina-embeddings-v2-base-en",
+            "parameters": [],
+            "vectorDimension": 768
+          },
+          {
+            "name": "jina-embeddings-v2-base-de",
+            "parameters": [],
+            "vectorDimension": 768
+          },
+          {
+            "name": "jina-embeddings-v2-base-es",
+            "parameters": [],
+            "vectorDimension": 768
+          },
+          {
+            "name": "jina-embeddings-v2-base-code",
+            "parameters": [],
+            "vectorDimension": 768
+          },
+          {
+            "name": "jina-embeddings-v2-base-zh",
+            "parameters": [],
+            "vectorDimension": 768
+          }
+        ],
+        "parameters": [],
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "url": "https://api.jina.ai/v1/embeddings"
+      },
+      "mistral": {
+        "displayName": "Mistral AI",
+        "models": [
+          {
+            "name": "mistral-embed",
+            "parameters": [],
+            "vectorDimension": 1024
+          }
+        ],
+        "parameters": [],
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "url": "https://api.mistral.ai/v1/embeddings"
+      },
+      "nvidia": {
+        "displayName": "Nvidia",
+        "models": [
+          {
+            "name": "NV-Embed-QA",
+            "parameters": [],
+            "vectorDimension": 1024
+          }
+        ],
+        "parameters": [],
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": false,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": true,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": false,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "url": "http://nemoservice.nemo:8080/v1/embeddings"
+      },
+      "openai": {
+        "displayName": "OpenAI",
+        "models": [
+          {
+            "name": "text-embedding-3-small",
+            "parameters": [
+              {
+                "defaultValue": "1536",
+                "help": "Vector dimension to use in the database and when calling OpenAI.",
+                "name": "vectorDimension",
+                "required": true,
+                "type": "number",
+                "validation": {
+                  "numericRange": [
+                    2,
+                    1536
+                  ]
+                }
+              }
+            ],
+            "vectorDimension": null
+          },
+          {
+            "name": "text-embedding-3-large",
+            "parameters": [
+              {
+                "defaultValue": "3072",
+                "help": "Vector dimension to use in the database and when calling OpenAI.",
+                "name": "vectorDimension",
+                "required": true,
+                "type": "number",
+                "validation": {
+                  "numericRange": [
+                    256,
+                    3072
+                  ]
+                }
+              }
+            ],
+            "vectorDimension": null
+          },
+          {
+            "name": "text-embedding-ada-002",
+            "parameters": [],
+            "vectorDimension": 1536
+          }
+        ],
+        "parameters": [
+          {
+            "defaultValue": "",
+            "help": "Optional, OpenAI Organization ID. If provided passed as `OpenAI-Organization` header.",
+            "name": "organizationId",
+            "required": false,
+            "type": "STRING",
+            "validation": {}
+          },
+          {
+            "defaultValue": "",
+            "help": "Optional, OpenAI Project ID. If provided passed as `OpenAI-Project` header.",
+            "name": "projectId",
+            "required": false,
+            "type": "STRING",
+            "validation": {}
+          }
+        ],
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "url": "https://api.openai.com/v1/"
+      },
+      "upstageAI": {
+        "displayName": "Upstage",
+        "models": [
+          {
+            "name": "solar-embedding-1-large",
+            "parameters": [],
+            "vectorDimension": 4096
+          }
+        ],
+        "parameters": [],
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "url": "https://api.upstage.ai/v1/solar/embeddings"
+      },
+      "voyageAI": {
+        "displayName": "Voyage AI",
+        "models": [
+          {
+            "name": "voyage-large-2-instruct",
+            "parameters": [],
+            "vectorDimension": 1024
+          },
+          {
+            "name": "voyage-law-2",
+            "parameters": [],
+            "vectorDimension": 1024
+          },
+          {
+            "name": "voyage-code-2",
+            "parameters": [],
+            "vectorDimension": 1536
+          },
+          {
+            "name": "voyage-large-2",
+            "parameters": [],
+            "vectorDimension": 1536
+          },
+          {
+            "name": "voyage-2",
+            "parameters": [],
+            "vectorDimension": 1024
+          }
+        ],
+        "parameters": [
+          {
+            "defaultValue": "true",
+            "help": "Whether to truncate the input texts to fit within the context length. Defaults to true.",
+            "name": "autoTruncate",
+            "required": false,
+            "type": "BOOLEAN",
+            "validation": {}
+          }
+        ],
+        "supportedAuthentication": {
+          "HEADER": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "x-embedding-api-key",
+                "forwarded": "Authorization"
+              }
+            ]
+          },
+          "NONE": {
+            "enabled": false,
+            "tokens": []
+          },
+          "SHARED_SECRET": {
+            "enabled": true,
+            "tokens": [
+              {
+                "accepted": "providerKey",
+                "forwarded": "Authorization"
+              }
+            ]
+          }
+        },
+        "url": "https://api.voyageai.com/v1/embeddings"
+      }
+    }
+  }
+}
