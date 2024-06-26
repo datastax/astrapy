@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import time
 from typing import Any, Awaitable, Callable, List, Optional, Tuple
 
 import pytest
-
-import os
-import time
 
 from astrapy import DataAPIClient
 from astrapy.admin import API_ENDPOINT_TEMPLATE_MAP

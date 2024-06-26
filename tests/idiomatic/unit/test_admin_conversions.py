@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
 import httpx
+import pytest
 
 from astrapy import (
     AstraDBAdmin,
@@ -23,8 +23,8 @@ from astrapy import (
     DataAPIDatabaseAdmin,
     Database,
 )
-from astrapy.constants import Environment
 from astrapy.authentication import StaticTokenProvider, UsernamePasswordTokenProvider
+from astrapy.constants import Environment
 
 
 class TestAdminConversions:

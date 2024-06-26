@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import time
+
 import pytest
 
 from astrapy.exceptions import DataAPITimeoutException, MultiCallTimeoutManager

@@ -1,15 +1,15 @@
 # main conftest for shared fixtures (if any).
 import functools
 import os
-import pytest
 import warnings
-from deprecation import UnsupportedWarning
 from typing import Any, Awaitable, Callable, Optional, Tuple, TypedDict
 
-from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
-from astrapy.constants import Environment
-from astrapy.admin import parse_api_endpoint
+import pytest
+from deprecation import UnsupportedWarning
 
+from astrapy.admin import parse_api_endpoint
+from astrapy.constants import Environment
+from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
 
 IS_ASTRA_DB: bool
 SECONDARY_NAMESPACE: Optional[str]

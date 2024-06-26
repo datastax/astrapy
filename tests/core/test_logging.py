@@ -20,9 +20,9 @@ import logging
 
 import pytest
 
-from ..conftest import DataAPICredentials
 from astrapy.core.db import AstraDB
 
+from ..conftest import DataAPICredentials
 
 logger = logging.getLogger(__name__)
 

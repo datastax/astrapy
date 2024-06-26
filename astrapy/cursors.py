@@ -18,8 +18,9 @@ import hashlib
 import json
 import logging
 import time
-from collections.abc import Iterator, AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
@@ -30,21 +31,20 @@ from typing import (
     Tuple,
     TypeVar,
     Union,
-    TYPE_CHECKING,
 )
 
-from astrapy.core.utils import _normalize_payload_value
-from astrapy.exceptions import (
-    CursorIsStartedException,
-    DataAPITimeoutException,
-    recast_method_sync,
-    recast_method_async,
-    base_timeout_info,
-)
 from astrapy.constants import (
     DocumentType,
     ProjectionType,
     normalize_optional_projection,
+)
+from astrapy.core.utils import _normalize_payload_value
+from astrapy.exceptions import (
+    CursorIsStartedException,
+    DataAPITimeoutException,
+    base_timeout_info,
+    recast_method_async,
+    recast_method_sync,
 )
 
 if TYPE_CHECKING:

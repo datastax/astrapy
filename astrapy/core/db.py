@@ -15,57 +15,41 @@
 from __future__ import annotations
 
 import asyncio
-import httpx
-import logging
 import json
+import logging
 import threading
-
-from collections.abc import (
-    AsyncGenerator,
-    AsyncIterator,
-    Generator,
-    Iterator,
-)
+from collections.abc import AsyncGenerator, AsyncIterator, Generator, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from queue import Queue
 from types import TracebackType
-from typing import (
-    Any,
-    Callable,
-    cast,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Union,
-    Type,
-)
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast
+
+import httpx
 
 from astrapy.core.api import APIRequestError, api_request, async_api_request
-from astrapy.core.defaults import (
-    DEFAULT_AUTH_HEADER,
-    DEFAULT_JSON_API_PATH,
-    DEFAULT_JSON_API_VERSION,
-    DEFAULT_KEYSPACE_NAME,
-    DEFAULT_INSERT_NUM_DOCUMENTS,
-)
-from astrapy.core.utils import (
-    convert_vector_to_floats,
-    make_payload,
-    normalize_for_api,
-    restore_from_api,
-    http_methods,
-    to_httpx_timeout,
-    TimeoutInfoWideType,
-)
 from astrapy.core.core_types import (
     API_DOC,
     API_RESPONSE,
-    PaginableRequestMethod,
     AsyncPaginableRequestMethod,
+    PaginableRequestMethod,
 )
-
+from astrapy.core.defaults import (
+    DEFAULT_AUTH_HEADER,
+    DEFAULT_INSERT_NUM_DOCUMENTS,
+    DEFAULT_JSON_API_PATH,
+    DEFAULT_JSON_API_VERSION,
+    DEFAULT_KEYSPACE_NAME,
+)
+from astrapy.core.utils import (
+    TimeoutInfoWideType,
+    convert_vector_to_floats,
+    http_methods,
+    make_payload,
+    normalize_for_api,
+    restore_from_api,
+    to_httpx_timeout,
+)
 
 logger = logging.getLogger(__name__)
 

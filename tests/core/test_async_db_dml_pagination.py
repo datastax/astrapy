@@ -18,6 +18,7 @@ Tests for the `db.py` parts on pagination primitives
 
 import logging
 from typing import Optional
+
 import pytest
 
 from astrapy.core.db import AsyncAstraDBCollection

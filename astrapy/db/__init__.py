@@ -15,13 +15,12 @@
 """Core "db" subpackage, exported here to preserve import patterns."""
 
 from astrapy.core.db import (
-    AstraDBCollection,
-    AsyncAstraDBCollection,
     AstraDB,
+    AstraDBCollection,
     AsyncAstraDB,
+    AsyncAstraDBCollection,
     logger,
 )
-
 
 __all__ = [
     "AstraDBCollection",

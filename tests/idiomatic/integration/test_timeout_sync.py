@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import time
+
 import pytest
 
 from astrapy import Collection, Database
-
+from astrapy.admin import fetch_database_info
 from astrapy.exceptions import DataAPITimeoutException
 from astrapy.operations import DeleteMany, InsertMany
-from astrapy.admin import fetch_database_info
 
 from ..conftest import IS_ASTRA_DB
 

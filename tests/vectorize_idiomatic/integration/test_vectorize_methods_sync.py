@@ -18,13 +18,7 @@ import pytest
 
 from astrapy import Collection, Database
 from astrapy.exceptions import DataAPIResponseException
-from astrapy.operations import (
-    InsertOne,
-    InsertMany,
-    UpdateOne,
-    ReplaceOne,
-    DeleteOne,
-)
+from astrapy.operations import DeleteOne, InsertMany, InsertOne, ReplaceOne, UpdateOne
 
 
 class TestVectorizeMethodsSync:

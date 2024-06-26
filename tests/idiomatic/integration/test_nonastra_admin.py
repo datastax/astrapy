@@ -14,7 +14,7 @@
 
 import pytest
 
-from astrapy import Database, AsyncDatabase
+from astrapy import AsyncDatabase, Database
 
 from ..conftest import IS_ASTRA_DB
 

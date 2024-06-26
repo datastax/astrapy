@@ -13,16 +13,15 @@
 # limitations under the License.
 
 import itertools
-import pytest
 import logging
 import os
-from typing import Any, cast, Dict, List
+from typing import Any, Dict, List, cast
 
+import pytest
 from dotenv import load_dotenv
 
-from astrapy.core.ops import AstraDBOps
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME, DEFAULT_REGION
-
+from astrapy.core.ops import AstraDBOps
 
 logger = logging.getLogger(__name__)
 

@@ -20,10 +20,11 @@ import logging
 
 import pytest
 
-from ..conftest import DataAPICredentials
-from .conftest import TEST_SKIP_COLLECTION_DELETE
 from astrapy.core.db import AstraDB, AstraDBCollection
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
+
+from ..conftest import DataAPICredentials
+from .conftest import TEST_SKIP_COLLECTION_DELETE
 
 TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME = "ephemeral_v_col"
 TEST_CREATE_DELETE_NONVECTOR_COLLECTION_NAME = "ephemeral_non_v_col"

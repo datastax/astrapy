@@ -16,7 +16,6 @@
 
 from astrapy.core.ops import AstraDBOps
 
-
 __all__ = [
     "AstraDBOps",
 ]

@@ -46,80 +46,67 @@ def test_namespace() -> None:
 
 @pytest.mark.describe("test imports")
 def test_imports() -> None:
-    from astrapy.results import (  # noqa: F401
-        OperationResult,
-        DeleteResult,
-        InsertOneResult,
-        InsertManyResult,
-        UpdateResult,
-        BulkWriteResult,
+    from astrapy import (  # noqa: F401
+        AstraDBAdmin,
+        AstraDBDatabaseAdmin,
+        AsyncCollection,
+        AsyncDatabase,
+        Collection,
+        DataAPIClient,
+        DataAPIDatabaseAdmin,
+        Database,
     )
-    from astrapy.operations import (  # noqa: F401
-        BaseOperation,
-        InsertOne,
-        InsertMany,
-        UpdateOne,
-        UpdateMany,
-        ReplaceOne,
-        DeleteOne,
-        DeleteMany,
-        AsyncBaseOperation,
-        AsyncInsertOne,
-        AsyncInsertMany,
-        AsyncUpdateOne,
-        AsyncUpdateMany,
-        AsyncReplaceOne,
-        AsyncDeleteOne,
-        AsyncDeleteMany,
+    from astrapy.admin import AstraDBAdmin as AstraDBAdmin2  # noqa: F401
+    from astrapy.admin import (  # noqa: F401
+        AstraDBDatabaseAdmin as AstraDBDatabaseAdmin2,
     )
+    from astrapy.admin import (  # noqa: F401
+        DataAPIDatabaseAdmin as DataAPIDatabaseAdmin2,
+    )
+    from astrapy.admin import ParsedAPIEndpoint  # noqa: F401
+    from astrapy.client import DataAPIClient as DataAPIClient2  # noqa: F401
+    from astrapy.collection import AsyncCollection as AsyncCollection2  # noqa: F401
+    from astrapy.collection import Collection as Collection2  # noqa: F401
     from astrapy.constants import (  # noqa: F401
+        DefaultIdType,
+        Environment,
         ReturnDocument,
         SortDocuments,
         VectorMetric,
-        DefaultIdType,
-        Environment,
-    )
-    from astrapy.info import (  # noqa: F401
-        AdminDatabaseInfo,
-        DatabaseInfo,
-        CollectionInfo,
-        CollectionDefaultIDOptions,
-        CollectionVectorServiceOptions,
-        CollectionVectorOptions,
-        CollectionOptions,
-        CollectionDescriptor,
-    )
-    from astrapy.admin import (  # noqa: F401
-        ParsedAPIEndpoint,
     )
     from astrapy.cursors import (  # noqa: F401
-        BaseCursor,
-        Cursor,
-        AsyncCursor,
-        CommandCursor,
         AsyncCommandCursor,
+        AsyncCursor,
+        BaseCursor,
+        CommandCursor,
+        Cursor,
     )
+
+    # The import pattern above for database and collection is to be preferred.
+    from astrapy.database import AsyncDatabase as AsyncDatabase2  # noqa: F401
+    from astrapy.database import Database as Database2  # noqa: F401
     from astrapy.exceptions import (  # noqa: F401
-        DevOpsAPIException,
-        DevOpsAPIResponseException,
-        DevOpsAPIErrorDescriptor,
-        DataAPIErrorDescriptor,
-        DataAPIDetailedErrorDescriptor,
-        DataAPIException,
-        DataAPITimeoutException,
-        CursorIsStartedException,
-        CollectionNotFoundException,
+        BulkWriteException,
         CollectionAlreadyExistsException,
-        TooManyDocumentsToCountException,
+        CollectionNotFoundException,
+        CumulativeOperationException,
+        CursorIsStartedException,
+        DataAPIDetailedErrorDescriptor,
+        DataAPIErrorDescriptor,
+        DataAPIException,
         DataAPIFaultyResponseException,
         DataAPIResponseException,
-        CumulativeOperationException,
-        InsertManyException,
+        DataAPITimeoutException,
         DeleteManyException,
+        DevOpsAPIErrorDescriptor,
+        DevOpsAPIException,
+        DevOpsAPIResponseException,
+        InsertManyException,
+        TooManyDocumentsToCountException,
         UpdateManyException,
-        BulkWriteException,
     )
     from astrapy.ids import (  # noqa: F401
+        UUID,
         ObjectId,
         uuid1,
         uuid3,
@@ -128,33 +115,40 @@ def test_imports() -> None:
         uuid6,
         uuid7,
         uuid8,
-        UUID,
     )
-    from astrapy import (  # noqa: F401
-        Database,
-        AsyncDatabase,
-        Collection,
-        AsyncCollection,
-        AstraDBAdmin,
-        AstraDBDatabaseAdmin,
-        DataAPIDatabaseAdmin,
-        DataAPIClient,
+    from astrapy.info import (  # noqa: F401
+        AdminDatabaseInfo,
+        CollectionDefaultIDOptions,
+        CollectionDescriptor,
+        CollectionInfo,
+        CollectionOptions,
+        CollectionVectorOptions,
+        CollectionVectorServiceOptions,
+        DatabaseInfo,
     )
-
-    # The import pattern above for database and collection is to be preferred.
-    from astrapy.database import (  # noqa: F401
-        Database as Database2,
-        AsyncDatabase as AsyncDatabase2,
+    from astrapy.operations import (  # noqa: F401
+        AsyncBaseOperation,
+        AsyncDeleteMany,
+        AsyncDeleteOne,
+        AsyncInsertMany,
+        AsyncInsertOne,
+        AsyncReplaceOne,
+        AsyncUpdateMany,
+        AsyncUpdateOne,
+        BaseOperation,
+        DeleteMany,
+        DeleteOne,
+        InsertMany,
+        InsertOne,
+        ReplaceOne,
+        UpdateMany,
+        UpdateOne,
     )
-    from astrapy.collection import (  # noqa: F401
-        Collection as Collection2,
-        AsyncCollection as AsyncCollection2,
-    )
-    from astrapy.admin import (  # noqa: F401
-        AstraDBAdmin as AstraDBAdmin2,
-        AstraDBDatabaseAdmin as AstraDBDatabaseAdmin2,
-        DataAPIDatabaseAdmin as DataAPIDatabaseAdmin2,
-    )
-    from astrapy.client import (  # noqa: F401
-        DataAPIClient as DataAPIClient2,
+    from astrapy.results import (  # noqa: F401
+        BulkWriteResult,
+        DeleteResult,
+        InsertManyResult,
+        InsertOneResult,
+        OperationResult,
+        UpdateResult,
     )

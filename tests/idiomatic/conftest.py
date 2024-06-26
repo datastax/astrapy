@@ -15,19 +15,20 @@
 """Fixtures specific to the non-core-side testing."""
 
 from typing import Iterable
+
 import pytest
 
+from astrapy import AsyncCollection, AsyncDatabase, Collection, DataAPIClient, Database
+from astrapy.constants import VectorMetric
+
 from ..conftest import (
+    IS_ASTRA_DB,
+    SECONDARY_NAMESPACE,
     DataAPICredentials,
     DataAPICredentialsInfo,
     async_fail_if_not_removed,
     sync_fail_if_not_removed,
-    IS_ASTRA_DB,
-    SECONDARY_NAMESPACE,
 )
-
-from astrapy import AsyncCollection, AsyncDatabase, Collection, DataAPIClient, Database
-from astrapy.constants import VectorMetric
 
 TEST_COLLECTION_INSTANCE_NAME = "test_coll_instance"
 TEST_COLLECTION_NAME = "id_test_collection"

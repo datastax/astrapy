@@ -17,7 +17,8 @@ from typing import List
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
-from astrapy.operations import AsyncInsertOne
+from astrapy.constants import DocumentType
+from astrapy.cursors import AsyncCursor
 from astrapy.exceptions import (
     BulkWriteException,
     CollectionAlreadyExistsException,
@@ -28,10 +29,9 @@ from astrapy.exceptions import (
     InsertManyException,
     TooManyDocumentsToCountException,
 )
-from astrapy.constants import DocumentType
-from astrapy.cursors import AsyncCursor
+from astrapy.operations import AsyncInsertOne
 
-from ..conftest import DataAPICredentials, IS_ASTRA_DB
+from ..conftest import IS_ASTRA_DB, DataAPICredentials
 
 
 class TestExceptionsAsync:
