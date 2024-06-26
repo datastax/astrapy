@@ -74,7 +74,7 @@ api_endpoint_parser = re.compile(
     r".datastax.com"
 )
 
-generic_api_url_matcher = re.compile(r"^https?:\/\/[a-zA-Z0-9.]+(\:[0-9]{1,6}){0,1}$")
+generic_api_url_matcher = re.compile(r"^https?:\/\/[a-zA-Z0-9\-.]+(\:[0-9]{1,6}){0,1}$")
 
 
 DEV_OPS_URL_MAP = {
