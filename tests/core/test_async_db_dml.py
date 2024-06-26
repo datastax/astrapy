@@ -17,17 +17,16 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 (i.e. non `vector_*` methods)
 """
 
-import uuid
 import datetime
 import logging
-from typing import cast, Any, Dict, Iterable, List, Literal, Optional, Union
+import uuid
+from typing import Any, Dict, Iterable, List, Literal, Optional, Union, cast
 
 import pytest
 
 from astrapy.core.api import APIRequestError
 from astrapy.core.core_types import API_DOC
 from astrapy.core.db import AsyncAstraDB, AsyncAstraDBCollection
-
 
 logger = logging.getLogger(__name__)
 

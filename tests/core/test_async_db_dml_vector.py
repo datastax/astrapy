@@ -17,12 +17,12 @@ Tests for the `db.py` parts on data manipulation `vector_*` methods
 """
 
 import logging
-from typing import cast, Iterable, List
+from typing import Iterable, List, cast
 
 import pytest
 
-from astrapy.core.db import AsyncAstraDBCollection
 from astrapy.core.core_types import API_DOC
+from astrapy.core.db import AsyncAstraDBCollection
 
 logger = logging.getLogger(__name__)
 

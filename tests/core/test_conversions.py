@@ -17,6 +17,7 @@ Tests for the User-Agent customization logic
 """
 
 import logging
+
 import pytest
 
 from astrapy.core.db import (
@@ -26,7 +27,6 @@ from astrapy.core.db import (
     AsyncAstraDBCollection,
 )
 from astrapy.core.ops import AstraDBOps
-
 
 logger = logging.getLogger(__name__)
 

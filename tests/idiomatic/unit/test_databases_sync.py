@@ -14,15 +14,16 @@
 
 import pytest
 
-from ..conftest import (
-    DataAPICredentials,
-    DataAPICredentialsInfo,
-    SECONDARY_NAMESPACE,
-    TEST_COLLECTION_INSTANCE_NAME,
-)
+from astrapy import Collection, Database
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
 from astrapy.exceptions import DevOpsAPIException
-from astrapy import Collection, Database
+
+from ..conftest import (
+    SECONDARY_NAMESPACE,
+    TEST_COLLECTION_INSTANCE_NAME,
+    DataAPICredentials,
+    DataAPICredentialsInfo,
+)
 
 
 class TestDatabasesSync:

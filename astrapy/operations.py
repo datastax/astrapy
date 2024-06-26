@@ -17,15 +17,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import reduce
-from typing import (
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-)
+from typing import Any, Dict, Iterable, List, Optional
 
+from astrapy.collection import AsyncCollection, Collection
 from astrapy.constants import DocumentType, SortType, VectorType
+from astrapy.meta import check_deprecated_vector_ize
 from astrapy.results import (
     BulkWriteResult,
     DeleteResult,
@@ -33,8 +29,6 @@ from astrapy.results import (
     InsertOneResult,
     UpdateResult,
 )
-from astrapy.collection import AsyncCollection, Collection
-from astrapy.meta import check_deprecated_vector_ize
 
 
 def reduce_bulk_write_results(results: List[BulkWriteResult]) -> BulkWriteResult:

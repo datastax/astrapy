@@ -16,7 +16,6 @@
 
 from astrapy.core.api import APIRequestError
 
-
 __all__ = [
     "APIRequestError",
 ]

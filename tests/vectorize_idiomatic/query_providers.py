@@ -15,11 +15,9 @@
 import json
 import os
 import sys
-
 from typing import Any, Dict, Optional
 
 from astrapy.api_commander import APICommander
-
 
 IS_ASTRA_DB: bool
 if "LOCAL_DATA_API_ENDPOINT" in os.environ:

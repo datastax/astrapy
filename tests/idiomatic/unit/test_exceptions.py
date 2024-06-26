@@ -15,11 +15,11 @@
 import pytest
 
 from astrapy.exceptions import (
+    DataAPIDetailedErrorDescriptor,
+    DataAPIErrorDescriptor,
+    DataAPIResponseException,
     DeleteManyException,
     InsertManyException,
-    DataAPIResponseException,
-    DataAPIErrorDescriptor,
-    DataAPIDetailedErrorDescriptor,
 )
 from astrapy.results import DeleteResult, InsertManyResult
 

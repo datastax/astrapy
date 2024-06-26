@@ -15,11 +15,10 @@
 import os
 from typing import Any, Dict, Iterable, Optional, Tuple
 
-from astrapy.info import CollectionVectorServiceOptions
 from astrapy.api_commander import APICommander
+from astrapy.info import CollectionVectorServiceOptions
 
 from .conftest import IS_ASTRA_DB
-
 
 alphanum = set("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890")
 

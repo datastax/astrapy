@@ -16,12 +16,12 @@
 Unit tests for the ObjectIds and UUIDn conversions, 'idiomatic' imports
 """
 
-import pytest
-
 import json
 
-from astrapy.ids import ObjectId, UUID
+import pytest
+
 from astrapy.core.utils import normalize_for_api, restore_from_api
+from astrapy.ids import UUID, ObjectId
 
 
 @pytest.mark.describe("test of serdes for ids")

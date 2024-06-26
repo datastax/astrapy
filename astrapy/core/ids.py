@@ -14,11 +14,10 @@
 
 from __future__ import annotations
 
-from uuid import uuid1, uuid3, uuid4, uuid5, UUID  # noqa: F401
+from uuid import UUID, uuid1, uuid3, uuid4, uuid5  # noqa: F401
 
 from bson.objectid import ObjectId  # noqa: F401
 from uuid6 import uuid6, uuid7, uuid8  # noqa: F401
-
 
 __all__ = [
     "ObjectId",

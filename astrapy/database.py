@@ -15,40 +15,39 @@
 from __future__ import annotations
 
 import logging
-
 from types import TracebackType
-from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
-from astrapy.core.db import AstraDB, AsyncAstraDB
+from astrapy.admin import (
+    API_PATH_ENV_MAP,
+    API_VERSION_ENV_MAP,
+    fetch_database_info,
+    parse_api_endpoint,
+)
 from astrapy.api_options import CollectionAPIOptions
 from astrapy.authentication import coerce_token_provider
+from astrapy.constants import Environment
+from astrapy.core.db import AstraDB, AsyncAstraDB
+from astrapy.cursors import AsyncCommandCursor, CommandCursor
 from astrapy.exceptions import (
     CollectionAlreadyExistsException,
     DataAPIFaultyResponseException,
     DevOpsAPIException,
     MultiCallTimeoutManager,
-    recast_method_sync,
-    recast_method_async,
     base_timeout_info,
+    recast_method_async,
+    recast_method_sync,
 )
-from astrapy.cursors import AsyncCommandCursor, CommandCursor
 from astrapy.info import (
-    DatabaseInfo,
     CollectionDescriptor,
     CollectionVectorServiceOptions,
-)
-from astrapy.constants import Environment
-from astrapy.admin import (
-    parse_api_endpoint,
-    fetch_database_info,
-    API_PATH_ENV_MAP,
-    API_VERSION_ENV_MAP,
+    DatabaseInfo,
 )
 
 if TYPE_CHECKING:
-    from astrapy.collection import AsyncCollection, Collection
     from astrapy.admin import DatabaseAdmin
     from astrapy.authentication import TokenProvider
+    from astrapy.collection import AsyncCollection, Collection
 
 
 logger = logging.getLogger(__name__)

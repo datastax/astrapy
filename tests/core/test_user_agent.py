@@ -17,11 +17,11 @@ Tests for the User-Agent customization logic
 """
 
 import logging
+
 import pytest
 from pytest_httpserver import HTTPServer
 
 from astrapy import __version__
-from astrapy.core.utils import compose_user_agent, package_name
 from astrapy.core.db import (
     AstraDB,
     AstraDBCollection,
@@ -29,7 +29,7 @@ from astrapy.core.db import (
     AsyncAstraDBCollection,
 )
 from astrapy.core.ops import AstraDBOps
-
+from astrapy.core.utils import compose_user_agent, package_name
 
 logger = logging.getLogger(__name__)
 

@@ -13,25 +13,24 @@
 # limitations under the License.
 
 import datetime
-
 from typing import Any, Dict, List
 
 import pytest
 
 from astrapy import Collection
-from astrapy.results import DeleteResult, InsertOneResult
-from astrapy.exceptions import InsertManyException, DataAPIResponseException
 from astrapy.constants import ReturnDocument, SortDocuments
+from astrapy.exceptions import DataAPIResponseException, InsertManyException
+from astrapy.ids import UUID, ObjectId
 from astrapy.operations import (
-    InsertOne,
-    InsertMany,
-    UpdateOne,
-    UpdateMany,
-    ReplaceOne,
-    DeleteOne,
     DeleteMany,
+    DeleteOne,
+    InsertMany,
+    InsertOne,
+    ReplaceOne,
+    UpdateMany,
+    UpdateOne,
 )
-from astrapy.ids import ObjectId, UUID
+from astrapy.results import DeleteResult, InsertOneResult
 
 from ..conftest import sync_fail_if_not_removed
 

@@ -22,10 +22,10 @@ import pytest
 @pytest.mark.describe("core imports")
 def test_core_imports() -> None:
     from astrapy.api import APIRequestError  # noqa: F401
-    from astrapy.ops import AstraDBOps  # noqa: F401
     from astrapy.db import (  # noqa: F401
-        AstraDBCollection,
-        AsyncAstraDBCollection,
         AstraDB,
+        AstraDBCollection,
         AsyncAstraDB,
+        AsyncAstraDBCollection,
     )
+    from astrapy.ops import AstraDBOps  # noqa: F401

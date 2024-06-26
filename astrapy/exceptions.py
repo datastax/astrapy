@@ -15,9 +15,9 @@
 from __future__ import annotations
 
 import time
+from dataclasses import dataclass
 from functools import wraps
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
-from dataclasses import dataclass
 
 import httpx
 

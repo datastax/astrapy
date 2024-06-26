@@ -15,8 +15,9 @@
 from __future__ import annotations
 
 import logging
-import httpx
 from typing import Any, Dict, Optional, Union, cast
+
+import httpx
 
 from astrapy.core.core_types import API_RESPONSE
 from astrapy.core.utils import amake_request, make_request

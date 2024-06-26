@@ -17,15 +17,15 @@ from typing import Any, Dict, List
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
-from astrapy.exceptions import DataAPIResponseException
 from astrapy.constants import DocumentType
 from astrapy.cursors import AsyncCursor
+from astrapy.exceptions import DataAPIResponseException
 from astrapy.operations import (
-    AsyncInsertOne,
-    AsyncInsertMany,
-    AsyncUpdateOne,
-    AsyncReplaceOne,
     AsyncDeleteOne,
+    AsyncInsertMany,
+    AsyncInsertOne,
+    AsyncReplaceOne,
+    AsyncUpdateOne,
 )
 
 

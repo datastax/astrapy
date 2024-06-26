@@ -15,22 +15,31 @@
 from __future__ import annotations
 
 import asyncio
-import deprecation
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union
+
+import deprecation
 
 from astrapy import __version__
-from astrapy.core.db import (
-    AstraDBCollection,
-    AsyncAstraDBCollection,
+from astrapy.api_options import CollectionAPIOptions
+from astrapy.constants import (
+    DocumentType,
+    FilterType,
+    ProjectionType,
+    ReturnDocument,
+    SortType,
+    VectorType,
+    normalize_optional_projection,
 )
+from astrapy.core.db import AstraDBCollection, AsyncAstraDBCollection
 from astrapy.core.defaults import (
     DEFAULT_INSERT_NUM_DOCUMENTS,
     DEFAULT_VECTORIZE_SECRET_HEADER,
 )
-from astrapy.api_options import CollectionAPIOptions
+from astrapy.cursors import AsyncCursor, Cursor
+from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
     BulkWriteException,
     CollectionNotFoundException,
@@ -42,31 +51,19 @@ from astrapy.exceptions import (
     MultiCallTimeoutManager,
     TooManyDocumentsToCountException,
     UpdateManyException,
-    recast_method_sync,
-    recast_method_async,
     base_timeout_info,
+    recast_method_async,
+    recast_method_sync,
 )
-from astrapy.constants import (
-    DocumentType,
-    FilterType,
-    ProjectionType,
-    ReturnDocument,
-    SortType,
-    VectorType,
-    normalize_optional_projection,
-)
-from astrapy.database import AsyncDatabase, Database
+from astrapy.info import CollectionInfo, CollectionOptions
+from astrapy.meta import check_deprecated_vector_ize
 from astrapy.results import (
+    BulkWriteResult,
     DeleteResult,
     InsertManyResult,
     InsertOneResult,
     UpdateResult,
-    BulkWriteResult,
 )
-from astrapy.cursors import AsyncCursor, Cursor
-from astrapy.info import CollectionInfo, CollectionOptions
-from astrapy.meta import check_deprecated_vector_ize
-
 
 if TYPE_CHECKING:
     from astrapy.operations import AsyncBaseOperation, BaseOperation

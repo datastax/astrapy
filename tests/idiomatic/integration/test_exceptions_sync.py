@@ -15,7 +15,6 @@
 import pytest
 
 from astrapy import Collection, Database
-from astrapy.operations import InsertOne
 from astrapy.exceptions import (
     BulkWriteException,
     CollectionAlreadyExistsException,
@@ -26,8 +25,9 @@ from astrapy.exceptions import (
     InsertManyException,
     TooManyDocumentsToCountException,
 )
+from astrapy.operations import InsertOne
 
-from ..conftest import DataAPICredentials, IS_ASTRA_DB
+from ..conftest import IS_ASTRA_DB, DataAPICredentials
 
 
 class TestExceptionsSync:

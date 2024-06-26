@@ -12,24 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import pytest
-
 import time
 
+import pytest
+
+from astrapy import AsyncCollection, AsyncDatabase, DataAPIClient
+from astrapy.constants import DefaultIdType, VectorMetric
+from astrapy.ids import UUID, ObjectId
+from astrapy.info import CollectionDescriptor, DatabaseInfo
+
 from ..conftest import (
-    DataAPICredentials,
-    DataAPICredentialsInfo,
+    IS_ASTRA_DB,
     SECONDARY_NAMESPACE,
     TEST_COLLECTION_NAME,
-    IS_ASTRA_DB,
+    DataAPICredentials,
+    DataAPICredentialsInfo,
 )
-from astrapy.info import (
-    CollectionDescriptor,
-    DatabaseInfo,
-)
-from astrapy.constants import DefaultIdType, VectorMetric
-from astrapy.ids import ObjectId, UUID
-from astrapy import AsyncCollection, AsyncDatabase, DataAPIClient
 
 
 class TestDDLAsync:
