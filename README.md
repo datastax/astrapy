@@ -20,8 +20,11 @@ import astrapy
 ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
 ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
 
-my_client = astrapy.DataAPIClient(ASTRA_DB_APPLICATION_TOKEN)
-my_database = my_client.get_database(ASTRA_DB_API_ENDPOINT)
+my_client = astrapy.DataAPIClient()
+my_database = my_client.get_database(
+    ASTRA_DB_API_ENDPOINT,
+    token=ASTRA_DB_APPLICATION_TOKEN,
+)
 
 my_collection = my_database.create_collection(
     "dreams",
@@ -97,6 +100,7 @@ Here's a small admin-oriented example:
 import astrapy
 
 
+# this must have "Database Administrator" permissions:
 ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
 
 my_client = astrapy.DataAPIClient(ASTRA_DB_APPLICATION_TOKEN)
@@ -136,8 +140,11 @@ import astrapy
 ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
 ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
 
-my_client = astrapy.DataAPIClient(ASTRA_DB_APPLICATION_TOKEN)
-my_database = my_client.get_database(ASTRA_DB_API_ENDPOINT)
+my_client = astrapy.DataAPIClient()
+my_database = my_client.get_database(
+    ASTRA_DB_API_ENDPOINT,
+    token=ASTRA_DB_APPLICATION_TOKEN,
+)
 my_collection = my_database.dreams
 
 my_collection.insert_one({"when": datetime.datetime.now()})
@@ -177,8 +184,11 @@ import bson
 ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
 ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
 
-my_client = astrapy.DataAPIClient(ASTRA_DB_APPLICATION_TOKEN)
-my_database = my_client.get_database(ASTRA_DB_API_ENDPOINT)
+my_client = astrapy.DataAPIClient()
+my_database = my_client.get_database(
+    ASTRA_DB_API_ENDPOINT,
+    token=ASTRA_DB_APPLICATION_TOKEN,
+)
 
 my_collection = my_database.create_collection(
     "ecommerce",
