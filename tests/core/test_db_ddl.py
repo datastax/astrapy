@@ -23,7 +23,7 @@ import pytest
 from astrapy.core.db import AstraDB, AstraDBCollection
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
 
-from ..conftest import DataAPICredentials
+from ..conftest import DataAPICoreCredentials
 from .conftest import TEST_SKIP_COLLECTION_DELETE
 
 TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME = "ephemeral_v_col"
@@ -33,10 +33,12 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.describe("should confirm path handling in constructor")
-def test_path_handling(data_api_credentials_kwargs: DataAPICredentials) -> None:
-    token = data_api_credentials_kwargs["token"]
-    api_endpoint = data_api_credentials_kwargs["api_endpoint"]
-    namespace = data_api_credentials_kwargs.get("namespace")
+def test_path_handling(
+    data_api_core_credentials_kwargs: DataAPICoreCredentials,
+) -> None:
+    token = data_api_core_credentials_kwargs["token"]
+    api_endpoint = data_api_core_credentials_kwargs["api_endpoint"]
+    namespace = data_api_core_credentials_kwargs.get("namespace")
 
     if token is None or api_endpoint is None:
         raise ValueError("Required ASTRA DB configuration is missing")

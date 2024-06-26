@@ -8,6 +8,11 @@ import pytest
 from deprecation import UnsupportedWarning
 
 from astrapy.admin import parse_api_endpoint
+from astrapy.authentication import (
+    StaticTokenProvider,
+    TokenProvider,
+    UsernamePasswordTokenProvider,
+)
 from astrapy.constants import Environment
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
 
@@ -24,6 +29,13 @@ else:
 
 
 class DataAPICredentials(TypedDict):
+    token: str | TokenProvider
+    api_endpoint: str
+    namespace: str
+
+
+# to be used for 'core' testing, derived from above
+class DataAPICoreCredentials(TypedDict):
     token: str
     api_endpoint: str
     namespace: str
@@ -106,7 +118,9 @@ def sync_fail_if_not_removed(method: Callable[..., Any]) -> Callable[..., Any]:
 def data_api_credentials_kwargs() -> DataAPICredentials:
     if IS_ASTRA_DB:
         ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
-        ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
+        ASTRA_DB_APPLICATION_TOKEN = StaticTokenProvider(
+            os.environ["ASTRA_DB_APPLICATION_TOKEN"],
+        )
         ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
         astra_db_creds: DataAPICredentials = {
             "token": ASTRA_DB_APPLICATION_TOKEN,
@@ -115,9 +129,22 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         }
         return astra_db_creds
     else:
-        LOCAL_DATA_API_APPLICATION_TOKEN = os.environ[
-            "LOCAL_DATA_API_APPLICATION_TOKEN"
-        ]
+        # either token or user/pwd pair (the latter having precedence)
+        LOCAL_DATA_API_APPLICATION_TOKEN: TokenProvider
+        if (
+            "LOCAL_DATA_API_USERNAME" in os.environ
+            and "LOCAL_DATA_API_PASSWORD" in os.environ
+        ):
+            LOCAL_DATA_API_APPLICATION_TOKEN = UsernamePasswordTokenProvider(
+                username=os.environ["LOCAL_DATA_API_USERNAME"],
+                password=os.environ["LOCAL_DATA_API_PASSWORD"],
+            )
+        elif "LOCAL_DATA_API_APPLICATION_TOKEN" in os.environ:
+            LOCAL_DATA_API_APPLICATION_TOKEN = StaticTokenProvider(
+                os.environ["LOCAL_DATA_API_APPLICATION_TOKEN"],
+            )
+        else:
+            raise ValueError("Cannot find authentication data for local Data API")
         LOCAL_DATA_API_ENDPOINT = os.environ["LOCAL_DATA_API_ENDPOINT"]
         LOCAL_DATA_API_KEYSPACE = os.environ.get(
             "LOCAL_DATA_API_KEYSPACE", "default_keyspace"
@@ -128,6 +155,29 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
             "namespace": LOCAL_DATA_API_KEYSPACE,
         }
         return local_db_creds
+
+
+@pytest.fixture(scope="session")
+def data_api_core_credentials_kwargs(
+    data_api_credentials_kwargs: DataAPICredentials,
+) -> DataAPICoreCredentials:
+    token_str: str
+    if isinstance(data_api_credentials_kwargs["token"], str):
+        token_str = data_api_credentials_kwargs["token"]
+    elif isinstance(data_api_credentials_kwargs["token"], TokenProvider):
+        token_str0 = data_api_credentials_kwargs["token"].get_token()
+        if token_str0 is None:
+            raise ValueError("Token cannot be made into a string in fixture")
+        else:
+            token_str = token_str0
+    else:
+        # this should not happen
+        token_str = str(data_api_credentials_kwargs["token"])
+    return {
+        "token": token_str,
+        "api_endpoint": data_api_credentials_kwargs["api_endpoint"],
+        "namespace": data_api_credentials_kwargs["namespace"],
+    }
 
 
 @pytest.fixture(scope="session")
@@ -147,12 +197,12 @@ def data_api_credentials_info(
 
 
 @pytest.fixture(scope="session")
-def astra_invalid_db_credentials_kwargs(
-    data_api_credentials_kwargs: DataAPICredentials,
-) -> DataAPICredentials:
-    astra_db_creds: DataAPICredentials = {
-        "token": data_api_credentials_kwargs["token"],
-        "namespace": data_api_credentials_kwargs["namespace"],
+def data_api_core_bad_credentials_kwargs(
+    data_api_core_credentials_kwargs: DataAPICoreCredentials,
+) -> DataAPICoreCredentials:
+    astra_db_creds: DataAPICoreCredentials = {
+        "token": data_api_core_credentials_kwargs["token"],
+        "namespace": data_api_core_credentials_kwargs["namespace"],
         "api_endpoint": "http://localhost:1234",
     }
 

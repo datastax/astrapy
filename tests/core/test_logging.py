@@ -22,7 +22,7 @@ import pytest
 
 from astrapy.core.db import AstraDB
 
-from ..conftest import DataAPICredentials
+from ..conftest import DataAPICoreCredentials
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 @pytest.mark.describe("should obey the 'TRACE' logging level when requested")
 def test_trace_logging_trace(
     caplog: pytest.LogCaptureFixture,
-    data_api_credentials_kwargs: DataAPICredentials,
+    data_api_core_credentials_kwargs: DataAPICoreCredentials,
 ) -> None:
-    astra_db = AstraDB(**data_api_credentials_kwargs)
+    astra_db = AstraDB(**data_api_core_credentials_kwargs)
     with caplog.at_level(10):
         astra_db.get_collections()
         for record in caplog.records:
