@@ -178,10 +178,15 @@ def live_provider_info() -> Dict[str, Any]:
         )
         response = cmd.request(payload={"findEmbeddingProviders": {}})
     else:
-        LOCAL_DATA_API_APPLICATION_TOKEN = os.environ[
-            "LOCAL_DATA_API_APPLICATION_TOKEN"
-        ]
-        LOCAL_DATA_API_ENDPOINT = os.environ["LOCAL_DATA_API_ENDPOINT"]
+        # Must adapt this part to readjust to docker-compose testing case:
+        if "DOCKER_COMPOSE_LOCAL_DATA_API" in os.environ:
+            LOCAL_DATA_API_APPLICATION_TOKEN = "Cassandra:Y2Fzc2FuZHJh:Y2Fzc2FuZHJh"
+            LOCAL_DATA_API_ENDPOINT = "http://localhost:8181"
+        else:
+            LOCAL_DATA_API_APPLICATION_TOKEN = os.environ[
+                "LOCAL_DATA_API_APPLICATION_TOKEN"
+            ]
+            LOCAL_DATA_API_ENDPOINT = os.environ["LOCAL_DATA_API_ENDPOINT"]
         api_endpoint = LOCAL_DATA_API_ENDPOINT
         path = "v1"
         headers_l: Dict[str, Optional[str]] = {

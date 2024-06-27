@@ -1,11 +1,13 @@
 # main conftest for shared fixtures (if any).
 import functools
 import os
+import time
 import warnings
 from typing import Any, Awaitable, Callable, Optional, Tuple, TypedDict
 
 import pytest
 from deprecation import UnsupportedWarning
+from testcontainers.compose import DockerCompose
 
 from astrapy.admin import parse_api_endpoint
 from astrapy.authentication import (
@@ -16,11 +18,22 @@ from astrapy.authentication import (
 from astrapy.constants import Environment
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
 
+
+DOCKER_COMPOSE_SLEEP_TIME_SECONDS = 20
+
+base_dir = os.path.abspath(os.path.dirname(__file__))
+docker_compose_filepath = os.path.join(base_dir, "hcd_compose")
+
 IS_ASTRA_DB: bool
 SECONDARY_NAMESPACE: Optional[str]
 if "LOCAL_DATA_API_ENDPOINT" in os.environ:
     IS_ASTRA_DB = False
-    SECONDARY_NAMESPACE = os.environ.get("LOCAL_DATA_API_SECONDARY_KEYSPACE")
+    # no reason not to use it
+    SECONDARY_NAMESPACE = os.environ.get("LOCAL_DATA_API_SECONDARY_KEYSPACE", "alternate_keyspace")
+elif "DOCKER_COMPOSE_LOCAL_DATA_API" in os.environ:
+    IS_ASTRA_DB = False
+    # no reason not to use it
+    SECONDARY_NAMESPACE = os.environ.get("LOCAL_DATA_API_SECONDARY_KEYSPACE", "alternate_keyspace")
 elif "ASTRA_DB_API_ENDPOINT" in os.environ:
     IS_ASTRA_DB = True
     SECONDARY_NAMESPACE = os.environ.get("ASTRA_DB_SECONDARY_KEYSPACE")
@@ -129,6 +142,17 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         }
         return astra_db_creds
     else:
+        # if "DOCKER_COMPOSE_LOCAL_DATA_API", must spin the whole environment:
+        # (it is started and then thrown away)
+        if "DOCKER_COMPOSE_LOCAL_DATA_API" in os.environ:
+            compose = DockerCompose(filepath=docker_compose_filepath)
+            compose.start()
+            # and override some environment variables:
+            os.environ["LOCAL_DATA_API_USERNAME"] = "cassandra"
+            os.environ["LOCAL_DATA_API_PASSWORD"] = "cassandra"
+            os.environ["LOCAL_DATA_API_ENDPOINT"] = "http://localhost:8181"
+            time.sleep(DOCKER_COMPOSE_SLEEP_TIME_SECONDS)
+
         # either token or user/pwd pair (the latter having precedence)
         LOCAL_DATA_API_APPLICATION_TOKEN: TokenProvider
         if (
