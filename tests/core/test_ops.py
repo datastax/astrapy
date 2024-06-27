@@ -26,6 +26,7 @@ from ..conftest import (
     ASTRA_DB_KEYSPACE,
     ASTRA_DB_OPS_APPLICATION_TOKEN,
     ASTRA_DB_REGION,
+    IS_ASTRA_DB,
     TEST_ASTRADBOPS,
 )
 
@@ -51,6 +52,10 @@ def devops_client() -> AstraDBOps:
 @pytest.mark.skipif(
     not TEST_ASTRADBOPS,
     reason="Ops tests not explicitly requested",
+)
+@pytest.mark.skipif(
+    not IS_ASTRA_DB,
+    reason="Ops tests are only for Astra DB",
 )
 class TestAstraDBOps:
     @pytest.mark.describe("should initialize an AstraDB Ops Client")

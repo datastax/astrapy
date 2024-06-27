@@ -17,15 +17,13 @@ Main conftest for shared fixtures (if any).
 """
 
 import functools
-import os
-import time
 import warnings
 from typing import Any, Awaitable, Callable, Optional, Tuple, TypedDict
 
 import pytest
 from deprecation import UnsupportedWarning
-from testcontainers.compose import DockerCompose
 
+from astrapy import DataAPIClient
 from astrapy.admin import parse_api_endpoint
 from astrapy.authentication import TokenProvider
 from astrapy.constants import Environment
@@ -54,11 +52,6 @@ from .preprocess_env import (
     TEST_ASTRADBOPS,
     TEST_SKIP_COLLECTION_DELETE,
 )
-
-DOCKER_COMPOSE_SLEEP_TIME_SECONDS = 20
-
-base_dir = os.path.abspath(os.path.dirname(__file__))
-docker_compose_filepath = os.path.join(base_dir, "hcd_compose")
 
 
 class DataAPICredentials(TypedDict):
@@ -159,14 +152,6 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         }
         return astra_db_creds
     else:
-        # if "DOCKER_COMPOSE_LOCAL_DATA_API", must spin the whole environment:
-        # (it is started and then thrown away)
-        if DOCKER_COMPOSE_LOCAL_DATA_API:
-            compose = DockerCompose(filepath=docker_compose_filepath)
-            compose.start()
-            # and override some environment variables:
-            time.sleep(DOCKER_COMPOSE_SLEEP_TIME_SECONDS)
-
         if LOCAL_DATA_API_ENDPOINT is None:
             raise ValueError("No endpoint data for local Data API")
         local_db_creds: DataAPICredentials = {
@@ -174,6 +159,23 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
             "api_endpoint": LOCAL_DATA_API_ENDPOINT or "",
             "namespace": LOCAL_DATA_API_KEYSPACE or DEFAULT_KEYSPACE_NAME,
         }
+
+        # ensure keyspace(s) exist at this point
+        # (we have to bypass the fixture hierarchy as the ..._info fixture
+        # comes later, so this part instantiates and uses throwaway objects)
+        _env, _ = env_region_from_endpoint(local_db_creds["api_endpoint"])
+        _client = DataAPIClient(environment=_env)
+        _database = _client.get_database(
+            local_db_creds["api_endpoint"],
+            token=local_db_creds["token"],
+            # namespace=local_db_creds["namespace"],
+        )
+        _database_admin = _database.get_database_admin()
+        _database_admin.create_namespace(local_db_creds["namespace"])
+        if SECONDARY_NAMESPACE:
+            _database_admin.create_namespace(SECONDARY_NAMESPACE)
+        # end of keyspace-ensuring block
+
         return local_db_creds
 
 

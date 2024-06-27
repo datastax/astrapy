@@ -1,0 +1,51 @@
+version: '3'
+
+services:
+  hcd:
+    image: datastax/hcd:1.0.0-early-preview
+    networks:
+      - stargate
+    mem_limit: 2G
+    environment:
+      - MAX_HEAP_SIZE=1536M
+      - CLUSTER_NAME=hcd-1.0.0-early-preview.1-cluster
+      - DS_LICENSE=accept
+      - HCD_AUTO_CONF_OFF=cassandra.yaml
+    volumes:
+      - ./cassandra-hcd.yaml:/opt/hcd/resources/cassandra/conf/cassandra.yaml:rw
+    ports:
+      - "9042:9042"
+    healthcheck:
+      test: [ "CMD-SHELL", "cqlsh -u cassandra -p cassandra -e 'describe keyspaces'" ]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+
+  data-api:
+    image: stargateio/data-api:v1.0.12
+    depends_on:
+      hcd:
+        condition: service_healthy
+    networks:
+      - stargate
+    ports:
+      - "8181:8181"
+    mem_limit: 2G
+    environment:
+      - JAVA_MAX_MEM_RATIO=75
+      - JAVA_INITIAL_MEM_RATIO=50
+      - STARGATE_DATA_STORE_IGNORE_BRIDGE=true
+      - GC_CONTAINER_OPTIONS=-XX:+UseG1GC
+      - STARGATE_JSONAPI_OPERATIONS_DATABASE_CONFIG_CASSANDRA_END_POINTS=hcd
+      - STARGATE_JSONAPI_OPERATIONS_DATABASE_CONFIG_LOCAL_DATACENTER=dc1
+      - QUARKUS_HTTP_ACCESS_LOG_ENABLED=FALSE
+      - QUARKUS_LOG_LEVEL=INFO
+      - STARGATE_JSONAPI_OPERATIONS_VECTORIZE_ENABLED=true
+      - JAVA_OPTS_APPEND=-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager
+    healthcheck:
+      test: curl -f http://localhost:8181/stargate/health || exit 1
+      interval: 5s
+      timeout: 10s
+      retries: 10
+networks:
+  stargate:

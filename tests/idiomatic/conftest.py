@@ -58,15 +58,6 @@ def sync_database(
         namespace=data_api_credentials_kwargs["namespace"],
     )
 
-    if not IS_ASTRA_DB:
-        # ensure keyspace(s) exist
-        database_admin = database.get_database_admin()
-        database_admin.create_namespace(data_api_credentials_kwargs["namespace"])
-        if data_api_credentials_info["secondary_namespace"]:
-            database_admin.create_namespace(
-                data_api_credentials_info["secondary_namespace"]
-            )
-
     yield database
 
 

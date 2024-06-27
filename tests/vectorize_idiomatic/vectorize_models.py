@@ -18,9 +18,9 @@ from typing import Any, Dict, Iterable, Tuple
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from live_provider_info import live_provider_info
-
 from astrapy.info import CollectionVectorServiceOptions
+
+from .live_provider_info import live_provider_info
 
 alphanum = set("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890")
 

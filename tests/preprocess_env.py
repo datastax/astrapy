@@ -19,13 +19,22 @@ Except for the vectorize information, which for the time being passes as os.envi
 """
 
 import os
+import time
 from typing import Optional
+
+from testcontainers.compose import DockerCompose
 
 from astrapy.authentication import (
     StaticTokenProvider,
     TokenProvider,
     UsernamePasswordTokenProvider,
 )
+
+DOCKER_COMPOSE_SLEEP_TIME_SECONDS = 20
+
+base_dir = os.path.abspath(os.path.dirname(__file__))
+docker_compose_filepath = os.path.join(base_dir, "hcd_compose")
+
 
 IS_ASTRA_DB: bool
 DOCKER_COMPOSE_LOCAL_DATA_API: bool
@@ -94,6 +103,20 @@ else:
         )
     else:
         raise ValueError("No full authentication data for local Data API")
+
+
+# Ensure docker-compose, if needed, is started and ready before anything else
+# (especially querying the findEmbeddingProviders)
+# if "DOCKER_COMPOSE_LOCAL_DATA_API", must spin the whole environment:
+# (it is started and not cleaned up at the moment: manual cleanup if needed)
+is_docker_compose_started = False
+if DOCKER_COMPOSE_LOCAL_DATA_API:
+    if not is_docker_compose_started:
+        compose = DockerCompose(filepath=docker_compose_filepath)
+        compose.start()
+        time.sleep(DOCKER_COMPOSE_SLEEP_TIME_SECONDS)
+        is_docker_compose_started = True
+
 
 # Idomatic admin test flag
 DO_IDIOMATIC_ADMIN_TESTS: bool
