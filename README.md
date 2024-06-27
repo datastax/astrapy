@@ -298,7 +298,7 @@ TEST_ASTRADBOPS="1" poetry run pytest tests/core/test_ops.py
 
 ##### _idiomatic regular_:
 
-Warning: this will also trigger the very long-running _idiomatic admin Astra_ if the vars as in `env.astra.admin.template` are also detected. Likewise, the _idiomatic admin nonAstra_ may start, which however takes few seconds.
+Warning: this will also trigger the very long-running _idiomatic admin Astra_ if the vars as in `env.astra.admin.template` are also detected. Likewise, the _idiomatic admin nonAstra_ may start (if `DO_IDIOMATIC_ADMIN_TESTS` is set), which however takes few seconds.
 
 ```
 poetry run pytest tests/idiomatic
@@ -313,7 +313,7 @@ poetry run pytest tests/idiomatic/integration/test_admin.py
 ##### _idiomatic admin nonAstra_:
 
 ```
-poetry run pytest tests/idiomatic/integration/test_nonastra_admin.py
+DO_IDIOMATIC_ADMIN_TESTS="1" poetry run pytest tests/idiomatic/integration/test_nonastra_admin.py
 ```
 
 ##### _vectorize in-depth_:

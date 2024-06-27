@@ -16,10 +16,11 @@ import pytest
 
 from astrapy import AsyncDatabase, Database
 
-from ..conftest import IS_ASTRA_DB
+from ..conftest import DO_IDIOMATIC_ADMIN_TESTS, IS_ASTRA_DB
 
 
 @pytest.mark.skipif(IS_ASTRA_DB, reason="Not supported on Astra DB")
+@pytest.mark.skipif(not DO_IDIOMATIC_ADMIN_TESTS, reason="Admin tests are suppressed")
 class TestNonAstraAdmin:
     @pytest.mark.describe(
         "test of the namespace crud with non-Astra DataAPIDatabaseAdmin, sync"

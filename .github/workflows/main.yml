@@ -1,4 +1,4 @@
-name: Run Pytest on Astrapy
+name: Run idiomatic pytest on Astra DB
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
       ASTRA_DB_API_ENDPOINT: ${{ secrets.ASTRA_DB_API_ENDPOINT }}
       ASTRA_DB_KEYSPACE: ${{ secrets.ASTRA_DB_KEYSPACE }}
       ASTRA_DB_SECONDARY_KEYSPACE: ${{ secrets.ASTRA_DB_SECONDARY_KEYSPACE }}
-      # special setting to not drop any collection
+      # special setting to not drop any collection (core only)
       TEST_SKIP_COLLECTION_DELETE: ${{ secrets.TEST_SKIP_COLLECTION_DELETE }}
       # for admin-related testing if enabled
       DO_IDIOMATIC_ADMIN_TESTS: ${{ secrets.DO_IDIOMATIC_ADMIN_TESTS }}
