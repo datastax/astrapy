@@ -18,7 +18,7 @@ from typing import Any, Dict, Iterable, Optional, Tuple
 from astrapy.api_commander import APICommander
 from astrapy.info import CollectionVectorServiceOptions
 
-from .conftest import (
+from ..conftest import (
     ASTRA_DB_API_ENDPOINT,
     ASTRA_DB_APPLICATION_TOKEN,
     IS_ASTRA_DB,
