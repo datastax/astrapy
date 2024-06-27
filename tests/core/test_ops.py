@@ -14,29 +14,22 @@
 
 import itertools
 import logging
-import os
 from typing import Any, Dict, List, cast
 
 import pytest
-from dotenv import load_dotenv
 
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME, DEFAULT_REGION
 from astrapy.core.ops import AstraDBOps
 
-logger = logging.getLogger(__name__)
-
-
-load_dotenv()
-
-
-# Parameters for the AstraDBOps testing
-ASTRA_DB_APPLICATION_TOKEN = os.environ.get(
-    "ASTRA_DB_OPS_APPLICATION_TOKEN",
-    os.environ.get("ASTRA_DB_APPLICATION_TOKEN", "no_token!"),
+from ..conftest import (
+    ASTRA_DB_ID,
+    ASTRA_DB_KEYSPACE,
+    ASTRA_DB_OPS_APPLICATION_TOKEN,
+    ASTRA_DB_REGION,
+    TEST_ASTRADBOPS,
 )
-ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID", "")
-ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
-ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION", DEFAULT_REGION)
+
+logger = logging.getLogger(__name__)
 
 
 def find_new_name(existing: List[str], prefix: str) -> str:
@@ -50,13 +43,13 @@ def find_new_name(existing: List[str], prefix: str) -> str:
 
 @pytest.fixture
 def devops_client() -> AstraDBOps:
-    return AstraDBOps(token=ASTRA_DB_APPLICATION_TOKEN)
+    return AstraDBOps(token=ASTRA_DB_OPS_APPLICATION_TOKEN)
 
 
 # In the regular CI we skip these Ops tests (slow and require manual care).
 # To maintainers: please run them now and them while we figure out automation.
 @pytest.mark.skipif(
-    int(os.environ.get("TEST_ASTRADBOPS", "0")) == 0,
+    not TEST_ASTRADBOPS,
     reason="Ops tests not explicitly requested",
 )
 class TestAstraDBOps:
@@ -83,11 +76,11 @@ class TestAstraDBOps:
             "name": new_database_name,
             "tier": "serverless",
             "cloudProvider": "GCP",
-            "keyspace": ASTRA_DB_KEYSPACE,
-            "region": ASTRA_DB_REGION,
+            "keyspace": ASTRA_DB_KEYSPACE or DEFAULT_KEYSPACE_NAME,
+            "region": ASTRA_DB_REGION or DEFAULT_REGION,
             "capacityUnits": 1,
             "user": "token",
-            "password": ASTRA_DB_APPLICATION_TOKEN,
+            "password": ASTRA_DB_OPS_APPLICATION_TOKEN,
             "dbType": "vector",
         }
         response = devops_client.create_database(

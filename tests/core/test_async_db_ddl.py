@@ -23,8 +23,7 @@ import pytest
 from astrapy.core.db import AsyncAstraDB, AsyncAstraDBCollection
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
 
-from ..conftest import DataAPICoreCredentials
-from .conftest import TEST_SKIP_COLLECTION_DELETE
+from ..conftest import TEST_SKIP_COLLECTION_DELETE, DataAPICoreCredentials
 
 TEST_CREATE_DELETE_VECTOR_COLLECTION_NAME = "ephemeral_v_col"
 TEST_CREATE_DELETE_NONVECTOR_COLLECTION_NAME = "ephemeral_non_v_col"

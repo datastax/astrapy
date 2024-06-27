@@ -18,7 +18,13 @@ from typing import Any, Dict, Iterable, Optional, Tuple
 from astrapy.api_commander import APICommander
 from astrapy.info import CollectionVectorServiceOptions
 
-from .conftest import IS_ASTRA_DB
+from .conftest import (
+    ASTRA_DB_API_ENDPOINT,
+    ASTRA_DB_APPLICATION_TOKEN,
+    IS_ASTRA_DB,
+    LOCAL_DATA_API_APPLICATION_TOKEN,
+    LOCAL_DATA_API_ENDPOINT,
+)
 
 alphanum = set("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890")
 
@@ -161,39 +167,27 @@ def live_provider_info() -> Dict[str, Any]:
     """
     Query the API endpoint `findEmbeddingProviders` endpoint
     for the latest information.
-    This is later used to make sure everything is mapped/tested.
+
+    This is where the preprocess_env variables are read to figure out whom to ask.
     """
     response: Dict[str, Any]
 
     if IS_ASTRA_DB:
-        ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
-        ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
-        api_endpoint = ASTRA_DB_API_ENDPOINT
         path = "api/json/v1"
         headers_a: Dict[str, Optional[str]] = {"Token": ASTRA_DB_APPLICATION_TOKEN}
         cmd = APICommander(
-            api_endpoint=api_endpoint,
+            api_endpoint=ASTRA_DB_API_ENDPOINT or "",
             path=path,
             headers=headers_a,
         )
         response = cmd.request(payload={"findEmbeddingProviders": {}})
     else:
-        # Must adapt this part to readjust to docker-compose testing case:
-        if "DOCKER_COMPOSE_LOCAL_DATA_API" in os.environ:
-            LOCAL_DATA_API_APPLICATION_TOKEN = "Cassandra:Y2Fzc2FuZHJh:Y2Fzc2FuZHJh"
-            LOCAL_DATA_API_ENDPOINT = "http://localhost:8181"
-        else:
-            LOCAL_DATA_API_APPLICATION_TOKEN = os.environ[
-                "LOCAL_DATA_API_APPLICATION_TOKEN"
-            ]
-            LOCAL_DATA_API_ENDPOINT = os.environ["LOCAL_DATA_API_ENDPOINT"]
-        api_endpoint = LOCAL_DATA_API_ENDPOINT
         path = "v1"
         headers_l: Dict[str, Optional[str]] = {
             "Token": LOCAL_DATA_API_APPLICATION_TOKEN
         }
         cmd = APICommander(
-            api_endpoint=api_endpoint,
+            api_endpoint=LOCAL_DATA_API_ENDPOINT or "",
             path=path,
             headers=headers_l,
         )

@@ -1,9 +1,22 @@
+# Copyright DataStax, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
-Test fixtures
+Test fixtures for 'core' testing
 """
 
 import math
-import os
 from typing import AsyncIterable, Dict, Iterable, List, Optional, Set, TypeVar
 
 import pytest
@@ -16,15 +29,14 @@ from astrapy.core.db import (
     AsyncAstraDBCollection,
 )
 
-from ..conftest import DataAPICoreCredentials, DataAPICredentialsInfo
+from ..conftest import (
+    TEST_SKIP_COLLECTION_DELETE,
+    DataAPICoreCredentials,
+    DataAPICredentialsInfo,
+)
 
 T = TypeVar("T")
 
-TEST_SKIP_COLLECTION_DELETE: bool
-if os.getenv("TEST_SKIP_COLLECTION_DELETE"):
-    TEST_SKIP_COLLECTION_DELETE = int(os.environ["TEST_SKIP_COLLECTION_DELETE"]) != 0
-else:
-    TEST_SKIP_COLLECTION_DELETE = False
 
 # fixed
 TEST_WRITABLE_VECTOR_COLLECTION = "writable_v_col"

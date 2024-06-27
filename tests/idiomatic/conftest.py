@@ -22,6 +22,9 @@ from astrapy import AsyncCollection, AsyncDatabase, Collection, DataAPIClient, D
 from astrapy.constants import VectorMetric
 
 from ..conftest import (
+    ADMIN_ENV_LIST,
+    ADMIN_ENV_VARIABLE_MAP,
+    DO_IDIOMATIC_ADMIN_TESTS,
     IS_ASTRA_DB,
     SECONDARY_NAMESPACE,
     DataAPICredentials,
@@ -140,4 +143,7 @@ __all__ = [
     "async_fail_if_not_removed",
     "IS_ASTRA_DB",
     "SECONDARY_NAMESPACE",
+    "ADMIN_ENV_LIST",
+    "ADMIN_ENV_VARIABLE_MAP",
+    "DO_IDIOMATIC_ADMIN_TESTS",
 ]

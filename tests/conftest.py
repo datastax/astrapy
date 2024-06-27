@@ -1,4 +1,21 @@
-# main conftest for shared fixtures (if any).
+# Copyright DataStax, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+Main conftest for shared fixtures (if any).
+"""
+
 import functools
 import os
 import time
@@ -18,30 +35,32 @@ from astrapy.authentication import (
 from astrapy.constants import Environment
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
 
+from .preprocess_env import (
+    ADMIN_ENV_LIST,
+    ADMIN_ENV_VARIABLE_MAP,
+    ASTRA_DB_API_ENDPOINT,
+    ASTRA_DB_APPLICATION_TOKEN,
+    ASTRA_DB_ID,
+    ASTRA_DB_KEYSPACE,
+    ASTRA_DB_OPS_APPLICATION_TOKEN,
+    ASTRA_DB_REGION,
+    DO_IDIOMATIC_ADMIN_TESTS,
+    DOCKER_COMPOSE_LOCAL_DATA_API,
+    IS_ASTRA_DB,
+    LOCAL_DATA_API_APPLICATION_TOKEN,
+    LOCAL_DATA_API_ENDPOINT,
+    LOCAL_DATA_API_KEYSPACE,
+    LOCAL_DATA_API_PASSWORD,
+    LOCAL_DATA_API_USERNAME,
+    SECONDARY_NAMESPACE,
+    TEST_ASTRADBOPS,
+    TEST_SKIP_COLLECTION_DELETE,
+)
+
 DOCKER_COMPOSE_SLEEP_TIME_SECONDS = 20
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
 docker_compose_filepath = os.path.join(base_dir, "hcd_compose")
-
-IS_ASTRA_DB: bool
-SECONDARY_NAMESPACE: Optional[str]
-if "LOCAL_DATA_API_ENDPOINT" in os.environ:
-    IS_ASTRA_DB = False
-    # no reason not to use it
-    SECONDARY_NAMESPACE = os.environ.get(
-        "LOCAL_DATA_API_SECONDARY_KEYSPACE", "alternate_keyspace"
-    )
-elif "DOCKER_COMPOSE_LOCAL_DATA_API" in os.environ:
-    IS_ASTRA_DB = False
-    # no reason not to use it
-    SECONDARY_NAMESPACE = os.environ.get(
-        "LOCAL_DATA_API_SECONDARY_KEYSPACE", "alternate_keyspace"
-    )
-elif "ASTRA_DB_API_ENDPOINT" in os.environ:
-    IS_ASTRA_DB = True
-    SECONDARY_NAMESPACE = os.environ.get("ASTRA_DB_SECONDARY_KEYSPACE")
-else:
-    raise ValueError("No credentials.")
 
 
 class DataAPICredentials(TypedDict):
@@ -133,53 +152,42 @@ def sync_fail_if_not_removed(method: Callable[..., Any]) -> Callable[..., Any]:
 @pytest.fixture(scope="session")
 def data_api_credentials_kwargs() -> DataAPICredentials:
     if IS_ASTRA_DB:
-        ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
-        ASTRA_DB_APPLICATION_TOKEN = StaticTokenProvider(
-            os.environ["ASTRA_DB_APPLICATION_TOKEN"],
-        )
-        ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE", DEFAULT_KEYSPACE_NAME)
+        if ASTRA_DB_API_ENDPOINT is None:
+            raise ValueError("No endpoint data for local Data API")
         astra_db_creds: DataAPICredentials = {
-            "token": ASTRA_DB_APPLICATION_TOKEN,
-            "api_endpoint": ASTRA_DB_API_ENDPOINT,
-            "namespace": ASTRA_DB_KEYSPACE,
+            "token": StaticTokenProvider(ASTRA_DB_APPLICATION_TOKEN),
+            "api_endpoint": ASTRA_DB_API_ENDPOINT or "",
+            "namespace": ASTRA_DB_KEYSPACE or DEFAULT_KEYSPACE_NAME,
         }
         return astra_db_creds
     else:
         # if "DOCKER_COMPOSE_LOCAL_DATA_API", must spin the whole environment:
         # (it is started and then thrown away)
-        if "DOCKER_COMPOSE_LOCAL_DATA_API" in os.environ:
+        if DOCKER_COMPOSE_LOCAL_DATA_API:
             compose = DockerCompose(filepath=docker_compose_filepath)
             compose.start()
             # and override some environment variables:
-            os.environ["LOCAL_DATA_API_USERNAME"] = "cassandra"
-            os.environ["LOCAL_DATA_API_PASSWORD"] = "cassandra"
-            os.environ["LOCAL_DATA_API_ENDPOINT"] = "http://localhost:8181"
             time.sleep(DOCKER_COMPOSE_SLEEP_TIME_SECONDS)
 
         # either token or user/pwd pair (the latter having precedence)
-        LOCAL_DATA_API_APPLICATION_TOKEN: TokenProvider
-        if (
-            "LOCAL_DATA_API_USERNAME" in os.environ
-            and "LOCAL_DATA_API_PASSWORD" in os.environ
-        ):
-            LOCAL_DATA_API_APPLICATION_TOKEN = UsernamePasswordTokenProvider(
-                username=os.environ["LOCAL_DATA_API_USERNAME"],
-                password=os.environ["LOCAL_DATA_API_PASSWORD"],
+        local_data_api_token_provider: TokenProvider
+        if LOCAL_DATA_API_USERNAME and LOCAL_DATA_API_PASSWORD:
+            local_data_api_token_provider = UsernamePasswordTokenProvider(
+                username=LOCAL_DATA_API_USERNAME,
+                password=LOCAL_DATA_API_PASSWORD,
             )
-        elif "LOCAL_DATA_API_APPLICATION_TOKEN" in os.environ:
-            LOCAL_DATA_API_APPLICATION_TOKEN = StaticTokenProvider(
-                os.environ["LOCAL_DATA_API_APPLICATION_TOKEN"],
+        elif LOCAL_DATA_API_APPLICATION_TOKEN:
+            local_data_api_token_provider = StaticTokenProvider(
+                LOCAL_DATA_API_APPLICATION_TOKEN
             )
         else:
-            raise ValueError("Cannot find authentication data for local Data API")
-        LOCAL_DATA_API_ENDPOINT = os.environ["LOCAL_DATA_API_ENDPOINT"]
-        LOCAL_DATA_API_KEYSPACE = os.environ.get(
-            "LOCAL_DATA_API_KEYSPACE", "default_keyspace"
-        )
+            raise ValueError("No full authentication data for local Data API")
+        if LOCAL_DATA_API_ENDPOINT is None:
+            raise ValueError("No endpoint data for local Data API")
         local_db_creds: DataAPICredentials = {
-            "token": LOCAL_DATA_API_APPLICATION_TOKEN,
-            "api_endpoint": LOCAL_DATA_API_ENDPOINT,
-            "namespace": LOCAL_DATA_API_KEYSPACE,
+            "token": local_data_api_token_provider,
+            "api_endpoint": LOCAL_DATA_API_ENDPOINT or "",
+            "namespace": LOCAL_DATA_API_KEYSPACE or DEFAULT_KEYSPACE_NAME,
         }
         return local_db_creds
 
@@ -234,3 +242,26 @@ def data_api_core_bad_credentials_kwargs(
     }
 
     return astra_db_creds
+
+
+__all__ = [
+    "ASTRA_DB_API_ENDPOINT",
+    "ASTRA_DB_APPLICATION_TOKEN",
+    "ASTRA_DB_ID",
+    "ASTRA_DB_KEYSPACE",
+    "ASTRA_DB_OPS_APPLICATION_TOKEN",
+    "ASTRA_DB_REGION",
+    "DOCKER_COMPOSE_LOCAL_DATA_API",
+    "IS_ASTRA_DB",
+    "LOCAL_DATA_API_APPLICATION_TOKEN",
+    "LOCAL_DATA_API_ENDPOINT",
+    "LOCAL_DATA_API_KEYSPACE",
+    "LOCAL_DATA_API_PASSWORD",
+    "LOCAL_DATA_API_USERNAME",
+    "SECONDARY_NAMESPACE",
+    "TEST_ASTRADBOPS",
+    "TEST_SKIP_COLLECTION_DELETE",
+    "ADMIN_ENV_LIST",
+    "ADMIN_ENV_VARIABLE_MAP",
+    "DO_IDIOMATIC_ADMIN_TESTS",
+]

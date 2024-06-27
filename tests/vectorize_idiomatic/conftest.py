@@ -24,7 +24,15 @@ import pytest
 from astrapy import AsyncCollection, AsyncDatabase, Collection, DataAPIClient, Database
 from astrapy.constants import VectorMetric
 
-from ..conftest import IS_ASTRA_DB, DataAPICredentials, DataAPICredentialsInfo
+from ..conftest import (
+    ASTRA_DB_API_ENDPOINT,
+    ASTRA_DB_APPLICATION_TOKEN,
+    IS_ASTRA_DB,
+    LOCAL_DATA_API_APPLICATION_TOKEN,
+    LOCAL_DATA_API_ENDPOINT,
+    DataAPICredentials,
+    DataAPICredentialsInfo,
+)
 
 TEST_SERVICE_COLLECTION_NAME = "test_indepth_vectorize_collection"
 
@@ -103,4 +111,8 @@ __all__ = [
     "sync_database",
     "async_database",
     "IS_ASTRA_DB",
+    "ASTRA_DB_APPLICATION_TOKEN",
+    "ASTRA_DB_API_ENDPOINT",
+    "LOCAL_DATA_API_APPLICATION_TOKEN",
+    "LOCAL_DATA_API_ENDPOINT",
 ]
