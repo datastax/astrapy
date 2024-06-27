@@ -13,18 +13,14 @@
 # limitations under the License.
 
 import os
-from typing import Any, Dict, Iterable, Optional, Tuple
+import sys
+from typing import Any, Dict, Iterable, Tuple
 
-from astrapy.api_commander import APICommander
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from live_provider_info import live_provider_info
+
 from astrapy.info import CollectionVectorServiceOptions
-
-from ..conftest import (
-    ASTRA_DB_API_ENDPOINT,
-    ASTRA_DB_APPLICATION_TOKEN,
-    IS_ASTRA_DB,
-    LOCAL_DATA_API_APPLICATION_TOKEN,
-    LOCAL_DATA_API_ENDPOINT,
-)
 
 alphanum = set("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890")
 
@@ -161,39 +157,6 @@ FORCE_DIMENSION_MAP = {
         os.environ["HUGGINGFACEDED_DIMENSION"]
     ),
 }
-
-
-def live_provider_info() -> Dict[str, Any]:
-    """
-    Query the API endpoint `findEmbeddingProviders` endpoint
-    for the latest information.
-
-    This is where the preprocess_env variables are read to figure out whom to ask.
-    """
-    response: Dict[str, Any]
-
-    if IS_ASTRA_DB:
-        path = "api/json/v1"
-        headers_a: Dict[str, Optional[str]] = {"Token": ASTRA_DB_APPLICATION_TOKEN}
-        cmd = APICommander(
-            api_endpoint=ASTRA_DB_API_ENDPOINT or "",
-            path=path,
-            headers=headers_a,
-        )
-        response = cmd.request(payload={"findEmbeddingProviders": {}})
-    else:
-        path = "v1"
-        headers_l: Dict[str, Optional[str]] = {
-            "Token": LOCAL_DATA_API_APPLICATION_TOKEN
-        }
-        cmd = APICommander(
-            api_endpoint=LOCAL_DATA_API_ENDPOINT or "",
-            path=path,
-            headers=headers_l,
-        )
-        response = cmd.request(payload={"findEmbeddingProviders": {}})
-
-    return response
 
 
 def live_test_models() -> Iterable[Dict[str, Any]]:

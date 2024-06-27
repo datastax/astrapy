@@ -20,7 +20,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from typing import Any, Dict
 
-from vectorize_models import live_provider_info
+from live_provider_info import live_provider_info
 
 
 def desc_param(param_data: Dict[str, Any]) -> str:

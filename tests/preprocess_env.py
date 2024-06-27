@@ -21,6 +21,12 @@ Except for the vectorize information, which for the time being passes as os.envi
 import os
 from typing import Optional
 
+from astrapy.authentication import (
+    StaticTokenProvider,
+    TokenProvider,
+    UsernamePasswordTokenProvider,
+)
+
 IS_ASTRA_DB: bool
 DOCKER_COMPOSE_LOCAL_DATA_API: bool
 SECONDARY_NAMESPACE: Optional[str] = None
@@ -32,6 +38,9 @@ LOCAL_DATA_API_PASSWORD: Optional[str] = None
 LOCAL_DATA_API_APPLICATION_TOKEN: Optional[str] = None
 LOCAL_DATA_API_ENDPOINT: Optional[str] = None
 LOCAL_DATA_API_KEYSPACE: Optional[str] = None
+
+ASTRA_DB_TOKEN_PROVIDER: Optional[TokenProvider] = None
+LOCAL_DATA_API_TOKEN_PROVIDER: Optional[TokenProvider] = None
 
 # idiomatic-related settings
 if "LOCAL_DATA_API_ENDPOINT" in os.environ:
@@ -68,6 +77,23 @@ elif "ASTRA_DB_API_ENDPOINT" in os.environ:
     ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE")
 else:
     raise ValueError("No credentials.")
+
+# token provider setup
+if IS_ASTRA_DB:
+    ASTRA_DB_TOKEN_PROVIDER = StaticTokenProvider(ASTRA_DB_APPLICATION_TOKEN)
+else:
+    # either token or user/pwd pair (the latter having precedence)
+    if LOCAL_DATA_API_USERNAME and LOCAL_DATA_API_PASSWORD:
+        LOCAL_DATA_API_TOKEN_PROVIDER = UsernamePasswordTokenProvider(
+            username=LOCAL_DATA_API_USERNAME,
+            password=LOCAL_DATA_API_PASSWORD,
+        )
+    elif LOCAL_DATA_API_APPLICATION_TOKEN:
+        LOCAL_DATA_API_TOKEN_PROVIDER = StaticTokenProvider(
+            LOCAL_DATA_API_APPLICATION_TOKEN
+        )
+    else:
+        raise ValueError("No full authentication data for local Data API")
 
 # Idomatic admin test flag
 DO_IDIOMATIC_ADMIN_TESTS: bool

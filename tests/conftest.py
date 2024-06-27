@@ -27,11 +27,7 @@ from deprecation import UnsupportedWarning
 from testcontainers.compose import DockerCompose
 
 from astrapy.admin import parse_api_endpoint
-from astrapy.authentication import (
-    StaticTokenProvider,
-    TokenProvider,
-    UsernamePasswordTokenProvider,
-)
+from astrapy.authentication import TokenProvider
 from astrapy.constants import Environment
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
 
@@ -44,6 +40,7 @@ from .preprocess_env import (
     ASTRA_DB_KEYSPACE,
     ASTRA_DB_OPS_APPLICATION_TOKEN,
     ASTRA_DB_REGION,
+    ASTRA_DB_TOKEN_PROVIDER,
     DO_IDIOMATIC_ADMIN_TESTS,
     DOCKER_COMPOSE_LOCAL_DATA_API,
     IS_ASTRA_DB,
@@ -51,6 +48,7 @@ from .preprocess_env import (
     LOCAL_DATA_API_ENDPOINT,
     LOCAL_DATA_API_KEYSPACE,
     LOCAL_DATA_API_PASSWORD,
+    LOCAL_DATA_API_TOKEN_PROVIDER,
     LOCAL_DATA_API_USERNAME,
     SECONDARY_NAMESPACE,
     TEST_ASTRADBOPS,
@@ -155,7 +153,7 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         if ASTRA_DB_API_ENDPOINT is None:
             raise ValueError("No endpoint data for local Data API")
         astra_db_creds: DataAPICredentials = {
-            "token": StaticTokenProvider(ASTRA_DB_APPLICATION_TOKEN),
+            "token": ASTRA_DB_TOKEN_PROVIDER or "",
             "api_endpoint": ASTRA_DB_API_ENDPOINT or "",
             "namespace": ASTRA_DB_KEYSPACE or DEFAULT_KEYSPACE_NAME,
         }
@@ -169,23 +167,10 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
             # and override some environment variables:
             time.sleep(DOCKER_COMPOSE_SLEEP_TIME_SECONDS)
 
-        # either token or user/pwd pair (the latter having precedence)
-        local_data_api_token_provider: TokenProvider
-        if LOCAL_DATA_API_USERNAME and LOCAL_DATA_API_PASSWORD:
-            local_data_api_token_provider = UsernamePasswordTokenProvider(
-                username=LOCAL_DATA_API_USERNAME,
-                password=LOCAL_DATA_API_PASSWORD,
-            )
-        elif LOCAL_DATA_API_APPLICATION_TOKEN:
-            local_data_api_token_provider = StaticTokenProvider(
-                LOCAL_DATA_API_APPLICATION_TOKEN
-            )
-        else:
-            raise ValueError("No full authentication data for local Data API")
         if LOCAL_DATA_API_ENDPOINT is None:
             raise ValueError("No endpoint data for local Data API")
         local_db_creds: DataAPICredentials = {
-            "token": local_data_api_token_provider,
+            "token": LOCAL_DATA_API_TOKEN_PROVIDER or "",
             "api_endpoint": LOCAL_DATA_API_ENDPOINT or "",
             "namespace": LOCAL_DATA_API_KEYSPACE or DEFAULT_KEYSPACE_NAME,
         }
@@ -264,4 +249,6 @@ __all__ = [
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",
     "DO_IDIOMATIC_ADMIN_TESTS",
+    "ASTRA_DB_TOKEN_PROVIDER",
+    "LOCAL_DATA_API_TOKEN_PROVIDER",
 ]
