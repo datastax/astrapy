@@ -18,7 +18,6 @@ from astrapy.authentication import (
 from astrapy.constants import Environment
 from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
 
-
 DOCKER_COMPOSE_SLEEP_TIME_SECONDS = 20
 
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -29,11 +28,15 @@ SECONDARY_NAMESPACE: Optional[str]
 if "LOCAL_DATA_API_ENDPOINT" in os.environ:
     IS_ASTRA_DB = False
     # no reason not to use it
-    SECONDARY_NAMESPACE = os.environ.get("LOCAL_DATA_API_SECONDARY_KEYSPACE", "alternate_keyspace")
+    SECONDARY_NAMESPACE = os.environ.get(
+        "LOCAL_DATA_API_SECONDARY_KEYSPACE", "alternate_keyspace"
+    )
 elif "DOCKER_COMPOSE_LOCAL_DATA_API" in os.environ:
     IS_ASTRA_DB = False
     # no reason not to use it
-    SECONDARY_NAMESPACE = os.environ.get("LOCAL_DATA_API_SECONDARY_KEYSPACE", "alternate_keyspace")
+    SECONDARY_NAMESPACE = os.environ.get(
+        "LOCAL_DATA_API_SECONDARY_KEYSPACE", "alternate_keyspace"
+    )
 elif "ASTRA_DB_API_ENDPOINT" in os.environ:
     IS_ASTRA_DB = True
     SECONDARY_NAMESPACE = os.environ.get("ASTRA_DB_SECONDARY_KEYSPACE")
