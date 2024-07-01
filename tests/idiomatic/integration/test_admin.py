@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import time
 from typing import Any, Awaitable, Callable, List, Optional, Tuple
 
@@ -21,7 +20,12 @@ import pytest
 from astrapy import DataAPIClient
 from astrapy.admin import API_ENDPOINT_TEMPLATE_MAP
 
-ENV_LIST = ["prod", "dev"]
+from ..conftest import (
+    ADMIN_ENV_LIST,
+    ADMIN_ENV_VARIABLE_MAP,
+    DO_IDIOMATIC_ADMIN_TESTS,
+    IS_ASTRA_DB,
+)
 
 NAMESPACE_POLL_SLEEP_TIME = 2
 NAMESPACE_TIMEOUT = 30
@@ -31,32 +35,20 @@ PRE_DROP_SAFETY_POLL_INTERVAL = 5
 PRE_DROP_SAFETY_TIMEOUT = 120
 
 
-DO_IDIOMATIC_ADMIN_TESTS: bool
-if "DO_IDIOMATIC_ADMIN_TESTS" in os.environ:
-    _do_idiomatic_admin_tests = os.environ["DO_IDIOMATIC_ADMIN_TESTS"]
-    if _do_idiomatic_admin_tests.strip():
-        DO_IDIOMATIC_ADMIN_TESTS = int(_do_idiomatic_admin_tests) != 0
-    else:
-        DO_IDIOMATIC_ADMIN_TESTS = False
-else:
-    DO_IDIOMATIC_ADMIN_TESTS = False
-
-
 def admin_test_envs_tokens() -> List[Any]:
     """
     This actually returns a List of `_pytest.mark.structures.ParameterSet` instances,
     each wrapping a Tuple[str, Optional[str]] = (env, token)
     """
     envs_tokens: List[Any] = []
-    for env in ENV_LIST:
-        varname = f"{env.upper()}_ADMIN_TEST_ASTRA_DB_APPLICATION_TOKEN"
+    for admin_env in ADMIN_ENV_LIST:
         markers = []
         pair: Tuple[str, Optional[str]]
-        if varname in os.environ:
-            pair = (env, os.environ[varname])
+        if ADMIN_ENV_VARIABLE_MAP[admin_env]["token"]:
+            pair = (admin_env, ADMIN_ENV_VARIABLE_MAP[admin_env]["token"])
         else:
-            pair = (env, None)
-            markers.append(pytest.mark.skip(reason=f"{env} token not available"))
+            pair = (admin_env, None)
+            markers.append(pytest.mark.skip(reason=f"{admin_env} token not available"))
         envs_tokens.append(pytest.param(pair, marks=markers))
 
     return envs_tokens
@@ -82,11 +74,16 @@ async def await_until_true(
         time.sleep(poll_interval)
 
 
+@pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
 @pytest.mark.skipif(not DO_IDIOMATIC_ADMIN_TESTS, reason="Admin tests are suppressed")
 class TestAdmin:
-    @pytest.mark.parametrize("env_token", admin_test_envs_tokens(), ids=ENV_LIST)
+    @pytest.mark.parametrize(
+        "admin_env_token", admin_test_envs_tokens(), ids=ADMIN_ENV_LIST
+    )
     @pytest.mark.describe("test of the full tour with AstraDBDatabaseAdmin, sync")
-    def test_astra_db_database_admin_sync(self, env_token: Tuple[str, str]) -> None:
+    def test_astra_db_database_admin_sync(
+        self, admin_env_token: Tuple[str, str]
+    ) -> None:
         """
         Test plan (it has to be a single giant test to use one DB throughout):
         - create client -> get_admin
@@ -103,17 +100,17 @@ class TestAdmin:
             - drop database (wait)
         - check DB not existings
         """
-        env, token = env_token
-        db_name = f"test_database_{env}"
-        db_provider = os.environ[f"{env.upper()}_ADMIN_TEST_ASTRA_DB_PROVIDER"]
-        db_region = os.environ[f"{env.upper()}_ADMIN_TEST_ASTRA_DB_REGION"]
+        admin_env, token = admin_env_token
+        db_name = f"test_database_{admin_env}"
+        db_provider = ADMIN_ENV_VARIABLE_MAP[admin_env]["provider"]
+        db_region = ADMIN_ENV_VARIABLE_MAP[admin_env]["region"]
 
         # create client, get admin
         client: DataAPIClient
-        if env == "prod":
+        if admin_env == "prod":
             client = DataAPIClient(token)
         else:
-            client = DataAPIClient(token, environment=env)
+            client = DataAPIClient(token, environment=admin_env)
         admin = client.get_admin()
 
         # create a db (wait)
@@ -196,11 +193,13 @@ class TestAdmin:
         db_ids = {db.id for db in admin.list_databases()}
         assert created_db_id not in db_ids
 
-    @pytest.mark.parametrize("env_token", admin_test_envs_tokens(), ids=ENV_LIST)
+    @pytest.mark.parametrize(
+        "admin_env_token", admin_test_envs_tokens(), ids=ADMIN_ENV_LIST
+    )
     @pytest.mark.describe(
         "test of the full tour with AstraDBAdmin and client methods, sync"
     )
-    def test_astra_db_admin_sync(self, env_token: Tuple[str, str]) -> None:
+    def test_astra_db_admin_sync(self, admin_env_token: Tuple[str, str]) -> None:
         """
         Test plan (it has to be a single giant test to use the two DBs throughout):
         - create client -> get_admin
@@ -216,18 +215,18 @@ class TestAdmin:
             - get_async_database and check == with above
         - drop dbs, (wait, nonwait)
         """
-        env, token = env_token
-        db_name_w = f"test_database_w_{env}"
-        db_name_nw = f"test_database_nw_{env}"
-        db_provider = os.environ[f"{env.upper()}_ADMIN_TEST_ASTRA_DB_PROVIDER"]
-        db_region = os.environ[f"{env.upper()}_ADMIN_TEST_ASTRA_DB_REGION"]
+        admin_env, token = admin_env_token
+        db_name_w = f"test_database_w_{admin_env}"
+        db_name_nw = f"test_database_nw_{admin_env}"
+        db_provider = ADMIN_ENV_VARIABLE_MAP[admin_env]["provider"]
+        db_region = ADMIN_ENV_VARIABLE_MAP[admin_env]["region"]
 
         # create client and get admin
         client: DataAPIClient
-        if env == "prod":
+        if admin_env == "prod":
             client = DataAPIClient(token)
         else:
-            client = DataAPIClient(token, environment=env)
+            client = DataAPIClient(token, environment=admin_env)
         admin = client.get_admin()
 
         # create the two dbs
@@ -265,7 +264,7 @@ class TestAdmin:
         assert db_w_info.id == created_db_id_w
 
         # get and compare dbs obtained by the client
-        synthetic_api_endpoint = API_ENDPOINT_TEMPLATE_MAP[env].format(
+        synthetic_api_endpoint = API_ENDPOINT_TEMPLATE_MAP[admin_env].format(
             database_id=created_db_id_w,
             region=db_region,
         )
@@ -320,10 +319,12 @@ class TestAdmin:
             condition=_waiter2,
         )
 
-    @pytest.mark.parametrize("env_token", admin_test_envs_tokens(), ids=ENV_LIST)
+    @pytest.mark.parametrize(
+        "admin_env_token", admin_test_envs_tokens(), ids=ADMIN_ENV_LIST
+    )
     @pytest.mark.describe("test of the full tour with AstraDBDatabaseAdmin, async")
     async def test_astra_db_database_admin_async(
-        self, env_token: Tuple[str, str]
+        self, admin_env_token: Tuple[str, str]
     ) -> None:
         """
         Test plan (it has to be a single giant test to use one DB throughout):
@@ -341,17 +342,17 @@ class TestAdmin:
             - drop database (wait)
         - check DB not existings
         """
-        env, token = env_token
-        db_name = f"test_database_{env}"
-        db_provider = os.environ[f"{env.upper()}_ADMIN_TEST_ASTRA_DB_PROVIDER"]
-        db_region = os.environ[f"{env.upper()}_ADMIN_TEST_ASTRA_DB_REGION"]
+        admin_env, token = admin_env_token
+        db_name = f"test_database_{admin_env}"
+        db_provider = ADMIN_ENV_VARIABLE_MAP[admin_env]["provider"]
+        db_region = ADMIN_ENV_VARIABLE_MAP[admin_env]["region"]
 
         # create client, get admin
         client: DataAPIClient
-        if env == "prod":
+        if admin_env == "prod":
             client = DataAPIClient(token)
         else:
-            client = DataAPIClient(token, environment=env)
+            client = DataAPIClient(token, environment=admin_env)
         admin = client.get_admin()
 
         # create a db (wait)
@@ -447,11 +448,13 @@ class TestAdmin:
         db_ids = {db.id for db in (await admin.async_list_databases())}
         assert created_db_id not in db_ids
 
-    @pytest.mark.parametrize("env_token", admin_test_envs_tokens(), ids=ENV_LIST)
+    @pytest.mark.parametrize(
+        "admin_env_token", admin_test_envs_tokens(), ids=ADMIN_ENV_LIST
+    )
     @pytest.mark.describe(
         "test of the full tour with AstraDBAdmin and client methods, async"
     )
-    async def test_astra_db_admin_async(self, env_token: Tuple[str, str]) -> None:
+    async def test_astra_db_admin_async(self, admin_env_token: Tuple[str, str]) -> None:
         """
         Test plan (it has to be a single giant test to use the two DBs throughout):
         - create client -> get_admin
@@ -467,18 +470,18 @@ class TestAdmin:
             - get_async_database and check == with above
         - drop dbs, (wait, nonwait)
         """
-        env, token = env_token
-        db_name_w = f"test_database_w_{env}"
-        db_name_nw = f"test_database_nw_{env}"
-        db_provider = os.environ[f"{env.upper()}_ADMIN_TEST_ASTRA_DB_PROVIDER"]
-        db_region = os.environ[f"{env.upper()}_ADMIN_TEST_ASTRA_DB_REGION"]
+        admin_env, token = admin_env_token
+        db_name_w = f"test_database_w_{admin_env}"
+        db_name_nw = f"test_database_nw_{admin_env}"
+        db_provider = ADMIN_ENV_VARIABLE_MAP[admin_env]["provider"]
+        db_region = ADMIN_ENV_VARIABLE_MAP[admin_env]["region"]
 
         # create client and get admin
         client: DataAPIClient
-        if env == "prod":
+        if admin_env == "prod":
             client = DataAPIClient(token)
         else:
-            client = DataAPIClient(token, environment=env)
+            client = DataAPIClient(token, environment=admin_env)
         admin = client.get_admin()
 
         # create the two dbs
@@ -516,7 +519,7 @@ class TestAdmin:
         assert db_w_info.id == created_db_id_w
 
         # get and compare dbs obtained by the client
-        synthetic_api_endpoint = API_ENDPOINT_TEMPLATE_MAP[env].format(
+        synthetic_api_endpoint = API_ENDPOINT_TEMPLATE_MAP[admin_env].format(
             database_id=created_db_id_w,
             region=db_region,
         )

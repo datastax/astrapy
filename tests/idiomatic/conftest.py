@@ -22,6 +22,9 @@ from astrapy import AsyncCollection, AsyncDatabase, Collection, DataAPIClient, D
 from astrapy.constants import VectorMetric
 
 from ..conftest import (
+    ADMIN_ENV_LIST,
+    ADMIN_ENV_VARIABLE_MAP,
+    DO_IDIOMATIC_ADMIN_TESTS,
     IS_ASTRA_DB,
     SECONDARY_NAMESPACE,
     DataAPICredentials,
@@ -54,15 +57,6 @@ def sync_database(
         token=data_api_credentials_kwargs["token"],
         namespace=data_api_credentials_kwargs["namespace"],
     )
-
-    if not IS_ASTRA_DB:
-        # ensure keyspace(s) exist
-        database_admin = database.get_database_admin()
-        database_admin.create_namespace(data_api_credentials_kwargs["namespace"])
-        if data_api_credentials_info["secondary_namespace"]:
-            database_admin.create_namespace(
-                data_api_credentials_info["secondary_namespace"]
-            )
 
     yield database
 
@@ -139,5 +133,8 @@ __all__ = [
     "async_database",
     "async_fail_if_not_removed",
     "IS_ASTRA_DB",
+    "ADMIN_ENV_LIST",
+    "ADMIN_ENV_VARIABLE_MAP",
+    "DO_IDIOMATIC_ADMIN_TESTS",
     "SECONDARY_NAMESPACE",
 ]

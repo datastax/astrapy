@@ -65,6 +65,7 @@ class TestTimeoutSync:
         assert exc.value.endpoint is not None
         assert exc.value.raw_payload is not None
 
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Too fast on nonAstra")
     @pytest.mark.describe("test of cursor-based timeouts, sync")
     def test_cursor_timeouts_sync(
         self,

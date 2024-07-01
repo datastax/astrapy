@@ -226,56 +226,136 @@ naming convention and module structure).
 
 ### Running tests
 
-"Full regular" testing requires environment variables:
+Tests are grouped in three _blocks_ (in as many subdirs of `tests/`):
 
-```bash
-export ASTRA_DB_APPLICATION_TOKEN="AstraCS:..."
-export ASTRA_DB_API_ENDPOINT="https://.......apps.astra.datastax.com"
+- **core**: pre-1.0 classes
+- **idiomatic**: all 1.0+ classes and APIs, except...
+- **vectorize**: ... everything making use of `$vectorize` (within the idiomatic classes)
 
-export ASTRA_DB_KEYSPACE="default_keyspace"
-# Optional:
-export ASTRA_DB_SECONDARY_KEYSPACE="..."
+Actually, for convenience, _sub-blocks_ of tests are considered:
+
+- **core regular**: everything except DevOps interactions
+- **core ops**: core DevOps operations
+- **idiomatic regular**: everything except the admin parts
+- **idiomatic admin Astra**: the Astra-specific admin operations
+- **idiomatic admin nonAstra**: the nonAstra-specific admin operations
+- **vectorize in-depth**: many Data API interactions for a single choice of provider/model. This is mostly test the client
+- **vectorize all-providers**: a slightly more shallow test repeated for all providers, models, auth methods etc. This is mostly testing the API
+
+Tests can be run on three types of Data API _targets_ (with slight differences in what is applicable):
+
+- **DockerCompose**: HCD started by the test initialization with `docker-compose`. _Note that in this case you will have to manually destroy the created containers._
+- **nonAstra**: a ready-to-use (user-supplied) local Data API
+- **Astra**: an Astra DB target account (or two, as some tests are specific to dev environment)
+
+Depending on the (sub-block, target) combination, some environment variables may be needed.
+Templates for the environment variables are to be found in `tests/env_templates`.
+
+The general expectation is that idiomatic non-Admin tests, and vectorize in-depth tests, are
+part of the main CI flow; conversely, core, admin and vectorize all-providers are kept as a
+manual task to run (locally in most cases) when circumstances require it (use your judgement).
+
+#### Required environment variables
+
+Below is a detail of the reference template files needed for the various types
+of testing:
+
+- **DockerCompose**: generally no variables needed, except:
+  - **vectorize in-depth**: provide as in `env.vectorize-minimal.template`
+  - **vectorize all-providers**: provide as in `env.vectorize.template`
+  - (also note that _core ops_ and _idiomatic admin Astra_ amount to nothing in this case)
+- **nonAstra**: all tests require as in `env.local.template`, plus:
+  - **vectorize in-depth**: also provide as in `env.vectorize-minimal.template`
+  - **vectorize all-providers**: also provide as in `env.vectorize.template`
+  - (also note that _core ops_ and _idiomatic admin Astra_ amount to nothing in this case)
+- **Astra**: all tests require as in `env.astra.template`, plus:
+  - **core ops**: the token must have at least "Database Administrator" role (possibly through definition of a separate `ASTRA_DB_OPS_APPLICATION_TOKEN`), and `ASTRA_DB_ID` must also be defined
+  - **idiomatic admin Astra**: also provide as in `env.astra.admin.template`
+  - **vectorize in-depth**: also provide as in `env.vectorize-minimal.template`
+  - **vectorize all-providers**: also provide as in `env.vectorize.template`
+  - (also note that _idiomatic admin nonAstra_ amounts to nothing in this case)
+
+#### Sample testing commands
+
+For the **DockerCompose** case, prepend all of the following with `DOCKER_COMPOSE_LOCAL_DATA_API="yes" `.
+
+All the usual `pytest` ways of restricting the test selection hold in addition
+(e.g. `poetry run pytest tests/idiomatic/unit` or `[...] -k <test_name_selector>`).
+
+##### _core regular_:
+
+```
+poetry run pytest tests/core
 ```
 
-#### "Idiomatic" testing
+##### _core ops_:
 
-Tests can be started in various ways: mostly `make tests-idiomatic`, but also:
+Note the special variable needed to actually run this. You will have to manually clean up afterwards.
 
-```bash
-# test the "idiomatic" layer
+```
+TEST_ASTRADBOPS="1" poetry run pytest tests/core/test_ops.py
+```
+
+##### _idiomatic regular_:
+
+Warning: this will also trigger the very long-running _idiomatic admin Astra_ if the vars as in `env.astra.admin.template` are also detected. Likewise, the _idiomatic admin nonAstra_ may start (if `DO_IDIOMATIC_ADMIN_TESTS` is set), which however takes few seconds.
+
+```
 poetry run pytest tests/idiomatic
-poetry run pytest tests/idiomatic/unit
-poetry run pytest tests/idiomatic/integration
+```
 
-# remove logging noise:
+##### _idiomatic admin Astra_:
+
+```
+poetry run pytest tests/idiomatic/integration/test_admin.py 
+```
+
+##### _idiomatic admin nonAstra_:
+
+```
+DO_IDIOMATIC_ADMIN_TESTS="1" poetry run pytest tests/idiomatic/integration/test_nonastra_admin.py
+```
+
+##### _vectorize in-depth_:
+
+```
+poetry run pytest tests/vectorize_idiomatic/integration/test_vectorize_methods*.py
+```
+
+or just:
+
+```
+poetry run pytest tests/vectorize_idiomatic/integration/test_vectorize_methods_sync.py
+```
+
+##### _vectorize all-providers_:
+
+This generates all possible test cases and runs them:
+
+```
+poetry run pytest tests/vectorize_idiomatic
+```
+
+For a spot test, you may restrict to one case, e.g.
+
+```
+EMBEDDING_MODEL_TAGS="openai/text-embedding-3-large/HEADER/0" poetry run pytest tests/vectorize_idiomatic/integration/test_vectorize_providers.py -k test_vectorize_usage_auth_type_header_sync
+```
+
+#### Useful flags for testing
+
+Remove logging noise with:
+
+```
 poetry run pytest [...] -o log_cli=0
 ```
 
-The above runs the regular testing (i.e. non-Admin, non-core).
-The (idiomatic) Admin part is tested manually by you, on Astra accounts with room
-for up to 3 new databases, possibly both on prod and dev, and uses specific env vars,
-as can be seen on `tests/idiomatic/integration/test_admin.py`.
+Do not drop collections (core):
 
-#### Other tests
-
-Vectorize tests are confined in `tests/vectorize_idiomatic` and are run
-separately. A separate set of credentials is required to do the full testing:
-refer to `tests/.vectorize.env.template` for the complete listing, including
-the secrets that should be added to the database beforehand, through the UI.
-
-Should you be interested in testing the "core" modules, moreover,
-this is also something for you to run manually (do that if you touch "core"):
-
-```bash
-# test the core modules
-poetry run pytest tests/core
-
-# do not drop collections:
-TEST_SKIP_COLLECTION_DELETE=1 poetry run pytest [...]
-
-# include astrapy.core.ops testing (tester must clean up after that):
-TEST_ASTRADBOPS=1 poetry run pytest [...]
 ```
+TEST_SKIP_COLLECTION_DELETE=1 poetry run pytest [...]
+```
+
 
 ## Appendices
 

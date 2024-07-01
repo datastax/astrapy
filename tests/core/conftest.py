@@ -1,9 +1,22 @@
+# Copyright DataStax, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
-Test fixtures
+Test fixtures for 'core' testing
 """
 
 import math
-import os
 from typing import AsyncIterable, Dict, Iterable, List, Optional, Set, TypeVar
 
 import pytest
@@ -16,15 +29,14 @@ from astrapy.core.db import (
     AsyncAstraDBCollection,
 )
 
-from ..conftest import DataAPICredentials
+from ..conftest import (
+    TEST_SKIP_COLLECTION_DELETE,
+    DataAPICoreCredentials,
+    DataAPICredentialsInfo,
+)
 
 T = TypeVar("T")
 
-TEST_SKIP_COLLECTION_DELETE: bool
-if os.getenv("TEST_SKIP_COLLECTION_DELETE"):
-    TEST_SKIP_COLLECTION_DELETE = int(os.environ["TEST_SKIP_COLLECTION_DELETE"]) != 0
-else:
-    TEST_SKIP_COLLECTION_DELETE = False
 
 # fixed
 TEST_WRITABLE_VECTOR_COLLECTION = "writable_v_col"
@@ -86,46 +98,76 @@ def _batch_iterable(iterable: Iterable[T], batch_size: int) -> Iterable[Iterable
 
 
 @pytest.fixture(scope="session")
-def db(data_api_credentials_kwargs: DataAPICredentials) -> AstraDB:
-    token = data_api_credentials_kwargs["token"]
-    api_endpoint = data_api_credentials_kwargs["api_endpoint"]
-    namespace = data_api_credentials_kwargs.get("namespace")
+def db(
+    data_api_core_credentials_kwargs: DataAPICoreCredentials,
+    data_api_credentials_info: DataAPICredentialsInfo,
+) -> AstraDB:
+    token = data_api_core_credentials_kwargs["token"]
+    api_endpoint = data_api_core_credentials_kwargs["api_endpoint"]
+    namespace = data_api_core_credentials_kwargs.get("namespace")
 
     if token is None or api_endpoint is None:
         raise ValueError("Required ASTRA DB configuration is missing")
 
-    return AstraDB(token=token, api_endpoint=api_endpoint, namespace=namespace)
+    db_kwargs: Dict[str, str]
+    if data_api_credentials_info["environment"] in {"prod", "dev", "test"}:
+        db_kwargs = {}
+    else:
+        db_kwargs = {"api_path": ""}
+
+    return AstraDB(
+        token=token, api_endpoint=api_endpoint, namespace=namespace, **db_kwargs
+    )
 
 
 @pytest_asyncio.fixture(scope="function")
 async def async_db(
-    data_api_credentials_kwargs: DataAPICredentials,
+    data_api_core_credentials_kwargs: DataAPICoreCredentials,
+    data_api_credentials_info: DataAPICredentialsInfo,
 ) -> AsyncIterable[AsyncAstraDB]:
-    token = data_api_credentials_kwargs["token"]
-    api_endpoint = data_api_credentials_kwargs["api_endpoint"]
-    namespace = data_api_credentials_kwargs.get("namespace")
+    token = data_api_core_credentials_kwargs["token"]
+    api_endpoint = data_api_core_credentials_kwargs["api_endpoint"]
+    namespace = data_api_core_credentials_kwargs.get("namespace")
 
     if token is None or api_endpoint is None:
         raise ValueError("Required ASTRA DB configuration is missing")
 
+    db_kwargs: Dict[str, str]
+    if data_api_credentials_info["environment"] in {"prod", "dev", "test"}:
+        db_kwargs = {}
+    else:
+        db_kwargs = {"api_path": ""}
+
     async with AsyncAstraDB(
-        token=token, api_endpoint=api_endpoint, namespace=namespace
+        token=token,
+        api_endpoint=api_endpoint,
+        namespace=namespace,
+        **db_kwargs,
     ) as db:
         yield db
 
 
 @pytest.fixture(scope="module")
 def invalid_db(
-    astra_invalid_db_credentials_kwargs: Dict[str, Optional[str]]
+    data_api_core_bad_credentials_kwargs: Dict[str, Optional[str]],
+    data_api_credentials_info: DataAPICredentialsInfo,
 ) -> AstraDB:
-    token = astra_invalid_db_credentials_kwargs["token"]
-    api_endpoint = astra_invalid_db_credentials_kwargs["api_endpoint"]
-    namespace = astra_invalid_db_credentials_kwargs.get("namespace")
+    token = data_api_core_bad_credentials_kwargs["token"]
+    api_endpoint = data_api_core_bad_credentials_kwargs["api_endpoint"]
+    namespace = data_api_core_bad_credentials_kwargs.get("namespace")
+
+    db_kwargs: Dict[str, str]
+    if data_api_credentials_info["environment"] in {"prod", "dev", "test"}:
+        db_kwargs = {}
+    else:
+        db_kwargs = {"api_path": ""}
 
     if token is None or api_endpoint is None:
         raise ValueError("Required ASTRA DB configuration is missing")
 
-    return AstraDB(token=token, api_endpoint=api_endpoint, namespace=namespace)
+    return AstraDB(
+        token=token, api_endpoint=api_endpoint, namespace=namespace, **db_kwargs
+    )
 
 
 @pytest.fixture(scope="session")
