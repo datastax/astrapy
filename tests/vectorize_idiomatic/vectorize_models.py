@@ -121,9 +121,11 @@ PARAMETER_VALUE_MAP = {
     ],
     ("voyageAI", "voyage-2", "autoTruncate"): True,
     ("voyageAI", "voyage-code-2", "autoTruncate"): True,
+    ("voyageAI", "voyage-finance-2", "autoTruncate"): True,
     ("voyageAI", "voyage-large-2", "autoTruncate"): True,
     ("voyageAI", "voyage-large-2-instruct", "autoTruncate"): True,
     ("voyageAI", "voyage-law-2", "autoTruncate"): True,
+    ("voyageAI", "voyage-multilingual-2", "autoTruncate"): True,
     #
     ("huggingfaceDedicated", "endpoint-defined-model", "endpointName"): os.environ[
         "HUGGINGFACEDED_ENDPOINTNAME"
