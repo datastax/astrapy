@@ -1,3 +1,9 @@
+(master)
+========
+Testing:
+    - restructure CI to fully support HCD alongside Astra DB
+    - add details for testing new embedding providers
+
 v. 1.3.1
 ========
 Fixed bug in parsing endpoint domain names containing hyphens (#287), by @bradfordcp
