@@ -13,11 +13,12 @@
 # limitations under the License.
 
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 
 import pytest
 
 from astrapy import Database
+from astrapy.authentication import AWSEmbeddingHeadersProvider, EmbeddingHeadersProvider
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.info import CollectionVectorServiceOptions
 
@@ -88,9 +89,28 @@ class TestVectorizeProviders:
         testable_vectorize_model: Dict[str, Any],
     ) -> None:
         simple_tag = testable_vectorize_model["simple_tag"].lower()
-        embedding_api_key = os.environ[
-            f"HEADER_EMBEDDING_API_KEY_{testable_vectorize_model['secret_tag']}"
-        ]
+        # switch betewen header providers according to what is needed
+        # For the time being this is necessary on HEADER only
+        embedding_api_key: Union[str, EmbeddingHeadersProvider]
+        at_tokens = testable_vectorize_model["auth_type_tokens"]
+        at_token_lnames = {tk["accepted"].lower() for tk in at_tokens}
+        if at_token_lnames == {"x-embedding-api-key"}:
+            embedding_api_key = os.environ[
+                f"HEADER_EMBEDDING_API_KEY_{testable_vectorize_model['secret_tag']}"
+            ]
+        elif at_token_lnames == {"x-embedding-access-id", "x-embedding-secret-id"}:
+            embedding_api_key = AWSEmbeddingHeadersProvider(
+                embedding_access_id=os.environ[
+                    f"HEADER_EMBEDDING_ACCESS_ID_{testable_vectorize_model['secret_tag']}"
+                ],
+                embedding_secret_id=os.environ[
+                    f"HEADER_EMBEDDING_SECRET_ID_{testable_vectorize_model['secret_tag']}"
+                ],
+            )
+        else:
+            raise ValueError(
+                f"Unsupported auth type tokens for {testable_vectorize_model['model_tag']}"
+            )
         dimension = testable_vectorize_model.get("dimension")
         service_options = testable_vectorize_model["service_options"]
 

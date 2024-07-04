@@ -14,11 +14,15 @@
 
 import os
 import sys
-from typing import Any, Dict, Iterable, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from astrapy.authentication import EMBEDDING_HEADER_API_KEY
+from astrapy.authentication import (
+    EMBEDDING_HEADER_API_KEY,
+    EMBEDDING_HEADER_AWS_ACCESS_ID,
+    EMBEDDING_HEADER_AWS_SECRET_ID,
+)
 from astrapy.info import CollectionVectorServiceOptions
 
 from .live_provider_info import live_provider_info
@@ -85,6 +89,7 @@ USE_INSERT_ONE_MAP: Dict[Tuple[str, str], bool] = {
 
 SECRET_NAME_ROOT_MAP = {
     "azureOpenAI": "AZURE_OPENAI",
+    "bedrock": "BEDROCK",
     "cohere": "COHERE",
     "huggingface": "HUGGINGFACE",
     "huggingfaceDedicated": "HUGGINGFACEDED",
@@ -150,6 +155,9 @@ PARAMETER_VALUE_MAP = {
         "OPENAI_ORGANIZATION_ID"
     ],
     ("openai", "text-embedding-ada-002", "projectId"): os.environ["OPENAI_PROJECT_ID"],
+    #
+    ("bedrock", "amazon.titan-embed-text-v1", "region"): os.environ["BEDROCK_REGION"],
+    ("bedrock", "amazon.titan-embed-text-v2:0", "region"): os.environ["BEDROCK_REGION"],
 }
 
 # this is ad-hoc for HF dedicated. Models here, though "optional" dimension,
@@ -170,6 +178,12 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
             m0: int = pspec["validation"]["numericRange"][0]
             m1: int = pspec["validation"]["numericRange"][1]
             return (m0 + m1) // 2
+        elif "options" in pspec["validation"]:
+            options: List[int] = pspec["validation"]["options"]
+            if len(options) > 1:
+                return options[1]
+            else:
+                return options[0]
         else:
             raise ValueError("unsupported pspec")
 
@@ -191,12 +205,25 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                     if auth_type_name == "NONE":
                         assert auth_type_desc["tokens"] == []
                     elif auth_type_name == "HEADER":
-                        assert {t["accepted"] for t in auth_type_desc["tokens"]} == {
-                            EMBEDDING_HEADER_API_KEY
+                        header_names_lower = tuple(
+                            sorted(
+                                t["accepted"].lower() for t in auth_type_desc["tokens"]
+                            )
+                        )
+                        assert header_names_lower in {
+                            (EMBEDDING_HEADER_API_KEY.lower(),),
+                            (
+                                EMBEDDING_HEADER_AWS_ACCESS_ID.lower(),
+                                EMBEDDING_HEADER_AWS_SECRET_ID.lower(),
+                            ),
                         }
                     elif auth_type_name == "SHARED_SECRET":
-                        assert {t["accepted"] for t in auth_type_desc["tokens"]} == {
-                            "providerKey"
+                        authkey_names = tuple(
+                            sorted(t["accepted"] for t in auth_type_desc["tokens"])
+                        )
+                        assert authkey_names in {
+                            ("providerKey",),
+                            ("accessId", "secretKey"),
                         }
                     else:
                         raise ValueError("Unknown auth type")
@@ -270,6 +297,7 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                                 "".join(c for c in model_tag_0 if c in alphanum)
                             ),
                             "auth_type_name": auth_type_name,
+                            "auth_type_tokens": auth_type_desc["tokens"],
                             "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
                             "test_assets": TEST_ASSETS_MAP.get(
                                 (provider_name, model["name"]), DEFAULT_TEST_ASSETS
@@ -293,6 +321,7 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                     ):
                         root_model = {
                             "auth_type_name": auth_type_name,
+                            "auth_type_tokens": auth_type_desc["tokens"],
                             "dimension": dimension,
                             "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
                             "test_assets": TEST_ASSETS_MAP.get(
