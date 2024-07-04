@@ -19,11 +19,15 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast
 
 import httpx
 
+from astrapy.authentication import (
+    EMBEDDING_HEADER_API_KEY,
+    EMBEDDING_HEADER_AWS_ACCESS_ID,
+    EMBEDDING_HEADER_AWS_SECRET_ID,
+)
 from astrapy.core.defaults import (
     DEFAULT_AUTH_HEADER,
     DEFAULT_DEV_OPS_AUTH_HEADER,
     DEFAULT_TIMEOUT,
-    DEFAULT_VECTORIZE_SECRET_HEADER,
 )
 from astrapy.core.utils import (
     TimeoutInfoWideType,
@@ -44,11 +48,13 @@ from astrapy.exceptions import (
     to_dataapi_timeout_exception,
 )
 
-DEFAULT_REDACTED_HEADER_NAMES = [
+DEFAULT_REDACTED_HEADER_NAMES = {
     DEFAULT_AUTH_HEADER,
     DEFAULT_DEV_OPS_AUTH_HEADER,
-    DEFAULT_VECTORIZE_SECRET_HEADER,
-]
+    EMBEDDING_HEADER_AWS_ACCESS_ID,
+    EMBEDDING_HEADER_AWS_SECRET_ID,
+    EMBEDDING_HEADER_API_KEY,
+}
 
 
 def full_user_agent(

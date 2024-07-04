@@ -31,11 +31,13 @@ DEFAULT_REGION = "us-east1"
 MAX_INSERT_NUM_DOCUMENTS = 100
 DEFAULT_INSERT_NUM_DOCUMENTS = 50
 
-# These are repeated by hand from idiomatic, tolerable duplication
+# Some of these are repeated by hand from idiomatic, tolerable duplication
 # as long as `core` is in place:
-DEFAULT_VECTORIZE_SECRET_HEADER = "x-embedding-api-key"
-
-
-# "X-Embedding-Access-Id"
-# "X-Embedding-Secret-Id"
-# "X-Embedding-Api-Key"
+#   (the case must match, so that secrets are effectively masked)
+DEFAULT_REDACTED_HEADERS = {
+    DEFAULT_DEV_OPS_AUTH_HEADER,
+    DEFAULT_AUTH_HEADER,
+    "X-Embedding-Api-Key",
+    "X-Embedding-Access-Id",
+    "X-Embedding-Secret-Id",
+}
