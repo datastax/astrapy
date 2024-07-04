@@ -48,7 +48,7 @@ class BaseAPIOptions:
             return self.__class__(
                 **{
                     **default.__dict__,
-                    **{k: v for k, v in self.__dict__.items() if v is not None},
+                    **{k: v for k, v in self.__dict__.items() if bool(v)},
                 }
             )
         else:
@@ -59,7 +59,7 @@ class BaseAPIOptions:
             return self.__class__(
                 **{
                     **self.__dict__,
-                    **{k: v for k, v in override.__dict__.items() if v is not None},
+                    **{k: v for k, v in override.__dict__.items() if bool(v)},
                 }
             )
         else:

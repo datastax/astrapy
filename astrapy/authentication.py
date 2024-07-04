@@ -67,14 +67,6 @@ class TokenProvider(ABC):
     @abstractmethod
     def __repr__(self) -> str: ...
 
-    @abstractmethod
-    def get_token(self) -> Union[str, None]:
-        """
-        Produce a string for direct use as token in a subsequent API request,
-        or None for no token.
-        """
-        ...
-
     def __or__(self, other: TokenProvider) -> TokenProvider:
         """
         Implement the logic as for "token_str_a or token_str_b" for the TokenProvider,
@@ -94,6 +86,14 @@ class TokenProvider(ABC):
         similarly as for the __or__ method.
         """
         return self.get_token() is not None
+
+    @abstractmethod
+    def get_token(self) -> Union[str, None]:
+        """
+        Produce a string for direct use as token in a subsequent API request,
+        or None for no token.
+        """
+        ...
 
 
 class StaticTokenProvider(TokenProvider):
@@ -185,6 +185,13 @@ class EmbeddingHeadersProvider(ABC):
 
     @abstractmethod
     def __repr__(self) -> str: ...
+
+    def __bool__(self) -> bool:
+        """
+        All headers providers evaluate to True unless they yield the empty dict.
+        This method enables the override mechanism in APIOptions.
+        """
+        return self.get_headers() != {}
 
     @abstractmethod
     def get_headers(self) -> Dict[str, str]:
