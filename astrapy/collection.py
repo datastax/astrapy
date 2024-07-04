@@ -337,10 +337,15 @@ class Collection:
             name: the name of the collection. This parameter is useful to
                 quickly spawn Collection instances each pointing to a different
                 collection existing in the same namespace.
-            embedding_api_key: an optional API key for interacting with the collection.
-                If an embedding service is configured, and this attribute is set,
-                each Data API call will include an Embedding API Key header
-                with the value of this attribute.
+            embedding_api_key: optional API key(s) for interacting with the collection.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+                For some vectorize providers/models, if using header-based authentication,
+                specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
+                should be supplied.
             collection_max_time_ms: a default timeout, in millisecond, for the duration of each
                 operation on the collection. Individual timeouts can be provided to
                 each collection method call and will take precedence, with this value
@@ -399,10 +404,15 @@ class Collection:
                 collection on the database.
             namespace: this is the namespace to which the collection belongs.
                 If not specified, the database's working namespace is used.
-            embedding_api_key: an optional API key for interacting with the collection.
-                If an embedding service is configured, and this attribute is set,
-                each Data API call will include an Embedding API Key header
-                with the value of this attribute.
+            embedding_api_key: optional API key(s) for interacting with the collection.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+                For some vectorize providers/models, if using header-based authentication,
+                specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
+                should be supplied.
             collection_max_time_ms: a default timeout, in millisecond, for the duration of each
                 operation on the collection. Individual timeouts can be provided to
                 each collection method call and will take precedence, with this value
@@ -2744,10 +2754,15 @@ class AsyncCollection:
             name: the name of the collection. This parameter is useful to
                 quickly spawn AsyncCollection instances each pointing to a different
                 collection existing in the same namespace.
-            embedding_api_key: an optional API key for interacting with the collection.
-                If an embedding service is configured, and this attribute is set,
-                each Data API call will include an Embedding API Key header
-                with the value of this attribute.
+            embedding_api_key: optional API key(s) for interacting with the collection.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+                For some vectorize providers/models, if using header-based authentication,
+                specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
+                should be supplied.
             collection_max_time_ms: a default timeout, in millisecond, for the duration of each
                 operation on the collection. Individual timeouts can be provided to
                 each collection method call and will take precedence, with this value
@@ -2806,10 +2821,15 @@ class AsyncCollection:
                 collection on the database.
             namespace: this is the namespace to which the collection belongs.
                 If not specified, the database's working namespace is used.
-            embedding_api_key: an optional API key for interacting with the collection.
-                If an embedding service is configured, and this attribute is set,
-                each Data API call will include an Embedding API Key header
-                with the value of this attribute.
+            embedding_api_key: optional API key(s) for interacting with the collection.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+                For some vectorize providers/models, if using header-based authentication,
+                specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
+                should be supplied.
             collection_max_time_ms: a default timeout, in millisecond, for the duration of each
                 operation on the collection. Individual timeouts can be provided to
                 each collection method call and will take precedence, with this value
