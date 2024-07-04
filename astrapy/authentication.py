@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import base64
 from abc import ABC, abstractmethod
-from typing import Any, Union
+from typing import Any, Dict, Optional, Union
 
 
 def coerce_token_provider(token: Any) -> TokenProvider:
@@ -150,3 +150,63 @@ class UsernamePasswordTokenProvider(TokenProvider):
 
     def get_token(self) -> str:
         return self.token
+
+
+class EmbeddingHeadersProvider(ABC):
+    """
+    TODO
+    """
+
+    def __eq__(self, other: Any) -> bool:
+        my_headers = self.get_headers()
+        if isinstance(other, EmbeddingHeadersProvider):
+            return other.get_headers() == my_headers
+        else:
+            return False
+
+    @abstractmethod
+    def __repr__(self) -> str: ...
+
+    @abstractmethod
+    def get_headers(self) -> Dict[str, str]:
+        """
+        TODO
+        """
+        ...
+
+
+class StaticEmbeddingHeadersProvider(EmbeddingHeadersProvider):
+    """
+    TODO
+    """
+
+    def __init__(self, embedding_api_key: Optional[str]) -> None:
+        self.embedding_api_key = embedding_api_key
+
+    def __repr__(self) -> str:
+        return "(none)" if self.embedding_api_key is None else "(api key)"
+
+    def get_headers(self) -> Dict[str, str]:
+        if self.embedding_api_key is not None:
+            return {"X-Embedding-Api-Key": self.embedding_api_key}
+        else:
+            return {}
+
+
+class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
+    """
+    TODO
+    """
+
+    def __init__(self, *, embedding_access_id: str, embedding_secret_id: str) -> None:
+        self.embedding_access_id = embedding_access_id
+        self.embedding_secret_id = embedding_secret_id
+
+    def __repr__(self) -> str:
+        return self.__class__.__name__
+
+    def get_headers(self) -> Dict[str, str]:
+        return {
+            "X-Embedding-Access-Id": self.embedding_access_id,
+            "X-Embedding-Secret-Id": self.embedding_secret_id,
+        }
