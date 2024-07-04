@@ -14,8 +14,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, TypeVar
+
+from astrapy.authentication import (
+    EmbeddingHeadersProvider,
+    StaticEmbeddingHeadersProvider,
+)
 
 AO = TypeVar("AO", bound="BaseAPIOptions")
 
@@ -77,10 +82,15 @@ class CollectionAPIOptions(BaseAPIOptions):
             `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
             to provide a specific timeout as the default one likely wouldn't make
             much sense.
-        embedding_api_key: an optional API key for interacting with the collection.
-            If an embedding service is configured, and this attribute is set,
-            each Data API call will include an Embedding API Key header
-            with the value of this attribute.
+        embedding_api_key: an `astrapy.authentication.EmbeddingHeadersProvider`
+            object, encoding embedding-related API keys that will be passed
+            as headers when interacting with the collection (on each Data API request).
+            The default value is `StaticEmbeddingHeadersProvider(None)`, i.e.
+            no embedding-specific headers, whereas if the collection is configured
+            with an embedding service other choices for this parameter can be
+            meaningfully supplied. is configured for the collection,
     """
 
-    embedding_api_key: Optional[str] = None
+    embedding_api_key: EmbeddingHeadersProvider = field(
+        default_factory=lambda: StaticEmbeddingHeadersProvider(None)
+    )

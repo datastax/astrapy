@@ -25,7 +25,10 @@ from astrapy.admin import (
     parse_api_endpoint,
 )
 from astrapy.api_options import CollectionAPIOptions
-from astrapy.authentication import coerce_token_provider
+from astrapy.authentication import (
+    coerce_embedding_headers_provider,
+    coerce_token_provider,
+)
 from astrapy.constants import Environment
 from astrapy.core.db import AstraDB, AsyncAstraDB
 from astrapy.cursors import AsyncCommandCursor, CommandCursor
@@ -46,7 +49,7 @@ from astrapy.info import (
 
 if TYPE_CHECKING:
     from astrapy.admin import DatabaseAdmin
-    from astrapy.authentication import TokenProvider
+    from astrapy.authentication import EmbeddingHeadersProvider, TokenProvider
     from astrapy.collection import AsyncCollection, Collection
 
 
@@ -419,7 +422,7 @@ class Database:
         name: str,
         *,
         namespace: Optional[str] = None,
-        embedding_api_key: Optional[str] = None,
+        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
     ) -> Collection:
         """
@@ -475,7 +478,7 @@ class Database:
             name,
             namespace=_namespace,
             api_options=CollectionAPIOptions(
-                embedding_api_key=embedding_api_key,
+                embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
                 max_time_ms=collection_max_time_ms,
             ),
         )
@@ -494,7 +497,7 @@ class Database:
         additional_options: Optional[Dict[str, Any]] = None,
         check_exists: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
-        embedding_api_key: Optional[str] = None,
+        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
     ) -> Collection:
         """
@@ -626,7 +629,7 @@ class Database:
         return self.get_collection(
             name,
             namespace=namespace,
-            embedding_api_key=embedding_api_key,
+            embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             collection_max_time_ms=collection_max_time_ms,
         )
 
@@ -1247,7 +1250,7 @@ class AsyncDatabase:
         name: str,
         *,
         namespace: Optional[str] = None,
-        embedding_api_key: Optional[str] = None,
+        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
     ) -> AsyncCollection:
         """
@@ -1306,7 +1309,7 @@ class AsyncDatabase:
             name,
             namespace=_namespace,
             api_options=CollectionAPIOptions(
-                embedding_api_key=embedding_api_key,
+                embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
                 max_time_ms=collection_max_time_ms,
             ),
         )
@@ -1325,7 +1328,7 @@ class AsyncDatabase:
         additional_options: Optional[Dict[str, Any]] = None,
         check_exists: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
-        embedding_api_key: Optional[str] = None,
+        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
     ) -> AsyncCollection:
         """
@@ -1460,7 +1463,7 @@ class AsyncDatabase:
         return await self.get_collection(
             name,
             namespace=namespace,
-            embedding_api_key=embedding_api_key,
+            embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             collection_max_time_ms=collection_max_time_ms,
         )
 

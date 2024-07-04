@@ -24,6 +24,7 @@ import deprecation
 
 from astrapy import __version__
 from astrapy.api_options import CollectionAPIOptions
+from astrapy.authentication import coerce_embedding_headers_provider
 from astrapy.constants import (
     DocumentType,
     FilterType,
@@ -34,10 +35,7 @@ from astrapy.constants import (
     normalize_optional_projection,
 )
 from astrapy.core.db import AstraDBCollection, AsyncAstraDBCollection
-from astrapy.core.defaults import (
-    DEFAULT_INSERT_NUM_DOCUMENTS,
-    DEFAULT_VECTORIZE_SECRET_HEADER,
-)
+from astrapy.core.defaults import DEFAULT_INSERT_NUM_DOCUMENTS
 from astrapy.cursors import AsyncCursor, Cursor
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
@@ -66,6 +64,7 @@ from astrapy.results import (
 )
 
 if TYPE_CHECKING:
+    from astrapy.authentication import EmbeddingHeadersProvider
     from astrapy.operations import AsyncBaseOperation, BaseOperation
 
 
@@ -264,13 +263,7 @@ class Collection:
             self.api_options = CollectionAPIOptions()
         else:
             self.api_options = api_options
-        additional_headers = {
-            k: v
-            for k, v in {
-                DEFAULT_VECTORIZE_SECRET_HEADER: self.api_options.embedding_api_key,
-            }.items()
-            if v is not None
-        }
+        additional_headers = self.api_options.embedding_api_key.get_headers()
         self._astra_db_collection: AstraDBCollection = AstraDBCollection(
             collection_name=name,
             astra_db=database._astra_db,
@@ -332,7 +325,7 @@ class Collection:
         self,
         *,
         name: Optional[str] = None,
-        embedding_api_key: Optional[str] = None,
+        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -371,7 +364,7 @@ class Collection:
         """
 
         _api_options = CollectionAPIOptions(
-            embedding_api_key=embedding_api_key,
+            embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             max_time_ms=collection_max_time_ms,
         )
 
@@ -388,7 +381,7 @@ class Collection:
         database: Optional[AsyncDatabase] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
-        embedding_api_key: Optional[str] = None,
+        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -431,7 +424,7 @@ class Collection:
         """
 
         _api_options = CollectionAPIOptions(
-            embedding_api_key=embedding_api_key,
+            embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             max_time_ms=collection_max_time_ms,
         )
 
@@ -2677,13 +2670,7 @@ class AsyncCollection:
             self.api_options = CollectionAPIOptions()
         else:
             self.api_options = api_options
-        additional_headers = {
-            k: v
-            for k, v in {
-                DEFAULT_VECTORIZE_SECRET_HEADER: self.api_options.embedding_api_key,
-            }.items()
-            if v is not None
-        }
+        additional_headers = self.api_options.embedding_api_key.get_headers()
         self._astra_db_collection: AsyncAstraDBCollection = AsyncAstraDBCollection(
             collection_name=name,
             astra_db=database._astra_db,
@@ -2745,7 +2732,7 @@ class AsyncCollection:
         self,
         *,
         name: Optional[str] = None,
-        embedding_api_key: Optional[str] = None,
+        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -2784,7 +2771,7 @@ class AsyncCollection:
         """
 
         _api_options = CollectionAPIOptions(
-            embedding_api_key=embedding_api_key,
+            embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             max_time_ms=collection_max_time_ms,
         )
 
@@ -2801,7 +2788,7 @@ class AsyncCollection:
         database: Optional[Database] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
-        embedding_api_key: Optional[str] = None,
+        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -2844,7 +2831,7 @@ class AsyncCollection:
         """
 
         _api_options = CollectionAPIOptions(
-            embedding_api_key=embedding_api_key,
+            embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             max_time_ms=collection_max_time_ms,
         )
 
