@@ -18,6 +18,7 @@ from typing import Any, Dict, Iterable, Tuple
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from astrapy.authentication import EMBEDDING_HEADER_API_KEY
 from astrapy.info import CollectionVectorServiceOptions
 
 from .live_provider_info import live_provider_info
@@ -191,7 +192,7 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                         assert auth_type_desc["tokens"] == []
                     elif auth_type_name == "HEADER":
                         assert {t["accepted"] for t in auth_type_desc["tokens"]} == {
-                            "x-embedding-api-key"
+                            EMBEDDING_HEADER_API_KEY
                         }
                     elif auth_type_name == "SHARED_SECRET":
                         assert {t["accepted"] for t in auth_type_desc["tokens"]} == {

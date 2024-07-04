@@ -42,7 +42,9 @@ def desc_param(param_data: Dict[str, Any]) -> str:
             assert isinstance(validation_op, list) and len(validation_op) > 1
             return f"number, {' / '.join(str(v) for v in validation_op)}"
         else:
-            raise ValueError(f"Unknown number validation spec: '{json.dumps(validation)}'")
+            raise ValueError(
+                f"Unknown number validation spec: '{json.dumps(validation)}'"
+            )
     elif param_data["type"].lower() == "boolean":
         return "bool"
     else:

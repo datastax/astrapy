@@ -18,12 +18,25 @@ import base64
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, Union
 
+EMBEDDING_HEADER_AWS_ACCESS_ID = "X-Embedding-Access-Id"
+EMBEDDING_HEADER_AWS_SECRET_ID = "X-Embedding-Secret-Id"
+EMBEDDING_HEADER_API_KEY = "X-Embedding-Api-Key"
+
 
 def coerce_token_provider(token: Any) -> TokenProvider:
     if isinstance(token, TokenProvider):
         return token
     else:
         return StaticTokenProvider(token)
+
+
+def coerce_embedding_headers_provider(
+    embedding_api_key: Any,
+) -> EmbeddingHeadersProvider:
+    if isinstance(embedding_api_key, EmbeddingHeadersProvider):
+        return embedding_api_key
+    else:
+        return StaticEmbeddingHeadersProvider(embedding_api_key)
 
 
 class TokenProvider(ABC):
@@ -188,7 +201,7 @@ class StaticEmbeddingHeadersProvider(EmbeddingHeadersProvider):
 
     def get_headers(self) -> Dict[str, str]:
         if self.embedding_api_key is not None:
-            return {"X-Embedding-Api-Key": self.embedding_api_key}
+            return {EMBEDDING_HEADER_API_KEY: self.embedding_api_key}
         else:
             return {}
 
@@ -207,6 +220,6 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
 
     def get_headers(self) -> Dict[str, str]:
         return {
-            "X-Embedding-Access-Id": self.embedding_access_id,
-            "X-Embedding-Secret-Id": self.embedding_secret_id,
+            EMBEDDING_HEADER_AWS_ACCESS_ID: self.embedding_access_id,
+            EMBEDDING_HEADER_AWS_SECRET_ID: self.embedding_secret_id,
         }

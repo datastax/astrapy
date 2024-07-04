@@ -79,7 +79,7 @@ class CollectionAPIOptions(BaseAPIOptions):
             much sense.
         embedding_api_key: an optional API key for interacting with the collection.
             If an embedding service is configured, and this attribute is set,
-            each Data API call will include a "x-embedding-api-key" header
+            each Data API call will include an Embedding API Key header
             with the value of this attribute.
     """
 

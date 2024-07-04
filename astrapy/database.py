@@ -438,7 +438,7 @@ class Database:
                 is specified, the general setting for this database is used.
         embedding_api_key: an optional API key for interacting with the collection.
             If an embedding service is configured, and this attribute is set,
-            each Data API call will include a "x-embedding-api-key" header
+            each Data API call will include an Embedding API Key header
             with the value of this attribute.
         collection_max_time_ms: a default timeout, in millisecond, for the duration of each
             operation on the collection. Individual timeouts can be provided to
@@ -541,7 +541,7 @@ class Database:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
             embedding_api_key: an optional API key for interacting with the collection.
                 If an embedding service is configured, and this attribute is set,
-                each Data API call will include a "x-embedding-api-key" header
+                each Data API call will include an Embedding API Key header
                 with the value of this attribute.
             collection_max_time_ms: a default timeout, in millisecond, for the duration of each
                 operation on the collection. Individual timeouts can be provided to
@@ -1266,7 +1266,7 @@ class AsyncDatabase:
                 is specified, the setting for this database is used.
         embedding_api_key: an optional API key for interacting with the collection.
             If an embedding service is configured, and this attribute is set,
-            each Data API call will include a "x-embedding-api-key" header
+            each Data API call will include an Embedding API Key header
             with the value of this attribute.
         collection_max_time_ms: a default timeout, in millisecond, for the duration of each
             operation on the collection. Individual timeouts can be provided to
@@ -1372,7 +1372,7 @@ class AsyncDatabase:
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
             embedding_api_key: an optional API key for interacting with the collection.
                 If an embedding service is configured, and this attribute is set,
-                each Data API call will include a "x-embedding-api-key" header
+                each Data API call will include an Embedding API Key header
                 with the value of this attribute.
             collection_max_time_ms: a default timeout, in millisecond, for the duration of each
                 operation on the collection. Individual timeouts can be provided to
