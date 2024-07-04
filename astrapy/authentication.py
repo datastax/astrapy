@@ -245,7 +245,10 @@ class StaticEmbeddingHeadersProvider(EmbeddingHeadersProvider):
         self.embedding_api_key = embedding_api_key
 
     def __repr__(self) -> str:
-        return "(none)" if self.embedding_api_key is None else "(api key)"
+        if self.embedding_api_key is None:
+            return f"{self.__class__.__name__}(empty)"
+        else:
+            return f'{self.__class__.__name__}("{self.embedding_api_key[:5]}...")'
 
     def get_headers(self) -> Dict[str, str]:
         if self.embedding_api_key is not None:
@@ -302,7 +305,7 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
         self.embedding_secret_id = embedding_secret_id
 
     def __repr__(self) -> str:
-        return self.__class__.__name__
+        return f'{self.__class__.__name__}("{self.embedding_access_id[:3]}...", "{self.embedding_secret_id[:3]}...")'
 
     def get_headers(self) -> Dict[str, str]:
         return {

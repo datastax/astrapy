@@ -280,7 +280,8 @@ class Collection:
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}(name="{self.name}", '
-            f'namespace="{self.namespace}", database={self.database})'
+            f'namespace="{self.namespace}", database={self.database}, '
+            f"api_options={self.api_options})"
         )
 
     def __eq__(self, other: Any) -> bool:
@@ -2697,7 +2698,8 @@ class AsyncCollection:
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}(name="{self.name}", '
-            f'namespace="{self.namespace}", database={self.database})'
+            f'namespace="{self.namespace}", database={self.database}, '
+            f"api_options={self.api_options})"
         )
 
     def __eq__(self, other: Any) -> bool:
