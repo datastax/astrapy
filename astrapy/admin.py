@@ -39,7 +39,7 @@ from astrapy.exceptions import (
     ops_recast_method_sync,
     to_dataapi_timeout_exception,
 )
-from astrapy.info import AdminDatabaseInfo, DatabaseInfo
+from astrapy.info import AdminDatabaseInfo, DatabaseInfo, EmbeddingProvidersDescriptor
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
@@ -2209,9 +2209,13 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         environment: a label, whose value is one of Environment.OTHER (default)
             or other non-Astra environment values in the `Environment` enum.
         api_path: path to append to the API Endpoint. In typical usage, this
-            should be left to its default of "".
+            class is created by a method such as `Database.get_database_admin()`,
+            which passes the matching value. Defaults to this portion of the path
+            being absent.
         api_version: version specifier to append to the API path. In typical
-            usage, this should be left to its default of "v1".
+            usage, this class is created by a method such as
+            `Database.get_database_admin()`, which passes the matching value.
+            Defaults to this portion of the path being absent.
         caller_name: name of the application, or framework, on behalf of which
             the admin API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -2721,3 +2725,37 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             api_path=api_path,
             api_version=api_version,
         ).to_async()
+
+    def list_embedding_providers(
+        self, *, max_time_ms: Optional[int] = None
+    ) -> EmbeddingProvidersDescriptor:
+        """
+        Query the API for the full information on available embedding providers.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A `EmbeddingProvidersDescriptor` object with the complete information
+            returned by the API about available embedding providers
+
+        Example:
+            >>> admin_for_my_db.list_embedding_providers()
+            RESPONSE TODO
+        """
+
+        logger.info("getting list of embedding providers")
+        fe_response = self._api_commander.request(
+            payload={"findEmbeddingProviders": {}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if "embeddingProviders" not in fe_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findEmbeddingProviders API command.",
+                raw_response=fe_response,
+            )
+        else:
+            logger.info("finished getting list of embedding providers")
+            return EmbeddingProvidersDescriptor.from_dict(
+                fe_response["status"]["embeddingProviders"]
+            )

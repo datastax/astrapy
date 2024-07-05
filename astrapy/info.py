@@ -435,3 +435,234 @@ class CollectionDescriptor:
             options=CollectionOptions.from_dict(raw_dict.get("options") or {}),
             raw_descriptor=raw_dict,
         )
+
+
+@dataclass
+class EmbeddingProviderParameter:
+    """
+    TODO
+    """
+
+    default_value: Any
+    help: Optional[str]
+    name: str
+    required: bool
+    parameter_type: str
+    validation: Dict[str, Any]
+
+    def as_dict(self) -> Dict[str, Any]:
+        """
+        TODO
+        """
+
+        return {
+            "defaultValue": self.default_value,
+            "help": self.help,
+            "name": self.name,
+            "required": self.required,
+            "type": self.parameter_type,
+            "validation": self.validation,
+        }
+
+    @staticmethod
+    def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProviderParameter:
+        """
+        TODO
+        """
+
+        return EmbeddingProviderParameter(
+            default_value=raw_dict["defaultValue"],
+            help=raw_dict["help"],
+            name=raw_dict["name"],
+            required=raw_dict["required"],
+            parameter_type=raw_dict["type"],
+            validation=raw_dict["validation"],
+        )
+
+
+@dataclass
+class EmbeddingProviderModel:
+    """
+    TODO
+    """
+
+    name: str
+    parameters: List[EmbeddingProviderParameter]
+    vector_dimension: Optional[int]
+
+    def as_dict(self) -> Dict[str, Any]:
+        """
+        TODO
+        """
+
+        return {
+            "name": self.name,
+            "parameters": [parameter.as_dict() for parameter in self.parameters],
+            "vectorDimension": self.vector_dimension,
+        }
+
+    @staticmethod
+    def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProviderModel:
+        """
+        TODO
+        """
+
+        return EmbeddingProviderModel(
+            name=raw_dict["name"],
+            parameters=[
+                EmbeddingProviderParameter.from_dict(param_dict)
+                for param_dict in raw_dict["parameters"]
+            ],
+            vector_dimension=raw_dict["vectorDimension"],
+        )
+
+
+@dataclass
+class EmbeddingProviderToken:
+    """
+    TODO
+    """
+
+    accepted: str
+    forwarded: str
+
+    def as_dict(self) -> Dict[str, Any]:
+        """
+        TODO
+        """
+
+        return {
+            "accepted": self.accepted,
+            "forwarded": self.forwarded,
+        }
+
+    @staticmethod
+    def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProviderToken:
+        """
+        TODO
+        """
+
+        return EmbeddingProviderToken(
+            accepted=raw_dict["accepted"],
+            forwarded=raw_dict["forwarded"],
+        )
+
+
+@dataclass
+class EmbeddingProviderAuthentication:
+    """
+    TODO
+    """
+
+    enabled: bool
+    tokens: List[EmbeddingProviderToken]
+
+    def as_dict(self) -> Dict[str, Any]:
+        """
+        TODO
+        """
+
+        return {
+            "enabled": self.enabled,
+            "tokens": [token.as_dict() for token in self.tokens],
+        }
+
+    @staticmethod
+    def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProviderAuthentication:
+        """
+        TODO
+        """
+
+        return EmbeddingProviderAuthentication(
+            enabled=raw_dict["enabled"],
+            tokens=[
+                EmbeddingProviderToken.from_dict(token_dict)
+                for token_dict in raw_dict["tokens"]
+            ],
+        )
+
+
+@dataclass
+class EmbeddingProvider:
+    """
+    TODO
+    """
+
+    # name: str  # TODO: add this one?
+    display_name: Optional[str]
+    models: List[EmbeddingProviderModel]
+    parameters: List[EmbeddingProviderParameter]
+    supported_authentication: Dict[str, EmbeddingProviderAuthentication]
+    url: Optional[str]
+
+    def as_dict(self) -> Dict[str, Any]:
+        """
+        TODO
+        """
+
+        return {
+            "displayName": self.display_name,
+            "models": [model.as_dict() for model in self.models],
+            "parameters": [parameter.as_dict() for parameter in self.parameters],
+            "supportedAuthentication": {
+                sa_name: sa_value.as_dict()
+                for sa_name, sa_value in self.supported_authentication.items()
+            },
+            "url": self.url,
+        }
+
+    @staticmethod
+    def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProvider:
+        """
+        TODO
+        """
+
+        return EmbeddingProvider(
+            display_name=raw_dict["displayName"],
+            models=[
+                EmbeddingProviderModel.from_dict(model_dict)
+                for model_dict in raw_dict["models"]
+            ],
+            parameters=[
+                EmbeddingProviderParameter.from_dict(param_dict)
+                for param_dict in raw_dict["parameters"]
+            ],
+            supported_authentication={
+                sa_name: EmbeddingProviderAuthentication.from_dict(sa_dict)
+                for sa_name, sa_dict in raw_dict["supportedAuthentication"].items()
+            },
+            url=raw_dict["url"],
+        )
+
+
+@dataclass
+class EmbeddingProvidersDescriptor:
+    """
+    TODO
+    """
+
+    embedding_providers: Dict[str, EmbeddingProvider]
+    raw_descriptor: Optional[Dict[str, Any]]
+
+    def as_dict(self) -> Dict[str, Any]:
+        """
+        TODO
+        """
+
+        return {
+            ep_name: ep.as_dict() for ep_name, ep in self.embedding_providers.items()
+        }
+
+    @staticmethod
+    def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProvidersDescriptor:
+        """
+        TODO
+        """
+
+        return EmbeddingProvidersDescriptor(
+            embedding_providers={
+                ep_name: EmbeddingProvider.from_dict(ep_dict)
+                for ep_name, ep_dict in raw_dict.items()
+            },
+            raw_descriptor=raw_dict,
+        )
