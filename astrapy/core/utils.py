@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import copy
 import datetime
 import json
 import logging
@@ -25,11 +24,7 @@ import httpx
 
 from astrapy import __version__
 from astrapy.core.core_types import API_RESPONSE
-from astrapy.core.defaults import (
-    DEFAULT_AUTH_HEADER,
-    DEFAULT_TIMEOUT,
-    DEFAULT_VECTORIZE_SECRET_HEADER,
-)
+from astrapy.core.defaults import DEFAULT_REDACTED_HEADERS, DEFAULT_TIMEOUT
 from astrapy.core.ids import UUID, ObjectId
 
 
@@ -97,11 +92,10 @@ def log_request(
     logger.debug(f"Request params: {params}")
 
     # Redact known secrets from the request headers
-    headers_log = copy.deepcopy(headers)
-    if DEFAULT_AUTH_HEADER in headers_log:
-        headers_log[DEFAULT_AUTH_HEADER] = "***"
-    if DEFAULT_VECTORIZE_SECRET_HEADER in headers_log:
-        headers_log[DEFAULT_VECTORIZE_SECRET_HEADER] = "***"
+    headers_log = {
+        hdr_k: hdr_v if hdr_k not in DEFAULT_REDACTED_HEADERS else "***"
+        for hdr_k, hdr_v in headers.items()
+    }
 
     logger.debug(f"Request headers: {headers_log}")
 

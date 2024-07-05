@@ -1,5 +1,9 @@
 (master)
 ========
+Support for multiple-header embedding api keys:
+    - `EmbeddingHeadersProvider` classes for `embedding_api_key` parameter
+    - AWS header provider in addition to the regular one-header one
+    - adapt CI to cover this setup
 Testing:
     - restructure CI to fully support HCD alongside Astra DB
     - add details for testing new embedding providers

@@ -14,8 +14,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, TypeVar
+
+from astrapy.authentication import (
+    EmbeddingHeadersProvider,
+    StaticEmbeddingHeadersProvider,
+)
 
 AO = TypeVar("AO", bound="BaseAPIOptions")
 
@@ -39,22 +44,54 @@ class BaseAPIOptions:
     max_time_ms: Optional[int] = None
 
     def with_default(self: AO, default: Optional[BaseAPIOptions]) -> AO:
+        """
+        Return a new instance created by completing this instance with a default
+        API options object.
+
+        In other words, `optA.with_default(optB)` will take fields from optA
+        when possible and draw defaults from optB when optA has them set to anything
+        evaluating to False. (This relies on the __bool__ definition of the values,
+        such as that of the EmbeddingHeadersTokenProvider instances)
+
+        Args:
+            default: an API options instance to draw defaults from.
+
+        Returns:
+            a new instance of this class obtained by merging this one and the default.
+        """
         if default:
+            default_dict = default.__dict__
             return self.__class__(
                 **{
-                    **default.__dict__,
-                    **{k: v for k, v in self.__dict__.items() if v is not None},
+                    k: self_v or default_dict.get(k)
+                    for k, self_v in self.__dict__.items()
                 }
             )
         else:
             return self
 
     def with_override(self: AO, override: Optional[BaseAPIOptions]) -> AO:
+        """
+        Return a new instance created by overriding the members of this instance
+        with those taken from a supplied "override" API options object.
+
+        In other words, `optA.with_default(optB)` will take fields from optB
+        when possible and fall back to optA when optB has them set to anything
+        evaluating to False. (This relies on the __bool__ definition of the values,
+        such as that of the EmbeddingHeadersTokenProvider instances)
+
+        Args:
+            override: an API options instance to preferentially draw fields from.
+
+        Returns:
+            a new instance of this class obtained by merging the override and this one.
+        """
         if override:
+            self_dict = self.__dict__
             return self.__class__(
                 **{
-                    **self.__dict__,
-                    **{k: v for k, v in override.__dict__.items() if v is not None},
+                    k: override_v or self_dict.get(k)
+                    for k, override_v in override.__dict__.items()
                 }
             )
         else:
@@ -77,10 +114,15 @@ class CollectionAPIOptions(BaseAPIOptions):
             `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
             to provide a specific timeout as the default one likely wouldn't make
             much sense.
-        embedding_api_key: an optional API key for interacting with the collection.
-            If an embedding service is configured, and this attribute is set,
-            each Data API call will include a "x-embedding-api-key" header
-            with the value of this attribute.
+        embedding_api_key: an `astrapy.authentication.EmbeddingHeadersProvider`
+            object, encoding embedding-related API keys that will be passed
+            as headers when interacting with the collection (on each Data API request).
+            The default value is `StaticEmbeddingHeadersProvider(None)`, i.e.
+            no embedding-specific headers, whereas if the collection is configured
+            with an embedding service other choices for this parameter can be
+            meaningfully supplied. is configured for the collection,
     """
 
-    embedding_api_key: Optional[str] = None
+    embedding_api_key: EmbeddingHeadersProvider = field(
+        default_factory=lambda: StaticEmbeddingHeadersProvider(None)
+    )

@@ -350,7 +350,13 @@ Remove logging noise with:
 poetry run pytest [...] -o log_cli=0
 ```
 
-Do not drop collections (core):
+Increase logging level to `TRACE` (i.e. level `5`):
+
+```
+poetry run pytest [...] -o log_cli=1 --log-cli-level=5
+```
+
+Do not drop collections (valid for core):
 
 ```
 TEST_SKIP_COLLECTION_DELETE=1 poetry run pytest [...]

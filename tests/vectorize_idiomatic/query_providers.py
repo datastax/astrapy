@@ -27,14 +27,24 @@ def desc_param(param_data: Dict[str, Any]) -> str:
     if param_data["type"].lower() == "string":
         return "str"
     elif param_data["type"].lower() == "number":
-        validation = param_data.get("validation", {}).get("numericRange")
-        assert isinstance(validation, list) and len(validation) == 2
-        range_desc = f"[{validation[0]} : {validation[1]}]"
-        if "defaultValue" in param_data:
-            range_desc2 = f"{range_desc} (default={param_data['defaultValue']})"
+        validation = param_data.get("validation", {})
+        if "numericRange" in validation:
+            validation_nr = validation["numericRange"]
+            assert isinstance(validation_nr, list) and len(validation_nr) == 2
+            range_desc = f"[{validation_nr[0]} : {validation_nr[1]}]"
+            if "defaultValue" in param_data:
+                range_desc2 = f"{range_desc} (default={param_data['defaultValue']})"
+            else:
+                range_desc2 = range_desc
+            return f"number, {range_desc2}"
+        elif "options" in validation:
+            validation_op = validation["options"]
+            assert isinstance(validation_op, list) and len(validation_op) > 1
+            return f"number, {' / '.join(str(v) for v in validation_op)}"
         else:
-            range_desc2 = range_desc
-        return f"number, {range_desc2}"
+            raise ValueError(
+                f"Unknown number validation spec: '{json.dumps(validation)}'"
+            )
     elif param_data["type"].lower() == "boolean":
         return "bool"
     else:

@@ -25,7 +25,10 @@ from astrapy.admin import (
     parse_api_endpoint,
 )
 from astrapy.api_options import CollectionAPIOptions
-from astrapy.authentication import coerce_token_provider
+from astrapy.authentication import (
+    coerce_embedding_headers_provider,
+    coerce_token_provider,
+)
 from astrapy.constants import Environment
 from astrapy.core.db import AstraDB, AsyncAstraDB
 from astrapy.cursors import AsyncCommandCursor, CommandCursor
@@ -46,7 +49,7 @@ from astrapy.info import (
 
 if TYPE_CHECKING:
     from astrapy.admin import DatabaseAdmin
-    from astrapy.authentication import TokenProvider
+    from astrapy.authentication import EmbeddingHeadersProvider, TokenProvider
     from astrapy.collection import AsyncCollection, Collection
 
 
@@ -419,7 +422,7 @@ class Database:
         name: str,
         *,
         namespace: Optional[str] = None,
-        embedding_api_key: Optional[str] = None,
+        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
     ) -> Collection:
         """
@@ -436,10 +439,15 @@ class Database:
             name: the name of the collection.
             namespace: the namespace containing the collection. If no namespace
                 is specified, the general setting for this database is used.
-        embedding_api_key: an optional API key for interacting with the collection.
-            If an embedding service is configured, and this attribute is set,
-            each Data API call will include a "x-embedding-api-key" header
-            with the value of this attribute.
+        embedding_api_key: optional API key(s) for interacting with the collection.
+            If an embedding service is configured, and this parameter is not None,
+            each Data API call will include the necessary embedding-related headers
+            as specified by this parameter. If a string is passed, it translates
+            into the one "embedding api key" header
+            (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+            For some vectorize providers/models, if using header-based authentication,
+            specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
+            should be supplied.
         collection_max_time_ms: a default timeout, in millisecond, for the duration of each
             operation on the collection. Individual timeouts can be provided to
             each collection method call and will take precedence, with this value
@@ -475,7 +483,7 @@ class Database:
             name,
             namespace=_namespace,
             api_options=CollectionAPIOptions(
-                embedding_api_key=embedding_api_key,
+                embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
                 max_time_ms=collection_max_time_ms,
             ),
         )
@@ -494,7 +502,7 @@ class Database:
         additional_options: Optional[Dict[str, Any]] = None,
         check_exists: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
-        embedding_api_key: Optional[str] = None,
+        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
     ) -> Collection:
         """
@@ -539,10 +547,15 @@ class Database:
                 preexisting collections, the command will succeed or fail
                 depending on whether the options match or not.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
-            embedding_api_key: an optional API key for interacting with the collection.
-                If an embedding service is configured, and this attribute is set,
-                each Data API call will include a "x-embedding-api-key" header
-                with the value of this attribute.
+            embedding_api_key: optional API key(s) for interacting with the collection.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+                For some vectorize providers/models, if using header-based authentication,
+                specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
+                should be supplied.
             collection_max_time_ms: a default timeout, in millisecond, for the duration of each
                 operation on the collection. Individual timeouts can be provided to
                 each collection method call and will take precedence, with this value
@@ -626,7 +639,7 @@ class Database:
         return self.get_collection(
             name,
             namespace=namespace,
-            embedding_api_key=embedding_api_key,
+            embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             collection_max_time_ms=collection_max_time_ms,
         )
 
@@ -1247,7 +1260,7 @@ class AsyncDatabase:
         name: str,
         *,
         namespace: Optional[str] = None,
-        embedding_api_key: Optional[str] = None,
+        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
     ) -> AsyncCollection:
         """
@@ -1264,10 +1277,15 @@ class AsyncDatabase:
             name: the name of the collection.
             namespace: the namespace containing the collection. If no namespace
                 is specified, the setting for this database is used.
-        embedding_api_key: an optional API key for interacting with the collection.
-            If an embedding service is configured, and this attribute is set,
-            each Data API call will include a "x-embedding-api-key" header
-            with the value of this attribute.
+        embedding_api_key: optional API key(s) for interacting with the collection.
+            If an embedding service is configured, and this parameter is not None,
+            each Data API call will include the necessary embedding-related headers
+            as specified by this parameter. If a string is passed, it translates
+            into the one "embedding api key" header
+            (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+            For some vectorize providers/models, if using header-based authentication,
+            specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
+            should be supplied.
         collection_max_time_ms: a default timeout, in millisecond, for the duration of each
             operation on the collection. Individual timeouts can be provided to
             each collection method call and will take precedence, with this value
@@ -1306,7 +1324,7 @@ class AsyncDatabase:
             name,
             namespace=_namespace,
             api_options=CollectionAPIOptions(
-                embedding_api_key=embedding_api_key,
+                embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
                 max_time_ms=collection_max_time_ms,
             ),
         )
@@ -1325,7 +1343,7 @@ class AsyncDatabase:
         additional_options: Optional[Dict[str, Any]] = None,
         check_exists: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
-        embedding_api_key: Optional[str] = None,
+        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
     ) -> AsyncCollection:
         """
@@ -1370,10 +1388,15 @@ class AsyncDatabase:
                 preexisting collections, the command will succeed or fail
                 depending on whether the options match or not.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
-            embedding_api_key: an optional API key for interacting with the collection.
-                If an embedding service is configured, and this attribute is set,
-                each Data API call will include a "x-embedding-api-key" header
-                with the value of this attribute.
+            embedding_api_key: optional API key(s) for interacting with the collection.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+                For some vectorize providers/models, if using header-based authentication,
+                specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
+                should be supplied.
             collection_max_time_ms: a default timeout, in millisecond, for the duration of each
                 operation on the collection. Individual timeouts can be provided to
                 each collection method call and will take precedence, with this value
@@ -1460,7 +1483,7 @@ class AsyncDatabase:
         return await self.get_collection(
             name,
             namespace=namespace,
-            embedding_api_key=embedding_api_key,
+            embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             collection_max_time_ms=collection_max_time_ms,
         )
 
