@@ -15,7 +15,6 @@
 from __future__ import annotations
 
 import warnings
-
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -452,6 +451,9 @@ class EmbeddingProviderParameter:
     parameter_type: str
     validation: Dict[str, Any]
 
+    def __repr__(self) -> str:
+        return f"EmbeddingProviderParameter(name='{self.name}')"
+
     def as_dict(self) -> Dict[str, Any]:
         """
         TODO
@@ -505,6 +507,9 @@ class EmbeddingProviderModel:
     parameters: List[EmbeddingProviderParameter]
     vector_dimension: Optional[int]
 
+    def __repr__(self) -> str:
+        return f"EmbeddingProviderModel(name='{self.name}')"
+
     def as_dict(self) -> Dict[str, Any]:
         """
         TODO
@@ -551,6 +556,9 @@ class EmbeddingProviderToken:
     accepted: str
     forwarded: str
 
+    def __repr__(self) -> str:
+        return f"EmbeddingProviderToken('{self.accepted}')"
+
     def as_dict(self) -> Dict[str, Any]:
         """
         TODO
@@ -591,6 +599,9 @@ class EmbeddingProviderAuthentication:
     enabled: bool
     tokens: List[EmbeddingProviderToken]
 
+    def __repr__(self) -> str:
+        return f"EmbeddingProviderAuthentication(enabled={self.enabled}, tokens={','.join(str(token) for token in self.tokens)})"
+
     def as_dict(self) -> Dict[str, Any]:
         """
         TODO
@@ -630,6 +641,9 @@ class EmbeddingProvider:
     """
     TODO
     """
+
+    def __repr__(self) -> str:
+        return f"EmbeddingProvider(display_name='{self.display_name}', models='{self.models}')"
 
     # name: str  # TODO: add this one?
     display_name: Optional[str]
@@ -687,37 +701,4 @@ class EmbeddingProvider:
                 for sa_name, sa_dict in raw_dict["supportedAuthentication"].items()
             },
             url=raw_dict["url"],
-        )
-
-
-@dataclass
-class EmbeddingProvidersDescriptor:
-    """
-    TODO
-    """
-
-    embedding_providers: Dict[str, EmbeddingProvider]
-    raw_descriptor: Optional[Dict[str, Any]]
-
-    def as_dict(self) -> Dict[str, Any]:
-        """
-        TODO
-        """
-
-        return {
-            ep_name: ep.as_dict() for ep_name, ep in self.embedding_providers.items()
-        }
-
-    @staticmethod
-    def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProvidersDescriptor:
-        """
-        TODO
-        """
-
-        return EmbeddingProvidersDescriptor(
-            embedding_providers={
-                ep_name: EmbeddingProvider.from_dict(ep_dict)
-                for ep_name, ep_dict in raw_dict.items()
-            },
-            raw_descriptor=raw_dict,
         )

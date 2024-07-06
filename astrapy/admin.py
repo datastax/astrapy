@@ -39,7 +39,7 @@ from astrapy.exceptions import (
     ops_recast_method_sync,
     to_dataapi_timeout_exception,
 )
-from astrapy.info import AdminDatabaseInfo, DatabaseInfo, EmbeddingProvidersDescriptor
+from astrapy.info import AdminDatabaseInfo, DatabaseInfo, EmbeddingProvider
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
@@ -2728,7 +2728,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
     def find_embedding_providers(
         self, *, max_time_ms: Optional[int] = None
-    ) -> EmbeddingProvidersDescriptor:
+    ) -> Dict[str, EmbeddingProvider]:
         """
         Query the API for the full information on available embedding providers.
 
@@ -2756,6 +2756,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished getting list of embedding providers")
-            return EmbeddingProvidersDescriptor.from_dict(
-                fe_response["status"]["embeddingProviders"]
-            )
+            return {
+                ep_name: EmbeddingProvider.from_dict(ep_dict)
+                for ep_name, ep_dict in fe_response["status"][
+                    "embeddingProviders"
+                ].items()
+            }
