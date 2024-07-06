@@ -168,6 +168,7 @@ class Database:
         else:
             _api_version = api_version
         self.token_provider = coerce_token_provider(token)
+        self.api_endpoint = api_endpoint.strip("/")
         self._astra_db = AstraDB(
             token=self.token_provider.get_token(),
             api_endpoint=api_endpoint,
@@ -187,7 +188,7 @@ class Database:
 
     def __repr__(self) -> str:
         return (
-            f'{self.__class__.__name__}(api_endpoint="{self._astra_db.api_endpoint}", '
+            f'{self.__class__.__name__}(api_endpoint="{self.api_endpoint}", '
             f'token="{str(self.token_provider)[:12]}...", namespace="{self._astra_db.namespace}")'
         )
 
@@ -210,7 +211,7 @@ class Database:
         api_version: Optional[str] = None,
     ) -> Database:
         return Database(
-            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
@@ -301,7 +302,7 @@ class Database:
         """
 
         return AsyncDatabase(
-            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
@@ -357,7 +358,7 @@ class Database:
 
         logger.info("getting database info")
         database_info = fetch_database_info(
-            self._astra_db.api_endpoint,
+            self.api_endpoint,
             token=self.token_provider.get_token(),
             namespace=self.namespace,
         )
@@ -379,7 +380,7 @@ class Database:
             '01234567-89ab-cdef-0123-456789abcdef'
         """
 
-        parsed_api_endpoint = parse_api_endpoint(self._astra_db.api_endpoint)
+        parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
         if parsed_api_endpoint is not None:
             return parsed_api_endpoint.database_id
         else:
@@ -744,7 +745,7 @@ class Database:
             # we know this is a list of dicts, to marshal into "descriptors"
             logger.info("finished getting collections")
             return CommandCursor(
-                address=self._astra_db.base_url,
+                address=_client.base_url,
                 items=[
                     CollectionDescriptor.from_dict(col_dict)
                     for col_dict in gc_response["status"]["collections"]
@@ -891,7 +892,7 @@ class Database:
 
         if self.environment in Environment.astra_db_values:
             return AstraDBDatabaseAdmin.from_api_endpoint(
-                api_endpoint=self._astra_db.api_endpoint,
+                api_endpoint=self.api_endpoint,
                 token=coerce_token_provider(token) or self.token_provider,
                 caller_name=self._astra_db.caller_name,
                 caller_version=self._astra_db.caller_version,
@@ -908,7 +909,7 @@ class Database:
                     "Parameter `dev_ops_api_version` not supported outside of Astra DB."
                 )
             return DataAPIDatabaseAdmin(
-                api_endpoint=self._astra_db.api_endpoint,
+                api_endpoint=self.api_endpoint,
                 token=coerce_token_provider(token) or self.token_provider,
                 environment=self.environment,
                 api_path=self._astra_db.api_path,
@@ -990,6 +991,7 @@ class AsyncDatabase:
             _api_version = api_version
         #
         self.token_provider = coerce_token_provider(token)
+        self.api_endpoint = api_endpoint.strip("/")
         self._astra_db = AsyncAstraDB(
             token=self.token_provider.get_token(),
             api_endpoint=api_endpoint,
@@ -1009,7 +1011,7 @@ class AsyncDatabase:
 
     def __repr__(self) -> str:
         return (
-            f'{self.__class__.__name__}(api_endpoint="{self._astra_db.api_endpoint}", '
+            f'{self.__class__.__name__}(api_endpoint="{self.api_endpoint}", '
             f'token="{str(self.token_provider)[:12]}...", namespace="{self._astra_db.namespace}")'
         )
 
@@ -1047,7 +1049,7 @@ class AsyncDatabase:
         api_version: Optional[str] = None,
     ) -> AsyncDatabase:
         return AsyncDatabase(
-            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
@@ -1139,7 +1141,7 @@ class AsyncDatabase:
         """
 
         return Database(
-            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
             namespace=namespace or self._astra_db.namespace,
             caller_name=caller_name or self._astra_db.caller_name,
@@ -1195,7 +1197,7 @@ class AsyncDatabase:
 
         logger.info("getting database info")
         database_info = fetch_database_info(
-            self._astra_db.api_endpoint,
+            self.api_endpoint,
             token=self.token_provider.get_token(),
             namespace=self.namespace,
         )
@@ -1217,7 +1219,7 @@ class AsyncDatabase:
             '01234567-89ab-cdef-0123-456789abcdef'
         """
 
-        parsed_api_endpoint = parse_api_endpoint(self._astra_db.api_endpoint)
+        parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
         if parsed_api_endpoint is not None:
             return parsed_api_endpoint.database_id
         else:
@@ -1594,7 +1596,7 @@ class AsyncDatabase:
             # we know this is a list of dicts, to marshal into "descriptors"
             logger.info("finished getting collections")
             return AsyncCommandCursor(
-                address=self._astra_db.base_url,
+                address=_client.base_url,
                 items=[
                     CollectionDescriptor.from_dict(col_dict)
                     for col_dict in gc_response["status"]["collections"]
@@ -1744,7 +1746,7 @@ class AsyncDatabase:
 
         if self.environment in Environment.astra_db_values:
             return AstraDBDatabaseAdmin.from_api_endpoint(
-                api_endpoint=self._astra_db.api_endpoint,
+                api_endpoint=self.api_endpoint,
                 token=coerce_token_provider(token) or self.token_provider,
                 caller_name=self._astra_db.caller_name,
                 caller_version=self._astra_db.caller_version,
@@ -1761,7 +1763,7 @@ class AsyncDatabase:
                     "Parameter `dev_ops_api_version` not supported outside of Astra DB."
                 )
             return DataAPIDatabaseAdmin(
-                api_endpoint=self._astra_db.api_endpoint,
+                api_endpoint=self.api_endpoint,
                 token=coerce_token_provider(token) or self.token_provider,
                 environment=self.environment,
                 api_path=self._astra_db.api_path,

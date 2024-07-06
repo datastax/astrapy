@@ -230,7 +230,7 @@ class DataAPIClient:
                 (it is left to the default otherwise).
             region: the region to use for connecting to the database. The
                 database must be located in that region.
-                The region cannot be specified when he API endoint is used as `id`.
+                The region cannot be specified when the API endoint is used as `id`.
                 Note that if this parameter is not passed, and cannot be inferred
                 from the API endpoint, an additional DevOps API request is made
                 to determine the default region and use it subsequently.
@@ -279,21 +279,18 @@ class DataAPIClient:
                     api_version=api_version,
                 )
             else:
-                # need to inspect for values?
-                this_db_info: Optional[Dict[str, Any]] = None
                 # handle overrides. Only region is needed (namespace can stay empty)
                 if region:
                     _region = region
                 else:
-                    if this_db_info is None:
-                        logger.info(f"fetching raw database info for {id}")
-                        this_db_info = fetch_raw_database_info_from_id_token(
-                            id=id,
-                            token=self.token_provider.get_token(),
-                            environment=self.environment,
-                            max_time_ms=max_time_ms,
-                        )
-                        logger.info(f"finished fetching raw database info for {id}")
+                    logger.info(f"fetching raw database info for {id}")
+                    this_db_info = fetch_raw_database_info_from_id_token(
+                        id=id,
+                        token=self.token_provider.get_token(),
+                        environment=self.environment,
+                        max_time_ms=max_time_ms,
+                    )
+                    logger.info(f"finished fetching raw database info for {id}")
                     _region = this_db_info["info"]["region"]
 
                 _token = coerce_token_provider(token) or self.token_provider
