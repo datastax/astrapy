@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -470,6 +472,19 @@ class EmbeddingProviderParameter:
         TODO
         """
 
+        residual_keys = raw_dict.keys() - {
+            "defaultValue",
+            "help",
+            "name",
+            "required",
+            "type",
+            "validation",
+        }
+        if residual_keys:
+            warnings.warn(
+                "Unexpected key(s) encountered parsing a dictionary into "
+                f"an `EmbeddingProviderParameter`: '{','.join(sorted(residual_keys))}'"
+            )
         return EmbeddingProviderParameter(
             default_value=raw_dict["defaultValue"],
             help=raw_dict["help"],
@@ -507,6 +522,16 @@ class EmbeddingProviderModel:
         TODO
         """
 
+        residual_keys = raw_dict.keys() - {
+            "name",
+            "parameters",
+            "vectorDimension",
+        }
+        if residual_keys:
+            warnings.warn(
+                "Unexpected key(s) encountered parsing a dictionary into "
+                f"an `EmbeddingProviderModel`: '{','.join(sorted(residual_keys))}'"
+            )
         return EmbeddingProviderModel(
             name=raw_dict["name"],
             parameters=[
@@ -542,6 +567,15 @@ class EmbeddingProviderToken:
         TODO
         """
 
+        residual_keys = raw_dict.keys() - {
+            "accepted",
+            "forwarded",
+        }
+        if residual_keys:
+            warnings.warn(
+                "Unexpected key(s) encountered parsing a dictionary into "
+                f"an `EmbeddingProviderToken`: '{','.join(sorted(residual_keys))}'"
+            )
         return EmbeddingProviderToken(
             accepted=raw_dict["accepted"],
             forwarded=raw_dict["forwarded"],
@@ -573,6 +607,15 @@ class EmbeddingProviderAuthentication:
         TODO
         """
 
+        residual_keys = raw_dict.keys() - {
+            "enabled",
+            "tokens",
+        }
+        if residual_keys:
+            warnings.warn(
+                "Unexpected key(s) encountered parsing a dictionary into "
+                f"an `EmbeddingProviderAuthentication`: '{','.join(sorted(residual_keys))}'"
+            )
         return EmbeddingProviderAuthentication(
             enabled=raw_dict["enabled"],
             tokens=[
@@ -617,6 +660,18 @@ class EmbeddingProvider:
         TODO
         """
 
+        residual_keys = raw_dict.keys() - {
+            "displayName",
+            "models",
+            "parameters",
+            "supportedAuthentication",
+            "url",
+        }
+        if residual_keys:
+            warnings.warn(
+                "Unexpected key(s) encountered parsing a dictionary into "
+                f"an `EmbeddingProvider`: '{','.join(sorted(residual_keys))}'"
+            )
         return EmbeddingProvider(
             display_name=raw_dict["displayName"],
             models=[

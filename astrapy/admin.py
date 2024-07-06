@@ -2726,7 +2726,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             api_version=api_version,
         ).to_async()
 
-    def list_embedding_providers(
+    def find_embedding_providers(
         self, *, max_time_ms: Optional[int] = None
     ) -> EmbeddingProvidersDescriptor:
         """
