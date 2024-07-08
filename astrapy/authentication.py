@@ -36,7 +36,7 @@ def coerce_embedding_headers_provider(
     if isinstance(embedding_api_key, EmbeddingHeadersProvider):
         return embedding_api_key
     else:
-        return EmbeddingAPIKeyHeadersProvider(embedding_api_key)
+        return EmbeddingAPIKeyHeaderProvider(embedding_api_key)
 
 
 class TokenProvider(ABC):
@@ -202,7 +202,7 @@ class EmbeddingHeadersProvider(ABC):
         ...
 
 
-class EmbeddingAPIKeyHeadersProvider(EmbeddingHeadersProvider):
+class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
     """
     A "pass-through" header provider representing the single-header
     (typically "X-Embedding-Api-Key") auth scheme, in use by most of the
@@ -217,9 +217,9 @@ class EmbeddingAPIKeyHeadersProvider(EmbeddingHeadersProvider):
         >>> from astrapy import DataAPIClient
         >>> from astrapy.authentication import (
             CollectionVectorServiceOptions,
-            EmbeddingAPIKeyHeadersProvider,
+            EmbeddingAPIKeyHeaderProvider,
         )
-        >>> my_emb_api_key = EmbeddingAPIKeyHeadersProvider("abc012...")
+        >>> my_emb_api_key = EmbeddingAPIKeyHeaderProvider("abc012...")
         >>> service_options = CollectionVectorServiceOptions(
         ...     provider="a-certain-provider",
         ...     model_name="some-embedding-model",

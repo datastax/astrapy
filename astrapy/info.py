@@ -28,7 +28,7 @@ class DatabaseInfo:
     Attributes:
         id: the database ID.
         region: the ID of the region through which the connection to DB is done.
-        namespace: the namespace this DB is set to work with.
+        namespace: the namespace this DB is set to work with. None if not set.
         name: the database name. Not necessarily unique: there can be multiple
             databases with the same name.
         environment: a label, whose value can be `Environment.PROD`,
@@ -51,7 +51,7 @@ class DatabaseInfo:
 
     id: str
     region: str
-    namespace: str
+    namespace: Optional[str]
     name: str
     environment: str
     raw_info: Optional[Dict[str, Any]]

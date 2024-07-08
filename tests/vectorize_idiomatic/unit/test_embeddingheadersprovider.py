@@ -21,22 +21,22 @@ from astrapy.authentication import (
     EMBEDDING_HEADER_AWS_ACCESS_ID,
     EMBEDDING_HEADER_AWS_SECRET_ID,
     AWSEmbeddingHeadersProvider,
-    EmbeddingAPIKeyHeadersProvider,
+    EmbeddingAPIKeyHeaderProvider,
     coerce_embedding_headers_provider,
 )
 
 
 class TestEmbeddingHeadersProvider:
-    @pytest.mark.describe("test of headers from EmbeddingAPIKeyHeadersProvider")
+    @pytest.mark.describe("test of headers from EmbeddingAPIKeyHeaderProvider")
     def test_embeddingheadersprovider_static(self) -> None:
-        ehp = EmbeddingAPIKeyHeadersProvider("x")
+        ehp = EmbeddingAPIKeyHeaderProvider("x")
         assert {k.lower(): v for k, v in ehp.get_headers().items()} == {
             EMBEDDING_HEADER_API_KEY.lower(): "x"
         }
 
-    @pytest.mark.describe("test of headers from empty EmbeddingAPIKeyHeadersProvider")
+    @pytest.mark.describe("test of headers from empty EmbeddingAPIKeyHeaderProvider")
     def test_embeddingheadersprovider_null(self) -> None:
-        ehp = EmbeddingAPIKeyHeadersProvider(None)
+        ehp = EmbeddingAPIKeyHeaderProvider(None)
         assert ehp.get_headers() == {}
 
     @pytest.mark.describe("test of headers from AWSEmbeddingHeadersProvider")
@@ -55,8 +55,8 @@ class TestEmbeddingHeadersProvider:
     @pytest.mark.describe("test of embedding headers provider coercion")
     def test_embeddingheadersprovider_coercion(self) -> None:
         """This doubles as equality test."""
-        ehp_s = EmbeddingAPIKeyHeadersProvider("x")
-        ehp_n = EmbeddingAPIKeyHeadersProvider(None)
+        ehp_s = EmbeddingAPIKeyHeaderProvider("x")
+        ehp_n = EmbeddingAPIKeyHeaderProvider(None)
         ehp_a = AWSEmbeddingHeadersProvider(
             embedding_access_id="x",
             embedding_secret_id="y",

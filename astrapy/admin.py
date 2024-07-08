@@ -271,7 +271,7 @@ async def async_fetch_raw_database_info_from_id_token(
 def fetch_database_info(
     api_endpoint: str,
     token: Optional[str],
-    namespace: str,
+    namespace: Optional[str],
     max_time_ms: Optional[int] = None,
 ) -> Optional[DatabaseInfo]:
     """
@@ -281,6 +281,7 @@ def fetch_database_info(
         api_endpoint: a full API endpoint for the Data Api.
         token: a valid token to access the database information.
         namespace: the desired namespace that will be used in the result.
+            If not specified, the resulting database info will show it as None.
         max_time_ms: a timeout, in milliseconds, for waiting on a response.
 
     Returns:
@@ -298,7 +299,7 @@ def fetch_database_info(
             max_time_ms=max_time_ms,
         )
         raw_info = gd_response["info"]
-        if namespace not in raw_info["keyspaces"]:
+        if namespace is not None and namespace not in raw_info["keyspaces"]:
             raise DevOpsAPIException(f"Namespace {namespace} not found on DB.")
         else:
             return DatabaseInfo(
@@ -316,7 +317,7 @@ def fetch_database_info(
 async def async_fetch_database_info(
     api_endpoint: str,
     token: Optional[str],
-    namespace: str,
+    namespace: Optional[str],
     max_time_ms: Optional[int] = None,
 ) -> Optional[DatabaseInfo]:
     """
@@ -327,6 +328,7 @@ async def async_fetch_database_info(
         api_endpoint: a full API endpoint for the Data Api.
         token: a valid token to access the database information.
         namespace: the desired namespace that will be used in the result.
+            If not specified, the resulting database info will show it as None.
         max_time_ms: a timeout, in milliseconds, for waiting on a response.
 
     Returns:
@@ -344,7 +346,7 @@ async def async_fetch_database_info(
             max_time_ms=max_time_ms,
         )
         raw_info = gd_response["info"]
-        if namespace not in raw_info["keyspaces"]:
+        if namespace is not None and namespace not in raw_info["keyspaces"]:
             raise DevOpsAPIException(f"Namespace {namespace} not found on DB.")
         else:
             return DatabaseInfo(
