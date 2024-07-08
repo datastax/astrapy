@@ -343,7 +343,7 @@ class Collection:
                 each Data API call will include the necessary embedding-related headers
                 as specified by this parameter. If a string is passed, it translates
                 into the one "embedding api key" header
-                (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+                (i.e. `astrapy.authentication.DefaultEmbeddingHeadersProvider`).
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
@@ -410,7 +410,7 @@ class Collection:
                 each Data API call will include the necessary embedding-related headers
                 as specified by this parameter. If a string is passed, it translates
                 into the one "embedding api key" header
-                (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+                (i.e. `astrapy.authentication.DefaultEmbeddingHeadersProvider`).
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
@@ -2761,7 +2761,7 @@ class AsyncCollection:
                 each Data API call will include the necessary embedding-related headers
                 as specified by this parameter. If a string is passed, it translates
                 into the one "embedding api key" header
-                (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+                (i.e. `astrapy.authentication.DefaultEmbeddingHeadersProvider`).
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
@@ -2828,7 +2828,7 @@ class AsyncCollection:
                 each Data API call will include the necessary embedding-related headers
                 as specified by this parameter. If a string is passed, it translates
                 into the one "embedding api key" header
-                (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+                (i.e. `astrapy.authentication.DefaultEmbeddingHeadersProvider`).
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
