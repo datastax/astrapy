@@ -316,6 +316,10 @@ class TestDDLSync:
         parsed_api_endpoint = parse_api_endpoint(
             data_api_credentials_kwargs["api_endpoint"]
         )
+        if parsed_api_endpoint is None:
+            raise ValueError(
+                f"Unparseable API endpoint: {data_api_credentials_kwargs['api_endpoint']}"
+            )
         adm = client.get_admin(token=data_api_credentials_kwargs["token"])
         # auto-region through the DebvOps "db info" call
         assert adm.get_database_admin(

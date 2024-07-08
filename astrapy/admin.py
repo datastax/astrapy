@@ -1282,7 +1282,16 @@ class AstraDBAdmin:
         if namespace:
             _namespace = namespace
         else:
-            this_db_info = self.database_info(id, max_time_ms=max_time_ms)
+            parsed_api_endpoint = parse_api_endpoint(normalized_api_endpoint)
+            if parsed_api_endpoint is None:
+                raise ValueError(
+                    f"Cannot parse the API endpoint ({normalized_api_endpoint})."
+                )
+
+            this_db_info = self.database_info(
+                parsed_api_endpoint.database_id,
+                max_time_ms=max_time_ms,
+            )
             _namespace = this_db_info.info.namespace
 
         return Database(
@@ -1468,29 +1477,29 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         self.api_endpoint = normalized_api_endpoint
         parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
-        if parsed_api_endpoint is not None:
-            self._database_id = parsed_api_endpoint.database_id
-            self._region = parsed_api_endpoint.region
-            if parsed_api_endpoint.environment != self.environment:
-                raise ValueError(
-                    "Environment mismatch between client and provided "
-                    "API endpoint. You can try adding "
-                    f'`environment="{parsed_api_endpoint.environment}"` '
-                    "to the class constructor."
-                )
-            #
-            self._astra_db_admin = AstraDBAdmin(
-                token=self.token_provider,
-                environment=self.environment,
-                caller_name=caller_name,
-                caller_version=caller_version,
-                dev_ops_url=dev_ops_url,
-                dev_ops_api_version=dev_ops_api_version,
-            )
-        else:
+        if parsed_api_endpoint is None:
             raise ValueError(
                 f"Cannot parse the provided API endpoint ({self.api_endpoint})."
             )
+
+        self._database_id = parsed_api_endpoint.database_id
+        self._region = parsed_api_endpoint.region
+        if parsed_api_endpoint.environment != self.environment:
+            raise ValueError(
+                "Environment mismatch between client and provided "
+                "API endpoint. You can try adding "
+                f'`environment="{parsed_api_endpoint.environment}"` '
+                "to the class constructor."
+            )
+        #
+        self._astra_db_admin = AstraDBAdmin(
+            token=self.token_provider,
+            environment=self.environment,
+            caller_name=caller_name,
+            caller_version=caller_version,
+            dev_ops_url=dev_ops_url,
+            dev_ops_api_version=dev_ops_api_version,
+        )
 
     def __repr__(self) -> str:
         env_desc: str
@@ -1601,6 +1610,28 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
         self._astra_db_admin.set_caller(caller_name, caller_version)
+
+    @property
+    def id(self) -> str:
+        """
+        The ID of this database admin.
+
+        Example:
+            >>> my_db_admin.id
+            '01234567-89ab-cdef-0123-456789abcdef'
+        """
+        return self._database_id
+
+    @property
+    def region(self) -> str:
+        """
+        The region for this database admin.
+
+        Example:
+            >>> my_db_admin.region
+            'us-east-1'
+        """
+        return self._region
 
     @staticmethod
     def from_astra_db_admin(

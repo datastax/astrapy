@@ -125,6 +125,11 @@ def test_imports() -> None:
         CollectionVectorOptions,
         CollectionVectorServiceOptions,
         DatabaseInfo,
+        EmbeddingProvider,
+        EmbeddingProviderAuthentication,
+        EmbeddingProviderModel,
+        EmbeddingProviderParameter,
+        EmbeddingProviderToken,
     )
     from astrapy.operations import (  # noqa: F401
         AsyncBaseOperation,
