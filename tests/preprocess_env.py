@@ -18,6 +18,8 @@ Bottleneck entrypoint for reading os.environ and exposing its contents as
 Except for the vectorize information, which for the time being passes as os.environ.
 """
 
+from __future__ import annotations
+
 import os
 import time
 from typing import Optional

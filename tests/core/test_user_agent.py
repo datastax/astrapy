@@ -16,6 +16,8 @@
 Tests for the User-Agent customization logic
 """
 
+from __future__ import annotations
+
 import logging
 
 import pytest

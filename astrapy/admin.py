@@ -1414,6 +1414,16 @@ class DatabaseAdmin(ABC):
         """Query the Data API for the available embedding providers."""
         ...
 
+    @abstractmethod
+    async def async_find_embedding_providers(
+        self, *pargs: Any, **kwargs: Any
+    ) -> Dict[str, EmbeddingProvider]:
+        """
+        Query the Data API for the available embedding providers.
+        (Async version of the method.)
+        """
+        ...
+
 
 class AstraDBDatabaseAdmin(DatabaseAdmin):
     """
@@ -2465,6 +2475,53 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 ].items()
             }
 
+    async def async_find_embedding_providers(
+        self, *, max_time_ms: Optional[int] = None
+    ) -> Dict[str, EmbeddingProvider]:
+        """
+        Query the API for the full information on available embedding providers.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            An `EmbeddingProvidersDescriptor` object with the complete information
+            returned by the API about available embedding providers
+
+        Example (output abridged and indented for clarity):
+            >>> admin_for_my_db.list_embedding_providers()
+            {
+                'openai': EmbeddingProvider(
+                    display_name='OpenAI',
+                    models=[
+                        EmbeddingProviderModel(name='text-embedding-3-small'),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        logger.info("getting list of embedding providers, async")
+        fe_response = await self._api_commander.async_request(
+            payload={"findEmbeddingProviders": {}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if "embeddingProviders" not in fe_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findEmbeddingProviders API command.",
+                raw_response=fe_response,
+            )
+        else:
+            logger.info("finished getting list of embedding providers, async")
+            return {
+                ep_name: EmbeddingProvider.from_dict(ep_dict)
+                for ep_name, ep_dict in fe_response["status"][
+                    "embeddingProviders"
+                ].items()
+            }
+
 
 class DataAPIDatabaseAdmin(DatabaseAdmin):
     """
@@ -2918,7 +2975,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_namespaces()
             ['default_keyspace']
         """
-        logger.info("dropping namespace")
+        logger.info("dropping namespace, async")
         dn_response = await self._api_commander.async_request(
             payload={"dropNamespace": {"name": name}},
             timeout_info=base_timeout_info(max_time_ms),
@@ -2929,7 +2986,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 raw_response=dn_response,
             )
         else:
-            logger.info("finished dropping namespace")
+            logger.info("finished dropping namespace, async")
             return dn_response["status"]  # type: ignore[no-any-return]
 
     def get_database(
@@ -3044,6 +3101,53 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished getting list of embedding providers")
+            return {
+                ep_name: EmbeddingProvider.from_dict(ep_dict)
+                for ep_name, ep_dict in fe_response["status"][
+                    "embeddingProviders"
+                ].items()
+            }
+
+    async def async_find_embedding_providers(
+        self, *, max_time_ms: Optional[int] = None
+    ) -> Dict[str, EmbeddingProvider]:
+        """
+        Query the API for the full information on available embedding providers.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            An `EmbeddingProvidersDescriptor` object with the complete information
+            returned by the API about available embedding providers
+
+        Example (output abridged and indented for clarity):
+            >>> admin_for_my_db.list_embedding_providers()
+            {
+                'openai': EmbeddingProvider(
+                    display_name='OpenAI',
+                    models=[
+                        EmbeddingProviderModel(name='text-embedding-3-small'),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        logger.info("getting list of embedding providers, async")
+        fe_response = await self._api_commander.async_request(
+            payload={"findEmbeddingProviders": {}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if "embeddingProviders" not in fe_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findEmbeddingProviders API command.",
+                raw_response=fe_response,
+            )
+        else:
+            logger.info("finished getting list of embedding providers, async")
             return {
                 ep_name: EmbeddingProvider.from_dict(ep_dict)
                 for ep_name, ep_dict in fe_response["status"][

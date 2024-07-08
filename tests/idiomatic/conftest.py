@@ -14,6 +14,8 @@
 
 """Fixtures specific to the non-core-side testing."""
 
+from __future__ import annotations
+
 from typing import Iterable
 
 import pytest

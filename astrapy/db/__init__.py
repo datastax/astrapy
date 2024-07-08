@@ -14,6 +14,8 @@
 
 """Core "db" subpackage, exported here to preserve import patterns."""
 
+from __future__ import annotations
+
 from astrapy.core.db import (
     AstraDB,
     AstraDBCollection,

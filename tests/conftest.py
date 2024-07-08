@@ -16,6 +16,8 @@
 Main conftest for shared fixtures (if any).
 """
 
+from __future__ import annotations
+
 import functools
 import warnings
 from typing import Any, Awaitable, Callable, Optional, Tuple, TypedDict

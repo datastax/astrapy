@@ -17,6 +17,8 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 (i.e. non `vector_*` methods)
 """
 
+from __future__ import annotations
+
 import datetime
 import json
 import logging

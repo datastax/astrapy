@@ -16,6 +16,8 @@
 Unit tests for the parsing of API endpoints and related
 """
 
+from __future__ import annotations
+
 import pytest
 
 from astrapy.admin import ParsedAPIEndpoint, parse_api_endpoint

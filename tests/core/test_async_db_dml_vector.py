@@ -16,6 +16,8 @@
 Tests for the `db.py` parts on data manipulation `vector_*` methods
 """
 
+from __future__ import annotations
+
 import logging
 from typing import Iterable, List, cast
 

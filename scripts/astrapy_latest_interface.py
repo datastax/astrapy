@@ -16,8 +16,8 @@ token = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
 api_endpoint = os.environ["ASTRA_DB_API_ENDPOINT"]
 
 # Initialize our vector db
-my_client = astrapy.DataAPIClient(token)
-my_database = my_client.get_database(api_endpoint)
+my_client = astrapy.DataAPIClient()
+my_database = my_client.get_database(api_endpoint, token=token)
 
 # In case we already have the collection, let's clear it out
 my_database.drop_collection("collection_test")
@@ -29,8 +29,8 @@ my_collection = my_database.create_collection("collection_test", dimension=5)
 my_collection.insert_one(
     {
         "_id": "1",
-        "name": "Coded Cleats Copy",
-        "description": "ChatGPT integrated sneakers that talk to you",
+        "name": "Coded Cleats",
+        "description": "GenAI-integrated sneakers that talk to you",
         "$vector": [0.25, 0.25, 0.25, 0.25, 0.25],
     },
 )

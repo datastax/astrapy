@@ -14,6 +14,8 @@
 
 """Core "ops" subpackage, exported here to preserve import patterns."""
 
+from __future__ import annotations
+
 from astrapy.core.ops import AstraDBOps
 
 __all__ = [

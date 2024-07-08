@@ -13,8 +13,10 @@
 # limitations under the License.
 
 """
-Tests for the User-Agent customization logic
+Tests for the core-related imports
 """
+
+from __future__ import annotations
 
 import pytest
 

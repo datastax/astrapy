@@ -16,6 +16,8 @@
 Tests for the `db.py` parts related to DML & client creation
 """
 
+from __future__ import annotations
+
 import logging
 
 import httpx
