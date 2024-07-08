@@ -690,7 +690,7 @@ class EmbeddingProvider:
     """
 
     def __repr__(self) -> str:
-        return f"EmbeddingProvider(display_name='{self.display_name}', models='{self.models}')"
+        return f"EmbeddingProvider(display_name='{self.display_name}', models={self.models})"
 
     display_name: Optional[str]
     models: List[EmbeddingProviderModel]

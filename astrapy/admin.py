@@ -92,6 +92,10 @@ API_ENDPOINT_TEMPLATE_MAP = {
 }
 
 API_PATH_ENV_MAP = {
+    Environment.PROD: "/api/json",
+    Environment.DEV: "/api/json",
+    Environment.TEST: "/api/json",
+    #
     Environment.DSE: "",
     Environment.HCD: "",
     Environment.CASSANDRA: "",
@@ -99,6 +103,10 @@ API_PATH_ENV_MAP = {
 }
 
 API_VERSION_ENV_MAP = {
+    Environment.PROD: "/v1",
+    Environment.DEV: "/v1",
+    Environment.TEST: "/v1",
+    #
     Environment.DSE: "v1",
     Environment.HCD: "v1",
     Environment.CASSANDRA: "v1",
@@ -1399,6 +1407,13 @@ class DatabaseAdmin(ABC):
         """Get an AsyncDatabase object from this database admin."""
         ...
 
+    @abstractmethod
+    def find_embedding_providers(
+        self, *pargs: Any, **kwargs: Any
+    ) -> Dict[str, EmbeddingProvider]:
+        """Query the Data API for the available embedding providers."""
+        ...
+
 
 class AstraDBDatabaseAdmin(DatabaseAdmin):
     """
@@ -1433,6 +1448,14 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             determined from the API Endpoint.
         dev_ops_api_version: this can specify a custom version of the DevOps API
             (such as "v2"). Generally not needed.
+        api_path: path to append to the API Endpoint. In typical usage, this
+            class is created by a method such as `Database.get_database_admin()`,
+            which passes the matching value. Generally to be left to its Astra DB
+            default of "/api/json".
+        api_version: version specifier to append to the API path. In typical
+            usage, this class is created by a method such as
+            `Database.get_database_admin()`, which passes the matching value.
+            Generally to be left to its Astra DB default of "/v1".
         max_time_ms: a timeout, in milliseconds, for the DevOps API
             HTTP request should it be necessary (see the `region` argument).
 
@@ -1462,6 +1485,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         caller_version: Optional[str] = None,
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
         max_time_ms: Optional[int] = None,
     ) -> None:
         self.token_provider = coerce_token_provider(token)
@@ -1492,13 +1517,35 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 "to the class constructor."
             )
         #
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        #
         self._astra_db_admin = AstraDBAdmin(
             token=self.token_provider,
             environment=self.environment,
-            caller_name=caller_name,
-            caller_version=caller_version,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
             dev_ops_url=dev_ops_url,
             dev_ops_api_version=dev_ops_api_version,
+        )
+
+        # API Commander (for the vectorizeOps invocations)
+        self._api_path = (
+            api_path if api_path is not None else API_PATH_ENV_MAP[self.environment]
+        )
+        self._api_version = (
+            api_version
+            if api_version is not None
+            else API_VERSION_ENV_MAP[self.environment]
+        )
+        self._commander_headers = {
+            DEFAULT_AUTH_HEADER: self.token_provider.get_token(),
+        }
+        self._api_commander = APICommander(
+            api_endpoint=self.api_endpoint,
+            path="/".join(comp for comp in [self._api_path, self._api_version] if comp),
+            headers=self._commander_headers,
+            callers=[(self.caller_name, self.caller_version)],
         )
 
     def __repr__(self) -> str:
@@ -2372,6 +2419,52 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             max_time_ms=max_time_ms,
         ).to_async()
 
+    def find_embedding_providers(
+        self, *, max_time_ms: Optional[int] = None
+    ) -> Dict[str, EmbeddingProvider]:
+        """
+        Query the API for the full information on available embedding providers.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            An `EmbeddingProvidersDescriptor` object with the complete information
+            returned by the API about available embedding providers
+
+        Example (output abridged and indented for clarity):
+            >>> admin_for_my_db.list_embedding_providers()
+            {
+                'openai': EmbeddingProvider(
+                    display_name='OpenAI',
+                    models=[
+                        EmbeddingProviderModel(name='text-embedding-3-small'),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        logger.info("getting list of embedding providers")
+        fe_response = self._api_commander.request(
+            payload={"findEmbeddingProviders": {}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if "embeddingProviders" not in fe_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findEmbeddingProviders API command.",
+                raw_response=fe_response,
+            )
+        else:
+            logger.info("finished getting list of embedding providers")
+            return {
+                ep_name: EmbeddingProvider.from_dict(ep_dict)
+                for ep_name, ep_dict in fe_response["status"][
+                    "embeddingProviders"
+                ].items()
+            }
+
 
 class DataAPIDatabaseAdmin(DatabaseAdmin):
     """
@@ -2922,12 +3015,21 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             max_time_ms: a timeout, in milliseconds, for the DevOps API request.
 
         Returns:
-            A `EmbeddingProvidersDescriptor` object with the complete information
+            An `EmbeddingProvidersDescriptor` object with the complete information
             returned by the API about available embedding providers
 
-        Example:
+        Example (output abridged and indented for clarity):
             >>> admin_for_my_db.list_embedding_providers()
-            RESPONSE TODO
+            {
+                'openai': EmbeddingProvider(
+                    display_name='OpenAI',
+                    models=[
+                        EmbeddingProviderModel(name='text-embedding-3-small'),
+                        ...
+                    ]
+                ),
+                ...
+            }
         """
 
         logger.info("getting list of embedding providers")
