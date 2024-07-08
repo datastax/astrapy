@@ -23,6 +23,7 @@ from astrapy.admin import (
     build_api_endpoint,
     database_id_matcher,
     fetch_raw_database_info_from_id_token,
+    normalize_id_endpoint_parameters,
     parse_api_endpoint,
     parse_generic_api_url,
 )
@@ -205,8 +206,9 @@ class DataAPIClient:
 
     def get_database(
         self,
-        id: str,
+        id: Optional[str] = None,
         *,
+        api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
@@ -223,6 +225,8 @@ class DataAPIClient:
                 to be effectively used; in other words, this invocation
                 does not create the database, just the object instance.
                 Actual admin work can be achieved by using the AstraDBAdmin object.
+            api_endpoint: a named alias for the `id` first (positional) parameter,
+                with the same meaning. It cannot be passed together with `id`.
             token: if supplied, is passed to the Database instead of the client token.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
@@ -263,16 +267,18 @@ class DataAPIClient:
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
+        # id/endpoint parameter normalization
+        _id_or_endpoint = normalize_id_endpoint_parameters(id, api_endpoint)
         if self.environment in Environment.astra_db_values:
             # handle the "endpoint passed as id" case first:
-            if re.match(api_endpoint_parser, id):
+            if re.match(api_endpoint_parser, _id_or_endpoint):
                 if region is not None:
                     raise ValueError(
                         "Parameter `region` not supported when supplying an API endpoint."
                     )
                 # in this case max_time_ms is ignored (no calls take place)
                 return self.get_database_by_api_endpoint(
-                    api_endpoint=id,
+                    api_endpoint=_id_or_endpoint,
                     token=token,
                     namespace=namespace,
                     api_path=api_path,
@@ -283,20 +289,22 @@ class DataAPIClient:
                 if region:
                     _region = region
                 else:
-                    logger.info(f"fetching raw database info for {id}")
+                    logger.info(f"fetching raw database info for {_id_or_endpoint}")
                     this_db_info = fetch_raw_database_info_from_id_token(
-                        id=id,
+                        id=_id_or_endpoint,
                         token=self.token_provider.get_token(),
                         environment=self.environment,
                         max_time_ms=max_time_ms,
                     )
-                    logger.info(f"finished fetching raw database info for {id}")
+                    logger.info(
+                        f"finished fetching raw database info for {_id_or_endpoint}"
+                    )
                     _region = this_db_info["info"]["region"]
 
                 _token = coerce_token_provider(token) or self.token_provider
                 _api_endpoint = build_api_endpoint(
                     environment=self.environment,
-                    database_id=id,
+                    database_id=_id_or_endpoint,
                     region=_region,
                 )
                 return Database(
@@ -312,13 +320,13 @@ class DataAPIClient:
         else:
             # in this case, this call is an alias for get_database_by_api_endpoint
             #   - max_time_ms ignored
-            #   - assume `id` is actually the endpoint
+            #   - assume `_id_or_endpoint` is actually the endpoint
             if region is not None:
                 raise ValueError(
                     "Parameter `region` not supported outside of Astra DB."
                 )
             return self.get_database_by_api_endpoint(
-                api_endpoint=id,
+                api_endpoint=_id_or_endpoint,
                 token=token,
                 namespace=namespace,
                 api_path=api_path,
@@ -327,8 +335,9 @@ class DataAPIClient:
 
     def get_async_database(
         self,
-        id: str,
+        id: Optional[str] = None,
         *,
+        api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
@@ -345,6 +354,7 @@ class DataAPIClient:
 
         return self.get_database(
             id=id,
+            api_endpoint=api_endpoint,
             token=token,
             namespace=namespace,
             region=region,
