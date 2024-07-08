@@ -14,53 +14,54 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Dict
 
 from preprocess_env import (
     ASTRA_DB_API_ENDPOINT,
+    ASTRA_DB_KEYSPACE,
     ASTRA_DB_TOKEN_PROVIDER,
     IS_ASTRA_DB,
     LOCAL_DATA_API_ENDPOINT,
+    LOCAL_DATA_API_KEYSPACE,
     LOCAL_DATA_API_TOKEN_PROVIDER,
 )
 
-from astrapy.api_commander import APICommander
+from astrapy import DataAPIClient, Database
+from astrapy.admin import parse_api_endpoint
+from astrapy.constants import Environment
+from astrapy.info import EmbeddingProvider
 
 
-def live_provider_info() -> Dict[str, Any]:
+def live_provider_info() -> Dict[str, EmbeddingProvider]:
     """
     Query the API endpoint `findEmbeddingProviders` endpoint
     for the latest information.
 
-    This is where the preprocess_env variables are read to figure out whom to ask.
+    This utility function uses the environment variables it can find
+    to establish a target database to query.
     """
-    response: Dict[str, Any]
 
+    database: Database
     if IS_ASTRA_DB:
-        if ASTRA_DB_TOKEN_PROVIDER is None:
-            raise ValueError("No token provider for Astra DB")
-        path = "api/json/v1"
-        headers_a: Dict[str, Optional[str]] = {
-            "Token": ASTRA_DB_TOKEN_PROVIDER.get_token(),
-        }
-        cmd = APICommander(
-            api_endpoint=ASTRA_DB_API_ENDPOINT or "",
-            path=path,
-            headers=headers_a,
+        parsed = parse_api_endpoint(ASTRA_DB_API_ENDPOINT)
+        if parsed is None:
+            raise ValueError(
+                "Cannot parse the Astra DB API Endpoint '{ASTRA_DB_API_ENDPOINT}'"
+            )
+        client = DataAPIClient(environment=parsed.environment)
+        database = client.get_database(
+            ASTRA_DB_API_ENDPOINT,
+            token=ASTRA_DB_TOKEN_PROVIDER,
+            namespace=ASTRA_DB_KEYSPACE,
         )
-        response = cmd.request(payload={"findEmbeddingProviders": {}})
     else:
-        path = "v1"
-        if LOCAL_DATA_API_TOKEN_PROVIDER is None:
-            raise ValueError("No token provider for Local Data API")
-        headers_l: Dict[str, Optional[str]] = {
-            "Token": LOCAL_DATA_API_TOKEN_PROVIDER.get_token(),
-        }
-        cmd = APICommander(
-            api_endpoint=LOCAL_DATA_API_ENDPOINT or "",
-            path=path,
-            headers=headers_l,
+        client = DataAPIClient(environment=Environment.OTHER)
+        database = client.get_database(
+            LOCAL_DATA_API_ENDPOINT,
+            token=LOCAL_DATA_API_TOKEN_PROVIDER,
+            namespace=LOCAL_DATA_API_KEYSPACE,
         )
-        response = cmd.request(payload={"findEmbeddingProviders": {}})
 
+    database_admin = database.get_database_admin()
+    response = database_admin.find_embedding_providers()
     return response

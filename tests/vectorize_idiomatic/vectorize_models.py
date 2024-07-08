@@ -25,7 +25,7 @@ from astrapy.authentication import (
     EMBEDDING_HEADER_AWS_ACCESS_ID,
     EMBEDDING_HEADER_AWS_SECRET_ID,
 )
-from astrapy.info import CollectionVectorServiceOptions
+from astrapy.info import CollectionVectorServiceOptions, EmbeddingProviderParameter
 
 from .live_provider_info import live_provider_info
 
@@ -174,14 +174,14 @@ FORCE_DIMENSION_MAP = {
 
 def live_test_models() -> Iterable[Dict[str, Any]]:
 
-    def _from_validation(pspec: Dict[str, Any]) -> int:
-        assert pspec["type"] == "number"
-        if "numericRange" in pspec["validation"]:
-            m0: int = pspec["validation"]["numericRange"][0]
-            m1: int = pspec["validation"]["numericRange"][1]
+    def _from_validation(pspec: EmbeddingProviderParameter) -> int:
+        assert pspec.parameter_type == "number"
+        if "numericRange" in pspec.validation:
+            m0: int = pspec.validation["numericRange"][0]
+            m1: int = pspec.validation["numericRange"][1]
             return (m0 + m1) // 2
-        elif "options" in pspec["validation"]:
-            options: List[int] = pspec["validation"]["options"]
+        elif "options" in pspec.validation:
+            options: List[int] = pspec.validation["options"]
             if len(options) > 1:
                 return options[1]
             else:
@@ -196,21 +196,19 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
             return f"{longt[:30]}_{longt[-5:]}"
 
     # generate the full list of models based on the live provider endpoint
-    live_info = live_provider_info()["status"]["embeddingProviders"]
-    for provider_name, provider_desc in sorted(live_info.items()):
-        for model in provider_desc["models"]:
+    providers = live_provider_info()
+    for provider_name, provider_desc in sorted(providers.items()):
+        for model in provider_desc.models:
             for auth_type_name, auth_type_desc in sorted(
-                provider_desc["supportedAuthentication"].items()
+                provider_desc.supported_authentication.items()
             ):
-                if auth_type_desc["enabled"]:
+                if auth_type_desc.enabled:
                     # test assumptions on auth type
                     if auth_type_name == "NONE":
-                        assert auth_type_desc["tokens"] == []
+                        assert auth_type_desc.tokens == []
                     elif auth_type_name == "HEADER":
                         header_names_lower = tuple(
-                            sorted(
-                                t["accepted"].lower() for t in auth_type_desc["tokens"]
-                            )
+                            sorted(t.accepted.lower() for t in auth_type_desc.tokens)
                         )
                         assert header_names_lower in {
                             (EMBEDDING_HEADER_API_KEY.lower(),),
@@ -221,7 +219,7 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                         }
                     elif auth_type_name == "SHARED_SECRET":
                         authkey_names = tuple(
-                            sorted(t["accepted"] for t in auth_type_desc["tokens"])
+                            sorted(t.accepted for t in auth_type_desc.tokens)
                         )
                         assert authkey_names in {
                             ("providerKey",),
@@ -231,85 +229,79 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                         raise ValueError("Unknown auth type")
 
                     # params
-                    collated_params = provider_desc.get("parameters", []) + model.get(
-                        "parameters", []
-                    )
+                    collated_params = provider_desc.parameters + model.parameters
                     all_nond_params = [
                         param
                         for param in collated_params
-                        if param["name"] != "vectorDimension"
+                        if param.name != "vectorDimension"
                     ]
                     required_nond_params = {
-                        param["name"] for param in all_nond_params if param["required"]
+                        param.name for param in all_nond_params if param.required
                     }
                     optional_nond_params = {
-                        param["name"]
-                        for param in all_nond_params
-                        if not param["required"]
+                        param.name for param in all_nond_params if not param.required
                     }
                     #
                     d_params = [
                         param
                         for param in collated_params
-                        if param["name"] == "vectorDimension"
+                        if param.name == "vectorDimension"
                     ]
                     if d_params:
                         d_param = d_params[0]
-                        if "defaultValue" in d_param:
-                            if (provider_name, model["name"]) in FORCE_DIMENSION_MAP:
+                        if d_param.default_value is not None:
+                            if (provider_name, model.name) in FORCE_DIMENSION_MAP:
                                 optional_dimension = False
                                 dimension = FORCE_DIMENSION_MAP[
-                                    (provider_name, model["name"])
+                                    (provider_name, model.name)
                                 ]
                             else:
                                 optional_dimension = True
-                                assert model["vectorDimension"] is None
+                                assert model.vector_dimension is None
                                 dimension = _from_validation(d_param)
                         else:
                             optional_dimension = False
-                            assert model["vectorDimension"] is None
+                            assert model.vector_dimension is None
                             dimension = _from_validation(d_param)
                     else:
                         optional_dimension = False
-                        assert model["vectorDimension"] is not None
-                        assert model["vectorDimension"] > 0
-                        dimension = model["vectorDimension"]
+                        assert model.vector_dimension is not None
+                        assert model.vector_dimension > 0
+                        dimension = model.vector_dimension
 
                     model_parameters = {
                         param_name: PARAMETER_VALUE_MAP[
-                            (provider_name, model["name"], param_name)
+                            (provider_name, model.name, param_name)
                         ]
                         for param_name in required_nond_params
                     }
                     optional_model_parameters = {
                         param_name: PARAMETER_VALUE_MAP[
-                            (provider_name, model["name"], param_name)
+                            (provider_name, model.name, param_name)
                         ]
                         for param_name in optional_nond_params
                     }
 
                     if optional_dimension or optional_nond_params != set():
                         # we issue a minimal-params version
-                        model_tag_0 = (
-                            f"{provider_name}/{model['name']}/{auth_type_name}/0"
-                        )
+                        model_tag_0 = f"{provider_name}/{model.name}/{auth_type_name}/0"
                         this_minimal_model = {
                             "model_tag": model_tag_0,
                             "simple_tag": _collapse(
                                 "".join(c for c in model_tag_0 if c in alphanum)
                             ),
                             "auth_type_name": auth_type_name,
-                            "auth_type_tokens": auth_type_desc["tokens"],
+                            "auth_type_tokens": auth_type_desc.tokens,
                             "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
                             "test_assets": TEST_ASSETS_MAP.get(
-                                (provider_name, model["name"]), DEFAULT_TEST_ASSETS
+                                (provider_name, model.name), DEFAULT_TEST_ASSETS
                             ),
                             "use_insert_one": USE_INSERT_ONE_MAP.get(
-                                (provider_name, model["name"]), False
+                                (provider_name, model.name), False
                             ),
                             "service_options": CollectionVectorServiceOptions(
                                 provider=provider_name,
-                                model_name=model["name"],
+                                model_name=model.name,
                                 parameters=model_parameters,
                             ),
                         }
@@ -323,20 +315,18 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                     ):
                         root_model = {
                             "auth_type_name": auth_type_name,
-                            "auth_type_tokens": auth_type_desc["tokens"],
+                            "auth_type_tokens": auth_type_desc.tokens,
                             "dimension": dimension,
                             "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
                             "test_assets": TEST_ASSETS_MAP.get(
-                                (provider_name, model["name"]), DEFAULT_TEST_ASSETS
+                                (provider_name, model.name), DEFAULT_TEST_ASSETS
                             ),
                             "use_insert_one": USE_INSERT_ONE_MAP.get(
-                                (provider_name, model["name"]), False
+                                (provider_name, model.name), False
                             ),
                         }
 
-                        model_tag_f = (
-                            f"{provider_name}/{model['name']}/{auth_type_name}/f"
-                        )
+                        model_tag_f = f"{provider_name}/{model.name}/{auth_type_name}/f"
 
                         this_model = {
                             "model_tag": model_tag_f,
@@ -345,7 +335,7 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                             ),
                             "service_options": CollectionVectorServiceOptions(
                                 provider=provider_name,
-                                model_name=model["name"],
+                                model_name=model.name,
                                 parameters={
                                     **model_parameters,
                                     **optional_model_parameters,
