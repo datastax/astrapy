@@ -305,7 +305,11 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
         self.embedding_secret_id = embedding_secret_id
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__}("{self.embedding_access_id[:3]}...", "{self.embedding_secret_id[:3]}...")'
+        return (
+            f"{self.__class__.__name__}(embedding_access_id="
+            f'"{self.embedding_access_id[:3]}...", '
+            f'embedding_secret_id="{self.embedding_secret_id[:3]}...")'
+        )
 
     def get_headers(self) -> Dict[str, str]:
         return {
