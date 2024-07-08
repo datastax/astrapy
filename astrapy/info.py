@@ -441,7 +441,16 @@ class CollectionDescriptor:
 @dataclass
 class EmbeddingProviderParameter:
     """
-    TODO
+    A representation of a parameter as returned by the 'findEmbeddingProviders'
+    Data API endpoint.
+
+    Attributes:
+        default_value: the default value for the parameter.
+        help: a textual description of the parameter.
+        name: the name to use when passing the parameter for vectorize operations.
+        required: whether the parameter is required or not.
+        parameter_type: a textual description of the data type for the parameter.
+        validation: a dictionary describing a parameter-specific validation policy.
     """
 
     default_value: Any
@@ -455,9 +464,7 @@ class EmbeddingProviderParameter:
         return f"EmbeddingProviderParameter(name='{self.name}')"
 
     def as_dict(self) -> Dict[str, Any]:
-        """
-        TODO
-        """
+        """Recast this object into a dictionary."""
 
         return {
             "defaultValue": self.default_value,
@@ -471,7 +478,8 @@ class EmbeddingProviderParameter:
     @staticmethod
     def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProviderParameter:
         """
-        TODO
+        Create an instance of EmbeddingProviderParameter from a dictionary
+        such as one from the Data API.
         """
 
         residual_keys = raw_dict.keys() - {
@@ -500,7 +508,16 @@ class EmbeddingProviderParameter:
 @dataclass
 class EmbeddingProviderModel:
     """
-    TODO
+    A representation of an embedding model as returned by the 'findEmbeddingProviders'
+    Data API endpoint.
+
+    Attributes:
+        name: the model name as must be passed when issuing
+            vectorize operations to the API.
+        parameters: a list of the `EmbeddingProviderParameter` objects the model admits.
+        vector_dimension: an integer for the dimensionality of the embedding model.
+            if this is None, the dimension can assume multiple values as specified
+            by a corresponding parameter listed with the model.
     """
 
     name: str
@@ -511,9 +528,7 @@ class EmbeddingProviderModel:
         return f"EmbeddingProviderModel(name='{self.name}')"
 
     def as_dict(self) -> Dict[str, Any]:
-        """
-        TODO
-        """
+        """Recast this object into a dictionary."""
 
         return {
             "name": self.name,
@@ -524,7 +539,8 @@ class EmbeddingProviderModel:
     @staticmethod
     def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProviderModel:
         """
-        TODO
+        Create an instance of EmbeddingProviderModel from a dictionary
+        such as one from the Data API.
         """
 
         residual_keys = raw_dict.keys() - {
@@ -550,7 +566,16 @@ class EmbeddingProviderModel:
 @dataclass
 class EmbeddingProviderToken:
     """
-    TODO
+    A representation of a "token", that is a specific secret string, needed by
+    an embedding model; this models a part of the response from the
+    'findEmbeddingProviders' Data API endpoint.
+
+    Attributes:
+        accepted: the name of this "token" as seen by the Data API. This is the
+            name that should be used in the clients when supplying the secret,
+            whether as header or by shared-secret.
+        forwarded: the name used by the API when issuing the embedding request
+            to the embedding provider. This is of no direct interest for the Data API user.
     """
 
     accepted: str
@@ -560,9 +585,7 @@ class EmbeddingProviderToken:
         return f"EmbeddingProviderToken('{self.accepted}')"
 
     def as_dict(self) -> Dict[str, Any]:
-        """
-        TODO
-        """
+        """Recast this object into a dictionary."""
 
         return {
             "accepted": self.accepted,
@@ -572,7 +595,8 @@ class EmbeddingProviderToken:
     @staticmethod
     def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProviderToken:
         """
-        TODO
+        Create an instance of EmbeddingProviderToken from a dictionary
+        such as one from the Data API.
         """
 
         residual_keys = raw_dict.keys() - {
@@ -593,19 +617,27 @@ class EmbeddingProviderToken:
 @dataclass
 class EmbeddingProviderAuthentication:
     """
-    TODO
+    A representation of an authentication mode for using an embedding model,
+    modeling the corresponding part of the response returned by the
+    'findEmbeddingProviders' Data API endpoint (namely "supportedAuthentication").
+
+    Attributes:
+        enabled: whether this authentication mode is available for a given model.
+        tokens: a list of `EmbeddingProviderToken` objects,
+            detailing the secrets required for the authentication mode.
     """
 
     enabled: bool
     tokens: List[EmbeddingProviderToken]
 
     def __repr__(self) -> str:
-        return f"EmbeddingProviderAuthentication(enabled={self.enabled}, tokens={','.join(str(token) for token in self.tokens)})"
+        return (
+            f"EmbeddingProviderAuthentication(enabled={self.enabled}, "
+            f"tokens={','.join(str(token) for token in self.tokens)})"
+        )
 
     def as_dict(self) -> Dict[str, Any]:
-        """
-        TODO
-        """
+        """Recast this object into a dictionary."""
 
         return {
             "enabled": self.enabled,
@@ -615,7 +647,8 @@ class EmbeddingProviderAuthentication:
     @staticmethod
     def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProviderAuthentication:
         """
-        TODO
+        Create an instance of EmbeddingProviderAuthentication from a dictionary
+        such as one from the Data API.
         """
 
         residual_keys = raw_dict.keys() - {
@@ -639,13 +672,26 @@ class EmbeddingProviderAuthentication:
 @dataclass
 class EmbeddingProvider:
     """
-    TODO
+    A representation of an embedding provider, as returned by the 'findEmbeddingProviders'
+    Data API endpoint.
+
+    Attributes:
+        display_name: a version of the provider name for display and pretty printing.
+            Not to be used when issuing vectorize API requests (for the latter, it is
+            the key in the providers dictionary that is required).
+        models: a list of `EmbeddingProviderModel` objects pertaining to the provider.
+        parameters: a list of `EmbeddingProviderParameter` objects common to all models
+            for this provider.
+        supported_authentication: a dictionary of the authentication modes for
+            this provider. Note that disabled modes may still appear in this map,
+            albeit with the `enabled` property set to False.
+        url: a string template for the URL used by the Data API when issuing the request
+            toward the embedding provider. This is of no direct concern to the Data API user.
     """
 
     def __repr__(self) -> str:
         return f"EmbeddingProvider(display_name='{self.display_name}', models='{self.models}')"
 
-    # name: str  # TODO: add this one?
     display_name: Optional[str]
     models: List[EmbeddingProviderModel]
     parameters: List[EmbeddingProviderParameter]
@@ -653,9 +699,7 @@ class EmbeddingProvider:
     url: Optional[str]
 
     def as_dict(self) -> Dict[str, Any]:
-        """
-        TODO
-        """
+        """Recast this object into a dictionary."""
 
         return {
             "displayName": self.display_name,
@@ -671,7 +715,8 @@ class EmbeddingProvider:
     @staticmethod
     def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProvider:
         """
-        TODO
+        Create an instance of EmbeddingProvider from a dictionary
+        such as one from the Data API.
         """
 
         residual_keys = raw_dict.keys() - {
