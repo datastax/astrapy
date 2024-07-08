@@ -359,6 +359,8 @@ class Database:
         """
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
+        self.caller_name = caller_name
+        self.caller_version = caller_version
         self._astra_db.set_caller(
             caller_name=caller_name,
             caller_version=caller_version,
@@ -1259,6 +1261,8 @@ class AsyncDatabase:
         """
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
+        self.caller_name = caller_name
+        self.caller_version = caller_version
         self._astra_db.set_caller(
             caller_name=caller_name,
             caller_version=caller_version,

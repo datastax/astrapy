@@ -3048,7 +3048,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
             namespace: an optional namespace to set in the resulting Database.
-                If not provided, the default namespace is used.
+                If not provided, no namespace is set, limiting what the Database
+                can do until setting it with e.g. a `useNamespace` method call.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "".
             api_version: version specifier to append to the API path. In typical

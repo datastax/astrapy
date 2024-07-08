@@ -346,3 +346,39 @@ class TestDDLSync:
             token=data_api_credentials_kwargs["token"],
             environment=data_api_credentials_info["environment"],
         )
+
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
+    @pytest.mark.describe(
+        "test database-from-admin default namespace per environment, sync"
+    )
+    def test_database_from_admin_default_namespace_per_environment_sync(
+        self,
+        data_api_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_info: DataAPICredentialsInfo,
+    ) -> None:
+        client = DataAPIClient(environment=data_api_credentials_info["environment"])
+        admin = client.get_admin(token=data_api_credentials_kwargs["token"])
+        db_m = admin.get_database(
+            data_api_credentials_kwargs["api_endpoint"],
+            namespace="M",
+        )
+        assert db_m.namespace == "M"
+        db_n = admin.get_database(data_api_credentials_kwargs["api_endpoint"])
+        assert isinstance(db_n.namespace, str)  # i.e. resolution took place
+
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
+    @pytest.mark.describe(
+        "test database-from-astradbadmin default namespace per environment, sync"
+    )
+    def test_database_from_astradbadmin_default_namespace_per_environment_sync(
+        self,
+        data_api_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_info: DataAPICredentialsInfo,
+    ) -> None:
+        client = DataAPIClient(environment=data_api_credentials_info["environment"])
+        admin = client.get_admin(token=data_api_credentials_kwargs["token"])
+        db_admin = admin.get_database_admin(data_api_credentials_kwargs["api_endpoint"])
+        db_m = db_admin.get_database(namespace="M")
+        assert db_m.namespace == "M"
+        db_n = db_admin.get_database()
+        assert isinstance(db_n.namespace, str)  # i.e. resolution took place

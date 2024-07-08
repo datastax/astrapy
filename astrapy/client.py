@@ -230,8 +230,8 @@ class DataAPIClient:
             token: if supplied, is passed to the Database instead of the client token.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            namespace: if provided, is passed to the Database
-                (it is left to the default otherwise).
+            namespace: if provided, it is passed to the Database; otherwise
+                the Database class will apply an environment-specific default.
             region: the region to use for connecting to the database. The
                 database must be located in that region.
                 The region cannot be specified when the API endoint is used as `id`.
@@ -385,8 +385,8 @@ class DataAPIClient:
             token: if supplied, is passed to the Database instead of the client token.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            namespace: if provided, is passed to the Database
-                (it is left to the default otherwise).
+            namespace: if provided, it is passed to the Database; otherwise
+                the Database class will apply an environment-specific default.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
