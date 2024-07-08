@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from typing import Optional, TypeVar
 
 from astrapy.authentication import (
-    DefaultEmbeddingHeadersProvider,
+    EmbeddingAPIKeyHeadersProvider,
     EmbeddingHeadersProvider,
 )
 
@@ -117,12 +117,12 @@ class CollectionAPIOptions(BaseAPIOptions):
         embedding_api_key: an `astrapy.authentication.EmbeddingHeadersProvider`
             object, encoding embedding-related API keys that will be passed
             as headers when interacting with the collection (on each Data API request).
-            The default value is `DefaultEmbeddingHeadersProvider(None)`, i.e.
+            The default value is `EmbeddingAPIKeyHeadersProvider(None)`, i.e.
             no embedding-specific headers, whereas if the collection is configured
             with an embedding service other choices for this parameter can be
             meaningfully supplied. is configured for the collection,
     """
 
     embedding_api_key: EmbeddingHeadersProvider = field(
-        default_factory=lambda: DefaultEmbeddingHeadersProvider(None)
+        default_factory=lambda: EmbeddingAPIKeyHeadersProvider(None)
     )
