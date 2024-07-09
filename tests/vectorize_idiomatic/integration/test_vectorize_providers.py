@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import os
 from typing import Any, Dict, List, Union
 
@@ -93,7 +95,7 @@ class TestVectorizeProviders:
         # For the time being this is necessary on HEADER only
         embedding_api_key: Union[str, EmbeddingHeadersProvider]
         at_tokens = testable_vectorize_model["auth_type_tokens"]
-        at_token_lnames = {tk["accepted"].lower() for tk in at_tokens}
+        at_token_lnames = {tk.accepted.lower() for tk in at_tokens}
         if at_token_lnames == {"x-embedding-api-key"}:
             embedding_api_key = os.environ[
                 f"HEADER_EMBEDDING_API_KEY_{testable_vectorize_model['secret_tag']}"

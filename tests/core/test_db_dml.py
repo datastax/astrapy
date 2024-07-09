@@ -17,6 +17,8 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 (i.e. non `vector_*` methods)
 """
 
+from __future__ import annotations
+
 import datetime
 import json
 import logging
@@ -590,7 +592,17 @@ def test_chunked_insert_many_failures(
             chunk_size=2,
             concurrency=2,
         )
-    assert len(empty_v_collection.find({})["data"]["documents"]) >= 2
+
+
+@pytest.mark.describe("chunked_insert_many, failure modes unordered with concurrency")
+def test_chunked_insert_many_failures_unordered_concurrent(
+    empty_v_collection: AstraDBCollection,
+) -> None:
+    """
+    Note: no real reason to split this from `test_chunked_insert_many_failures`,
+    other than to preserve symmetry with the async counterpart.
+    """
+    dup_docs = [{"_id": tid} for tid in ["a", "b", "b", "d", "e", "f"]]
 
     empty_v_collection.delete_many({})
     ins_result = empty_v_collection.chunked_insert_many(

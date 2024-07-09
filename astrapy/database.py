@@ -53,6 +53,8 @@ if TYPE_CHECKING:
     from astrapy.collection import AsyncCollection, Collection
 
 
+DEFAULT_ASTRA_DB_NAMESPACE = "default_keyspace"
+
 logger = logging.getLogger(__name__)
 
 
@@ -118,7 +120,10 @@ class Database:
             `astrapy.authentication.TokenProvider`.
         namespace: this is the namespace all method calls will target, unless
             one is explicitly specified in the call. If no namespace is supplied
-            when creating a Database, the name "default_namespace" is set.
+            when creating a Database, on Astra DB the name "default_namespace" is set,
+            while on other environments the namespace is left unspecified: in this case,
+            most operations are unavailable until a namespace is set (through an explicit
+            `use_namespace` invocation or equivalent).
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -160,23 +165,28 @@ class Database:
         _api_path: Optional[str]
         _api_version: Optional[str]
         if api_path is None:
-            _api_path = API_PATH_ENV_MAP.get(self.environment)
+            _api_path = API_PATH_ENV_MAP[self.environment]
         else:
             _api_path = api_path
         if api_version is None:
-            _api_version = API_VERSION_ENV_MAP.get(self.environment)
+            _api_version = API_VERSION_ENV_MAP[self.environment]
         else:
             _api_version = api_version
         self.token_provider = coerce_token_provider(token)
-        self._astra_db = AstraDB(
-            token=self.token_provider.get_token(),
-            api_endpoint=api_endpoint,
-            api_path=_api_path,
-            api_version=_api_version,
-            namespace=namespace,
-            caller_name=caller_name,
-            caller_version=caller_version,
-        )
+        self.api_endpoint = api_endpoint.strip("/")
+        self.api_path = _api_path
+        self.api_version = _api_version
+
+        # enforce defaults if on Astra DB:
+        self.using_namespace: Optional[str]
+        if namespace is None and self.environment in Environment.astra_db_values:
+            self.using_namespace = DEFAULT_ASTRA_DB_NAMESPACE
+        else:
+            self.using_namespace = namespace
+
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        self._astra_db = self._refresh_astra_db()
         self._name: Optional[str] = None
 
     def __getattr__(self, collection_name: str) -> Collection:
@@ -186,16 +196,40 @@ class Database:
         return self.get_collection(name=collection_name)
 
     def __repr__(self) -> str:
+        namespace_desc = self.namespace if self.namespace is not None else "(not set)"
         return (
-            f'{self.__class__.__name__}(api_endpoint="{self._astra_db.api_endpoint}", '
-            f'token="{str(self.token_provider)[:12]}...", namespace="{self._astra_db.namespace}")'
+            f'{self.__class__.__name__}(api_endpoint="{self.api_endpoint}", '
+            f'token="{str(self.token_provider)[:12]}...", namespace="{namespace_desc}")'
         )
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Database):
-            return self._astra_db == other._astra_db
+            return all(
+                [
+                    self.token_provider == other.token_provider,
+                    self.api_endpoint == other.api_endpoint,
+                    self.api_path == other.api_path,
+                    self.api_version == other.api_version,
+                    self.namespace == other.namespace,
+                    self.caller_name == other.caller_name,
+                    self.caller_version == other.caller_version,
+                ]
+            )
         else:
             return False
+
+    def _refresh_astra_db(self) -> AstraDB:
+        """Re-instantiate a new (core) client based on the instance attributes."""
+        logger.info("Instantiating a new (core) AstraDB")
+        return AstraDB(
+            token=self.token_provider.get_token(),
+            api_endpoint=self.api_endpoint,
+            api_path=self.api_path,
+            api_version=self.api_version,
+            namespace=self.namespace,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
+        )
 
     def _copy(
         self,
@@ -210,14 +244,14 @@ class Database:
         api_version: Optional[str] = None,
     ) -> Database:
         return Database(
-            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            namespace=namespace or self._astra_db.namespace,
-            caller_name=caller_name or self._astra_db.caller_name,
-            caller_version=caller_version or self._astra_db.caller_version,
+            namespace=namespace or self.namespace,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
             environment=environment or self.environment,
-            api_path=api_path or self._astra_db.api_path,
-            api_version=api_version or self._astra_db.api_version,
+            api_path=api_path or self.api_path,
+            api_version=api_version or self.api_version,
         )
 
     def with_options(
@@ -301,14 +335,14 @@ class Database:
         """
 
         return AsyncDatabase(
-            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            namespace=namespace or self._astra_db.namespace,
-            caller_name=caller_name or self._astra_db.caller_name,
-            caller_version=caller_version or self._astra_db.caller_version,
+            namespace=namespace or self.namespace,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
             environment=environment or self.environment,
-            api_path=api_path or self._astra_db.api_path,
-            api_version=api_version or self._astra_db.api_version,
+            api_path=api_path or self.api_path,
+            api_version=api_version or self.api_version,
         )
 
     def set_caller(
@@ -330,10 +364,34 @@ class Database:
         """
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
-        self._astra_db.set_caller(
-            caller_name=caller_name,
-            caller_version=caller_version,
-        )
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        self._astra_db = self._refresh_astra_db()
+
+    def use_namespace(self, namespace: str) -> None:
+        """
+        Switch to a new working namespace for this database.
+        This method changes (mutates) the Database instance.
+
+        Note that this method does not create the namespace, which should exist
+        already (created for instance with a `DatabaseAdmin.create_namespace` call).
+
+        Args:
+            namespace: the new namespace to use as the database working namespace.
+
+        Returns:
+            None.
+
+        Example:
+            >>> my_db.list_collection_names()
+            ['coll_1', 'coll_2']
+            >>> my_db.use_namespace("an_empty_namespace")
+            >>> my_db.list_collection_names()
+            []
+        """
+        logger.info(f"switching to namespace '{namespace}'")
+        self.using_namespace = namespace
+        self._astra_db = self._refresh_astra_db()
 
     def info(self) -> DatabaseInfo:
         """
@@ -357,7 +415,7 @@ class Database:
 
         logger.info("getting database info")
         database_info = fetch_database_info(
-            self._astra_db.api_endpoint,
+            self.api_endpoint,
             token=self.token_provider.get_token(),
             namespace=self.namespace,
         )
@@ -379,7 +437,7 @@ class Database:
             '01234567-89ab-cdef-0123-456789abcdef'
         """
 
-        parsed_api_endpoint = parse_api_endpoint(self._astra_db.api_endpoint)
+        parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
         if parsed_api_endpoint is not None:
             return parsed_api_endpoint.database_id
         else:
@@ -405,17 +463,20 @@ class Database:
         return self._name
 
     @property
-    def namespace(self) -> str:
+    def namespace(self) -> Optional[str]:
         """
         The namespace this database uses as target for all commands when
         no method-call-specific namespace is specified.
+
+        Returns:
+            the working namespace (a string), or None if not set.
 
         Example:
             >>> my_db.namespace
             'the_keyspace'
         """
 
-        return self._astra_db.namespace
+        return self.using_namespace
 
     def get_collection(
         self,
@@ -444,7 +505,7 @@ class Database:
             each Data API call will include the necessary embedding-related headers
             as specified by this parameter. If a string is passed, it translates
             into the one "embedding api key" header
-            (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+            (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
             For some vectorize providers/models, if using header-based authentication,
             specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
             should be supplied.
@@ -477,7 +538,12 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.collection import Collection
 
-        _namespace = namespace or self._astra_db.namespace
+        _namespace = namespace or self.namespace
+        if _namespace is None:
+            raise ValueError(
+                "No namespace specified. This operation requires a namespace to "
+                "be set, e.g. through the `use_namespace` method."
+            )
         return Collection(
             self,
             name,
@@ -552,7 +618,7 @@ class Database:
                 each Data API call will include the necessary embedding-related headers
                 as specified by this parameter. If a string is passed, it translates
                 into the one "embedding api key" header
-                (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+                (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
@@ -612,11 +678,18 @@ class Database:
         else:
             existing_names = []
 
-        driver_db = self._astra_db.copy(namespace=namespace)
+        _namespace = namespace or self.namespace
+        if _namespace is None:
+            raise ValueError(
+                "No namespace specified. This operation requires a namespace to "
+                "be set, e.g. through the `use_namespace` method."
+            )
+
+        driver_db = self._astra_db.copy(namespace=_namespace)
         if name in existing_names:
             raise CollectionAlreadyExistsException(
                 text=f"CollectionInvalid: collection {name} already exists",
-                namespace=driver_db.namespace,
+                namespace=_namespace,
                 collection_name=name,
             )
 
@@ -688,6 +761,11 @@ class Database:
             logger.info(f"finished dropping collection '{_name}'")
             return dc_response.get("status", {})  # type: ignore[no-any-return]
         else:
+            if self.namespace is None:
+                raise ValueError(
+                    "No namespace specified. This operation requires a namespace to "
+                    "be set, e.g. through the `use_namespace` method."
+                )
             logger.info(f"dropping collection '{name_or_collection}'")
             dc_response = self._astra_db.delete_collection(
                 name_or_collection,
@@ -727,12 +805,16 @@ class Database:
             CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        if namespace:
-            _client = self._astra_db.copy(namespace=namespace)
-        else:
-            _client = self._astra_db
+        _namespace = namespace or self.namespace
+        if _namespace is None:
+            raise ValueError(
+                "No namespace specified. This operation requires a namespace to "
+                "be set, e.g. through the `use_namespace` method."
+            )
+
+        driver_db = self._astra_db.copy(namespace=_namespace)
         logger.info("getting collections")
-        gc_response = _client.get_collections(
+        gc_response = driver_db.get_collections(
             options={"explain": True}, timeout_info=base_timeout_info(max_time_ms)
         )
         if "collections" not in gc_response.get("status", {}):
@@ -744,7 +826,7 @@ class Database:
             # we know this is a list of dicts, to marshal into "descriptors"
             logger.info("finished getting collections")
             return CommandCursor(
-                address=self._astra_db.base_url,
+                address=driver_db.base_url,
                 items=[
                     CollectionDescriptor.from_dict(col_dict)
                     for col_dict in gc_response["status"]["collections"]
@@ -774,8 +856,15 @@ class Database:
             ['a_collection', 'another_col']
         """
 
+        _namespace = namespace or self.namespace
+        if _namespace is None:
+            raise ValueError(
+                "No namespace specified. This operation requires a namespace to "
+                "be set, e.g. through the `use_namespace` method."
+            )
+
         logger.info("getting collection names")
-        gc_response = self._astra_db.copy(namespace=namespace).get_collections(
+        gc_response = self._astra_db.copy(namespace=_namespace).get_collections(
             timeout_info=base_timeout_info(max_time_ms)
         )
         if "collections" not in gc_response.get("status", {}):
@@ -820,12 +909,16 @@ class Database:
             {'status': {'count': 123}}
         """
 
-        if namespace:
-            _client = self._astra_db.copy(namespace=namespace)
-        else:
-            _client = self._astra_db
+        _namespace = namespace or self.namespace
+        if _namespace is None:
+            raise ValueError(
+                "No namespace specified. This operation requires a namespace to "
+                "be set, e.g. through the `use_namespace` method."
+            )
+
+        driver_db = self._astra_db.copy(namespace=_namespace)
         if collection_name:
-            _collection = _client.collection(collection_name)
+            _collection = driver_db.collection(collection_name)
             logger.info(f"issuing custom command to API (on '{collection_name}')")
             req_response = _collection.post_raw_request(
                 body=body,
@@ -837,7 +930,7 @@ class Database:
             return req_response
         else:
             logger.info("issuing custom command to API")
-            req_response = _client.post_raw_request(
+            req_response = driver_db.post_raw_request(
                 body=body,
                 timeout_info=base_timeout_info(max_time_ms),
             )
@@ -890,13 +983,15 @@ class Database:
         from astrapy.admin import AstraDBDatabaseAdmin, DataAPIDatabaseAdmin
 
         if self.environment in Environment.astra_db_values:
-            return AstraDBDatabaseAdmin.from_api_endpoint(
-                api_endpoint=self._astra_db.api_endpoint,
+            return AstraDBDatabaseAdmin(
+                api_endpoint=self.api_endpoint,
                 token=coerce_token_provider(token) or self.token_provider,
-                caller_name=self._astra_db.caller_name,
-                caller_version=self._astra_db.caller_version,
+                environment=self.environment,
+                caller_name=self.caller_name,
+                caller_version=self.caller_version,
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
+                spawner_database=self,
             )
         else:
             if dev_ops_url is not None:
@@ -908,13 +1003,14 @@ class Database:
                     "Parameter `dev_ops_api_version` not supported outside of Astra DB."
                 )
             return DataAPIDatabaseAdmin(
-                api_endpoint=self._astra_db.api_endpoint,
+                api_endpoint=self.api_endpoint,
                 token=coerce_token_provider(token) or self.token_provider,
                 environment=self.environment,
-                api_path=self._astra_db.api_path,
-                api_version=self._astra_db.api_version,
-                caller_name=self._astra_db.caller_name,
-                caller_version=self._astra_db.caller_version,
+                api_path=self.api_path,
+                api_version=self.api_version,
+                caller_name=self.caller_name,
+                caller_version=self.caller_version,
+                spawner_database=self,
             )
 
 
@@ -939,7 +1035,10 @@ class AsyncDatabase:
             `astrapy.authentication.TokenProvider`.
         namespace: this is the namespace all method calls will target, unless
             one is explicitly specified in the call. If no namespace is supplied
-            when creating a Database, the name "default_namespace" is set.
+            when creating a Database, on Astra DB the name "default_namespace" is set,
+            while on other environments the namespace is left unspecified: in this case,
+            most operations are unavailable until a namespace is set (through an explicit
+            `use_namespace` invocation or equivalent).
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -981,24 +1080,29 @@ class AsyncDatabase:
         _api_path: Optional[str]
         _api_version: Optional[str]
         if api_path is None:
-            _api_path = API_PATH_ENV_MAP.get(self.environment)
+            _api_path = API_PATH_ENV_MAP[self.environment]
         else:
             _api_path = api_path
         if api_version is None:
-            _api_version = API_VERSION_ENV_MAP.get(self.environment)
+            _api_version = API_VERSION_ENV_MAP[self.environment]
         else:
             _api_version = api_version
         #
         self.token_provider = coerce_token_provider(token)
-        self._astra_db = AsyncAstraDB(
-            token=self.token_provider.get_token(),
-            api_endpoint=api_endpoint,
-            api_path=_api_path,
-            api_version=_api_version,
-            namespace=namespace,
-            caller_name=caller_name,
-            caller_version=caller_version,
-        )
+        self.api_endpoint = api_endpoint.strip("/")
+        self.api_path = _api_path
+        self.api_version = _api_version
+
+        # enforce defaults if on Astra DB:
+        self.using_namespace: Optional[str]
+        if namespace is None and self.environment in Environment.astra_db_values:
+            self.using_namespace = DEFAULT_ASTRA_DB_NAMESPACE
+        else:
+            self.using_namespace = namespace
+
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        self._astra_db = self._refresh_astra_db()
         self._name: Optional[str] = None
 
     def __getattr__(self, collection_name: str) -> AsyncCollection:
@@ -1008,14 +1112,25 @@ class AsyncDatabase:
         return self.to_sync().get_collection(name=collection_name).to_async()
 
     def __repr__(self) -> str:
+        namespace_desc = self.namespace if self.namespace is not None else "(not set)"
         return (
-            f'{self.__class__.__name__}(api_endpoint="{self._astra_db.api_endpoint}", '
-            f'token="{str(self.token_provider)[:12]}...", namespace="{self._astra_db.namespace}")'
+            f'{self.__class__.__name__}(api_endpoint="{self.api_endpoint}", '
+            f'token="{str(self.token_provider)[:12]}...", namespace="{namespace_desc}")'
         )
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AsyncDatabase):
-            return self._astra_db == other._astra_db
+            return all(
+                [
+                    self.token_provider == other.token_provider,
+                    self.api_endpoint == other.api_endpoint,
+                    self.api_path == other.api_path,
+                    self.api_version == other.api_version,
+                    self.namespace == other.namespace,
+                    self.caller_name == other.caller_name,
+                    self.caller_version == other.caller_version,
+                ]
+            )
         else:
             return False
 
@@ -1034,6 +1149,19 @@ class AsyncDatabase:
             traceback=traceback,
         )
 
+    def _refresh_astra_db(self) -> AsyncAstraDB:
+        """Re-instantiate a new (core) client based on the instance attributes."""
+        logger.info("Instantiating a new (core) AsyncAstraDB")
+        return AsyncAstraDB(
+            token=self.token_provider.get_token(),
+            api_endpoint=self.api_endpoint,
+            api_path=self.api_path,
+            api_version=self.api_version,
+            namespace=self.namespace,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
+        )
+
     def _copy(
         self,
         *,
@@ -1047,14 +1175,14 @@ class AsyncDatabase:
         api_version: Optional[str] = None,
     ) -> AsyncDatabase:
         return AsyncDatabase(
-            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            namespace=namespace or self._astra_db.namespace,
-            caller_name=caller_name or self._astra_db.caller_name,
-            caller_version=caller_version or self._astra_db.caller_version,
+            namespace=namespace or self.namespace,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
             environment=environment or self.environment,
-            api_path=api_path or self._astra_db.api_path,
-            api_version=api_version or self._astra_db.api_version,
+            api_path=api_path or self.api_path,
+            api_version=api_version or self.api_version,
         )
 
     def with_options(
@@ -1139,14 +1267,14 @@ class AsyncDatabase:
         """
 
         return Database(
-            api_endpoint=api_endpoint or self._astra_db.api_endpoint,
+            api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            namespace=namespace or self._astra_db.namespace,
-            caller_name=caller_name or self._astra_db.caller_name,
-            caller_version=caller_version or self._astra_db.caller_version,
+            namespace=namespace or self.namespace,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
             environment=environment or self.environment,
-            api_path=api_path or self._astra_db.api_path,
-            api_version=api_version or self._astra_db.api_version,
+            api_path=api_path or self.api_path,
+            api_version=api_version or self.api_version,
         )
 
     def set_caller(
@@ -1168,10 +1296,34 @@ class AsyncDatabase:
         """
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
-        self._astra_db.set_caller(
-            caller_name=caller_name,
-            caller_version=caller_version,
-        )
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        self._astra_db = self._refresh_astra_db()
+
+    def use_namespace(self, namespace: str) -> None:
+        """
+        Switch to a new working namespace for this database.
+        This method changes (mutates) the AsyncDatabase instance.
+
+        Note that this method does not create the namespace, which should exist
+        already (created for instance with a `DatabaseAdmin.async_create_namespace` call).
+
+        Args:
+            namespace: the new namespace to use as the database working namespace.
+
+        Returns:
+            None.
+
+        Example:
+            >>> asyncio.run(my_async_db.list_collection_names())
+            ['coll_1', 'coll_2']
+            >>> my_async_db.use_namespace("an_empty_namespace")
+            >>> asyncio.run(my_async_db.list_collection_names())
+            []
+        """
+        logger.info(f"switching to namespace '{namespace}'")
+        self.using_namespace = namespace
+        self._astra_db = self._refresh_astra_db()
 
     def info(self) -> DatabaseInfo:
         """
@@ -1195,7 +1347,7 @@ class AsyncDatabase:
 
         logger.info("getting database info")
         database_info = fetch_database_info(
-            self._astra_db.api_endpoint,
+            self.api_endpoint,
             token=self.token_provider.get_token(),
             namespace=self.namespace,
         )
@@ -1217,7 +1369,7 @@ class AsyncDatabase:
             '01234567-89ab-cdef-0123-456789abcdef'
         """
 
-        parsed_api_endpoint = parse_api_endpoint(self._astra_db.api_endpoint)
+        parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
         if parsed_api_endpoint is not None:
             return parsed_api_endpoint.database_id
         else:
@@ -1243,17 +1395,20 @@ class AsyncDatabase:
         return self._name
 
     @property
-    def namespace(self) -> str:
+    def namespace(self) -> Optional[str]:
         """
         The namespace this database uses as target for all commands when
         no method-call-specific namespace is specified.
+
+        Returns:
+            the working namespace (a string), or None if not set.
 
         Example:
             >>> my_async_db.namespace
             'the_keyspace'
         """
 
-        return self._astra_db.namespace
+        return self.using_namespace
 
     async def get_collection(
         self,
@@ -1282,7 +1437,7 @@ class AsyncDatabase:
             each Data API call will include the necessary embedding-related headers
             as specified by this parameter. If a string is passed, it translates
             into the one "embedding api key" header
-            (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+            (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
             For some vectorize providers/models, if using header-based authentication,
             specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
             should be supplied.
@@ -1318,7 +1473,12 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.collection import AsyncCollection
 
-        _namespace = namespace or self._astra_db.namespace
+        _namespace = namespace or self.namespace
+        if _namespace is None:
+            raise ValueError(
+                "No namespace specified. This operation requires a namespace to "
+                "be set, e.g. through the `use_namespace` method."
+            )
         return AsyncCollection(
             self,
             name,
@@ -1393,7 +1553,7 @@ class AsyncDatabase:
                 each Data API call will include the necessary embedding-related headers
                 as specified by this parameter. If a string is passed, it translates
                 into the one "embedding api key" header
-                (i.e. `astrapy.authentication.StaticEmbeddingHeadersProvider`).
+                (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
@@ -1456,11 +1616,19 @@ class AsyncDatabase:
             )
         else:
             existing_names = []
-        driver_db = self._astra_db.copy(namespace=namespace)
+
+        _namespace = namespace or self.namespace
+        if _namespace is None:
+            raise ValueError(
+                "No namespace specified. This operation requires a namespace to "
+                "be set, e.g. through the `use_namespace` method."
+            )
+
+        driver_db = self._astra_db.copy(namespace=_namespace)
         if name in existing_names:
             raise CollectionAlreadyExistsException(
                 text=f"CollectionInvalid: collection {name} already exists",
-                namespace=driver_db.namespace,
+                namespace=_namespace,
                 collection_name=name,
             )
 
@@ -1534,6 +1702,11 @@ class AsyncDatabase:
             logger.info(f"finished dropping collection '{_name}'")
             return dc_response.get("status", {})  # type: ignore[no-any-return]
         else:
+            if self.namespace is None:
+                raise ValueError(
+                    "No namespace specified. This operation requires a namespace to "
+                    "be set, e.g. through the `use_namespace` method."
+                )
             logger.info(f"dropping collection '{name_or_collection}'")
             dc_response = await self._astra_db.delete_collection(
                 name_or_collection,
@@ -1575,13 +1748,16 @@ class AsyncDatabase:
             * coll: CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        _client: AsyncAstraDB
-        if namespace:
-            _client = self._astra_db.copy(namespace=namespace)
-        else:
-            _client = self._astra_db
+        _namespace = namespace or self.namespace
+        if _namespace is None:
+            raise ValueError(
+                "No namespace specified. This operation requires a namespace to "
+                "be set, e.g. through the `use_namespace` method."
+            )
+
+        driver_db = self._astra_db.copy(namespace=_namespace)
         logger.info("getting collections")
-        gc_response = _client.to_sync().get_collections(
+        gc_response = driver_db.to_sync().get_collections(
             options={"explain": True},
             timeout_info=base_timeout_info(max_time_ms),
         )
@@ -1594,7 +1770,7 @@ class AsyncDatabase:
             # we know this is a list of dicts, to marshal into "descriptors"
             logger.info("finished getting collections")
             return AsyncCommandCursor(
-                address=self._astra_db.base_url,
+                address=driver_db.base_url,
                 items=[
                     CollectionDescriptor.from_dict(col_dict)
                     for col_dict in gc_response["status"]["collections"]
@@ -1624,8 +1800,15 @@ class AsyncDatabase:
             ['a_collection', 'another_col']
         """
 
+        _namespace = namespace or self.namespace
+        if _namespace is None:
+            raise ValueError(
+                "No namespace specified. This operation requires a namespace to "
+                "be set, e.g. through the `use_namespace` method."
+            )
+
         logger.info("getting collection names")
-        gc_response = await self._astra_db.copy(namespace=namespace).get_collections(
+        gc_response = await self._astra_db.copy(namespace=_namespace).get_collections(
             timeout_info=base_timeout_info(max_time_ms)
         )
         if "collections" not in gc_response.get("status", {}):
@@ -1673,12 +1856,16 @@ class AsyncDatabase:
             {'status': {'count': 123}}
         """
 
-        if namespace:
-            _client = self._astra_db.copy(namespace=namespace)
-        else:
-            _client = self._astra_db
+        _namespace = namespace or self.namespace
+        if _namespace is None:
+            raise ValueError(
+                "No namespace specified. This operation requires a namespace to "
+                "be set, e.g. through the `use_namespace` method."
+            )
+
+        driver_db = self._astra_db.copy(namespace=_namespace)
         if collection_name:
-            _collection = await _client.collection(collection_name)
+            _collection = await driver_db.collection(collection_name)
             logger.info(f"issuing custom command to API (on '{collection_name}')")
             req_response = await _collection.post_raw_request(
                 body=body,
@@ -1690,7 +1877,7 @@ class AsyncDatabase:
             return req_response
         else:
             logger.info("issuing custom command to API")
-            req_response = await _client.post_raw_request(
+            req_response = await driver_db.post_raw_request(
                 body=body,
                 timeout_info=base_timeout_info(max_time_ms),
             )
@@ -1743,13 +1930,15 @@ class AsyncDatabase:
         from astrapy.admin import AstraDBDatabaseAdmin, DataAPIDatabaseAdmin
 
         if self.environment in Environment.astra_db_values:
-            return AstraDBDatabaseAdmin.from_api_endpoint(
-                api_endpoint=self._astra_db.api_endpoint,
+            return AstraDBDatabaseAdmin(
+                api_endpoint=self.api_endpoint,
                 token=coerce_token_provider(token) or self.token_provider,
-                caller_name=self._astra_db.caller_name,
-                caller_version=self._astra_db.caller_version,
+                environment=self.environment,
+                caller_name=self.caller_name,
+                caller_version=self.caller_version,
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
+                spawner_database=self,
             )
         else:
             if dev_ops_url is not None:
@@ -1761,11 +1950,12 @@ class AsyncDatabase:
                     "Parameter `dev_ops_api_version` not supported outside of Astra DB."
                 )
             return DataAPIDatabaseAdmin(
-                api_endpoint=self._astra_db.api_endpoint,
+                api_endpoint=self.api_endpoint,
                 token=coerce_token_provider(token) or self.token_provider,
                 environment=self.environment,
-                api_path=self._astra_db.api_path,
-                api_version=self._astra_db.api_version,
-                caller_name=self._astra_db.caller_name,
-                caller_version=self._astra_db.caller_version,
+                api_path=self.api_path,
+                api_version=self.api_version,
+                caller_name=self.caller_name,
+                caller_version=self.caller_version,
+                spawner_database=self,
             )

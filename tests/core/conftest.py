@@ -16,6 +16,8 @@
 Test fixtures for 'core' testing
 """
 
+from __future__ import annotations
+
 import math
 from typing import AsyncIterable, Dict, Iterable, List, Optional, Set, TypeVar
 

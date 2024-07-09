@@ -483,6 +483,12 @@ from astrapy.info import (
     CollectionVectorOptions,
     CollectionOptions,
     CollectionDescriptor,
+    EmbeddingProviderParameter,
+    EmbeddingProviderModel,
+    EmbeddingProviderToken,
+    EmbeddingProviderAuthentication,
+    EmbeddingProvider,
+    FindEmbeddingProvidersResult,
 )
 ```
 

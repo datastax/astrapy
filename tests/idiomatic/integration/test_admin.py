@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import time
 from typing import Any, Awaitable, Callable, List, Optional, Tuple
 
 import pytest
 
-from astrapy import DataAPIClient
+from astrapy import AsyncDatabase, DataAPIClient, Database
 from astrapy.admin import API_ENDPOINT_TEMPLATE_MAP
 
 from ..conftest import (
@@ -582,3 +584,43 @@ class TestAdmin:
             max_seconds=DATABASE_TIMEOUT,
             acondition=_awaiter4,
         )
+
+    @pytest.mark.describe(
+        "test of the update_db_namespace flag for AstraDBDatabaseAdmin, sync"
+    )
+    def test_astra_updatedbnamespace_sync(self, sync_database: Database) -> None:
+        NEW_NS_NAME_NOT_UPDATED = "tnudn_notupd"
+        NEW_NS_NAME_UPDATED = "tnudn_upd"
+
+        namespace0 = sync_database.namespace
+        database_admin = sync_database.get_database_admin()
+        database_admin.create_namespace(NEW_NS_NAME_NOT_UPDATED)
+        assert sync_database.namespace == namespace0
+
+        database_admin.create_namespace(NEW_NS_NAME_UPDATED, update_db_namespace=True)
+        assert sync_database.namespace == NEW_NS_NAME_UPDATED
+
+        database_admin.drop_namespace(NEW_NS_NAME_NOT_UPDATED)
+        database_admin.drop_namespace(NEW_NS_NAME_UPDATED)
+
+    @pytest.mark.describe(
+        "test of the update_db_namespace flag for AstraDBDatabaseAdmin, async"
+    )
+    async def test_astra_updatedbnamespace_async(
+        self, async_database: AsyncDatabase
+    ) -> None:
+        NEW_NS_NAME_NOT_UPDATED = "tnudn_notupd"
+        NEW_NS_NAME_UPDATED = "tnudn_upd"
+
+        namespace0 = async_database.namespace
+        database_admin = async_database.get_database_admin()
+        await database_admin.async_create_namespace(NEW_NS_NAME_NOT_UPDATED)
+        assert async_database.namespace == namespace0
+
+        await database_admin.async_create_namespace(
+            NEW_NS_NAME_UPDATED, update_db_namespace=True
+        )
+        assert async_database.namespace == NEW_NS_NAME_UPDATED
+
+        await database_admin.async_drop_namespace(NEW_NS_NAME_NOT_UPDATED)
+        await database_admin.async_drop_namespace(NEW_NS_NAME_UPDATED)

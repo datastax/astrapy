@@ -16,6 +16,8 @@
 Unit tests for the token providers
 """
 
+from __future__ import annotations
+
 import pytest
 
 from astrapy.authentication import (

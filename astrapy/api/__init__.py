@@ -14,6 +14,8 @@
 
 """Core "api" subpackage, exported here to preserve import patterns."""
 
+from __future__ import annotations
+
 from astrapy.core.api import APIRequestError
 
 __all__ = [

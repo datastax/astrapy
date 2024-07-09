@@ -2384,13 +2384,20 @@ class AsyncAstraDBCollection:
             async with sem:
                 logger.debug(f"Processing chunk #{index + 1} of size {len(docs)}")
                 try:
-                    return await self.insert_many(
+                    im_result = await self.insert_many(
                         documents=docs,
                         options=options,
                         partial_failures_allowed=partial_failures_allowed,
                         timeout_info=timeout_info,
                     )
+                    logger.debug(
+                        f"Finished processing chunk #{index + 1} of size {len(docs)}"
+                    )
+                    return im_result
                 except APIRequestError as e:
+                    logger.debug(
+                        f"Got APIRequestError while processing chunk #{index + 1} of size {len(docs)}"
+                    )
                     if partial_failures_allowed:
                         return e
                     else:
@@ -2400,7 +2407,9 @@ class AsyncAstraDBCollection:
             tasks = [
                 asyncio.create_task(
                     concurrent_insert_many(
-                        documents[i : i + chunk_size], i, partial_failures_allowed
+                        documents[i : i + chunk_size],
+                        i // chunk_size,
+                        partial_failures_allowed,
                     )
                 )
                 for i in range(0, len(documents), chunk_size)
@@ -2411,7 +2420,9 @@ class AsyncAstraDBCollection:
             # "sequential strictly obeys fail-fast if ordered and concurrency==1"
             results = [
                 await concurrent_insert_many(
-                    documents[i : i + chunk_size], i, partial_failures_allowed
+                    documents[i : i + chunk_size],
+                    i // chunk_size,
+                    partial_failures_allowed,
                 )
                 for i in range(0, len(documents), chunk_size)
             ]

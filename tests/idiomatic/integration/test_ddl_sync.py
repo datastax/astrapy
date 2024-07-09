@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import time
 
 import pytest
 
 from astrapy import Collection, DataAPIClient, Database
+from astrapy.admin import AstraDBDatabaseAdmin, parse_api_endpoint
 from astrapy.constants import DefaultIdType, VectorMetric
 from astrapy.ids import UUID, ObjectId
 from astrapy.info import CollectionDescriptor, DatabaseInfo
@@ -213,6 +216,28 @@ class TestDDLSync:
     @pytest.mark.skipif(
         SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
     )
+    @pytest.mark.describe("test of Database use_namespace, sync")
+    def test_database_use_namespace_sync(
+        self,
+        sync_database: Database,
+        sync_collection: Collection,
+        data_api_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_info: DataAPICredentialsInfo,
+    ) -> None:
+        # make a copy to avoid mutating the fixture
+        t_database = sync_database._copy()
+        assert t_database == sync_database
+        assert t_database.namespace == data_api_credentials_kwargs["namespace"]
+        assert TEST_COLLECTION_NAME in t_database.list_collection_names()
+
+        t_database.use_namespace(data_api_credentials_info["secondary_namespace"])  # type: ignore[arg-type]
+        assert t_database != sync_database
+        assert t_database.namespace == data_api_credentials_info["secondary_namespace"]
+        assert TEST_COLLECTION_NAME not in t_database.list_collection_names()
+
+    @pytest.mark.skipif(
+        SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
+    )
     @pytest.mark.describe("test of cross-namespace collection lifecycle, sync")
     def test_collection_namespace_sync(
         self,
@@ -299,5 +324,87 @@ class TestDDLSync:
         api_endpoint = data_api_credentials_kwargs["api_endpoint"]
         token = data_api_credentials_kwargs["token"]
         client = DataAPIClient(environment=data_api_credentials_info["environment"])
-        database = client.get_database(api_endpoint, token=token)
+        database = client.get_database(
+            api_endpoint,
+            token=token,
+            namespace=data_api_credentials_kwargs["namespace"],
+        )
         assert isinstance(database.list_collection_names(), list)
+
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
+    @pytest.mark.describe(
+        "test of autoregion through DevOps API for get_database(_admin), sync"
+    )
+    def test_autoregion_getdatabase_sync(
+        self,
+        data_api_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_info: DataAPICredentialsInfo,
+    ) -> None:
+        client = DataAPIClient(environment=data_api_credentials_info["environment"])
+        parsed_api_endpoint = parse_api_endpoint(
+            data_api_credentials_kwargs["api_endpoint"]
+        )
+        if parsed_api_endpoint is None:
+            raise ValueError(
+                f"Unparseable API endpoint: {data_api_credentials_kwargs['api_endpoint']}"
+            )
+        adm = client.get_admin(token=data_api_credentials_kwargs["token"])
+        # auto-region through the DebvOps "db info" call
+        assert adm.get_database_admin(
+            parsed_api_endpoint.database_id
+        ) == adm.get_database_admin(data_api_credentials_kwargs["api_endpoint"])
+
+        # auto-region for get_database
+        assert adm.get_database(
+            parsed_api_endpoint.database_id,
+            namespace="the_ns",
+        ) == adm.get_database(
+            data_api_credentials_kwargs["api_endpoint"], namespace="the_ns"
+        )
+
+        # auto-region for the init of AstraDBDatabaseAdmin
+        assert AstraDBDatabaseAdmin(
+            data_api_credentials_kwargs["api_endpoint"],
+            token=data_api_credentials_kwargs["token"],
+            environment=data_api_credentials_info["environment"],
+        ) == AstraDBDatabaseAdmin(
+            parsed_api_endpoint.database_id,
+            token=data_api_credentials_kwargs["token"],
+            environment=data_api_credentials_info["environment"],
+        )
+
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
+    @pytest.mark.describe(
+        "test database-from-admin default namespace per environment, sync"
+    )
+    def test_database_from_admin_default_namespace_per_environment_sync(
+        self,
+        data_api_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_info: DataAPICredentialsInfo,
+    ) -> None:
+        client = DataAPIClient(environment=data_api_credentials_info["environment"])
+        admin = client.get_admin(token=data_api_credentials_kwargs["token"])
+        db_m = admin.get_database(
+            data_api_credentials_kwargs["api_endpoint"],
+            namespace="M",
+        )
+        assert db_m.namespace == "M"
+        db_n = admin.get_database(data_api_credentials_kwargs["api_endpoint"])
+        assert isinstance(db_n.namespace, str)  # i.e. resolution took place
+
+    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
+    @pytest.mark.describe(
+        "test database-from-astradbadmin default namespace per environment, sync"
+    )
+    def test_database_from_astradbadmin_default_namespace_per_environment_sync(
+        self,
+        data_api_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_info: DataAPICredentialsInfo,
+    ) -> None:
+        client = DataAPIClient(environment=data_api_credentials_info["environment"])
+        admin = client.get_admin(token=data_api_credentials_kwargs["token"])
+        db_admin = admin.get_database_admin(data_api_credentials_kwargs["api_endpoint"])
+        db_m = db_admin.get_database(namespace="M")
+        assert db_m.namespace == "M"
+        db_n = db_admin.get_database()
+        assert isinstance(db_n.namespace, str)  # i.e. resolution took place

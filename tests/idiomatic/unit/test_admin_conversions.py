@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import httpx
 import pytest
 
@@ -163,8 +165,9 @@ class TestAdminConversions:
     )
     def test_astradbdatabaseadmin_conversions(self) -> None:
         adda1 = AstraDBDatabaseAdmin(
-            "i1",
+            "01234567-89ab-cdef-0123-456789abcdef",
             token="t1",
+            region="reg",
             environment="dev",
             caller_name="cn",
             caller_version="cv",
@@ -172,8 +175,9 @@ class TestAdminConversions:
             dev_ops_api_version="dvv",
         )
         adda2 = AstraDBDatabaseAdmin(
-            "i1",
+            "01234567-89ab-cdef-0123-456789abcdef",
             token="t1",
+            region="reg",
             environment="dev",
             caller_name="cn",
             caller_version="cv",
@@ -182,16 +186,20 @@ class TestAdminConversions:
         )
         assert adda1 == adda2
 
-        assert adda1 != adda1._copy(id="x")
+        assert adda1 != adda1._copy(id="99999999-89ab-cdef-0123-456789abcdef")
         assert adda1 != adda1._copy(token="x")
+        assert adda1 != adda1._copy(region="x")
         assert adda1 != adda1._copy(environment="test")
         assert adda1 != adda1._copy(caller_name="x")
         assert adda1 != adda1._copy(caller_version="x")
         assert adda1 != adda1._copy(dev_ops_url="x")
         assert adda1 != adda1._copy(dev_ops_api_version="x")
 
-        assert adda1 == adda1._copy(id="x")._copy(id="i1")
+        assert adda1 == adda1._copy(id="99999999-89ab-cdef-0123-456789abcdef")._copy(
+            id="01234567-89ab-cdef-0123-456789abcdef"
+        )
         assert adda1 == adda1._copy(token="x")._copy(token="t1")
+        assert adda1 == adda1._copy(region="x")._copy(region="reg")
         assert adda1 == adda1._copy(environment="test")._copy(environment="dev")
         assert adda1 == adda1._copy(caller_name="x")._copy(caller_name="cn")
         assert adda1 == adda1._copy(caller_version="x")._copy(caller_version="cv")
@@ -200,12 +208,14 @@ class TestAdminConversions:
             dev_ops_api_version="dvv"
         )
 
-        assert adda1 != adda1.with_options(id="x")
+        assert adda1 != adda1.with_options(id="99999999-89ab-cdef-0123-456789abcdef")
         assert adda1 != adda1.with_options(token="x")
         assert adda1 != adda1.with_options(caller_name="x")
         assert adda1 != adda1.with_options(caller_version="x")
 
-        assert adda1 == adda1.with_options(id="x").with_options(id="i1")
+        assert adda1 == adda1.with_options(
+            id="99999999-89ab-cdef-0123-456789abcdef"
+        ).with_options(id="01234567-89ab-cdef-0123-456789abcdef")
         assert adda1 == adda1.with_options(token="x").with_options(token="t1")
         assert adda1 == adda1.with_options(caller_name="x").with_options(
             caller_name="cn"
@@ -269,11 +279,13 @@ class TestAdminConversions:
     def test_astradbdatabaseadmin_token_inheritance(self) -> None:
         db_id_string = "01234567-89ab-cdef-0123-456789abcdef"
         adbadmin_t = AstraDBDatabaseAdmin(
-            db_id_string, token=StaticTokenProvider("static")
+            db_id_string,
+            token=StaticTokenProvider("static"),
+            region="reg",
         )
-        adbadmin_0 = AstraDBDatabaseAdmin(db_id_string)
+        adbadmin_0 = AstraDBDatabaseAdmin(db_id_string, region="reg")
         token_f = UsernamePasswordTokenProvider(username="u", password="p")
-        adbadmin_f = AstraDBDatabaseAdmin(db_id_string, token=token_f)
+        adbadmin_f = AstraDBDatabaseAdmin(db_id_string, region="reg", token=token_f)
 
         assert adbadmin_t.get_database(
             token=token_f, namespace="n", region="r"
@@ -339,3 +351,112 @@ class TestAdminConversions:
             a_database_0.get_database_admin(token=token_f)
             == a_database_f.get_database_admin()
         )
+
+    @pytest.mark.describe(
+        "test of id, endpoint, region normalization in get_database(_admin)"
+    )
+    def test_param_normalize_getdatabase(self) -> None:
+        # the case of ID only is deferred to an integration test (it's impure)
+        api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
+        db_id = "01234567-89ab-cdef-0123-456789abcdef"
+        db_reg = "the-region"
+
+        adm = AstraDBAdmin("t1")
+
+        db_adm1 = adm.get_database_admin(db_id, region=db_reg)
+        db_adm2 = adm.get_database_admin(api_ep, region=db_reg)
+        db_adm3 = adm.get_database_admin(api_ep)
+        with pytest.raises(ValueError):
+            adm.get_database_admin(api_ep, region="not-that-one")
+
+        assert db_adm1 == db_adm2
+        assert db_adm2 == db_adm3
+
+        db_1 = adm.get_database(db_id, region=db_reg, namespace="the_ns")
+        db_2 = adm.get_database(api_ep, region=db_reg, namespace="the_ns")
+        db_3 = adm.get_database(api_ep, namespace="the_ns")
+        with pytest.raises(ValueError):
+            adm.get_database(api_ep, region="not-that-one", namespace="the_ns")
+
+        assert db_1 == db_2
+        assert db_2 == db_3
+
+        db_adm_m1 = AstraDBDatabaseAdmin(db_id, token="t", region=db_reg)
+        db_adm_m2 = AstraDBDatabaseAdmin(api_ep, token="t", region=db_reg)
+        db_adm_m3 = AstraDBDatabaseAdmin(api_ep, token="t")
+        with pytest.raises(ValueError):
+            AstraDBDatabaseAdmin(api_ep, token="t", region="not-that-one")
+
+        assert db_adm_m1 == db_adm_m2
+        assert db_adm_m1 == db_adm_m3
+
+    @pytest.mark.describe(
+        "test of region being deprecated in AstraDBDatabaseAdmin.get_database"
+    )
+    def test_region_deprecation_astradbdatabaseadmin_getdatabase(self) -> None:
+        api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
+        db_adm = AstraDBDatabaseAdmin(api_ep)
+        with pytest.warns(DeprecationWarning):
+            db1 = db_adm.get_database(
+                region="another-region", namespace="the-namespace"
+            )
+            # it's ignored anyway
+            assert db1 == db_adm.get_database(namespace="the-namespace")
+
+    @pytest.mark.describe(
+        "test of spawner_database for AstraDBDatabaseAdmin if not provided"
+    )
+    def test_spawnerdatabase_astradbdatabaseadmin_notprovided(self) -> None:
+        api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
+        db_adm = AstraDBDatabaseAdmin(api_ep)
+        assert db_adm.spawner_database.api_endpoint == api_ep
+
+    @pytest.mark.describe(
+        "test of spawner_database for DataAPIDatabaseAdmin if not provided"
+    )
+    def test_spawnerdatabase_dataapidatabaseadmin_notprovided(self) -> None:
+        api_ep = "http://aa"
+        db_adm = DataAPIDatabaseAdmin(api_ep)
+        assert db_adm.spawner_database.api_endpoint == api_ep
+
+    @pytest.mark.describe(
+        "test of spawner_database for AstraDBDatabaseAdmin, sync db provided"
+    )
+    def test_spawnerdatabase_astradbdatabaseadmin_syncprovided(self) -> None:
+        api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
+        db = Database(api_ep, namespace="M")
+        db_adm = AstraDBDatabaseAdmin(api_ep, spawner_database=db)
+        assert db_adm.spawner_database is db
+
+    @pytest.mark.describe(
+        "test of spawner_database for AstraDBDatabaseAdmin, async db provided"
+    )
+    def test_spawnerdatabase_astradbdatabaseadmin_asyncprovided(self) -> None:
+        api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
+        adb = AsyncDatabase(api_ep, namespace="M")
+        db_adm = AstraDBDatabaseAdmin(api_ep, spawner_database=adb)
+        assert db_adm.spawner_database is adb
+
+    @pytest.mark.describe(
+        "test of spawner_database for DataAPIDatabaseAdmin, sync db provided"
+    )
+    def test_spawnerdatabase_dataapidatabaseadmin_syncprovided(self) -> None:
+        api_ep = "http://aa"
+        db = Database(api_ep)
+        db_adm = DataAPIDatabaseAdmin(api_ep, spawner_database=db)
+        assert db_adm.spawner_database is db
+
+    @pytest.mark.describe(
+        "test of spawner_database for DataAPIDatabaseAdmin, async db provided"
+    )
+    def test_spawnerdatabase_dataapidatabaseadmin_asyncprovided(self) -> None:
+        api_ep = "http://aa"
+        adb = AsyncDatabase(api_ep)
+        db_adm = DataAPIDatabaseAdmin(api_ep, spawner_database=adb)
+        assert db_adm.spawner_database is adb
+
+    @pytest.mark.describe("test of from_api_endpoint for AstraDBDatabaseAdmin")
+    def test_fromapiendpoint_astradbdatabaseadmin(self) -> None:
+        api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
+        db_adm = AstraDBDatabaseAdmin.from_api_endpoint(api_ep, token="t")
+        assert db_adm.get_database(namespace="M").api_endpoint == api_ep

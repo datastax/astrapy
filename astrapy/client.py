@@ -16,13 +16,14 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from astrapy.admin import (
     api_endpoint_parser,
     build_api_endpoint,
     database_id_matcher,
     fetch_raw_database_info_from_id_token,
+    normalize_id_endpoint_parameters,
     parse_api_endpoint,
     parse_generic_api_url,
 )
@@ -205,8 +206,9 @@ class DataAPIClient:
 
     def get_database(
         self,
-        id: str,
+        id: Optional[str] = None,
         *,
+        api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
@@ -223,14 +225,16 @@ class DataAPIClient:
                 to be effectively used; in other words, this invocation
                 does not create the database, just the object instance.
                 Actual admin work can be achieved by using the AstraDBAdmin object.
+            api_endpoint: a named alias for the `id` first (positional) parameter,
+                with the same meaning. It cannot be passed together with `id`.
             token: if supplied, is passed to the Database instead of the client token.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            namespace: if provided, is passed to the Database
-                (it is left to the default otherwise).
+            namespace: if provided, it is passed to the Database; otherwise
+                the Database class will apply an environment-specific default.
             region: the region to use for connecting to the database. The
                 database must be located in that region.
-                The region cannot be specified when he API endoint is used as `id`.
+                The region cannot be specified when the API endoint is used as `id`.
                 Note that if this parameter is not passed, and cannot be inferred
                 from the API endpoint, an additional DevOps API request is made
                 to determine the default region and use it subsequently.
@@ -263,43 +267,44 @@ class DataAPIClient:
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
+        # id/endpoint parameter normalization
+        _id_or_endpoint = normalize_id_endpoint_parameters(id, api_endpoint)
         if self.environment in Environment.astra_db_values:
             # handle the "endpoint passed as id" case first:
-            if re.match(api_endpoint_parser, id):
+            if re.match(api_endpoint_parser, _id_or_endpoint):
                 if region is not None:
                     raise ValueError(
                         "Parameter `region` not supported when supplying an API endpoint."
                     )
                 # in this case max_time_ms is ignored (no calls take place)
                 return self.get_database_by_api_endpoint(
-                    api_endpoint=id,
+                    api_endpoint=_id_or_endpoint,
                     token=token,
                     namespace=namespace,
                     api_path=api_path,
                     api_version=api_version,
                 )
             else:
-                # need to inspect for values?
-                this_db_info: Optional[Dict[str, Any]] = None
                 # handle overrides. Only region is needed (namespace can stay empty)
                 if region:
                     _region = region
                 else:
-                    if this_db_info is None:
-                        logger.info(f"fetching raw database info for {id}")
-                        this_db_info = fetch_raw_database_info_from_id_token(
-                            id=id,
-                            token=self.token_provider.get_token(),
-                            environment=self.environment,
-                            max_time_ms=max_time_ms,
-                        )
-                        logger.info(f"finished fetching raw database info for {id}")
+                    logger.info(f"fetching raw database info for {_id_or_endpoint}")
+                    this_db_info = fetch_raw_database_info_from_id_token(
+                        id=_id_or_endpoint,
+                        token=self.token_provider.get_token(),
+                        environment=self.environment,
+                        max_time_ms=max_time_ms,
+                    )
+                    logger.info(
+                        f"finished fetching raw database info for {_id_or_endpoint}"
+                    )
                     _region = this_db_info["info"]["region"]
 
                 _token = coerce_token_provider(token) or self.token_provider
                 _api_endpoint = build_api_endpoint(
                     environment=self.environment,
-                    database_id=id,
+                    database_id=_id_or_endpoint,
                     region=_region,
                 )
                 return Database(
@@ -315,13 +320,13 @@ class DataAPIClient:
         else:
             # in this case, this call is an alias for get_database_by_api_endpoint
             #   - max_time_ms ignored
-            #   - assume `id` is actually the endpoint
+            #   - assume `_id_or_endpoint` is actually the endpoint
             if region is not None:
                 raise ValueError(
                     "Parameter `region` not supported outside of Astra DB."
                 )
             return self.get_database_by_api_endpoint(
-                api_endpoint=id,
+                api_endpoint=_id_or_endpoint,
                 token=token,
                 namespace=namespace,
                 api_path=api_path,
@@ -330,8 +335,9 @@ class DataAPIClient:
 
     def get_async_database(
         self,
-        id: str,
+        id: Optional[str] = None,
         *,
+        api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
@@ -348,6 +354,7 @@ class DataAPIClient:
 
         return self.get_database(
             id=id,
+            api_endpoint=api_endpoint,
             token=token,
             namespace=namespace,
             region=region,
@@ -378,8 +385,8 @@ class DataAPIClient:
             token: if supplied, is passed to the Database instead of the client token.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            namespace: if provided, is passed to the Database
-                (it is left to the default otherwise).
+            namespace: if provided, it is passed to the Database; otherwise
+                the Database class will apply an environment-specific default.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical

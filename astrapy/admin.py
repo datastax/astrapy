@@ -18,11 +18,13 @@ import asyncio
 import logging
 import re
 import time
+import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import httpx
+from deprecation import DeprecatedWarning
 
 from astrapy.api_commander import APICommander
 from astrapy.authentication import coerce_token_provider
@@ -39,7 +41,7 @@ from astrapy.exceptions import (
     ops_recast_method_sync,
     to_dataapi_timeout_exception,
 )
-from astrapy.info import AdminDatabaseInfo, DatabaseInfo
+from astrapy.info import AdminDatabaseInfo, DatabaseInfo, FindEmbeddingProvidersResult
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
@@ -90,6 +92,10 @@ API_ENDPOINT_TEMPLATE_MAP = {
 }
 
 API_PATH_ENV_MAP = {
+    Environment.PROD: "/api/json",
+    Environment.DEV: "/api/json",
+    Environment.TEST: "/api/json",
+    #
     Environment.DSE: "",
     Environment.HCD: "",
     Environment.CASSANDRA: "",
@@ -97,6 +103,10 @@ API_PATH_ENV_MAP = {
 }
 
 API_VERSION_ENV_MAP = {
+    Environment.PROD: "/v1",
+    Environment.DEV: "/v1",
+    Environment.TEST: "/v1",
+    #
     Environment.DSE: "v1",
     Environment.HCD: "v1",
     Environment.CASSANDRA: "v1",
@@ -261,7 +271,7 @@ async def async_fetch_raw_database_info_from_id_token(
 def fetch_database_info(
     api_endpoint: str,
     token: Optional[str],
-    namespace: str,
+    namespace: Optional[str],
     max_time_ms: Optional[int] = None,
 ) -> Optional[DatabaseInfo]:
     """
@@ -271,6 +281,7 @@ def fetch_database_info(
         api_endpoint: a full API endpoint for the Data Api.
         token: a valid token to access the database information.
         namespace: the desired namespace that will be used in the result.
+            If not specified, the resulting database info will show it as None.
         max_time_ms: a timeout, in milliseconds, for waiting on a response.
 
     Returns:
@@ -288,7 +299,7 @@ def fetch_database_info(
             max_time_ms=max_time_ms,
         )
         raw_info = gd_response["info"]
-        if namespace not in raw_info["keyspaces"]:
+        if namespace is not None and namespace not in raw_info["keyspaces"]:
             raise DevOpsAPIException(f"Namespace {namespace} not found on DB.")
         else:
             return DatabaseInfo(
@@ -306,7 +317,7 @@ def fetch_database_info(
 async def async_fetch_database_info(
     api_endpoint: str,
     token: Optional[str],
-    namespace: str,
+    namespace: Optional[str],
     max_time_ms: Optional[int] = None,
 ) -> Optional[DatabaseInfo]:
     """
@@ -317,6 +328,7 @@ async def async_fetch_database_info(
         api_endpoint: a full API endpoint for the Data Api.
         token: a valid token to access the database information.
         namespace: the desired namespace that will be used in the result.
+            If not specified, the resulting database info will show it as None.
         max_time_ms: a timeout, in milliseconds, for waiting on a response.
 
     Returns:
@@ -334,7 +346,7 @@ async def async_fetch_database_info(
             max_time_ms=max_time_ms,
         )
         raw_info = gd_response["info"]
-        if namespace not in raw_info["keyspaces"]:
+        if namespace is not None and namespace not in raw_info["keyspaces"]:
             raise DevOpsAPIException(f"Namespace {namespace} not found on DB.")
         else:
             return DatabaseInfo(
@@ -381,6 +393,86 @@ def _recast_as_admin_database_info(
         termination_time=admin_database_info_dict["terminationTime"],
         raw_info=admin_database_info_dict,
     )
+
+
+def normalize_api_endpoint(
+    id_or_endpoint: str,
+    region: Optional[str],
+    token: TokenProvider,
+    environment: str,
+    max_time_ms: Optional[int] = None,
+) -> str:
+    """
+    Ensure that a id(+region) / endpoint init signature is normalized into
+    an api_endpoint string.
+
+    This is an impure function: if necessary, attempt a DevOps API call to
+    integrate the information (i.e. if a DB ID without region is passed).
+
+    This function is tasked with raising an exception if region is passed along
+    with an API endpoint (and they do not match).
+
+    Args:
+        id_or_endpoint: either the Database ID or a full standard endpoint.
+        region: a string with the database region.
+        token: a TokenProvider for the possible DevOps request to issue.
+        environment: one of the Astra DB `astrapy.constants.Environment` values.
+        max_time_ms: used in case the DevOps API request is necessary.
+
+    Returns:
+        a normalized API Endpoint string (unless it raises an exception).
+    """
+    _api_endpoint: str
+    parsed_endpoint = parse_api_endpoint(id_or_endpoint)
+    if parsed_endpoint is not None:
+        if region is not None and region != parsed_endpoint.region:
+            raise ValueError(
+                "An explicit `region` parameter is provided, which does not match "
+                "the supplied API endpoint. Please refrain from specifying `region`."
+            )
+        _api_endpoint = id_or_endpoint
+    else:
+        # it's a genuine ID
+        _region: str
+        if region:
+            _region = region
+        else:
+            logger.info(f"fetching raw database info for {id_or_endpoint}")
+            this_db_info = fetch_raw_database_info_from_id_token(
+                id=id_or_endpoint,
+                token=token.get_token(),
+                environment=environment,
+                max_time_ms=max_time_ms,
+            )
+            logger.info(f"finished fetching raw database info for {id_or_endpoint}")
+            _region = this_db_info["info"]["region"]
+        _api_endpoint = build_api_endpoint(
+            environment=environment,
+            database_id=id_or_endpoint,
+            region=_region,
+        )
+    return _api_endpoint.strip("/")
+
+
+def normalize_id_endpoint_parameters(
+    id: Optional[str], api_endpoint: Optional[str]
+) -> str:
+    if id is None:
+        if api_endpoint is None:
+            raise ValueError(
+                "Exactly one of the `id` and `api_endpoint` "
+                "synonymous parameters must be passed."
+            )
+        else:
+            return api_endpoint
+    else:
+        if api_endpoint is not None:
+            raise ValueError(
+                "The `id` and `api_endpoint` synonymous parameters "
+                "cannot be supplied at the same time."
+            )
+        else:
+            return id
 
 
 class AstraDBAdmin:
@@ -834,6 +926,7 @@ class AstraDBAdmin:
             )
             return AstraDBDatabaseAdmin.from_astra_db_admin(
                 id=new_database_id,
+                region=region,
                 astra_db_admin=self,
             )
         else:
@@ -934,6 +1027,7 @@ class AstraDBAdmin:
             )
             return AstraDBDatabaseAdmin.from_astra_db_admin(
                 id=new_database_id,
+                region=region,
                 astra_db_admin=self,
             )
         else:
@@ -1098,12 +1192,31 @@ class AstraDBAdmin:
                 f"Could not issue a successful terminate-database DevOps API request for {id}."
             )
 
-    def get_database_admin(self, id: str) -> AstraDBDatabaseAdmin:
+    def get_database_admin(
+        self,
+        id: Optional[str] = None,
+        *,
+        api_endpoint: Optional[str] = None,
+        region: Optional[str] = None,
+        max_time_ms: Optional[int] = None,
+    ) -> AstraDBDatabaseAdmin:
         """
         Create an AstraDBDatabaseAdmin object for admin work within a certain database.
 
         Args:
-            id: the ID of the target database, e. g. "01234567-89ab-cdef-0123-456789abcdef".
+            id: the target database ID (e.g. `01234567-89ab-cdef-0123-456789abcdef`)
+                or the corresponding API Endpoint
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+            api_endpoint: a named alias for the `id` first (positional) parameter,
+                with the same meaning. It cannot be passed together with `id`.
+            region: the region to use for connecting to the database. The
+                database must be located in that region.
+                The region cannot be specified when the API endoint is used as `id`.
+                Note that if this parameter is not passed, and cannot be inferred
+                from the API endpoint, an additional DevOps API request is made
+                to determine the default region and use it subsequently.
+            max_time_ms: a timeout, in milliseconds, for the DevOps API
+                HTTP request should it be necessary (see the `region` argument).
 
         Returns:
             An AstraDBDatabaseAdmin instance representing the requested database.
@@ -1123,15 +1236,20 @@ class AstraDBAdmin:
             `create_database` method.
         """
 
+        _id_or_endpoint = normalize_id_endpoint_parameters(id, api_endpoint)
+
         return AstraDBDatabaseAdmin.from_astra_db_admin(
-            id=id,
+            id=_id_or_endpoint,
+            region=region,
             astra_db_admin=self,
+            max_time_ms=max_time_ms,
         )
 
     def get_database(
         self,
-        id: str,
+        id: Optional[str] = None,
         *,
+        api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
@@ -1144,7 +1262,11 @@ class AstraDBAdmin:
         when doing data-level work (such as creating/managing collections).
 
         Args:
-            id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+            id: the target database ID (e.g. `01234567-89ab-cdef-0123-456789abcdef`)
+                or the corresponding API Endpoint
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+            api_endpoint: a named alias for the `id` first (positional) parameter,
+                with the same meaning. It cannot be passed together with `id`.
             token: if supplied, is passed to the Database instead of
                 the one set for this object.
                 This can be either a literal token string or a subclass of
@@ -1155,11 +1277,10 @@ class AstraDBAdmin:
                 the default namespace for the target database.
             region: the region to use for connecting to the database. The
                 database must be located in that region.
-                Note that if this parameter is not passed, an additional
-                DevOps API request is made to determine the default region
-                and use it subsequently.
-                If both `namespace` and `region` are missing, a single
-                DevOps API request is made.
+                The region cannot be specified when the API endoint is used as `id`.
+                Note that if this parameter is not passed, and cannot be inferred
+                from the API endpoint, an additional DevOps API request is made
+                to determine the default region and use it subsequently.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -1187,30 +1308,36 @@ class AstraDBAdmin:
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
-        # need to inspect for values?
-        this_db_info: Optional[AdminDatabaseInfo] = None
-        # handle overrides
+        _id_or_endpoint = normalize_id_endpoint_parameters(id, api_endpoint)
+
         _token = coerce_token_provider(token) or self.token_provider
+
+        normalized_api_endpoint = normalize_api_endpoint(
+            id_or_endpoint=_id_or_endpoint,
+            region=region,
+            token=_token,
+            environment=self.environment,
+            max_time_ms=max_time_ms,
+        )
+
+        _namespace: str
         if namespace:
             _namespace = namespace
         else:
-            if this_db_info is None:
-                this_db_info = self.database_info(id, max_time_ms=max_time_ms)
-            _namespace = this_db_info.info.namespace
-        if region:
-            _region = region
-        else:
-            if this_db_info is None:
-                this_db_info = self.database_info(id, max_time_ms=max_time_ms)
-            _region = this_db_info.info.region
+            parsed_api_endpoint = parse_api_endpoint(normalized_api_endpoint)
+            if parsed_api_endpoint is None:
+                raise ValueError(
+                    f"Cannot parse the API endpoint ({normalized_api_endpoint})."
+                )
 
-        _api_endpoint = build_api_endpoint(
-            environment=self.environment,
-            database_id=id,
-            region=_region,
-        )
+            this_db_info = self.database_info(
+                parsed_api_endpoint.database_id,
+                max_time_ms=max_time_ms,
+            )
+            _namespace = this_db_info.info.namespace
+
         return Database(
-            api_endpoint=_api_endpoint,
+            api_endpoint=normalized_api_endpoint,
             token=_token,
             namespace=_namespace,
             caller_name=self._caller_name,
@@ -1222,8 +1349,9 @@ class AstraDBAdmin:
 
     def get_async_database(
         self,
-        id: str,
+        id: Optional[str] = None,
         *,
+        api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
@@ -1240,6 +1368,7 @@ class AstraDBAdmin:
 
         return self.get_database(
             id=id,
+            api_endpoint=api_endpoint,
             token=token,
             namespace=namespace,
             region=region,
@@ -1256,6 +1385,7 @@ class DatabaseAdmin(ABC):
     """
 
     environment: str
+    spawner_database: Union[Database, AsyncDatabase]
 
     @abstractmethod
     def list_namespaces(self, *pargs: Any, **kwargs: Any) -> List[str]:
@@ -1263,7 +1393,13 @@ class DatabaseAdmin(ABC):
         ...
 
     @abstractmethod
-    def create_namespace(self, name: str, *pargs: Any, **kwargs: Any) -> Dict[str, Any]:
+    def create_namespace(
+        self,
+        name: str,
+        *,
+        update_db_namespace: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
         """
@@ -1286,7 +1422,7 @@ class DatabaseAdmin(ABC):
 
     @abstractmethod
     async def async_create_namespace(
-        self, name: str, *pargs: Any, **kwargs: Any
+        self, name: str, *, update_db_namespace: Optional[bool] = None, **kwargs: Any
     ) -> Dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
@@ -1314,6 +1450,23 @@ class DatabaseAdmin(ABC):
         """Get an AsyncDatabase object from this database admin."""
         ...
 
+    @abstractmethod
+    def find_embedding_providers(
+        self, *pargs: Any, **kwargs: Any
+    ) -> FindEmbeddingProvidersResult:
+        """Query the Data API for the available embedding providers."""
+        ...
+
+    @abstractmethod
+    async def async_find_embedding_providers(
+        self, *pargs: Any, **kwargs: Any
+    ) -> FindEmbeddingProvidersResult:
+        """
+        Query the Data API for the available embedding providers.
+        (Async version of the method.)
+        """
+        ...
+
 
 class AstraDBDatabaseAdmin(DatabaseAdmin):
     """
@@ -1325,10 +1478,20 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     created by a method call on an AstraDBAdmin.
 
     Args:
-        id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+        id: the target database ID (e.g. `01234567-89ab-cdef-0123-456789abcdef`)
+            or the corresponding API Endpoint
+            (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+        api_endpoint: a named alias for the `id` first (positional) parameter,
+            with the same meaning. It cannot be passed together with `id`.
         token: an access token with enough permission to perform admin tasks.
             This can be either a literal token string or a subclass of
             `astrapy.authentication.TokenProvider`.
+        region: the region to use for connecting to the database. The
+            database must be located in that region.
+            The region cannot be specified when the API endoint is used as `id`.
+            Note that if this parameter is not passed, and cannot be inferred
+            from the API endpoint, an additional DevOps API request is made
+            to determine the default region and use it subsequently.
         environment: a label, whose value is one of Environment.PROD (default),
             Environment.DEV or Environment.TEST.
         caller_name: name of the application, or framework, on behalf of which
@@ -1340,6 +1503,20 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             determined from the API Endpoint.
         dev_ops_api_version: this can specify a custom version of the DevOps API
             (such as "v2"). Generally not needed.
+        api_path: path to append to the API Endpoint. In typical usage, this
+            class is created by a method such as `Database.get_database_admin()`,
+            which passes the matching value. Generally to be left to its Astra DB
+            default of "/api/json".
+        api_version: version specifier to append to the API path. In typical
+            usage, this class is created by a method such as
+            `Database.get_database_admin()`, which passes the matching value.
+            Generally to be left to its Astra DB default of "/v1".
+        spawner_database: either a Database or an AsyncDatabase instance. This represents
+            the database class which spawns this admin object, so that, if required,
+            a namespace creation can retroactively "use" the new namespace in the spawner.
+            Used to enable the Async/Database.get_admin_database().create_namespace() pattern.
+        max_time_ms: a timeout, in milliseconds, for the DevOps API
+            HTTP request should it be necessary (see the `region` argument).
 
     Example:
         >>> from astrapy import DataAPIClient
@@ -1358,26 +1535,100 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     def __init__(
         self,
-        id: str,
+        id: Optional[str] = None,
         *,
+        api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
+        region: Optional[str] = None,
         environment: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
+        spawner_database: Optional[Union[Database, AsyncDatabase]] = None,
+        max_time_ms: Optional[int] = None,
     ) -> None:
-        self.id = id
+        # lazy import here to avoid circular dependency
+        from astrapy.database import Database
+
         self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
+
+        _id_or_endpoint = normalize_id_endpoint_parameters(id, api_endpoint)
+
+        normalized_api_endpoint = normalize_api_endpoint(
+            id_or_endpoint=_id_or_endpoint,
+            region=region,
+            token=self.token_provider,
+            environment=self.environment,
+            max_time_ms=max_time_ms,
+        )
+
+        self.api_endpoint = normalized_api_endpoint
+        parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
+        if parsed_api_endpoint is None:
+            raise ValueError(
+                f"Cannot parse the provided API endpoint ({self.api_endpoint})."
+            )
+
+        self._database_id = parsed_api_endpoint.database_id
+        self._region = parsed_api_endpoint.region
+        if parsed_api_endpoint.environment != self.environment:
+            raise ValueError(
+                "Environment mismatch between client and provided "
+                "API endpoint. You can try adding "
+                f'`environment="{parsed_api_endpoint.environment}"` '
+                "to the class constructor."
+            )
+        #
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+
         self._astra_db_admin = AstraDBAdmin(
             token=self.token_provider,
             environment=self.environment,
-            caller_name=caller_name,
-            caller_version=caller_version,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
             dev_ops_url=dev_ops_url,
             dev_ops_api_version=dev_ops_api_version,
         )
+
+        # API Commander (for the vectorizeOps invocations)
+        self.api_path = (
+            api_path if api_path is not None else API_PATH_ENV_MAP[self.environment]
+        )
+        self.api_version = (
+            api_version
+            if api_version is not None
+            else API_VERSION_ENV_MAP[self.environment]
+        )
+        self._commander_headers = {
+            DEFAULT_AUTH_HEADER: self.token_provider.get_token(),
+        }
+        self._api_commander = APICommander(
+            api_endpoint=self.api_endpoint,
+            path="/".join(comp for comp in [self.api_path, self.api_version] if comp),
+            headers=self._commander_headers,
+            callers=[(self.caller_name, self.caller_version)],
+        )
+
+        if spawner_database is not None:
+            self.spawner_database = spawner_database
+        else:
+            # leaving the namespace to its per-environment default
+            # (a task for the Database)
+            self.spawner_database = Database(
+                api_endpoint=self.api_endpoint,
+                token=self.token_provider,
+                namespace=None,
+                caller_name=self.caller_name,
+                caller_version=self.caller_version,
+                environment=self.environment,
+                api_path=self.api_path,
+                api_version=self.api_version,
+            )
 
     def __repr__(self) -> str:
         env_desc: str
@@ -1386,7 +1637,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         else:
             env_desc = f', environment="{self.environment}"'
         return (
-            f'{self.__class__.__name__}(id="{self.id}", '
+            f'{self.__class__.__name__}(api_endpoint="{self.api_endpoint}", '
             f'"{str(self.token_provider)[:12]}..."{env_desc})'
         )
 
@@ -1394,7 +1645,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         if isinstance(other, AstraDBDatabaseAdmin):
             return all(
                 [
-                    self.id == other.id,
+                    self.api_endpoint == other.api_endpoint,
                     self.token_provider == other.token_provider,
                     self.environment == other.environment,
                     self._astra_db_admin == other._astra_db_admin,
@@ -1407,6 +1658,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         id: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
+        region: Optional[str] = None,
         environment: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -1414,8 +1666,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         dev_ops_api_version: Optional[str] = None,
     ) -> AstraDBDatabaseAdmin:
         return AstraDBDatabaseAdmin(
-            id=id or self.id,
+            id=id or self._database_id,
             token=coerce_token_provider(token) or self.token_provider,
+            region=region or self._region,
             environment=environment or self.environment,
             caller_name=caller_name or self._astra_db_admin._caller_name,
             caller_version=caller_version or self._astra_db_admin._caller_version,
@@ -1487,17 +1740,53 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         logger.info(f"setting caller to {caller_name}/{caller_version}")
         self._astra_db_admin.set_caller(caller_name, caller_version)
 
+    @property
+    def id(self) -> str:
+        """
+        The ID of this database admin.
+
+        Example:
+            >>> my_db_admin.id
+            '01234567-89ab-cdef-0123-456789abcdef'
+        """
+        return self._database_id
+
+    @property
+    def region(self) -> str:
+        """
+        The region for this database admin.
+
+        Example:
+            >>> my_db_admin.region
+            'us-east-1'
+        """
+        return self._region
+
     @staticmethod
     def from_astra_db_admin(
-        id: str, *, astra_db_admin: AstraDBAdmin
+        id: str,
+        *,
+        region: Optional[str],
+        astra_db_admin: AstraDBAdmin,
+        max_time_ms: Optional[int] = None,
     ) -> AstraDBDatabaseAdmin:
         """
         Create an AstraDBDatabaseAdmin from an AstraDBAdmin and a database ID.
 
         Args:
-            id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+            id: the target database ID (e.g. `01234567-89ab-cdef-0123-456789abcdef`)
+                or the corresponding API Endpoint
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+            region: the region to use for connecting to the database. The
+                database must be located in that region.
+                The region cannot be specified when the API endoint is used as `id`.
+                Note that if this parameter is not passed, and cannot be inferred
+                from the API endpoint, an additional DevOps API request is made
+                to determine the default region and use it subsequently.
             astra_db_admin: an AstraDBAdmin object that has visibility over
                 the target database.
+            max_time_ms: a timeout, in milliseconds, for the DevOps API
+                HTTP request should it be necessary (see the `region` argument).
 
         Returns:
             An AstraDBDatabaseAdmin object, for admin work within the database.
@@ -1522,11 +1811,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         return AstraDBDatabaseAdmin(
             id=id,
             token=astra_db_admin.token_provider,
+            region=region,
             environment=astra_db_admin.environment,
             caller_name=astra_db_admin._caller_name,
             caller_version=astra_db_admin._caller_version,
             dev_ops_url=astra_db_admin._dev_ops_url,
             dev_ops_api_version=astra_db_admin._dev_ops_api_version,
+            max_time_ms=max_time_ms,
         )
 
     @staticmethod
@@ -1582,6 +1873,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             return AstraDBDatabaseAdmin(
                 id=parsed_api_endpoint.database_id,
                 token=token,
+                region=parsed_api_endpoint.region,
                 environment=parsed_api_endpoint.environment,
                 caller_name=caller_name,
                 caller_version=caller_version,
@@ -1609,12 +1901,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             'us-east1'
         """
 
-        logger.info(f"getting info ('{self.id}')")
+        logger.info(f"getting info ('{self._database_id}')")
         req_response = self._astra_db_admin.database_info(
-            id=self.id,
+            id=self._database_id,
             max_time_ms=max_time_ms,
         )
-        logger.info(f"finished getting info ('{self.id}')")
+        logger.info(f"finished getting info ('{self._database_id}')")
         return req_response  # type: ignore[no-any-return]
 
     async def async_info(
@@ -1640,12 +1932,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             >>> asyncio.run(wait_until_active(admin_for_my_db))
         """
 
-        logger.info(f"getting info ('{self.id}'), async")
+        logger.info(f"getting info ('{self._database_id}'), async")
         req_response = await self._astra_db_admin.async_database_info(
-            id=self.id,
+            id=self._database_id,
             max_time_ms=max_time_ms,
         )
-        logger.info(f"finished getting info ('{self.id}'), async")
+        logger.info(f"finished getting info ('{self._database_id}'), async")
         return req_response  # type: ignore[no-any-return]
 
     def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
@@ -1663,9 +1955,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_namespace']
         """
 
-        logger.info(f"getting namespaces ('{self.id}')")
+        logger.info(f"getting namespaces ('{self._database_id}')")
         info = self.info(max_time_ms=max_time_ms)
-        logger.info(f"finished getting namespaces ('{self.id}')")
+        logger.info(f"finished getting namespaces ('{self._database_id}')")
         if info.raw_info is None:
             raise DevOpsAPIException("Could not get the namespace list.")
         else:
@@ -1697,9 +1989,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             True
         """
 
-        logger.info(f"getting namespaces ('{self.id}'), async")
+        logger.info(f"getting namespaces ('{self._database_id}'), async")
         info = await self.async_info(max_time_ms=max_time_ms)
-        logger.info(f"finished getting namespaces ('{self.id}'), async")
+        logger.info(f"finished getting namespaces ('{self._database_id}'), async")
         if info.raw_info is None:
             raise DevOpsAPIException("Could not get the namespace list.")
         else:
@@ -1711,7 +2003,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
+        update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Create a namespace in this database as requested,
@@ -1727,6 +2021,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/namespace availability
                 before working with it.
+            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+                that spawned this DatabaseAdmin, if any, gets updated to work on
+                the newly-created namespace starting when this method returns.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -1748,20 +2045,20 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
-        logger.info(f"creating namespace '{name}' on '{self.id}'")
+        logger.info(f"creating namespace '{name}' on '{self._database_id}'")
         cn_response = self._astra_db_admin._astra_db_ops.create_keyspace(
-            database=self.id,
+            database=self._database_id,
             keyspace=name,
             timeout_info=base_timeout_info(max_time_ms),
         )
         logger.info(
-            f"devops api returned from creating namespace '{name}' on '{self.id}'"
+            f"devops api returned from creating namespace '{name}' on '{self._database_id}'"
         )
         if cn_response is not None and name == cn_response.get("name"):
             if wait_until_active:
                 last_status_seen = STATUS_MAINTENANCE
                 while last_status_seen == STATUS_MAINTENANCE:
-                    logger.info(f"sleeping to poll for status of '{self.id}'")
+                    logger.info(f"sleeping to poll for status of '{self._database_id}'")
                     time.sleep(DATABASE_POLL_NAMESPACE_SLEEP_TIME)
                     last_status_seen = self.info(
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
@@ -1773,7 +2070,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 # is the namespace found?
                 if name not in self.list_namespaces():
                     raise DevOpsAPIException("Could not create the namespace.")
-            logger.info(f"finished creating namespace '{name}' on '{self.id}'")
+            logger.info(
+                f"finished creating namespace '{name}' on '{self._database_id}'"
+            )
+            if update_db_namespace:
+                self.spawner_database.use_namespace(name)
             return {"ok": 1}
         else:
             raise DevOpsAPIException(
@@ -1787,7 +2088,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
+        update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Create a namespace in this database as requested,
@@ -1804,6 +2107,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/namespace availability
                 before working with it.
+            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+                that spawned this DatabaseAdmin, if any, gets updated to work on
+                the newly-created namespace starting when this method returns.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -1823,21 +2129,23 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
-        logger.info(f"creating namespace '{name}' on '{self.id}', async")
+        logger.info(f"creating namespace '{name}' on '{self._database_id}', async")
         cn_response = await self._astra_db_admin._astra_db_ops.async_create_keyspace(
-            database=self.id,
+            database=self._database_id,
             keyspace=name,
             timeout_info=base_timeout_info(max_time_ms),
         )
         logger.info(
             f"devops api returned from creating namespace "
-            f"'{name}' on '{self.id}', async"
+            f"'{name}' on '{self._database_id}', async"
         )
         if cn_response is not None and name == cn_response.get("name"):
             if wait_until_active:
                 last_status_seen = STATUS_MAINTENANCE
                 while last_status_seen == STATUS_MAINTENANCE:
-                    logger.info(f"sleeping to poll for status of '{self.id}', async")
+                    logger.info(
+                        f"sleeping to poll for status of '{self._database_id}', async"
+                    )
                     await asyncio.sleep(DATABASE_POLL_NAMESPACE_SLEEP_TIME)
                     last_db_info = await self.async_info(
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
@@ -1850,7 +2158,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 # is the namespace found?
                 if name not in await self.async_list_namespaces():
                     raise DevOpsAPIException("Could not create the namespace.")
-            logger.info(f"finished creating namespace '{name}' on '{self.id}', async")
+            logger.info(
+                f"finished creating namespace '{name}' on '{self._database_id}', async"
+            )
+            if update_db_namespace:
+                self.spawner_database.use_namespace(name)
             return {"ok": 1}
         else:
             raise DevOpsAPIException(
@@ -1899,20 +2211,20 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
-        logger.info(f"dropping namespace '{name}' on '{self.id}'")
+        logger.info(f"dropping namespace '{name}' on '{self._database_id}'")
         dk_response = self._astra_db_admin._astra_db_ops.delete_keyspace(
-            database=self.id,
+            database=self._database_id,
             keyspace=name,
             timeout_info=base_timeout_info(max_time_ms),
         )
         logger.info(
-            f"devops api returned from dropping namespace '{name}' on '{self.id}'"
+            f"devops api returned from dropping namespace '{name}' on '{self._database_id}'"
         )
         if dk_response == name:
             if wait_until_active:
                 last_status_seen = STATUS_MAINTENANCE
                 while last_status_seen == STATUS_MAINTENANCE:
-                    logger.info(f"sleeping to poll for status of '{self.id}'")
+                    logger.info(f"sleeping to poll for status of '{self._database_id}'")
                     time.sleep(DATABASE_POLL_NAMESPACE_SLEEP_TIME)
                     last_status_seen = self.info(
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
@@ -1924,7 +2236,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 # is the namespace found?
                 if name in self.list_namespaces():
                     raise DevOpsAPIException("Could not drop the namespace.")
-            logger.info(f"finished dropping namespace '{name}' on '{self.id}'")
+            logger.info(
+                f"finished dropping namespace '{name}' on '{self._database_id}'"
+            )
             return {"ok": 1}
         else:
             raise DevOpsAPIException(
@@ -1973,21 +2287,23 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
-        logger.info(f"dropping namespace '{name}' on '{self.id}', async")
+        logger.info(f"dropping namespace '{name}' on '{self._database_id}', async")
         dk_response = await self._astra_db_admin._astra_db_ops.async_delete_keyspace(
-            database=self.id,
+            database=self._database_id,
             keyspace=name,
             timeout_info=base_timeout_info(max_time_ms),
         )
         logger.info(
             f"devops api returned from dropping namespace "
-            f"'{name}' on '{self.id}', async"
+            f"'{name}' on '{self._database_id}', async"
         )
         if dk_response == name:
             if wait_until_active:
                 last_status_seen = STATUS_MAINTENANCE
                 while last_status_seen == STATUS_MAINTENANCE:
-                    logger.info(f"sleeping to poll for status of '{self.id}', async")
+                    logger.info(
+                        f"sleeping to poll for status of '{self._database_id}', async"
+                    )
                     await asyncio.sleep(DATABASE_POLL_NAMESPACE_SLEEP_TIME)
                     last_db_info = await self.async_info(
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
@@ -2000,7 +2316,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 # is the namespace found?
                 if name in await self.async_list_namespaces():
                     raise DevOpsAPIException("Could not drop the namespace.")
-            logger.info(f"finished dropping namespace '{name}' on '{self.id}', async")
+            logger.info(
+                f"finished dropping namespace '{name}' on '{self._database_id}', async"
+            )
             return {"ok": 1}
         else:
             raise DevOpsAPIException(
@@ -2050,13 +2368,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             which avoids using a deceased database any further.
         """
 
-        logger.info(f"dropping this database ('{self.id}')")
+        logger.info(f"dropping this database ('{self._database_id}')")
         return self._astra_db_admin.drop_database(  # type: ignore[no-any-return]
-            id=self.id,
+            id=self._database_id,
             wait_until_active=wait_until_active,
             max_time_ms=max_time_ms,
         )
-        logger.info(f"finished dropping this database ('{self.id}')")
+        logger.info(f"finished dropping this database ('{self._database_id}')")
 
     async def async_drop(
         self,
@@ -2099,13 +2417,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             which avoids using a deceased database any further.
         """
 
-        logger.info(f"dropping this database ('{self.id}'), async")
+        logger.info(f"dropping this database ('{self._database_id}'), async")
         return await self._astra_db_admin.async_drop_database(  # type: ignore[no-any-return]
-            id=self.id,
+            id=self._database_id,
             wait_until_active=wait_until_active,
             max_time_ms=max_time_ms,
         )
-        logger.info(f"finished dropping this database ('{self.id}'), async")
+        logger.info(f"finished dropping this database ('{self._database_id}'), async")
 
     def get_database(
         self,
@@ -2118,7 +2436,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         max_time_ms: Optional[int] = None,
     ) -> Database:
         """
-        Create a Database instance out of this class for working with the data in it.
+        Create a Database instance from this database admin, for data-related tasks.
 
         Args:
             token: if supplied, is passed to the Database instead of
@@ -2128,8 +2446,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 `astrapy.authentication.TokenProvider`.
             namespace: an optional namespace to set in the resulting Database.
                 The same default logic as for `AstraDBAdmin.get_database` applies.
-            region: an optional region for connecting to the database Data API endpoint.
-                The same default logic as for `AstraDBAdmin.get_database` applies.
+            region: *This parameter is deprecated and should not be used.*
+                Ignored in the method.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -2149,11 +2467,22 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             see the AstraDBAdmin class.
         """
 
+        if region is not None:
+            the_warning = DeprecatedWarning(
+                "The 'region' parameter is deprecated in this method and will be ignored.",
+                deprecated_in="1.3.2",
+                removed_in="2.0.0",
+                details="The database class whose method is invoked already has a region set.",
+            )
+            warnings.warn(
+                the_warning,
+                stacklevel=2,
+            )
+
         return self._astra_db_admin.get_database(
-            id=self.id,
+            id=self.api_endpoint,
             token=token,
             namespace=namespace,
-            region=region,
             api_path=api_path,
             api_version=api_version,
             max_time_ms=max_time_ms,
@@ -2186,6 +2515,93 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             max_time_ms=max_time_ms,
         ).to_async()
 
+    def find_embedding_providers(
+        self, *, max_time_ms: Optional[int] = None
+    ) -> FindEmbeddingProvidersResult:
+        """
+        Query the API for the full information on available embedding providers.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A `FindEmbeddingProvidersResult` object with the complete information
+            returned by the API about available embedding providers
+
+        Example (output abridged and indented for clarity):
+            >>> admin_for_my_db.find_embedding_providers()
+            FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
+            >>> admin_for_my_db.find_embedding_providers().embedding_providers
+            {
+                'openai': EmbeddingProvider(
+                    display_name='OpenAI',
+                    models=[
+                        EmbeddingProviderModel(name='text-embedding-3-small'),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        logger.info("getting list of embedding providers")
+        fe_response = self._api_commander.request(
+            payload={"findEmbeddingProviders": {}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if "embeddingProviders" not in fe_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findEmbeddingProviders API command.",
+                raw_response=fe_response,
+            )
+        else:
+            logger.info("finished getting list of embedding providers")
+            return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
+
+    async def async_find_embedding_providers(
+        self, *, max_time_ms: Optional[int] = None
+    ) -> FindEmbeddingProvidersResult:
+        """
+        Query the API for the full information on available embedding providers.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A `FindEmbeddingProvidersResult` object with the complete information
+            returned by the API about available embedding providers
+
+        Example (output abridged and indented for clarity):
+            >>> admin_for_my_db.find_embedding_providers()
+            FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
+            >>> admin_for_my_db.find_embedding_providers().embedding_providers
+            {
+                'openai': EmbeddingProvider(
+                    display_name='OpenAI',
+                    models=[
+                        EmbeddingProviderModel(name='text-embedding-3-small'),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        logger.info("getting list of embedding providers, async")
+        fe_response = await self._api_commander.async_request(
+            payload={"findEmbeddingProviders": {}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if "embeddingProviders" not in fe_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findEmbeddingProviders API command.",
+                raw_response=fe_response,
+            )
+        else:
+            logger.info("finished getting list of embedding providers, async")
+            return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
+
 
 class DataAPIDatabaseAdmin(DatabaseAdmin):
     """
@@ -2209,12 +2625,20 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         environment: a label, whose value is one of Environment.OTHER (default)
             or other non-Astra environment values in the `Environment` enum.
         api_path: path to append to the API Endpoint. In typical usage, this
-            should be left to its default of "".
+            class is created by a method such as `Database.get_database_admin()`,
+            which passes the matching value. Defaults to this portion of the path
+            being absent.
         api_version: version specifier to append to the API path. In typical
-            usage, this should be left to its default of "v1".
+            usage, this class is created by a method such as
+            `Database.get_database_admin()`, which passes the matching value.
+            Defaults to this portion of the path being absent.
         caller_name: name of the application, or framework, on behalf of which
             the admin API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
+        spawner_database: either a Database or an AsyncDatabase instance. This represents
+            the database class which spawns this admin object, so that, if required,
+            a namespace creation can retroactively "use" the new namespace in the spawner.
+            Used to enable the Async/Database.get_admin_database().create_namespace() pattern.
 
     Example:
         >>> from astrapy import DataAPIClient
@@ -2245,7 +2669,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         api_version: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        spawner_database: Optional[Union[Database, AsyncDatabase]] = None,
     ) -> None:
+        # lazy import here to avoid circular dependency
+        from astrapy.database import Database
+
         self.environment = (environment or Environment.OTHER).lower()
         self.token_provider = coerce_token_provider(token)
         self.api_endpoint = api_endpoint
@@ -2253,18 +2681,35 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self.caller_name = caller_name
         self.caller_version = caller_version
         #
-        self._api_path = api_path if api_path is not None else ""
-        self._api_version = api_version if api_version is not None else ""
+        self.api_path = api_path if api_path is not None else ""
+        self.api_version = api_version if api_version is not None else ""
         #
         self._commander_headers = {
             DEFAULT_AUTH_HEADER: self.token_provider.get_token(),
         }
+
         self._api_commander = APICommander(
             api_endpoint=self.api_endpoint,
-            path="/".join(comp for comp in [self._api_path, self._api_version] if comp),
+            path="/".join(comp for comp in [self.api_path, self.api_version] if comp),
             headers=self._commander_headers,
             callers=[(self.caller_name, self.caller_version)],
         )
+
+        if spawner_database is not None:
+            self.spawner_database = spawner_database
+        else:
+            # leaving the namespace to its per-environment default
+            # (a task for the Database)
+            self.spawner_database = Database(
+                api_endpoint=self.api_endpoint,
+                token=self.token_provider,
+                namespace=None,
+                caller_name=self.caller_name,
+                caller_version=self.caller_version,
+                environment=self.environment,
+                api_path=self.api_path,
+                api_version=self.api_version,
+            )
 
     def __repr__(self) -> str:
         env_desc = f', environment="{self.environment}"'
@@ -2298,8 +2743,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
-            api_path=api_path or self._api_path,
-            api_version=api_version or self._api_version,
+            api_path=api_path or self.api_path,
+            api_version=api_version or self.api_version,
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
         )
@@ -2369,7 +2814,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self.caller_version = caller_version
         self._api_commander = APICommander(
             api_endpoint=self.api_endpoint,
-            path="/".join(comp for comp in [self._api_path, self._api_version] if comp),
+            path="/".join(comp for comp in [self.api_path, self.api_version] if comp),
             headers=self._commander_headers,
             callers=[(self.caller_name, self.caller_version)],
         )
@@ -2407,7 +2852,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         replication_options: Optional[Dict[str, Any]] = None,
+        update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
@@ -2420,6 +2867,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 replication of the namespace (across database nodes). If provided,
                 it must have a structure similar to:
                 `{"class": "SimpleStrategy", "replication_factor": 1}`.
+            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+                that spawned this DatabaseAdmin, if any, gets updated to work on
+                the newly-created namespace starting when this method returns.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -2462,6 +2912,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished creating namespace")
+            if update_db_namespace:
+                self.spawner_database.use_namespace(name)
             return cn_response["status"]  # type: ignore[no-any-return]
 
     def drop_namespace(
@@ -2543,7 +2995,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         replication_options: Optional[Dict[str, Any]] = None,
+        update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
@@ -2557,6 +3011,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 replication of the namespace (across database nodes). If provided,
                 it must have a structure similar to:
                 `{"class": "SimpleStrategy", "replication_factor": 1}`.
+            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+                that spawned this DatabaseAdmin, if any, gets updated to work on
+                the newly-created namespace starting when this method returns.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -2601,6 +3058,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished creating namespace, async")
+            if update_db_namespace:
+                self.spawner_database.use_namespace(name)
             return cn_response["status"]  # type: ignore[no-any-return]
 
     async def async_drop_namespace(
@@ -2635,7 +3094,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_namespaces()
             ['default_keyspace']
         """
-        logger.info("dropping namespace")
+        logger.info("dropping namespace, async")
         dn_response = await self._api_commander.async_request(
             payload={"dropNamespace": {"name": name}},
             timeout_info=base_timeout_info(max_time_ms),
@@ -2646,7 +3105,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 raw_response=dn_response,
             )
         else:
-            logger.info("finished dropping namespace")
+            logger.info("finished dropping namespace, async")
             return dn_response["status"]  # type: ignore[no-any-return]
 
     def get_database(
@@ -2667,7 +3126,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
             namespace: an optional namespace to set in the resulting Database.
-                If not provided, the default namespace is used.
+                If not provided, no namespace is set, limiting what the Database
+                can do until setting it with e.g. a `useNamespace` method call.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "".
             api_version: version specifier to append to the API path. In typical
@@ -2721,3 +3181,90 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             api_path=api_path,
             api_version=api_version,
         ).to_async()
+
+    def find_embedding_providers(
+        self, *, max_time_ms: Optional[int] = None
+    ) -> FindEmbeddingProvidersResult:
+        """
+        Query the API for the full information on available embedding providers.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A `FindEmbeddingProvidersResult` object with the complete information
+            returned by the API about available embedding providers
+
+        Example (output abridged and indented for clarity):
+            >>> admin_for_my_db.find_embedding_providers()
+            FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
+            >>> admin_for_my_db.find_embedding_providers().embedding_providers
+            {
+                'openai': EmbeddingProvider(
+                    display_name='OpenAI',
+                    models=[
+                        EmbeddingProviderModel(name='text-embedding-3-small'),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        logger.info("getting list of embedding providers")
+        fe_response = self._api_commander.request(
+            payload={"findEmbeddingProviders": {}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if "embeddingProviders" not in fe_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findEmbeddingProviders API command.",
+                raw_response=fe_response,
+            )
+        else:
+            logger.info("finished getting list of embedding providers")
+            return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
+
+    async def async_find_embedding_providers(
+        self, *, max_time_ms: Optional[int] = None
+    ) -> FindEmbeddingProvidersResult:
+        """
+        Query the API for the full information on available embedding providers.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A `FindEmbeddingProvidersResult` object with the complete information
+            returned by the API about available embedding providers
+
+        Example (output abridged and indented for clarity):
+            >>> admin_for_my_db.find_embedding_providers()
+            FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
+            >>> admin_for_my_db.find_embedding_providers().embedding_providers
+            {
+                'openai': EmbeddingProvider(
+                    display_name='OpenAI',
+                    models=[
+                        EmbeddingProviderModel(name='text-embedding-3-small'),
+                        ...
+                    ]
+                ),
+                ...
+            }
+        """
+
+        logger.info("getting list of embedding providers, async")
+        fe_response = await self._api_commander.async_request(
+            payload={"findEmbeddingProviders": {}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if "embeddingProviders" not in fe_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findEmbeddingProviders API command.",
+                raw_response=fe_response,
+            )
+        else:
+            logger.info("finished getting list of embedding providers, async")
+            return FindEmbeddingProvidersResult.from_dict(fe_response["status"])

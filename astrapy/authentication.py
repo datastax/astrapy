@@ -36,7 +36,7 @@ def coerce_embedding_headers_provider(
     if isinstance(embedding_api_key, EmbeddingHeadersProvider):
         return embedding_api_key
     else:
-        return StaticEmbeddingHeadersProvider(embedding_api_key)
+        return EmbeddingAPIKeyHeaderProvider(embedding_api_key)
 
 
 class TokenProvider(ABC):
@@ -202,7 +202,7 @@ class EmbeddingHeadersProvider(ABC):
         ...
 
 
-class StaticEmbeddingHeadersProvider(EmbeddingHeadersProvider):
+class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
     """
     A "pass-through" header provider representing the single-header
     (typically "X-Embedding-Api-Key") auth scheme, in use by most of the
@@ -217,9 +217,9 @@ class StaticEmbeddingHeadersProvider(EmbeddingHeadersProvider):
         >>> from astrapy import DataAPIClient
         >>> from astrapy.authentication import (
             CollectionVectorServiceOptions,
-            StaticEmbeddingHeadersProvider,
+            EmbeddingAPIKeyHeaderProvider,
         )
-        >>> my_emb_api_key = StaticEmbeddingHeadersProvider("abc012...")
+        >>> my_emb_api_key = EmbeddingAPIKeyHeaderProvider("abc012...")
         >>> service_options = CollectionVectorServiceOptions(
         ...     provider="a-certain-provider",
         ...     model_name="some-embedding-model",
@@ -305,7 +305,11 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
         self.embedding_secret_id = embedding_secret_id
 
     def __repr__(self) -> str:
-        return f'{self.__class__.__name__}("{self.embedding_access_id[:3]}...", "{self.embedding_secret_id[:3]}...")'
+        return (
+            f"{self.__class__.__name__}(embedding_access_id="
+            f'"{self.embedding_access_id[:3]}...", '
+            f'embedding_secret_id="{self.embedding_secret_id[:3]}...")'
+        )
 
     def get_headers(self) -> Dict[str, str]:
         return {

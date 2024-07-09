@@ -16,6 +16,8 @@
 Unit tests for the ObjectIds and UUIDn conversions
 """
 
+from __future__ import annotations
+
 import json
 import uuid as lib_uuid
 

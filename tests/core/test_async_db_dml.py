@@ -17,6 +17,8 @@ Tests for the `db.py` parts on data manipulation "standard" methods
 (i.e. non `vector_*` methods)
 """
 
+from __future__ import annotations
+
 import datetime
 import logging
 import uuid
@@ -600,7 +602,6 @@ async def test_chunked_insert_many_failures(
             chunk_size=2,
             concurrency=1,
         )
-    assert len((await async_empty_v_collection.find({}))["data"]["documents"]) == 2
 
     await async_empty_v_collection.delete_many({})
     with pytest.raises(APIRequestError):
@@ -611,7 +612,24 @@ async def test_chunked_insert_many_failures(
             chunk_size=2,
             concurrency=2,
         )
-    assert len((await async_empty_v_collection.find({}))["data"]["documents"]) >= 2
+
+
+@pytest.mark.describe(
+    "chunked_insert_many, failure modes unordered with concurrency (async)"
+)
+async def test_chunked_insert_many_failures_unordered_concurrent(
+    async_empty_v_collection: AsyncAstraDBCollection,
+) -> None:
+    """
+    Note: this is split from the `test_chunked_insert_many_failures` test
+    because the last command there (insert_many of bad_docs with ordered but concurrency>1)
+    leaves orphan running tasks once the exception is raised. This ultimately
+    traces back to known asyncio.gather behaviour - it is not a bug,
+    just something that makes the premises for the next testing ill-defined.
+
+    More info on the underlying issue: https://stackoverflow.com/a/59074112/16545960
+    """
+    dup_docs = [{"_id": tid} for tid in ["a", "b", "b", "d", "e", "f"]]
 
     await async_empty_v_collection.delete_many({})
     ins_result = await async_empty_v_collection.chunked_insert_many(

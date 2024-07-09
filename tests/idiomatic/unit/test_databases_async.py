@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import pytest
 
-from astrapy import AsyncCollection, AsyncDatabase
-from astrapy.core.defaults import DEFAULT_KEYSPACE_NAME
+from astrapy import AsyncCollection, AsyncDatabase, DataAPIClient
+from astrapy.constants import Environment
+from astrapy.database import DEFAULT_ASTRA_DB_NAMESPACE
 from astrapy.exceptions import DevOpsAPIException
 
-from ..conftest import (
-    SECONDARY_NAMESPACE,
-    TEST_COLLECTION_INSTANCE_NAME,
-    DataAPICredentials,
-    DataAPICredentialsInfo,
-)
+from ..conftest import TEST_COLLECTION_INSTANCE_NAME, DataAPICredentials
 
 
 class TestDatabasesAsync:
@@ -224,27 +222,6 @@ class TestDatabasesAsync:
         assert db1.to_sync().to_async() == db2
         assert db1._copy() == db2
 
-    @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
-    )
-    @pytest.mark.describe("test database namespace property, async")
-    async def test_database_namespace_async(
-        self,
-        data_api_credentials_kwargs: DataAPICredentials,
-        data_api_credentials_info: DataAPICredentialsInfo,
-    ) -> None:
-        db1 = AsyncDatabase(
-            **data_api_credentials_kwargs,
-        )
-        assert db1.namespace == DEFAULT_KEYSPACE_NAME
-
-        db2 = AsyncDatabase(
-            token=data_api_credentials_kwargs["token"],
-            api_endpoint=data_api_credentials_kwargs["api_endpoint"],
-            namespace=data_api_credentials_info["secondary_namespace"],
-        )
-        assert db2.namespace == data_api_credentials_info["secondary_namespace"]
-
     @pytest.mark.describe("test database id, async")
     async def test_database_id_async(self) -> None:
         db1 = AsyncDatabase(
@@ -259,3 +236,49 @@ class TestDatabasesAsync:
         )
         with pytest.raises(DevOpsAPIException):
             db2.id
+
+    @pytest.mark.describe("test database default namespace per environment, async")
+    async def test_database_default_namespace_per_environment_async(self) -> None:
+        db_a_m = AsyncDatabase(
+            "ep", token="t", namespace="M", environment=Environment.PROD
+        )
+        assert db_a_m.namespace == "M"
+        db_o_m = AsyncDatabase(
+            "ep", token="t", namespace="M", environment=Environment.OTHER
+        )
+        assert db_o_m.namespace == "M"
+        db_a_n = AsyncDatabase("ep", token="t", environment=Environment.PROD)
+        assert db_a_n.namespace == DEFAULT_ASTRA_DB_NAMESPACE
+        db_o_n = AsyncDatabase("ep", token="t", environment=Environment.OTHER)
+        assert db_o_n.namespace is None
+
+    @pytest.mark.describe(
+        "test database-from-client default namespace per environment, async"
+    )
+    async def test_database_from_client_default_namespace_per_environment_async(
+        self,
+    ) -> None:
+        client_a = DataAPIClient(environment=Environment.PROD)
+        db_a_m = client_a.get_async_database("ep", region="r", namespace="M")
+        assert db_a_m.namespace == "M"
+        db_a_n = client_a.get_async_database("ep", region="r")
+        assert db_a_n.namespace == DEFAULT_ASTRA_DB_NAMESPACE
+
+        client_o = DataAPIClient(environment=Environment.OTHER)
+        db_a_m = client_o.get_async_database("http://a", namespace="M")
+        assert db_a_m.namespace == "M"
+        db_a_n = client_o.get_async_database("http://a")
+        assert db_a_n.namespace is None
+
+    @pytest.mark.describe(
+        "test database-from-dataapidbadmin default namespace per environment, async"
+    )
+    async def test_database_from_dataapidbadmin_default_namespace_per_environment_async(
+        self,
+    ) -> None:
+        client = DataAPIClient(environment=Environment.OTHER)
+        db_admin = client.get_async_database("http://a").get_database_admin()
+        db_m = db_admin.get_async_database(namespace="M")
+        assert db_m.namespace == "M"
+        db_n = db_admin.get_async_database()
+        assert db_n.namespace is None

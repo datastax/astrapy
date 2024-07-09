@@ -16,6 +16,8 @@
 Unit tests for the validation/parsing of collection options
 """
 
+from __future__ import annotations
+
 from typing import Any, Dict, List, Tuple
 
 import pytest

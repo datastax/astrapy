@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import pytest
 
 
@@ -125,6 +127,12 @@ def test_imports() -> None:
         CollectionVectorOptions,
         CollectionVectorServiceOptions,
         DatabaseInfo,
+        EmbeddingProvider,
+        EmbeddingProviderAuthentication,
+        EmbeddingProviderModel,
+        EmbeddingProviderParameter,
+        EmbeddingProviderToken,
+        FindEmbeddingProvidersResult,
     )
     from astrapy.operations import (  # noqa: F401
         AsyncBaseOperation,

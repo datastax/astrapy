@@ -1,5 +1,17 @@
-(master)
+v. 1.4.0
 ========
+DatabaseAdmin classes retain a reference to the Async/Database instance that spawned it, if any
+    - introduced a spawner_database parameter to database admin constructors
+    - database admin can retroactively set the db's working namespace upon creation of same
+    - Idiom `database = client.get_database(...); database.get_database_admin().create_namespace("the_namespace", update_db_namespace=True)`
+Database (and AsyncDatabase) classes admit null namespace:
+    - default to "default_namespace" only for Astra, otherwise null
+    - as long as null, most operations are unavailable and error out
+    - a `use_namespace` method to (mutably) set the working namespace on a database instance
+AstraDBDatabaseAdmin class is fully region-aware:
+    - can be instantiated with an endpoint (also `id` parameter aliased to `api_endpoint`)
+    - requires a region to be specified with an ID, unless auto-guess can be done
+VectorizeOps: support for find_embedding_providers Database method
 Support for multiple-header embedding api keys:
     - `EmbeddingHeadersProvider` classes for `embedding_api_key` parameter
     - AWS header provider in addition to the regular one-header one
@@ -8,11 +20,13 @@ Testing:
     - restructure CI to fully support HCD alongside Astra DB
     - add details for testing new embedding providers
 
+
 v. 1.3.1
 ========
 Fixed bug in parsing endpoint domain names containing hyphens (#287), by @bradfordcp
 Added isort for source code formatting
 Updated abstractions diagram in README for non-Astra environments
+
 
 v. 1.3.0
 ========
@@ -38,6 +52,7 @@ Remove several long-deprecated methods from **core API** (i.e. internal changes)
     AstraDB.truncate_collection       => AstraDBCollection.clear
     AsyncAstraDB.truncate_collection  => AsyncAstraDBCollectionclear
 Add support for null tokens in the core library
+
 
 v. 1.2.1
 ========

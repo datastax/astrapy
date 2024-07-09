@@ -16,6 +16,8 @@
 Tests for the `db.py` parts on pagination primitives
 """
 
+from __future__ import annotations
+
 import logging
 from typing import Optional
 

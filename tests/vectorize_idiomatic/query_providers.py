@@ -12,28 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import json
 import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from typing import Any, Dict
+from typing import Dict
 
 from live_provider_info import live_provider_info
 
+from astrapy.info import EmbeddingProvider, EmbeddingProviderParameter
 
-def desc_param(param_data: Dict[str, Any]) -> str:
-    if param_data["type"].lower() == "string":
+
+def desc_param(param_data: EmbeddingProviderParameter) -> str:
+    if param_data.parameter_type.lower() == "string":
         return "str"
-    elif param_data["type"].lower() == "number":
-        validation = param_data.get("validation", {})
+    elif param_data.parameter_type.lower() == "number":
+        validation = param_data.validation
         if "numericRange" in validation:
             validation_nr = validation["numericRange"]
             assert isinstance(validation_nr, list) and len(validation_nr) == 2
             range_desc = f"[{validation_nr[0]} : {validation_nr[1]}]"
-            if "defaultValue" in param_data:
-                range_desc2 = f"{range_desc} (default={param_data['defaultValue']})"
+            if param_data.default_value is not None:
+                range_desc2 = f"{range_desc} (default={param_data.default_value})"
             else:
                 range_desc2 = range_desc
             return f"number, {range_desc2}"
@@ -45,56 +49,50 @@ def desc_param(param_data: Dict[str, Any]) -> str:
             raise ValueError(
                 f"Unknown number validation spec: '{json.dumps(validation)}'"
             )
-    elif param_data["type"].lower() == "boolean":
+    elif param_data.parameter_type.lower() == "boolean":
         return "bool"
     else:
         raise NotImplementedError
 
 
 if __name__ == "__main__":
-    response: Dict[str, Any]
-    if "l" in sys.argv[1:]:
-        response = json.load(open("_providers.json"))
-    else:
-        response = live_provider_info()
-        json.dump(response, open("_providers.json", "w"), indent=2, sort_keys=True)
+    providers: Dict[str, EmbeddingProvider] = live_provider_info()
+    providers_json = {ep_name: ep.as_dict() for ep_name, ep in providers.items()}
+    json.dump(providers_json, open("_providers.json", "w"), indent=2, sort_keys=True)
 
-    provider_map = response["status"]["embeddingProviders"]
-    for provider, provider_data in sorted(provider_map.items()):
-        print(f"{provider} ({len(provider_data['models'])} models)")
+    for provider, provider_data in sorted(providers.items()):
+        print(f"{provider} ({len(provider_data.models)} models)")
         print("    auth:")
         for auth_type, auth_data in sorted(
-            provider_data["supportedAuthentication"].items()
+            provider_data.supported_authentication.items()
         ):
-            if auth_data["enabled"]:
-                tokens = ", ".join(
-                    f"'{tok['accepted']}'" for tok in auth_data["tokens"]
-                )
+            if auth_data.enabled:
+                tokens = ", ".join(f"'{tok.accepted}'" for tok in auth_data.tokens)
                 print(f"      {auth_type} ({tokens})")
-        if provider_data.get("parameters"):
+        if provider_data.parameters:
             print("    parameters")
-            for param_data in provider_data["parameters"]:
-                param_name = param_data["name"]
-                if param_data["required"]:
+            for param_data in provider_data.parameters:
+                param_name = param_data.name
+                if param_data.required:
                     param_display_name = param_name
                 else:
                     param_display_name = f"({param_name})"
                 param_desc = desc_param(param_data)
                 print(f"      - {param_display_name}: {param_desc}")
         print("    models:")
-        for model_data in sorted(provider_data["models"], key=lambda pro: pro["name"]):
-            model_name = model_data["name"]
-            if model_data["vectorDimension"] is not None:
-                assert model_data["vectorDimension"] > 0
-                model_dim_desc = f" (D = {model_data['vectorDimension']})"
+        for model_data in sorted(provider_data.models, key=lambda pro: pro.name):
+            model_name = model_data.name
+            if model_data.vector_dimension is not None:
+                assert model_data.vector_dimension > 0
+                model_dim_desc = f" (D = {model_data.vector_dimension})"
             else:
                 model_dim_desc = ""
             if True:
                 print(f"      {model_name}{model_dim_desc}")
-                if model_data.get("parameters"):
-                    for param_data in model_data["parameters"]:
-                        param_name = param_data["name"]
-                        if param_data["required"]:
+                if model_data.parameters:
+                    for param_data in model_data.parameters:
+                        param_name = param_data.name
+                        if param_data.required:
                             param_display_name = param_name
                         else:
                             param_display_name = f"({param_name})"
