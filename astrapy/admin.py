@@ -1393,7 +1393,13 @@ class DatabaseAdmin(ABC):
         ...
 
     @abstractmethod
-    def create_namespace(self, name: str, *pargs: Any, **kwargs: Any) -> Dict[str, Any]:
+    def create_namespace(
+        self,
+        name: str,
+        *,
+        update_db_namespace: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
         """
@@ -1416,7 +1422,7 @@ class DatabaseAdmin(ABC):
 
     @abstractmethod
     async def async_create_namespace(
-        self, name: str, *pargs: Any, **kwargs: Any
+        self, name: str, *, update_db_namespace: Optional[bool] = None, **kwargs: Any
     ) -> Dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
@@ -1997,7 +2003,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
+        update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Create a namespace in this database as requested,
@@ -2013,6 +2021,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/namespace availability
                 before working with it.
+            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+                that spawned this DatabaseAdmin, if any, gets updated to work on
+                the newly-created namespace starting when this method returns.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -2062,6 +2073,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             logger.info(
                 f"finished creating namespace '{name}' on '{self._database_id}'"
             )
+            if update_db_namespace:
+                self.spawner_database.use_namespace(name)
             return {"ok": 1}
         else:
             raise DevOpsAPIException(
@@ -2075,7 +2088,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
+        update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Create a namespace in this database as requested,
@@ -2092,6 +2107,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/namespace availability
                 before working with it.
+            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+                that spawned this DatabaseAdmin, if any, gets updated to work on
+                the newly-created namespace starting when this method returns.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -2143,6 +2161,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             logger.info(
                 f"finished creating namespace '{name}' on '{self._database_id}', async"
             )
+            if update_db_namespace:
+                self.spawner_database.use_namespace(name)
             return {"ok": 1}
         else:
             raise DevOpsAPIException(
@@ -2838,7 +2858,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         replication_options: Optional[Dict[str, Any]] = None,
+        update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
@@ -2851,6 +2873,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 replication of the namespace (across database nodes). If provided,
                 it must have a structure similar to:
                 `{"class": "SimpleStrategy", "replication_factor": 1}`.
+            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+                that spawned this DatabaseAdmin, if any, gets updated to work on
+                the newly-created namespace starting when this method returns.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -2893,6 +2918,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished creating namespace")
+            if update_db_namespace:
+                self.spawner_database.use_namespace(name)
             return cn_response["status"]  # type: ignore[no-any-return]
 
     def drop_namespace(
@@ -2974,7 +3001,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         replication_options: Optional[Dict[str, Any]] = None,
+        update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
@@ -2988,6 +3017,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 replication of the namespace (across database nodes). If provided,
                 it must have a structure similar to:
                 `{"class": "SimpleStrategy", "replication_factor": 1}`.
+            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+                that spawned this DatabaseAdmin, if any, gets updated to work on
+                the newly-created namespace starting when this method returns.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -3032,6 +3064,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished creating namespace, async")
+            if update_db_namespace:
+                self.spawner_database.use_namespace(name)
             return cn_response["status"]  # type: ignore[no-any-return]
 
     async def async_drop_namespace(
