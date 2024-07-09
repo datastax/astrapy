@@ -186,15 +186,7 @@ class Database:
 
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._astra_db = AstraDB(
-            token=self.token_provider.get_token(),
-            api_endpoint=self.api_endpoint,
-            api_path=self.api_path,
-            api_version=self.api_version,
-            namespace=self.namespace,
-            caller_name=self.caller_name,
-            caller_version=self.caller_version,
-        )
+        self._astra_db = self._refresh_astra_db()
         self._name: Optional[str] = None
 
     def __getattr__(self, collection_name: str) -> Collection:
@@ -225,6 +217,19 @@ class Database:
             )
         else:
             return False
+
+    def _refresh_astra_db(self) -> AstraDB:
+        """Re-instantiate a new (core) client based on the instance attributes."""
+        logger.info("Instantiating a new (core) AstraDB")
+        return AstraDB(
+            token=self.token_provider.get_token(),
+            api_endpoint=self.api_endpoint,
+            api_path=self.api_path,
+            api_version=self.api_version,
+            namespace=self.namespace,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
+        )
 
     def _copy(
         self,
@@ -361,10 +366,32 @@ class Database:
         logger.info(f"setting caller to {caller_name}/{caller_version}")
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._astra_db.set_caller(
-            caller_name=caller_name,
-            caller_version=caller_version,
-        )
+        self._astra_db = self._refresh_astra_db()
+
+    def use_namespace(self, namespace: str) -> None:
+        """
+        Switch to a new working namespace for this database.
+        This method changes (mutates) the Database instance.
+
+        Note that this method does not create the namespace, which should exist
+        already (created for instance with a `DatabaseAdmin.create_namespace` call).
+
+        Args:
+            namespace: the new namespace to use as the database working namespace.
+
+        Returns:
+            None.
+
+        Example:
+            >>> my_db.list_collection_names()
+            ['coll_1', 'coll_2']
+            >>> my_db.use_namespace("an_empty_namespace")
+            >>> my_db.list_collection_names()
+            []
+        """
+        logger.info(f"switching to namespace '{namespace}'")
+        self.using_namespace = namespace
+        self._astra_db = self._refresh_astra_db()
 
     def info(self) -> DatabaseInfo:
         """
@@ -1072,15 +1099,7 @@ class AsyncDatabase:
 
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._astra_db = AsyncAstraDB(
-            token=self.token_provider.get_token(),
-            api_endpoint=self.api_endpoint,
-            api_path=self.api_path,
-            api_version=self.api_version,
-            namespace=self.namespace,
-            caller_name=self.caller_name,
-            caller_version=self.caller_version,
-        )
+        self._astra_db = self._refresh_astra_db()
         self._name: Optional[str] = None
 
     def __getattr__(self, collection_name: str) -> AsyncCollection:
@@ -1125,6 +1144,19 @@ class AsyncDatabase:
             exc_type=exc_type,
             exc_value=exc_value,
             traceback=traceback,
+        )
+
+    def _refresh_astra_db(self) -> AsyncAstraDB:
+        """Re-instantiate a new (core) client based on the instance attributes."""
+        logger.info("Instantiating a new (core) AsyncAstraDB")
+        return AsyncAstraDB(
+            token=self.token_provider.get_token(),
+            api_endpoint=self.api_endpoint,
+            api_path=self.api_path,
+            api_version=self.api_version,
+            namespace=self.namespace,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
         )
 
     def _copy(
@@ -1263,10 +1295,32 @@ class AsyncDatabase:
         logger.info(f"setting caller to {caller_name}/{caller_version}")
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._astra_db.set_caller(
-            caller_name=caller_name,
-            caller_version=caller_version,
-        )
+        self._astra_db = self._refresh_astra_db()
+
+    def use_namespace(self, namespace: str) -> None:
+        """
+        Switch to a new working namespace for this database.
+        This method changes (mutates) the AsyncDatabase instance.
+
+        Note that this method does not create the namespace, which should exist
+        already (created for instance with a `DatabaseAdmin.async_create_namespace` call).
+
+        Args:
+            namespace: the new namespace to use as the database working namespace.
+
+        Returns:
+            None.
+
+        Example:
+            >>> asyncio.run(my_async_db.list_collection_names())
+            ['coll_1', 'coll_2']
+            >>> my_async_db.use_namespace("an_empty_namespace")
+            >>> asyncio.run(my_async_db.list_collection_names())
+            []
+        """
+        logger.info(f"switching to namespace '{namespace}'")
+        self.using_namespace = namespace
+        self._astra_db = self._refresh_astra_db()
 
     def info(self) -> DatabaseInfo:
         """

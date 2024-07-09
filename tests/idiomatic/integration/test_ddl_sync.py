@@ -216,6 +216,28 @@ class TestDDLSync:
     @pytest.mark.skipif(
         SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
     )
+    @pytest.mark.describe("test of Database use_namespace, sync")
+    def test_database_use_namespace_sync(
+        self,
+        sync_database: Database,
+        sync_collection: Collection,
+        data_api_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_info: DataAPICredentialsInfo,
+    ) -> None:
+        # make a copy to avoid mutating the fixture
+        t_database = sync_database._copy()
+        assert t_database == sync_database
+        assert t_database.namespace == data_api_credentials_kwargs["namespace"]
+        assert TEST_COLLECTION_NAME in t_database.list_collection_names()
+
+        t_database.use_namespace(data_api_credentials_info["secondary_namespace"])  # type: ignore[arg-type]
+        assert t_database != sync_database
+        assert t_database.namespace == data_api_credentials_info["secondary_namespace"]
+        assert TEST_COLLECTION_NAME not in t_database.list_collection_names()
+
+    @pytest.mark.skipif(
+        SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
+    )
     @pytest.mark.describe("test of cross-namespace collection lifecycle, sync")
     def test_collection_namespace_sync(
         self,

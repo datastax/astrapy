@@ -1,5 +1,13 @@
 (master)
 ========
+Database (and AsyncDatabase) classes admit null namespace:
+    - default to "default_namespace" only for Astra, otherwise null
+    - as long as null, most operations are unavailable and error out
+    - a `use_namespace` method to (mutably) set the working namespace on a database instance
+AstraDBDatabaseAdmin class is fully region-aware:
+    - can be instantiated with an endpoint (also `id` parameter aliased to `api_endpoint`)
+    - requires a region to be specified with an ID, unless auto-guess can be done
+VectorizeOps: support for find_embedding_providers Database method
 Support for multiple-header embedding api keys:
     - `EmbeddingHeadersProvider` classes for `embedding_api_key` parameter
     - AWS header provider in addition to the regular one-header one

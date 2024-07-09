@@ -225,6 +225,28 @@ class TestDDLAsync:
     @pytest.mark.skipif(
         SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
     )
+    @pytest.mark.describe("test of Database use_namespace, async")
+    async def test_database_use_namespace_async(
+        self,
+        async_database: AsyncDatabase,
+        async_collection: AsyncCollection,
+        data_api_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_info: DataAPICredentialsInfo,
+    ) -> None:
+        # make a copy to avoid mutating the fixture
+        at_database = async_database._copy()
+        assert at_database == async_database
+        assert at_database.namespace == data_api_credentials_kwargs["namespace"]
+        assert TEST_COLLECTION_NAME in await at_database.list_collection_names()
+
+        at_database.use_namespace(data_api_credentials_info["secondary_namespace"])  # type: ignore[arg-type]
+        assert at_database != async_database
+        assert at_database.namespace == data_api_credentials_info["secondary_namespace"]
+        assert TEST_COLLECTION_NAME not in await at_database.list_collection_names()
+
+    @pytest.mark.skipif(
+        SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
+    )
     @pytest.mark.describe("test of cross-namespace collection lifecycle, async")
     async def test_collection_namespace_async(
         self,
