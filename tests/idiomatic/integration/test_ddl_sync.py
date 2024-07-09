@@ -324,7 +324,11 @@ class TestDDLSync:
         api_endpoint = data_api_credentials_kwargs["api_endpoint"]
         token = data_api_credentials_kwargs["token"]
         client = DataAPIClient(environment=data_api_credentials_info["environment"])
-        database = client.get_database(api_endpoint, token=token)
+        database = client.get_database(
+            api_endpoint,
+            token=token,
+            namespace=data_api_credentials_kwargs["namespace"],
+        )
         assert isinstance(database.list_collection_names(), list)
 
     @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")

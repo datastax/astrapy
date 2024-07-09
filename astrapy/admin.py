@@ -1385,6 +1385,7 @@ class DatabaseAdmin(ABC):
     """
 
     environment: str
+    spawner_database: Union[Database, AsyncDatabase]
 
     @abstractmethod
     def list_namespaces(self, *pargs: Any, **kwargs: Any) -> List[str]:
@@ -1504,6 +1505,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             usage, this class is created by a method such as
             `Database.get_database_admin()`, which passes the matching value.
             Generally to be left to its Astra DB default of "/v1".
+        spawner_database: either a Database or an AsyncDatabase instance. This represents
+            the database class which spawns this admin object, so that, if required,
+            a namespace creation can retroactively "use" the new namespace in the spawner.
+            Used to enable the Async/Database.get_admin_database().create_namespace() pattern.
         max_time_ms: a timeout, in milliseconds, for the DevOps API
             HTTP request should it be necessary (see the `region` argument).
 
@@ -1536,8 +1541,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         dev_ops_api_version: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
+        spawner_database: Optional[Union[Database, AsyncDatabase]] = None,
         max_time_ms: Optional[int] = None,
     ) -> None:
+        # lazy import here to avoid circular dependency
+        from astrapy.database import Database
+
         self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
 
@@ -1570,7 +1579,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         #
         self.caller_name = caller_name
         self.caller_version = caller_version
-        #
+
         self._astra_db_admin = AstraDBAdmin(
             token=self.token_provider,
             environment=self.environment,
@@ -1581,10 +1590,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         )
 
         # API Commander (for the vectorizeOps invocations)
-        self._api_path = (
+        self.api_path = (
             api_path if api_path is not None else API_PATH_ENV_MAP[self.environment]
         )
-        self._api_version = (
+        self.api_version = (
             api_version
             if api_version is not None
             else API_VERSION_ENV_MAP[self.environment]
@@ -1594,10 +1603,26 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         }
         self._api_commander = APICommander(
             api_endpoint=self.api_endpoint,
-            path="/".join(comp for comp in [self._api_path, self._api_version] if comp),
+            path="/".join(comp for comp in [self.api_path, self.api_version] if comp),
             headers=self._commander_headers,
             callers=[(self.caller_name, self.caller_version)],
         )
+
+        if spawner_database is not None:
+            self.spawner_database = spawner_database
+        else:
+            # leaving the namespace to its per-environment default
+            # (a task for the Database)
+            self.spawner_database = Database(
+                api_endpoint=self.api_endpoint,
+                token=self.token_provider,
+                namespace=None,
+                caller_name=self.caller_name,
+                caller_version=self.caller_version,
+                environment=self.environment,
+                api_path=self.api_path,
+                api_version=self.api_version,
+            )
 
     def __repr__(self) -> str:
         env_desc: str
@@ -2596,6 +2621,10 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         caller_name: name of the application, or framework, on behalf of which
             the admin API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
+        spawner_database: either a Database or an AsyncDatabase instance. This represents
+            the database class which spawns this admin object, so that, if required,
+            a namespace creation can retroactively "use" the new namespace in the spawner.
+            Used to enable the Async/Database.get_admin_database().create_namespace() pattern.
 
     Example:
         >>> from astrapy import DataAPIClient
@@ -2626,7 +2655,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         api_version: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
+        spawner_database: Optional[Union[Database, AsyncDatabase]] = None,
     ) -> None:
+        # lazy import here to avoid circular dependency
+        from astrapy.database import Database
+
         self.environment = (environment or Environment.OTHER).lower()
         self.token_provider = coerce_token_provider(token)
         self.api_endpoint = api_endpoint
@@ -2634,18 +2667,35 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self.caller_name = caller_name
         self.caller_version = caller_version
         #
-        self._api_path = api_path if api_path is not None else ""
-        self._api_version = api_version if api_version is not None else ""
+        self.api_path = api_path if api_path is not None else ""
+        self.api_version = api_version if api_version is not None else ""
         #
         self._commander_headers = {
             DEFAULT_AUTH_HEADER: self.token_provider.get_token(),
         }
+
         self._api_commander = APICommander(
             api_endpoint=self.api_endpoint,
-            path="/".join(comp for comp in [self._api_path, self._api_version] if comp),
+            path="/".join(comp for comp in [self.api_path, self.api_version] if comp),
             headers=self._commander_headers,
             callers=[(self.caller_name, self.caller_version)],
         )
+
+        if spawner_database is not None:
+            self.spawner_database = spawner_database
+        else:
+            # leaving the namespace to its per-environment default
+            # (a task for the Database)
+            self.spawner_database = Database(
+                api_endpoint=self.api_endpoint,
+                token=self.token_provider,
+                namespace=None,
+                caller_name=self.caller_name,
+                caller_version=self.caller_version,
+                environment=self.environment,
+                api_path=self.api_path,
+                api_version=self.api_version,
+            )
 
     def __repr__(self) -> str:
         env_desc = f', environment="{self.environment}"'
@@ -2679,8 +2729,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
-            api_path=api_path or self._api_path,
-            api_version=api_version or self._api_version,
+            api_path=api_path or self.api_path,
+            api_version=api_version or self.api_version,
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
         )
@@ -2750,7 +2800,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self.caller_version = caller_version
         self._api_commander = APICommander(
             api_endpoint=self.api_endpoint,
-            path="/".join(comp for comp in [self._api_path, self._api_version] if comp),
+            path="/".join(comp for comp in [self.api_path, self.api_version] if comp),
             headers=self._commander_headers,
             callers=[(self.caller_name, self.caller_version)],
         )

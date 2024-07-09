@@ -334,7 +334,11 @@ class TestDDLAsync:
         api_endpoint = data_api_credentials_kwargs["api_endpoint"]
         token = data_api_credentials_kwargs["token"]
         client = DataAPIClient(environment=data_api_credentials_info["environment"])
-        a_database = client.get_async_database(api_endpoint, token=token)
+        a_database = client.get_async_database(
+            api_endpoint,
+            token=token,
+            namespace=data_api_credentials_kwargs["namespace"],
+        )
         coll_names = await a_database.list_collection_names()
         assert isinstance(coll_names, list)
 

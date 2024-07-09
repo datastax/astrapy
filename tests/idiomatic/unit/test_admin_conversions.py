@@ -402,3 +402,61 @@ class TestAdminConversions:
             )
             # it's ignored anyway
             assert db1 == db_adm.get_database(namespace="the-namespace")
+
+    @pytest.mark.describe(
+        "test of spawner_database for AstraDBDatabaseAdmin if not provided"
+    )
+    def test_spawnerdatabase_astradbdatabaseadmin_notprovided(self) -> None:
+        api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
+        db_adm = AstraDBDatabaseAdmin(api_ep)
+        assert db_adm.spawner_database.api_endpoint == api_ep
+
+    @pytest.mark.describe(
+        "test of spawner_database for DataAPIDatabaseAdmin if not provided"
+    )
+    def test_spawnerdatabase_dataapidatabaseadmin_notprovided(self) -> None:
+        api_ep = "http://aa"
+        db_adm = DataAPIDatabaseAdmin(api_ep)
+        assert db_adm.spawner_database.api_endpoint == api_ep
+
+    @pytest.mark.describe(
+        "test of spawner_database for AstraDBDatabaseAdmin, sync db provided"
+    )
+    def test_spawnerdatabase_astradbdatabaseadmin_syncprovided(self) -> None:
+        api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
+        db = Database(api_ep, namespace="M")
+        db_adm = AstraDBDatabaseAdmin(api_ep, spawner_database=db)
+        assert db_adm.spawner_database is db
+
+    @pytest.mark.describe(
+        "test of spawner_database for AstraDBDatabaseAdmin, async db provided"
+    )
+    def test_spawnerdatabase_astradbdatabaseadmin_asyncprovided(self) -> None:
+        api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
+        adb = AsyncDatabase(api_ep, namespace="M")
+        db_adm = AstraDBDatabaseAdmin(api_ep, spawner_database=adb)
+        assert db_adm.spawner_database is adb
+
+    @pytest.mark.describe(
+        "test of spawner_database for DataAPIDatabaseAdmin, sync db provided"
+    )
+    def test_spawnerdatabase_dataapidatabaseadmin_syncprovided(self) -> None:
+        api_ep = "http://aa"
+        db = Database(api_ep)
+        db_adm = DataAPIDatabaseAdmin(api_ep, spawner_database=db)
+        assert db_adm.spawner_database is db
+
+    @pytest.mark.describe(
+        "test of spawner_database for DataAPIDatabaseAdmin, async db provided"
+    )
+    def test_spawnerdatabase_dataapidatabaseadmin_asyncprovided(self) -> None:
+        api_ep = "http://aa"
+        adb = AsyncDatabase(api_ep)
+        db_adm = DataAPIDatabaseAdmin(api_ep, spawner_database=adb)
+        assert db_adm.spawner_database is adb
+
+    @pytest.mark.describe("test of from_api_endpoint for AstraDBDatabaseAdmin")
+    def test_fromapiendpoint_astradbdatabaseadmin(self) -> None:
+        api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
+        db_adm = AstraDBDatabaseAdmin.from_api_endpoint(api_ep, token="t")
+        assert db_adm.get_database(namespace="M").api_endpoint == api_ep

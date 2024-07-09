@@ -983,13 +983,15 @@ class Database:
         from astrapy.admin import AstraDBDatabaseAdmin, DataAPIDatabaseAdmin
 
         if self.environment in Environment.astra_db_values:
-            return AstraDBDatabaseAdmin.from_api_endpoint(
+            return AstraDBDatabaseAdmin(
                 api_endpoint=self.api_endpoint,
                 token=coerce_token_provider(token) or self.token_provider,
+                environment=self.environment,
                 caller_name=self.caller_name,
                 caller_version=self.caller_version,
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
+                spawner_database=self,
             )
         else:
             if dev_ops_url is not None:
@@ -1008,6 +1010,7 @@ class Database:
                 api_version=self.api_version,
                 caller_name=self.caller_name,
                 caller_version=self.caller_version,
+                spawner_database=self,
             )
 
 
@@ -1927,13 +1930,15 @@ class AsyncDatabase:
         from astrapy.admin import AstraDBDatabaseAdmin, DataAPIDatabaseAdmin
 
         if self.environment in Environment.astra_db_values:
-            return AstraDBDatabaseAdmin.from_api_endpoint(
+            return AstraDBDatabaseAdmin(
                 api_endpoint=self.api_endpoint,
                 token=coerce_token_provider(token) or self.token_provider,
+                environment=self.environment,
                 caller_name=self.caller_name,
                 caller_version=self.caller_version,
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
+                spawner_database=self,
             )
         else:
             if dev_ops_url is not None:
@@ -1952,4 +1957,5 @@ class AsyncDatabase:
                 api_version=self.api_version,
                 caller_name=self.caller_name,
                 caller_version=self.caller_version,
+                spawner_database=self,
             )
