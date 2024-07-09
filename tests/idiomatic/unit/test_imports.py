@@ -132,6 +132,7 @@ def test_imports() -> None:
         EmbeddingProviderModel,
         EmbeddingProviderParameter,
         EmbeddingProviderToken,
+        FindEmbeddingProvidersResult,
     )
     from astrapy.operations import (  # noqa: F401
         AsyncBaseOperation,

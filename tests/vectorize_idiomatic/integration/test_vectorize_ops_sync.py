@@ -17,7 +17,7 @@ from __future__ import annotations
 import pytest
 
 from astrapy import Database
-from astrapy.info import EmbeddingProvider
+from astrapy.info import EmbeddingProvider, FindEmbeddingProvidersResult
 
 
 class TestVectorizeOpsSync:
@@ -27,14 +27,22 @@ class TestVectorizeOpsSync:
         sync_database: Database,
     ) -> None:
         database_admin = sync_database.get_database_admin()
-        ep_map = database_admin.find_embedding_providers()
+        ep_result = database_admin.find_embedding_providers()
+
+        assert isinstance(ep_result, FindEmbeddingProvidersResult)
 
         assert all(
-            isinstance(emb_prov, EmbeddingProvider) for emb_prov in ep_map.values()
+            isinstance(emb_prov, EmbeddingProvider)
+            for emb_prov in ep_result.embedding_providers.values()
         )
 
         reconstructed = {
             ep_name: EmbeddingProvider.from_dict(emb_prov.as_dict())
-            for ep_name, emb_prov in ep_map.items()
+            for ep_name, emb_prov in ep_result.embedding_providers.items()
         }
-        assert reconstructed == ep_map
+        assert reconstructed == ep_result.embedding_providers
+        dict_mapping = {
+            ep_name: emb_prov.as_dict()
+            for ep_name, emb_prov in ep_result.embedding_providers.items()
+        }
+        assert dict_mapping == ep_result.raw_info["embeddingProviders"]  # type: ignore[index]

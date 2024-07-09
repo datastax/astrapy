@@ -747,3 +747,57 @@ class EmbeddingProvider:
             },
             url=raw_dict["url"],
         )
+
+
+@dataclass
+class FindEmbeddingProvidersResult:
+    """
+    A representation of the whole response from the 'findEmbeddingProviders'
+    Data API endpoint.
+
+    Attributes:
+        embedding_providers: a dictionary of provider names to EmbeddingProvider objects.
+        raw_info: a (nested) dictionary containing the original full response from the endpoint.
+    """
+
+    def __repr__(self) -> str:
+        return (
+            "FindEmbeddingProvidersResult(embedding_providers="
+            f"{', '.join(sorted(self.embedding_providers.keys()))})"
+        )
+
+    embedding_providers: Dict[str, EmbeddingProvider]
+    raw_info: Optional[Dict[str, Any]]
+
+    def as_dict(self) -> Dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            "embeddingProviders": {
+                ep_name: e_provider.as_dict()
+                for ep_name, e_provider in self.embedding_providers.items()
+            },
+        }
+
+    @staticmethod
+    def from_dict(raw_dict: Dict[str, Any]) -> FindEmbeddingProvidersResult:
+        """
+        Create an instance of FindEmbeddingProvidersResult from a dictionary
+        such as one from the Data API.
+        """
+
+        residual_keys = raw_dict.keys() - {
+            "embeddingProviders",
+        }
+        if residual_keys:
+            warnings.warn(
+                "Unexpected key(s) encountered parsing a dictionary into "
+                f"a `FindEmbeddingProvidersResult`: '{','.join(sorted(residual_keys))}'"
+            )
+        return FindEmbeddingProvidersResult(
+            raw_info=raw_dict,
+            embedding_providers={
+                ep_name: EmbeddingProvider.from_dict(ep_body)
+                for ep_name, ep_body in raw_dict["embeddingProviders"].items()
+            },
+        )

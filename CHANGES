@@ -1,4 +1,4 @@
-(master)
+v. 1.4.0
 ========
 DatabaseAdmin classes retain a reference to the Async/Database instance that spawned it, if any
     - introduced a spawner_database parameter to database admin constructors

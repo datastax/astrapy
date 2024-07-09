@@ -488,6 +488,7 @@ from astrapy.info import (
     EmbeddingProviderToken,
     EmbeddingProviderAuthentication,
     EmbeddingProvider,
+    FindEmbeddingProvidersResult,
 )
 ```
 

@@ -64,4 +64,4 @@ def live_provider_info() -> Dict[str, EmbeddingProvider]:
 
     database_admin = database.get_database_admin()
     response = database_admin.find_embedding_providers()
-    return response
+    return response.embedding_providers

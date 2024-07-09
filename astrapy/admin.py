@@ -41,7 +41,7 @@ from astrapy.exceptions import (
     ops_recast_method_sync,
     to_dataapi_timeout_exception,
 )
-from astrapy.info import AdminDatabaseInfo, DatabaseInfo, EmbeddingProvider
+from astrapy.info import AdminDatabaseInfo, DatabaseInfo, FindEmbeddingProvidersResult
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
@@ -1453,14 +1453,14 @@ class DatabaseAdmin(ABC):
     @abstractmethod
     def find_embedding_providers(
         self, *pargs: Any, **kwargs: Any
-    ) -> Dict[str, EmbeddingProvider]:
+    ) -> FindEmbeddingProvidersResult:
         """Query the Data API for the available embedding providers."""
         ...
 
     @abstractmethod
     async def async_find_embedding_providers(
         self, *pargs: Any, **kwargs: Any
-    ) -> Dict[str, EmbeddingProvider]:
+    ) -> FindEmbeddingProvidersResult:
         """
         Query the Data API for the available embedding providers.
         (Async version of the method.)
@@ -2517,7 +2517,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     def find_embedding_providers(
         self, *, max_time_ms: Optional[int] = None
-    ) -> Dict[str, EmbeddingProvider]:
+    ) -> FindEmbeddingProvidersResult:
         """
         Query the API for the full information on available embedding providers.
 
@@ -2525,7 +2525,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             max_time_ms: a timeout, in milliseconds, for the DevOps API request.
 
         Returns:
-            An `EmbeddingProvidersDescriptor` object with the complete information
+            A `FindEmbeddingProvidersResult` object with the complete information
             returned by the API about available embedding providers
 
         Example (output abridged and indented for clarity):
@@ -2554,16 +2554,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished getting list of embedding providers")
-            return {
-                ep_name: EmbeddingProvider.from_dict(ep_dict)
-                for ep_name, ep_dict in fe_response["status"][
-                    "embeddingProviders"
-                ].items()
-            }
+            return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
 
     async def async_find_embedding_providers(
         self, *, max_time_ms: Optional[int] = None
-    ) -> Dict[str, EmbeddingProvider]:
+    ) -> FindEmbeddingProvidersResult:
         """
         Query the API for the full information on available embedding providers.
         Async version of the method, for use in an asyncio context.
@@ -2572,7 +2567,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             max_time_ms: a timeout, in milliseconds, for the DevOps API request.
 
         Returns:
-            An `EmbeddingProvidersDescriptor` object with the complete information
+            A `FindEmbeddingProvidersResult` object with the complete information
             returned by the API about available embedding providers
 
         Example (output abridged and indented for clarity):
@@ -2601,12 +2596,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished getting list of embedding providers, async")
-            return {
-                ep_name: EmbeddingProvider.from_dict(ep_dict)
-                for ep_name, ep_dict in fe_response["status"][
-                    "embeddingProviders"
-                ].items()
-            }
+            return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
 
 
 class DataAPIDatabaseAdmin(DatabaseAdmin):
@@ -3190,7 +3180,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
     def find_embedding_providers(
         self, *, max_time_ms: Optional[int] = None
-    ) -> Dict[str, EmbeddingProvider]:
+    ) -> FindEmbeddingProvidersResult:
         """
         Query the API for the full information on available embedding providers.
 
@@ -3198,7 +3188,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             max_time_ms: a timeout, in milliseconds, for the DevOps API request.
 
         Returns:
-            An `EmbeddingProvidersDescriptor` object with the complete information
+            A `FindEmbeddingProvidersResult` object with the complete information
             returned by the API about available embedding providers
 
         Example (output abridged and indented for clarity):
@@ -3227,16 +3217,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished getting list of embedding providers")
-            return {
-                ep_name: EmbeddingProvider.from_dict(ep_dict)
-                for ep_name, ep_dict in fe_response["status"][
-                    "embeddingProviders"
-                ].items()
-            }
+            return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
 
     async def async_find_embedding_providers(
         self, *, max_time_ms: Optional[int] = None
-    ) -> Dict[str, EmbeddingProvider]:
+    ) -> FindEmbeddingProvidersResult:
         """
         Query the API for the full information on available embedding providers.
         Async version of the method, for use in an asyncio context.
@@ -3245,7 +3230,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             max_time_ms: a timeout, in milliseconds, for the DevOps API request.
 
         Returns:
-            An `EmbeddingProvidersDescriptor` object with the complete information
+            A `FindEmbeddingProvidersResult` object with the complete information
             returned by the API about available embedding providers
 
         Example (output abridged and indented for clarity):
@@ -3274,9 +3259,4 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished getting list of embedding providers, async")
-            return {
-                ep_name: EmbeddingProvider.from_dict(ep_dict)
-                for ep_name, ep_dict in fe_response["status"][
-                    "embeddingProviders"
-                ].items()
-            }
+            return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
