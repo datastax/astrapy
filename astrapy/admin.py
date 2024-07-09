@@ -2529,7 +2529,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             returned by the API about available embedding providers
 
         Example (output abridged and indented for clarity):
-            >>> admin_for_my_db.list_embedding_providers()
+            >>> admin_for_my_db.find_embedding_providers()
+            FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
+            >>> admin_for_my_db.find_embedding_providers().embedding_providers
             {
                 'openai': EmbeddingProvider(
                     display_name='OpenAI',
@@ -2571,7 +2573,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             returned by the API about available embedding providers
 
         Example (output abridged and indented for clarity):
-            >>> admin_for_my_db.list_embedding_providers()
+            >>> admin_for_my_db.find_embedding_providers()
+            FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
+            >>> admin_for_my_db.find_embedding_providers().embedding_providers
             {
                 'openai': EmbeddingProvider(
                     display_name='OpenAI',
@@ -3192,7 +3196,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             returned by the API about available embedding providers
 
         Example (output abridged and indented for clarity):
-            >>> admin_for_my_db.list_embedding_providers()
+            >>> admin_for_my_db.find_embedding_providers()
+            FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
+            >>> admin_for_my_db.find_embedding_providers().embedding_providers
             {
                 'openai': EmbeddingProvider(
                     display_name='OpenAI',
@@ -3234,7 +3240,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             returned by the API about available embedding providers
 
         Example (output abridged and indented for clarity):
-            >>> admin_for_my_db.list_embedding_providers()
+            >>> admin_for_my_db.find_embedding_providers()
+            FindEmbeddingProvidersResult(embedding_providers=..., openai, ...)
+            >>> admin_for_my_db.find_embedding_providers().embedding_providers
             {
                 'openai': EmbeddingProvider(
                     display_name='OpenAI',

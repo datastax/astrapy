@@ -37,6 +37,7 @@ class TestNonAstraAdmin:
             - database -> create_collection/list_collection_names
             - drop namespace
             - list namespaces, check
+            - ALSO: test the update_db_namespace flag when creating from db->dbadmin
         """
         NEW_NS_NAME = "tnaa_test_ns_s"
         NEW_COLL_NAME = "tnaa_test_coll"
@@ -61,6 +62,23 @@ class TestNonAstraAdmin:
         namespaces3 = set(database_admin.list_namespaces())
         assert namespaces3 == namespaces1
 
+        # update_db_namespace:
+        NEW_NS_NAME_NOT_UPDATED = "tnudn_notupd"
+        NEW_NS_NAME_UPDATED = "tnudn_upd"
+
+        database = sync_database._copy()
+
+        namespace0 = database.namespace
+        database_admin = database.get_database_admin()
+        database_admin.create_namespace(NEW_NS_NAME_NOT_UPDATED)
+        assert database.namespace == namespace0
+
+        database_admin.create_namespace(NEW_NS_NAME_UPDATED, update_db_namespace=True)
+        assert database.namespace == NEW_NS_NAME_UPDATED
+
+        database_admin.drop_namespace(NEW_NS_NAME_NOT_UPDATED)
+        database_admin.drop_namespace(NEW_NS_NAME_UPDATED)
+
     @pytest.mark.describe(
         "test of the namespace crud with non-Astra DataAPIDatabaseAdmin, async"
     )
@@ -76,6 +94,7 @@ class TestNonAstraAdmin:
             - database -> create_collection/list_collection_names
             - drop namespace
             - list namespaces, check
+            - ALSO: test the update_db_namespace flag when creating from db->dbadmin
         """
         NEW_NS_NAME = "tnaa_test_ns_a"
         NEW_COLL_NAME = "tnaa_test_coll"
@@ -100,42 +119,21 @@ class TestNonAstraAdmin:
         namespaces3 = set(await database_admin.async_list_namespaces())
         assert namespaces3 == namespaces1
 
-    @pytest.mark.describe(
-        "test of the update_db_namespace flag for DataAPIDatabaseAdmin, sync"
-    )
-    def test_nonastra_updatedbnamespace_sync(self, sync_database: Database) -> None:
+        # update_db_namespace:
         NEW_NS_NAME_NOT_UPDATED = "tnudn_notupd"
         NEW_NS_NAME_UPDATED = "tnudn_upd"
 
-        namespace0 = sync_database.namespace
-        database_admin = sync_database.get_database_admin()
-        database_admin.create_namespace(NEW_NS_NAME_NOT_UPDATED)
-        assert sync_database.namespace == namespace0
+        adatabase = async_database._copy()
 
-        database_admin.create_namespace(NEW_NS_NAME_UPDATED, update_db_namespace=True)
-        assert sync_database.namespace == NEW_NS_NAME_UPDATED
-
-        database_admin.drop_namespace(NEW_NS_NAME_NOT_UPDATED)
-        database_admin.drop_namespace(NEW_NS_NAME_UPDATED)
-
-    @pytest.mark.describe(
-        "test of the update_db_namespace flag for DataAPIDatabaseAdmin, async"
-    )
-    async def test_nonastra_updatedbnamespace_async(
-        self, async_database: AsyncDatabase
-    ) -> None:
-        NEW_NS_NAME_NOT_UPDATED = "tnudn_notupd"
-        NEW_NS_NAME_UPDATED = "tnudn_upd"
-
-        namespace0 = async_database.namespace
-        database_admin = async_database.get_database_admin()
+        namespace0 = adatabase.namespace
+        database_admin = adatabase.get_database_admin()
         await database_admin.async_create_namespace(NEW_NS_NAME_NOT_UPDATED)
-        assert async_database.namespace == namespace0
+        assert adatabase.namespace == namespace0
 
         await database_admin.async_create_namespace(
             NEW_NS_NAME_UPDATED, update_db_namespace=True
         )
-        assert async_database.namespace == NEW_NS_NAME_UPDATED
+        assert adatabase.namespace == NEW_NS_NAME_UPDATED
 
         await database_admin.async_drop_namespace(NEW_NS_NAME_NOT_UPDATED)
         await database_admin.async_drop_namespace(NEW_NS_NAME_UPDATED)
