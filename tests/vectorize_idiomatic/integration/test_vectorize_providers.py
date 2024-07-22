@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from typing import Any, Dict, List, Union
 
 import pytest
@@ -23,6 +24,8 @@ from astrapy import Database
 from astrapy.authentication import AWSEmbeddingHeadersProvider, EmbeddingHeadersProvider
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.info import CollectionVectorServiceOptions
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from ..conftest import IS_ASTRA_DB
 from ..vectorize_models import live_test_models

@@ -1,3 +1,9 @@
+master
+======
+FindEmbeddingProvidersResult and descendant dataclasses:
+    - knowedge of optional-as-null vs optional-as-possibly-absent ancillary fields
+    - add handling of optional 'hint' and 'displayName' fields for parameters
+
 v. 1.4.0
 ========
 DatabaseAdmin classes retain a reference to the Async/Database instance that spawned it, if any

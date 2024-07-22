@@ -454,7 +454,9 @@ class EmbeddingProviderParameter:
     """
 
     default_value: Any
+    display_name: Optional[str]
     help: Optional[str]
+    hint: Optional[str]
     name: str
     required: bool
     parameter_type: str
@@ -467,12 +469,18 @@ class EmbeddingProviderParameter:
         """Recast this object into a dictionary."""
 
         return {
-            "defaultValue": self.default_value,
-            "help": self.help,
-            "name": self.name,
-            "required": self.required,
-            "type": self.parameter_type,
-            "validation": self.validation,
+            k: v
+            for k, v in {
+                "defaultValue": self.default_value,
+                "displayName": self.display_name,
+                "help": self.help,
+                "hint": self.hint,
+                "name": self.name,
+                "required": self.required,
+                "type": self.parameter_type,
+                "validation": self.validation,
+            }.items()
+            if v is not None
         }
 
     @staticmethod
@@ -484,7 +492,9 @@ class EmbeddingProviderParameter:
 
         residual_keys = raw_dict.keys() - {
             "defaultValue",
+            "displayName",
             "help",
+            "hint",
             "name",
             "required",
             "type",
@@ -497,7 +507,9 @@ class EmbeddingProviderParameter:
             )
         return EmbeddingProviderParameter(
             default_value=raw_dict["defaultValue"],
-            help=raw_dict["help"],
+            display_name=raw_dict.get("displayName"),
+            help=raw_dict.get("help"),
+            hint=raw_dict.get("hint"),
             name=raw_dict["name"],
             required=raw_dict["required"],
             parameter_type=raw_dict["type"],

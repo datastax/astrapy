@@ -17,14 +17,14 @@ from __future__ import annotations
 import json
 import os
 import sys
+from typing import List
+
+from astrapy.info import EmbeddingProviderParameter, FindEmbeddingProvidersResult
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from typing import Dict
-
 from live_provider_info import live_provider_info
-
-from astrapy.info import EmbeddingProvider, EmbeddingProviderParameter
+from vectorize_models import live_test_models
 
 
 def desc_param(param_data: EmbeddingProviderParameter) -> str:
@@ -56,11 +56,15 @@ def desc_param(param_data: EmbeddingProviderParameter) -> str:
 
 
 if __name__ == "__main__":
-    providers: Dict[str, EmbeddingProvider] = live_provider_info()
-    providers_json = {ep_name: ep.as_dict() for ep_name, ep in providers.items()}
+    provider_info: FindEmbeddingProvidersResult = live_provider_info()
+    providers_json = (provider_info.raw_info or {}).get("embeddingProviders")
+    if not providers_json:
+        raise ValueError(
+            "raw info from embedding providers lacks `embeddingProviders` content."
+        )
     json.dump(providers_json, open("_providers.json", "w"), indent=2, sort_keys=True)
 
-    for provider, provider_data in sorted(providers.items()):
+    for provider, provider_data in sorted(provider_info.embedding_providers.items()):
         print(f"{provider} ({len(provider_data.models)} models)")
         print("    auth:")
         for auth_type, auth_data in sorted(
@@ -98,3 +102,22 @@ if __name__ == "__main__":
                             param_display_name = f"({param_name})"
                         param_desc = desc_param(param_data)
                         print(f"        - {param_display_name}: {param_desc}")
+
+    print("\n" * 2)
+    all_test_models = list(live_test_models())
+    for auth_type in ["HEADER", "NONE", "SHARED_SECRET"]:
+        print(f"Tags for auth type {auth_type}:", end="")
+        #
+        at_test_models = [
+            test_model
+            for test_model in all_test_models
+            if test_model["auth_type_name"] == auth_type
+        ]
+        at_model_ids: List[str] = sorted(
+            [str(model_desc["model_tag"]) for model_desc in at_test_models]
+        )
+        if at_model_ids:
+            print("")
+            print("\n".join(f"    {ami}" for ami in at_model_ids))
+        else:
+            print(" (no tags)")
