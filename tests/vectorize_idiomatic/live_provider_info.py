@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-from typing import Dict
-
 from preprocess_env import (
     ASTRA_DB_API_ENDPOINT,
     ASTRA_DB_KEYSPACE,
@@ -29,10 +27,10 @@ from preprocess_env import (
 from astrapy import DataAPIClient, Database
 from astrapy.admin import parse_api_endpoint
 from astrapy.constants import Environment
-from astrapy.info import EmbeddingProvider
+from astrapy.info import FindEmbeddingProvidersResult
 
 
-def live_provider_info() -> Dict[str, EmbeddingProvider]:
+def live_provider_info() -> FindEmbeddingProvidersResult:
     """
     Query the API endpoint `findEmbeddingProviders` endpoint
     for the latest information.
@@ -64,4 +62,4 @@ def live_provider_info() -> Dict[str, EmbeddingProvider]:
 
     database_admin = database.get_database_admin()
     response = database_admin.find_embedding_providers()
-    return response.embedding_providers
+    return response

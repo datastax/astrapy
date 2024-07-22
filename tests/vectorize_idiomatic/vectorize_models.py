@@ -18,8 +18,6 @@ import os
 import sys
 from typing import Any, Dict, Iterable, List, Tuple
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
 from astrapy.authentication import (
     EMBEDDING_HEADER_API_KEY,
     EMBEDDING_HEADER_AWS_ACCESS_ID,
@@ -27,7 +25,9 @@ from astrapy.authentication import (
 )
 from astrapy.info import CollectionVectorServiceOptions, EmbeddingProviderParameter
 
-from .live_provider_info import live_provider_info
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from live_provider_info import live_provider_info
 
 alphanum = set("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890")
 
@@ -196,8 +196,10 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
             return f"{longt[:30]}_{longt[-5:]}"
 
     # generate the full list of models based on the live provider endpoint
-    providers = live_provider_info()
-    for provider_name, provider_desc in sorted(providers.items()):
+    provider_info = live_provider_info()
+    for provider_name, provider_desc in sorted(
+        provider_info.embedding_providers.items()
+    ):
         for model in provider_desc.models:
             for auth_type_name, auth_type_desc in sorted(
                 provider_desc.supported_authentication.items()
