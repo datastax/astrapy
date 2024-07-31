@@ -58,8 +58,6 @@ BC = TypeVar("BC", bound="BaseCursor")
 T = TypeVar("T")
 IndexPairType = Tuple[str, Optional[int]]
 
-FIND_PREFETCH = 20
-
 
 def _maybe_valid_list_index(key_block: str) -> Optional[int]:
     # '0', '1' is good. '00', '01', '-30' are not.
