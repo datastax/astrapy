@@ -1,8 +1,10 @@
-master
-======
+v. 1.4.1
+========
 FindEmbeddingProvidersResult and descendant dataclasses:
-    - knowedge of optional-as-null vs optional-as-possibly-absent ancillary fields
     - add handling of optional 'hint' and 'displayName' fields for parameters
+    - knowedge of optional-as-null vs optional-as-possibly-absent ancillary fields
+Replace bson dependency with pymongo (#297, by @caseyclements)
+
 
 v. 1.4.0
 ========
