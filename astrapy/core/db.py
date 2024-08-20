@@ -17,11 +17,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import queue
 import threading
-from collections.abc import AsyncGenerator, AsyncIterator, Generator, Iterator
+import weakref
+from collections.abc import AsyncGenerator, AsyncIterator, Iterator
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
-from queue import Queue
 from types import TracebackType
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast
 
@@ -52,6 +53,74 @@ from astrapy.core.utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class _PrefetchIterator(Iterator[API_DOC]):
+    def __init__(
+        self,
+        prefetched: int,
+        request_method: PaginableRequestMethod,
+        options: Optional[Dict[str, Any]],
+        raw_response_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+    ):
+        self.queue: queue.Queue[Optional[API_DOC]] = queue.Queue(prefetched)
+        self.request_method = request_method
+        self.options = options
+        self.raw_response_callback = raw_response_callback
+        self.initialised = threading.Event()
+        self.stop = threading.Event()
+        self.thread = threading.Thread(
+            target=_PrefetchIterator.queued_paginate, args=(weakref.proxy(self),)
+        )
+        self.thread.start()
+        while not self.initialised.is_set():
+            # This loop is necessary to stop the main threading doing anything
+            # until the exception handler in queued_paginate can deal with the
+            # object being deleted.
+            pass
+
+    def __iter__(self) -> Iterator[API_DOC]:
+        return self
+
+    @staticmethod
+    def queue_put(
+        q: queue.Queue[Optional[API_DOC]],
+        item: Optional[API_DOC],
+        stop: threading.Event,
+    ) -> None:
+        while not stop.is_set():
+            try:
+                q.put(item, timeout=1)
+                break
+            except queue.Full:
+                # Wait until there is space in the queue or the thread
+                # is stopped
+                pass
+
+    def queued_paginate(self) -> None:
+        self.initialised.set()
+        try:
+            for row in AstraDBCollection.paginate(
+                request_method=self.request_method,
+                options=self.options,
+                raw_response_callback=self.raw_response_callback,
+            ):
+                self.queue_put(self.queue, row, self.stop)
+        except ReferenceError:
+            logger.debug("queued_paginate terminated")
+            return
+        finally:
+            self.queue_put(self.queue, None, self.stop)
+        logger.debug("queued_paginate end")
+
+    def __next__(self) -> API_DOC:
+        doc = self.queue.get()
+        if doc is None:
+            raise StopIteration
+        return doc
+
+    def __del__(self) -> None:
+        self.stop.set()
 
 
 class AstraDBCollection:
@@ -403,9 +472,8 @@ class AstraDBCollection:
         *,
         request_method: PaginableRequestMethod,
         options: Optional[Dict[str, Any]],
-        prefetched: Optional[int] = None,
         raw_response_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
-    ) -> Generator[API_DOC, None, None]:
+    ) -> Iterator[API_DOC]:
         """
         Generate paginated results for a given database query method.
 
@@ -426,45 +494,17 @@ class AstraDBCollection:
             raw_response_callback(response0)
         next_page_state = response0["data"]["nextPageState"]
         options0 = _options
-        if next_page_state is not None and prefetched:
 
-            def queued_paginate(
-                queue: Queue[Optional[API_DOC]],
-                request_method: PaginableRequestMethod,
-                options: Optional[Dict[str, Any]],
-            ) -> None:
-                try:
-                    for row in AstraDBCollection.paginate(
-                        request_method=request_method, options=options
-                    ):
-                        queue.put(row)
-                finally:
-                    queue.put(None)
-
-            queue: Queue[Optional[API_DOC]] = Queue(prefetched)
+        for document in response0["data"]["documents"]:
+            yield document
+        while next_page_state is not None:
             options1 = {**options0, **{"pageState": next_page_state}}
-            t = threading.Thread(
-                target=queued_paginate, args=(queue, request_method, options1)
-            )
-            t.start()
-            for document in response0["data"]["documents"]:
+            response1 = request_method(options=options1)
+            if raw_response_callback:
+                raw_response_callback(response1)
+            for document in response1["data"]["documents"]:
                 yield document
-            doc = queue.get()
-            while doc is not None:
-                yield doc
-                doc = queue.get()
-            t.join()
-        else:
-            for document in response0["data"]["documents"]:
-                yield document
-            while next_page_state is not None and not prefetched:
-                options1 = {**options0, **{"pageState": next_page_state}}
-                response1 = request_method(options=options1)
-                if raw_response_callback:
-                    raw_response_callback(response1)
-                for document in response1["data"]["documents"]:
-                    yield document
-                next_page_state = response1["data"]["nextPageState"]
+            next_page_state = response1["data"]["nextPageState"]
 
     def paginated_find(
         self,
@@ -505,10 +545,16 @@ class AstraDBCollection:
             sort=sort,
             timeout_info=timeout_info,
         )
+        if prefetched:
+            return _PrefetchIterator(
+                request_method=partialed_find,
+                options=options,
+                prefetched=prefetched,
+                raw_response_callback=raw_response_callback,
+            )
         return self.paginate(
             request_method=partialed_find,
             options=options,
-            prefetched=prefetched,
             raw_response_callback=raw_response_callback,
         )
 
