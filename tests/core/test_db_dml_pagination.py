@@ -31,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 FIND_LIMIT = 183  # Keep this > 20 and <= N to actually put pagination to test
 PREFETCHED = 42  # Keep this > 20 and <= FIND_LIMIT to actually trigger prefetching
-ROWS_PER_PAGE = 20
 
 
 @pytest.mark.describe(
