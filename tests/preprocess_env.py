@@ -114,7 +114,10 @@ else:
 is_docker_compose_started = False
 if DOCKER_COMPOSE_LOCAL_DATA_API:
     if not is_docker_compose_started:
-        compose = DockerCompose(filepath=docker_compose_filepath)
+        try:
+            compose = DockerCompose(filepath=docker_compose_filepath)
+        except TypeError:
+            compose = DockerCompose(docker_compose_filepath)
         compose.start()
         time.sleep(DOCKER_COMPOSE_SLEEP_TIME_SECONDS)
         is_docker_compose_started = True
