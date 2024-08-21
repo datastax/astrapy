@@ -114,10 +114,19 @@ else:
 is_docker_compose_started = False
 if DOCKER_COMPOSE_LOCAL_DATA_API:
     if not is_docker_compose_started:
-        try:
-            compose = DockerCompose(filepath=docker_compose_filepath)
-        except TypeError:
-            compose = DockerCompose(docker_compose_filepath)
+
+        # a dirty trick
+        class MyDockerCompose(DockerCompose):
+
+            def docker_compose_command(self):
+                docker_compose_cmd = ["docker", "compose"]
+                for file in self.compose_file_names:
+                    docker_compose_cmd += ["-f", file]
+                if self.env_file:
+                    docker_compose_cmd += ["--env-file", self.env_file]
+                return docker_compose_cmd
+
+        compose = MyDockerCompose(filepath=docker_compose_filepath)
         compose.start()
         time.sleep(DOCKER_COMPOSE_SLEEP_TIME_SECONDS)
         is_docker_compose_started = True
