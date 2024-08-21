@@ -73,11 +73,9 @@ class _PrefetchIterator(Iterator[API_DOC]):
             target=_PrefetchIterator.queued_paginate, args=(weakref.proxy(self),)
         )
         self.thread.start()
-        while not self.initialised.is_set():
-            # This loop is necessary to stop the main threading doing anything
-            # until the exception handler in queued_paginate can deal with the
-            # object being deleted.
-            pass
+        # wait until the exception handler in queued_paginate can deal with the
+        # object being deleted.
+        self.initialised.wait()
 
     def __iter__(self) -> Iterator[API_DOC]:
         return self
