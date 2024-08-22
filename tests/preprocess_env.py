@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Optional
+from typing import List, Optional
 
 from testcontainers.compose import DockerCompose
 
@@ -107,7 +107,7 @@ else:
         raise ValueError("No full authentication data for local Data API")
 
 
-# Ensure docker-compose, if needed, is started and ready before anything else
+# Ensure docker compose, if needed, is started and ready before anything else
 # (especially querying the findEmbeddingProviders)
 # if "DOCKER_COMPOSE_LOCAL_DATA_API", must spin the whole environment:
 # (it is started and not cleaned up at the moment: manual cleanup if needed)
@@ -115,10 +115,26 @@ is_docker_compose_started = False
 if DOCKER_COMPOSE_LOCAL_DATA_API:
     if not is_docker_compose_started:
 
-        # a dirty trick
-        class MyDockerCompose(DockerCompose):
+        """
+        Note: this is a trick to invoke `docker compose` as opposed to `docker-compose`
+        while using testcontainers < 4.
+        This trick is only reliable with testcontainers >= 3.1, < 4.
 
-            def docker_compose_command(self):
+        The reason is that `docker-compose` is not included in the `ubuntu-latest`
+        Github runner starting August 2024 (in favour of `docker compose`).
+
+        - More modern testcontainers would require python>=3.9.
+        - Aliasing 'docker-compose' in the CI container is (more) brittle.
+        - Pip installing a modern testcontainers in the CI yaml is 'inelegant'.
+            (and would require a try/except here with different inits to keep compat.)
+
+        So we ended up with this trick, which redefines the executable to invoke
+        for the DockerCompose class of testcontainers.
+        """
+
+        class RedefineCommandDockerCompose(DockerCompose):
+
+            def docker_compose_command(self) -> List[str]:
                 docker_compose_cmd = ["docker", "compose"]
                 for file in self.compose_file_names:
                     docker_compose_cmd += ["-f", file]
@@ -126,7 +142,7 @@ if DOCKER_COMPOSE_LOCAL_DATA_API:
                     docker_compose_cmd += ["--env-file", self.env_file]
                 return docker_compose_cmd
 
-        compose = MyDockerCompose(filepath=docker_compose_filepath)
+        compose = RedefineCommandDockerCompose(filepath=docker_compose_filepath)
         compose.start()
         time.sleep(DOCKER_COMPOSE_SLEEP_TIME_SECONDS)
         is_docker_compose_started = True
