@@ -1103,6 +1103,7 @@ class AstraDBCollection:
         update: Dict[str, Any],
         sort: Optional[Dict[str, Any]] = None,
         timeout_info: TimeoutInfoWideType = None,
+        options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
         Update a single document in the collection.
@@ -1113,6 +1114,7 @@ class AstraDBCollection:
             timeout_info: a float, or a TimeoutInfo dict, for the HTTP request.
                 Note that a 'read' timeout event will not block the action taken
                 by the API server if it has received the request already.
+            options (dict, optional): Additional options for the operation.
 
         Returns:
             dict: The response from the database after the update operation.
@@ -1121,6 +1123,7 @@ class AstraDBCollection:
             top_level="updateOne",
             filter=filter,
             update=update,
+            options=options,
             sort=sort,
         )
 
@@ -2478,6 +2481,7 @@ class AsyncAstraDBCollection:
         update: Dict[str, Any],
         sort: Optional[Dict[str, Any]] = None,
         timeout_info: TimeoutInfoWideType = None,
+        options: Optional[Dict[str, Any]] = None,
     ) -> API_RESPONSE:
         """
         Update a single document in the collection.
@@ -2488,6 +2492,7 @@ class AsyncAstraDBCollection:
             timeout_info: a float, or a TimeoutInfo dict, for the HTTP request.
                 Note that a 'read' timeout event will not block the action taken
                 by the API server if it has received the request already.
+            options (dict, optional): Additional options for the operation.
 
         Returns:
             dict: The response from the database after the update operation.
@@ -2496,6 +2501,7 @@ class AsyncAstraDBCollection:
             top_level="updateOne",
             filter=filter,
             update=update,
+            options=options,
             sort=sort,
         )
 
