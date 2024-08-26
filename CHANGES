@@ -1,8 +1,12 @@
 master
 ======
+Method 'update_one' of [Async]Collection: now invokes the corresponding API command.
 testing on HCD:
     - DockerCompose tweaked to invoke `docker compose`
     - HCD 1.0.0 and Data API 1.0.15 as test targets
+core:
+    - prefetched find iterators: fix second-thread hangups in some cases (by @cbornet)
+    - added 'options' parameter to [Async]AstraDBCollection.update_one
 
 v. 1.4.1
 ========

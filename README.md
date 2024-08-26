@@ -85,6 +85,29 @@ Next steps:
 - [AstraPy reference](https://docs.datastax.com/en/astra/astra-db-vector/api-reference/dataapiclient.html)
 - Package on [PyPI](https://pypi.org/project/astrapy/)
 
+### Usage with HCD and other non-Astra installations
+
+The main difference to target e.g. a Hyper-Converged Database (HCD)
+installation is how the client is
+initialized. Here is a short example showing just how to get to a `Database`
+(what comes next is unchaged compared to using Astra DB).
+
+```python
+from astrapy import DataAPIClient
+from astrapy.constants import Environment
+from astrapy.authentication import UsernamePasswordTokenProvider
+
+
+# Build a token
+tp = UsernamePasswordTokenProvider("username", "password")
+
+# Initialize the client and get a "Database" object
+client = DataAPIClient(token=tp, environment=Environment.HCD)
+database = client.get_database("http://localhost:8181", token=tp)
+```
+
+For more on this case, please consult the [dedicated reference](https://docs.datastax.com/en/hyper-converged-database/1.0/connect/python-client.html).
+
 ## AstraPy's API
 
 ### Abstraction diagram
@@ -518,8 +541,10 @@ If your code uses the pre-1.0.0 astrapy (i.e. `from astrapy.db import Database, 
 
 That being said, there are no known breakings of backward compatibility:
 **legacy code would run with a newest astrapy version just as well.**
-Here is a recap of the minor changes that came _to the old API_ with 1.0.0:
+Here is a recap of the minor changes that came _to the old API_ with 1.0.0 (and beyond):
 
+- added 'options' parameter to [Async]AstraDBCollection.update_one (v. 1.4.2+)
+- prefetched find iterators: fix second-thread hangups in some cases (v. 1.4.2+)
 - Added support for null tokens (with the effect of no authentication/token header in requests)
 - Added Content-Type header to all HTTP requests to the API
 - Added methods to `[Async]AstraDBCollection`: `delete_one_filter`, 
