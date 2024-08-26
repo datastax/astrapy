@@ -20,9 +20,11 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 from astrapy.admin import (
     api_endpoint_parser,
+    api_endpoint_parsing_error_message,
     build_api_endpoint,
     database_id_matcher,
     fetch_raw_database_info_from_id_token,
+    generic_api_url_parsing_error_message,
     normalize_id_endpoint_parameters,
     parse_api_endpoint,
     parse_generic_api_url,
@@ -439,9 +441,8 @@ class DataAPIClient:
                     api_version=api_version,
                 )
             else:
-                raise ValueError(
-                    f"Cannot parse the provided API endpoint ({api_endpoint})."
-                )
+                msg = api_endpoint_parsing_error_message(api_endpoint)
+                raise ValueError(msg)
         else:
             parsed_generic_api_endpoint = parse_generic_api_url(api_endpoint)
             if parsed_generic_api_endpoint:
@@ -457,9 +458,8 @@ class DataAPIClient:
                     api_version=api_version,
                 )
             else:
-                raise ValueError(
-                    f"Cannot parse the provided API endpoint ({api_endpoint})."
-                )
+                msg = generic_api_url_parsing_error_message(api_endpoint)
+                raise ValueError(msg)
 
     def get_async_database_by_api_endpoint(
         self,

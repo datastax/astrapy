@@ -75,9 +75,12 @@ api_endpoint_parser = re.compile(
     r"(dev|test)?"
     r".datastax.com"
 )
+api_endpoint_description = (
+    "https://<hexadecimal db uuid>-<db region>.apps.astra.datastax.com"
+)
 
 generic_api_url_matcher = re.compile(r"^https?:\/\/[a-zA-Z0-9\-.]+(\:[0-9]{1,6}){0,1}$")
-
+generic_api_url_descriptor = "http[s]://<domain name or IP>[:port]"
 
 DEV_OPS_URL_MAP = {
     Environment.PROD: "https://api.astra.datastax.com",
@@ -155,6 +158,16 @@ def parse_api_endpoint(api_endpoint: str) -> Optional[ParsedAPIEndpoint]:
         return None
 
 
+def api_endpoint_parsing_error_message(failing_url: str) -> str:
+    """
+    Format an error message with a suggestion for the expected url format.
+    """
+    return (
+        f"Cannot parse the supplied API endpoint ({failing_url}). The endpoint "
+        f'must be in the following form: "{api_endpoint_description}".'
+    )
+
+
 def parse_generic_api_url(api_endpoint: str) -> Optional[str]:
     """
     Validate a generic API Endpoint string,
@@ -177,6 +190,16 @@ def parse_generic_api_url(api_endpoint: str) -> Optional[str]:
         return match[0].rstrip("/")
     else:
         return None
+
+
+def generic_api_url_parsing_error_message(failing_url: str) -> str:
+    """
+    Format an error message with a suggestion for the expected url format.
+    """
+    return (
+        f"Cannot parse the supplied API endpoint ({failing_url}). The endpoint "
+        f'must be in the following form: "{generic_api_url_descriptor}".'
+    )
 
 
 def build_api_endpoint(environment: str, database_id: str, region: str) -> str:
@@ -1326,9 +1349,8 @@ class AstraDBAdmin:
         else:
             parsed_api_endpoint = parse_api_endpoint(normalized_api_endpoint)
             if parsed_api_endpoint is None:
-                raise ValueError(
-                    f"Cannot parse the API endpoint ({normalized_api_endpoint})."
-                )
+                msg = api_endpoint_parsing_error_message(normalized_api_endpoint)
+                raise ValueError(msg)
 
             this_db_info = self.database_info(
                 parsed_api_endpoint.database_id,
@@ -1569,9 +1591,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self.api_endpoint = normalized_api_endpoint
         parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
         if parsed_api_endpoint is None:
-            raise ValueError(
-                f"Cannot parse the provided API endpoint ({self.api_endpoint})."
-            )
+            msg = api_endpoint_parsing_error_message(self.api_endpoint)
+            raise ValueError(msg)
 
         self._database_id = parsed_api_endpoint.database_id
         self._region = parsed_api_endpoint.region
@@ -1881,7 +1902,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 dev_ops_api_version=dev_ops_api_version,
             )
         else:
-            raise ValueError("Cannot parse the provided API endpoint.")
+            msg = api_endpoint_parsing_error_message(api_endpoint)
+            raise ValueError(msg)
 
     def info(self, *, max_time_ms: Optional[int] = None) -> AdminDatabaseInfo:
         """
