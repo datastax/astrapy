@@ -1892,26 +1892,26 @@ class Collection:
             "upsert": upsert,
         }
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling find_one_and_update on '{self.name}'")
-        fo_response = self._astra_db_collection.find_one_and_update(
+        logger.info(f"calling update_one on '{self.name}'")
+        uo_response = self._astra_db_collection.update_one(
             update=update,
             sort=_sort,
             filter=filter,
             options=options,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling find_one_and_update on '{self.name}'")
-        if "document" in fo_response.get("data", {}):
-            fo_status = fo_response.get("status") or {}
-            _update_info = _prepare_update_info([fo_status])
+        logger.info(f"finished calling update_one on '{self.name}'")
+        if "status" in uo_response:
+            uo_status = uo_response["status"]
+            _update_info = _prepare_update_info([uo_status])
             return UpdateResult(
-                raw_results=[fo_response],
+                raw_results=[uo_response],
                 update_info=_update_info,
             )
         else:
             raise DataAPIFaultyResponseException(
-                text="Faulty response from find_one_and_update API command.",
-                raw_response=fo_response,
+                text="Faulty response from update_one API command.",
+                raw_response=uo_response,
             )
 
     @recast_method_sync
@@ -4429,26 +4429,26 @@ class AsyncCollection:
             "upsert": upsert,
         }
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling find_one_and_update on '{self.name}'")
-        fo_response = await self._astra_db_collection.find_one_and_update(
+        logger.info(f"calling update_one on '{self.name}'")
+        uo_response = await self._astra_db_collection.update_one(
             update=update,
             sort=_sort,
             filter=filter,
             options=options,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling find_one_and_update on '{self.name}'")
-        if "document" in fo_response.get("data", {}):
-            fo_status = fo_response.get("status") or {}
-            _update_info = _prepare_update_info([fo_status])
+        logger.info(f"finished calling update_one on '{self.name}'")
+        if "status" in uo_response:
+            uo_status = uo_response["status"]
+            _update_info = _prepare_update_info([uo_status])
             return UpdateResult(
-                raw_results=[fo_response],
+                raw_results=[uo_response],
                 update_info=_update_info,
             )
         else:
             raise DataAPIFaultyResponseException(
-                text="Faulty response from find_one_and_update API command.",
-                raw_response=fo_response,
+                text="Faulty response from update_one API command.",
+                raw_response=uo_response,
             )
 
     @recast_method_async
