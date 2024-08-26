@@ -518,8 +518,10 @@ If your code uses the pre-1.0.0 astrapy (i.e. `from astrapy.db import Database, 
 
 That being said, there are no known breakings of backward compatibility:
 **legacy code would run with a newest astrapy version just as well.**
-Here is a recap of the minor changes that came _to the old API_ with 1.0.0:
+Here is a recap of the minor changes that came _to the old API_ with 1.0.0 (and beyond):
 
+- added 'options' parameter to [Async]AstraDBCollection.update_one (v. 1.4.2+)
+- prefetched find iterators: fix second-thread hangups in some cases (v. 1.4.2+)
 - Added support for null tokens (with the effect of no authentication/token header in requests)
 - Added Content-Type header to all HTTP requests to the API
 - Added methods to `[Async]AstraDBCollection`: `delete_one_filter`, 
