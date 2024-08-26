@@ -85,6 +85,29 @@ Next steps:
 - [AstraPy reference](https://docs.datastax.com/en/astra/astra-db-vector/api-reference/dataapiclient.html)
 - Package on [PyPI](https://pypi.org/project/astrapy/)
 
+### Usage with HCD and other non-Astra installations
+
+The main difference to target e.g. a Hyper-Converged Database (HCD)
+installation is how the client is
+initialized. Here is a short example showing just how to get to a `Database`
+(what comes next is unchaged compared to using Astra DB).
+
+```python
+from astrapy import DataAPIClient
+from astrapy.constants import Environment
+from astrapy.authentication import UsernamePasswordTokenProvider
+
+
+# Build a token
+tp = UsernamePasswordTokenProvider("username", "password")
+
+# Initialize the client and get a "Database" object
+client = DataAPIClient(token=tp, environment=Environment.HCD)
+database = client.get_database("http://localhost:8181", token=tp)
+```
+
+For more on this case, please consult the [dedicated reference](https://docs.datastax.com/en/hyper-converged-database/1.0/connect/python-client.html).
+
 ## AstraPy's API
 
 ### Abstraction diagram
