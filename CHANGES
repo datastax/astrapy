@@ -1,5 +1,6 @@
 master
 ======
+core, prefetched find iterators: fix second-thread hangups in some cases (by @cbornet)
 testing on HCD:
     - DockerCompose tweaked to invoke `docker compose`
     - HCD 1.0.0 and Data API 1.0.15 as test targets
