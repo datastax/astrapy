@@ -29,7 +29,7 @@ from astrapy.admin import (
     parse_api_endpoint,
     parse_generic_api_url,
 )
-from astrapy.authentication import coerce_token_provider
+from astrapy.authentication import coerce_token_provider, redact_secret
 from astrapy.constants import Environment
 
 if TYPE_CHECKING:
@@ -96,14 +96,18 @@ class DataAPIClient:
         self._caller_version = caller_version
 
     def __repr__(self) -> str:
-        env_desc: str
-        if self.environment == Environment.PROD:
-            env_desc = ""
+        token_desc: Optional[str]
+        if self.token_provider:
+            token_desc = f'"{redact_secret(str(self.token_provider), 15)}"'
         else:
-            env_desc = f', environment="{self.environment}"'
-        return (
-            f'{self.__class__.__name__}("{str(self.token_provider)[:12]}..."{env_desc})'
-        )
+            token_desc = None
+        env_desc: Optional[str]
+        if self.environment == Environment.PROD:
+            env_desc = None
+        else:
+            env_desc = f'environment="{self.environment}"'
+        parts = [pt for pt in [token_desc, env_desc] if pt is not None]
+        return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, DataAPIClient):
