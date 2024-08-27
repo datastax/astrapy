@@ -32,6 +32,9 @@ class OperationResult(ABC):
 
     raw_results: List[Dict[str, Any]]
 
+    def _piecewise_repr(self, pieces: List[Optional[str]]) -> str:
+        return f"{self.__class__.__name__}({', '.join(pc for pc in pieces if pc)})"
+
     @abstractmethod
     def to_bulk_write_result(self, index_in_bulk_write: int) -> BulkWriteResult: ...
 
@@ -49,6 +52,14 @@ class DeleteResult(OperationResult):
     """
 
     deleted_count: Optional[int]
+
+    def __repr__(self) -> str:
+        return self._piecewise_repr(
+            [
+                f"deleted_count={self.deleted_count}",
+                "raw_results=..." if self.raw_results is not None else None,
+            ]
+        )
 
     def to_bulk_write_result(self, index_in_bulk_write: int) -> BulkWriteResult:
         return BulkWriteResult(
@@ -74,6 +85,14 @@ class InsertOneResult(OperationResult):
 
     inserted_id: Any
 
+    def __repr__(self) -> str:
+        return self._piecewise_repr(
+            [
+                f"inserted_id={self.inserted_id}",
+                "raw_results=..." if self.raw_results is not None else None,
+            ]
+        )
+
     def to_bulk_write_result(self, index_in_bulk_write: int) -> BulkWriteResult:
         return BulkWriteResult(
             bulk_api_results={index_in_bulk_write: self.raw_results},
@@ -97,6 +116,14 @@ class InsertManyResult(OperationResult):
     """
 
     inserted_ids: List[Any]
+
+    def __repr__(self) -> str:
+        return self._piecewise_repr(
+            [
+                f"inserted_ids={self.inserted_ids}",
+                "raw_results=..." if self.raw_results is not None else None,
+            ]
+        )
 
     def to_bulk_write_result(self, index_in_bulk_write: int) -> BulkWriteResult:
         return BulkWriteResult(
@@ -127,6 +154,14 @@ class UpdateResult(OperationResult):
     """
 
     update_info: Dict[str, Any]
+
+    def __repr__(self) -> str:
+        return self._piecewise_repr(
+            [
+                f"update_info={self.update_info}",
+                "raw_results=..." if self.raw_results is not None else None,
+            ]
+        )
 
     def to_bulk_write_result(self, index_in_bulk_write: int) -> BulkWriteResult:
         inserted_count = 1 if "upserted" in self.update_info else 0
@@ -173,6 +208,18 @@ class BulkWriteResult:
     modified_count: int
     upserted_count: int
     upserted_ids: Dict[int, Any]
+
+    def __repr__(self) -> str:
+        pieces = [
+            f"deleted_count={self.deleted_count}",
+            f"inserted_count={self.inserted_count}",
+            f"matched_count={self.matched_count}",
+            f"modified_count={self.modified_count}",
+            f"upserted_count={self.upserted_count}",
+            f"upserted_ids={self.upserted_ids}",
+            "bulk_api_results=..." if self.bulk_api_results else None,
+        ]
+        return f"{self.__class__.__name__}({', '.join(pc for pc in pieces if pc)})"
 
     @staticmethod
     def zero() -> BulkWriteResult:
