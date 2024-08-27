@@ -300,6 +300,7 @@ class CollectionOptions:
                     if self.default_id is None
                     else f"default_id={self.default_id.__repr__()}"
                 ),
+                None if self.raw_options is None else "raw_options=...",
             ]
             if pc is not None
         ]
@@ -392,11 +393,16 @@ class CollectionDescriptor:
     raw_descriptor: Optional[Dict[str, Any]]
 
     def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}("
-            f"name={self.name.__repr__()}, "
-            f"options={self.options.__repr__()})"
-        )
+        not_null_pieces = [
+            pc
+            for pc in [
+                f"name={self.name.__repr__()}",
+                f"options={self.options.__repr__()}",
+                None if self.raw_descriptor is None else "raw_descriptor=...",
+            ]
+            if pc is not None
+        ]
+        return f"{self.__class__.__name__}({', '.join(not_null_pieces)})"
 
     def as_dict(self) -> Dict[str, Any]:
         """
