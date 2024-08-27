@@ -28,6 +28,7 @@ from astrapy.api_options import CollectionAPIOptions
 from astrapy.authentication import (
     coerce_embedding_headers_provider,
     coerce_token_provider,
+    redact_secret,
 )
 from astrapy.constants import Environment
 from astrapy.core.db import AstraDB, AsyncAstraDB
@@ -196,11 +197,19 @@ class Database:
         return self.get_collection(name=collection_name)
 
     def __repr__(self) -> str:
-        namespace_desc = self.namespace if self.namespace is not None else "(not set)"
-        return (
-            f'{self.__class__.__name__}(api_endpoint="{self.api_endpoint}", '
-            f'token="{str(self.token_provider)[:12]}...", namespace="{namespace_desc}")'
-        )
+        ep_desc = f'api_endpoint="{self.api_endpoint}"'
+        token_desc: Optional[str]
+        if self.token_provider:
+            token_desc = f'"{redact_secret(str(self.token_provider), 15)}"'
+        else:
+            token_desc = None
+        namespace_desc: Optional[str]
+        if self.namespace is None:
+            namespace_desc = "namespace not set"
+        else:
+            namespace_desc = f'namespace="{self.namespace}"'
+        parts = [pt for pt in [ep_desc, token_desc, namespace_desc] if pt is not None]
+        return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, Database):
@@ -1112,11 +1121,19 @@ class AsyncDatabase:
         return self.to_sync().get_collection(name=collection_name).to_async()
 
     def __repr__(self) -> str:
-        namespace_desc = self.namespace if self.namespace is not None else "(not set)"
-        return (
-            f'{self.__class__.__name__}(api_endpoint="{self.api_endpoint}", '
-            f'token="{str(self.token_provider)[:12]}...", namespace="{namespace_desc}")'
-        )
+        ep_desc = f'api_endpoint="{self.api_endpoint}"'
+        token_desc: Optional[str]
+        if self.token_provider:
+            token_desc = f'"{redact_secret(str(self.token_provider), 15)}"'
+        else:
+            token_desc = None
+        namespace_desc: Optional[str]
+        if self.namespace is None:
+            namespace_desc = "namespace not set"
+        else:
+            namespace_desc = f'namespace="{self.namespace}"'
+        parts = [pt for pt in [ep_desc, token_desc, namespace_desc] if pt is not None]
+        return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AsyncDatabase):

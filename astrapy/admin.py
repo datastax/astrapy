@@ -27,7 +27,7 @@ import httpx
 from deprecation import DeprecatedWarning
 
 from astrapy.api_commander import APICommander
-from astrapy.authentication import coerce_token_provider
+from astrapy.authentication import coerce_token_provider, redact_secret
 from astrapy.constants import Environment
 from astrapy.core.defaults import DEFAULT_AUTH_HEADER
 from astrapy.core.ops import AstraDBOps
@@ -545,6 +545,8 @@ class AstraDBAdmin:
     ) -> None:
         self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
+        if self.environment not in Environment.astra_db_values:
+            raise ValueError("Environments outside of Astra DB are not supported.")
         if dev_ops_url is None:
             self.dev_ops_url = DEV_OPS_URL_MAP[self.environment]
         else:
@@ -562,14 +564,18 @@ class AstraDBAdmin:
         )
 
     def __repr__(self) -> str:
-        env_desc: str
-        if self.environment == Environment.PROD:
-            env_desc = ""
+        token_desc: Optional[str]
+        if self.token_provider:
+            token_desc = f'"{redact_secret(str(self.token_provider), 15)}"'
         else:
-            env_desc = f', environment="{self.environment}"'
-        return (
-            f'{self.__class__.__name__}("{str(self.token_provider)[:12]}..."{env_desc})'
-        )
+            token_desc = None
+        env_desc: Optional[str]
+        if self.environment == Environment.PROD:
+            env_desc = None
+        else:
+            env_desc = f'environment="{self.environment}"'
+        parts = [pt for pt in [token_desc, env_desc] if pt is not None]
+        return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AstraDBAdmin):
@@ -1652,15 +1658,19 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             )
 
     def __repr__(self) -> str:
-        env_desc: str
-        if self.environment == Environment.PROD:
-            env_desc = ""
+        ep_desc = f'api_endpoint="{self.api_endpoint}"'
+        token_desc: Optional[str]
+        if self.token_provider:
+            token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
         else:
-            env_desc = f', environment="{self.environment}"'
-        return (
-            f'{self.__class__.__name__}(api_endpoint="{self.api_endpoint}", '
-            f'"{str(self.token_provider)[:12]}..."{env_desc})'
-        )
+            token_desc = None
+        env_desc: Optional[str]
+        if self.environment == Environment.PROD:
+            env_desc = None
+        else:
+            env_desc = f'environment="{self.environment}"'
+        parts = [pt for pt in [ep_desc, token_desc, env_desc] if pt is not None]
+        return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AstraDBDatabaseAdmin):
@@ -2734,11 +2744,15 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
 
     def __repr__(self) -> str:
-        env_desc = f', environment="{self.environment}"'
-        return (
-            f'{self.__class__.__name__}(endpoint="{self.api_endpoint}", '
-            f'"{str(self.token_provider)[:12]}..."{env_desc})'
-        )
+        ep_desc = f'api_endpoint="{self.api_endpoint}"'
+        token_desc: Optional[str]
+        if self.token_provider:
+            token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
+        else:
+            token_desc = None
+        env_desc = f'environment="{self.environment}"'
+        parts = [pt for pt in [ep_desc, token_desc, env_desc] if pt is not None]
+        return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, DataAPIDatabaseAdmin):
