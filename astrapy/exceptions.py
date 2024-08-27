@@ -134,16 +134,45 @@ class DataAPIErrorDescriptor:
         attributes: a dict with any further key-value pairs returned by the API.
     """
 
+    title: Optional[str]
     error_code: Optional[str]
     message: Optional[str]
+    family: Optional[str]
+    scope: Optional[str]
+    id: Optional[str]
     attributes: Dict[str, Any]
 
+    _known_dict_fields = {
+        "title",
+        "errorCode",
+        "message",
+        "family",
+        "scope",
+        "id",
+    }
+
     def __init__(self, error_dict: Dict[str, str]) -> None:
+        self.title = error_dict.get("title")
         self.error_code = error_dict.get("errorCode")
         self.message = error_dict.get("message")
+        self.family = error_dict.get("family")
+        self.scope = error_dict.get("scope")
+        self.id = error_dict.get("id")
         self.attributes = {
-            k: v for k, v in error_dict.items() if k not in {"errorCode", "message"}
+            k: v for k, v in error_dict.items() if k not in self._known_dict_fields
         }
+
+    def __repr__(self) -> str:
+        pieces = [
+            f"{self.title.__repr__()}" if self.title else None,
+            f"error_code={self.error_code.__repr__()}" if self.error_code else None,
+            f"message={self.message.__repr__()}" if self.message else None,
+            f"family={self.family.__repr__()}" if self.family else None,
+            f"scope={self.scope.__repr__()}" if self.scope else None,
+            f"id={self.id.__repr__()}" if self.id else None,
+            f"attributes={self.attributes.__repr__()}" if self.attributes else None,
+        ]
+        return f"{self.__class__.__name__}({', '.join(pc for pc in pieces if pc)})"
 
 
 @dataclass

@@ -3,6 +3,7 @@ master
 Method 'update_one' of [Async]Collection: now invokes the corresponding API command.
 Better URL-parsing error messages for the API endpoint (with guidance on expected format)
 Improved __repr__ for: token/auth-related items, Database/Client classes, response+info objects
+DataAPIErrorDescriptor can parse 'extend error' in the responses
 testing on HCD:
     - DockerCompose tweaked to invoke `docker compose`
     - HCD 1.0.0 and Data API 1.0.15 as test targets
