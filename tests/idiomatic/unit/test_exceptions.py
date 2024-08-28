@@ -14,9 +14,13 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 from httpx import HTTPStatusError, Response
+from pytest_httpserver import HTTPServer
 
+from astrapy import DataAPIClient
 from astrapy.exceptions import (
     DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
@@ -26,6 +30,14 @@ from astrapy.exceptions import (
     InsertManyException,
 )
 from astrapy.results import DeleteResult, InsertManyResult
+
+SAMPLE_API_MESSAGE = "da_message"
+SAMPLE_API_ERROR_OBJECT = {
+    "title": "da_title",
+    "errorCode": "DA_ERRORCODE",
+    "message": SAMPLE_API_MESSAGE,
+}
+FULL_RESPONSE_OF_500 = json.dumps({"errors": [SAMPLE_API_ERROR_OBJECT]})
 
 
 @pytest.mark.describe("test DataAPIHttpException")
@@ -53,7 +65,7 @@ def test_dataapihttpexception() -> None:
         request="req",  # type: ignore[arg-type]
         response=Response(
             status_code=500,
-            text='{"errors": [{"title":"da_title","errorCode":"DA_ERRORCODE","message":"da_message"}]}',
+            text=FULL_RESPONSE_OF_500,
         ),
     )
 
@@ -75,7 +87,153 @@ def test_dataapihttpexception() -> None:
     str(de2)
     str(de3)
     str(de4)
-    assert "da_message" in str(de5)
+    assert SAMPLE_API_MESSAGE in str(de5)
+
+
+@pytest.mark.describe("test DataAPIHttpException raising 500 from a mock server, sync")
+def test_dataapihttpexception_raising_500_sync(httpserver: HTTPServer) -> None:
+    """
+    testing that:
+        - the request gets sent
+        - the correct exception is raised, with the expected members:
+            - X its request and response fields are those of the httpx object
+            - its DataAPIHttpException fields are set
+        - it is caught with an httpx "except" clause all right
+    """
+    root_endpoint = httpserver.url_for("/")
+    client = DataAPIClient(environment="other")
+    database = client.get_database(root_endpoint, namespace="xnamespace")
+    collection = database.get_collection("xcoll")
+    expected_url = "/v1/xnamespace/xcoll"
+    httpserver.expect_request(
+        expected_url,
+        method="POST",
+    ).respond_with_data(
+        FULL_RESPONSE_OF_500,
+        status=500,
+    )
+    exc = None
+    try:
+        collection.find_one()
+    except HTTPStatusError as e:
+        exc = e
+
+    assert isinstance(exc, DataAPIHttpException)
+    httpx_payload = json.loads(exc.request.content.decode())
+    assert "find" in httpx_payload
+    assert SAMPLE_API_MESSAGE in exc.response.text
+    assert exc.error_descriptors == [DataAPIErrorDescriptor(SAMPLE_API_ERROR_OBJECT)]
+    assert SAMPLE_API_MESSAGE in str(exc)
+
+
+@pytest.mark.describe("test DataAPIHttpException raising 404 from a mock server, sync")
+def test_dataapihttpexception_raising_404_sync(httpserver: HTTPServer) -> None:
+    """
+    testing that:
+        - the request gets sent
+        - the correct exception is raised, with the expected members:
+            - X its request and response fields are those of the httpx object
+            - its DataAPIHttpException fields are set
+        - it is caught with an httpx "except" clause all right
+    """
+    root_endpoint = httpserver.url_for("/")
+    client = DataAPIClient(environment="other")
+    database = client.get_database(root_endpoint, namespace="xnamespace")
+    collection = database.get_collection("xcoll")
+    expected_url = "/v1/xnamespace/xcoll"
+    httpserver.expect_request(
+        expected_url,
+        method="POST",
+    ).respond_with_data(
+        "blah",
+        status=404,
+    )
+    exc = None
+    try:
+        collection.find_one()
+    except HTTPStatusError as e:
+        exc = e
+
+    assert isinstance(exc, DataAPIHttpException)
+    httpx_payload = json.loads(exc.request.content.decode())
+    assert "find" in httpx_payload
+    assert "blah" in exc.response.text
+    assert exc.error_descriptors == []
+    # not parsable into a DataAPIErrorDescriptor -> not in the error str repr
+    assert "blah" not in str(exc)
+
+
+@pytest.mark.describe("test DataAPIHttpException raising 500 from a mock server, async")
+async def test_dataapihttpexception_raising_500_async(httpserver: HTTPServer) -> None:
+    """
+    testing that:
+        - the request gets sent
+        - the correct exception is raised, with the expected members:
+            - X its request and response fields are those of the httpx object
+            - its DataAPIHttpException fields are set
+        - it is caught with an httpx "except" clause all right
+    """
+    root_endpoint = httpserver.url_for("/")
+    client = DataAPIClient(environment="other")
+    adatabase = client.get_async_database(root_endpoint, namespace="xnamespace")
+    acollection = await adatabase.get_collection("xcoll")
+    expected_url = "/v1/xnamespace/xcoll"
+    httpserver.expect_request(
+        expected_url,
+        method="POST",
+    ).respond_with_data(
+        FULL_RESPONSE_OF_500,
+        status=500,
+    )
+    exc = None
+    try:
+        await acollection.find_one()
+    except HTTPStatusError as e:
+        exc = e
+
+    assert isinstance(exc, DataAPIHttpException)
+    httpx_payload = json.loads(exc.request.content.decode())
+    assert "find" in httpx_payload
+    assert SAMPLE_API_MESSAGE in exc.response.text
+    assert exc.error_descriptors == [DataAPIErrorDescriptor(SAMPLE_API_ERROR_OBJECT)]
+    assert SAMPLE_API_MESSAGE in str(exc)
+
+
+@pytest.mark.describe("test DataAPIHttpException raising 404 from a mock server, async")
+async def test_dataapihttpexception_raising_404_async(httpserver: HTTPServer) -> None:
+    """
+    testing that:
+        - the request gets sent
+        - the correct exception is raised, with the expected members:
+            - X its request and response fields are those of the httpx object
+            - its DataAPIHttpException fields are set
+        - it is caught with an httpx "except" clause all right
+    """
+    root_endpoint = httpserver.url_for("/")
+    client = DataAPIClient(environment="other")
+    adatabase = client.get_async_database(root_endpoint, namespace="xnamespace")
+    acollection = await adatabase.get_collection("xcoll")
+    expected_url = "/v1/xnamespace/xcoll"
+    httpserver.expect_request(
+        expected_url,
+        method="POST",
+    ).respond_with_data(
+        "blah",
+        status=404,
+    )
+    exc = None
+    try:
+        await acollection.find_one()
+    except HTTPStatusError as e:
+        exc = e
+
+    assert isinstance(exc, DataAPIHttpException)
+    httpx_payload = json.loads(exc.request.content.decode())
+    assert "find" in httpx_payload
+    assert "blah" in exc.response.text
+    assert exc.error_descriptors == []
+    # not parsable into a DataAPIErrorDescriptor -> not in the error str repr
+    assert "blah" not in str(exc)
 
 
 @pytest.mark.describe("test DataAPIResponseException")

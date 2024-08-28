@@ -97,6 +97,7 @@ def test_imports() -> None:
         DataAPIErrorDescriptor,
         DataAPIException,
         DataAPIFaultyResponseException,
+        DataAPIHttpException,
         DataAPIResponseException,
         DataAPITimeoutException,
         DeleteManyException,
