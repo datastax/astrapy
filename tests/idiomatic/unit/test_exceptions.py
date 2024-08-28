@@ -15,15 +15,67 @@
 from __future__ import annotations
 
 import pytest
+from httpx import HTTPStatusError, Response
 
 from astrapy.exceptions import (
     DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
+    DataAPIHttpException,
     DataAPIResponseException,
     DeleteManyException,
     InsertManyException,
 )
 from astrapy.results import DeleteResult, InsertManyResult
+
+
+@pytest.mark.describe("test DataAPIHttpException")
+def test_dataapihttpexception() -> None:
+    """Test that regardless of how incorrect the input httpx error, nothing breaks."""
+    se0 = HTTPStatusError(message="httpx_message", request="req", response=None)  # type: ignore[arg-type]
+    se1 = HTTPStatusError(message="httpx_message", request="req", response="blah")  # type: ignore[arg-type]
+    se2 = HTTPStatusError(
+        message="httpx_message",
+        request="req",  # type: ignore[arg-type]
+        response=Response(status_code=500, text="blah"),
+    )
+    se3 = HTTPStatusError(
+        message="httpx_message",
+        request="req",  # type: ignore[arg-type]
+        response=Response(status_code=500, text='{"blabla": 1}'),
+    )
+    se4 = HTTPStatusError(
+        message="httpx_message",
+        request="req",  # type: ignore[arg-type]
+        response=Response(status_code=500, text='{"errors": []}'),
+    )
+    se5 = HTTPStatusError(
+        message="httpx_message",
+        request="req",  # type: ignore[arg-type]
+        response=Response(
+            status_code=500,
+            text='{"errors": [{"title":"da_title","errorCode":"DA_ERRORCODE","message":"da_message"}]}',
+        ),
+    )
+
+    de0 = DataAPIHttpException.from_httpx_error(se0)
+    de1 = DataAPIHttpException.from_httpx_error(se1)
+    de2 = DataAPIHttpException.from_httpx_error(se2)
+    de3 = DataAPIHttpException.from_httpx_error(se3)
+    de4 = DataAPIHttpException.from_httpx_error(se4)
+    de5 = DataAPIHttpException.from_httpx_error(se5)
+
+    repr(de0)
+    repr(de1)
+    repr(de2)
+    repr(de3)
+    repr(de4)
+    repr(de5)
+    str(de0)
+    str(de1)
+    str(de2)
+    str(de3)
+    str(de4)
+    assert "da_message" in str(de5)
 
 
 @pytest.mark.describe("test DataAPIResponseException")

@@ -117,8 +117,8 @@ class DevOpsAPIResponseException(DevOpsAPIException):
 
 @dataclass
 class DataAPIErrorDescriptor:
-    """list of
-    Ans object representing a single error returned from the Data API,
+    """
+    An object representing a single error returned from the Data API,
     typically with an error code and a text message.
     An API request would return with an HTTP 200 success error code,
     but contain a nonzero amount of these.
@@ -209,6 +209,77 @@ class DataAPIException(ValueError):
     """
 
     pass
+
+
+@dataclass
+class DataAPIHttpException(DataAPIException, httpx.HTTPStatusError):
+    """
+    A request to the Data API resulted in an HTTP 4xx or 5xx response.
+
+    In most cases this comes with additional information: the purpose
+    of this class is to present such information in a structured way,
+    akin to what happens for the DataAPIResponseException, while
+    still raising (a subclass of) `httpx.HTTPStatusError`.
+
+    Attributes:
+        text: a text message about the exception.
+        error_descriptors: a list of all DataAPIErrorDescriptor objects
+            found in the response.
+    """
+
+    text: Optional[str]
+    error_descriptors: Optional[List[DataAPIErrorDescriptor]]
+
+    def __init__(
+        self,
+        text: Optional[str],
+        *,
+        httpx_error: httpx.HTTPStatusError,
+        error_descriptors: List[DataAPIErrorDescriptor],
+    ) -> None:
+        DataAPIException.__init__(self, text)
+        httpx.HTTPStatusError.__init__(
+            self,
+            message=str(httpx_error),
+            request=httpx_error.request,
+            response=httpx_error.response,
+        )
+        self.text = text
+        self.httpx_error = httpx_error
+        self.error_descriptors = error_descriptors
+
+    def __str__(self) -> str:
+        return self.text or str(self.httpx_error)
+
+    @classmethod
+    def from_httpx_error(
+        cls,
+        httpx_error: httpx.HTTPStatusError,
+        **kwargs: Any,
+    ) -> DataAPIHttpException:
+        """Parse a httpx status error into this exception."""
+
+        raw_response: Dict[str, Any]
+        # the attempt to extract a response structure cannot afford failure.
+        try:
+            raw_response = httpx_error.response.json()
+        except Exception:
+            raw_response = {}
+        error_descriptors = [
+            DataAPIErrorDescriptor(error_dict)
+            for error_dict in raw_response.get("errors") or []
+        ]
+        if error_descriptors:
+            text = f"{error_descriptors[0].message}. {str(httpx_error)}"
+        else:
+            text = str(httpx_error)
+
+        return cls(
+            text=text,
+            httpx_error=httpx_error,
+            error_descriptors=error_descriptors,
+            **kwargs,
+        )
 
 
 @dataclass
@@ -694,6 +765,8 @@ def recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
             raise DataAPIResponseException.from_response(
                 command=exc.payload, raw_response=exc.response.json()
             )
+        except httpx.HTTPStatusError as exc:
+            raise DataAPIHttpException.from_httpx_error(exc)
         except httpx.TimeoutException as texc:
             raise to_dataapi_timeout_exception(texc)
 
@@ -717,6 +790,8 @@ def recast_method_async(
             raise DataAPIResponseException.from_response(
                 command=exc.payload, raw_response=exc.response.json()
             )
+        except httpx.HTTPStatusError as exc:
+            raise DataAPIHttpException.from_httpx_error(exc)
         except httpx.TimeoutException as texc:
             raise to_dataapi_timeout_exception(texc)
 
