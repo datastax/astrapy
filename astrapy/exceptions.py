@@ -228,7 +228,7 @@ class DataAPIHttpException(DataAPIException, httpx.HTTPStatusError):
     """
 
     text: Optional[str]
-    error_descriptors: Optional[List[DataAPIErrorDescriptor]]
+    error_descriptors: List[DataAPIErrorDescriptor]
 
     def __init__(
         self,
