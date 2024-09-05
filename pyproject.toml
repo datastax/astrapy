@@ -31,7 +31,7 @@ python = "^3.8.0"
 cassio = "~0.1.4"
 deprecation = "~2.1.0"
 toml = "^0.10.2"
-uuid6 = "~2024.1.12"
+uuid6 = ">=2024.1.12"
 pymongo = ">=3"
 httpx = { version=">=0.25.2,<1", extras=["http2"] }
 
