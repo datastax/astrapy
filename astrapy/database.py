@@ -200,7 +200,7 @@ class Database:
         ep_desc = f'api_endpoint="{self.api_endpoint}"'
         token_desc: Optional[str]
         if self.token_provider:
-            token_desc = f'"{redact_secret(str(self.token_provider), 15)}"'
+            token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
         else:
             token_desc = None
         namespace_desc: Optional[str]
@@ -1124,7 +1124,7 @@ class AsyncDatabase:
         ep_desc = f'api_endpoint="{self.api_endpoint}"'
         token_desc: Optional[str]
         if self.token_provider:
-            token_desc = f'"{redact_secret(str(self.token_provider), 15)}"'
+            token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
         else:
             token_desc = None
         namespace_desc: Optional[str]
