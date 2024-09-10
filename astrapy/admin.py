@@ -1680,6 +1680,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                     self.token_provider == other.token_provider,
                     self.environment == other.environment,
                     self._astra_db_admin == other._astra_db_admin,
+                    self._api_commander == other._api_commander,
                 ]
             )
         else:
@@ -1770,6 +1771,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
         self._astra_db_admin.set_caller(caller_name, caller_version)
+        self._api_commander = APICommander(
+            api_endpoint=self.api_endpoint,
+            path="/".join(comp for comp in [self.api_path, self.api_version] if comp),
+            headers=self._commander_headers,
+            callers=[(self.caller_name, self.caller_version)],
+        )
 
     @property
     def id(self) -> str:

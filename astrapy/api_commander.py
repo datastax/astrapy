@@ -15,7 +15,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast
+from types import TracebackType
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union, cast
 
 import httpx
 
@@ -44,6 +45,7 @@ from astrapy.core.utils import (
 )
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
+    DataAPIHttpException,
     DataAPIResponseException,
     to_dataapi_timeout_exception,
 )
@@ -76,7 +78,6 @@ def full_user_agent(
 
 class APICommander:
     client = httpx.Client()
-    async_client = httpx.AsyncClient()
 
     def __init__(
         self,
@@ -86,6 +87,7 @@ class APICommander:
         callers: List[Tuple[Optional[str], Optional[str]]] = [],
         redacted_header_names: Iterable[str] = DEFAULT_REDACTED_HEADER_NAMES,
     ) -> None:
+        self.async_client = httpx.AsyncClient()
         self.api_endpoint = api_endpoint.rstrip("/")
         self.path = path.lstrip("/")
         self.headers = headers
@@ -121,6 +123,17 @@ class APICommander:
         else:
             return False
         raise NotImplementedError
+
+    async def __aenter__(self) -> APICommander:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]] = None,
+        exc_value: Optional[BaseException] = None,
+        traceback: Optional[TracebackType] = None,
+    ) -> None:
+        await self.async_client.aclose()
 
     def _copy(
         self,
@@ -178,7 +191,11 @@ class APICommander:
             )
         except httpx.TimeoutException as timeout_exc:
             raise to_dataapi_timeout_exception(timeout_exc)
-        raw_response.raise_for_status()
+
+        try:
+            raw_response.raise_for_status()
+        except httpx.HTTPStatusError as http_exc:
+            raise DataAPIHttpException.from_httpx_error(http_exc)
         # Log the response before returning it
         log_response(raw_response)
         return raw_response
@@ -213,7 +230,11 @@ class APICommander:
             timeout=timeout or DEFAULT_TIMEOUT,
             headers=self.full_headers,
         )
-        raw_response.raise_for_status()
+
+        try:
+            raw_response.raise_for_status()
+        except httpx.HTTPStatusError as http_exc:
+            raise DataAPIHttpException.from_httpx_error(http_exc)
         # Log the response before returning it
         log_response(raw_response)
         return raw_response
