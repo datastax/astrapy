@@ -34,7 +34,12 @@ from astrapy.constants import (
     VectorType,
     normalize_optional_projection,
 )
-from astrapy.core.db import AstraDBCollection, AsyncAstraDBCollection
+from astrapy.core.db import (
+    AstraDB,
+    AstraDBCollection,
+    AsyncAstraDB,
+    AsyncAstraDBCollection,
+)
 from astrapy.core.defaults import DEFAULT_INSERT_NUM_DOCUMENTS
 from astrapy.cursors import AsyncCursor, Cursor
 from astrapy.database import AsyncDatabase, Database
@@ -264,9 +269,21 @@ class Collection:
         else:
             self.api_options = api_options
         additional_headers = self.api_options.embedding_api_key.get_headers()
+        # TODO this part will go to trash as soon as collections are core-free
+        _db_astra_db: AstraDB = AstraDB(
+            token=database.token_provider.get_token(),
+            api_endpoint=database.api_endpoint,
+            api_path=database.api_path,
+            api_version=database.api_version,
+            namespace=database.namespace,
+            caller_name=database.caller_name,
+            caller_version=database.caller_version,
+        )
+        #
         self._astra_db_collection: AstraDBCollection = AstraDBCollection(
             collection_name=name,
-            astra_db=database._astra_db,
+            # TODO: this is a temporary workaround until collections are core-free
+            astra_db=_db_astra_db,
             namespace=namespace,
             caller_name=caller_name,
             caller_version=caller_version,
@@ -2612,6 +2629,7 @@ class Collection:
             {'status': {'count': 123}}
         """
 
+        raise NotImplementedError
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling command on '{self.name}'")
         command_result = self.database.command(
@@ -2621,7 +2639,7 @@ class Collection:
             max_time_ms=_max_time_ms,
         )
         logger.info(f"finished calling command on '{self.name}'")
-        return command_result  # type: ignore[no-any-return]
+        return command_result
 
 
 class AsyncCollection:
@@ -2685,9 +2703,21 @@ class AsyncCollection:
         else:
             self.api_options = api_options
         additional_headers = self.api_options.embedding_api_key.get_headers()
+        # TODO this part will go to trash as soon as collections are core-free
+        _db_astra_db: AsyncAstraDB = AsyncAstraDB(
+            token=database.token_provider.get_token(),
+            api_endpoint=database.api_endpoint,
+            api_path=database.api_path,
+            api_version=database.api_version,
+            namespace=database.namespace,
+            caller_name=database.caller_name,
+            caller_version=database.caller_version,
+        )
+        #
         self._astra_db_collection: AsyncAstraDBCollection = AsyncAstraDBCollection(
             collection_name=name,
-            astra_db=database._astra_db,
+            # TODO: this is a temporary workaround until collections are core-free
+            astra_db=_db_astra_db,
             namespace=namespace,
             caller_name=caller_name,
             caller_version=caller_version,
@@ -5200,6 +5230,7 @@ class AsyncCollection:
             {'status': {'count': 123}}
         """
 
+        raise NotImplementedError
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"calling command on '{self.name}'")
         command_result = await self.database.command(
@@ -5209,4 +5240,4 @@ class AsyncCollection:
             max_time_ms=_max_time_ms,
         )
         logger.info(f"finished calling command on '{self.name}'")
-        return command_result  # type: ignore[no-any-return]
+        return command_result

@@ -51,16 +51,16 @@ class TestTimeoutAsync:
         async_database: AsyncDatabase,
     ) -> None:
         info = fetch_database_info(
-            async_database._astra_db.api_endpoint,
-            token=async_database._astra_db.token,
+            async_database.api_endpoint,
+            token=async_database.token_provider.get_token(),
             namespace=async_database.namespace,
         )
         assert info is not None
 
         with pytest.raises(DataAPITimeoutException) as exc:
             info = fetch_database_info(
-                async_database._astra_db.api_endpoint,
-                token=async_database._astra_db.token,
+                async_database.api_endpoint,
+                token=async_database.token_provider.get_token(),
                 namespace=async_database.namespace,
                 max_time_ms=1,
             )

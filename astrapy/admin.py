@@ -82,19 +82,19 @@ api_endpoint_description = (
 generic_api_url_matcher = re.compile(r"^https?:\/\/[a-zA-Z0-9\-.]+(\:[0-9]{1,6}){0,1}$")
 generic_api_url_descriptor = "http[s]://<domain name or IP>[:port]"
 
-DEV_OPS_URL_MAP = {
+DEV_OPS_URL_MAP: Dict[str, str] = {
     Environment.PROD: "https://api.astra.datastax.com",
     Environment.DEV: "https://api.dev.cloud.datastax.com",
     Environment.TEST: "https://api.test.cloud.datastax.com",
 }
 
-API_ENDPOINT_TEMPLATE_MAP = {
+API_ENDPOINT_TEMPLATE_MAP: Dict[str, str] = {
     Environment.PROD: "https://{database_id}-{region}.apps.astra.datastax.com",
     Environment.DEV: "https://{database_id}-{region}.apps.astra-dev.datastax.com",
     Environment.TEST: "https://{database_id}-{region}.apps.astra-test.datastax.com",
 }
 
-API_PATH_ENV_MAP = {
+API_PATH_ENV_MAP: Dict[str, str] = {
     Environment.PROD: "/api/json",
     Environment.DEV: "/api/json",
     Environment.TEST: "/api/json",
@@ -105,7 +105,7 @@ API_PATH_ENV_MAP = {
     Environment.OTHER: "",
 }
 
-API_VERSION_ENV_MAP = {
+API_VERSION_ENV_MAP: Dict[str, str] = {
     Environment.PROD: "/v1",
     Environment.DEV: "/v1",
     Environment.TEST: "/v1",
