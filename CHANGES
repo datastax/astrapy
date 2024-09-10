@@ -13,6 +13,7 @@ core:
     - prefetched find iterators: fix second-thread hangups in some cases (by @cbornet)
     - added 'options' parameter to [Async]AstraDBCollection.update_one
 
+
 v. 1.4.1
 ========
 FindEmbeddingProvidersResult and descendant dataclasses:
