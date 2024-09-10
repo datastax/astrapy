@@ -1,5 +1,5 @@
-master
-======
+v. 1.4.2
+========
 Method 'update_one' of [Async]Collection: now invokes the corresponding API command.
 Better URL-parsing error messages for the API endpoint (with guidance on expected format)
 Improved __repr__ for: token/auth-related items, Database/Client classes, response+info objects
