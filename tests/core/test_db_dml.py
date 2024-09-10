@@ -42,7 +42,7 @@ def _cleanvec(doc: Dict[str, Any]) -> Dict[str, Any]:
 @pytest.mark.describe("should fail clearing a non-existent collection")
 def test_clear_collection_fail(db: AstraDB) -> None:
     with pytest.raises(APIRequestError):
-        db.collection("this$does%not exist!!!").clear()
+        db.collection("this_does_not_exist").clear()
 
 
 @pytest.mark.describe("should clear a nonvector collection")

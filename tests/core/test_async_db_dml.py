@@ -40,7 +40,7 @@ def _cleanvec(doc: Dict[str, Any]) -> Dict[str, Any]:
 @pytest.mark.describe("should fail clearing a non-existent collection (async)")
 async def test_clear_collection_fail(async_db: AsyncAstraDB) -> None:
     with pytest.raises(APIRequestError):
-        await (await async_db.collection("this$does%not exist!!!")).clear()
+        await (await async_db.collection("this_does_not_exist")).clear()
 
 
 @pytest.mark.describe("should clear a nonvector collection (async)")
