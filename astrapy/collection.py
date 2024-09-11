@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Un
 import deprecation
 
 from astrapy import __version__
+from astrapy.api_commander import APICommander
 from astrapy.api_options import CollectionAPIOptions
 from astrapy.authentication import coerce_embedding_headers_provider
 from astrapy.constants import (
@@ -268,31 +269,47 @@ class Collection:
             self.api_options = CollectionAPIOptions()
         else:
             self.api_options = api_options
-        additional_headers = self.api_options.embedding_api_key.get_headers()
-        # TODO this part will go to trash as soon as collections are core-free
-        _db_astra_db: AstraDB = AstraDB(
-            token=database.token_provider.get_token(),
-            api_endpoint=database.api_endpoint,
-            api_path=database.api_path,
-            api_version=database.api_version,
-            namespace=database.namespace,
-            caller_name=database.caller_name,
-            caller_version=database.caller_version,
-        )
+        # # TODO this part will go to trash as soon as collections are core-free
+        # _db_astra_db: AstraDB = AstraDB(
+        #     token=database.token_provider.get_token(),
+        #     api_endpoint=database.api_endpoint,
+        #     api_path=database.api_path,
+        #     api_version=database.api_version,
+        #     namespace=database.namespace,
+        #     caller_name=database.caller_name,
+        #     caller_version=database.caller_version,
+        # )
         #
-        self._astra_db_collection: AstraDBCollection = AstraDBCollection(
-            collection_name=name,
-            # TODO: this is a temporary workaround until collections are core-free
-            astra_db=_db_astra_db,
-            namespace=namespace,
+        _namespace = namespace if namespace is not None else database.namespace
+        if _namespace is None:
+            raise ValueError("Attempted to create Collection with 'namespace' unset.")
+        self._database = database._copy(
+            namespace=_namespace,
             caller_name=caller_name,
             caller_version=caller_version,
-            additional_headers=additional_headers,
         )
-        # this comes after the above, lets AstraDBCollection resolve namespace
-        self._database = database._copy(
-            namespace=self._astra_db_collection.astra_db.namespace
-        )
+        self._name = name
+
+        additional_headers = self.api_options.embedding_api_key.get_headers()
+        self._commander_headers = {
+            **{DEFAULT_AUTH_HEADER: self.token_provider.get_token()},
+            **additional_headers,
+        }
+
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        self._api_commander = self._get_api_commander()
+
+        # self._astra_db_collection: AstraDBCollection = AstraDBCollection(
+        #     collection_name=name,
+        #     # TODO: this is a temporary workaround until collections are core-free
+        #     astra_db=_db_astra_db,
+        #     namespace=namespace,
+        #     caller_name=caller_name,
+        #     caller_version=caller_version,
+        #     additional_headers=additional_headers,
+        # )
+        # # this comes after the above, lets AstraDBCollection resolve namespace
 
     def __repr__(self) -> str:
         return (
@@ -305,7 +322,7 @@ class Collection:
         if isinstance(other, Collection):
             return all(
                 [
-                    self._astra_db_collection == other._astra_db_collection,
+                    self._api_commander == other._api_commander,
                     self.api_options == other.api_options,
                 ]
             )
@@ -319,6 +336,34 @@ class Collection:
             f"'{self.database.__class__.__name__}' object "
             "it is failing because no such method exists."
         )
+
+    def _get_api_commander(self) -> APICommander:
+        """Instantiate a new APICommander based on the properties of this class."""
+
+        if self._database.namespace is None:
+            raise ValueError(
+                "No namespace specified. Collection requires a namespace to "
+                "be set, e.g. through the `namespace` constructor parameter."
+            )
+
+        base_path_components = [
+            comp
+            for comp in (
+                self._database.api_path.strip("/"),
+                self._database.api_version.strip("/"),
+                self._database.namespace,
+                self._name,
+            )
+            if comp != ""
+        ]
+        base_path = f"/{'/'.join(base_path_components)}"
+        api_commander = APICommander(
+            api_endpoint=self.api_endpoint,
+            path=base_path,
+            headers=self._commander_headers,
+            callers=[(self.caller_name, self.caller_version)],
+        )
+        return api_commander
 
     def _copy(
         self,
@@ -335,8 +380,8 @@ class Collection:
             name=name or self.name,
             namespace=namespace or self.namespace,
             api_options=self.api_options.with_override(api_options),
-            caller_name=caller_name or self._astra_db_collection.caller_name,
-            caller_version=caller_version or self._astra_db_collection.caller_version,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
         )
 
     def with_options(
@@ -461,8 +506,8 @@ class Collection:
             name=name or self.name,
             namespace=namespace or self.namespace,
             api_options=self.api_options.with_override(_api_options),
-            caller_name=caller_name or self._astra_db_collection.caller_name,
-            caller_version=caller_version or self._astra_db_collection.caller_version,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
         )
 
     def set_caller(
@@ -484,10 +529,9 @@ class Collection:
         """
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
-        self._astra_db_collection.set_caller(
-            caller_name=caller_name,
-            caller_version=caller_version,
-        )
+        self.caller_name = caller_name or self.caller_name,
+        self.caller_version = caller_version or self.caller_version,
+        self._api_commander = self._get_api_commander()
 
     def options(self, *, max_time_ms: Optional[int] = None) -> CollectionOptions:
         """
@@ -519,7 +563,7 @@ class Collection:
         ]
         logger.info(f"finished getting collections in search of '{self.name}'")
         if self_descriptors:
-            return self_descriptors[0].options  # type: ignore[no-any-return]
+            return self_descriptors[0].options
         else:
             raise CollectionNotFoundException(
                 text=f"Collection {self.namespace}.{self.name} not found.",
@@ -593,8 +637,7 @@ class Collection:
             'my_v_collection'
         """
 
-        # type hint added as for some reason the typechecker gets lost
-        return self._astra_db_collection.collection_name  # type: ignore[no-any-return, has-type]
+        return self._name
 
     @property
     def full_name(self) -> str:
@@ -674,8 +717,9 @@ class Collection:
         _document = _collate_vector_to_document(document, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"inserting one document in '{self.name}'")
-        io_response = self._astra_db_collection.insert_one(
-            _document,
+        io_payload = {"insertOne": {"document": _document}}
+        io_response = self._api_commander.request(
+            payload=io_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info(f"finished inserting one document in '{self.name}'")
@@ -823,11 +867,16 @@ class Collection:
             inserted_ids: List[Any] = []
             for i in range(0, len(_documents), _chunk_size):
                 logger.info(f"inserting a chunk of documents in '{self.name}'")
-                chunk_response = self._astra_db_collection.insert_many(
-                    documents=_documents[i : i + _chunk_size],
-                    options=options,
-                    partial_failures_allowed=True,
-                    timeout_info=timeout_manager.remaining_timeout_info(),
+                im_payload = {
+                    "insertMany": {
+                        "documents": _documents[i : i + _chunk_size],
+                        "options": options,
+                    },
+                }
+                chunk_response = self._api_commander.request(
+                    payload=im_payload,
+                    raise_api_errors=False,
+                    timeout_info=timeout_manager.remaining_timeout_info(),                    
                 )
                 logger.info(f"finished inserting a chunk of documents in '{self.name}'")
                 # accumulate the results in this call
@@ -868,11 +917,16 @@ class Collection:
                         document_chunk: List[Dict[str, Any]]
                     ) -> Dict[str, Any]:
                         logger.info(f"inserting a chunk of documents in '{self.name}'")
-                        im_response = self._astra_db_collection.insert_many(
-                            documents=document_chunk,
-                            options=options,
-                            partial_failures_allowed=True,
-                            timeout_info=timeout_manager.remaining_timeout_info(),
+                        im_payload = {
+                            "insertMany": {
+                                "documents": document_chunk,
+                                "options": options,
+                            },
+                        }
+                        im_response = self._api_commander.request(
+                            payload=im_payload,
+                            raise_api_errors=False,
+                            timeout_info=timeout_manager.remaining_timeout_info(),                    
                         )
                         logger.info(
                             f"finished inserting a chunk of documents in '{self.name}'"
@@ -891,14 +945,18 @@ class Collection:
             else:
                 for i in range(0, len(_documents), _chunk_size):
                     logger.info(f"inserting a chunk of documents in '{self.name}'")
-                    raw_results.append(
-                        self._astra_db_collection.insert_many(
-                            _documents[i : i + _chunk_size],
-                            options=options,
-                            partial_failures_allowed=True,
-                            timeout_info=timeout_manager.remaining_timeout_info(),
-                        )
+                    im_payload = {
+                        "insertMany": {
+                            "documents": _documents[i : i + _chunk_size],
+                            "options": options,
+                        },
+                    }
+                    im_response = self._api_commander.request(
+                        payload=im_payload,
+                        raise_api_errors=False,
+                        timeout_info=timeout_manager.remaining_timeout_info(),                    
                     )
+                    raw_results.append(im_response)
                     logger.info(
                         f"finished inserting a chunk of documents in '{self.name}'"
                     )
@@ -1131,7 +1189,7 @@ class Collection:
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         if include_similarity is not None and not _is_vector_sort(_sort):
             raise ValueError(
-                "Cannot use `include_similarity` when not searching through `vector`."
+                "Cannot use `include_similarity` unless for vector search."
             )
         return (
             Cursor(
@@ -1390,8 +1448,9 @@ class Collection:
 
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info("calling count_documents")
-        cd_response = self._astra_db_collection.count_documents(
-            filter=filter,
+        cd_payload = {"countDocuments": {"filter": filter}}
+        cd_response = self._api_commander.request(
+            payload=cd_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
         logger.info("finished calling count_documents")
@@ -1438,8 +1497,9 @@ class Collection:
             35700
         """
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        ed_response = self.command(
-            {"estimatedDocumentCount": {}},
+        ed_payload = {"estimatedDocumentCount": {}}
+        ed_response = self._api_commander.request(
+            payload=ed_payload,
             max_time_ms=_max_time_ms,
         )
         if "count" in ed_response.get("status", {}):
@@ -2604,7 +2664,7 @@ class Collection:
         logger.info(f"dropping collection '{self.name}' (self)")
         drop_result = self.database.drop_collection(self, max_time_ms=_max_time_ms)
         logger.info(f"finished dropping collection '{self.name}' (self)")
-        return drop_result  # type: ignore[no-any-return]
+        return drop_result
 
     def command(
         self,
@@ -2955,7 +3015,7 @@ class AsyncCollection:
         ]
         logger.info(f"finished getting collections in search of '{self.name}'")
         if self_descriptors:
-            return self_descriptors[0].options  # type: ignore[no-any-return]
+            return self_descriptors[0].options
         else:
             raise CollectionNotFoundException(
                 text=f"Collection {self.namespace}.{self.name} not found.",
@@ -3010,7 +3070,7 @@ class AsyncCollection:
         The namespace this collection is in.
 
         Example:
-            >>> my_async_coll.database.namespace
+            >>> my_async_coll.namespace
             'default_keyspace'
         """
 
@@ -3589,7 +3649,7 @@ class AsyncCollection:
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         if include_similarity is not None and not _is_vector_sort(_sort):
             raise ValueError(
-                "Cannot use `include_similarity` when not searching through `vector`."
+                "Cannot use `include_similarity` unless for vector search."
             )
         return (
             AsyncCursor(
@@ -5205,7 +5265,7 @@ class AsyncCollection:
             self, max_time_ms=_max_time_ms
         )
         logger.info(f"finished dropping collection '{self.name}' (self)")
-        return drop_result  # type: ignore[no-any-return]
+        return drop_result
 
     async def command(
         self,

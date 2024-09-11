@@ -40,8 +40,6 @@ from astrapy.exceptions import (
     DevOpsAPIException,
     MultiCallTimeoutManager,
     base_timeout_info,
-    recast_method_async,
-    recast_method_sync,
 )
 from astrapy.info import (
     CollectionDescriptor,
@@ -618,7 +616,6 @@ class Database:
             ),
         )
 
-    @recast_method_sync
     def create_collection(
         self,
         name: str,
@@ -755,7 +752,6 @@ class Database:
             collection_max_time_ms=collection_max_time_ms,
         )
 
-    @recast_method_sync
     def drop_collection(
         self,
         name_or_collection: Union[str, Collection],
@@ -807,7 +803,6 @@ class Database:
         logger.info(f"finished dropping collection '{_collection_name}'")
         return dc_response.get("status", {})  # type: ignore[no-any-return]
 
-    @recast_method_sync
     def list_collections(
         self,
         *,
@@ -861,7 +856,6 @@ class Database:
                 ],
             )
 
-    @recast_method_sync
     def list_collection_names(
         self,
         *,
@@ -901,7 +895,6 @@ class Database:
             logger.info("finished getting collections")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
-    @recast_method_sync
     def command(
         self,
         body: Dict[str, Any],
@@ -1554,7 +1547,6 @@ class AsyncDatabase:
             ),
         )
 
-    @recast_method_async
     async def create_collection(
         self,
         name: str,
@@ -1695,7 +1687,6 @@ class AsyncDatabase:
             collection_max_time_ms=collection_max_time_ms,
         )
 
-    @recast_method_async
     async def drop_collection(
         self,
         name_or_collection: Union[str, AsyncCollection],
@@ -1747,7 +1738,6 @@ class AsyncDatabase:
         logger.info(f"finished dropping collection '{_collection_name}'")
         return dc_response.get("status", {})  # type: ignore[no-any-return]
 
-    @recast_method_sync
     def list_collections(
         self,
         *,
@@ -1803,7 +1793,6 @@ class AsyncDatabase:
                 ],
             )
 
-    @recast_method_async
     async def list_collection_names(
         self,
         *,
@@ -1843,7 +1832,6 @@ class AsyncDatabase:
             logger.info("finished getting collections")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
-    @recast_method_async
     async def command(
         self,
         body: Dict[str, Any],
