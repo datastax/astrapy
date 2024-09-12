@@ -223,13 +223,16 @@ class APICommander:
             allow_nan=False,
             separators=(",", ":"),
         ).encode()
-        raw_response = await self.async_client.request(
-            method=http_method,
-            url=self.full_path,
-            content=encoded_payload,
-            timeout=timeout or DEFAULT_TIMEOUT,
-            headers=self.full_headers,
-        )
+        try:
+            raw_response = await self.async_client.request(
+                method=http_method,
+                url=self.full_path,
+                content=encoded_payload,
+                timeout=timeout or DEFAULT_TIMEOUT,
+                headers=self.full_headers,
+            )
+        except httpx.TimeoutException as timeout_exc:
+            raise to_dataapi_timeout_exception(timeout_exc)
 
         try:
             raw_response.raise_for_status()

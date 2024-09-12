@@ -147,10 +147,10 @@ class TestExceptionsAsync:
         async_empty_collection: AsyncCollection,
     ) -> None:
         acol = async_empty_collection._copy()
-        acol._astra_db_collection.collection_name = "hacked"
+        acol._name += "_hacked"
         with pytest.raises(CollectionNotFoundException) as exc:
             await acol.options()
-        assert exc.value.collection_name == "hacked"
+        assert exc.value.collection_name == acol._name
         assert exc.value.namespace == async_empty_collection.namespace
 
     @pytest.mark.describe("test of collection count_documents failure modes, async")
@@ -159,8 +159,8 @@ class TestExceptionsAsync:
         async_empty_collection: AsyncCollection,
     ) -> None:
         acol = async_empty_collection._copy()
-        acol._astra_db_collection.collection_name += "_hacked"
-        acol._astra_db_collection.base_path += "_hacked"
+        acol._name += "_hacked"
+        acol._api_commander.full_path += "_hacked"
         with pytest.raises(DataAPIResponseException):
             await acol.count_documents({}, upper_bound=1)
         await async_empty_collection.insert_one({"a": 1})
@@ -176,8 +176,8 @@ class TestExceptionsAsync:
         async_empty_collection: AsyncCollection,
     ) -> None:
         acol = async_empty_collection._copy()
-        acol._astra_db_collection.collection_name += "_hacked"
-        acol._astra_db_collection.base_path += "_hacked"
+        acol._name += "_hacked"
+        acol._api_commander.full_path += "_hacked"
         with pytest.raises(DataAPIResponseException):
             await acol.delete_many({})
         with pytest.raises(DataAPIResponseException):
@@ -307,7 +307,12 @@ class TestExceptionsAsync:
                 body={"myCommand": {"k": "v"}}, namespace="ns", collection_name="coll"
             )
         with pytest.raises(DataAPIResponseException):
-            await async_database.list_collections(namespace="nonexisting")
+            [
+                coll
+                async for coll in async_database.list_collections(
+                    namespace="nonexisting"
+                )
+            ]
         with pytest.raises(DataAPIResponseException):
             await async_database.list_collection_names(namespace="nonexisting")
 

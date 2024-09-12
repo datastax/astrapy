@@ -94,10 +94,14 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUID,
             default_id_type=DefaultIdType.UUID,
         )
-        assert (await acol.options()).default_id.default_id_type == DefaultIdType.UUID
+        acol_options = await acol.options()
+        assert acol_options is not None
+        assert acol_options.default_id is not None
+        assert acol_options.default_id.default_id_type == DefaultIdType.UUID
         i1res = await acol.insert_one({"role": "probe"})
         assert isinstance(i1res.inserted_id, UUID)
         doc = await acol.find_one({})
+        assert doc is not None
         assert isinstance(doc["_id"], UUID)
         await acol.drop()
 
@@ -106,11 +110,15 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV6,
             default_id_type=DefaultIdType.UUIDV6,
         )
-        assert (await acol.options()).default_id.default_id_type == DefaultIdType.UUIDV6
+        acol_options = await acol.options()
+        assert acol_options is not None
+        assert acol_options.default_id is not None
+        assert acol_options.default_id.default_id_type == DefaultIdType.UUIDV6
         i1res = await acol.insert_one({"role": "probe"})
         assert isinstance(i1res.inserted_id, UUID)
         assert i1res.inserted_id.version == 6
         doc = await acol.find_one({})
+        assert doc is not None
         assert isinstance(doc["_id"], UUID)
         assert doc["_id"].version == 6
         await acol.drop()
@@ -120,11 +128,15 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV7,
             default_id_type=DefaultIdType.UUIDV7,
         )
-        assert (await acol.options()).default_id.default_id_type == DefaultIdType.UUIDV7
+        acol_options = await acol.options()
+        assert acol_options is not None
+        assert acol_options.default_id is not None
+        assert acol_options.default_id.default_id_type == DefaultIdType.UUIDV7
         i1res = await acol.insert_one({"role": "probe"})
         assert isinstance(i1res.inserted_id, UUID)
         assert i1res.inserted_id.version == 7
         doc = await acol.find_one({})
+        assert doc is not None
         assert isinstance(doc["_id"], UUID)
         assert doc["_id"].version == 7
         await acol.drop()
@@ -134,9 +146,10 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.DEFAULT,
             default_id_type=DefaultIdType.DEFAULT,
         )
-        assert (
-            await acol.options()
-        ).default_id.default_id_type == DefaultIdType.DEFAULT
+        acol_options = await acol.options()
+        assert acol_options is not None
+        assert acol_options.default_id is not None
+        assert acol_options.default_id.default_id_type == DefaultIdType.DEFAULT
         await acol.drop()
 
         time.sleep(2)
@@ -144,12 +157,14 @@ class TestDDLAsync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.OBJECTID,
             default_id_type=DefaultIdType.OBJECTID,
         )
-        assert (
-            await acol.options()
-        ).default_id.default_id_type == DefaultIdType.OBJECTID
+        acol_options = await acol.options()
+        assert acol_options is not None
+        assert acol_options.default_id is not None
+        assert acol_options.default_id.default_id_type == DefaultIdType.OBJECTID
         i1res = await acol.insert_one({"role": "probe"})
         assert isinstance(i1res.inserted_id, ObjectId)
         doc = await acol.find_one({})
+        assert doc is not None
         assert isinstance(doc["_id"], ObjectId)
         await acol.drop()
 
@@ -185,9 +200,7 @@ class TestDDLAsync:
     ) -> None:
         info = async_collection.info()
         assert info.namespace == async_collection.namespace
-        assert (
-            info.namespace == async_collection._astra_db_collection.astra_db.namespace
-        )
+        assert info.namespace == async_collection.database.namespace
 
     @pytest.mark.describe("test of Database list_collections, async")
     async def test_database_list_collections_async(

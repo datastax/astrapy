@@ -901,6 +901,7 @@ class Database:
         *,
         namespace: Optional[str] = None,
         collection_name: Optional[str] = None,
+        raise_api_errors: bool = True,
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
@@ -914,6 +915,8 @@ class Database:
             collection_name: if provided, the collection name is appended at the end
                 of the endpoint. In this way, this method allows collection-level
                 arbitrary POST requests as well.
+            raise_api_errors: if True, responses with a nonempty 'errors' field
+                result in an astrapy exception being raised.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -930,8 +933,15 @@ class Database:
             logger.info(
                 "deferring to collection " f"'{collection_name}' for custom command."
             )
-            coll_req_response = self.get_collection(collection_name).command(
+            # if namespace and collection_name both passed, a new database is needed
+            _database: Database
+            if namespace:
+                _database = self._copy(namespace=namespace)
+            else:
+                _database = self
+            coll_req_response = _database.get_collection(collection_name).command(
                 body=body,
+                raise_api_errors=raise_api_errors,
                 max_time_ms=max_time_ms,
             )
             logger.info(
@@ -944,6 +954,7 @@ class Database:
             logger.info("issuing custom command to API")
             req_response = driver_commander.request(
                 payload=body,
+                raise_api_errors=raise_api_errors,
                 timeout_info=base_timeout_info(max_time_ms),
             )
             logger.info("finished issuing custom command to API")
@@ -1838,6 +1849,7 @@ class AsyncDatabase:
         *,
         namespace: Optional[str] = None,
         collection_name: Optional[str] = None,
+        raise_api_errors: bool = True,
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
@@ -1851,6 +1863,8 @@ class AsyncDatabase:
             collection_name: if provided, the collection name is appended at the end
                 of the endpoint. In this way, this method allows collection-level
                 arbitrary POST requests as well.
+            raise_api_errors: if True, responses with a nonempty 'errors' field
+                result in an astrapy exception being raised.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -1870,9 +1884,16 @@ class AsyncDatabase:
             logger.info(
                 "deferring to collection " f"'{collection_name}' for custom command."
             )
-            _collection = await self.get_collection(collection_name)
+            # if namespace and collection_name both passed, a new database is needed
+            _database: AsyncDatabase
+            if namespace:
+                _database = self._copy(namespace=namespace)
+            else:
+                _database = self
+            _collection = await _database.get_collection(collection_name)
             coll_req_response = await _collection.command(
                 body=body,
+                raise_api_errors=raise_api_errors,
                 max_time_ms=max_time_ms,
             )
             logger.info(
@@ -1885,6 +1906,7 @@ class AsyncDatabase:
             logger.info("issuing custom command to API")
             req_response = await driver_commander.async_request(
                 payload=body,
+                raise_api_errors=raise_api_errors,
                 timeout_info=base_timeout_info(max_time_ms),
             )
             logger.info("finished issuing custom command to API")

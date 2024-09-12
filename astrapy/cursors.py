@@ -384,7 +384,7 @@ class BaseCursor:
         requests to the database.
         """
 
-        return self._collection._astra_db_collection.base_path
+        return self._collection._api_commander.full_path
 
     @property
     def alive(self) -> bool:
@@ -699,7 +699,21 @@ class Cursor(BaseCursor):
             self._api_response_status = status
 
         logger.info(f"creating iterator on '{self._collection.name}'")
-        iterator = self._collection._astra_db_collection.paginated_find(
+
+        # TODO temporarily creating a core collection here
+        from astrapy.db import AstraDB
+
+        _tmp_collection = AstraDB(
+            token=self._collection._database.token_provider.get_token(),
+            api_endpoint=self._collection._database.api_endpoint,
+            api_path=self._collection._database.api_path,
+            api_version=self._collection._database.api_version,
+            namespace=self._collection._database.namespace,
+            caller_name=self._collection._database.caller_name,
+            caller_version=self._collection._database.caller_version,
+        ).collection(collection_name=self._collection.name)
+        # TODO remove _tmp_collection and work with .command entirely
+        iterator = _tmp_collection.paginated_find(
             filter=self._filter,
             projection=pf_projection,
             sort=pf_sort,
@@ -934,7 +948,25 @@ class AsyncCursor(BaseCursor):
             self._api_response_status = status
 
         logger.info(f"creating iterator on '{self._collection.name}'")
-        iterator = self._collection._astra_db_collection.paginated_find(
+
+        # TODO temporarily creating a core collection here
+        from astrapy.db import AstraDB
+
+        _tmp_collection = (
+            AstraDB(
+                token=self._collection._database.token_provider.get_token(),
+                api_endpoint=self._collection._database.api_endpoint,
+                api_path=self._collection._database.api_path,
+                api_version=self._collection._database.api_version,
+                namespace=self._collection._database.namespace,
+                caller_name=self._collection._database.caller_name,
+                caller_version=self._collection._database.caller_version,
+            )
+            .collection(collection_name=self._collection.name)
+            .to_async()
+        )
+        # TODO remove _tmp_collection and work with .command entirely
+        iterator = _tmp_collection.paginated_find(
             filter=self._filter,
             projection=pf_projection,
             sort=pf_sort,

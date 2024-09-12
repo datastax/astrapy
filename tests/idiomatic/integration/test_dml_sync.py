@@ -421,7 +421,7 @@ class TestDMLSync:
         # assert cursor1.retrieved == 2
 
         # address, cursor_id, collection
-        assert cursor1.address == sync_empty_collection._astra_db_collection.base_path
+        assert cursor1.address == sync_empty_collection._api_commander.full_path
         assert isinstance(cursor1.cursor_id, int)
         assert cursor1.collection == sync_empty_collection
 

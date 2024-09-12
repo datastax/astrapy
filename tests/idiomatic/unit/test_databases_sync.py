@@ -199,7 +199,7 @@ class TestDatabasesSync:
         assert collection_ns2 == Collection(
             sync_database, TEST_COLLECTION_INSTANCE_NAME, namespace=NAMESPACE_2
         )
-        assert collection_ns2._astra_db_collection.astra_db.namespace == NAMESPACE_2
+        assert collection_ns2.database.namespace == NAMESPACE_2
 
     @pytest.mark.describe("test database conversions with caller mutableness, sync")
     def test_database_conversions_caller_mutableness_sync(
