@@ -26,12 +26,7 @@ from astrapy.core.utils import (
     log_request,
     log_response,
     logger,
-    normalize_for_api,
-    restore_from_api,
     to_httpx_timeout,
-    user_agent_astrapy,
-    user_agent_rs,
-    user_agent_string,
 )
 from astrapy.defaults import DEFAULT_REDACTED_HEADER_NAMES, DEFAULT_REQUEST_TIMEOUT_MS
 from astrapy.exceptions import (
@@ -40,23 +35,15 @@ from astrapy.exceptions import (
     DataAPIResponseException,
     to_dataapi_timeout_exception,
 )
+from astrapy.transform_payload import normalize_for_api, restore_from_api
+from astrapy.user_agents import (
+    compose_full_user_agent,
+    detect_astrapy_user_agent,
+    detect_ragstack_user_agent,
+)
 
-
-def full_user_agent(
-    callers: List[Tuple[Optional[str], Optional[str]]]
-) -> Optional[str]:
-    regular_user_agents = [
-        user_agent_string(caller[0], caller[1]) for caller in callers
-    ]
-    all_user_agents = [
-        ua_block
-        for ua_block in [user_agent_rs] + regular_user_agents + [user_agent_astrapy]
-        if ua_block
-    ]
-    if all_user_agents:
-        return " ".join(all_user_agents)
-    else:
-        return None
+user_agent_astrapy = detect_astrapy_user_agent()
+user_agent_ragstack = detect_ragstack_user_agent()
 
 
 class APICommander:
@@ -77,9 +64,11 @@ class APICommander:
         self.callers = callers
         self.redacted_header_names = set(redacted_header_names)
 
-        user_agent = full_user_agent(self.callers)
+        full_user_agent_string = compose_full_user_agent(
+            [user_agent_ragstack] + self.callers + [user_agent_astrapy]
+        )
         self.caller_header: Dict[str, str] = (
-            {"User-Agent": user_agent} if user_agent else {}
+            {"User-Agent": full_user_agent_string} if full_user_agent_string else {}
         )
         self.full_headers: Dict[str, str] = {
             **{k: v for k, v in self.headers.items() if v is not None},

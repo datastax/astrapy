@@ -38,12 +38,12 @@ from astrapy.constants import (
     ProjectionType,
     normalize_optional_projection,
 )
-from astrapy.core.utils import _normalize_payload_value
 from astrapy.exceptions import (
     CursorIsStartedException,
     DataAPIFaultyResponseException,
     DataAPITimeoutException,
 )
+from astrapy.transform_payload import normalize_payload_value
 
 if TYPE_CHECKING:
     from astrapy.collection import AsyncCollection, Collection
@@ -148,7 +148,7 @@ def _reduce_distinct_key_to_safe(distinct_key: str) -> str:
 
 
 def _hash_document(document: Dict[str, Any]) -> str:
-    _normalized_item = _normalize_payload_value(path=[], value=document)
+    _normalized_item = normalize_payload_value(path=[], value=document)
     _normalized_json = json.dumps(
         _normalized_item, sort_keys=True, separators=(",", ":")
     )

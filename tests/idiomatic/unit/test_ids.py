@@ -22,7 +22,7 @@ import json
 
 import pytest
 
-from astrapy.core.utils import normalize_for_api, restore_from_api
+from astrapy.transform_payload import normalize_for_api, restore_from_api
 from astrapy.ids import UUID, ObjectId
 
 
