@@ -43,9 +43,6 @@ from astrapy.exceptions import (
     CursorIsStartedException,
     DataAPIFaultyResponseException,
     DataAPITimeoutException,
-    base_timeout_info,
-    recast_method_async,
-    recast_method_sync,
 )
 
 if TYPE_CHECKING:
@@ -58,8 +55,6 @@ logger = logging.getLogger(__name__)
 BC = TypeVar("BC", bound="BaseCursor")
 T = TypeVar("T")
 IndexPairType = Tuple[str, Optional[int]]
-
-FIND_PREFETCH = 20
 
 
 def _maybe_valid_list_index(key_block: str) -> Optional[int]:
@@ -617,7 +612,6 @@ class Cursor(BaseCursor):
             self._started = True
         return self
 
-    @recast_method_sync
     def __next__(self) -> DocumentType:
         if not self.alive:
             # keep raising once exhausted:
@@ -666,11 +660,10 @@ class Cursor(BaseCursor):
         finder_cursor = self._copy().skip(index).limit(1)
         items = list(finder_cursor)
         if items:
-            return items[0]  # type: ignore[no-any-return]
+            return items[0]
         else:
             raise IndexError("no such item for Cursor instance")
 
-    @recast_method_sync
     def _create_iterator(self) -> _LookAheadIterator:
         self._ensure_not_started()
         self._ensure_alive()
@@ -768,7 +761,6 @@ class Cursor(BaseCursor):
 
         return self._collection
 
-    @recast_method_sync
     def distinct(self, key: str, max_time_ms: Optional[int] = None) -> List[Any]:
         """
         Compute a list of unique values for a specific field across all
@@ -899,7 +891,6 @@ class AsyncCursor(BaseCursor):
             self._started = True
         return self
 
-    @recast_method_async
     async def __anext__(self) -> DocumentType:
         if not self.alive:
             # keep raising once exhausted:
@@ -948,15 +939,14 @@ class AsyncCursor(BaseCursor):
         finder_cursor = self._to_sync().skip(index).limit(1)
         items = list(finder_cursor)
         if items:
-            return items[0]  # type: ignore[no-any-return]
+            return items[0]
         else:
             raise IndexError("no such item for AsyncCursor instance")
 
-    @recast_method_sync
     def _create_iterator(self) -> _AsyncLookAheadIterator:
         self._ensure_not_started()
         self._ensure_alive()
-        _options = {
+        _options_0 = {
             k: v
             for k, v in {
                 "limit": self._limit,
@@ -966,49 +956,76 @@ class AsyncCursor(BaseCursor):
             }.items()
             if v is not None
         }
+        _projection = normalize_optional_projection(self._projection)
+        _sort = self._sort or {}
+        _filter = self._filter or {}
+        f0_payload = {
+            "find": {
+                k: v
+                for k, v in {
+                    "filter": _filter,
+                    "projection": _projection,
+                    "options": _options_0,
+                    "sort": _sort,
+                }.items()
+                if v
+            }
+        }
 
-        # recast parameters for paginated_find call
-        pf_projection: Optional[
-            Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
-        ] = normalize_optional_projection(self._projection)
-        pf_sort: Optional[Dict[str, Any]]
-        if self._sort is not None:
-            pf_sort = self._sort
-        else:
-            pf_sort = None
-
-        def _response_setter_callback(raw_response: Dict[str, Any]) -> None:
-            status = raw_response.get("status")
-            self._api_response_status = status
+        async def _find_iterator() -> AsyncIterator[DocumentType]:
+            resp_0 = await self._collection.command(
+                body=f0_payload,
+                max_time_ms=self._max_time_ms,
+            )
+            self._api_response_status = resp_0.get("status")
+            if "nextPageState" not in resp_0.get("data", {}):
+                raise DataAPIFaultyResponseException(
+                    text="Faulty response from find API command (no 'nextPageState').",
+                    raw_response=resp_0,
+                )
+            next_page_state = resp_0["data"]["nextPageState"]
+            if "documents" not in resp_0.get("data", {}):
+                raise DataAPIFaultyResponseException(
+                    text="Faulty response from find API command (no 'documents').",
+                    raw_response=resp_0,
+                )
+            for doc in resp_0["data"]["documents"]:
+                yield doc
+            while next_page_state is not None:
+                _options_n = {**_options_0, **{"pageState": next_page_state}}
+                fn_payload = {
+                    "find": {
+                        k: v
+                        for k, v in {
+                            "filter": _filter,
+                            "projection": _projection,
+                            "options": _options_n,
+                            "sort": _sort,
+                        }.items()
+                        if v
+                    }
+                }
+                resp_n = await self._collection.command(
+                    body=fn_payload,
+                    max_time_ms=self._max_time_ms,
+                )
+                self._api_response_status = resp_n.get("status")
+                if "nextPageState" not in resp_n.get("data", {}):
+                    raise DataAPIFaultyResponseException(
+                        text="Faulty response from find API command (no 'nextPageState').",
+                        raw_response=resp_n,
+                    )
+                next_page_state = resp_n["data"]["nextPageState"]
+                if "documents" not in resp_n.get("data", {}):
+                    raise DataAPIFaultyResponseException(
+                        text="Faulty response from find API command (no 'documents').",
+                        raw_response=resp_n,
+                    )
+                for doc in resp_n["data"]["documents"]:
+                    yield doc
 
         logger.info(f"creating iterator on '{self._collection.name}'")
-
-        # TODO temporarily creating a core collection here
-        from astrapy.db import AstraDB
-
-        _tmp_collection = (
-            AstraDB(
-                token=self._collection._database.token_provider.get_token(),
-                api_endpoint=self._collection._database.api_endpoint,
-                api_path=self._collection._database.api_path,
-                api_version=self._collection._database.api_version,
-                namespace=self._collection._database.namespace,
-                caller_name=self._collection._database.caller_name,
-                caller_version=self._collection._database.caller_version,
-            )
-            .collection(collection_name=self._collection.name)
-            .to_async()
-        )
-        # TODO remove _tmp_collection and work with .command entirely
-        iterator = _tmp_collection.paginated_find(
-            filter=self._filter,
-            projection=pf_projection,
-            sort=pf_sort,
-            options=_options,
-            prefetched=0,
-            timeout_info=base_timeout_info(self._max_time_ms),
-            raw_response_callback=_response_setter_callback,
-        )
+        iterator = _find_iterator()
         logger.info(f"finished creating iterator on '{self._collection.name}'")
         self._started_time_s = time.time()
         return _AsyncLookAheadIterator(iterator)
@@ -1061,7 +1078,6 @@ class AsyncCursor(BaseCursor):
 
         return self._collection
 
-    @recast_method_async
     async def distinct(self, key: str, max_time_ms: Optional[int] = None) -> List[Any]:
         """
         Compute a list of unique values for a specific field across all

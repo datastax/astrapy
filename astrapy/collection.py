@@ -1273,7 +1273,7 @@ class Collection:
         )
         try:
             document = fo_cursor.__next__()
-            return document  # type: ignore[no-any-return]
+            return document
         except StopIteration:
             return None
 
@@ -1354,7 +1354,7 @@ class Collection:
             max_time_ms=None,
             overall_max_time_ms=_max_time_ms,
         )
-        return f_cursor.distinct(key)  # type: ignore[no-any-return]
+        return f_cursor.distinct(key)
 
     def count_documents(
         self,
@@ -3843,7 +3843,7 @@ class AsyncCollection:
         )
         try:
             document = await fo_cursor.__anext__()
-            return document  # type: ignore[no-any-return]
+            return document
         except StopAsyncIteration:
             return None
 
@@ -3932,7 +3932,7 @@ class AsyncCollection:
             max_time_ms=None,
             overall_max_time_ms=_max_time_ms,
         )
-        return await f_cursor.distinct(key)  # type: ignore[no-any-return]
+        return await f_cursor.distinct(key)
 
     async def count_documents(
         self,

@@ -738,13 +738,13 @@ class Database:
                 )
 
         driver_commander = self._get_driver_commander(namespace=namespace)
-        logger.info(f"creating collection '{name}'")
         cc_payload = {"createCollection": {"name": name, "options": cc_options}}
+        logger.info(f"createCollection('{name}')")
         driver_commander.request(
             payload=cc_payload,
             timeout_info=timeout_manager.remaining_timeout_info(),
         )
-        logger.info(f"finished creating collection '{name}'")
+        logger.info(f"finished createCollection('{name}')")
         return self.get_collection(
             name,
             namespace=namespace,
@@ -795,12 +795,12 @@ class Database:
             _collection_name = name_or_collection
         driver_commander = self._get_driver_commander(namespace=_namespace)
         dc_payload = {"deleteCollection": {"name": _collection_name}}
-        logger.info(f"dropping collection '{_collection_name}'")
+        logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = driver_commander.request(
             payload=dc_payload,
             timeout_info=base_timeout_info(max_time_ms),
         )
-        logger.info(f"finished dropping collection '{_collection_name}'")
+        logger.info(f"finished deleteCollection('{_collection_name}')")
         return dc_response.get("status", {})  # type: ignore[no-any-return]
 
     def list_collections(
@@ -835,7 +835,7 @@ class Database:
 
         driver_commander = self._get_driver_commander(namespace=namespace)
         gc_payload = {"findCollections": {"options": {"explain": True}}}
-        logger.info("getting collections")
+        logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
             timeout_info=base_timeout_info(max_time_ms),
@@ -847,7 +847,7 @@ class Database:
             )
         else:
             # we know this is a list of dicts, to marshal into "descriptors"
-            logger.info("finished getting collections")
+            logger.info("finished findCollections")
             return CommandCursor(
                 address=driver_commander.full_path,
                 items=[
@@ -880,7 +880,7 @@ class Database:
 
         driver_commander = self._get_driver_commander(namespace=namespace)
         gc_payload: Dict[str, Any] = {"findCollections": {}}
-        logger.info("getting collections")
+        logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
             timeout_info=base_timeout_info(max_time_ms),
@@ -892,7 +892,7 @@ class Database:
             )
         else:
             # we know this is a list of dicts, to marshal into "descriptors"
-            logger.info("finished getting collections")
+            logger.info("finished findCollections")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
     def command(
@@ -930,34 +930,32 @@ class Database:
         """
 
         if collection_name:
-            logger.info(
-                "deferring to collection " f"'{collection_name}' for custom command."
-            )
             # if namespace and collection_name both passed, a new database is needed
             _database: Database
             if namespace:
                 _database = self._copy(namespace=namespace)
             else:
                 _database = self
+            logger.info("deferring to collection " f"'{collection_name}' for command.")
             coll_req_response = _database.get_collection(collection_name).command(
                 body=body,
                 raise_api_errors=raise_api_errors,
                 max_time_ms=max_time_ms,
             )
             logger.info(
-                "finished deferring to collection "
-                f"'{collection_name}' for custom command."
+                "finished deferring to collection " f"'{collection_name}' for command."
             )
             return coll_req_response
         else:
             driver_commander = self._get_driver_commander(namespace=namespace)
-            logger.info("issuing custom command to API")
+            _cmd_desc = ",".join(sorted(body.keys()))
+            logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             req_response = driver_commander.request(
                 payload=body,
                 raise_api_errors=raise_api_errors,
                 timeout_info=base_timeout_info(max_time_ms),
             )
-            logger.info("finished issuing custom command to API")
+            logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             return req_response
 
     def get_database_admin(
@@ -1684,13 +1682,13 @@ class AsyncDatabase:
                 )
 
         driver_commander = self._get_driver_commander(namespace=namespace)
-        logger.info(f"creating collection '{name}'")
         cc_payload = {"createCollection": {"name": name, "options": cc_options}}
+        logger.info(f"createCollection('{name}')")
         await driver_commander.async_request(
             payload=cc_payload,
             timeout_info=timeout_manager.remaining_timeout_info(),
         )
-        logger.info(f"finished creating collection '{name}'")
+        logger.info(f"createCollection('{name}')")
         return await self.get_collection(
             name,
             namespace=namespace,
@@ -1741,12 +1739,12 @@ class AsyncDatabase:
             _collection_name = name_or_collection
         driver_commander = self._get_driver_commander(namespace=_namespace)
         dc_payload = {"deleteCollection": {"name": _collection_name}}
-        logger.info(f"dropping collection '{_collection_name}'")
+        logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = await driver_commander.async_request(
             payload=dc_payload,
             timeout_info=base_timeout_info(max_time_ms),
         )
-        logger.info(f"finished dropping collection '{_collection_name}'")
+        logger.info(f"finished deleteCollection('{_collection_name}')")
         return dc_response.get("status", {})  # type: ignore[no-any-return]
 
     def list_collections(
@@ -1783,7 +1781,7 @@ class AsyncDatabase:
 
         driver_commander = self._get_driver_commander(namespace=namespace)
         gc_payload = {"findCollections": {"options": {"explain": True}}}
-        logger.info("getting collections")
+        logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
             timeout_info=base_timeout_info(max_time_ms),
@@ -1795,7 +1793,7 @@ class AsyncDatabase:
             )
         else:
             # we know this is a list of dicts, to marshal into "descriptors"
-            logger.info("finished getting collections")
+            logger.info("finished findCollections")
             return AsyncCommandCursor(
                 address=driver_commander.full_path,
                 items=[
@@ -1828,7 +1826,7 @@ class AsyncDatabase:
 
         driver_commander = self._get_driver_commander(namespace=namespace)
         gc_payload: Dict[str, Any] = {"findCollections": {}}
-        logger.info("getting collections")
+        logger.info("findCollections")
         gc_response = await driver_commander.async_request(
             payload=gc_payload,
             timeout_info=base_timeout_info(max_time_ms),
@@ -1840,7 +1838,7 @@ class AsyncDatabase:
             )
         else:
             # we know this is a list of dicts, to marshal into "descriptors"
-            logger.info("finished getting collections")
+            logger.info("finished findCollections")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
     async def command(
@@ -1881,15 +1879,13 @@ class AsyncDatabase:
         """
 
         if collection_name:
-            logger.info(
-                "deferring to collection " f"'{collection_name}' for custom command."
-            )
             # if namespace and collection_name both passed, a new database is needed
             _database: AsyncDatabase
             if namespace:
                 _database = self._copy(namespace=namespace)
             else:
                 _database = self
+            logger.info("deferring to collection " f"'{collection_name}' for command.")
             _collection = await _database.get_collection(collection_name)
             coll_req_response = await _collection.command(
                 body=body,
@@ -1897,19 +1893,19 @@ class AsyncDatabase:
                 max_time_ms=max_time_ms,
             )
             logger.info(
-                "finished deferring to collection "
-                f"'{collection_name}' for custom command."
+                "finished deferring to collection " f"'{collection_name}' for command."
             )
             return coll_req_response
         else:
             driver_commander = self._get_driver_commander(namespace=namespace)
-            logger.info("issuing custom command to API")
+            _cmd_desc = ",".join(sorted(body.keys()))
+            logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             req_response = await driver_commander.async_request(
                 payload=body,
                 raise_api_errors=raise_api_errors,
                 timeout_info=base_timeout_info(max_time_ms),
             )
-            logger.info("finished issuing custom command to API")
+            logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             return req_response
 
     def get_database_admin(
