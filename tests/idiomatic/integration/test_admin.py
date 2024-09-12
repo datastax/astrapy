@@ -20,7 +20,7 @@ from typing import Any, Awaitable, Callable, List, Optional, Tuple
 import pytest
 
 from astrapy import AsyncDatabase, DataAPIClient, Database
-from astrapy.admin import API_ENDPOINT_TEMPLATE_MAP
+from astrapy.defaults import API_ENDPOINT_TEMPLATE_ENV_MAP
 
 from ..conftest import (
     ADMIN_ENV_LIST,
@@ -266,7 +266,7 @@ class TestAdmin:
         assert db_w_info.id == created_db_id_w
 
         # get and compare dbs obtained by the client
-        synthetic_api_endpoint = API_ENDPOINT_TEMPLATE_MAP[admin_env].format(
+        synthetic_api_endpoint = API_ENDPOINT_TEMPLATE_ENV_MAP[admin_env].format(
             database_id=created_db_id_w,
             region=db_region,
         )
@@ -521,7 +521,7 @@ class TestAdmin:
         assert db_w_info.id == created_db_id_w
 
         # get and compare dbs obtained by the client
-        synthetic_api_endpoint = API_ENDPOINT_TEMPLATE_MAP[admin_env].format(
+        synthetic_api_endpoint = API_ENDPOINT_TEMPLATE_ENV_MAP[admin_env].format(
             database_id=created_db_id_w,
             region=db_region,
         )

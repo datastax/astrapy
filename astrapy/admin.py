@@ -32,10 +32,12 @@ from astrapy.constants import Environment
 from astrapy.core.ops import AstraDBOps
 from astrapy.cursors import CommandCursor
 from astrapy.defaults import (
-    API_ENDPOINT_TEMPLATE_MAP,
+    API_ENDPOINT_TEMPLATE_ENV_MAP,
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
     DEFAULT_DATA_API_AUTH_HEADER,
+    DEFAULT_DEV_OPS_AUTH_HEADER,
+    DEFAULT_DEV_OPS_AUTH_PREFIX,
     DEV_OPS_DATABASE_POLL_INTERVAL_S,
     DEV_OPS_DATABASE_STATUS_ACTIVE,
     DEV_OPS_DATABASE_STATUS_INITIALIZING,
@@ -43,7 +45,8 @@ from astrapy.defaults import (
     DEV_OPS_DATABASE_STATUS_PENDING,
     DEV_OPS_DATABASE_STATUS_TERMINATING,
     DEV_OPS_NAMESPACE_POLL_INTERVAL_S,
-    DEV_OPS_URL_MAP,
+    DEV_OPS_URL_ENV_MAP,
+    DEV_OPS_VERSION_ENV_MAP,
 )
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
@@ -55,6 +58,7 @@ from astrapy.exceptions import (
     to_dataapi_timeout_exception,
 )
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo, FindEmbeddingProvidersResult
+from astrapy.request_tools import HttpMethod
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
@@ -184,7 +188,7 @@ def build_api_endpoint(environment: str, database_id: str, region: str) -> str:
         the endpoint string, such as "https://01234567-...-eu-west1.apps.datastax.com"
     """
 
-    return API_ENDPOINT_TEMPLATE_MAP[environment].format(
+    return API_ENDPOINT_TEMPLATE_ENV_MAP[environment].format(
         database_id=database_id,
         region=region,
     )
@@ -204,24 +208,41 @@ def fetch_raw_database_info_from_id_token(
     Args:
         id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
         token: a valid token to access the database information.
+        environment: a string representing the target Data API environment.
+            It can be left unspecified for the default value of `Environment.PROD`.
+            Only Astra DB environments can be meaningfully supplied.
         max_time_ms: a timeout, in milliseconds, for waiting on a response.
 
     Returns:
         The full response from the DevOps API about the database.
     """
 
-    astra_db_ops = AstraDBOps(
-        token=token,
-        dev_ops_url=DEV_OPS_URL_MAP[environment],
+    ops_headers: Dict[str, str | None]
+    if token is not None:
+        ops_headers = {
+            DEFAULT_DEV_OPS_AUTH_HEADER: f"{DEFAULT_DEV_OPS_AUTH_PREFIX}{token}",
+        }
+    else:
+        ops_headers = {}
+    full_path = "/".join(
+        [
+            DEV_OPS_VERSION_ENV_MAP[environment],
+            "databases",
+            id,
+        ]
     )
-    try:
-        gd_response = astra_db_ops.get_database(
-            database=id,
-            timeout_info=base_timeout_info(max_time_ms),
-        )
-        return gd_response
-    except httpx.TimeoutException as texc:
-        raise to_dataapi_timeout_exception(texc)
+    ops_commander = APICommander(
+        api_endpoint=DEV_OPS_URL_ENV_MAP[environment],
+        path=full_path,
+        headers=ops_headers,
+        devops_api=True,
+    )
+
+    gd_response = ops_commander.request(
+        http_method=HttpMethod.GET,
+        timeout_info=base_timeout_info(max_time_ms),
+    )
+    return gd_response
 
 
 async def async_fetch_raw_database_info_from_id_token(
@@ -239,6 +260,9 @@ async def async_fetch_raw_database_info_from_id_token(
     Args:
         id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
         token: a valid token to access the database information.
+        environment: a string representing the target Data API environment.
+            It can be left unspecified for the default value of `Environment.PROD`.
+            Only Astra DB environments can be meaningfully supplied.
         max_time_ms: a timeout, in milliseconds, for waiting on a response.
 
     Returns:
@@ -247,7 +271,7 @@ async def async_fetch_raw_database_info_from_id_token(
 
     astra_db_ops = AstraDBOps(
         token=token,
-        dev_ops_url=DEV_OPS_URL_MAP[environment],
+        dev_ops_url=DEV_OPS_URL_ENV_MAP[environment],
     )
     try:
         gd_response = await astra_db_ops.async_get_database(
@@ -516,7 +540,7 @@ class AstraDBAdmin:
         if self.environment not in Environment.astra_db_values:
             raise ValueError("Environments outside of Astra DB are not supported.")
         if dev_ops_url is None:
-            self.dev_ops_url = DEV_OPS_URL_MAP[self.environment]
+            self.dev_ops_url = DEV_OPS_URL_ENV_MAP[self.environment]
         else:
             self.dev_ops_url = dev_ops_url
         self._caller_name = caller_name

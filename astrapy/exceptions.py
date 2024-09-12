@@ -44,6 +44,112 @@ class DevOpsAPIException(ValueError):
 
 
 @dataclass
+class DevOpsAPIHttpException(DevOpsAPIException, httpx.HTTPStatusError):
+    """
+    A request to the DevOps API resulted in an HTTP 4xx or 5xx response.
+
+    Though the DevOps API seldom enriches such errors with a response text,
+    this class acts as the DevOps counterpart to DataAPIHttpException
+    to facilitate a symmetryc handling of errors at application lebel.
+
+    Attributes:
+        text: a text message about the exception.
+        error_descriptors: a list of all DevOpsAPIErrorDescriptor objects
+            found in the response.
+    """
+
+    text: Optional[str]
+    error_descriptors: List[DevOpsAPIErrorDescriptor]
+
+    def __init__(
+        self,
+        text: Optional[str],
+        *,
+        httpx_error: httpx.HTTPStatusError,
+        error_descriptors: List[DevOpsAPIErrorDescriptor],
+    ) -> None:
+        DataAPIException.__init__(self, text)
+        httpx.HTTPStatusError.__init__(
+            self,
+            message=str(httpx_error),
+            request=httpx_error.request,
+            response=httpx_error.response,
+        )
+        self.text = text
+        self.httpx_error = httpx_error
+        self.error_descriptors = error_descriptors
+
+    def __str__(self) -> str:
+        return self.text or str(self.httpx_error)
+
+    @classmethod
+    def from_httpx_error(
+        cls,
+        httpx_error: httpx.HTTPStatusError,
+        **kwargs: Any,
+    ) -> DevOpsAPIHttpException:
+        """Parse a httpx status error into this exception."""
+
+        raw_response: Dict[str, Any]
+        # the attempt to extract a response structure cannot afford failure.
+        try:
+            raw_response = httpx_error.response.json()
+        except Exception:
+            raw_response = {}
+        error_descriptors = [
+            DevOpsAPIErrorDescriptor(error_dict)
+            for error_dict in raw_response.get("errors") or []
+        ]
+        if error_descriptors:
+            text = f"{error_descriptors[0].message}. {str(httpx_error)}"
+        else:
+            text = str(httpx_error)
+
+        return cls(
+            text=text,
+            httpx_error=httpx_error,
+            error_descriptors=error_descriptors,
+            **kwargs,
+        )
+
+
+@dataclass
+class DevOpsAPITimeoutException(DevOpsAPIException):
+    """
+    A DevOps API operation timed out.
+
+    Attributes:
+        text: a textual description of the error
+        timeout_type: this denotes the phase of the HTTP request when the event
+            occurred ("connect", "read", "write", "pool") or "generic" if there is
+            not a specific request associated to the exception.
+        endpoint: if the timeout is tied to a specific request, this is the
+            URL that the request was targeting.
+        raw_payload:  if the timeout is tied to a specific request, this is the
+            associated payload (as a string).
+    """
+
+    text: str
+    timeout_type: str
+    endpoint: Optional[str]
+    raw_payload: Optional[str]
+
+    def __init__(
+        self,
+        text: str,
+        *,
+        timeout_type: str,
+        endpoint: Optional[str],
+        raw_payload: Optional[str],
+    ) -> None:
+        super().__init__(text)
+        self.text = text
+        self.timeout_type = timeout_type
+        self.endpoint = endpoint
+        self.raw_payload = raw_payload
+
+
+@dataclass
 class DevOpsAPIErrorDescriptor:
     """
     An object representing a single error returned from the DevOps API,
@@ -67,6 +173,30 @@ class DevOpsAPIErrorDescriptor:
         self.attributes = {
             k: v for k, v in error_dict.items() if k not in {"ID", "message"}
         }
+
+
+@dataclass
+class DevOpsAPIFaultyResponseException(DevOpsAPIException):
+    """
+    The DevOps API response is malformed in that it does not have
+    expected field(s), or they are of the wrong type.
+
+    Attributes:
+        text: a text message about the exception.
+        raw_response: the response returned by the API in the form of a dict.
+    """
+
+    text: str
+    raw_response: Optional[Dict[str, Any]]
+
+    def __init__(
+        self,
+        text: str,
+        raw_response: Optional[Dict[str, Any]],
+    ) -> None:
+        super().__init__(text)
+        self.text = text
+        self.raw_response = raw_response
 
 
 class DevOpsAPIResponseException(DevOpsAPIException):
@@ -745,6 +875,37 @@ def to_dataapi_timeout_exception(
         endpoint = None
         raw_payload = None
     return DataAPITimeoutException(
+        text=text,
+        timeout_type=timeout_type,
+        endpoint=endpoint,
+        raw_payload=raw_payload,
+    )
+
+
+def to_devopsapi_timeout_exception(
+    httpx_timeout: httpx.TimeoutException,
+) -> DevOpsAPITimeoutException:
+    text = str(httpx_timeout)
+    if isinstance(httpx_timeout, httpx.ConnectTimeout):
+        timeout_type = "connect"
+    elif isinstance(httpx_timeout, httpx.ReadTimeout):
+        timeout_type = "read"
+    elif isinstance(httpx_timeout, httpx.WriteTimeout):
+        timeout_type = "write"
+    elif isinstance(httpx_timeout, httpx.PoolTimeout):
+        timeout_type = "pool"
+    else:
+        timeout_type = "generic"
+    if httpx_timeout.request:
+        endpoint = str(httpx_timeout.request.url)
+        if isinstance(httpx_timeout.request.content, bytes):
+            raw_payload = httpx_timeout.request.content.decode()
+        else:
+            raw_payload = None
+    else:
+        endpoint = None
+        raw_payload = None
+    return DevOpsAPITimeoutException(
         text=text,
         timeout_type=timeout_type,
         endpoint=endpoint,

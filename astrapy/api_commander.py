@@ -40,7 +40,11 @@ from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     DataAPIHttpException,
     DataAPIResponseException,
+    DevOpsAPIFaultyResponseException,
+    DevOpsAPIHttpException,
+    DevOpsAPIResponseException,
     to_dataapi_timeout_exception,
+    to_devopsapi_timeout_exception,
 )
 from astrapy.request_tools import (
     HttpMethod,
@@ -74,6 +78,7 @@ class APICommander:
         headers: Dict[str, Union[str, None]] = {},
         callers: List[Tuple[Optional[str], Optional[str]]] = [],
         redacted_header_names: Iterable[str] = DEFAULT_REDACTED_HEADER_NAMES,
+        devops_api: bool = False,
     ) -> None:
         self.async_client = httpx.AsyncClient()
         self.api_endpoint = api_endpoint.rstrip("/")
@@ -81,6 +86,25 @@ class APICommander:
         self.headers = headers
         self.callers = callers
         self.redacted_header_names = set(redacted_header_names)
+        self.devops_api = devops_api
+
+        self._faulty_response_exc_class: Union[
+            Type[DevOpsAPIFaultyResponseException], Type[DataAPIFaultyResponseException]
+        ]
+        self._response_exc_class: Union[
+            Type[DevOpsAPIResponseException], Type[DataAPIResponseException]
+        ]
+        self._http_exc_class: Union[
+            Type[DataAPIHttpException], Type[DevOpsAPIHttpException]
+        ]
+        if self.devops_api:
+            self._faulty_response_exc_class = DevOpsAPIFaultyResponseException
+            self._response_exc_class = DevOpsAPIResponseException
+            self._http_exc_class = DevOpsAPIHttpException
+        else:
+            self._faulty_response_exc_class = DataAPIFaultyResponseException
+            self._response_exc_class = DataAPIResponseException
+            self._http_exc_class = DataAPIHttpException
 
         full_user_agent_string = compose_full_user_agent(
             [user_agent_ragstack] + self.callers + [user_agent_astrapy]
@@ -108,6 +132,7 @@ class APICommander:
                     self.headers == other.headers,
                     self.callers == other.callers,
                     self.redacted_header_names == other.redacted_header_names,
+                    self.devops_api == other.devops_api,
                 ]
             )
         else:
@@ -132,6 +157,7 @@ class APICommander:
         headers: Optional[Dict[str, Union[str, None]]] = None,
         callers: Optional[List[Tuple[Optional[str], Optional[str]]]] = None,
         redacted_header_names: Optional[List[str]] = None,
+        devops_api: Optional[bool] = None,
     ) -> APICommander:
         # some care in allowing e.g. {} to override (but not None):
         return APICommander(
@@ -146,6 +172,7 @@ class APICommander:
                 if redacted_header_names is not None
                 else self.redacted_header_names
             ),
+            devops_api=devops_api if devops_api is not None else self.devops_api,
         )
 
     def raw_request(
@@ -179,12 +206,15 @@ class APICommander:
                 headers=self.full_headers,
             )
         except httpx.TimeoutException as timeout_exc:
-            raise to_dataapi_timeout_exception(timeout_exc)
+            if self.devops_api:
+                raise to_devopsapi_timeout_exception(timeout_exc)
+            else:
+                raise to_dataapi_timeout_exception(timeout_exc)
 
         try:
             raw_response.raise_for_status()
         except httpx.HTTPStatusError as http_exc:
-            raise DataAPIHttpException.from_httpx_error(http_exc)
+            raise self._http_exc_class.from_httpx_error(http_exc)
         log_httpx_response(response=raw_response)
         return raw_response
 
@@ -219,12 +249,15 @@ class APICommander:
                 headers=self.full_headers,
             )
         except httpx.TimeoutException as timeout_exc:
-            raise to_dataapi_timeout_exception(timeout_exc)
+            if self.devops_api:
+                raise to_devopsapi_timeout_exception(timeout_exc)
+            else:
+                raise to_dataapi_timeout_exception(timeout_exc)
 
         try:
             raw_response.raise_for_status()
         except httpx.HTTPStatusError as http_exc:
-            raise DataAPIHttpException.from_httpx_error(http_exc)
+            raise self._http_exc_class.from_httpx_error(http_exc)
         log_httpx_response(response=raw_response)
         return raw_response
 
@@ -255,7 +288,7 @@ class APICommander:
                 command_desc = "/".join(sorted(payload.keys()))
             else:
                 command_desc = "(none)"
-            raise DataAPIFaultyResponseException(
+            raise self._faulty_response_exc_class(
                 text=f"Unparseable response from API '{command_desc}' command.",
                 raw_response={
                     "raw_response": raw_response.text,
@@ -266,7 +299,7 @@ class APICommander:
             logger.warn(
                 f"APICommander about to raise from: {raw_response_json['errors']}"
             )
-            raise DataAPIResponseException.from_response(
+            raise self._response_exc_class.from_response(
                 command=payload,
                 raw_response=raw_response_json,
             )
@@ -301,7 +334,7 @@ class APICommander:
                 command_desc = "/".join(sorted(payload.keys()))
             else:
                 command_desc = "(none)"
-            raise DataAPIFaultyResponseException(
+            raise self._faulty_response_exc_class(
                 text=f"Unparseable response from API '{command_desc}' command.",
                 raw_response={
                     "raw_response": raw_response.text,
@@ -312,7 +345,7 @@ class APICommander:
             logger.warn(
                 f"APICommander about to raise from: {raw_response_json['errors']}"
             )
-            raise DataAPIResponseException.from_response(
+            raise self._response_exc_class.from_response(
                 command=payload,
                 raw_response=raw_response_json,
             )
