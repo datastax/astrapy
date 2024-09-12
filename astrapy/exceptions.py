@@ -750,54 +750,6 @@ def to_dataapi_timeout_exception(
     )
 
 
-def recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
-    """
-    Decorator for a sync method liable to generate the core APIRequestError.
-    That exception is intercepted and recast as DataAPIResponseException.
-    Moreover, timeouts are also caught and converted into Data API timeouts.
-    """
-
-    @wraps(method)
-    def _wrapped_sync(*pargs: Any, **kwargs: Any) -> Any:
-        try:
-            return method(*pargs, **kwargs)
-        except APIRequestError as exc:
-            raise DataAPIResponseException.from_response(
-                command=exc.payload, raw_response=exc.response.json()
-            )
-        except httpx.HTTPStatusError as exc:
-            raise DataAPIHttpException.from_httpx_error(exc)
-        except httpx.TimeoutException as texc:
-            raise to_dataapi_timeout_exception(texc)
-
-    return _wrapped_sync
-
-
-def recast_method_async(
-    method: Callable[..., Awaitable[Any]]
-) -> Callable[..., Awaitable[Any]]:
-    """
-    Decorator for an async method liable to generate the core APIRequestError.
-    That exception is intercepted and recast as DataAPIResponseException.
-    Moreover, timeouts are also caught and converted into Data API timeouts.
-    """
-
-    @wraps(method)
-    async def _wrapped_async(*pargs: Any, **kwargs: Any) -> Any:
-        try:
-            return await method(*pargs, **kwargs)
-        except APIRequestError as exc:
-            raise DataAPIResponseException.from_response(
-                command=exc.payload, raw_response=exc.response.json()
-            )
-        except httpx.HTTPStatusError as exc:
-            raise DataAPIHttpException.from_httpx_error(exc)
-        except httpx.TimeoutException as texc:
-            raise to_dataapi_timeout_exception(texc)
-
-    return _wrapped_async
-
-
 def ops_recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
     """
     Decorator for a sync DevOps method liable to generate the core APIRequestError.
