@@ -17,19 +17,21 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional, Union
 
 import httpx
 
 from astrapy.core.api import APIRequestError
-from astrapy.core.utils import TimeoutInfo
-from astrapy.results import (
-    BulkWriteResult,
-    DeleteResult,
-    InsertManyResult,
-    OperationResult,
-    UpdateResult,
-)
+
+if TYPE_CHECKING:
+    from astrapy.request_tools import TimeoutInfo
+    from astrapy.results import (
+        BulkWriteResult,
+        DeleteResult,
+        InsertManyResult,
+        OperationResult,
+        UpdateResult,
+    )
 
 
 class DevOpsAPIException(ValueError):

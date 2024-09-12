@@ -16,24 +16,38 @@ from __future__ import annotations
 
 import json
 from types import TracebackType
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 import httpx
 
-from astrapy.core.utils import (
-    TimeoutInfoWideType,
-    http_methods,
-    log_request,
-    log_response,
-    logger,
-    to_httpx_timeout,
+from astrapy.defaults import (
+    DEFAULT_REDACTED_HEADER_NAMES,
+    DEFAULT_REQUEST_TIMEOUT_MS,
+    HEADER_REDACT_PLACEHOLDER,
 )
-from astrapy.defaults import DEFAULT_REDACTED_HEADER_NAMES, DEFAULT_REQUEST_TIMEOUT_MS
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     DataAPIHttpException,
     DataAPIResponseException,
     to_dataapi_timeout_exception,
+)
+from astrapy.request_tools import (
+    HttpMethod,
+    log_httpx_request,
+    log_httpx_response,
+    logger,
+    to_httpx_timeout,
 )
 from astrapy.transform_payload import normalize_for_api, restore_from_api
 from astrapy.user_agents import (
@@ -41,6 +55,10 @@ from astrapy.user_agents import (
     detect_astrapy_user_agent,
     detect_ragstack_user_agent,
 )
+
+if TYPE_CHECKING:
+    from astrapy.request_tools import TimeoutInfoWideType
+
 
 user_agent_astrapy = detect_astrapy_user_agent()
 user_agent_ragstack = detect_ragstack_user_agent()
@@ -76,7 +94,7 @@ class APICommander:
             **{"Content-Type": "application/json"},
         }
         self._loggable_headers = {
-            k: v if k not in self.redacted_header_names else "***"
+            k: v if k not in self.redacted_header_names else HEADER_REDACT_PLACEHOLDER
             for k, v in self.full_headers.items()
         }
         self.full_path = ("/".join([self.api_endpoint, self.path])).rstrip("/")
@@ -133,20 +151,19 @@ class APICommander:
     def raw_request(
         self,
         *,
-        http_method: str = http_methods.POST,
+        http_method: str = HttpMethod.POST,
         payload: Optional[Dict[str, Any]] = None,
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> httpx.Response:
         timeout = to_httpx_timeout(timeout_info)
         normalized_payload = normalize_for_api(payload)
-        # Log the request
-        log_request(
-            http_method,
-            self.full_path,
-            {},
-            self._loggable_headers,
-            normalized_payload,
+        log_httpx_request(
+            http_method=http_method,
+            full_url=self.full_path,
+            request_params={},
+            redacted_request_headers=self._loggable_headers,
+            payload=normalized_payload,
         )
         encoded_payload = json.dumps(
             normalized_payload,
@@ -168,27 +185,25 @@ class APICommander:
             raw_response.raise_for_status()
         except httpx.HTTPStatusError as http_exc:
             raise DataAPIHttpException.from_httpx_error(http_exc)
-        # Log the response before returning it
-        log_response(raw_response)
+        log_httpx_response(response=raw_response)
         return raw_response
 
     async def async_raw_request(
         self,
         *,
-        http_method: str = http_methods.POST,
+        http_method: str = HttpMethod.POST,
         payload: Optional[Dict[str, Any]] = None,
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> httpx.Response:
         timeout = to_httpx_timeout(timeout_info)
         normalized_payload = normalize_for_api(payload)
-        # Log the request
-        log_request(
-            http_method,
-            self.full_path,
-            {},
-            self._loggable_headers,
-            normalized_payload,
+        log_httpx_request(
+            http_method=http_method,
+            full_url=self.full_path,
+            request_params={},
+            redacted_request_headers=self._loggable_headers,
+            payload=normalized_payload,
         )
         encoded_payload = json.dumps(
             normalized_payload,
@@ -210,14 +225,13 @@ class APICommander:
             raw_response.raise_for_status()
         except httpx.HTTPStatusError as http_exc:
             raise DataAPIHttpException.from_httpx_error(http_exc)
-        # Log the response before returning it
-        log_response(raw_response)
+        log_httpx_response(response=raw_response)
         return raw_response
 
     def request(
         self,
         *,
-        http_method: str = http_methods.POST,
+        http_method: str = HttpMethod.POST,
         payload: Optional[Dict[str, Any]] = None,
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
@@ -249,7 +263,9 @@ class APICommander:
             )
 
         if raise_api_errors and "errors" in raw_response_json:
-            logger.debug(raw_response_json["errors"])
+            logger.warn(
+                f"APICommander about to raise from: {raw_response_json['errors']}"
+            )
             raise DataAPIResponseException.from_response(
                 command=payload,
                 raw_response=raw_response_json,
@@ -261,7 +277,7 @@ class APICommander:
     async def async_request(
         self,
         *,
-        http_method: str = http_methods.POST,
+        http_method: str = HttpMethod.POST,
         payload: Optional[Dict[str, Any]] = None,
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
@@ -293,7 +309,9 @@ class APICommander:
             )
 
         if raise_api_errors and "errors" in raw_response_json:
-            logger.debug(raw_response_json["errors"])
+            logger.warn(
+                f"APICommander about to raise from: {raw_response_json['errors']}"
+            )
             raise DataAPIResponseException.from_response(
                 command=payload,
                 raw_response=raw_response_json,

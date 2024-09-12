@@ -18,7 +18,18 @@ import asyncio
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union
+from types import TracebackType
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 import deprecation
 
@@ -2863,6 +2874,22 @@ class AsyncCollection:
             callers=[(self.caller_name, self.caller_version)],
         )
         return api_commander
+
+    async def __aenter__(self) -> AsyncCollection:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]] = None,
+        exc_value: Optional[BaseException] = None,
+        traceback: Optional[TracebackType] = None,
+    ) -> None:
+        if self._api_commander is not None:
+            await self._api_commander.__aexit__(
+                exc_type=exc_type,
+                exc_value=exc_value,
+                traceback=traceback,
+            )
 
     def _copy(
         self,

@@ -87,6 +87,7 @@ __pdoc__ = {
     "ids": False,
     "meta": False,
     "ops": False,
+    "request_tools": False,
     "transform_payload": False,
     "user_agents": False,
 }
