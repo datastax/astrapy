@@ -18,12 +18,7 @@ import logging
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
-from astrapy.admin import (
-    API_PATH_ENV_MAP,
-    API_VERSION_ENV_MAP,
-    fetch_database_info,
-    parse_api_endpoint,
-)
+from astrapy.admin import fetch_database_info, parse_api_endpoint
 from astrapy.api_commander import APICommander
 from astrapy.api_options import CollectionAPIOptions
 from astrapy.authentication import (
@@ -32,8 +27,13 @@ from astrapy.authentication import (
     redact_secret,
 )
 from astrapy.constants import Environment
-from astrapy.core.defaults import DEFAULT_AUTH_HEADER
 from astrapy.cursors import AsyncCommandCursor, CommandCursor
+from astrapy.defaults import (
+    API_PATH_ENV_MAP,
+    API_VERSION_ENV_MAP,
+    DEFAULT_ASTRA_DB_NAMESPACE,
+    DEFAULT_DATA_API_AUTH_HEADER,
+)
 from astrapy.exceptions import (
     CollectionAlreadyExistsException,
     DataAPIFaultyResponseException,
@@ -52,8 +52,6 @@ if TYPE_CHECKING:
     from astrapy.authentication import EmbeddingHeadersProvider, TokenProvider
     from astrapy.collection import AsyncCollection, Collection
 
-
-DEFAULT_ASTRA_DB_NAMESPACE = "default_keyspace"
 
 logger = logging.getLogger(__name__)
 
@@ -201,7 +199,7 @@ class Database:
             self.using_namespace = namespace
 
         self._commander_headers = {
-            DEFAULT_AUTH_HEADER: self.token_provider.get_token(),
+            DEFAULT_DATA_API_AUTH_HEADER: self.token_provider.get_token(),
         }
 
         self.caller_name = caller_name
@@ -1121,7 +1119,7 @@ class AsyncDatabase:
             self.using_namespace = namespace
 
         self._commander_headers = {
-            DEFAULT_AUTH_HEADER: self.token_provider.get_token(),
+            DEFAULT_DATA_API_AUTH_HEADER: self.token_provider.get_token(),
         }
 
         self.caller_name = caller_name

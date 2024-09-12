@@ -20,16 +20,6 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, Type, Union, cast
 
 import httpx
 
-from astrapy.authentication import (
-    EMBEDDING_HEADER_API_KEY,
-    EMBEDDING_HEADER_AWS_ACCESS_ID,
-    EMBEDDING_HEADER_AWS_SECRET_ID,
-)
-from astrapy.core.defaults import (
-    DEFAULT_AUTH_HEADER,
-    DEFAULT_DEV_OPS_AUTH_HEADER,
-    DEFAULT_TIMEOUT,
-)
 from astrapy.core.utils import (
     TimeoutInfoWideType,
     http_methods,
@@ -43,20 +33,13 @@ from astrapy.core.utils import (
     user_agent_rs,
     user_agent_string,
 )
+from astrapy.defaults import DEFAULT_REDACTED_HEADER_NAMES, DEFAULT_REQUEST_TIMEOUT_MS
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     DataAPIHttpException,
     DataAPIResponseException,
     to_dataapi_timeout_exception,
 )
-
-DEFAULT_REDACTED_HEADER_NAMES = {
-    DEFAULT_AUTH_HEADER,
-    DEFAULT_DEV_OPS_AUTH_HEADER,
-    EMBEDDING_HEADER_AWS_ACCESS_ID,
-    EMBEDDING_HEADER_AWS_SECRET_ID,
-    EMBEDDING_HEADER_API_KEY,
-}
 
 
 def full_user_agent(
@@ -186,7 +169,7 @@ class APICommander:
                 method=http_method,
                 url=self.full_path,
                 content=encoded_payload,
-                timeout=timeout or DEFAULT_TIMEOUT,
+                timeout=timeout or DEFAULT_REQUEST_TIMEOUT_MS,
                 headers=self.full_headers,
             )
         except httpx.TimeoutException as timeout_exc:
@@ -228,7 +211,7 @@ class APICommander:
                 method=http_method,
                 url=self.full_path,
                 content=encoded_payload,
-                timeout=timeout or DEFAULT_TIMEOUT,
+                timeout=timeout or DEFAULT_REQUEST_TIMEOUT_MS,
                 headers=self.full_headers,
             )
         except httpx.TimeoutException as timeout_exc:

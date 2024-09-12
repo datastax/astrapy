@@ -83,6 +83,7 @@ __pdoc__ = {
     "api_options": False,
     "core": False,
     "db": False,
+    "defaults": False,
     "meta": False,
     "ops": False,
     "ids": False,

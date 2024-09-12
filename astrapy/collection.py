@@ -35,9 +35,14 @@ from astrapy.constants import (
     VectorType,
     normalize_optional_projection,
 )
-from astrapy.core.defaults import DEFAULT_AUTH_HEADER, DEFAULT_INSERT_NUM_DOCUMENTS
 from astrapy.cursors import AsyncCursor, Cursor
 from astrapy.database import AsyncDatabase, Database
+from astrapy.defaults import (
+    DEFAULT_BULK_WRITE_CONCURRENCY,
+    DEFAULT_DATA_API_AUTH_HEADER,
+    DEFAULT_INSERT_MANY_CHUNK_SIZE,
+    DEFAULT_INSERT_MANY_CONCURRENCY,
+)
 from astrapy.exceptions import (
     BulkWriteException,
     CollectionNotFoundException,
@@ -67,10 +72,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-DEFAULT_INSERT_MANY_CONCURRENCY = 20
-DEFAULT_BULK_WRITE_CONCURRENCY = 10
 
 
 def _prepare_update_info(statuses: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -273,7 +274,7 @@ class Collection:
 
         additional_headers = self.api_options.embedding_api_key.get_headers()
         self._commander_headers = {
-            **{DEFAULT_AUTH_HEADER: self._database.token_provider.get_token()},
+            **{DEFAULT_DATA_API_AUTH_HEADER: self._database.token_provider.get_token()},
             **additional_headers,
         }
 
@@ -822,7 +823,7 @@ class Collection:
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered insert_many concurrently.")
         if chunk_size is None:
-            _chunk_size = DEFAULT_INSERT_NUM_DOCUMENTS
+            _chunk_size = DEFAULT_INSERT_MANY_CHUNK_SIZE
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
@@ -2801,7 +2802,7 @@ class AsyncCollection:
 
         additional_headers = self.api_options.embedding_api_key.get_headers()
         self._commander_headers = {
-            **{DEFAULT_AUTH_HEADER: self._database.token_provider.get_token()},
+            **{DEFAULT_DATA_API_AUTH_HEADER: self._database.token_provider.get_token()},
             **additional_headers,
         }
 
@@ -3372,7 +3373,7 @@ class AsyncCollection:
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered insert_many concurrently.")
         if chunk_size is None:
-            _chunk_size = DEFAULT_INSERT_NUM_DOCUMENTS
+            _chunk_size = DEFAULT_INSERT_MANY_CHUNK_SIZE
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)

@@ -29,9 +29,22 @@ from deprecation import DeprecatedWarning
 from astrapy.api_commander import APICommander
 from astrapy.authentication import coerce_token_provider, redact_secret
 from astrapy.constants import Environment
-from astrapy.core.defaults import DEFAULT_AUTH_HEADER
 from astrapy.core.ops import AstraDBOps
 from astrapy.cursors import CommandCursor
+from astrapy.defaults import (
+    API_ENDPOINT_TEMPLATE_MAP,
+    API_PATH_ENV_MAP,
+    API_VERSION_ENV_MAP,
+    DEFAULT_DATA_API_AUTH_HEADER,
+    DEV_OPS_DATABASE_POLL_INTERVAL_S,
+    DEV_OPS_DATABASE_STATUS_ACTIVE,
+    DEV_OPS_DATABASE_STATUS_INITIALIZING,
+    DEV_OPS_DATABASE_STATUS_MAINTENANCE,
+    DEV_OPS_DATABASE_STATUS_PENDING,
+    DEV_OPS_DATABASE_STATUS_TERMINATING,
+    DEV_OPS_NAMESPACE_POLL_INTERVAL_S,
+    DEV_OPS_URL_MAP,
+)
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     DevOpsAPIException,
@@ -51,17 +64,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-DATABASE_POLL_NAMESPACE_SLEEP_TIME = 2
-DATABASE_POLL_SLEEP_TIME = 15
-
-STATUS_MAINTENANCE = "MAINTENANCE"
-STATUS_ACTIVE = "ACTIVE"
-STATUS_PENDING = "PENDING"
-STATUS_INITIALIZING = "INITIALIZING"
-STATUS_ERROR = "ERROR"
-STATUS_TERMINATING = "TERMINATING"
-
-
 database_id_matcher = re.compile(
     "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 )
@@ -76,45 +78,11 @@ api_endpoint_parser = re.compile(
     r".datastax.com"
 )
 api_endpoint_description = (
-    "https://<hexadecimal db uuid>-<db region>.apps.astra.datastax.com"
+    "https://<db uuid, 8-4-4-4-12 hex format>-<db region>.apps.astra.datastax.com"
 )
 
 generic_api_url_matcher = re.compile(r"^https?:\/\/[a-zA-Z0-9\-.]+(\:[0-9]{1,6}){0,1}$")
 generic_api_url_descriptor = "http[s]://<domain name or IP>[:port]"
-
-DEV_OPS_URL_MAP: Dict[str, str] = {
-    Environment.PROD: "https://api.astra.datastax.com",
-    Environment.DEV: "https://api.dev.cloud.datastax.com",
-    Environment.TEST: "https://api.test.cloud.datastax.com",
-}
-
-API_ENDPOINT_TEMPLATE_MAP: Dict[str, str] = {
-    Environment.PROD: "https://{database_id}-{region}.apps.astra.datastax.com",
-    Environment.DEV: "https://{database_id}-{region}.apps.astra-dev.datastax.com",
-    Environment.TEST: "https://{database_id}-{region}.apps.astra-test.datastax.com",
-}
-
-API_PATH_ENV_MAP: Dict[str, str] = {
-    Environment.PROD: "/api/json",
-    Environment.DEV: "/api/json",
-    Environment.TEST: "/api/json",
-    #
-    Environment.DSE: "",
-    Environment.HCD: "",
-    Environment.CASSANDRA: "",
-    Environment.OTHER: "",
-}
-
-API_VERSION_ENV_MAP: Dict[str, str] = {
-    Environment.PROD: "/v1",
-    Environment.DEV: "/v1",
-    Environment.TEST: "/v1",
-    #
-    Environment.DSE: "v1",
-    Environment.HCD: "v1",
-    Environment.CASSANDRA: "v1",
-    Environment.OTHER: "v1",
-}
 
 
 @dataclass
@@ -935,16 +903,19 @@ class AstraDBAdmin:
         if cd_response is not None and "id" in cd_response:
             new_database_id = cd_response["id"]
             if wait_until_active:
-                last_status_seen = STATUS_PENDING
-                while last_status_seen in {STATUS_PENDING, STATUS_INITIALIZING}:
+                last_status_seen = DEV_OPS_DATABASE_STATUS_PENDING
+                while last_status_seen in {
+                    DEV_OPS_DATABASE_STATUS_PENDING,
+                    DEV_OPS_DATABASE_STATUS_INITIALIZING,
+                }:
                     logger.info(f"sleeping to poll for status of '{new_database_id}'")
-                    time.sleep(DATABASE_POLL_SLEEP_TIME)
+                    time.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
                     last_db_info = self.database_info(
                         id=new_database_id,
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
                     )
                     last_status_seen = last_db_info.status
-                if last_status_seen != STATUS_ACTIVE:
+                if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                     raise DevOpsAPIException(
                         f"Database {name} entered unexpected status {last_status_seen} after PENDING"
                     )
@@ -1034,18 +1005,21 @@ class AstraDBAdmin:
         if cd_response is not None and "id" in cd_response:
             new_database_id = cd_response["id"]
             if wait_until_active:
-                last_status_seen = STATUS_PENDING
-                while last_status_seen in {STATUS_PENDING, STATUS_INITIALIZING}:
+                last_status_seen = DEV_OPS_DATABASE_STATUS_PENDING
+                while last_status_seen in {
+                    DEV_OPS_DATABASE_STATUS_PENDING,
+                    DEV_OPS_DATABASE_STATUS_INITIALIZING,
+                }:
                     logger.info(
                         f"sleeping to poll for status of '{new_database_id}', async"
                     )
-                    await asyncio.sleep(DATABASE_POLL_SLEEP_TIME)
+                    await asyncio.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
                     last_db_info = await self.async_database_info(
                         id=new_database_id,
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
                     )
                     last_status_seen = last_db_info.status
-                if last_status_seen != STATUS_ACTIVE:
+                if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                     raise DevOpsAPIException(
                         f"Database {name} entered unexpected status {last_status_seen} after PENDING"
                     )
@@ -1113,11 +1087,11 @@ class AstraDBAdmin:
         logger.info(f"devops api returned from dropping database '{id}'")
         if te_response == id:
             if wait_until_active:
-                last_status_seen: Optional[str] = STATUS_TERMINATING
+                last_status_seen: Optional[str] = DEV_OPS_DATABASE_STATUS_TERMINATING
                 _db_name: Optional[str] = None
-                while last_status_seen == STATUS_TERMINATING:
+                while last_status_seen == DEV_OPS_DATABASE_STATUS_TERMINATING:
                     logger.info(f"sleeping to poll for status of '{id}'")
-                    time.sleep(DATABASE_POLL_SLEEP_TIME)
+                    time.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
                     #
                     detected_databases = [
                         a_db_info
@@ -1191,11 +1165,11 @@ class AstraDBAdmin:
         logger.info(f"devops api returned from dropping database '{id}', async")
         if te_response == id:
             if wait_until_active:
-                last_status_seen: Optional[str] = STATUS_TERMINATING
+                last_status_seen: Optional[str] = DEV_OPS_DATABASE_STATUS_TERMINATING
                 _db_name: Optional[str] = None
-                while last_status_seen == STATUS_TERMINATING:
+                while last_status_seen == DEV_OPS_DATABASE_STATUS_TERMINATING:
                     logger.info(f"sleeping to poll for status of '{id}', async")
-                    await asyncio.sleep(DATABASE_POLL_SLEEP_TIME)
+                    await asyncio.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
                     #
                     detected_databases = [
                         a_db_info
@@ -1632,7 +1606,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             else API_VERSION_ENV_MAP[self.environment]
         )
         self._commander_headers = {
-            DEFAULT_AUTH_HEADER: self.token_provider.get_token(),
+            DEFAULT_DATA_API_AUTH_HEADER: self.token_provider.get_token(),
         }
         self._api_commander = APICommander(
             api_endpoint=self.api_endpoint,
@@ -2095,14 +2069,14 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         )
         if cn_response is not None and name == cn_response.get("name"):
             if wait_until_active:
-                last_status_seen = STATUS_MAINTENANCE
-                while last_status_seen == STATUS_MAINTENANCE:
+                last_status_seen = DEV_OPS_DATABASE_STATUS_MAINTENANCE
+                while last_status_seen == DEV_OPS_DATABASE_STATUS_MAINTENANCE:
                     logger.info(f"sleeping to poll for status of '{self._database_id}'")
-                    time.sleep(DATABASE_POLL_NAMESPACE_SLEEP_TIME)
+                    time.sleep(DEV_OPS_NAMESPACE_POLL_INTERVAL_S)
                     last_status_seen = self.info(
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
                     ).status
-                if last_status_seen != STATUS_ACTIVE:
+                if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                     raise DevOpsAPIException(
                         f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
                     )
@@ -2180,17 +2154,17 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         )
         if cn_response is not None and name == cn_response.get("name"):
             if wait_until_active:
-                last_status_seen = STATUS_MAINTENANCE
-                while last_status_seen == STATUS_MAINTENANCE:
+                last_status_seen = DEV_OPS_DATABASE_STATUS_MAINTENANCE
+                while last_status_seen == DEV_OPS_DATABASE_STATUS_MAINTENANCE:
                     logger.info(
                         f"sleeping to poll for status of '{self._database_id}', async"
                     )
-                    await asyncio.sleep(DATABASE_POLL_NAMESPACE_SLEEP_TIME)
+                    await asyncio.sleep(DEV_OPS_NAMESPACE_POLL_INTERVAL_S)
                     last_db_info = await self.async_info(
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
                     )
                     last_status_seen = last_db_info.status
-                if last_status_seen != STATUS_ACTIVE:
+                if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                     raise DevOpsAPIException(
                         f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
                     )
@@ -2261,14 +2235,14 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         )
         if dk_response == name:
             if wait_until_active:
-                last_status_seen = STATUS_MAINTENANCE
-                while last_status_seen == STATUS_MAINTENANCE:
+                last_status_seen = DEV_OPS_DATABASE_STATUS_MAINTENANCE
+                while last_status_seen == DEV_OPS_DATABASE_STATUS_MAINTENANCE:
                     logger.info(f"sleeping to poll for status of '{self._database_id}'")
-                    time.sleep(DATABASE_POLL_NAMESPACE_SLEEP_TIME)
+                    time.sleep(DEV_OPS_NAMESPACE_POLL_INTERVAL_S)
                     last_status_seen = self.info(
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
                     ).status
-                if last_status_seen != STATUS_ACTIVE:
+                if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                     raise DevOpsAPIException(
                         f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
                     )
@@ -2338,17 +2312,17 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         )
         if dk_response == name:
             if wait_until_active:
-                last_status_seen = STATUS_MAINTENANCE
-                while last_status_seen == STATUS_MAINTENANCE:
+                last_status_seen = DEV_OPS_DATABASE_STATUS_MAINTENANCE
+                while last_status_seen == DEV_OPS_DATABASE_STATUS_MAINTENANCE:
                     logger.info(
                         f"sleeping to poll for status of '{self._database_id}', async"
                     )
-                    await asyncio.sleep(DATABASE_POLL_NAMESPACE_SLEEP_TIME)
+                    await asyncio.sleep(DEV_OPS_NAMESPACE_POLL_INTERVAL_S)
                     last_db_info = await self.async_info(
                         max_time_ms=timeout_manager.remaining_timeout_ms(),
                     )
                     last_status_seen = last_db_info.status
-                if last_status_seen != STATUS_ACTIVE:
+                if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                     raise DevOpsAPIException(
                         f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
                     )
@@ -2724,7 +2698,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self.api_version = api_version if api_version is not None else ""
         #
         self._commander_headers = {
-            DEFAULT_AUTH_HEADER: self.token_provider.get_token(),
+            DEFAULT_DATA_API_AUTH_HEADER: self.token_provider.get_token(),
         }
 
         self._api_commander = APICommander(

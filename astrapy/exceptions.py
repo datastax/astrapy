@@ -752,7 +752,7 @@ def to_dataapi_timeout_exception(
 
 def ops_recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
     """
-    Decorator for a sync DevOps method liable to generate the core APIRequestError.
+    Decorator for a sync DevOps method liable to generate the an APIRequestError.
     That exception is intercepted and recast as DevOpsAPIException.
     Moreover, timeouts are also caught and converted into Data API timeouts.
     """
@@ -775,7 +775,7 @@ def ops_recast_method_async(
     method: Callable[..., Awaitable[Any]]
 ) -> Callable[..., Awaitable[Any]]:
     """
-    Decorator for an async DevOps method liable to generate the core APIRequestError.
+    Decorator for an async DevOps method liable to generate the an APIRequestError.
     That exception is intercepted and recast as DevOpsAPIException.
     Moreover, timeouts are also caught and converted into Data API timeouts.
     """

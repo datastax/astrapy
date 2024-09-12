@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Fixtures specific to the non-core-side testing."""
+"""Fixtures specific to the idiomatic testing."""
 
 from __future__ import annotations
 
