@@ -1012,7 +1012,7 @@ class MultiCallTimeoutManager:
                         endpoint=None,
                         raw_payload=None,
                     )
-                elif self.exception_type == "devops_api":
+                elif self.exception_type == "dev_ops_api":
                     raise DevOpsAPIException("Operation timed out.")
                 else:
                     raise ValueError("Operation timed out.")
