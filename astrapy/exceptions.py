@@ -16,12 +16,9 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from functools import wraps
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 import httpx
-
-from astrapy.core.api import APIRequestError
 
 if TYPE_CHECKING:
     from astrapy.request_tools import TimeoutInfo
@@ -911,50 +908,6 @@ def to_devopsapi_timeout_exception(
         endpoint=endpoint,
         raw_payload=raw_payload,
     )
-
-
-def ops_recast_method_sync(method: Callable[..., Any]) -> Callable[..., Any]:
-    """
-    Decorator for a sync DevOps method liable to generate the an APIRequestError.
-    That exception is intercepted and recast as DevOpsAPIException.
-    Moreover, timeouts are also caught and converted into Data API timeouts.
-    """
-
-    @wraps(method)
-    def _wrapped_sync(*pargs: Any, **kwargs: Any) -> Any:
-        try:
-            return method(*pargs, **kwargs)
-        except APIRequestError as exc:
-            raise DevOpsAPIResponseException.from_response(
-                command=exc.payload, raw_response=exc.response.json()
-            )
-        except httpx.TimeoutException as texc:
-            raise to_dataapi_timeout_exception(texc)
-
-    return _wrapped_sync
-
-
-def ops_recast_method_async(
-    method: Callable[..., Awaitable[Any]]
-) -> Callable[..., Awaitable[Any]]:
-    """
-    Decorator for an async DevOps method liable to generate the an APIRequestError.
-    That exception is intercepted and recast as DevOpsAPIException.
-    Moreover, timeouts are also caught and converted into Data API timeouts.
-    """
-
-    @wraps(method)
-    async def _wrapped_async(*pargs: Any, **kwargs: Any) -> Any:
-        try:
-            return await method(*pargs, **kwargs)
-        except APIRequestError as exc:
-            raise DevOpsAPIResponseException.from_response(
-                command=exc.payload, raw_response=exc.response.json()
-            )
-        except httpx.TimeoutException as texc:
-            raise to_dataapi_timeout_exception(texc)
-
-    return _wrapped_async
 
 
 def base_timeout_info(max_time_ms: Optional[int]) -> Union[TimeoutInfo, None]:

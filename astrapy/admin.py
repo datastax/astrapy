@@ -53,8 +53,6 @@ from astrapy.exceptions import (
     DevOpsAPIException,
     MultiCallTimeoutManager,
     base_timeout_info,
-    ops_recast_method_async,
-    ops_recast_method_sync,
 )
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo, FindEmbeddingProvidersResult
 from astrapy.request_tools import HttpMethod
@@ -701,7 +699,6 @@ class AstraDBAdmin:
         self.caller_version = caller_version
         self._dev_ops_api_commander = self._get_dev_ops_api_commander()
 
-    @ops_recast_method_sync
     def list_databases(
         self,
         *,
@@ -752,7 +749,6 @@ class AstraDBAdmin:
                 ],
             )
 
-    @ops_recast_method_async
     async def async_list_databases(
         self,
         *,
@@ -805,7 +801,6 @@ class AstraDBAdmin:
                 ],
             )
 
-    @ops_recast_method_sync
     def database_info(
         self, id: str, *, max_time_ms: Optional[int] = None
     ) -> AdminDatabaseInfo:
@@ -842,7 +837,6 @@ class AstraDBAdmin:
             environment=self.environment,
         )
 
-    @ops_recast_method_async
     async def async_database_info(
         self, id: str, *, max_time_ms: Optional[int] = None
     ) -> AdminDatabaseInfo:
@@ -879,7 +873,6 @@ class AstraDBAdmin:
             environment=self.environment,
         )
 
-    @ops_recast_method_sync
     def create_database(
         self,
         name: str,
@@ -984,7 +977,6 @@ class AstraDBAdmin:
             astra_db_admin=self,
         )
 
-    @ops_recast_method_async
     async def async_create_database(
         self,
         name: str,
@@ -1092,7 +1084,6 @@ class AstraDBAdmin:
             astra_db_admin=self,
         )
 
-    @ops_recast_method_sync
     def drop_database(
         self,
         id: str,
@@ -1175,7 +1166,6 @@ class AstraDBAdmin:
         logger.info(f"finished dropping database '{id}'")
         return {"ok": 1}
 
-    @ops_recast_method_async
     async def async_drop_database(
         self,
         id: str,
@@ -1383,7 +1373,7 @@ class AstraDBAdmin:
             max_time_ms=max_time_ms,
         )
 
-        _namespace: str
+        _namespace: Optional[str]
         if namespace:
             _namespace = namespace
         else:
@@ -2027,7 +2017,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             max_time_ms=max_time_ms,
         )
         logger.info(f"finished getting info ('{self._database_id}')")
-        return req_response  # type: ignore[no-any-return]
+        return req_response
 
     async def async_info(
         self, *, max_time_ms: Optional[int] = None
@@ -2058,7 +2048,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             max_time_ms=max_time_ms,
         )
         logger.info(f"finished getting info ('{self._database_id}'), async")
-        return req_response  # type: ignore[no-any-return]
+        return req_response
 
     def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
         """
@@ -2117,7 +2107,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         else:
             return info.raw_info["info"]["keyspaces"]  # type: ignore[no-any-return]
 
-    @ops_recast_method_sync
     def create_namespace(
         self,
         name: str,
@@ -2200,9 +2189,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             self.spawner_database.use_namespace(name)
         return {"ok": 1}
 
-    # the 'override' is because the error-recast decorator washes out the signature
-    @ops_recast_method_async
-    async def async_create_namespace(  # type: ignore[override]
+    async def async_create_namespace(
         self,
         name: str,
         *,
@@ -2289,7 +2276,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             self.spawner_database.use_namespace(name)
         return {"ok": 1}
 
-    @ops_recast_method_sync
     def drop_namespace(
         self,
         name: str,
@@ -2364,9 +2350,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         logger.info(f"finished dropping namespace '{name}' on '{self._database_id}'")
         return {"ok": 1}
 
-    # the 'override' is because the error-recast decorator washes out the signature
-    @ops_recast_method_async
-    async def async_drop_namespace(  # type: ignore[override]
+    async def async_drop_namespace(
         self,
         name: str,
         *,
@@ -2489,7 +2473,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         """
 
         logger.info(f"dropping this database ('{self._database_id}')")
-        return self._astra_db_admin.drop_database(  # type: ignore[no-any-return]
+        return self._astra_db_admin.drop_database(
             id=self._database_id,
             wait_until_active=wait_until_active,
             max_time_ms=max_time_ms,
@@ -2538,7 +2522,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         """
 
         logger.info(f"dropping this database ('{self._database_id}'), async")
-        return await self._astra_db_admin.async_drop_database(  # type: ignore[no-any-return]
+        return await self._astra_db_admin.async_drop_database(
             id=self._database_id,
             wait_until_active=wait_until_active,
             max_time_ms=max_time_ms,
