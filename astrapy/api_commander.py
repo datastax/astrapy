@@ -180,6 +180,7 @@ class APICommander:
         *,
         http_method: str = HttpMethod.POST,
         payload: Optional[Dict[str, Any]] = None,
+        additional_path: Optional[str] = None,
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> httpx.Response:
@@ -197,10 +198,16 @@ class APICommander:
             allow_nan=False,
             separators=(",", ":"),
         ).encode()
+        if additional_path:
+            request_url = "/".join(
+                [self.full_path.rstrip("/"), additional_path.lstrip("/")]
+            )
+        else:
+            request_url = self.full_path
         try:
             raw_response = self.client.request(
                 method=http_method,
-                url=self.full_path,
+                url=request_url,
                 content=encoded_payload,
                 timeout=timeout or DEFAULT_REQUEST_TIMEOUT_MS,
                 headers=self.full_headers,
@@ -223,6 +230,7 @@ class APICommander:
         *,
         http_method: str = HttpMethod.POST,
         payload: Optional[Dict[str, Any]] = None,
+        additional_path: Optional[str] = None,
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> httpx.Response:
@@ -240,10 +248,17 @@ class APICommander:
             allow_nan=False,
             separators=(",", ":"),
         ).encode()
+        request_url: str
+        if additional_path:
+            request_url = "/".join(
+                [self.full_path.rstrip("/"), additional_path.lstrip("/")]
+            )
+        else:
+            request_url = self.full_path
         try:
             raw_response = await self.async_client.request(
                 method=http_method,
-                url=self.full_path,
+                url=request_url,
                 content=encoded_payload,
                 timeout=timeout or DEFAULT_REQUEST_TIMEOUT_MS,
                 headers=self.full_headers,
@@ -266,12 +281,14 @@ class APICommander:
         *,
         http_method: str = HttpMethod.POST,
         payload: Optional[Dict[str, Any]] = None,
+        additional_path: Optional[str] = None,
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> Dict[str, Any]:
         raw_response = self.raw_request(
             http_method=http_method,
             payload=payload,
+            additional_path=additional_path,
             raise_api_errors=raise_api_errors,
             timeout_info=timeout_info,
         )
@@ -312,12 +329,14 @@ class APICommander:
         *,
         http_method: str = HttpMethod.POST,
         payload: Optional[Dict[str, Any]] = None,
+        additional_path: Optional[str] = None,
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> Dict[str, Any]:
         raw_response = await self.async_raw_request(
             http_method=http_method,
             payload=payload,
+            additional_path=additional_path,
             raise_api_errors=raise_api_errors,
             timeout_info=timeout_info,
         )
