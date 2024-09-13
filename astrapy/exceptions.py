@@ -885,7 +885,7 @@ def to_dataapi_timeout_exception(
 def to_devopsapi_timeout_exception(
     httpx_timeout: httpx.TimeoutException,
 ) -> DevOpsAPITimeoutException:
-    text = str(httpx_timeout)
+    text = str(httpx_timeout) or "timed out"
     if isinstance(httpx_timeout, httpx.ConnectTimeout):
         timeout_type = "connect"
     elif isinstance(httpx_timeout, httpx.ReadTimeout):

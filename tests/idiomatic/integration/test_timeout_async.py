@@ -19,8 +19,8 @@ import asyncio
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
-from astrapy.admin import fetch_database_info
-from astrapy.exceptions import DataAPITimeoutException
+from astrapy.admin import async_fetch_database_info
+from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
 from astrapy.operations import AsyncDeleteMany, AsyncInsertMany
 
 from ..conftest import IS_ASTRA_DB
@@ -50,15 +50,15 @@ class TestTimeoutAsync:
         self,
         async_database: AsyncDatabase,
     ) -> None:
-        info = fetch_database_info(
+        info = await async_fetch_database_info(
             async_database.api_endpoint,
             token=async_database.token_provider.get_token(),
             namespace=async_database.namespace,
         )
         assert info is not None
 
-        with pytest.raises(DataAPITimeoutException) as exc:
-            info = fetch_database_info(
+        with pytest.raises(DevOpsAPITimeoutException) as exc:
+            info = await async_fetch_database_info(
                 async_database.api_endpoint,
                 token=async_database.token_provider.get_token(),
                 namespace=async_database.namespace,

@@ -23,7 +23,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-import httpx
 from deprecation import DeprecatedWarning
 
 from astrapy.api_commander import APICommander
@@ -55,7 +54,6 @@ from astrapy.exceptions import (
     base_timeout_info,
     ops_recast_method_async,
     ops_recast_method_sync,
-    to_dataapi_timeout_exception,
 )
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo, FindEmbeddingProvidersResult
 from astrapy.request_tools import HttpMethod
@@ -269,18 +267,32 @@ async def async_fetch_raw_database_info_from_id_token(
         The full response from the DevOps API about the database.
     """
 
-    astra_db_ops = AstraDBOps(
-        token=token,
-        dev_ops_url=DEV_OPS_URL_ENV_MAP[environment],
+    ops_headers: Dict[str, str | None]
+    if token is not None:
+        ops_headers = {
+            DEFAULT_DEV_OPS_AUTH_HEADER: f"{DEFAULT_DEV_OPS_AUTH_PREFIX}{token}",
+        }
+    else:
+        ops_headers = {}
+    full_path = "/".join(
+        [
+            DEV_OPS_VERSION_ENV_MAP[environment],
+            "databases",
+            id,
+        ]
     )
-    try:
-        gd_response = await astra_db_ops.async_get_database(
-            database=id,
-            timeout_info=base_timeout_info(max_time_ms),
-        )
-        return gd_response
-    except httpx.TimeoutException as texc:
-        raise to_dataapi_timeout_exception(texc)
+    ops_commander = APICommander(
+        api_endpoint=DEV_OPS_URL_ENV_MAP[environment],
+        path=full_path,
+        headers=ops_headers,
+        devops_api=True,
+    )
+
+    gd_response = await ops_commander.async_request(
+        http_method=HttpMethod.GET,
+        timeout_info=base_timeout_info(max_time_ms),
+    )
+    return gd_response
 
 
 def fetch_database_info(
