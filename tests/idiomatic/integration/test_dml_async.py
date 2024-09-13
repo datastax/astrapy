@@ -673,7 +673,7 @@ class TestDMLAsync:
         assert f1doc_wi_s["$similarity"] > 0.0
 
         with pytest.raises(ValueError):
-            async_empty_collection.find({}, include_similarity=True).distinct("x")
+            await async_empty_collection.find({}, include_similarity=True).distinct("x")
 
         with pytest.raises(ValueError):
             await async_empty_collection.find_one({}, include_similarity=True)

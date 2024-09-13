@@ -727,11 +727,11 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
-        logger.info("getting databases")
+        logger.info("getting databases (DevOps API)")
         gd_list_response = self._dev_ops_api_commander.request(
             http_method=HttpMethod.GET, timeout_info=base_timeout_info(max_time_ms)
         )
-        logger.info("finished getting databases")
+        logger.info("finished getting databases (DevOps API)")
         if not isinstance(gd_list_response, list):
             raise DevOpsAPIException(
                 "Faulty response from get-databases DevOps API command.",
@@ -779,11 +779,11 @@ class AstraDBAdmin:
             False
         """
 
-        logger.info("getting databases, async")
+        logger.info("getting databases (DevOps API), async")
         gd_list_response = await self._dev_ops_api_commander.async_request(
             http_method=HttpMethod.GET, timeout_info=base_timeout_info(max_time_ms)
         )
-        logger.info("finished getting databases, async")
+        logger.info("finished getting databases (DevOps API), async")
         if not isinstance(gd_list_response, list):
             raise DevOpsAPIException(
                 "Faulty response from get-databases DevOps API command.",
@@ -825,13 +825,13 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
-        logger.info(f"getting database info for '{id}'")
+        logger.info(f"getting database info for '{id}' (DevOps API)")
         gd_response = self._dev_ops_api_commander.request(
             http_method=HttpMethod.GET,
             additional_path=id,
             timeout_info=base_timeout_info(max_time_ms),
         )
-        logger.info(f"finished getting database info for '{id}'")
+        logger.info(f"finished getting database info for '{id}' (DevOps API)")
         return _recast_as_admin_database_info(
             gd_response,
             environment=self.environment,
@@ -861,13 +861,13 @@ class AstraDBAdmin:
             True
         """
 
-        logger.info(f"getting database info for '{id}', async")
+        logger.info(f"getting database info for '{id}' (DevOps API), async")
         gd_response = await self._dev_ops_api_commander.async_request(
             http_method=HttpMethod.GET,
             additional_path=id,
             timeout_info=base_timeout_info(max_time_ms),
         )
-        logger.info(f"finished getting database info for '{id}', async")
+        logger.info(f"finished getting database info for '{id}' (DevOps API), async")
         return _recast_as_admin_database_info(
             gd_response,
             environment=self.environment,
@@ -932,7 +932,9 @@ class AstraDBAdmin:
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
         )
-        logger.info(f"creating database {name}/({cloud_provider}, {region})")
+        logger.info(
+            f"creating database {name}/({cloud_provider}, {region}) (DevOps API)"
+        )
         cd_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.POST,
             payload=cd_payload,
@@ -946,7 +948,7 @@ class AstraDBAdmin:
             )
         new_database_id = cd_raw_response.headers["Location"]
         logger.info(
-            "devops api returned from creating database "
+            "DevOps API returned from creating database "
             f"{name}/({cloud_provider}, {region})"
         )
         if wait_until_active:
@@ -969,7 +971,7 @@ class AstraDBAdmin:
         # return the database instance
         logger.info(
             f"finished creating database '{new_database_id}' = "
-            f"{name}/({cloud_provider}, {region})"
+            f"{name}/({cloud_provider}, {region}) (DevOps API)"
         )
         return AstraDBDatabaseAdmin.from_astra_db_admin(
             id=new_database_id,
@@ -1037,7 +1039,10 @@ class AstraDBAdmin:
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
         )
-        logger.info(f"creating database {name}/({cloud_provider}, {region}), async")
+        logger.info(
+            f"creating database {name}/({cloud_provider}, {region}) "
+            "(DevOps API), async"
+        )
         cd_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.POST,
             payload=cd_payload,
@@ -1051,7 +1056,7 @@ class AstraDBAdmin:
             )
         new_database_id = cd_raw_response.headers["Location"]
         logger.info(
-            "devops api returned from creating database "
+            "DevOps API returned from creating database "
             f"{name}/({cloud_provider}, {region}), async"
         )
         if wait_until_active:
@@ -1071,12 +1076,13 @@ class AstraDBAdmin:
                 last_status_seen = last_db_info.status
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                 raise DevOpsAPIException(
-                    f"Database {name} entered unexpected status {last_status_seen} after PENDING"
+                    f"Database {name} entered unexpected status "
+                    f"{last_status_seen} after PENDING"
                 )
         # return the database instance
         logger.info(
             f"finished creating database '{new_database_id}' = "
-            f"{name}/({cloud_provider}, {region}), async"
+            f"{name}/({cloud_provider}, {region}) (DevOps API), async"
         )
         return AstraDBDatabaseAdmin.from_astra_db_admin(
             id=new_database_id,
@@ -1126,10 +1132,10 @@ class AstraDBAdmin:
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
         )
-        logger.info(f"dropping database '{id}'")
+        logger.info(f"dropping database '{id}' (DevOps API)")
         te_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.POST,
-            additional_path=f"databases/{id}/terminate",
+            additional_path=f"{id}/terminate",
             timeout_info=timeout_manager.remaining_timeout_info(),
         )
         if te_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_ACCEPTED:
@@ -1138,7 +1144,7 @@ class AstraDBAdmin:
                 f"{te_raw_response.status_code} instead of "
                 f"{DEV_OPS_RESPONSE_HTTP_ACCEPTED} - Created"
             )
-        logger.info(f"devops api returned from dropping database '{id}'")
+        logger.info(f"DevOps API returned from dropping database '{id}'")
         if wait_until_active:
             last_status_seen: Optional[str] = DEV_OPS_DATABASE_STATUS_TERMINATING
             _db_name: Optional[str] = None
@@ -1161,9 +1167,10 @@ class AstraDBAdmin:
             if last_status_seen is not None:
                 _name_desc = f" ({_db_name})" if _db_name else ""
                 raise DevOpsAPIException(
-                    f"Database {id}{_name_desc} entered unexpected status {last_status_seen} after PENDING"
+                    f"Database {id}{_name_desc} entered unexpected status "
+                    f"{last_status_seen} after PENDING"
                 )
-        logger.info(f"finished dropping database '{id}'")
+        logger.info(f"finished dropping database '{id}' (DevOps API)")
         return {"ok": 1}
 
     async def async_drop_database(
@@ -1205,10 +1212,10 @@ class AstraDBAdmin:
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
         )
-        logger.info(f"dropping database '{id}'")
+        logger.info(f"dropping database '{id}' (DevOps API), async")
         te_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.POST,
-            additional_path=f"databases/{id}/terminate",
+            additional_path=f"{id}/terminate",
             timeout_info=timeout_manager.remaining_timeout_info(),
         )
         if te_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_ACCEPTED:
@@ -1217,7 +1224,7 @@ class AstraDBAdmin:
                 f"{te_raw_response.status_code} instead of "
                 f"{DEV_OPS_RESPONSE_HTTP_ACCEPTED} - Created"
             )
-        logger.info(f"devops api returned from dropping database '{id}'")
+        logger.info(f"DevOps API returned from dropping database '{id}', async")
         if wait_until_active:
             last_status_seen: Optional[str] = DEV_OPS_DATABASE_STATUS_TERMINATING
             _db_name: Optional[str] = None
@@ -1240,9 +1247,10 @@ class AstraDBAdmin:
             if last_status_seen is not None:
                 _name_desc = f" ({_db_name})" if _db_name else ""
                 raise DevOpsAPIException(
-                    f"Database {id}{_name_desc} entered unexpected status {last_status_seen} after PENDING"
+                    f"Database {id}{_name_desc} entered unexpected status "
+                    f"{last_status_seen} after PENDING"
                 )
-        logger.info(f"finished dropping database '{id}', async")
+        logger.info(f"finished dropping database '{id}' (DevOps API), async")
         return {"ok": 1}
 
     def get_database_admin(
@@ -2154,7 +2162,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
         )
-        logger.info(f"creating namespace '{name}' on '{self._database_id}'")
+        logger.info(
+            f"creating namespace '{name}' on " f"'{self._database_id}' (DevOps API)"
+        )
         cn_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.POST,
             additional_path=f"keyspaces/{name}",
@@ -2167,7 +2177,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 f"{DEV_OPS_RESPONSE_HTTP_CREATED} - Created."
             )
         logger.info(
-            f"devops api returned from creating namespace '{name}' on '{self._database_id}'"
+            "DevOps API returned from creating namespace "
+            f"'{name}' on '{self._database_id}'"
         )
         if wait_until_active:
             last_status_seen = DEV_OPS_DATABASE_STATUS_MAINTENANCE
@@ -2184,7 +2195,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             # is the namespace found?
             if name not in self.list_namespaces():
                 raise DevOpsAPIException("Could not create the namespace.")
-        logger.info(f"finished creating namespace '{name}' on '{self._database_id}'")
+        logger.info(
+            f"finished creating namespace '{name}' on "
+            f"'{self._database_id}' (DevOps API)"
+        )
         if update_db_namespace:
             self.spawner_database.use_namespace(name)
         return {"ok": 1}
@@ -2235,7 +2249,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
         )
-        logger.info(f"creating namespace '{name}' on '{self._database_id}', async")
+        logger.info(
+            f"creating namespace '{name}' on "
+            f"'{self._database_id}' (DevOps API), async"
+        )
         cn_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.POST,
             additional_path=f"keyspaces/{name}",
@@ -2248,7 +2265,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 f"{DEV_OPS_RESPONSE_HTTP_CREATED} - Created."
             )
         logger.info(
-            f"devops api returned from creating namespace "
+            f"DevOps API returned from creating namespace "
             f"'{name}' on '{self._database_id}', async"
         )
         if wait_until_active:
@@ -2270,7 +2287,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             if name not in await self.async_list_namespaces():
                 raise DevOpsAPIException("Could not create the namespace.")
         logger.info(
-            f"finished creating namespace '{name}' on '{self._database_id}', async"
+            f"finished creating namespace '{name}' on "
+            f"'{self._database_id}' (DevOps API), async"
         )
         if update_db_namespace:
             self.spawner_database.use_namespace(name)
@@ -2317,7 +2335,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
         )
-        logger.info(f"dropping namespace '{name}' on '{self._database_id}'")
+        logger.info(
+            f"dropping namespace '{name}' on " f"'{self._database_id}' (DevOps API)"
+        )
         dk_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.DELETE,
             additional_path=f"keyspaces/{name}",
@@ -2330,7 +2350,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 f"{DEV_OPS_RESPONSE_HTTP_ACCEPTED} - Created"
             )
         logger.info(
-            f"devops api returned from dropping namespace '{name}' on '{self._database_id}'"
+            "DevOps API returned from dropping namespace "
+            f"'{name}' on '{self._database_id}'"
         )
         if wait_until_active:
             last_status_seen = DEV_OPS_DATABASE_STATUS_MAINTENANCE
@@ -2347,7 +2368,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             # is the namespace found?
             if name in self.list_namespaces():
                 raise DevOpsAPIException("Could not drop the namespace.")
-        logger.info(f"finished dropping namespace '{name}' on '{self._database_id}'")
+        logger.info(
+            f"finished dropping namespace '{name}' on "
+            f"'{self._database_id}' (DevOps API)"
+        )
         return {"ok": 1}
 
     async def async_drop_namespace(
@@ -2390,7 +2414,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
         )
-        logger.info(f"dropping namespace '{name}' on '{self._database_id}', async")
+        logger.info(
+            f"dropping namespace '{name}' on "
+            f"'{self._database_id}' (DevOps API), async"
+        )
         dk_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.DELETE,
             additional_path=f"keyspaces/{name}",
@@ -2403,7 +2430,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 f"{DEV_OPS_RESPONSE_HTTP_ACCEPTED} - Created"
             )
         logger.info(
-            f"devops api returned from dropping namespace "
+            f"DevOps API returned from dropping namespace "
             f"'{name}' on '{self._database_id}', async"
         )
         if wait_until_active:
@@ -2425,7 +2452,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             if name in await self.async_list_namespaces():
                 raise DevOpsAPIException("Could not drop the namespace.")
         logger.info(
-            f"finished dropping namespace '{name}' on '{self._database_id}', async"
+            f"finished dropping namespace '{name}' on "
+            f"'{self._database_id}' (DevOps API), async"
         )
         return {"ok": 1}
 
@@ -2648,7 +2676,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        logger.info("getting list of embedding providers")
+        logger.info("findEmbeddingProviders")
         fe_response = self._api_commander.request(
             payload={"findEmbeddingProviders": {}},
             timeout_info=base_timeout_info(max_time_ms),
@@ -2659,7 +2687,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 raw_response=fe_response,
             )
         else:
-            logger.info("finished getting list of embedding providers")
+            logger.info("finished findEmbeddingProviders")
             return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
 
     async def async_find_embedding_providers(
@@ -2692,7 +2720,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        logger.info("getting list of embedding providers, async")
+        logger.info("findEmbeddingProviders, async")
         fe_response = await self._api_commander.async_request(
             payload={"findEmbeddingProviders": {}},
             timeout_info=base_timeout_info(max_time_ms),
@@ -2703,7 +2731,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 raw_response=fe_response,
             )
         else:
-            logger.info("finished getting list of embedding providers, async")
+            logger.info("finished findEmbeddingProviders, async")
             return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
 
 
@@ -3315,7 +3343,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        logger.info("getting list of embedding providers")
+        logger.info("findEmbeddingProviders")
         fe_response = self._api_commander.request(
             payload={"findEmbeddingProviders": {}},
             timeout_info=base_timeout_info(max_time_ms),
@@ -3326,7 +3354,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 raw_response=fe_response,
             )
         else:
-            logger.info("finished getting list of embedding providers")
+            logger.info("finished findEmbeddingProviders")
             return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
 
     async def async_find_embedding_providers(
@@ -3359,7 +3387,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        logger.info("getting list of embedding providers, async")
+        logger.info("findEmbeddingProviders, async")
         fe_response = await self._api_commander.async_request(
             payload={"findEmbeddingProviders": {}},
             timeout_info=base_timeout_info(max_time_ms),
@@ -3370,5 +3398,5 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 raw_response=fe_response,
             )
         else:
-            logger.info("finished getting list of embedding providers, async")
+            logger.info("finished findEmbeddingProviders, async")
             return FindEmbeddingProvidersResult.from_dict(fe_response["status"])

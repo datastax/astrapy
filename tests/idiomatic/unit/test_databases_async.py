@@ -18,7 +18,7 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase, DataAPIClient
 from astrapy.constants import Environment
-from astrapy.database import DEFAULT_ASTRA_DB_NAMESPACE
+from astrapy.defaults import DEFAULT_ASTRA_DB_NAMESPACE
 from astrapy.exceptions import DevOpsAPIException
 
 from ..conftest import TEST_COLLECTION_INSTANCE_NAME, DataAPICredentials
