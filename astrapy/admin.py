@@ -28,7 +28,6 @@ from deprecation import DeprecatedWarning
 from astrapy.api_commander import APICommander
 from astrapy.authentication import coerce_token_provider, redact_secret
 from astrapy.constants import Environment
-from astrapy.core.ops import AstraDBOps
 from astrapy.cursors import CommandCursor
 from astrapy.defaults import (
     API_ENDPOINT_TEMPLATE_ENV_MAP,
@@ -44,6 +43,8 @@ from astrapy.defaults import (
     DEV_OPS_DATABASE_STATUS_PENDING,
     DEV_OPS_DATABASE_STATUS_TERMINATING,
     DEV_OPS_NAMESPACE_POLL_INTERVAL_S,
+    DEV_OPS_RESPONSE_HTTP_ACCEPTED,
+    DEV_OPS_RESPONSE_HTTP_CREATED,
     DEV_OPS_URL_ENV_MAP,
     DEV_OPS_VERSION_ENV_MAP,
 )
@@ -555,17 +556,21 @@ class AstraDBAdmin:
             self.dev_ops_url = DEV_OPS_URL_ENV_MAP[self.environment]
         else:
             self.dev_ops_url = dev_ops_url
-        self._caller_name = caller_name
-        self._caller_version = caller_version
         self._dev_ops_url = dev_ops_url
         self._dev_ops_api_version = dev_ops_api_version
-        self._astra_db_ops = AstraDBOps(
-            token=self.token_provider.get_token(),
-            dev_ops_url=self.dev_ops_url,
-            dev_ops_api_version=dev_ops_api_version,
-            caller_name=caller_name,
-            caller_version=caller_version,
-        )
+
+        self._commander_headers: Dict[str, str | None]
+        if self.token_provider:
+            _token = self.token_provider.get_token()
+            self._commander_headers = {
+                DEFAULT_DEV_OPS_AUTH_HEADER: f"{DEFAULT_DEV_OPS_AUTH_PREFIX}{_token}",
+            }
+        else:
+            self._commander_headers = {}
+
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        self._api_commander = self._get_api_commander()
 
     def __repr__(self) -> str:
         token_desc: Optional[str]
@@ -589,15 +594,30 @@ class AstraDBAdmin:
                     self.environment == other.environment,
                     self.dev_ops_url == other.dev_ops_url,
                     self.dev_ops_url == other.dev_ops_url,
-                    self._caller_name == other._caller_name,
-                    self._caller_version == other._caller_version,
+                    self.caller_name == other.caller_name,
+                    self.caller_version == other.caller_version,
                     self._dev_ops_url == other._dev_ops_url,
                     self._dev_ops_api_version == other._dev_ops_api_version,
-                    self._astra_db_ops == other._astra_db_ops,
+                    self._api_commander == other._api_commander,
                 ]
             )
         else:
             return False
+
+    def _get_api_commander(self) -> APICommander:
+        """Instantiate a new APICommander based on the properties of this class."""
+
+        ops_base_path = "/".join(
+            [DEV_OPS_VERSION_ENV_MAP[self.environment], "databases"]
+        )
+        ops_commander = APICommander(
+            api_endpoint=DEV_OPS_URL_ENV_MAP[self.environment],
+            path=ops_base_path,
+            headers=self._commander_headers,
+            callers=[(self.caller_name, self.caller_version)],
+            devops_api=True,
+        )
+        return ops_commander
 
     def _copy(
         self,
@@ -612,8 +632,8 @@ class AstraDBAdmin:
         return AstraDBAdmin(
             token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
-            caller_name=caller_name or self._caller_name,
-            caller_version=caller_version or self._caller_version,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
             dev_ops_url=dev_ops_url or self._dev_ops_url,
             dev_ops_api_version=dev_ops_api_version or self._dev_ops_api_version,
         )
@@ -677,9 +697,9 @@ class AstraDBAdmin:
         """
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
-        self._caller_name = caller_name
-        self._caller_version = caller_version
-        self._astra_db_ops.set_caller(caller_name, caller_version)
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        self._api_commander = self._get_api_commander()
 
     @ops_recast_method_sync
     def list_databases(
@@ -711,8 +731,8 @@ class AstraDBAdmin:
         """
 
         logger.info("getting databases")
-        gd_list_response = self._astra_db_ops.get_databases(
-            timeout_info=base_timeout_info(max_time_ms)
+        gd_list_response = self._api_commander.request(
+            http_method=HttpMethod.GET, timeout_info=base_timeout_info(max_time_ms)
         )
         logger.info("finished getting databases")
         if not isinstance(gd_list_response, list):
@@ -722,7 +742,7 @@ class AstraDBAdmin:
         else:
             # we know this is a list of dicts which need a little adjusting
             return CommandCursor(
-                address=self._astra_db_ops.base_url,
+                address=self._api_commander.full_path,
                 items=[
                     _recast_as_admin_database_info(
                         db_dict,
@@ -764,8 +784,8 @@ class AstraDBAdmin:
         """
 
         logger.info("getting databases, async")
-        gd_list_response = await self._astra_db_ops.async_get_databases(
-            timeout_info=base_timeout_info(max_time_ms)
+        gd_list_response = await self._api_commander.async_request(
+            http_method=HttpMethod.GET, timeout_info=base_timeout_info(max_time_ms)
         )
         logger.info("finished getting databases, async")
         if not isinstance(gd_list_response, list):
@@ -775,7 +795,7 @@ class AstraDBAdmin:
         else:
             # we know this is a list of dicts which need a little adjusting
             return CommandCursor(
-                address=self._astra_db_ops.base_url,
+                address=self._api_commander.full_path,
                 items=[
                     _recast_as_admin_database_info(
                         db_dict,
@@ -811,20 +831,16 @@ class AstraDBAdmin:
         """
 
         logger.info(f"getting database info for '{id}'")
-        gd_response = self._astra_db_ops.get_database(
-            database=id,
+        gd_response = self._api_commander.request(
+            http_method=HttpMethod.GET,
+            additional_path=id,
             timeout_info=base_timeout_info(max_time_ms),
         )
         logger.info(f"finished getting database info for '{id}'")
-        if not isinstance(gd_response, dict):
-            raise DevOpsAPIException(
-                "Faulty response from get-database DevOps API command.",
-            )
-        else:
-            return _recast_as_admin_database_info(
-                gd_response,
-                environment=self.environment,
-            )
+        return _recast_as_admin_database_info(
+            gd_response,
+            environment=self.environment,
+        )
 
     @ops_recast_method_async
     async def async_database_info(
@@ -852,20 +868,16 @@ class AstraDBAdmin:
         """
 
         logger.info(f"getting database info for '{id}', async")
-        gd_response = await self._astra_db_ops.async_get_database(
-            database=id,
+        gd_response = await self._api_commander.async_request(
+            http_method=HttpMethod.GET,
+            additional_path=id,
             timeout_info=base_timeout_info(max_time_ms),
         )
         logger.info(f"finished getting database info for '{id}', async")
-        if not isinstance(gd_response, dict):
-            raise DevOpsAPIException(
-                "Faulty response from get-database DevOps API command.",
-            )
-        else:
-            return _recast_as_admin_database_info(
-                gd_response,
-                environment=self.environment,
-            )
+        return _recast_as_admin_database_info(
+            gd_response,
+            environment=self.environment,
+        )
 
     @ops_recast_method_sync
     def create_database(
@@ -911,7 +923,7 @@ class AstraDBAdmin:
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.2]})
         """
 
-        database_definition = {
+        cd_payload = {
             k: v
             for k, v in {
                 "name": name,
@@ -928,45 +940,49 @@ class AstraDBAdmin:
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
         logger.info(f"creating database {name}/({cloud_provider}, {region})")
-        cd_response = self._astra_db_ops.create_database(
-            database_definition=database_definition,
-            timeout_info=base_timeout_info(max_time_ms),
+        cd_raw_response = self._api_commander.raw_request(
+            http_method=HttpMethod.POST,
+            payload=cd_payload,
+            timeout_info=timeout_manager.remaining_timeout_info(),
         )
+        if cd_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_CREATED:
+            raise DevOpsAPIException(
+                f"DB creation ('{name}') failed: API returned HTTP "
+                f"{cd_raw_response.status_code} instead of "
+                f"{DEV_OPS_RESPONSE_HTTP_CREATED} - Created."
+            )
+        new_database_id = cd_raw_response.headers["Location"]
         logger.info(
             "devops api returned from creating database "
             f"{name}/({cloud_provider}, {region})"
         )
-        if cd_response is not None and "id" in cd_response:
-            new_database_id = cd_response["id"]
-            if wait_until_active:
-                last_status_seen = DEV_OPS_DATABASE_STATUS_PENDING
-                while last_status_seen in {
-                    DEV_OPS_DATABASE_STATUS_PENDING,
-                    DEV_OPS_DATABASE_STATUS_INITIALIZING,
-                }:
-                    logger.info(f"sleeping to poll for status of '{new_database_id}'")
-                    time.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
-                    last_db_info = self.database_info(
-                        id=new_database_id,
-                        max_time_ms=timeout_manager.remaining_timeout_ms(),
-                    )
-                    last_status_seen = last_db_info.status
-                if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
-                    raise DevOpsAPIException(
-                        f"Database {name} entered unexpected status {last_status_seen} after PENDING"
-                    )
-            # return the database instance
-            logger.info(
-                f"finished creating database '{new_database_id}' = "
-                f"{name}/({cloud_provider}, {region})"
-            )
-            return AstraDBDatabaseAdmin.from_astra_db_admin(
-                id=new_database_id,
-                region=region,
-                astra_db_admin=self,
-            )
-        else:
-            raise DevOpsAPIException("Could not create the database.")
+        if wait_until_active:
+            last_status_seen = DEV_OPS_DATABASE_STATUS_PENDING
+            while last_status_seen in {
+                DEV_OPS_DATABASE_STATUS_PENDING,
+                DEV_OPS_DATABASE_STATUS_INITIALIZING,
+            }:
+                logger.info(f"sleeping to poll for status of '{new_database_id}'")
+                time.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
+                last_db_info = self.database_info(
+                    id=new_database_id,
+                    max_time_ms=timeout_manager.remaining_timeout_ms(),
+                )
+                last_status_seen = last_db_info.status
+            if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
+                raise DevOpsAPIException(
+                    f"Database {name} entered unexpected status {last_status_seen} after PENDING"
+                )
+        # return the database instance
+        logger.info(
+            f"finished creating database '{new_database_id}' = "
+            f"{name}/({cloud_provider}, {region})"
+        )
+        return AstraDBDatabaseAdmin.from_astra_db_admin(
+            id=new_database_id,
+            region=region,
+            astra_db_admin=self,
+        )
 
     @ops_recast_method_async
     async def async_create_database(
@@ -1013,7 +1029,7 @@ class AstraDBAdmin:
             AstraDBDatabaseAdmin(id=...)
         """
 
-        database_definition = {
+        cd_payload = {
             k: v
             for k, v in {
                 "name": name,
@@ -1030,47 +1046,51 @@ class AstraDBAdmin:
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
         logger.info(f"creating database {name}/({cloud_provider}, {region}), async")
-        cd_response = await self._astra_db_ops.async_create_database(
-            database_definition=database_definition,
-            timeout_info=base_timeout_info(max_time_ms),
+        cd_raw_response = await self._api_commander.async_raw_request(
+            http_method=HttpMethod.POST,
+            payload=cd_payload,
+            timeout_info=timeout_manager.remaining_timeout_info(),
         )
+        if cd_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_CREATED:
+            raise DevOpsAPIException(
+                f"DB creation ('{name}') failed: API returned HTTP "
+                f"{cd_raw_response.status_code} instead of "
+                f"{DEV_OPS_RESPONSE_HTTP_CREATED} - Created."
+            )
+        new_database_id = cd_raw_response.headers["Location"]
         logger.info(
             "devops api returned from creating database "
             f"{name}/({cloud_provider}, {region}), async"
         )
-        if cd_response is not None and "id" in cd_response:
-            new_database_id = cd_response["id"]
-            if wait_until_active:
-                last_status_seen = DEV_OPS_DATABASE_STATUS_PENDING
-                while last_status_seen in {
-                    DEV_OPS_DATABASE_STATUS_PENDING,
-                    DEV_OPS_DATABASE_STATUS_INITIALIZING,
-                }:
-                    logger.info(
-                        f"sleeping to poll for status of '{new_database_id}', async"
-                    )
-                    await asyncio.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
-                    last_db_info = await self.async_database_info(
-                        id=new_database_id,
-                        max_time_ms=timeout_manager.remaining_timeout_ms(),
-                    )
-                    last_status_seen = last_db_info.status
-                if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
-                    raise DevOpsAPIException(
-                        f"Database {name} entered unexpected status {last_status_seen} after PENDING"
-                    )
-            # return the database instance
-            logger.info(
-                f"finished creating database '{new_database_id}' = "
-                f"{name}/({cloud_provider}, {region}), async"
-            )
-            return AstraDBDatabaseAdmin.from_astra_db_admin(
-                id=new_database_id,
-                region=region,
-                astra_db_admin=self,
-            )
-        else:
-            raise DevOpsAPIException("Could not create the database.")
+        if wait_until_active:
+            last_status_seen = DEV_OPS_DATABASE_STATUS_PENDING
+            while last_status_seen in {
+                DEV_OPS_DATABASE_STATUS_PENDING,
+                DEV_OPS_DATABASE_STATUS_INITIALIZING,
+            }:
+                logger.info(
+                    f"sleeping to poll for status of '{new_database_id}', async"
+                )
+                await asyncio.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
+                last_db_info = await self.async_database_info(
+                    id=new_database_id,
+                    max_time_ms=timeout_manager.remaining_timeout_ms(),
+                )
+                last_status_seen = last_db_info.status
+            if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
+                raise DevOpsAPIException(
+                    f"Database {name} entered unexpected status {last_status_seen} after PENDING"
+                )
+        # return the database instance
+        logger.info(
+            f"finished creating database '{new_database_id}' = "
+            f"{name}/({cloud_provider}, {region}), async"
+        )
+        return AstraDBDatabaseAdmin.from_astra_db_admin(
+            id=new_database_id,
+            region=region,
+            astra_db_admin=self,
+        )
 
     @ops_recast_method_sync
     def drop_database(
@@ -1116,42 +1136,45 @@ class AstraDBAdmin:
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
         logger.info(f"dropping database '{id}'")
-        te_response = self._astra_db_ops.terminate_database(
-            database=id,
-            timeout_info=base_timeout_info(max_time_ms),
+        te_raw_response = self._api_commander.raw_request(
+            http_method=HttpMethod.POST,
+            additional_path=f"databases/{id}/terminate",
+            timeout_info=timeout_manager.remaining_timeout_info(),
         )
-        logger.info(f"devops api returned from dropping database '{id}'")
-        if te_response == id:
-            if wait_until_active:
-                last_status_seen: Optional[str] = DEV_OPS_DATABASE_STATUS_TERMINATING
-                _db_name: Optional[str] = None
-                while last_status_seen == DEV_OPS_DATABASE_STATUS_TERMINATING:
-                    logger.info(f"sleeping to poll for status of '{id}'")
-                    time.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
-                    #
-                    detected_databases = [
-                        a_db_info
-                        for a_db_info in self.list_databases(
-                            max_time_ms=timeout_manager.remaining_timeout_ms(),
-                        )
-                        if a_db_info.id == id
-                    ]
-                    if detected_databases:
-                        last_status_seen = detected_databases[0].status
-                        _db_name = detected_databases[0].info.name
-                    else:
-                        last_status_seen = None
-                if last_status_seen is not None:
-                    _name_desc = f" ({_db_name})" if _db_name else ""
-                    raise DevOpsAPIException(
-                        f"Database {id}{_name_desc} entered unexpected status {last_status_seen} after PENDING"
-                    )
-            logger.info(f"finished dropping database '{id}'")
-            return {"ok": 1}
-        else:
+
+        if te_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_ACCEPTED:
             raise DevOpsAPIException(
-                f"Could not issue a successful terminate-database DevOps API request for {id}."
+                f"DB deletion ('{id}') failed: API returned HTTP "
+                f"{te_raw_response.status_code} instead of "
+                f"{DEV_OPS_RESPONSE_HTTP_ACCEPTED} - Created"
             )
+        logger.info(f"devops api returned from dropping database '{id}'")
+        if wait_until_active:
+            last_status_seen: Optional[str] = DEV_OPS_DATABASE_STATUS_TERMINATING
+            _db_name: Optional[str] = None
+            while last_status_seen == DEV_OPS_DATABASE_STATUS_TERMINATING:
+                logger.info(f"sleeping to poll for status of '{id}'")
+                time.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
+                #
+                detected_databases = [
+                    a_db_info
+                    for a_db_info in self.list_databases(
+                        max_time_ms=timeout_manager.remaining_timeout_ms(),
+                    )
+                    if a_db_info.id == id
+                ]
+                if detected_databases:
+                    last_status_seen = detected_databases[0].status
+                    _db_name = detected_databases[0].info.name
+                else:
+                    last_status_seen = None
+            if last_status_seen is not None:
+                _name_desc = f" ({_db_name})" if _db_name else ""
+                raise DevOpsAPIException(
+                    f"Database {id}{_name_desc} entered unexpected status {last_status_seen} after PENDING"
+                )
+        logger.info(f"finished dropping database '{id}'")
+        return {"ok": 1}
 
     @ops_recast_method_async
     async def async_drop_database(
@@ -1193,43 +1216,46 @@ class AstraDBAdmin:
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, exception_type="devops_api"
         )
-        logger.info(f"dropping database '{id}', async")
-        te_response = await self._astra_db_ops.async_terminate_database(
-            database=id,
-            timeout_info=base_timeout_info(max_time_ms),
+        logger.info(f"dropping database '{id}'")
+        te_raw_response = await self._api_commander.async_raw_request(
+            http_method=HttpMethod.POST,
+            additional_path=f"databases/{id}/terminate",
+            timeout_info=timeout_manager.remaining_timeout_info(),
         )
-        logger.info(f"devops api returned from dropping database '{id}', async")
-        if te_response == id:
-            if wait_until_active:
-                last_status_seen: Optional[str] = DEV_OPS_DATABASE_STATUS_TERMINATING
-                _db_name: Optional[str] = None
-                while last_status_seen == DEV_OPS_DATABASE_STATUS_TERMINATING:
-                    logger.info(f"sleeping to poll for status of '{id}', async")
-                    await asyncio.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
-                    #
-                    detected_databases = [
-                        a_db_info
-                        for a_db_info in await self.async_list_databases(
-                            max_time_ms=timeout_manager.remaining_timeout_ms(),
-                        )
-                        if a_db_info.id == id
-                    ]
-                    if detected_databases:
-                        last_status_seen = detected_databases[0].status
-                        _db_name = detected_databases[0].info.name
-                    else:
-                        last_status_seen = None
-                if last_status_seen is not None:
-                    _name_desc = f" ({_db_name})" if _db_name else ""
-                    raise DevOpsAPIException(
-                        f"Database {id}{_name_desc} entered unexpected status {last_status_seen} after PENDING"
-                    )
-            logger.info(f"finished dropping database '{id}', async")
-            return {"ok": 1}
-        else:
+
+        if te_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_ACCEPTED:
             raise DevOpsAPIException(
-                f"Could not issue a successful terminate-database DevOps API request for {id}."
+                f"DB deletion ('{id}') failed: API returned HTTP "
+                f"{te_raw_response.status_code} instead of "
+                f"{DEV_OPS_RESPONSE_HTTP_ACCEPTED} - Created"
             )
+        logger.info(f"devops api returned from dropping database '{id}'")
+        if wait_until_active:
+            last_status_seen: Optional[str] = DEV_OPS_DATABASE_STATUS_TERMINATING
+            _db_name: Optional[str] = None
+            while last_status_seen == DEV_OPS_DATABASE_STATUS_TERMINATING:
+                logger.info(f"sleeping to poll for status of '{id}', async")
+                await asyncio.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
+                #
+                detected_databases = [
+                    a_db_info
+                    for a_db_info in await self.async_list_databases(
+                        max_time_ms=timeout_manager.remaining_timeout_ms(),
+                    )
+                    if a_db_info.id == id
+                ]
+                if detected_databases:
+                    last_status_seen = detected_databases[0].status
+                    _db_name = detected_databases[0].info.name
+                else:
+                    last_status_seen = None
+            if last_status_seen is not None:
+                _name_desc = f" ({_db_name})" if _db_name else ""
+                raise DevOpsAPIException(
+                    f"Database {id}{_name_desc} entered unexpected status {last_status_seen} after PENDING"
+                )
+        logger.info(f"finished dropping database '{id}', async")
+        return {"ok": 1}
 
     def get_database_admin(
         self,
@@ -1378,8 +1404,8 @@ class AstraDBAdmin:
             api_endpoint=normalized_api_endpoint,
             token=_token,
             namespace=_namespace,
-            caller_name=self._caller_name,
-            caller_version=self._caller_version,
+            caller_name=self.caller_name,
+            caller_version=self.caller_version,
             environment=self.environment,
             api_path=api_path,
             api_version=api_version,
@@ -1712,8 +1738,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             token=coerce_token_provider(token) or self.token_provider,
             region=region or self._region,
             environment=environment or self.environment,
-            caller_name=caller_name or self._astra_db_admin._caller_name,
-            caller_version=caller_version or self._astra_db_admin._caller_version,
+            caller_name=caller_name or self._astra_db_admin.caller_name,
+            caller_version=caller_version or self._astra_db_admin.caller_version,
             dev_ops_url=dev_ops_url or self._astra_db_admin._dev_ops_url,
             dev_ops_api_version=dev_ops_api_version
             or self._astra_db_admin._dev_ops_api_version,
@@ -1861,8 +1887,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             token=astra_db_admin.token_provider,
             region=region,
             environment=astra_db_admin.environment,
-            caller_name=astra_db_admin._caller_name,
-            caller_version=astra_db_admin._caller_version,
+            caller_name=astra_db_admin.caller_name,
+            caller_version=astra_db_admin.caller_version,
             dev_ops_url=astra_db_admin._dev_ops_url,
             dev_ops_api_version=astra_db_admin._dev_ops_api_version,
             max_time_ms=max_time_ms,

@@ -82,6 +82,8 @@ DEV_OPS_VERSION_ENV_MAP = {
     DATA_API_ENVIRONMENT_DEV: "v2",
     DATA_API_ENVIRONMENT_TEST: "v2",
 }
+DEV_OPS_RESPONSE_HTTP_ACCEPTED = 202
+DEV_OPS_RESPONSE_HTTP_CREATED = 201
 
 # Settings for redacting secrets in string representations and logging
 SECRETS_REDACT_ENDING = "..."
