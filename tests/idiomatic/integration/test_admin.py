@@ -107,6 +107,11 @@ class TestAdmin:
         db_provider = ADMIN_ENV_VARIABLE_MAP[admin_env]["provider"]
         db_region = ADMIN_ENV_VARIABLE_MAP[admin_env]["region"]
 
+        if db_provider is None:
+            raise ValueError("Cannot proceed with provider unset.")
+        if db_region is None:
+            raise ValueError("Cannot proceed with region unset.")
+
         # create client, get admin
         client: DataAPIClient
         if admin_env == "prod":
@@ -222,6 +227,11 @@ class TestAdmin:
         db_name_nw = f"test_database_nw_{admin_env}"
         db_provider = ADMIN_ENV_VARIABLE_MAP[admin_env]["provider"]
         db_region = ADMIN_ENV_VARIABLE_MAP[admin_env]["region"]
+
+        if db_provider is None:
+            raise ValueError("Cannot proceed with provider unset.")
+        if db_region is None:
+            raise ValueError("Cannot proceed with region unset.")
 
         # create client and get admin
         client: DataAPIClient
@@ -349,6 +359,11 @@ class TestAdmin:
         db_provider = ADMIN_ENV_VARIABLE_MAP[admin_env]["provider"]
         db_region = ADMIN_ENV_VARIABLE_MAP[admin_env]["region"]
 
+        if db_provider is None:
+            raise ValueError("Cannot proceed with provider unset.")
+        if db_region is None:
+            raise ValueError("Cannot proceed with region unset.")
+
         # create client, get admin
         client: DataAPIClient
         if admin_env == "prod":
@@ -436,7 +451,7 @@ class TestAdmin:
 
         async def _awaiter3() -> bool:
             a_info = await db_admin.async_info()
-            return a_info.status == "ACTIVE"  # type: ignore[no-any-return]
+            return a_info.status == "ACTIVE"
 
         # drop db and check. We wait a little due to "nontransactional cluster md"
         await await_until_true(
@@ -477,6 +492,11 @@ class TestAdmin:
         db_name_nw = f"test_database_nw_{admin_env}"
         db_provider = ADMIN_ENV_VARIABLE_MAP[admin_env]["provider"]
         db_region = ADMIN_ENV_VARIABLE_MAP[admin_env]["region"]
+
+        if db_provider is None:
+            raise ValueError("Cannot proceed with provider unset.")
+        if db_region is None:
+            raise ValueError("Cannot proceed with region unset.")
 
         # create client and get admin
         client: DataAPIClient
@@ -554,11 +574,11 @@ class TestAdmin:
 
         async def _awaiter2() -> bool:
             a_info = await db_admin_nw.async_info()
-            return a_info.status == "ACTIVE"  # type: ignore[no-any-return]
+            return a_info.status == "ACTIVE"
 
         async def _awaiter3() -> bool:
             a_info = await db_admin_w.async_info()
-            return a_info.status == "ACTIVE"  # type: ignore[no-any-return]
+            return a_info.status == "ACTIVE"
 
         await await_until_true(
             poll_interval=PRE_DROP_SAFETY_POLL_INTERVAL,

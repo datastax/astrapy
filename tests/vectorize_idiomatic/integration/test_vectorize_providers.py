@@ -144,6 +144,8 @@ class TestVectorizeProviders:
             ]
             assert len(c_descriptors) == 1
             c_descriptor = c_descriptors[0]
+            assert c_descriptor.options is not None
+            assert c_descriptor.options.vector is not None
             assert c_descriptor.options.vector.service == expected_service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
@@ -229,6 +231,8 @@ class TestVectorizeProviders:
             ]
             assert len(c_descriptors) == 1
             c_descriptor = c_descriptors[0]
+            assert c_descriptor.options is not None
+            assert c_descriptor.options.vector is not None
             assert c_descriptor.options.vector.service == expected_service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]
@@ -319,6 +323,8 @@ class TestVectorizeProviders:
             ]
             assert len(c_descriptors) == 1
             c_descriptor = c_descriptors[0]
+            assert c_descriptor.options is not None
+            assert c_descriptor.options.vector is not None
             assert c_descriptor.options.vector.service == expected_service_options
             # put entries
             test_assets = testable_vectorize_model["test_assets"]

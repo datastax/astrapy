@@ -99,6 +99,7 @@ class TestVectorizeMethodsAsync:
             sort={"$vectorize": "The disposition of the eyes tells much"},
             projection={"$vector": False},
         )
+        assert rdoc is not None
         assert rdoc["t"] == "spider"
 
         r1res = await acol.replace_one(
@@ -114,6 +115,7 @@ class TestVectorizeMethodsAsync:
             sort={"$vectorize": "Have a look at the user guide..."},
             projection={"$vector": False},
         )
+        assert udoc is not None
         assert udoc["t"] == "guide"
 
         u1res = await acol.update_one(
@@ -128,6 +130,7 @@ class TestVectorizeMethodsAsync:
             sort={"$vectorize": "Some trees have seeds that are dispersed in the air!"},
             projection={"$vector": False},
         )
+        assert ddoc is not None
         assert ddoc["t"] == "seeds"
 
         d1res = await acol.delete_one(

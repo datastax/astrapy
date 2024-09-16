@@ -18,7 +18,7 @@ import os
 import sys
 from typing import Any, Dict, Iterable, List, Tuple
 
-from astrapy.authentication import (
+from astrapy.defaults import (
     EMBEDDING_HEADER_API_KEY,
     EMBEDDING_HEADER_AWS_ACCESS_ID,
     EMBEDDING_HEADER_AWS_SECRET_ID,
