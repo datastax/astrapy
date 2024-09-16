@@ -541,12 +541,24 @@ from astrapy.cursors import (
 
 ### Appendix B: compatibility with pre-1.0.0 library
 
-If your code uses the pre-1.0.0 astrapy (i.e. `from astrapy.db import Database, Collection` and so on) you are strongly advised to migrate to the current API.
+If your code still uses the pre-1.0.0 astrapy (i.e. `from astrapy.db import AstraDB, AstraDBCollection` and so on)
+you are strongly advised to migrate to the current API, which has more capabilities and improved interfaces.
+
+All of the astrapy pre-1.0 API (now dubbed "core") works throughout *astrapy v1*, albeit with a deprecation warning
+on astrapy v. 1.5.
+
+Version 1.5 (the first to not wrap internally "core" as the engine of its own, or "idiomatic", API) introduces
+several deprecation notices (nothing is retired yet), including a submodule-wide deprecation of "core".
+
+Version 2 of astrapy will finally remove "core" entirely (along with a few other things).
+
+#### v1 is fully compatible with "core", i.e. pre-1.0.0
 
 That being said, there are no known breakings of backward compatibility:
-**legacy code would run with a newest astrapy version just as well.**
-Here is a recap of the minor changes that came _to the old API_ with 1.0.0 (and beyond):
+**legacy code would run with astrapy v1 just as well**
+Here is a recap of the minor changes that came _to the old API_ with 1.0.0 (and beyond, up to 1.5):
 
+- added a submodule-wide deprecation warning of the whole "core" library (v 1.5)
 - added 'options' parameter to [Async]AstraDBCollection.update_one (v. 1.4.2+)
 - prefetched find iterators: fix second-thread hangups in some cases (v. 1.4.2+)
 - Added support for null tokens (with the effect of no authentication/token header in requests)
@@ -574,4 +586,3 @@ Here is a recap of the minor changes that came _to the old API_ with 1.0.0 (and 
 - Method `create_collection` of `AstraDB` relaxes checks on passing `dimensions` for vector collections
 - AstraDBOps core class acquired async methods: `async_get_databases`, `async_get_database`, `async_create_database`, `async_terminate_database`, `async_create_keyspace`, `async_delete_keyspace`
 
-Keep in mind that the pre-1.0.0 library, now dubbed "core", is what the current 1.0.0 API ("idiomatic") builds on.

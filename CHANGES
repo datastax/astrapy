@@ -1,3 +1,23 @@
+master
+======
+Full removal of "core library" from the current API:
+    - DevOps API accessed through APICommander everywhere
+    - Admin objects use APICommander consistently
+    - [Async]Database and [Async]Collection directly use APICommander
+    - Cursor library uses APICommander directly
+    - Core library imports triggers a submodule-wide deprecation warning
+Widened exception hierarchy with:
+    - DevOpsAPIHttpException
+    - DevOpsAPITimeoutException
+    - DevOpsAPIFaultyResponseException
+Rearrangement into separate modules for:
+    - constants, strings, magic numbers and settings
+    - request low-level tools
+    - payload/response transformations
+    - (sometimes with temporary duplication to avoid depending on 'core')
+Logging of API requests made more uniform and easier to read
+
+
 v. 1.4.2
 ========
 Method 'update_one' of [Async]Collection: now invokes the corresponding API command.

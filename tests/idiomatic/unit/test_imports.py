@@ -164,3 +164,15 @@ def test_imports() -> None:
         OperationResult,
         UpdateResult,
     )
+
+
+@pytest.mark.describe("test deprecation of core imports")
+def test_deprecated_core_imports() -> None:
+    """
+    Test that an import of core library raises a deprecation warning.
+
+    Note that this occurs only once during the whole test suite, so this
+    test cannot be made more detailed as is. Not that it is particularly needed.
+    """
+    with pytest.warns(DeprecationWarning):
+        from astrapy.db import AstraDBCollection  # noqa: F401
