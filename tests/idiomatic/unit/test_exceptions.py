@@ -105,7 +105,7 @@ def test_dataapihttpexception_raising_500_sync(httpserver: HTTPServer) -> None:
     database = client.get_database(root_endpoint, namespace="xnamespace")
     collection = database.get_collection("xcoll")
     expected_url = "/v1/xnamespace/xcoll"
-    httpserver.expect_request(
+    httpserver.expect_oneshot_request(
         expected_url,
         method="POST",
     ).respond_with_data(
@@ -141,7 +141,7 @@ def test_dataapihttpexception_raising_404_sync(httpserver: HTTPServer) -> None:
     database = client.get_database(root_endpoint, namespace="xnamespace")
     collection = database.get_collection("xcoll")
     expected_url = "/v1/xnamespace/xcoll"
-    httpserver.expect_request(
+    httpserver.expect_oneshot_request(
         expected_url,
         method="POST",
     ).respond_with_data(
@@ -178,7 +178,7 @@ async def test_dataapihttpexception_raising_500_async(httpserver: HTTPServer) ->
     adatabase = client.get_async_database(root_endpoint, namespace="xnamespace")
     acollection = await adatabase.get_collection("xcoll")
     expected_url = "/v1/xnamespace/xcoll"
-    httpserver.expect_request(
+    httpserver.expect_oneshot_request(
         expected_url,
         method="POST",
     ).respond_with_data(
@@ -214,7 +214,7 @@ async def test_dataapihttpexception_raising_404_async(httpserver: HTTPServer) ->
     adatabase = client.get_async_database(root_endpoint, namespace="xnamespace")
     acollection = await adatabase.get_collection("xcoll")
     expected_url = "/v1/xnamespace/xcoll"
-    httpserver.expect_request(
+    httpserver.expect_oneshot_request(
         expected_url,
         method="POST",
     ).respond_with_data(

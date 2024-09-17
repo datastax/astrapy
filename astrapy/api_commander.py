@@ -175,6 +175,62 @@ class APICommander:
             dev_ops_api=dev_ops_api if dev_ops_api is not None else self.dev_ops_api,
         )
 
+    def _raw_response_to_json(
+        self,
+        raw_response: httpx.Response,
+        raise_api_errors: bool,
+        payload: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        # try to process the httpx raw response into a JSON or throw a failure
+        raw_response_json: Dict[str, Any]
+        try:
+            raw_response_json = cast(
+                Dict[str, Any],
+                raw_response.json(),
+            )
+        except ValueError:
+            # json() parsing has failed (e.g., empty body)
+            if payload is not None:
+                command_desc = "/".join(sorted(payload.keys()))
+            else:
+                command_desc = "(none)"
+            raise self._faulty_response_exc_class(
+                text=f"Unparseable response from API '{command_desc}' command.",
+                raw_response={
+                    "raw_response": raw_response.text,
+                },
+            )
+
+        if raise_api_errors and "errors" in raw_response_json:
+            logger.warn(
+                f"APICommander about to raise from: {raw_response_json['errors']}"
+            )
+            raise self._response_exc_class.from_response(
+                command=payload,
+                raw_response=raw_response_json,
+            )
+        # further processing
+        response_json = restore_from_api(raw_response_json)
+        return response_json
+
+    def _compose_request_url(self, additional_path: Optional[str]) -> str:
+        if additional_path:
+            return "/".join([self.full_path.rstrip("/"), additional_path.lstrip("/")])
+        else:
+            return self.full_path
+
+    def _encode_payload(
+        self, normalized_payload: Optional[Dict[str, Any]]
+    ) -> Optional[bytes]:
+        if normalized_payload is not None:
+            return json.dumps(
+                normalized_payload,
+                allow_nan=False,
+                separators=(",", ":"),
+            ).encode()
+        else:
+            return None
+
     def raw_request(
         self,
         *,
@@ -186,24 +242,16 @@ class APICommander:
     ) -> httpx.Response:
         timeout = to_httpx_timeout(timeout_info)
         normalized_payload = normalize_for_api(payload)
+        request_url = self._compose_request_url(additional_path)
         log_httpx_request(
             http_method=http_method,
-            full_url=self.full_path,
+            full_url=request_url,
             request_params={},
             redacted_request_headers=self._loggable_headers,
             payload=normalized_payload,
         )
-        encoded_payload = json.dumps(
-            normalized_payload,
-            allow_nan=False,
-            separators=(",", ":"),
-        ).encode()
-        if additional_path:
-            request_url = "/".join(
-                [self.full_path.rstrip("/"), additional_path.lstrip("/")]
-            )
-        else:
-            request_url = self.full_path
+        encoded_payload = self._encode_payload(normalized_payload)
+
         try:
             raw_response = self.client.request(
                 method=http_method,
@@ -236,25 +284,16 @@ class APICommander:
     ) -> httpx.Response:
         timeout = to_httpx_timeout(timeout_info)
         normalized_payload = normalize_for_api(payload)
+        request_url = self._compose_request_url(additional_path)
         log_httpx_request(
             http_method=http_method,
-            full_url=self.full_path,
+            full_url=request_url,
             request_params={},
             redacted_request_headers=self._loggable_headers,
             payload=normalized_payload,
         )
-        encoded_payload = json.dumps(
-            normalized_payload,
-            allow_nan=False,
-            separators=(",", ":"),
-        ).encode()
-        request_url: str
-        if additional_path:
-            request_url = "/".join(
-                [self.full_path.rstrip("/"), additional_path.lstrip("/")]
-            )
-        else:
-            request_url = self.full_path
+        encoded_payload = self._encode_payload(normalized_payload)
+
         try:
             raw_response = await self.async_client.request(
                 method=http_method,
@@ -292,37 +331,9 @@ class APICommander:
             raise_api_errors=raise_api_errors,
             timeout_info=timeout_info,
         )
-        # try to process it into a JSON or throw a failure
-        raw_response_json: Dict[str, Any]
-        try:
-            raw_response_json = cast(
-                Dict[str, Any],
-                raw_response.json(),
-            )
-        except ValueError:
-            # json() parsing has failed (e.g., empty body)
-            if payload is not None:
-                command_desc = "/".join(sorted(payload.keys()))
-            else:
-                command_desc = "(none)"
-            raise self._faulty_response_exc_class(
-                text=f"Unparseable response from API '{command_desc}' command.",
-                raw_response={
-                    "raw_response": raw_response.text,
-                },
-            )
-
-        if raise_api_errors and "errors" in raw_response_json:
-            logger.warn(
-                f"APICommander about to raise from: {raw_response_json['errors']}"
-            )
-            raise self._response_exc_class.from_response(
-                command=payload,
-                raw_response=raw_response_json,
-            )
-        # further processing
-        response_json = restore_from_api(raw_response_json)
-        return response_json
+        return self._raw_response_to_json(
+            raw_response, raise_api_errors=raise_api_errors, payload=payload
+        )
 
     async def async_request(
         self,
@@ -340,34 +351,6 @@ class APICommander:
             raise_api_errors=raise_api_errors,
             timeout_info=timeout_info,
         )
-        # try to process it into a JSON or throw a failure
-        raw_response_json: Dict[str, Any]
-        try:
-            raw_response_json = cast(
-                Dict[str, Any],
-                raw_response.json(),
-            )
-        except ValueError:
-            # json() parsing has failed (e.g., empty body)
-            if payload is not None:
-                command_desc = "/".join(sorted(payload.keys()))
-            else:
-                command_desc = "(none)"
-            raise self._faulty_response_exc_class(
-                text=f"Unparseable response from API '{command_desc}' command.",
-                raw_response={
-                    "raw_response": raw_response.text,
-                },
-            )
-
-        if raise_api_errors and "errors" in raw_response_json:
-            logger.warn(
-                f"APICommander about to raise from: {raw_response_json['errors']}"
-            )
-            raise self._response_exc_class.from_response(
-                command=payload,
-                raw_response=raw_response_json,
-            )
-        # further processing
-        response_json = restore_from_api(raw_response_json)
-        return response_json
+        return self._raw_response_to_json(
+            raw_response, raise_api_errors=raise_api_errors, payload=payload
+        )

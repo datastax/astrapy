@@ -15,13 +15,15 @@
 from __future__ import annotations
 
 import pytest
+from pytest_httpserver import HTTPServer
 
 from astrapy.api_commander import APICommander
+from astrapy.request_tools import HttpMethod
 
 
 class TestAPICommander:
     @pytest.mark.describe("test of APICommander")
-    def test_apicommander(self) -> None:
+    def test_apicommander_conversions(self) -> None:
         cmd1 = APICommander(
             api_endpoint="api_endpoint1",
             path="path1",
@@ -55,3 +57,73 @@ class TestAPICommander:
             redacted_header_names=["redacted_header_names1"]
         )
         assert cmd1 == cmd1._copy(dev_ops_api=False)._copy(dev_ops_api=True)
+
+    @pytest.mark.describe("")
+    def test_apicommander_request_sync(self, httpserver: HTTPServer) -> None:
+        base_endpoint = httpserver.url_for("/")
+        base_path = "/base"
+        extra_path = "extra/path/"
+        cmd = APICommander(
+            api_endpoint=base_endpoint,
+            path=base_path,
+            headers={"h": "v"},
+            callers=[("cn", "cv")],
+        )
+
+        httpserver.expect_oneshot_request(
+            base_path,
+            method=HttpMethod.PUT,
+            data="{}",
+        ).respond_with_json({"r": 1})
+        resp_b = cmd.request(
+            http_method=HttpMethod.PUT,
+            payload={},
+        )
+        assert resp_b == {"r": 1}
+
+        httpserver.expect_oneshot_request(
+            "/".join([base_path, extra_path]),
+            method=HttpMethod.DELETE,
+            data="{}",
+        ).respond_with_json({"r": 2})
+        resp_e = cmd.request(
+            http_method=HttpMethod.DELETE,
+            payload={},
+            additional_path=extra_path,
+        )
+        assert resp_e == {"r": 2}
+
+    @pytest.mark.describe("")
+    async def test_apicommander_request_async(self, httpserver: HTTPServer) -> None:
+        base_endpoint = httpserver.url_for("/")
+        base_path = "/base"
+        extra_path = "extra/path/"
+        cmd = APICommander(
+            api_endpoint=base_endpoint,
+            path=base_path,
+            headers={"h": "v"},
+            callers=[("cn", "cv")],
+        )
+
+        httpserver.expect_oneshot_request(
+            base_path,
+            method=HttpMethod.PUT,
+            data="{}",
+        ).respond_with_json({"r": 1})
+        resp_b = await cmd.async_request(
+            http_method=HttpMethod.PUT,
+            payload={},
+        )
+        assert resp_b == {"r": 1}
+
+        httpserver.expect_oneshot_request(
+            "/".join([base_path, extra_path]),
+            method=HttpMethod.DELETE,
+            data="{}",
+        ).respond_with_json({"r": 2})
+        resp_e = await cmd.async_request(
+            http_method=HttpMethod.DELETE,
+            payload={},
+            additional_path=extra_path,
+        )
+        assert resp_e == {"r": 2}

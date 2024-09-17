@@ -21,19 +21,6 @@ import httpx
 
 from astrapy.defaults import DEFAULT_REQUEST_TIMEOUT_MS
 
-# Add a TRACE logging level and use it through a custom logger
-TRACE_LOGGING_LEVEL_VALUE = 5
-TRACE_LOGGING_LEVEL_NAME = "TRACE"
-
-
-class CustomTraceLogger(logging.Logger):
-    def trace(self, msg: str, *args: Any, **kwargs: Any) -> None:
-        if self.isEnabledFor(TRACE_LOGGING_LEVEL_VALUE):
-            self._log(TRACE_LOGGING_LEVEL_VALUE, msg, args, **kwargs)
-
-
-logging.addLevelName(TRACE_LOGGING_LEVEL_VALUE, TRACE_LOGGING_LEVEL_NAME)
-logging.setLoggerClass(CustomTraceLogger)
 logger = logging.getLogger(__name__)
 
 
@@ -60,7 +47,7 @@ def log_httpx_request(
     if redacted_request_headers:
         logger.debug(f"Request headers: {redacted_request_headers}")
     if payload:
-        logger.trace(f"Request payload: {payload}")  # type: ignore
+        logger.debug(f"Request payload: {payload}")
 
 
 def log_httpx_response(response: httpx.Response) -> None:
@@ -72,7 +59,7 @@ def log_httpx_response(response: httpx.Response) -> None:
     """
     logger.debug(f"Response status code: {response.status_code}")
     logger.debug(f"Response headers: {response.headers}")
-    logger.trace(f"Response text: {response.text}")  # type: ignore
+    logger.debug(f"Response text: {response.text}")
 
 
 class HttpMethod:
