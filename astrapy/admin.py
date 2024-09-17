@@ -1720,12 +1720,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         if isinstance(other, AstraDBDatabaseAdmin):
             return all(
                 [
-                    self.api_endpoint == other.api_endpoint,
                     self.token_provider == other.token_provider,
                     self.environment == other.environment,
-                    self._api_commander == other._api_commander,
-                    self._database_id == other._database_id,
-                    self._region == other._region,
+                    self.api_endpoint == other.api_endpoint,
                     self.caller_name == other.caller_name,
                     self.caller_version == other.caller_version,
                     self.api_path == other.api_path,
@@ -1733,7 +1730,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                     self.spawner_database == other.spawner_database,
                     self.dev_ops_url == other.dev_ops_url,
                     self.dev_ops_api_version == other.dev_ops_api_version,
-                    self._dev_ops_api_commander == other._dev_ops_api_commander,
                 ]
             )
         else:
@@ -1779,6 +1775,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         caller_version: Optional[str] = None,
         dev_ops_url: Optional[str] = None,
         dev_ops_api_version: Optional[str] = None,
+        api_path: Optional[str] = None,
+        api_version: Optional[str] = None,
     ) -> AstraDBDatabaseAdmin:
         return AstraDBDatabaseAdmin(
             id=id or self._database_id,
@@ -1789,6 +1787,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             caller_version=caller_version or self.caller_version,
             dev_ops_url=dev_ops_url or self.dev_ops_url,
             dev_ops_api_version=dev_ops_api_version or self.dev_ops_api_version,
+            api_path=api_path or self.api_path,
+            api_version=api_version or self.api_version,
         )
 
     def with_options(

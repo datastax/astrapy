@@ -173,6 +173,8 @@ class TestAdminConversions:
             caller_version="cv",
             dev_ops_url="dou",
             dev_ops_api_version="dvv",
+            api_path="appi",
+            api_version="vX",
         )
         adda2 = AstraDBDatabaseAdmin(
             "01234567-89ab-cdef-0123-456789abcdef",
@@ -183,6 +185,8 @@ class TestAdminConversions:
             caller_version="cv",
             dev_ops_url="dou",
             dev_ops_api_version="dvv",
+            api_path="appi",
+            api_version="vX",
         )
         assert adda1 == adda2
 
@@ -194,6 +198,8 @@ class TestAdminConversions:
         assert adda1 != adda1._copy(caller_version="x")
         assert adda1 != adda1._copy(dev_ops_url="x")
         assert adda1 != adda1._copy(dev_ops_api_version="x")
+        assert adda1 != adda1._copy(api_path="x")
+        assert adda1 != adda1._copy(api_version="x")
 
         assert adda1 == adda1._copy(id="99999999-89ab-cdef-0123-456789abcdef")._copy(
             id="01234567-89ab-cdef-0123-456789abcdef"
@@ -207,6 +213,8 @@ class TestAdminConversions:
         assert adda1 == adda1._copy(dev_ops_api_version="x")._copy(
             dev_ops_api_version="dvv"
         )
+        assert adda1 == adda1._copy(api_path="x")._copy(api_path="appi")
+        assert adda1 == adda1._copy(api_version="x")._copy(api_version="vX")
 
         assert adda1 != adda1.with_options(id="99999999-89ab-cdef-0123-456789abcdef")
         assert adda1 != adda1.with_options(token="x")
@@ -229,6 +237,70 @@ class TestAdminConversions:
         assert adda1b != adda1
         adda1b.set_caller("cn", "cv")
         assert adda1b == adda1
+
+    @pytest.mark.describe(
+        "test of DataAPIDBDatabaseAdmin conversions and comparison functions"
+    )
+    def test_dataapidatabaseadmin_conversions(self) -> None:
+        dada1 = DataAPIDatabaseAdmin(
+            "http://a.b.c:1234",
+            token="t1",
+            environment="hcd",
+            api_path="appi",
+            api_version="v9",
+            caller_name="cn",
+            caller_version="cv",
+        )
+        dada2 = DataAPIDatabaseAdmin(
+            "http://a.b.c:1234",
+            token="t1",
+            environment="hcd",
+            api_path="appi",
+            api_version="v9",
+            caller_name="cn",
+            caller_version="cv",
+        )
+        assert dada1 == dada2
+
+        assert dada1 != dada1._copy(api_endpoint="https://x.y.z:9876")
+        assert dada1 != dada1._copy(token="https://x.y.z:9876")
+        assert dada1 != dada1._copy(environment="https://x.y.z:9876")
+        assert dada1 != dada1._copy(api_path="https://x.y.z:9876")
+        assert dada1 != dada1._copy(api_version="https://x.y.z:9876")
+        assert dada1 != dada1._copy(caller_name="https://x.y.z:9876")
+        assert dada1 != dada1._copy(caller_version="https://x.y.z:9876")
+
+        assert dada1 == dada1._copy(api_endpoint="x")._copy(
+            api_endpoint="http://a.b.c:1234"
+        )
+        assert dada1 == dada1._copy(token="x")._copy(token="t1")
+        assert dada1 == dada1._copy(environment="x")._copy(environment="hcd")
+        assert dada1 == dada1._copy(api_path="x")._copy(api_path="appi")
+        assert dada1 == dada1._copy(api_version="x")._copy(api_version="v9")
+        assert dada1 == dada1._copy(caller_name="x")._copy(caller_name="cn")
+        assert dada1 == dada1._copy(caller_version="x")._copy(caller_version="cv")
+
+        assert dada1 != dada1.with_options(api_endpoint="https://x.y.z:9876")
+        assert dada1 != dada1.with_options(token="x")
+        assert dada1 != dada1.with_options(caller_name="x")
+        assert dada1 != dada1.with_options(caller_version="x")
+
+        assert dada1 == dada1.with_options(
+            api_endpoint="https://x.y.z:9876"
+        ).with_options(api_endpoint="http://a.b.c:1234")
+        assert dada1 == dada1.with_options(token="x").with_options(token="t1")
+        assert dada1 == dada1.with_options(caller_name="x").with_options(
+            caller_name="cn"
+        )
+        assert dada1 == dada1.with_options(caller_version="x").with_options(
+            caller_version="cv"
+        )
+
+        dada1b = dada1._copy()
+        dada1b.set_caller("cn2", "cv2")
+        assert dada1b != dada1
+        dada1b.set_caller("cn", "cv")
+        assert dada1b == dada1
 
     @pytest.mark.describe("test of token inheritance in spawning from DataAPIClient")
     def test_dataapiclient_token_inheritance(self) -> None:

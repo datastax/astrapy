@@ -50,10 +50,20 @@ def issue_deprecation_warning() -> None:
                 for mod_path in DEPRECATED_MODULE_PATHS
             ):
                 the_warning = DeprecatedWarning(
-                    f"CORE IS DEPRE (sl={stacklevel})",
+                    (
+                        "All of 'astrapy.core.*', 'astrapy.api.*', "
+                        "'astrapy.db.*' and 'astrapy.ops.*'"
+                    ),
                     deprecated_in="1.5.0",
                     removed_in="2.0.0",
-                    details="See here and there.",
+                    details=(
+                        "Please refer to https://docs.datastax.com/en/astra-db-"
+                        "serverless/api-reference/dataapiclient.html to start "
+                        "the (recommended) path forward to the current API, and"
+                        " to https://github.com/datastax/astrapy?tab=readme-ov-"
+                        "file#appendix-b-compatibility-with-pre-100-library "
+                        "for details on the deprecated modules."
+                    ),
                 )
                 warnings.warn(
                     the_warning,
