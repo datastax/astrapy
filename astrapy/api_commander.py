@@ -137,7 +137,6 @@ class APICommander:
             )
         else:
             return False
-        raise NotImplementedError
 
     async def __aenter__(self) -> APICommander:
         return self

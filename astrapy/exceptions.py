@@ -936,11 +936,11 @@ class MultiCallTimeoutManager:
     deadline_ms: Optional[int]
 
     def __init__(
-        self, overall_max_time_ms: Optional[int], exception_type: str = "data_api"
+        self, overall_max_time_ms: Optional[int], dev_ops_api: bool = False
     ) -> None:
         self.started_ms = int(time.time() * 1000)
         self.overall_max_time_ms = overall_max_time_ms
-        self.exception_type = exception_type
+        self.dev_ops_api = dev_ops_api
         if self.overall_max_time_ms is not None:
             self.deadline_ms = self.started_ms + self.overall_max_time_ms
         else:
@@ -958,17 +958,20 @@ class MultiCallTimeoutManager:
             if now_ms < self.deadline_ms:
                 return self.deadline_ms - now_ms
             else:
-                if self.exception_type == "data_api":
+                if not self.dev_ops_api:
                     raise DataAPITimeoutException(
                         text="Operation timed out.",
                         timeout_type="generic",
                         endpoint=None,
                         raw_payload=None,
                     )
-                elif self.exception_type == "dev_ops_api":
-                    raise DevOpsAPIException("Operation timed out.")
                 else:
-                    raise ValueError("Operation timed out.")
+                    raise DevOpsAPITimeoutException(
+                        text="Operation timed out.",
+                        timeout_type="generic",
+                        endpoint=None,
+                        raw_payload=None,
+                    )
         else:
             return None
 

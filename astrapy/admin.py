@@ -930,7 +930,7 @@ class AstraDBAdmin:
             if v is not None
         }
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
+            overall_max_time_ms=max_time_ms, dev_ops_api=True
         )
         logger.info(
             f"creating database {name}/({cloud_provider}, {region}) (DevOps API)"
@@ -1037,7 +1037,7 @@ class AstraDBAdmin:
             if v is not None
         }
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
+            overall_max_time_ms=max_time_ms, dev_ops_api=True
         )
         logger.info(
             f"creating database {name}/({cloud_provider}, {region}) "
@@ -1130,7 +1130,7 @@ class AstraDBAdmin:
         """
 
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
+            overall_max_time_ms=max_time_ms, dev_ops_api=True
         )
         logger.info(f"dropping database '{id}' (DevOps API)")
         te_raw_response = self._dev_ops_api_commander.raw_request(
@@ -1210,7 +1210,7 @@ class AstraDBAdmin:
         """
 
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
+            overall_max_time_ms=max_time_ms, dev_ops_api=True
         )
         logger.info(f"dropping database '{id}' (DevOps API), async")
         te_raw_response = await self._dev_ops_api_commander.async_raw_request(
@@ -2160,7 +2160,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         """
 
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
+            overall_max_time_ms=max_time_ms, dev_ops_api=True
         )
         logger.info(
             f"creating namespace '{name}' on " f"'{self._database_id}' (DevOps API)"
@@ -2247,7 +2247,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         """
 
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
+            overall_max_time_ms=max_time_ms, dev_ops_api=True
         )
         logger.info(
             f"creating namespace '{name}' on "
@@ -2333,7 +2333,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         """
 
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
+            overall_max_time_ms=max_time_ms, dev_ops_api=True
         )
         logger.info(
             f"dropping namespace '{name}' on " f"'{self._database_id}' (DevOps API)"
@@ -2412,7 +2412,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         """
 
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, exception_type="dev_ops_api"
+            overall_max_time_ms=max_time_ms, dev_ops_api=True
         )
         logger.info(
             f"dropping namespace '{name}' on "

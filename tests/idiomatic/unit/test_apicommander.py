@@ -14,15 +14,35 @@
 
 from __future__ import annotations
 
+import json
+import time
+from typing import Optional
+
 import pytest
+import werkzeug
 from pytest_httpserver import HTTPServer
 
 from astrapy.api_commander import APICommander
+from astrapy.exceptions import (
+    DataAPIFaultyResponseException,
+    DataAPIHttpException,
+    DataAPIResponseException,
+    DataAPITimeoutException,
+    DevOpsAPIFaultyResponseException,
+    DevOpsAPIHttpException,
+    DevOpsAPIResponseException,
+    DevOpsAPITimeoutException,
+)
 from astrapy.request_tools import HttpMethod
 
 
+def response_sleeper(request: werkzeug.Request) -> werkzeug.Response:
+    time.sleep(0.1)
+    return werkzeug.Response()
+
+
 class TestAPICommander:
-    @pytest.mark.describe("test of APICommander")
+    @pytest.mark.describe("test of APICommander conversion methods")
     def test_apicommander_conversions(self) -> None:
         cmd1 = APICommander(
             api_endpoint="api_endpoint1",
@@ -58,11 +78,11 @@ class TestAPICommander:
         )
         assert cmd1 == cmd1._copy(dev_ops_api=False)._copy(dev_ops_api=True)
 
-    @pytest.mark.describe("")
+    @pytest.mark.describe("test of APICommander request, sync")
     def test_apicommander_request_sync(self, httpserver: HTTPServer) -> None:
         base_endpoint = httpserver.url_for("/")
         base_path = "/base"
-        extra_path = "extra/path/"
+        extra_path = "extra/path"
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
@@ -70,9 +90,22 @@ class TestAPICommander:
             callers=[("cn", "cv")],
         )
 
+        def hv_matcher(hk: str, hv: Optional[str], ev: str) -> bool:
+            if hk == "v":
+                return hv == ev
+            elif hk.lower() == "user-agent":
+                return hv is not None and hv.startswith(ev)
+            else:
+                return True
+
         httpserver.expect_oneshot_request(
             base_path,
             method=HttpMethod.PUT,
+            headers={
+                "h": "v",
+                "User-Agent": "cn/cv",
+            },
+            header_value_matcher=hv_matcher,
             data="{}",
         ).respond_with_json({"r": 1})
         resp_b = cmd.request(
@@ -93,11 +126,11 @@ class TestAPICommander:
         )
         assert resp_e == {"r": 2}
 
-    @pytest.mark.describe("")
+    @pytest.mark.describe("test of APICommander request, async")
     async def test_apicommander_request_async(self, httpserver: HTTPServer) -> None:
         base_endpoint = httpserver.url_for("/")
         base_path = "/base"
-        extra_path = "extra/path/"
+        extra_path = "extra/path"
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
@@ -105,10 +138,23 @@ class TestAPICommander:
             callers=[("cn", "cv")],
         )
 
+        def hv_matcher(hk: str, hv: Optional[str], ev: str) -> bool:
+            if hk == "v":
+                return hv == ev
+            elif hk.lower() == "user-agent":
+                return hv is not None and hv.startswith(ev)
+            else:
+                return True
+
         httpserver.expect_oneshot_request(
             base_path,
             method=HttpMethod.PUT,
             data="{}",
+            headers={
+                "h": "v",
+                "User-Agent": "cn/cv",
+            },
+            header_value_matcher=hv_matcher,
         ).respond_with_json({"r": 1})
         resp_b = await cmd.async_request(
             http_method=HttpMethod.PUT,
@@ -127,3 +173,305 @@ class TestAPICommander:
             additional_path=extra_path,
         )
         assert resp_e == {"r": 2}
+
+    @pytest.mark.describe("test of APICommander exceptions, sync")
+    def test_apicommander_exceptions_sync(self, httpserver: HTTPServer) -> None:
+        base_endpoint = httpserver.url_for("/")
+        base_path = "/base"
+        cmd = APICommander(
+            api_endpoint=base_endpoint,
+            path=base_path,
+            dev_ops_api=False,
+        )
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data("{unparseable")
+        with pytest.raises(DataAPIFaultyResponseException):
+            cmd.request()
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data(
+            json.dumps(
+                {
+                    "errors": [
+                        {"title": "Error", "errorCode": "E_C"},
+                    ]
+                }
+            )
+        )
+        with pytest.raises(DataAPIResponseException):
+            cmd.request()
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data(
+            json.dumps(
+                {
+                    "errors": [
+                        {"title": "Error", "errorCode": "E_C"},
+                    ]
+                }
+            )
+        )
+        cmd.request(raise_api_errors=False)
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data(
+            json.dumps(
+                {
+                    "errors": [
+                        {"title": "Error", "errorCode": "E_C"},
+                    ]
+                }
+            ),
+            status=500,
+        )
+        with pytest.raises(DataAPIHttpException):
+            cmd.request()
+
+    @pytest.mark.describe("test of APICommander exceptions, async")
+    async def test_apicommander_exceptions_async(self, httpserver: HTTPServer) -> None:
+        base_endpoint = httpserver.url_for("/")
+        base_path = "/base"
+        cmd = APICommander(
+            api_endpoint=base_endpoint,
+            path=base_path,
+            dev_ops_api=False,
+        )
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data("{unparseable")
+        with pytest.raises(DataAPIFaultyResponseException):
+            await cmd.async_request()
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data(
+            json.dumps(
+                {
+                    "errors": [
+                        {"title": "Error", "errorCode": "E_C"},
+                    ]
+                }
+            )
+        )
+        with pytest.raises(DataAPIResponseException):
+            await cmd.async_request()
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data(
+            json.dumps(
+                {
+                    "errors": [
+                        {"title": "Error", "errorCode": "E_C"},
+                    ]
+                }
+            )
+        )
+        await cmd.async_request(raise_api_errors=False)
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data(
+            json.dumps(
+                {
+                    "errors": [
+                        {"title": "Error", "errorCode": "E_C"},
+                    ]
+                }
+            ),
+            status=500,
+        )
+        with pytest.raises(DataAPIHttpException):
+            await cmd.async_request()
+
+    @pytest.mark.describe("test of APICommander DevOps exceptions, sync")
+    def test_apicommander_devops_exceptions_sync(self, httpserver: HTTPServer) -> None:
+        base_endpoint = httpserver.url_for("/")
+        base_path = "/base"
+        cmd = APICommander(
+            api_endpoint=base_endpoint,
+            path=base_path,
+            dev_ops_api=True,
+        )
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data("{unparseable")
+        with pytest.raises(DevOpsAPIFaultyResponseException):
+            cmd.request()
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data(
+            json.dumps(
+                {
+                    "errors": [
+                        {"title": "Error", "errorCode": "E_C"},
+                    ]
+                }
+            )
+        )
+        with pytest.raises(DevOpsAPIResponseException):
+            cmd.request()
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data(
+            json.dumps(
+                {
+                    "errors": [
+                        {"title": "Error", "errorCode": "E_C"},
+                    ]
+                }
+            )
+        )
+        cmd.request(raise_api_errors=False)
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data(
+            json.dumps(
+                {
+                    "errors": [
+                        {"title": "Error", "errorCode": "E_C"},
+                    ]
+                }
+            ),
+            status=500,
+        )
+        with pytest.raises(DevOpsAPIHttpException):
+            cmd.request()
+
+    @pytest.mark.describe("test of APICommander DevOps exceptions, async")
+    async def test_apicommander_devops_exceptions_async(
+        self, httpserver: HTTPServer
+    ) -> None:
+        base_endpoint = httpserver.url_for("/")
+        base_path = "/base"
+        cmd = APICommander(
+            api_endpoint=base_endpoint,
+            path=base_path,
+            dev_ops_api=True,
+        )
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data("{unparseable")
+        with pytest.raises(DevOpsAPIFaultyResponseException):
+            await cmd.async_request()
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data(
+            json.dumps(
+                {
+                    "errors": [
+                        {"title": "Error", "errorCode": "E_C"},
+                    ]
+                }
+            )
+        )
+        with pytest.raises(DevOpsAPIResponseException):
+            await cmd.async_request()
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data(
+            json.dumps(
+                {
+                    "errors": [
+                        {"title": "Error", "errorCode": "E_C"},
+                    ]
+                }
+            )
+        )
+        await cmd.async_request(raise_api_errors=False)
+
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_data(
+            json.dumps(
+                {
+                    "errors": [
+                        {"title": "Error", "errorCode": "E_C"},
+                    ]
+                }
+            ),
+            status=500,
+        )
+        with pytest.raises(DevOpsAPIHttpException):
+            await cmd.async_request()
+
+    @pytest.mark.describe("test of APICommander timeout, sync")
+    def test_apicommander_timeout_sync(self, httpserver: HTTPServer) -> None:
+        base_endpoint = httpserver.url_for("/")
+        base_path = "/base"
+        cmd = APICommander(
+            api_endpoint=base_endpoint,
+            path=base_path,
+        )
+
+        httpserver.expect_oneshot_request(
+            base_path,
+            method=HttpMethod.POST,
+        ).respond_with_handler(response_sleeper)
+        with pytest.raises(DataAPITimeoutException):
+            cmd.request(timeout_info=0.001)
+
+    @pytest.mark.describe("test of APICommander timeout, async")
+    async def test_apicommander_timeout_async(self, httpserver: HTTPServer) -> None:
+        base_endpoint = httpserver.url_for("/")
+        base_path = "/base"
+        cmd = APICommander(
+            api_endpoint=base_endpoint,
+            path=base_path,
+        )
+
+        httpserver.expect_oneshot_request(
+            base_path,
+            method=HttpMethod.POST,
+        ).respond_with_handler(response_sleeper)
+        with pytest.raises(DataAPITimeoutException):
+            await cmd.async_request(timeout_info=0.001)
+
+    @pytest.mark.describe("test of APICommander timeout DevOps, sync")
+    def test_apicommander_timeout_devops_sync(self, httpserver: HTTPServer) -> None:
+        base_endpoint = httpserver.url_for("/")
+        base_path = "/base"
+        cmd = APICommander(
+            api_endpoint=base_endpoint,
+            path=base_path,
+            dev_ops_api=True,
+        )
+
+        httpserver.expect_oneshot_request(
+            base_path,
+            method=HttpMethod.POST,
+        ).respond_with_handler(response_sleeper)
+        with pytest.raises(DevOpsAPITimeoutException):
+            cmd.request(timeout_info=0.001)
+
+    @pytest.mark.describe("test of APICommander timeout DevOps, async")
+    async def test_apicommander_timeout_devops_async(
+        self, httpserver: HTTPServer
+    ) -> None:
+        base_endpoint = httpserver.url_for("/")
+        base_path = "/base"
+        cmd = APICommander(
+            api_endpoint=base_endpoint,
+            path=base_path,
+            dev_ops_api=True,
+        )
+
+        httpserver.expect_oneshot_request(
+            base_path,
+            method=HttpMethod.POST,
+        ).respond_with_handler(response_sleeper)
+        with pytest.raises(DevOpsAPITimeoutException):
+            await cmd.async_request(timeout_info=0.001)
