@@ -16,6 +16,7 @@ Rearrangement into separate modules for:
     - payload/response transformations
     - (sometimes with temporary duplication to avoid depending on 'core')
 Logging of API requests made more uniform and easier to read
+Replaced collections.abc.Iterator => typing.Iterator for python3.8 compatibility
 
 
 v. 1.4.2
