@@ -15,6 +15,9 @@ Rearrangement into separate modules for:
     - request low-level tools
     - payload/response transformations
     - (sometimes with temporary duplication to avoid depending on 'core')
+Testing:
+    - added tests for APICommander
+    - improved tests for admin classes
 Logging of API requests made more uniform and easier to read
 Replaced collections.abc.Iterator => typing.Iterator for python3.8 compatibility
 
