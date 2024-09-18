@@ -95,10 +95,14 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUID,
             default_id_type=DefaultIdType.UUID,
         )
-        assert col.options().default_id.default_id_type == DefaultIdType.UUID
+        col_options = col.options()
+        assert col_options is not None
+        assert col_options.default_id is not None
+        assert col_options.default_id.default_id_type == DefaultIdType.UUID
         i1res = col.insert_one({"role": "probe"})
         assert isinstance(i1res.inserted_id, UUID)
         doc = col.find_one({})
+        assert doc is not None
         assert isinstance(doc["_id"], UUID)
         col.drop()
 
@@ -107,11 +111,15 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV6,
             default_id_type=DefaultIdType.UUIDV6,
         )
-        assert col.options().default_id.default_id_type == DefaultIdType.UUIDV6
+        col_options = col.options()
+        assert col_options is not None
+        assert col_options.default_id is not None
+        assert col_options.default_id.default_id_type == DefaultIdType.UUIDV6
         i1res = col.insert_one({"role": "probe"})
         assert isinstance(i1res.inserted_id, UUID)
         assert i1res.inserted_id.version == 6
         doc = col.find_one({})
+        assert doc is not None
         assert isinstance(doc["_id"], UUID)
         assert doc["_id"].version == 6
         col.drop()
@@ -121,11 +129,15 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV7,
             default_id_type=DefaultIdType.UUIDV7,
         )
-        assert col.options().default_id.default_id_type == DefaultIdType.UUIDV7
+        col_options = col.options()
+        assert col_options is not None
+        assert col_options.default_id is not None
+        assert col_options.default_id.default_id_type == DefaultIdType.UUIDV7
         i1res = col.insert_one({"role": "probe"})
         assert isinstance(i1res.inserted_id, UUID)
         assert i1res.inserted_id.version == 7
         doc = col.find_one({})
+        assert doc is not None
         assert isinstance(doc["_id"], UUID)
         assert doc["_id"].version == 7
         col.drop()
@@ -135,7 +147,10 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.DEFAULT,
             default_id_type=DefaultIdType.DEFAULT,
         )
-        assert col.options().default_id.default_id_type == DefaultIdType.DEFAULT
+        col_options = col.options()
+        assert col_options is not None
+        assert col_options.default_id is not None
+        assert col_options.default_id.default_id_type == DefaultIdType.DEFAULT
         col.drop()
 
         time.sleep(2)
@@ -143,10 +158,14 @@ class TestDDLSync:
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.OBJECTID,
             default_id_type=DefaultIdType.OBJECTID,
         )
-        assert col.options().default_id.default_id_type == DefaultIdType.OBJECTID
+        col_options = col.options()
+        assert col_options is not None
+        assert col_options.default_id is not None
+        assert col_options.default_id.default_id_type == DefaultIdType.OBJECTID
         i1res = col.insert_one({"role": "probe"})
         assert isinstance(i1res.inserted_id, ObjectId)
         doc = col.find_one({})
+        assert doc is not None
         assert isinstance(doc["_id"], ObjectId)
         col.drop()
 
@@ -180,7 +199,7 @@ class TestDDLSync:
     ) -> None:
         info = sync_collection.info()
         assert info.namespace == sync_collection.namespace
-        assert info.namespace == sync_collection._astra_db_collection.astra_db.namespace
+        assert info.namespace == sync_collection.database.namespace
 
     @pytest.mark.describe("test of Database list_collections, sync")
     def test_database_list_collections_sync(

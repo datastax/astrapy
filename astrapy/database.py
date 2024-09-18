@@ -18,12 +18,8 @@ import logging
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
-from astrapy.admin import (
-    API_PATH_ENV_MAP,
-    API_VERSION_ENV_MAP,
-    fetch_database_info,
-    parse_api_endpoint,
-)
+from astrapy.admin import fetch_database_info, parse_api_endpoint
+from astrapy.api_commander import APICommander
 from astrapy.api_options import CollectionAPIOptions
 from astrapy.authentication import (
     coerce_embedding_headers_provider,
@@ -31,16 +27,19 @@ from astrapy.authentication import (
     redact_secret,
 )
 from astrapy.constants import Environment
-from astrapy.core.db import AstraDB, AsyncAstraDB
 from astrapy.cursors import AsyncCommandCursor, CommandCursor
+from astrapy.defaults import (
+    API_PATH_ENV_MAP,
+    API_VERSION_ENV_MAP,
+    DEFAULT_ASTRA_DB_NAMESPACE,
+    DEFAULT_DATA_API_AUTH_HEADER,
+)
 from astrapy.exceptions import (
     CollectionAlreadyExistsException,
     DataAPIFaultyResponseException,
     DevOpsAPIException,
     MultiCallTimeoutManager,
     base_timeout_info,
-    recast_method_async,
-    recast_method_sync,
 )
 from astrapy.info import (
     CollectionDescriptor,
@@ -54,40 +53,18 @@ if TYPE_CHECKING:
     from astrapy.collection import AsyncCollection, Collection
 
 
-DEFAULT_ASTRA_DB_NAMESPACE = "default_keyspace"
-
 logger = logging.getLogger(__name__)
 
 
-def _validate_create_collection_options(
+def _normalize_create_collection_options(
     dimension: Optional[int],
     metric: Optional[str],
     service: Optional[Union[CollectionVectorServiceOptions, Dict[str, Any]]],
     indexing: Optional[Dict[str, Any]],
     default_id_type: Optional[str],
     additional_options: Optional[Dict[str, Any]],
-) -> None:
-    if additional_options:
-        if "vector" in additional_options:
-            raise ValueError(
-                "`additional_options` dict parameter to create_collection "
-                "cannot have a `vector` key. Please use the specific "
-                "method parameter."
-            )
-        if "indexing" in additional_options:
-            raise ValueError(
-                "`additional_options` dict parameter to create_collection "
-                "cannot have a `indexing` key. Please use the specific "
-                "method parameter."
-            )
-        if "defaultId" in additional_options and default_id_type is not None:
-            # this leaves the workaround to pass more info in the defaultId
-            # should that become part of the specs:
-            raise ValueError(
-                "`additional_options` dict parameter to create_collection "
-                "cannot have a `defaultId` key when passing the "
-                "`default_id_type` parameter as well."
-            )
+) -> Dict[str, Any]:
+    """Raise errors related to invalid input, and return a ready-to-send payload."""
     is_vector: bool
     if service is not None or dimension is not None:
         is_vector = True
@@ -98,6 +75,42 @@ def _validate_create_collection_options(
             "Cannot specify `metric` for non-vector collections in the "
             "create_collection method."
         )
+    # prepare the payload
+    service_dict: Optional[Dict[str, Any]]
+    if service is not None:
+        service_dict = service if isinstance(service, dict) else service.as_dict()
+    else:
+        service_dict = None
+    vector_options = {
+        k: v
+        for k, v in {
+            "dimension": dimension,
+            "metric": metric,
+            "service": service_dict,
+        }.items()
+        if v is not None
+    }
+    full_options0 = {
+        k: v
+        for k, v in {
+            # **(additional_options or {}),
+            **({"indexing": indexing} if indexing else {}),
+            **({"defaultId": {"type": default_id_type}} if default_id_type else {}),
+            **({"vector": vector_options} if vector_options else {}),
+        }.items()
+        if v
+    }
+    overlap_keys = (full_options0).keys() & (additional_options or {}).keys()
+    if overlap_keys:
+        raise ValueError(
+            "Gotten forbidden key(s) in additional_options: "
+            f"{','.join(sorted(overlap_keys))}."
+        )
+    full_options = {
+        **(additional_options or {}),
+        **full_options0,
+    }
+    return full_options
 
 
 class Database:
@@ -185,9 +198,13 @@ class Database:
         else:
             self.using_namespace = namespace
 
+        self._commander_headers = {
+            DEFAULT_DATA_API_AUTH_HEADER: self.token_provider.get_token(),
+        }
+
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._astra_db = self._refresh_astra_db()
+        self._api_commander = self._get_api_commander(namespace=self.namespace)
         self._name: Optional[str] = None
 
     def __getattr__(self, collection_name: str) -> Collection:
@@ -222,23 +239,57 @@ class Database:
                     self.namespace == other.namespace,
                     self.caller_name == other.caller_name,
                     self.caller_version == other.caller_version,
+                    self.api_commander == other.api_commander,
                 ]
             )
         else:
             return False
 
-    def _refresh_astra_db(self) -> AstraDB:
-        """Re-instantiate a new (core) client based on the instance attributes."""
-        logger.info("Instantiating a new (core) AstraDB")
-        return AstraDB(
-            token=self.token_provider.get_token(),
-            api_endpoint=self.api_endpoint,
-            api_path=self.api_path,
-            api_version=self.api_version,
-            namespace=self.namespace,
-            caller_name=self.caller_name,
-            caller_version=self.caller_version,
-        )
+    def _get_api_commander(self, namespace: Optional[str]) -> Optional[APICommander]:
+        """
+        Instantiate a new APICommander based on the properties of this class
+        and a provided namespace.
+
+        If namespace is None, return None (signaling a "namespace not set").
+        """
+
+        if namespace is None:
+            return None
+        else:
+            base_path_components = [
+                comp
+                for comp in (
+                    self.api_path.strip("/"),
+                    self.api_version.strip("/"),
+                    namespace,
+                )
+                if comp != ""
+            ]
+            base_path = f"/{'/'.join(base_path_components)}"
+            api_commander = APICommander(
+                api_endpoint=self.api_endpoint,
+                path=base_path,
+                headers=self._commander_headers,
+                callers=[(self.caller_name, self.caller_version)],
+            )
+            return api_commander
+
+    def _get_driver_commander(self, namespace: Optional[str]) -> APICommander:
+        """
+        Building on _get_api_commander, fall back to class namespace in
+        creating/returning a commander, and in any case raise an error if not set.
+        """
+        driver_commander: Optional[APICommander]
+        if namespace:
+            driver_commander = self._get_api_commander(namespace=namespace)
+        else:
+            driver_commander = self._api_commander
+        if driver_commander is None:
+            raise ValueError(
+                "No namespace specified. This operation requires a namespace to "
+                "be set, e.g. through the `use_namespace` method."
+            )
+        return driver_commander
 
     def _copy(
         self,
@@ -375,7 +426,7 @@ class Database:
         logger.info(f"setting caller to {caller_name}/{caller_version}")
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._astra_db = self._refresh_astra_db()
+        self._api_commander = self._get_api_commander(namespace=self.namespace)
 
     def use_namespace(self, namespace: str) -> None:
         """
@@ -400,7 +451,7 @@ class Database:
         """
         logger.info(f"switching to namespace '{namespace}'")
         self.using_namespace = namespace
-        self._astra_db = self._refresh_astra_db()
+        self._api_commander = self._get_api_commander(namespace=self.namespace)
 
     def info(self) -> DatabaseInfo:
         """
@@ -563,7 +614,6 @@ class Database:
             ),
         )
 
-    @recast_method_sync
     def create_collection(
         self,
         name: str,
@@ -657,7 +707,7 @@ class Database:
             the dimension must be compatible with the chosen service.
         """
 
-        _validate_create_collection_options(
+        cc_options = _normalize_create_collection_options(
             dimension=dimension,
             metric=metric,
             service=service,
@@ -665,11 +715,6 @@ class Database:
             default_id_type=default_id_type,
             additional_options=additional_options,
         )
-        _options = {
-            **(additional_options or {}),
-            **({"indexing": indexing} if indexing else {}),
-            **({"defaultId": {"type": default_id_type}} if default_id_type else {}),
-        }
 
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
 
@@ -677,47 +722,27 @@ class Database:
             _check_exists = True
         else:
             _check_exists = check_exists
-        existing_names: List[str]
         if _check_exists:
             logger.info(f"checking collection existence for '{name}'")
             existing_names = self.list_collection_names(
                 namespace=namespace,
                 max_time_ms=timeout_manager.remaining_timeout_ms(),
             )
-        else:
-            existing_names = []
+            if name in existing_names:
+                raise CollectionAlreadyExistsException(
+                    text=f"Collection {name} already exists",
+                    namespace=namespace or self.namespace or "(unspecified)",
+                    collection_name=name,
+                )
 
-        _namespace = namespace or self.namespace
-        if _namespace is None:
-            raise ValueError(
-                "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
-            )
-
-        driver_db = self._astra_db.copy(namespace=_namespace)
-        if name in existing_names:
-            raise CollectionAlreadyExistsException(
-                text=f"CollectionInvalid: collection {name} already exists",
-                namespace=_namespace,
-                collection_name=name,
-            )
-
-        service_dict: Optional[Dict[str, Any]]
-        if service is not None:
-            service_dict = service if isinstance(service, dict) else service.as_dict()
-        else:
-            service_dict = None
-
-        logger.info(f"creating collection '{name}'")
-        driver_db.create_collection(
-            name,
-            options=_options,
-            dimension=dimension,
-            metric=metric,
-            service_dict=service_dict,
+        driver_commander = self._get_driver_commander(namespace=namespace)
+        cc_payload = {"createCollection": {"name": name, "options": cc_options}}
+        logger.info(f"createCollection('{name}')")
+        driver_commander.request(
+            payload=cc_payload,
             timeout_info=timeout_manager.remaining_timeout_info(),
         )
-        logger.info(f"finished creating collection '{name}'")
+        logger.info(f"finished createCollection('{name}')")
         return self.get_collection(
             name,
             namespace=namespace,
@@ -725,7 +750,6 @@ class Database:
             collection_max_time_ms=collection_max_time_ms,
         )
 
-    @recast_method_sync
     def drop_collection(
         self,
         name_or_collection: Union[str, Collection],
@@ -759,31 +783,24 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.collection import Collection
 
+        _namespace: Optional[str]
+        _collection_name: str
         if isinstance(name_or_collection, Collection):
             _namespace = name_or_collection.namespace
-            _name: str = name_or_collection.name
-            logger.info(f"dropping collection '{_name}'")
-            dc_response = self._astra_db.copy(namespace=_namespace).delete_collection(
-                _name,
-                timeout_info=base_timeout_info(max_time_ms),
-            )
-            logger.info(f"finished dropping collection '{_name}'")
-            return dc_response.get("status", {})  # type: ignore[no-any-return]
+            _collection_name = name_or_collection.name
         else:
-            if self.namespace is None:
-                raise ValueError(
-                    "No namespace specified. This operation requires a namespace to "
-                    "be set, e.g. through the `use_namespace` method."
-                )
-            logger.info(f"dropping collection '{name_or_collection}'")
-            dc_response = self._astra_db.delete_collection(
-                name_or_collection,
-                timeout_info=base_timeout_info(max_time_ms),
-            )
-            logger.info(f"finished dropping collection '{name_or_collection}'")
-            return dc_response.get("status", {})  # type: ignore[no-any-return]
+            _namespace = self.namespace
+            _collection_name = name_or_collection
+        driver_commander = self._get_driver_commander(namespace=_namespace)
+        dc_payload = {"deleteCollection": {"name": _collection_name}}
+        logger.info(f"deleteCollection('{_collection_name}')")
+        dc_response = driver_commander.request(
+            payload=dc_payload,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        logger.info(f"finished deleteCollection('{_collection_name}')")
+        return dc_response.get("status", {})  # type: ignore[no-any-return]
 
-    @recast_method_sync
     def list_collections(
         self,
         *,
@@ -814,17 +831,12 @@ class Database:
             CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        _namespace = namespace or self.namespace
-        if _namespace is None:
-            raise ValueError(
-                "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
-            )
-
-        driver_db = self._astra_db.copy(namespace=_namespace)
-        logger.info("getting collections")
-        gc_response = driver_db.get_collections(
-            options={"explain": True}, timeout_info=base_timeout_info(max_time_ms)
+        driver_commander = self._get_driver_commander(namespace=namespace)
+        gc_payload = {"findCollections": {"options": {"explain": True}}}
+        logger.info("findCollections")
+        gc_response = driver_commander.request(
+            payload=gc_payload,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -833,16 +845,15 @@ class Database:
             )
         else:
             # we know this is a list of dicts, to marshal into "descriptors"
-            logger.info("finished getting collections")
+            logger.info("finished findCollections")
             return CommandCursor(
-                address=driver_db.base_url,
+                address=driver_commander.full_path,
                 items=[
                     CollectionDescriptor.from_dict(col_dict)
                     for col_dict in gc_response["status"]["collections"]
                 ],
             )
 
-    @recast_method_sync
     def list_collection_names(
         self,
         *,
@@ -865,16 +876,12 @@ class Database:
             ['a_collection', 'another_col']
         """
 
-        _namespace = namespace or self.namespace
-        if _namespace is None:
-            raise ValueError(
-                "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
-            )
-
-        logger.info("getting collection names")
-        gc_response = self._astra_db.copy(namespace=_namespace).get_collections(
-            timeout_info=base_timeout_info(max_time_ms)
+        driver_commander = self._get_driver_commander(namespace=namespace)
+        gc_payload: Dict[str, Any] = {"findCollections": {}}
+        logger.info("findCollections")
+        gc_response = driver_commander.request(
+            payload=gc_payload,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -882,17 +889,17 @@ class Database:
                 raw_response=gc_response,
             )
         else:
-            # we know this is a list of strings
-            logger.info("finished getting collection names")
+            # we know this is a list of dicts, to marshal into "descriptors"
+            logger.info("finished findCollections")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
-    @recast_method_sync
     def command(
         self,
         body: Dict[str, Any],
         *,
         namespace: Optional[str] = None,
         collection_name: Optional[str] = None,
+        raise_api_errors: bool = True,
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
@@ -906,6 +913,8 @@ class Database:
             collection_name: if provided, the collection name is appended at the end
                 of the endpoint. In this way, this method allows collection-level
                 arbitrary POST requests as well.
+            raise_api_errors: if True, responses with a nonempty 'errors' field
+                result in an astrapy exception being raised.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -918,32 +927,33 @@ class Database:
             {'status': {'count': 123}}
         """
 
-        _namespace = namespace or self.namespace
-        if _namespace is None:
-            raise ValueError(
-                "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
-            )
-
-        driver_db = self._astra_db.copy(namespace=_namespace)
         if collection_name:
-            _collection = driver_db.collection(collection_name)
-            logger.info(f"issuing custom command to API (on '{collection_name}')")
-            req_response = _collection.post_raw_request(
+            # if namespace and collection_name both passed, a new database is needed
+            _database: Database
+            if namespace:
+                _database = self._copy(namespace=namespace)
+            else:
+                _database = self
+            logger.info("deferring to collection " f"'{collection_name}' for command.")
+            coll_req_response = _database.get_collection(collection_name).command(
                 body=body,
-                timeout_info=base_timeout_info(max_time_ms),
+                raise_api_errors=raise_api_errors,
+                max_time_ms=max_time_ms,
             )
             logger.info(
-                f"finished issuing custom command to API (on '{collection_name}')"
+                "finished deferring to collection " f"'{collection_name}' for command."
             )
-            return req_response
+            return coll_req_response
         else:
-            logger.info("issuing custom command to API")
-            req_response = driver_db.post_raw_request(
-                body=body,
+            driver_commander = self._get_driver_commander(namespace=namespace)
+            _cmd_desc = ",".join(sorted(body.keys()))
+            logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
+            req_response = driver_commander.request(
+                payload=body,
+                raise_api_errors=raise_api_errors,
                 timeout_info=base_timeout_info(max_time_ms),
             )
-            logger.info("finished issuing custom command to API")
+            logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             return req_response
 
     def get_database_admin(
@@ -1096,7 +1106,6 @@ class AsyncDatabase:
             _api_version = API_VERSION_ENV_MAP[self.environment]
         else:
             _api_version = api_version
-        #
         self.token_provider = coerce_token_provider(token)
         self.api_endpoint = api_endpoint.strip("/")
         self.api_path = _api_path
@@ -1109,9 +1118,13 @@ class AsyncDatabase:
         else:
             self.using_namespace = namespace
 
+        self._commander_headers = {
+            DEFAULT_DATA_API_AUTH_HEADER: self.token_provider.get_token(),
+        }
+
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._astra_db = self._refresh_astra_db()
+        self._api_commander = self._get_api_commander(namespace=self.namespace)
         self._name: Optional[str] = None
 
     def __getattr__(self, collection_name: str) -> AsyncCollection:
@@ -1146,10 +1159,57 @@ class AsyncDatabase:
                     self.namespace == other.namespace,
                     self.caller_name == other.caller_name,
                     self.caller_version == other.caller_version,
+                    self.api_commander == other.api_commander,
                 ]
             )
         else:
             return False
+
+    def _get_api_commander(self, namespace: Optional[str]) -> Optional[APICommander]:
+        """
+        Instantiate a new APICommander based on the properties of this class
+        and a provided namespace.
+
+        If namespace is None, return None (signaling a "namespace not set").
+        """
+
+        if namespace is None:
+            return None
+        else:
+            base_path_components = [
+                comp
+                for comp in (
+                    self.api_path.strip("/"),
+                    self.api_version.strip("/"),
+                    namespace,
+                )
+                if comp != ""
+            ]
+            base_path = f"/{'/'.join(base_path_components)}"
+            api_commander = APICommander(
+                api_endpoint=self.api_endpoint,
+                path=base_path,
+                headers=self._commander_headers,
+                callers=[(self.caller_name, self.caller_version)],
+            )
+            return api_commander
+
+    def _get_driver_commander(self, namespace: Optional[str]) -> APICommander:
+        """
+        Building on _get_api_commander, fall back to class namespace in
+        creating/returning a commander, and in any case raise an error if not set.
+        """
+        driver_commander: Optional[APICommander]
+        if namespace:
+            driver_commander = self._get_api_commander(namespace=namespace)
+        else:
+            driver_commander = self._api_commander
+        if driver_commander is None:
+            raise ValueError(
+                "No namespace specified. This operation requires a namespace to "
+                "be set, e.g. through the `use_namespace` method."
+            )
+        return driver_commander
 
     async def __aenter__(self) -> AsyncDatabase:
         return self
@@ -1160,24 +1220,12 @@ class AsyncDatabase:
         exc_value: Optional[BaseException] = None,
         traceback: Optional[TracebackType] = None,
     ) -> None:
-        await self._astra_db.__aexit__(
-            exc_type=exc_type,
-            exc_value=exc_value,
-            traceback=traceback,
-        )
-
-    def _refresh_astra_db(self) -> AsyncAstraDB:
-        """Re-instantiate a new (core) client based on the instance attributes."""
-        logger.info("Instantiating a new (core) AsyncAstraDB")
-        return AsyncAstraDB(
-            token=self.token_provider.get_token(),
-            api_endpoint=self.api_endpoint,
-            api_path=self.api_path,
-            api_version=self.api_version,
-            namespace=self.namespace,
-            caller_name=self.caller_name,
-            caller_version=self.caller_version,
-        )
+        if self._api_commander is not None:
+            await self._api_commander.__aexit__(
+                exc_type=exc_type,
+                exc_value=exc_value,
+                traceback=traceback,
+            )
 
     def _copy(
         self,
@@ -1315,7 +1363,7 @@ class AsyncDatabase:
         logger.info(f"setting caller to {caller_name}/{caller_version}")
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._astra_db = self._refresh_astra_db()
+        self._api_commander = self._get_api_commander(namespace=self.namespace)
 
     def use_namespace(self, namespace: str) -> None:
         """
@@ -1340,7 +1388,7 @@ class AsyncDatabase:
         """
         logger.info(f"switching to namespace '{namespace}'")
         self.using_namespace = namespace
-        self._astra_db = self._refresh_astra_db()
+        self._api_commander = self._get_api_commander(namespace=self.namespace)
 
     def info(self) -> DatabaseInfo:
         """
@@ -1506,7 +1554,6 @@ class AsyncDatabase:
             ),
         )
 
-    @recast_method_async
     async def create_collection(
         self,
         name: str,
@@ -1604,7 +1651,7 @@ class AsyncDatabase:
             the dimension must be compatible with the chosen service.
         """
 
-        _validate_create_collection_options(
+        cc_options = _normalize_create_collection_options(
             dimension=dimension,
             metric=metric,
             service=service,
@@ -1612,11 +1659,6 @@ class AsyncDatabase:
             default_id_type=default_id_type,
             additional_options=additional_options,
         )
-        _options = {
-            **(additional_options or {}),
-            **({"indexing": indexing} if indexing else {}),
-            **({"defaultId": {"type": default_id_type}} if default_id_type else {}),
-        }
 
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
 
@@ -1624,47 +1666,27 @@ class AsyncDatabase:
             _check_exists = True
         else:
             _check_exists = check_exists
-        existing_names: List[str]
         if _check_exists:
             logger.info(f"checking collection existence for '{name}'")
             existing_names = await self.list_collection_names(
                 namespace=namespace,
                 max_time_ms=timeout_manager.remaining_timeout_ms(),
             )
-        else:
-            existing_names = []
+            if name in existing_names:
+                raise CollectionAlreadyExistsException(
+                    text=f"Collection {name} already exists",
+                    namespace=namespace or self.namespace or "(unspecified)",
+                    collection_name=name,
+                )
 
-        _namespace = namespace or self.namespace
-        if _namespace is None:
-            raise ValueError(
-                "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
-            )
-
-        driver_db = self._astra_db.copy(namespace=_namespace)
-        if name in existing_names:
-            raise CollectionAlreadyExistsException(
-                text=f"CollectionInvalid: collection {name} already exists",
-                namespace=_namespace,
-                collection_name=name,
-            )
-
-        service_dict: Optional[Dict[str, Any]]
-        if service is not None:
-            service_dict = service if isinstance(service, dict) else service.as_dict()
-        else:
-            service_dict = None
-
-        logger.info(f"creating collection '{name}'")
-        await driver_db.create_collection(
-            name,
-            options=_options,
-            dimension=dimension,
-            metric=metric,
-            service_dict=service_dict,
+        driver_commander = self._get_driver_commander(namespace=namespace)
+        cc_payload = {"createCollection": {"name": name, "options": cc_options}}
+        logger.info(f"createCollection('{name}')")
+        await driver_commander.async_request(
+            payload=cc_payload,
             timeout_info=timeout_manager.remaining_timeout_info(),
         )
-        logger.info(f"finished creating collection '{name}'")
+        logger.info(f"createCollection('{name}')")
         return await self.get_collection(
             name,
             namespace=namespace,
@@ -1672,7 +1694,6 @@ class AsyncDatabase:
             collection_max_time_ms=collection_max_time_ms,
         )
 
-    @recast_method_async
     async def drop_collection(
         self,
         name_or_collection: Union[str, AsyncCollection],
@@ -1706,33 +1727,24 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.collection import AsyncCollection
 
+        _namespace: Optional[str]
+        _collection_name: str
         if isinstance(name_or_collection, AsyncCollection):
             _namespace = name_or_collection.namespace
-            _name = name_or_collection.name
-            logger.info(f"dropping collection '{_name}'")
-            dc_response = await self._astra_db.copy(
-                namespace=_namespace
-            ).delete_collection(
-                _name,
-                timeout_info=base_timeout_info(max_time_ms),
-            )
-            logger.info(f"finished dropping collection '{_name}'")
-            return dc_response.get("status", {})  # type: ignore[no-any-return]
+            _collection_name = name_or_collection.name
         else:
-            if self.namespace is None:
-                raise ValueError(
-                    "No namespace specified. This operation requires a namespace to "
-                    "be set, e.g. through the `use_namespace` method."
-                )
-            logger.info(f"dropping collection '{name_or_collection}'")
-            dc_response = await self._astra_db.delete_collection(
-                name_or_collection,
-                timeout_info=base_timeout_info(max_time_ms),
-            )
-            logger.info(f"finished dropping collection '{name_or_collection}'")
-            return dc_response.get("status", {})  # type: ignore[no-any-return]
+            _namespace = self.namespace
+            _collection_name = name_or_collection
+        driver_commander = self._get_driver_commander(namespace=_namespace)
+        dc_payload = {"deleteCollection": {"name": _collection_name}}
+        logger.info(f"deleteCollection('{_collection_name}')")
+        dc_response = await driver_commander.async_request(
+            payload=dc_payload,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        logger.info(f"finished deleteCollection('{_collection_name}')")
+        return dc_response.get("status", {})  # type: ignore[no-any-return]
 
-    @recast_method_sync
     def list_collections(
         self,
         *,
@@ -1765,17 +1777,11 @@ class AsyncDatabase:
             * coll: CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        _namespace = namespace or self.namespace
-        if _namespace is None:
-            raise ValueError(
-                "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
-            )
-
-        driver_db = self._astra_db.copy(namespace=_namespace)
-        logger.info("getting collections")
-        gc_response = driver_db.to_sync().get_collections(
-            options={"explain": True},
+        driver_commander = self._get_driver_commander(namespace=namespace)
+        gc_payload = {"findCollections": {"options": {"explain": True}}}
+        logger.info("findCollections")
+        gc_response = driver_commander.request(
+            payload=gc_payload,
             timeout_info=base_timeout_info(max_time_ms),
         )
         if "collections" not in gc_response.get("status", {}):
@@ -1785,16 +1791,15 @@ class AsyncDatabase:
             )
         else:
             # we know this is a list of dicts, to marshal into "descriptors"
-            logger.info("finished getting collections")
+            logger.info("finished findCollections")
             return AsyncCommandCursor(
-                address=driver_db.base_url,
+                address=driver_commander.full_path,
                 items=[
                     CollectionDescriptor.from_dict(col_dict)
                     for col_dict in gc_response["status"]["collections"]
                 ],
             )
 
-    @recast_method_async
     async def list_collection_names(
         self,
         *,
@@ -1817,16 +1822,12 @@ class AsyncDatabase:
             ['a_collection', 'another_col']
         """
 
-        _namespace = namespace or self.namespace
-        if _namespace is None:
-            raise ValueError(
-                "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
-            )
-
-        logger.info("getting collection names")
-        gc_response = await self._astra_db.copy(namespace=_namespace).get_collections(
-            timeout_info=base_timeout_info(max_time_ms)
+        driver_commander = self._get_driver_commander(namespace=namespace)
+        gc_payload: Dict[str, Any] = {"findCollections": {}}
+        logger.info("findCollections")
+        gc_response = await driver_commander.async_request(
+            payload=gc_payload,
+            timeout_info=base_timeout_info(max_time_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -1834,17 +1835,17 @@ class AsyncDatabase:
                 raw_response=gc_response,
             )
         else:
-            # we know this is a list of strings
-            logger.info("finished getting collection names")
+            # we know this is a list of dicts, to marshal into "descriptors"
+            logger.info("finished findCollections")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
-    @recast_method_async
     async def command(
         self,
         body: Dict[str, Any],
         *,
         namespace: Optional[str] = None,
         collection_name: Optional[str] = None,
+        raise_api_errors: bool = True,
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
@@ -1858,6 +1859,8 @@ class AsyncDatabase:
             collection_name: if provided, the collection name is appended at the end
                 of the endpoint. In this way, this method allows collection-level
                 arbitrary POST requests as well.
+            raise_api_errors: if True, responses with a nonempty 'errors' field
+                result in an astrapy exception being raised.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -1873,32 +1876,34 @@ class AsyncDatabase:
             {'status': {'count': 123}}
         """
 
-        _namespace = namespace or self.namespace
-        if _namespace is None:
-            raise ValueError(
-                "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
-            )
-
-        driver_db = self._astra_db.copy(namespace=_namespace)
         if collection_name:
-            _collection = await driver_db.collection(collection_name)
-            logger.info(f"issuing custom command to API (on '{collection_name}')")
-            req_response = await _collection.post_raw_request(
+            # if namespace and collection_name both passed, a new database is needed
+            _database: AsyncDatabase
+            if namespace:
+                _database = self._copy(namespace=namespace)
+            else:
+                _database = self
+            logger.info("deferring to collection " f"'{collection_name}' for command.")
+            _collection = await _database.get_collection(collection_name)
+            coll_req_response = await _collection.command(
                 body=body,
-                timeout_info=base_timeout_info(max_time_ms),
+                raise_api_errors=raise_api_errors,
+                max_time_ms=max_time_ms,
             )
             logger.info(
-                f"finished issuing custom command to API (on '{collection_name}')"
+                "finished deferring to collection " f"'{collection_name}' for command."
             )
-            return req_response
+            return coll_req_response
         else:
-            logger.info("issuing custom command to API")
-            req_response = await driver_db.post_raw_request(
-                body=body,
+            driver_commander = self._get_driver_commander(namespace=namespace)
+            _cmd_desc = ",".join(sorted(body.keys()))
+            logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
+            req_response = await driver_commander.async_request(
+                payload=body,
+                raise_api_errors=raise_api_errors,
                 timeout_info=base_timeout_info(max_time_ms),
             )
-            logger.info("finished issuing custom command to API")
+            logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             return req_response
 
     def get_database_admin(

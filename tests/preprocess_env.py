@@ -159,7 +159,7 @@ if "DO_IDIOMATIC_ADMIN_TESTS" in os.environ:
 else:
     DO_IDIOMATIC_ADMIN_TESTS = False
 
-ADMIN_ENV_LIST = ["prod", "dev"]
+ADMIN_ENV_LIST = ["prod", "dev", "test"]
 ADMIN_ENV_VARIABLE_MAP = {
     admin_env: {
         "token": os.environ.get(

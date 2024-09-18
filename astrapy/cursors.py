@@ -18,7 +18,7 @@ import hashlib
 import json
 import logging
 import time
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -26,6 +26,7 @@ from typing import (
     Dict,
     Generic,
     Iterable,
+    Iterator,
     List,
     Optional,
     Tuple,
@@ -38,14 +39,12 @@ from astrapy.constants import (
     ProjectionType,
     normalize_optional_projection,
 )
-from astrapy.core.utils import _normalize_payload_value
 from astrapy.exceptions import (
     CursorIsStartedException,
+    DataAPIFaultyResponseException,
     DataAPITimeoutException,
-    base_timeout_info,
-    recast_method_async,
-    recast_method_sync,
 )
+from astrapy.transform_payload import normalize_payload_value
 
 if TYPE_CHECKING:
     from astrapy.collection import AsyncCollection, Collection
@@ -57,8 +56,6 @@ logger = logging.getLogger(__name__)
 BC = TypeVar("BC", bound="BaseCursor")
 T = TypeVar("T")
 IndexPairType = Tuple[str, Optional[int]]
-
-FIND_PREFETCH = 20
 
 
 def _maybe_valid_list_index(key_block: str) -> Optional[int]:
@@ -152,7 +149,7 @@ def _reduce_distinct_key_to_safe(distinct_key: str) -> str:
 
 
 def _hash_document(document: Dict[str, Any]) -> str:
-    _normalized_item = _normalize_payload_value(path=[], value=document)
+    _normalized_item = normalize_payload_value(path=[], value=document)
     _normalized_json = json.dumps(
         _normalized_item, sort_keys=True, separators=(",", ":")
     )
@@ -384,7 +381,7 @@ class BaseCursor:
         requests to the database.
         """
 
-        return self._collection._astra_db_collection.base_path
+        return self._collection._api_commander.full_path
 
     @property
     def alive(self) -> bool:
@@ -616,7 +613,6 @@ class Cursor(BaseCursor):
             self._started = True
         return self
 
-    @recast_method_sync
     def __next__(self) -> DocumentType:
         if not self.alive:
             # keep raising once exhausted:
@@ -665,15 +661,14 @@ class Cursor(BaseCursor):
         finder_cursor = self._copy().skip(index).limit(1)
         items = list(finder_cursor)
         if items:
-            return items[0]  # type: ignore[no-any-return]
+            return items[0]
         else:
             raise IndexError("no such item for Cursor instance")
 
-    @recast_method_sync
     def _create_iterator(self) -> _LookAheadIterator:
         self._ensure_not_started()
         self._ensure_alive()
-        _options = {
+        _options_0 = {
             k: v
             for k, v in {
                 "limit": self._limit,
@@ -683,31 +678,78 @@ class Cursor(BaseCursor):
             }.items()
             if v is not None
         }
+        _projection = normalize_optional_projection(self._projection)
+        _sort = self._sort or {}
+        _filter = self._filter or {}
+        f0_payload = {
+            "find": {
+                k: v
+                for k, v in {
+                    "filter": _filter,
+                    "projection": _projection,
+                    "options": _options_0,
+                    "sort": _sort,
+                }.items()
+                if v
+            }
+        }
 
-        # recast parameters for paginated_find call
-        pf_projection: Optional[
-            Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
-        ] = normalize_optional_projection(self._projection)
-        pf_sort: Optional[Dict[str, int]]
-        if self._sort:
-            pf_sort = dict(self._sort)
-        else:
-            pf_sort = None
-
-        def _response_setter_callback(raw_response: Dict[str, Any]) -> None:
-            status = raw_response.get("status")
-            self._api_response_status = status
+        def _find_iterator() -> Iterator[DocumentType]:
+            next_page_state: Optional[str] = None
+            #
+            resp_0 = self._collection.command(
+                body=f0_payload,
+                max_time_ms=self._max_time_ms,
+            )
+            self._api_response_status = resp_0.get("status")
+            if "nextPageState" not in resp_0.get("data", {}):
+                raise DataAPIFaultyResponseException(
+                    text="Faulty response from find API command (no 'nextPageState').",
+                    raw_response=resp_0,
+                )
+            next_page_state = resp_0["data"]["nextPageState"]
+            if "documents" not in resp_0.get("data", {}):
+                raise DataAPIFaultyResponseException(
+                    text="Faulty response from find API command (no 'documents').",
+                    raw_response=resp_0,
+                )
+            for doc in resp_0["data"]["documents"]:
+                yield doc
+            while next_page_state is not None:
+                _options_n = {**_options_0, **{"pageState": next_page_state}}
+                fn_payload = {
+                    "find": {
+                        k: v
+                        for k, v in {
+                            "filter": _filter,
+                            "projection": _projection,
+                            "options": _options_n,
+                            "sort": _sort,
+                        }.items()
+                        if v
+                    }
+                }
+                resp_n = self._collection.command(
+                    body=fn_payload,
+                    max_time_ms=self._max_time_ms,
+                )
+                self._api_response_status = resp_n.get("status")
+                if "nextPageState" not in resp_n.get("data", {}):
+                    raise DataAPIFaultyResponseException(
+                        text="Faulty response from find API command (no 'nextPageState').",
+                        raw_response=resp_n,
+                    )
+                next_page_state = resp_n["data"]["nextPageState"]
+                if "documents" not in resp_n.get("data", {}):
+                    raise DataAPIFaultyResponseException(
+                        text="Faulty response from find API command (no 'documents').",
+                        raw_response=resp_n,
+                    )
+                for doc in resp_n["data"]["documents"]:
+                    yield doc
 
         logger.info(f"creating iterator on '{self._collection.name}'")
-        iterator = self._collection._astra_db_collection.paginated_find(
-            filter=self._filter,
-            projection=pf_projection,
-            sort=pf_sort,
-            options=_options,
-            prefetched=0,
-            timeout_info=base_timeout_info(self._max_time_ms),
-            raw_response_callback=_response_setter_callback,
-        )
+        iterator = _find_iterator()
         logger.info(f"finished creating iterator on '{self._collection.name}'")
         self._started_time_s = time.time()
         return _LookAheadIterator(iterator)
@@ -720,7 +762,6 @@ class Cursor(BaseCursor):
 
         return self._collection
 
-    @recast_method_sync
     def distinct(self, key: str, max_time_ms: Optional[int] = None) -> List[Any]:
         """
         Compute a list of unique values for a specific field across all
@@ -851,7 +892,6 @@ class AsyncCursor(BaseCursor):
             self._started = True
         return self
 
-    @recast_method_async
     async def __anext__(self) -> DocumentType:
         if not self.alive:
             # keep raising once exhausted:
@@ -900,15 +940,14 @@ class AsyncCursor(BaseCursor):
         finder_cursor = self._to_sync().skip(index).limit(1)
         items = list(finder_cursor)
         if items:
-            return items[0]  # type: ignore[no-any-return]
+            return items[0]
         else:
             raise IndexError("no such item for AsyncCursor instance")
 
-    @recast_method_sync
     def _create_iterator(self) -> _AsyncLookAheadIterator:
         self._ensure_not_started()
         self._ensure_alive()
-        _options = {
+        _options_0 = {
             k: v
             for k, v in {
                 "limit": self._limit,
@@ -918,31 +957,76 @@ class AsyncCursor(BaseCursor):
             }.items()
             if v is not None
         }
+        _projection = normalize_optional_projection(self._projection)
+        _sort = self._sort or {}
+        _filter = self._filter or {}
+        f0_payload = {
+            "find": {
+                k: v
+                for k, v in {
+                    "filter": _filter,
+                    "projection": _projection,
+                    "options": _options_0,
+                    "sort": _sort,
+                }.items()
+                if v
+            }
+        }
 
-        # recast parameters for paginated_find call
-        pf_projection: Optional[
-            Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
-        ] = normalize_optional_projection(self._projection)
-        pf_sort: Optional[Dict[str, int]]
-        if self._sort:
-            pf_sort = dict(self._sort)
-        else:
-            pf_sort = None
-
-        def _response_setter_callback(raw_response: Dict[str, Any]) -> None:
-            status = raw_response.get("status")
-            self._api_response_status = status
+        async def _find_iterator() -> AsyncIterator[DocumentType]:
+            resp_0 = await self._collection.command(
+                body=f0_payload,
+                max_time_ms=self._max_time_ms,
+            )
+            self._api_response_status = resp_0.get("status")
+            if "nextPageState" not in resp_0.get("data", {}):
+                raise DataAPIFaultyResponseException(
+                    text="Faulty response from find API command (no 'nextPageState').",
+                    raw_response=resp_0,
+                )
+            next_page_state = resp_0["data"]["nextPageState"]
+            if "documents" not in resp_0.get("data", {}):
+                raise DataAPIFaultyResponseException(
+                    text="Faulty response from find API command (no 'documents').",
+                    raw_response=resp_0,
+                )
+            for doc in resp_0["data"]["documents"]:
+                yield doc
+            while next_page_state is not None:
+                _options_n = {**_options_0, **{"pageState": next_page_state}}
+                fn_payload = {
+                    "find": {
+                        k: v
+                        for k, v in {
+                            "filter": _filter,
+                            "projection": _projection,
+                            "options": _options_n,
+                            "sort": _sort,
+                        }.items()
+                        if v
+                    }
+                }
+                resp_n = await self._collection.command(
+                    body=fn_payload,
+                    max_time_ms=self._max_time_ms,
+                )
+                self._api_response_status = resp_n.get("status")
+                if "nextPageState" not in resp_n.get("data", {}):
+                    raise DataAPIFaultyResponseException(
+                        text="Faulty response from find API command (no 'nextPageState').",
+                        raw_response=resp_n,
+                    )
+                next_page_state = resp_n["data"]["nextPageState"]
+                if "documents" not in resp_n.get("data", {}):
+                    raise DataAPIFaultyResponseException(
+                        text="Faulty response from find API command (no 'documents').",
+                        raw_response=resp_n,
+                    )
+                for doc in resp_n["data"]["documents"]:
+                    yield doc
 
         logger.info(f"creating iterator on '{self._collection.name}'")
-        iterator = self._collection._astra_db_collection.paginated_find(
-            filter=self._filter,
-            projection=pf_projection,
-            sort=pf_sort,
-            options=_options,
-            prefetched=0,
-            timeout_info=base_timeout_info(self._max_time_ms),
-            raw_response_callback=_response_setter_callback,
-        )
+        iterator = _find_iterator()
         logger.info(f"finished creating iterator on '{self._collection.name}'")
         self._started_time_s = time.time()
         return _AsyncLookAheadIterator(iterator)
@@ -995,7 +1079,6 @@ class AsyncCursor(BaseCursor):
 
         return self._collection
 
-    @recast_method_async
     async def distinct(self, key: str, max_time_ms: Optional[int] = None) -> List[Any]:
         """
         Compute a list of unique values for a specific field across all

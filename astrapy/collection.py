@@ -18,11 +18,23 @@ import asyncio
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union
+from types import TracebackType
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+)
 
 import deprecation
 
 from astrapy import __version__
+from astrapy.api_commander import APICommander
 from astrapy.api_options import CollectionAPIOptions
 from astrapy.authentication import coerce_embedding_headers_provider
 from astrapy.constants import (
@@ -34,10 +46,14 @@ from astrapy.constants import (
     VectorType,
     normalize_optional_projection,
 )
-from astrapy.core.db import AstraDBCollection, AsyncAstraDBCollection
-from astrapy.core.defaults import DEFAULT_INSERT_NUM_DOCUMENTS
 from astrapy.cursors import AsyncCursor, Cursor
 from astrapy.database import AsyncDatabase, Database
+from astrapy.defaults import (
+    DEFAULT_BULK_WRITE_CONCURRENCY,
+    DEFAULT_DATA_API_AUTH_HEADER,
+    DEFAULT_INSERT_MANY_CHUNK_SIZE,
+    DEFAULT_INSERT_MANY_CONCURRENCY,
+)
 from astrapy.exceptions import (
     BulkWriteException,
     CollectionNotFoundException,
@@ -50,8 +66,6 @@ from astrapy.exceptions import (
     TooManyDocumentsToCountException,
     UpdateManyException,
     base_timeout_info,
-    recast_method_async,
-    recast_method_sync,
 )
 from astrapy.info import CollectionInfo, CollectionOptions
 from astrapy.meta import check_deprecated_vector_ize
@@ -69,10 +83,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-DEFAULT_INSERT_MANY_CONCURRENCY = 20
-DEFAULT_BULK_WRITE_CONCURRENCY = 10
 
 
 def _prepare_update_info(statuses: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -263,19 +273,25 @@ class Collection:
             self.api_options = CollectionAPIOptions()
         else:
             self.api_options = api_options
-        additional_headers = self.api_options.embedding_api_key.get_headers()
-        self._astra_db_collection: AstraDBCollection = AstraDBCollection(
-            collection_name=name,
-            astra_db=database._astra_db,
-            namespace=namespace,
+        _namespace = namespace if namespace is not None else database.namespace
+        if _namespace is None:
+            raise ValueError("Attempted to create Collection with 'namespace' unset.")
+        self._database = database._copy(
+            namespace=_namespace,
             caller_name=caller_name,
             caller_version=caller_version,
-            additional_headers=additional_headers,
         )
-        # this comes after the above, lets AstraDBCollection resolve namespace
-        self._database = database._copy(
-            namespace=self._astra_db_collection.astra_db.namespace
-        )
+        self._name = name
+
+        additional_headers = self.api_options.embedding_api_key.get_headers()
+        self._commander_headers = {
+            **{DEFAULT_DATA_API_AUTH_HEADER: self._database.token_provider.get_token()},
+            **additional_headers,
+        }
+
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        self._api_commander = self._get_api_commander()
 
     def __repr__(self) -> str:
         return (
@@ -288,7 +304,7 @@ class Collection:
         if isinstance(other, Collection):
             return all(
                 [
-                    self._astra_db_collection == other._astra_db_collection,
+                    self._api_commander == other._api_commander,
                     self.api_options == other.api_options,
                 ]
             )
@@ -302,6 +318,34 @@ class Collection:
             f"'{self.database.__class__.__name__}' object "
             "it is failing because no such method exists."
         )
+
+    def _get_api_commander(self) -> APICommander:
+        """Instantiate a new APICommander based on the properties of this class."""
+
+        if self._database.namespace is None:
+            raise ValueError(
+                "No namespace specified. Collection requires a namespace to "
+                "be set, e.g. through the `namespace` constructor parameter."
+            )
+
+        base_path_components = [
+            comp
+            for comp in (
+                self._database.api_path.strip("/"),
+                self._database.api_version.strip("/"),
+                self._database.namespace,
+                self._name,
+            )
+            if comp != ""
+        ]
+        base_path = f"/{'/'.join(base_path_components)}"
+        api_commander = APICommander(
+            api_endpoint=self._database.api_endpoint,
+            path=base_path,
+            headers=self._commander_headers,
+            callers=[(self.caller_name, self.caller_version)],
+        )
+        return api_commander
 
     def _copy(
         self,
@@ -318,8 +362,8 @@ class Collection:
             name=name or self.name,
             namespace=namespace or self.namespace,
             api_options=self.api_options.with_override(api_options),
-            caller_name=caller_name or self._astra_db_collection.caller_name,
-            caller_version=caller_version or self._astra_db_collection.caller_version,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
         )
 
     def with_options(
@@ -444,8 +488,8 @@ class Collection:
             name=name or self.name,
             namespace=namespace or self.namespace,
             api_options=self.api_options.with_override(_api_options),
-            caller_name=caller_name or self._astra_db_collection.caller_name,
-            caller_version=caller_version or self._astra_db_collection.caller_version,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
         )
 
     def set_caller(
@@ -467,10 +511,9 @@ class Collection:
         """
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
-        self._astra_db_collection.set_caller(
-            caller_name=caller_name,
-            caller_version=caller_version,
-        )
+        self.caller_name = caller_name or self.caller_name
+        self.caller_version = caller_version or self.caller_version
+        self._api_commander = self._get_api_commander()
 
     def options(self, *, max_time_ms: Optional[int] = None) -> CollectionOptions:
         """
@@ -493,8 +536,8 @@ class Collection:
             CollectionOptions(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
 
-        logger.info(f"getting collections in search of '{self.name}'")
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
+        logger.info(f"getting collections in search of '{self.name}'")
         self_descriptors = [
             coll_desc
             for coll_desc in self.database.list_collections(max_time_ms=_max_time_ms)
@@ -502,7 +545,7 @@ class Collection:
         ]
         logger.info(f"finished getting collections in search of '{self.name}'")
         if self_descriptors:
-            return self_descriptors[0].options  # type: ignore[no-any-return]
+            return self_descriptors[0].options
         else:
             raise CollectionNotFoundException(
                 text=f"Collection {self.namespace}.{self.name} not found.",
@@ -576,8 +619,7 @@ class Collection:
             'my_v_collection'
         """
 
-        # type hint added as for some reason the typechecker gets lost
-        return self._astra_db_collection.collection_name  # type: ignore[no-any-return, has-type]
+        return self._name
 
     @property
     def full_name(self) -> str:
@@ -592,7 +634,6 @@ class Collection:
 
         return f"{self.namespace}.{self.name}"
 
-    @recast_method_sync
     def insert_one(
         self,
         document: DocumentType,
@@ -656,12 +697,13 @@ class Collection:
         )
         _document = _collate_vector_to_document(document, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"inserting one document in '{self.name}'")
-        io_response = self._astra_db_collection.insert_one(
-            _document,
+        io_payload = {"insertOne": {"document": _document}}
+        logger.info(f"insertOne on '{self.name}'")
+        io_response = self._api_commander.request(
+            payload=io_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished inserting one document in '{self.name}'")
+        logger.info(f"finished insertOne on '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
@@ -680,7 +722,6 @@ class Collection:
                 raw_response=io_response,
             )
 
-    @recast_method_sync
     def insert_many(
         self,
         documents: Iterable[DocumentType],
@@ -793,7 +834,7 @@ class Collection:
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered insert_many concurrently.")
         if chunk_size is None:
-            _chunk_size = DEFAULT_INSERT_NUM_DOCUMENTS
+            _chunk_size = DEFAULT_INSERT_MANY_CHUNK_SIZE
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
@@ -805,14 +846,19 @@ class Collection:
             options = {"ordered": True}
             inserted_ids: List[Any] = []
             for i in range(0, len(_documents), _chunk_size):
-                logger.info(f"inserting a chunk of documents in '{self.name}'")
-                chunk_response = self._astra_db_collection.insert_many(
-                    documents=_documents[i : i + _chunk_size],
-                    options=options,
-                    partial_failures_allowed=True,
+                im_payload = {
+                    "insertMany": {
+                        "documents": _documents[i : i + _chunk_size],
+                        "options": options,
+                    },
+                }
+                logger.info(f"insertMany on '{self.name}'")
+                chunk_response = self._api_commander.request(
+                    payload=im_payload,
+                    raise_api_errors=False,
                     timeout_info=timeout_manager.remaining_timeout_info(),
                 )
-                logger.info(f"finished inserting a chunk of documents in '{self.name}'")
+                logger.info(f"finished insertMany on '{self.name}'")
                 # accumulate the results in this call
                 chunk_inserted_ids = (chunk_response.get("status") or {}).get(
                     "insertedIds", []
@@ -850,16 +896,19 @@ class Collection:
                     def _chunk_insertor(
                         document_chunk: List[Dict[str, Any]]
                     ) -> Dict[str, Any]:
-                        logger.info(f"inserting a chunk of documents in '{self.name}'")
-                        im_response = self._astra_db_collection.insert_many(
-                            documents=document_chunk,
-                            options=options,
-                            partial_failures_allowed=True,
+                        im_payload = {
+                            "insertMany": {
+                                "documents": document_chunk,
+                                "options": options,
+                            },
+                        }
+                        logger.info(f"insertMany(chunk) on '{self.name}'")
+                        im_response = self._api_commander.request(
+                            payload=im_payload,
+                            raise_api_errors=False,
                             timeout_info=timeout_manager.remaining_timeout_info(),
                         )
-                        logger.info(
-                            f"finished inserting a chunk of documents in '{self.name}'"
-                        )
+                        logger.info(f"finished insertMany(chunk) on '{self.name}'")
                         return im_response
 
                     raw_results = list(
@@ -873,18 +922,20 @@ class Collection:
                     )
             else:
                 for i in range(0, len(_documents), _chunk_size):
-                    logger.info(f"inserting a chunk of documents in '{self.name}'")
-                    raw_results.append(
-                        self._astra_db_collection.insert_many(
-                            _documents[i : i + _chunk_size],
-                            options=options,
-                            partial_failures_allowed=True,
-                            timeout_info=timeout_manager.remaining_timeout_info(),
-                        )
+                    im_payload = {
+                        "insertMany": {
+                            "documents": _documents[i : i + _chunk_size],
+                            "options": options,
+                        },
+                    }
+                    logger.info(f"insertMany(chunk) on '{self.name}'")
+                    im_response = self._api_commander.request(
+                        payload=im_payload,
+                        raise_api_errors=False,
+                        timeout_info=timeout_manager.remaining_timeout_info(),
                     )
-                    logger.info(
-                        f"finished inserting a chunk of documents in '{self.name}'"
-                    )
+                    logger.info(f"finished insertMany(chunk) on '{self.name}'")
+                    raw_results.append(im_response)
             # recast raw_results
             inserted_ids = [
                 inserted_id
@@ -1114,7 +1165,7 @@ class Collection:
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         if include_similarity is not None and not _is_vector_sort(_sort):
             raise ValueError(
-                "Cannot use `include_similarity` when not searching through `vector`."
+                "Cannot use `include_similarity` unless for vector search."
             )
         return (
             Cursor(
@@ -1234,7 +1285,7 @@ class Collection:
         )
         try:
             document = fo_cursor.__next__()
-            return document  # type: ignore[no-any-return]
+            return document
         except StopIteration:
             return None
 
@@ -1315,9 +1366,8 @@ class Collection:
             max_time_ms=None,
             overall_max_time_ms=_max_time_ms,
         )
-        return f_cursor.distinct(key)  # type: ignore[no-any-return]
+        return f_cursor.distinct(key)
 
-    @recast_method_sync
     def count_documents(
         self,
         filter: FilterType,
@@ -1372,12 +1422,13 @@ class Collection:
         """
 
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info("calling count_documents")
-        cd_response = self._astra_db_collection.count_documents(
-            filter=filter,
+        cd_payload = {"countDocuments": {"filter": filter}}
+        logger.info(f"countDocuments on '{self.name}'")
+        cd_response = self._api_commander.request(
+            payload=cd_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info("finished calling count_documents")
+        logger.info(f"finished countDocuments on '{self.name}'")
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
             if cd_response["status"].get("moreData", False):
@@ -1421,10 +1472,13 @@ class Collection:
             35700
         """
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        ed_response = self.command(
-            {"estimatedDocumentCount": {}},
-            max_time_ms=_max_time_ms,
+        ed_payload: Dict[str, Any] = {"estimatedDocumentCount": {}}
+        logger.info(f"estimatedDocumentCount on '{self.name}'")
+        ed_response = self._api_commander.request(
+            payload=ed_payload,
+            timeout_info=base_timeout_info(_max_time_ms),
         )
+        logger.info(f"finished estimatedDocumentCount on '{self.name}'")
         if "count" in ed_response.get("status", {}):
             count: int = ed_response["status"]["count"]
             return count
@@ -1434,7 +1488,6 @@ class Collection:
                 raw_response=ed_response,
             )
 
-    @recast_method_sync
     def find_one_and_replace(
         self,
         filter: FilterType,
@@ -1552,16 +1605,25 @@ class Collection:
             "upsert": upsert,
         }
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling find_one_and_replace on '{self.name}'")
-        fo_response = self._astra_db_collection.find_one_and_replace(
-            replacement=replacement,
-            filter=filter,
-            projection=normalize_optional_projection(projection),
-            sort=_sort,
-            options=options,
+        fo_payload = {
+            "findOneAndReplace": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "projection": normalize_optional_projection(projection),
+                    "replacement": replacement,
+                    "options": options,
+                    "sort": _sort,
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"findOneAndReplace on '{self.name}'")
+        fo_response = self._api_commander.request(
+            payload=fo_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling find_one_and_replace on '{self.name}'")
+        logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             ret_document = fo_response.get("data", {}).get("document")
             if ret_document is None:
@@ -1574,7 +1636,6 @@ class Collection:
                 raw_response=fo_response,
             )
 
-    @recast_method_sync
     def replace_one(
         self,
         filter: FilterType,
@@ -1646,16 +1707,25 @@ class Collection:
         options = {
             "upsert": upsert,
         }
-        logger.info(f"calling find_one_and_replace on '{self.name}'")
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        fo_response = self._astra_db_collection.find_one_and_replace(
-            replacement=replacement,
-            filter=filter,
-            sort=_sort,
-            options=options,
+        fo_payload = {
+            "findOneAndReplace": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "replacement": replacement,
+                    "options": options,
+                    "sort": _sort,
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"findOneAndReplace on '{self.name}'")
+        fo_response = self._api_commander.request(
+            payload=fo_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling find_one_and_replace on '{self.name}'")
+        logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
             _update_info = _prepare_update_info([fo_status])
@@ -1669,7 +1739,6 @@ class Collection:
                 raw_response=fo_response,
             )
 
-    @recast_method_sync
     def find_one_and_update(
         self,
         filter: FilterType,
@@ -1793,16 +1862,25 @@ class Collection:
             "upsert": upsert,
         }
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling find_one_and_update on '{self.name}'")
-        fo_response = self._astra_db_collection.find_one_and_update(
-            update=update,
-            filter=filter,
-            projection=normalize_optional_projection(projection),
-            sort=_sort,
-            options=options,
+        fo_payload = {
+            "findOneAndUpdate": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "update": update,
+                    "options": options,
+                    "sort": _sort,
+                    "projection": normalize_optional_projection(projection),
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"findOneAndUpdate on '{self.name}'")
+        fo_response = self._api_commander.request(
+            payload=fo_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling find_one_and_update on '{self.name}'")
+        logger.info(f"finished findOneAndUpdate on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             ret_document = fo_response.get("data", {}).get("document")
             if ret_document is None:
@@ -1815,7 +1893,6 @@ class Collection:
                 raw_response=fo_response,
             )
 
-    @recast_method_sync
     def update_one(
         self,
         filter: FilterType,
@@ -1892,15 +1969,24 @@ class Collection:
             "upsert": upsert,
         }
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling update_one on '{self.name}'")
-        uo_response = self._astra_db_collection.update_one(
-            update=update,
-            sort=_sort,
-            filter=filter,
-            options=options,
+        uo_payload = {
+            "updateOne": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "update": update,
+                    "options": options,
+                    "sort": _sort,
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"updateOne on '{self.name}'")
+        uo_response = self._api_commander.request(
+            payload=uo_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling update_one on '{self.name}'")
+        logger.info(f"finished updateOne on '{self.name}'")
         if "status" in uo_response:
             uo_status = uo_response["status"]
             _update_info = _prepare_update_info([uo_status])
@@ -1914,7 +2000,6 @@ class Collection:
                 raw_response=uo_response,
             )
 
-    @recast_method_sync
     def update_many(
         self,
         filter: FilterType,
@@ -1990,14 +2075,23 @@ class Collection:
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         while must_proceed:
             options = {**api_options, **page_state_options}
-            logger.info(f"calling update_many on '{self.name}'")
-            this_um_response = self._astra_db_collection.update_many(
-                update=update,
-                filter=filter,
-                options=options,
+            this_um_payload = {
+                "updateMany": {
+                    k: v
+                    for k, v in {
+                        "filter": filter,
+                        "update": update,
+                        "options": options,
+                    }.items()
+                    if v is not None
+                }
+            }
+            logger.info(f"updateMany on '{self.name}'")
+            this_um_response = self._api_commander.request(
+                payload=this_um_payload,
                 timeout_info=timeout_manager.remaining_timeout_info(),
             )
-            logger.info(f"finished calling update_many on '{self.name}'")
+            logger.info(f"finished updateMany on '{self.name}'")
             this_um_status = this_um_response.get("status") or {}
             #
             # if errors, quit early
@@ -2036,7 +2130,6 @@ class Collection:
             update_info=update_info,
         )
 
-    @recast_method_sync
     def find_one_and_delete(
         self,
         filter: FilterType,
@@ -2123,15 +2216,24 @@ class Collection:
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
-        logger.info(f"calling find_one_and_delete on '{self.name}'")
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        fo_response = self._astra_db_collection.find_one_and_delete(
-            sort=_sort,
-            filter=filter,
-            projection=_projection,
+        fo_payload = {
+            "findOneAndDelete": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "sort": _sort,
+                    "projection": _projection,
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"findOneAndDelete on '{self.name}'")
+        fo_response = self._api_commander.request(
+            payload=fo_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling find_one_and_delete on '{self.name}'")
+        logger.info(f"finished findOneAndDelete on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             document = fo_response["data"]["document"]
             return document  # type: ignore[no-any-return]
@@ -2145,7 +2247,6 @@ class Collection:
                     raw_response=fo_response,
                 )
 
-    @recast_method_sync
     def delete_one(
         self,
         filter: FilterType,
@@ -2216,11 +2317,22 @@ class Collection:
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling delete_one_by_predicate on '{self.name}'")
-        do_response = self._astra_db_collection.delete_one_by_predicate(
-            filter=filter, timeout_info=base_timeout_info(_max_time_ms), sort=_sort
+        do_payload = {
+            "deleteOne": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "sort": _sort,
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"deleteOne on '{self.name}'")
+        do_response = self._api_commander.request(
+            payload=do_payload,
+            timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling delete_one_by_predicate on '{self.name}'")
+        logger.info(f"finished deleteOne on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
             if deleted_count == -1:
@@ -2240,7 +2352,6 @@ class Collection:
                 raw_response=do_response,
             )
 
-    @recast_method_sync
     def delete_many(
         self,
         filter: FilterType,
@@ -2294,15 +2405,16 @@ class Collection:
         must_proceed = True
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
+        this_dm_payload = {"deleteMany": {"filter": filter}}
         logger.info(f"starting delete_many on '{self.name}'")
         while must_proceed:
-            logger.info(f"calling delete_many on '{self.name}'")
-            this_dm_response = self._astra_db_collection.delete_many(
-                filter=filter,
-                skip_error_check=True,
+            logger.info(f"deleteMany on '{self.name}'")
+            this_dm_response = self._api_commander.request(
+                payload=this_dm_payload,
+                raise_api_errors=False,
                 timeout_info=timeout_manager.remaining_timeout_info(),
             )
-            logger.info(f"finished calling delete_many on '{self.name}'")
+            logger.info(f"finished deleteMany on '{self.name}'")
             # if errors, quit early
             if this_dm_response.get("errors", []):
                 partial_result = DeleteResult(
@@ -2587,12 +2699,13 @@ class Collection:
         logger.info(f"dropping collection '{self.name}' (self)")
         drop_result = self.database.drop_collection(self, max_time_ms=_max_time_ms)
         logger.info(f"finished dropping collection '{self.name}' (self)")
-        return drop_result  # type: ignore[no-any-return]
+        return drop_result
 
     def command(
         self,
         body: Dict[str, Any],
         *,
+        raise_api_errors: bool = True,
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
@@ -2601,6 +2714,8 @@ class Collection:
 
         Args:
             body: a JSON-serializable dictionary, the payload of the request.
+            raise_api_errors: if True, responses with a nonempty 'errors' field
+                result in an astrapy exception being raised.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
                 If not passed, the collection-level setting is used instead.
 
@@ -2613,24 +2728,24 @@ class Collection:
         """
 
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling command on '{self.name}'")
-        command_result = self.database.command(
-            body=body,
-            namespace=self.namespace,
-            collection_name=self.name,
-            max_time_ms=_max_time_ms,
+        _cmd_desc = ",".join(sorted(body.keys()))
+        logger.info(f"command={_cmd_desc} on '{self.name}'")
+        command_result = self._api_commander.request(
+            payload=body,
+            raise_api_errors=raise_api_errors,
+            timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling command on '{self.name}'")
-        return command_result  # type: ignore[no-any-return]
+        logger.info(f"finished command={_cmd_desc} on '{self.name}'")
+        return command_result
 
 
 class AsyncCollection:
     """
     A Data API collection, the main object to interact with the Data API,
     especially for DDL operations.
-    This class has a synchronous interface.
+    This class has an asynchronous interface for use with asyncio.
 
-    A Collection is spawned from a Database object, from which it inherits
+    An AsyncCollection is spawned from a Database object, from which it inherits
     the details on how to reach the API server (endpoint, authentication token).
 
     Args:
@@ -2665,9 +2780,9 @@ class AsyncCollection:
         >>> my_async_coll_3c = my_async_db["my_already_existing_collection"]
 
     Note:
-        creating an instance of Collection does not trigger actual creation
+        creating an instance of AsyncCollection does not trigger actual creation
         of the collection on the database. The latter should have been created
-        beforehand, e.g. through the `create_collection` method of a Database.
+        beforehand, e.g. through the `create_collection` method of an AsyncDatabase.
     """
 
     def __init__(
@@ -2684,19 +2799,27 @@ class AsyncCollection:
             self.api_options = CollectionAPIOptions()
         else:
             self.api_options = api_options
-        additional_headers = self.api_options.embedding_api_key.get_headers()
-        self._astra_db_collection: AsyncAstraDBCollection = AsyncAstraDBCollection(
-            collection_name=name,
-            astra_db=database._astra_db,
-            namespace=namespace,
+        _namespace = namespace if namespace is not None else database.namespace
+        if _namespace is None:
+            raise ValueError(
+                "Attempted to create AsyncCollection with 'namespace' unset."
+            )
+        self._database = database._copy(
+            namespace=_namespace,
             caller_name=caller_name,
             caller_version=caller_version,
-            additional_headers=additional_headers,
         )
-        # this comes after the above, lets AstraDBCollection resolve namespace
-        self._database = database._copy(
-            namespace=self._astra_db_collection.astra_db.namespace
-        )
+        self._name = name
+
+        additional_headers = self.api_options.embedding_api_key.get_headers()
+        self._commander_headers = {
+            **{DEFAULT_DATA_API_AUTH_HEADER: self._database.token_provider.get_token()},
+            **additional_headers,
+        }
+
+        self.caller_name = caller_name
+        self.caller_version = caller_version
+        self._api_commander = self._get_api_commander()
 
     def __repr__(self) -> str:
         return (
@@ -2709,7 +2832,7 @@ class AsyncCollection:
         if isinstance(other, AsyncCollection):
             return all(
                 [
-                    self._astra_db_collection == other._astra_db_collection,
+                    self._api_commander == other._api_commander,
                     self.api_options == other.api_options,
                 ]
             )
@@ -2723,6 +2846,50 @@ class AsyncCollection:
             f"'{self.database.__class__.__name__}' object "
             "it is failing because no such method exists."
         )
+
+    def _get_api_commander(self) -> APICommander:
+        """Instantiate a new APICommander based on the properties of this class."""
+
+        if self._database.namespace is None:
+            raise ValueError(
+                "No namespace specified. AsyncCollection requires a namespace to "
+                "be set, e.g. through the `namespace` constructor parameter."
+            )
+
+        base_path_components = [
+            comp
+            for comp in (
+                self._database.api_path.strip("/"),
+                self._database.api_version.strip("/"),
+                self._database.namespace,
+                self._name,
+            )
+            if comp != ""
+        ]
+        base_path = f"/{'/'.join(base_path_components)}"
+        api_commander = APICommander(
+            api_endpoint=self._database.api_endpoint,
+            path=base_path,
+            headers=self._commander_headers,
+            callers=[(self.caller_name, self.caller_version)],
+        )
+        return api_commander
+
+    async def __aenter__(self) -> AsyncCollection:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]] = None,
+        exc_value: Optional[BaseException] = None,
+        traceback: Optional[TracebackType] = None,
+    ) -> None:
+        if self._api_commander is not None:
+            await self._api_commander.__aexit__(
+                exc_type=exc_type,
+                exc_value=exc_value,
+                traceback=traceback,
+            )
 
     def _copy(
         self,
@@ -2739,8 +2906,8 @@ class AsyncCollection:
             name=name or self.name,
             namespace=namespace or self.namespace,
             api_options=self.api_options.with_override(api_options),
-            caller_name=caller_name or self._astra_db_collection.caller_name,
-            caller_version=caller_version or self._astra_db_collection.caller_version,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
         )
 
     def with_options(
@@ -2865,8 +3032,8 @@ class AsyncCollection:
             name=name or self.name,
             namespace=namespace or self.namespace,
             api_options=self.api_options.with_override(_api_options),
-            caller_name=caller_name or self._astra_db_collection.caller_name,
-            caller_version=caller_version or self._astra_db_collection.caller_version,
+            caller_name=caller_name or self.caller_name,
+            caller_version=caller_version or self.caller_version,
         )
 
     def set_caller(
@@ -2888,10 +3055,9 @@ class AsyncCollection:
         """
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
-        self._astra_db_collection.set_caller(
-            caller_name=caller_name,
-            caller_version=caller_version,
-        )
+        self.caller_name = caller_name or self.caller_name
+        self.caller_version = caller_version or self.caller_version
+        self._api_commander = self._get_api_commander()
 
     async def options(self, *, max_time_ms: Optional[int] = None) -> CollectionOptions:
         """
@@ -2925,7 +3091,7 @@ class AsyncCollection:
         ]
         logger.info(f"finished getting collections in search of '{self.name}'")
         if self_descriptors:
-            return self_descriptors[0].options  # type: ignore[no-any-return]
+            return self_descriptors[0].options
         else:
             raise CollectionNotFoundException(
                 text=f"Collection {self.namespace}.{self.name} not found.",
@@ -2980,7 +3146,7 @@ class AsyncCollection:
         The namespace this collection is in.
 
         Example:
-            >>> my_async_coll.database.namespace
+            >>> my_async_coll.namespace
             'default_keyspace'
         """
 
@@ -2999,8 +3165,7 @@ class AsyncCollection:
             'my_v_collection'
         """
 
-        # type hint added as for some reason the typechecker gets lost
-        return self._astra_db_collection.collection_name  # type: ignore[no-any-return, has-type]
+        return self._name
 
     @property
     def full_name(self) -> str:
@@ -3015,7 +3180,6 @@ class AsyncCollection:
 
         return f"{self.namespace}.{self.name}"
 
-    @recast_method_async
     async def insert_one(
         self,
         document: DocumentType,
@@ -3086,12 +3250,13 @@ class AsyncCollection:
         )
         _document = _collate_vector_to_document(document, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"inserting one document in '{self.name}'")
-        io_response = await self._astra_db_collection.insert_one(
-            _document,
+        io_payload = {"insertOne": {"document": _document}}
+        logger.info(f"insertOne on '{self.name}'")
+        io_response = await self._api_commander.async_request(
+            payload=io_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished inserting one document in '{self.name}'")
+        logger.info(f"finished insertOne on '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
@@ -3110,7 +3275,6 @@ class AsyncCollection:
                 f"(gotten '${json.dumps(io_response)}')"
             )
 
-    @recast_method_async
     async def insert_many(
         self,
         documents: Iterable[DocumentType],
@@ -3236,7 +3400,7 @@ class AsyncCollection:
         if _concurrency > 1 and ordered:
             raise ValueError("Cannot run ordered insert_many concurrently.")
         if chunk_size is None:
-            _chunk_size = DEFAULT_INSERT_NUM_DOCUMENTS
+            _chunk_size = DEFAULT_INSERT_MANY_CHUNK_SIZE
         else:
             _chunk_size = chunk_size
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
@@ -3248,14 +3412,19 @@ class AsyncCollection:
             options = {"ordered": True}
             inserted_ids: List[Any] = []
             for i in range(0, len(_documents), _chunk_size):
-                logger.info(f"inserting a chunk of documents in '{self.name}'")
-                chunk_response = await self._astra_db_collection.insert_many(
-                    documents=_documents[i : i + _chunk_size],
-                    options=options,
-                    partial_failures_allowed=True,
+                im_payload = {
+                    "insertMany": {
+                        "documents": _documents[i : i + _chunk_size],
+                        "options": options,
+                    },
+                }
+                logger.info(f"insertMany on '{self.name}'")
+                chunk_response = await self._api_commander.async_request(
+                    payload=im_payload,
+                    raise_api_errors=False,
                     timeout_info=timeout_manager.remaining_timeout_info(),
                 )
-                logger.info(f"finished inserting a chunk of documents in '{self.name}'")
+                logger.info(f"finished insertMany on '{self.name}'")
                 # accumulate the results in this call
                 chunk_inserted_ids = (chunk_response.get("status") or {}).get(
                     "insertedIds", []
@@ -3294,16 +3463,19 @@ class AsyncCollection:
                 document_chunk: List[DocumentType],
             ) -> Dict[str, Any]:
                 async with sem:
-                    logger.info(f"inserting a chunk of documents in '{self.name}'")
-                    im_response = await self._astra_db_collection.insert_many(
-                        document_chunk,
-                        options=options,
-                        partial_failures_allowed=True,
+                    im_payload = {
+                        "insertMany": {
+                            "documents": document_chunk,
+                            "options": options,
+                        },
+                    }
+                    logger.info(f"insertMany(chunk) on '{self.name}'")
+                    im_response = await self._api_commander.async_request(
+                        payload=im_payload,
+                        raise_api_errors=False,
                         timeout_info=timeout_manager.remaining_timeout_info(),
                     )
-                    logger.info(
-                        f"finished inserting a chunk of documents in '{self.name}'"
-                    )
+                    logger.info(f"finished insertMany(chunk) on '{self.name}'")
                     return im_response
 
             if _concurrency > 1:
@@ -3559,7 +3731,7 @@ class AsyncCollection:
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         if include_similarity is not None and not _is_vector_sort(_sort):
             raise ValueError(
-                "Cannot use `include_similarity` when not searching through `vector`."
+                "Cannot use `include_similarity` unless for vector search."
             )
         return (
             AsyncCursor(
@@ -3699,7 +3871,7 @@ class AsyncCollection:
         )
         try:
             document = await fo_cursor.__anext__()
-            return document  # type: ignore[no-any-return]
+            return document
         except StopAsyncIteration:
             return None
 
@@ -3788,9 +3960,8 @@ class AsyncCollection:
             max_time_ms=None,
             overall_max_time_ms=_max_time_ms,
         )
-        return await f_cursor.distinct(key)  # type: ignore[no-any-return]
+        return await f_cursor.distinct(key)
 
-    @recast_method_async
     async def count_documents(
         self,
         filter: FilterType,
@@ -3850,12 +4021,13 @@ class AsyncCollection:
         """
 
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info("calling count_documents")
-        cd_response = await self._astra_db_collection.count_documents(
-            filter=filter,
+        cd_payload = {"countDocuments": {"filter": filter}}
+        logger.info(f"countDocuments on '{self.name}'")
+        cd_response = await self._api_commander.async_request(
+            payload=cd_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info("finished calling count_documents")
+        logger.info(f"finished countDocuments on '{self.name}'")
         if "count" in cd_response.get("status", {}):
             count: int = cd_response["status"]["count"]
             if cd_response["status"].get("moreData", False):
@@ -3899,10 +4071,13 @@ class AsyncCollection:
             35700
         """
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        ed_response = await self.command(
-            {"estimatedDocumentCount": {}},
-            max_time_ms=_max_time_ms,
+        ed_payload: Dict[str, Any] = {"estimatedDocumentCount": {}}
+        logger.info(f"estimatedDocumentCount on '{self.name}'")
+        ed_response = await self._api_commander.async_request(
+            payload=ed_payload,
+            timeout_info=base_timeout_info(_max_time_ms),
         )
+        logger.info(f"finished estimatedDocumentCount on '{self.name}'")
         if "count" in ed_response.get("status", {}):
             count: int = ed_response["status"]["count"]
             return count
@@ -3912,7 +4087,6 @@ class AsyncCollection:
                 raw_response=ed_response,
             )
 
-    @recast_method_async
     async def find_one_and_replace(
         self,
         filter: FilterType,
@@ -4040,16 +4214,25 @@ class AsyncCollection:
             "upsert": upsert,
         }
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling find_one_and_replace on '{self.name}'")
-        fo_response = await self._astra_db_collection.find_one_and_replace(
-            replacement=replacement,
-            filter=filter,
-            projection=normalize_optional_projection(projection),
-            sort=_sort,
-            options=options,
+        fo_payload = {
+            "findOneAndReplace": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "projection": normalize_optional_projection(projection),
+                    "replacement": replacement,
+                    "options": options,
+                    "sort": _sort,
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"findOneAndReplace on '{self.name}'")
+        fo_response = await self._api_commander.async_request(
+            payload=fo_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling find_one_and_replace on '{self.name}'")
+        logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             ret_document = fo_response.get("data", {}).get("document")
             if ret_document is None:
@@ -4062,7 +4245,6 @@ class AsyncCollection:
                 raw_response=fo_response,
             )
 
-    @recast_method_async
     async def replace_one(
         self,
         filter: FilterType,
@@ -4155,15 +4337,24 @@ class AsyncCollection:
             "upsert": upsert,
         }
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling find_one_and_replace on '{self.name}'")
-        fo_response = await self._astra_db_collection.find_one_and_replace(
-            replacement=replacement,
-            filter=filter,
-            sort=_sort,
-            options=options,
+        fo_payload = {
+            "findOneAndReplace": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "replacement": replacement,
+                    "options": options,
+                    "sort": _sort,
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"findOneAndReplace on '{self.name}'")
+        fo_response = await self._api_commander.async_request(
+            payload=fo_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling find_one_and_replace on '{self.name}'")
+        logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
             _update_info = _prepare_update_info([fo_status])
@@ -4177,7 +4368,6 @@ class AsyncCollection:
                 raw_response=fo_response,
             )
 
-    @recast_method_async
     async def find_one_and_update(
         self,
         filter: FilterType,
@@ -4311,16 +4501,25 @@ class AsyncCollection:
             "upsert": upsert,
         }
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling find_one_and_update on '{self.name}'")
-        fo_response = await self._astra_db_collection.find_one_and_update(
-            update=update,
-            filter=filter,
-            projection=normalize_optional_projection(projection),
-            sort=_sort,
-            options=options,
+        fo_payload = {
+            "findOneAndUpdate": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "update": update,
+                    "options": options,
+                    "sort": _sort,
+                    "projection": normalize_optional_projection(projection),
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"findOneAndUpdate on '{self.name}'")
+        fo_response = await self._api_commander.async_request(
+            payload=fo_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling find_one_and_update on '{self.name}'")
+        logger.info(f"finished findOneAndUpdate on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             ret_document = fo_response.get("data", {}).get("document")
             if ret_document is None:
@@ -4333,7 +4532,6 @@ class AsyncCollection:
                 raw_response=fo_response,
             )
 
-    @recast_method_async
     async def update_one(
         self,
         filter: FilterType,
@@ -4429,15 +4627,24 @@ class AsyncCollection:
             "upsert": upsert,
         }
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling update_one on '{self.name}'")
-        uo_response = await self._astra_db_collection.update_one(
-            update=update,
-            sort=_sort,
-            filter=filter,
-            options=options,
+        uo_payload = {
+            "updateOne": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "update": update,
+                    "options": options,
+                    "sort": _sort,
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"updateOne on '{self.name}'")
+        uo_response = await self._api_commander.async_request(
+            payload=uo_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling update_one on '{self.name}'")
+        logger.info(f"finished updateOne on '{self.name}'")
         if "status" in uo_response:
             uo_status = uo_response["status"]
             _update_info = _prepare_update_info([uo_status])
@@ -4451,7 +4658,6 @@ class AsyncCollection:
                 raw_response=uo_response,
             )
 
-    @recast_method_async
     async def update_many(
         self,
         filter: FilterType,
@@ -4538,14 +4744,23 @@ class AsyncCollection:
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         while must_proceed:
             options = {**api_options, **page_state_options}
-            logger.info(f"calling update_many on '{self.name}'")
-            this_um_response = await self._astra_db_collection.update_many(
-                update=update,
-                filter=filter,
-                options=options,
+            this_um_payload = {
+                "updateMany": {
+                    k: v
+                    for k, v in {
+                        "filter": filter,
+                        "update": update,
+                        "options": options,
+                    }.items()
+                    if v is not None
+                }
+            }
+            logger.info(f"updateMany on '{self.name}'")
+            this_um_response = await self._api_commander.async_request(
+                payload=this_um_payload,
                 timeout_info=timeout_manager.remaining_timeout_info(),
             )
-            logger.info(f"finished calling update_many on '{self.name}'")
+            logger.info(f"finished updateMany on '{self.name}'")
             this_um_status = this_um_response.get("status") or {}
             #
             # if errors, quit early
@@ -4584,7 +4799,6 @@ class AsyncCollection:
             update_info=update_info,
         )
 
-    @recast_method_async
     async def find_one_and_delete(
         self,
         filter: FilterType,
@@ -4680,14 +4894,23 @@ class AsyncCollection:
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling find_one_and_delete on '{self.name}'")
-        fo_response = await self._astra_db_collection.find_one_and_delete(
-            sort=_sort,
-            filter=filter,
-            projection=_projection,
+        fo_payload = {
+            "findOneAndDelete": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "sort": _sort,
+                    "projection": _projection,
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"findOneAndDelete on '{self.name}'")
+        fo_response = await self._api_commander.async_request(
+            payload=fo_payload,
             timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling find_one_and_delete on '{self.name}'")
+        logger.info(f"finished findOneAndDelete on '{self.name}'")
         if "document" in fo_response.get("data", {}):
             document = fo_response["data"]["document"]
             return document  # type: ignore[no-any-return]
@@ -4701,7 +4924,6 @@ class AsyncCollection:
                     raw_response=fo_response,
                 )
 
-    @recast_method_async
     async def delete_one(
         self,
         filter: FilterType,
@@ -4774,13 +4996,22 @@ class AsyncCollection:
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling delete_one_by_predicate on '{self.name}'")
-        do_response = await self._astra_db_collection.delete_one_by_predicate(
-            filter=filter,
+        do_payload = {
+            "deleteOne": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "sort": _sort,
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"deleteOne on '{self.name}'")
+        do_response = await self._api_commander.async_request(
+            payload=do_payload,
             timeout_info=base_timeout_info(_max_time_ms),
-            sort=_sort,
         )
-        logger.info(f"finished calling delete_one_by_predicate on '{self.name}'")
+        logger.info(f"finished deleteOne on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
             if deleted_count == -1:
@@ -4800,7 +5031,6 @@ class AsyncCollection:
                 raw_response=do_response,
             )
 
-    @recast_method_async
     async def delete_many(
         self,
         filter: FilterType,
@@ -4859,15 +5089,16 @@ class AsyncCollection:
         must_proceed = True
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
+        this_dm_payload = {"deleteMany": {"filter": filter}}
         logger.info(f"starting delete_many on '{self.name}'")
         while must_proceed:
-            logger.info(f"calling delete_many on '{self.name}'")
-            this_dm_response = await self._astra_db_collection.delete_many(
-                filter=filter,
-                skip_error_check=True,
+            logger.info(f"deleteMany on '{self.name}'")
+            this_dm_response = await self._api_commander.async_request(
+                payload=this_dm_payload,
+                raise_api_errors=False,
                 timeout_info=timeout_manager.remaining_timeout_info(),
             )
-            logger.info(f"finished calling delete_many on '{self.name}'")
+            logger.info(f"finished deleteMany on '{self.name}'")
             # if errors, quit early
             if this_dm_response.get("errors", []):
                 partial_result = DeleteResult(
@@ -5175,12 +5406,13 @@ class AsyncCollection:
             self, max_time_ms=_max_time_ms
         )
         logger.info(f"finished dropping collection '{self.name}' (self)")
-        return drop_result  # type: ignore[no-any-return]
+        return drop_result
 
     async def command(
         self,
         body: Dict[str, Any],
         *,
+        raise_api_errors: bool = True,
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
@@ -5189,6 +5421,8 @@ class AsyncCollection:
 
         Args:
             body: a JSON-serializable dictionary, the payload of the request.
+            raise_api_errors: if True, responses with a nonempty 'errors' field
+                result in an astrapy exception being raised.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
                 If not passed, the collection-level setting is used instead.
 
@@ -5201,12 +5435,12 @@ class AsyncCollection:
         """
 
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"calling command on '{self.name}'")
-        command_result = await self.database.command(
-            body=body,
-            namespace=self.namespace,
-            collection_name=self.name,
-            max_time_ms=_max_time_ms,
+        _cmd_desc = ",".join(sorted(body.keys()))
+        logger.info(f"command={_cmd_desc} on '{self.name}'")
+        command_result = await self._api_commander.async_request(
+            payload=body,
+            raise_api_errors=raise_api_errors,
+            timeout_info=base_timeout_info(_max_time_ms),
         )
-        logger.info(f"finished calling command on '{self.name}'")
-        return command_result  # type: ignore[no-any-return]
+        logger.info(f"finished command={_cmd_desc} on '{self.name}'")
+        return command_result

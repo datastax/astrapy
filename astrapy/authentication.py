@@ -18,13 +18,14 @@ import base64
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, Union
 
-EMBEDDING_HEADER_AWS_ACCESS_ID = "X-Embedding-Access-Id"
-EMBEDDING_HEADER_AWS_SECRET_ID = "X-Embedding-Secret-Id"
-EMBEDDING_HEADER_API_KEY = "X-Embedding-Api-Key"
-
-REDACT_ENDING = "..."
-REDACT_CHAR = "*"
-REDACT_ENDING_LENGTH = 3
+from astrapy.defaults import (
+    EMBEDDING_HEADER_API_KEY,
+    EMBEDDING_HEADER_AWS_ACCESS_ID,
+    EMBEDDING_HEADER_AWS_SECRET_ID,
+    SECRETS_REDACT_CHAR,
+    SECRETS_REDACT_ENDING,
+    SECRETS_REDACT_ENDING_LENGTH,
+)
 
 
 def coerce_token_provider(token: Optional[Union[str, TokenProvider]]) -> TokenProvider:
@@ -60,11 +61,13 @@ def redact_secret(secret: str, max_length: int, hide_if_short: bool = True) -> s
         a 'redacted' form of the secret string as per the rules outlined above.
     """
     secret_len = len(secret)
-    if secret_len + REDACT_ENDING_LENGTH > max_length:
-        return secret[: max_length - REDACT_ENDING_LENGTH] + REDACT_ENDING
+    if secret_len + SECRETS_REDACT_ENDING_LENGTH > max_length:
+        return (
+            secret[: max_length - SECRETS_REDACT_ENDING_LENGTH] + SECRETS_REDACT_ENDING
+        )
     else:
         if hide_if_short:
-            return REDACT_CHAR * len(secret)
+            return SECRETS_REDACT_CHAR * len(secret)
         else:
             return secret
 

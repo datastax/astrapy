@@ -17,12 +17,14 @@ from __future__ import annotations
 import pytest
 
 from astrapy.authentication import (
-    EMBEDDING_HEADER_API_KEY,
-    EMBEDDING_HEADER_AWS_ACCESS_ID,
-    EMBEDDING_HEADER_AWS_SECRET_ID,
     AWSEmbeddingHeadersProvider,
     EmbeddingAPIKeyHeaderProvider,
     coerce_embedding_headers_provider,
+)
+from astrapy.defaults import (
+    EMBEDDING_HEADER_API_KEY,
+    EMBEDDING_HEADER_AWS_ACCESS_ID,
+    EMBEDDING_HEADER_AWS_SECRET_ID,
 )
 
 

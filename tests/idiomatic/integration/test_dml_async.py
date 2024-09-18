@@ -487,7 +487,7 @@ class TestDMLAsync:
         # assert cursor1.retrieved == 2
 
         # address, cursor_id, collection
-        assert cursor1.address == async_empty_collection._astra_db_collection.base_path
+        assert cursor1.address == async_empty_collection._api_commander.full_path
         assert isinstance(cursor1.cursor_id, int)
         assert cursor1.collection == async_empty_collection
 
@@ -673,7 +673,7 @@ class TestDMLAsync:
         assert f1doc_wi_s["$similarity"] > 0.0
 
         with pytest.raises(ValueError):
-            async_empty_collection.find({}, include_similarity=True).distinct("x")
+            await async_empty_collection.find({}, include_similarity=True).distinct("x")
 
         with pytest.raises(ValueError):
             await async_empty_collection.find_one({}, include_similarity=True)
@@ -824,6 +824,16 @@ class TestDMLAsync:
                 # but in some cases $vector must be there:
                 if "$vector" in (req_projection or set()):
                     assert "$vector" in vdocs[0]
+
+    @pytest.mark.describe("test of collection insert_many with empty list, async")
+    async def test_collection_insert_many_empty_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+        await acol.insert_many([], ordered=True)
+        await acol.insert_many([], ordered=False, concurrency=1)
+        await acol.insert_many([], ordered=False, concurrency=5)
 
     @pytest.mark.describe("test of collection insert_many, async")
     async def test_collection_insert_many_async(

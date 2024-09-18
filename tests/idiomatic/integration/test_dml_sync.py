@@ -421,7 +421,7 @@ class TestDMLSync:
         # assert cursor1.retrieved == 2
 
         # address, cursor_id, collection
-        assert cursor1.address == sync_empty_collection._astra_db_collection.base_path
+        assert cursor1.address == sync_empty_collection._api_commander.full_path
         assert isinstance(cursor1.cursor_id, int)
         assert cursor1.collection == sync_empty_collection
 
@@ -747,6 +747,16 @@ class TestDMLSync:
                 # but in some cases $vector must be there:
                 if "$vector" in (req_projection or set()):
                     assert "$vector" in vdocs[0]
+
+    @pytest.mark.describe("test of collection insert_many with empty list, sync")
+    def test_collection_insert_many_empty_sync(
+        self,
+        sync_empty_collection: Collection,
+    ) -> None:
+        col = sync_empty_collection
+        col.insert_many([], ordered=True)
+        col.insert_many([], ordered=False, concurrency=1)
+        col.insert_many([], ordered=False, concurrency=5)
 
     @pytest.mark.describe("test of collection insert_many, sync")
     def test_collection_insert_many_sync(

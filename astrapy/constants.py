@@ -16,6 +16,16 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, Optional, Union
 
+from astrapy.defaults import (
+    DATA_API_ENVIRONMENT_CASSANDRA,
+    DATA_API_ENVIRONMENT_DEV,
+    DATA_API_ENVIRONMENT_DSE,
+    DATA_API_ENVIRONMENT_HCD,
+    DATA_API_ENVIRONMENT_OTHER,
+    DATA_API_ENVIRONMENT_PROD,
+    DATA_API_ENVIRONMENT_TEST,
+)
+
 DocumentType = Dict[str, Any]
 # ["field1", "field2"] allowed, but also:
 # {"field": True/False}
@@ -109,13 +119,13 @@ class Environment:
     def __init__(self) -> None:
         raise NotImplementedError
 
-    PROD = "prod"
-    DEV = "dev"
-    TEST = "test"
-    DSE = "dse"
-    HCD = "hcd"
-    CASSANDRA = "cassandra"
-    OTHER = "other"
+    PROD = DATA_API_ENVIRONMENT_PROD
+    DEV = DATA_API_ENVIRONMENT_DEV
+    TEST = DATA_API_ENVIRONMENT_TEST
+    DSE = DATA_API_ENVIRONMENT_DSE
+    HCD = DATA_API_ENVIRONMENT_HCD
+    CASSANDRA = DATA_API_ENVIRONMENT_CASSANDRA
+    OTHER = DATA_API_ENVIRONMENT_OTHER
 
     values = {PROD, DEV, TEST, DSE, HCD, CASSANDRA, OTHER}
     astra_db_values = {PROD, DEV, TEST}

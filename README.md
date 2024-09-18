@@ -81,8 +81,8 @@ for result in cursor:
 Next steps:
 
 - More info and usage patterns are given in the docstrings of classes and methods
-- [Data API reference](https://docs.datastax.com/en/astra/astra-db-vector/api-reference/overview.html)
-- [AstraPy reference](https://docs.datastax.com/en/astra/astra-db-vector/api-reference/dataapiclient.html)
+- [Data API reference](https://docs.datastax.com/en/astra-db-serverless/api-reference/overview.html)
+- [AstraPy reference](https://docs.datastax.com/en/astra-api-docs/_attachments/python-client/astrapy/index.html)
 - Package on [PyPI](https://pypi.org/project/astrapy/)
 
 ### Usage with HCD and other non-Astra installations
@@ -251,19 +251,19 @@ naming convention and module structure).
 
 Tests are grouped in three _blocks_ (in as many subdirs of `tests/`):
 
-- **core**: pre-1.0 classes
 - **idiomatic**: all 1.0+ classes and APIs, except...
 - **vectorize**: ... everything making use of `$vectorize` (within the idiomatic classes)
+- _(core: pre-1.0 classes). Frozen as of v1.5, deprecated for removal in v2.0_
 
 Actually, for convenience, _sub-blocks_ of tests are considered:
 
-- **core regular**: everything except DevOps interactions
-- **core ops**: core DevOps operations
 - **idiomatic regular**: everything except the admin parts
 - **idiomatic admin Astra**: the Astra-specific admin operations
 - **idiomatic admin nonAstra**: the nonAstra-specific admin operations
 - **vectorize in-depth**: many Data API interactions for a single choice of provider/model. This is mostly test the client
 - **vectorize all-providers**: a slightly more shallow test repeated for all providers, models, auth methods etc. This is mostly testing the API
+- _(core regular: everything except DevOps interactions)_
+- _(core ops: core DevOps operations)_
 
 Tests can be run on three types of Data API _targets_ (with slight differences in what is applicable):
 
@@ -373,10 +373,10 @@ Remove logging noise with:
 poetry run pytest [...] -o log_cli=0
 ```
 
-Increase logging level to `TRACE` (i.e. level `5`):
+Increase logging level to `DEBUG` (i.e. level `10`):
 
 ```
-poetry run pytest [...] -o log_cli=1 --log-cli-level=5
+poetry run pytest [...] -o log_cli=1 --log-cli-level=10
 ```
 
 Do not drop collections (valid for core):
@@ -488,7 +488,10 @@ from astrapy.exceptions import (
     DeleteManyException,
     DevOpsAPIErrorDescriptor,
     DevOpsAPIException,
+    DevOpsAPIFaultyResponseException,
+    DevOpsAPIHttpException,
     DevOpsAPIResponseException,
+    DevOpsAPITimeoutException,
     InsertManyException,
     TooManyDocumentsToCountException,
     UpdateManyException,
@@ -538,12 +541,24 @@ from astrapy.cursors import (
 
 ### Appendix B: compatibility with pre-1.0.0 library
 
-If your code uses the pre-1.0.0 astrapy (i.e. `from astrapy.db import Database, Collection` and so on) you are strongly advised to migrate to the current API.
+If your code still uses the pre-1.0.0 astrapy (i.e. `from astrapy.db import AstraDB, AstraDBCollection` and so on)
+you are strongly advised to migrate to the current API, which has more capabilities and improved interfaces.
+
+All of the astrapy pre-1.0 API (now dubbed "core") works throughout *astrapy v1*, albeit with a deprecation warning
+on astrapy v. 1.5.
+
+Version 1.5 (the first to not wrap internally "core" as the engine of its own "idiomatic" API) introduces
+several deprecation notices (nothing is retired yet), including a submodule-wide deprecation of "core".
+
+**Version 2 of astrapy will finally remove "core" entirely (along with a few other things).**
+
+#### v1 is fully compatible with "core", i.e. with pre-1.0.0
 
 That being said, there are no known breakings of backward compatibility:
-**legacy code would run with a newest astrapy version just as well.**
-Here is a recap of the minor changes that came _to the old API_ with 1.0.0 (and beyond):
+**legacy code would run with astrapy v1 just as well**
+Here is a recap of the minor changes that came _to the old API_ with 1.0.0 (and beyond, up to 1.5):
 
+- added a submodule-wide deprecation warning of the whole "core" library (v 1.5)
 - added 'options' parameter to [Async]AstraDBCollection.update_one (v. 1.4.2+)
 - prefetched find iterators: fix second-thread hangups in some cases (v. 1.4.2+)
 - Added support for null tokens (with the effect of no authentication/token header in requests)
@@ -571,4 +586,3 @@ Here is a recap of the minor changes that came _to the old API_ with 1.0.0 (and 
 - Method `create_collection` of `AstraDB` relaxes checks on passing `dimensions` for vector collections
 - AstraDBOps core class acquired async methods: `async_get_databases`, `async_get_database`, `async_create_database`, `async_terminate_database`, `async_create_keyspace`, `async_delete_keyspace`
 
-Keep in mind that the pre-1.0.0 library, now dubbed "core", is what the current 1.0.0 API ("idiomatic") builds on.

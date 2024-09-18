@@ -137,11 +137,10 @@ class TestExceptionsSync:
         sync_empty_collection: Collection,
     ) -> None:
         col = sync_empty_collection._copy()
-        col._astra_db_collection.collection_name += "_hacked"
-        col._astra_db_collection.base_path += "_hacked"
+        col._name += "_hacked"
         with pytest.raises(CollectionNotFoundException) as exc:
             col.options()
-        assert exc.value.collection_name == col._astra_db_collection.collection_name
+        assert exc.value.collection_name == col._name
         assert exc.value.namespace == sync_empty_collection.namespace
 
     @pytest.mark.describe("test of collection count_documents failure modes, sync")
@@ -150,8 +149,8 @@ class TestExceptionsSync:
         sync_empty_collection: Collection,
     ) -> None:
         col = sync_empty_collection._copy()
-        col._astra_db_collection.collection_name += "_hacked"
-        col._astra_db_collection.base_path += "_hacked"
+        col._name += "_hacked"
+        col._api_commander.full_path += "_hacked"
         with pytest.raises(DataAPIResponseException):
             col.count_documents({}, upper_bound=1)
         sync_empty_collection.insert_one({"a": 1})
@@ -167,8 +166,8 @@ class TestExceptionsSync:
         sync_empty_collection: Collection,
     ) -> None:
         col = sync_empty_collection._copy()
-        col._astra_db_collection.collection_name += "_hacked"
-        col._astra_db_collection.base_path += "_hacked"
+        col._name += "_hacked"
+        col._api_commander.full_path += "_hacked"
         with pytest.raises(DataAPIResponseException):
             col.delete_many({})
         with pytest.raises(DataAPIResponseException):
@@ -298,7 +297,7 @@ class TestExceptionsSync:
                 body={"myCommand": {"k": "v"}}, namespace="ns", collection_name="coll"
             )
         with pytest.raises(DataAPIResponseException):
-            sync_database.list_collections(namespace="nonexisting")
+            list(sync_database.list_collections(namespace="nonexisting"))
         with pytest.raises(DataAPIResponseException):
             sync_database.list_collection_names(namespace="nonexisting")
 

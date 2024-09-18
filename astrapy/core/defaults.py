@@ -28,7 +28,6 @@ DEFAULT_AUTH_HEADER = "Token"
 DEFAULT_KEYSPACE_NAME = "default_keyspace"
 DEFAULT_REGION = "us-east1"
 
-MAX_INSERT_NUM_DOCUMENTS = 100
 DEFAULT_INSERT_NUM_DOCUMENTS = 50
 
 # Some of these are repeated by hand from idiomatic, tolerable duplication

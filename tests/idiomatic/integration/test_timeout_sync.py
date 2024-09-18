@@ -20,7 +20,7 @@ import pytest
 
 from astrapy import Collection, Database
 from astrapy.admin import fetch_database_info
-from astrapy.exceptions import DataAPITimeoutException
+from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
 from astrapy.operations import DeleteMany, InsertMany
 
 from ..conftest import IS_ASTRA_DB
@@ -49,16 +49,16 @@ class TestTimeoutSync:
         sync_database: Database,
     ) -> None:
         info = fetch_database_info(
-            sync_database._astra_db.api_endpoint,
-            token=sync_database._astra_db.token,
+            sync_database.api_endpoint,
+            token=sync_database.token_provider.get_token(),
             namespace=sync_database.namespace,
         )
         assert info is not None
 
-        with pytest.raises(DataAPITimeoutException) as exc:
+        with pytest.raises(DevOpsAPITimeoutException) as exc:
             info = fetch_database_info(
-                sync_database._astra_db.api_endpoint,
-                token=sync_database._astra_db.token,
+                sync_database.api_endpoint,
+                token=sync_database.token_provider.get_token(),
                 namespace=sync_database.namespace,
                 max_time_ms=1,
             )
