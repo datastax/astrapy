@@ -825,6 +825,16 @@ class TestDMLAsync:
                 if "$vector" in (req_projection or set()):
                     assert "$vector" in vdocs[0]
 
+    @pytest.mark.describe("test of collection insert_many with empty list, async")
+    async def test_collection_insert_many_empty_async(
+        self,
+        async_empty_collection: AsyncCollection,
+    ) -> None:
+        acol = async_empty_collection
+        await acol.insert_many([], ordered=True)
+        await acol.insert_many([], ordered=False, concurrency=1)
+        await acol.insert_many([], ordered=False, concurrency=5)
+
     @pytest.mark.describe("test of collection insert_many, async")
     async def test_collection_insert_many_async(
         self,
