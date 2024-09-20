@@ -1,6 +1,8 @@
 master
 ======
-Deprecation of all *namespace* method names (removal in 2.0)
+Deprecation of "namespace-" terminology, replaced by "keyspace-" (removal in 2.0)
+    - deprecation of all *namespace* method names
+    - deprecation of the `update_db_namespace` parameter to create_*space
 Deprecation of collection bulk_write method (removal in 2.0)
 APICommander logs warnings received from the Data API
 Full removal of "core library" from the current API:
@@ -9,6 +11,7 @@ Full removal of "core library" from the current API:
     - [Async]Database and [Async]Collection directly use APICommander
     - Cursor library uses APICommander directly
     - Core library imports triggers a submodule-wide deprecation warning
+    - (simplification of the vector/vectorize deprecator utility)
 Widened exception hierarchy with:
     - DevOpsAPIHttpException
     - DevOpsAPITimeoutException

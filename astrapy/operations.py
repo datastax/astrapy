@@ -116,7 +116,6 @@ class InsertOne(BaseOperation):
             vectors=None,
             vectorize=vectorize,
             kind="insert",
-            from_operation_class=True,
         )
         self.vector = vector
         self.vectorize = vectorize
@@ -189,7 +188,6 @@ class InsertMany(BaseOperation):
             vectors=vectors,
             vectorize=vectorize,
             kind="insert",
-            from_operation_class=True,
         )
         self.vectors = vectors
         self.vectorize = vectorize
@@ -267,7 +265,6 @@ class UpdateOne(BaseOperation):
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_operation_class=True,
         )
         self.vector = vector
         self.vectorize = vectorize
@@ -395,7 +392,6 @@ class ReplaceOne(BaseOperation):
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_operation_class=True,
         )
         self.vector = vector
         self.vectorize = vectorize
@@ -466,7 +462,6 @@ class DeleteOne(BaseOperation):
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_operation_class=True,
         )
         self.vector = vector
         self.vectorize = vectorize
@@ -582,8 +577,6 @@ class AsyncInsertOne(AsyncBaseOperation):
             vectors=None,
             vectorize=vectorize,
             kind="insert",
-            from_async_method=True,
-            from_operation_class=True,
         )
         self.vector = vector
         self.vectorize = vectorize
@@ -655,8 +648,6 @@ class AsyncInsertMany(AsyncBaseOperation):
             vectors=vectors,
             vectorize=vectorize,
             kind="insert",
-            from_async_method=True,
-            from_operation_class=True,
         )
         self.vectors = vectors
         self.vectorize = vectorize
@@ -735,8 +726,6 @@ class AsyncUpdateOne(AsyncBaseOperation):
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
-            from_operation_class=True,
         )
         self.vector = vector
         self.vectorize = vectorize
@@ -864,8 +853,6 @@ class AsyncReplaceOne(AsyncBaseOperation):
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
-            from_operation_class=True,
         )
         self.vector = vector
         self.vectorize = vectorize
@@ -936,8 +923,6 @@ class AsyncDeleteOne(AsyncBaseOperation):
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
-            from_operation_class=True,
         )
         self.vector = vector
         self.vectorize = vectorize

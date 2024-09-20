@@ -30,8 +30,6 @@ def check_deprecated_vector_ize(
     vectors: Any,
     vectorize: Any,
     kind: str,
-    from_async_method: bool = False,
-    from_operation_class: bool = False,
 ) -> None:
     # Version check is not done at all - it will be a manual handling once this
     # deprecation becomes a removal.
@@ -56,35 +54,22 @@ def check_deprecated_vector_ize(
             message = "Use $vector or $vectorize fields in the sort clause instead."
         else:
             message = "Replace with $vector or $vectorize appropriately."
-        #
+
         the_warning = DeprecatedWarning(
             passed_desc,
             deprecated_in="1.3.0",
             removed_in="2.0.0",
             details=message,
         )
-        # trying to surface the warning at the right stack level to best inform user:
-        # (considering both the error-recast wrap decorator and the internals)
-        if from_async_method:
-            if from_operation_class:
-                s_level = 3
-            else:
-                s_level = 2
-        else:
-            if from_operation_class:
-                s_level = 3
-            else:
-                s_level = 4
         warnings.warn(
             the_warning,
-            stacklevel=s_level,
+            stacklevel=3,
         )
 
 
 def check_update_db_namespace_keyspace(
     update_db_keyspace: Optional[bool],
     update_db_namespace: Optional[bool],
-    from_async_method: bool = False,
 ) -> Optional[bool]:
     # normalize the two aliased parameter names, raising deprecation
     # when needed and an error if both parameter supplied.
@@ -101,12 +86,9 @@ def check_update_db_namespace_keyspace(
             removed_in="2.0.0",
             details=NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_DETAILS,
         )
-        # trying to surface the warning at the right stack level to best inform user:
-        # (considering both the error-recast wrap decorator and the internals)
-        s_level = 3
         warnings.warn(
             the_warning,
-            stacklevel=s_level,
+            stacklevel=3,
         )
 
         if update_db_keyspace is None:

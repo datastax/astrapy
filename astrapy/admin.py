@@ -2358,7 +2358,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         _update_db_keyspace = check_update_db_namespace_keyspace(
             update_db_keyspace=update_db_keyspace,
             update_db_namespace=update_db_namespace,
-            from_async_method=False,
         )
 
         timeout_manager = MultiCallTimeoutManager(
@@ -2517,7 +2516,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         _update_db_keyspace = check_update_db_namespace_keyspace(
             update_db_keyspace=update_db_keyspace,
             update_db_namespace=update_db_namespace,
-            from_async_method=True,
         )
 
         timeout_manager = MultiCallTimeoutManager(
@@ -3447,7 +3445,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         _update_db_keyspace = check_update_db_namespace_keyspace(
             update_db_keyspace=update_db_keyspace,
             update_db_namespace=update_db_namespace,
-            from_async_method=False,
         )
 
         options = {
@@ -3526,7 +3523,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         _update_db_keyspace = check_update_db_namespace_keyspace(
             update_db_keyspace=update_db_keyspace,
             update_db_namespace=update_db_namespace,
-            from_async_method=False,
         )
 
         options = {
@@ -3780,7 +3776,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         _update_db_keyspace = check_update_db_namespace_keyspace(
             update_db_keyspace=update_db_keyspace,
             update_db_namespace=update_db_namespace,
-            from_async_method=True,
         )
 
         options = {
@@ -3862,7 +3857,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         _update_db_keyspace = check_update_db_namespace_keyspace(
             update_db_keyspace=update_db_keyspace,
             update_db_namespace=update_db_namespace,
-            from_async_method=True,
         )
 
         options = {

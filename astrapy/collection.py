@@ -3301,7 +3301,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="insert",
-            from_async_method=True,
         )
         _document = _collate_vector_to_document(document, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
@@ -3443,7 +3442,6 @@ class AsyncCollection:
             vectors=vectors,
             vectorize=vectorize,
             kind="insert",
-            from_async_method=True,
         )
         if concurrency is None:
             if ordered:
@@ -3910,7 +3908,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
         )
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_cursor = self.find(
@@ -4261,7 +4258,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
@@ -4385,7 +4381,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
@@ -4548,7 +4543,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
@@ -4675,7 +4669,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
@@ -4944,7 +4937,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
@@ -5047,7 +5039,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
