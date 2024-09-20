@@ -579,6 +579,7 @@ class Collection:
 
         return CollectionInfo(
             database_info=self.database.info(),
+            keyspace=self.keyspace,
             namespace=self.keyspace,
             name=self.name,
             full_name=self.full_name,
@@ -3156,6 +3157,7 @@ class AsyncCollection:
 
         return CollectionInfo(
             database_info=self.database.info(),
+            keyspace=self.keyspace,
             namespace=self.keyspace,
             name=self.name,
             full_name=self.full_name,

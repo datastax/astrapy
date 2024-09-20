@@ -334,6 +334,7 @@ def fetch_database_info(
             return DatabaseInfo(
                 id=parsed_endpoint.database_id,
                 region=parsed_endpoint.region,
+                keyspace=namespace,
                 namespace=namespace,
                 name=raw_info["name"],
                 environment=parsed_endpoint.environment,
@@ -381,6 +382,7 @@ async def async_fetch_database_info(
             return DatabaseInfo(
                 id=parsed_endpoint.database_id,
                 region=parsed_endpoint.region,
+                keyspace=namespace,
                 namespace=namespace,
                 name=raw_info["name"],
                 environment=parsed_endpoint.environment,
@@ -399,6 +401,7 @@ def _recast_as_admin_database_info(
         info=DatabaseInfo(
             id=admin_database_info_dict["id"],
             region=admin_database_info_dict["info"]["region"],
+            keyspace=admin_database_info_dict["info"]["keyspace"],
             namespace=admin_database_info_dict["info"]["keyspace"],
             name=admin_database_info_dict["info"]["name"],
             environment=environment,
