@@ -60,7 +60,7 @@ DatabaseAdmin classes retain a reference to the Async/Database instance that spa
     - database admin can retroactively set the db's working namespace upon creation of same
     - Idiom `database = client.get_database(...); database.get_database_admin().create_namespace("the_namespace", update_db_namespace=True)`
 Database (and AsyncDatabase) classes admit null namespace:
-    - default to "default_namespace" only for Astra, otherwise null
+    - default to "default_keyspace" only for Astra, otherwise null
     - as long as null, most operations are unavailable and error out
     - a `use_namespace` method to (mutably) set the working namespace on a database instance
 AstraDBDatabaseAdmin class is fully region-aware:

@@ -275,11 +275,11 @@ class Collection:
             self.api_options = CollectionAPIOptions()
         else:
             self.api_options = api_options
-        _namespace = namespace if namespace is not None else database.namespace
-        if _namespace is None:
+        _keyspace = namespace if namespace is not None else database.keyspace
+        if _keyspace is None:
             raise ValueError("Attempted to create Collection with 'namespace' unset.")
         self._database = database._copy(
-            namespace=_namespace,
+            namespace=_keyspace,
             caller_name=caller_name,
             caller_version=caller_version,
         )
@@ -2832,13 +2832,13 @@ class AsyncCollection:
             self.api_options = CollectionAPIOptions()
         else:
             self.api_options = api_options
-        _namespace = namespace if namespace is not None else database.namespace
-        if _namespace is None:
+        _keyspace = namespace if namespace is not None else database.keyspace
+        if _keyspace is None:
             raise ValueError(
                 "Attempted to create AsyncCollection with 'namespace' unset."
             )
         self._database = database._copy(
-            namespace=_namespace,
+            namespace=_keyspace,
             caller_name=caller_name,
             caller_version=caller_version,
         )

@@ -1384,9 +1384,9 @@ class AstraDBAdmin:
             max_time_ms=max_time_ms,
         )
 
-        _namespace: Optional[str]
+        _keyspace: Optional[str]
         if namespace:
-            _namespace = namespace
+            _keyspace = namespace
         else:
             parsed_api_endpoint = parse_api_endpoint(normalized_api_endpoint)
             if parsed_api_endpoint is None:
@@ -1397,12 +1397,12 @@ class AstraDBAdmin:
                 parsed_api_endpoint.database_id,
                 max_time_ms=max_time_ms,
             )
-            _namespace = this_db_info.info.namespace
+            _keyspace = this_db_info.info.namespace
 
         return Database(
             api_endpoint=normalized_api_endpoint,
             token=_token,
-            namespace=_namespace,
+            namespace=_keyspace,
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             environment=self.environment,
