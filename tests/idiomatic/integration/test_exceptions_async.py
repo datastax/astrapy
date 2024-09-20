@@ -33,7 +33,7 @@ from astrapy.exceptions import (
 )
 from astrapy.operations import AsyncInsertOne
 
-from ..conftest import IS_ASTRA_DB, DataAPICredentials
+from ..conftest import IS_ASTRA_DB, DataAPICredentials, async_fail_if_not_removed
 
 
 class TestExceptionsAsync:
@@ -193,6 +193,7 @@ class TestExceptionsAsync:
         with pytest.raises(DataAPIResponseException):
             await acol.update_one({"a": 1}, {"$set": {"a": -1}})
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of exceptions in ordered bulk_write, async")
     async def test_ordered_bulk_write_failures_async(
         self,
@@ -212,6 +213,7 @@ class TestExceptionsAsync:
         assert exc.value.partial_result.upserted_ids == {}
         assert await async_empty_collection.count_documents({}, upper_bound=10) == 1
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of hard exceptions in ordered bulk_write, async")
     async def test_ordered_bulk_write_error_async(
         self,
@@ -223,6 +225,7 @@ class TestExceptionsAsync:
         with pytest.raises(TypeError):
             await async_empty_collection.bulk_write([i1, i2])
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of exceptions in unordered bulk_write, async")
     async def test_unordered_bulk_write_failures_async(
         self,
@@ -243,6 +246,7 @@ class TestExceptionsAsync:
         assert exc.value.partial_result.upserted_ids == {}
         assert await async_empty_collection.count_documents({}, upper_bound=10) == 2
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of hard exceptions in unordered bulk_write, async")
     async def test_unordered_bulk_write_error_async(
         self,

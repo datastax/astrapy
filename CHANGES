@@ -1,5 +1,7 @@
 master
 ======
+Deprecation of collection bulk_write method (removed in 2.0)
+APICommander logs warnings received from the Data API
 Full removal of "core library" from the current API:
     - DevOps API accessed through APICommander everywhere
     - Admin objects use APICommander consistently

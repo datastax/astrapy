@@ -29,7 +29,7 @@ from astrapy.exceptions import (
 )
 from astrapy.operations import InsertOne
 
-from ..conftest import IS_ASTRA_DB, DataAPICredentials
+from ..conftest import IS_ASTRA_DB, DataAPICredentials, sync_fail_if_not_removed
 
 
 class TestExceptionsSync:
@@ -183,6 +183,7 @@ class TestExceptionsSync:
         with pytest.raises(DataAPIResponseException):
             col.update_one({"a": 1}, {"$set": {"a": -1}})
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of exceptions in ordered bulk_write, sync")
     def test_ordered_bulk_write_failures_sync(
         self,
@@ -202,6 +203,7 @@ class TestExceptionsSync:
         assert exc.value.partial_result.upserted_ids == {}
         assert sync_empty_collection.count_documents({}, upper_bound=10) == 1
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of hard exceptions in ordered bulk_write, sync")
     def test_ordered_bulk_write_error_sync(
         self,
@@ -213,6 +215,7 @@ class TestExceptionsSync:
         with pytest.raises(TypeError):
             sync_empty_collection.bulk_write([i1, i2])
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of exceptions in unordered bulk_write, sync")
     def test_unordered_bulk_write_failures_sync(
         self,
@@ -233,6 +236,7 @@ class TestExceptionsSync:
         assert exc.value.partial_result.upserted_ids == {}
         assert sync_empty_collection.count_documents({}, upper_bound=10) == 2
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of hard exceptions in unordered bulk_write, sync")
     def test_unordered_bulk_write_error_sync(
         self,

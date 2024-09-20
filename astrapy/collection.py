@@ -2483,6 +2483,15 @@ class Collection:
                 raw_response=None,
             )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=(
+            "Please switch to managing sequences of DML operations "
+            "in app code instead."
+        ),
+    )
     def bulk_write(
         self,
         requests: Iterable[BaseOperation],
@@ -5174,6 +5183,15 @@ class AsyncCollection:
                 raw_response=None,
             )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=(
+            "Please switch to managing sequences of DML operations "
+            "in app code instead."
+        ),
+    )
     async def bulk_write(
         self,
         requests: Iterable[AsyncBaseOperation],
