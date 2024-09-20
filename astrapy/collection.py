@@ -53,6 +53,7 @@ from astrapy.defaults import (
     DEFAULT_DATA_API_AUTH_HEADER,
     DEFAULT_INSERT_MANY_CHUNK_SIZE,
     DEFAULT_INSERT_MANY_CONCURRENCY,
+    NAMESPACE_DEPRECATION_NOTICE_METHOD,
 )
 from astrapy.exceptions import (
     BulkWriteException,
@@ -595,19 +596,39 @@ class Collection:
         return self._database
 
     @property
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     def namespace(self) -> str:
         """
         The namespace this collection is in.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "keyspace" property.**
 
         Example:
             >>> my_coll.namespace
             'default_keyspace'
         """
 
-        _namespace = self.database.namespace
-        if _namespace is None:
-            raise ValueError("The collection's DB is set with namespace=None")
-        return _namespace
+        return self.keyspace
+
+    @property
+    def keyspace(self) -> str:
+        """
+        The keyspace this collection is in.
+
+        Example:
+            >>> my_coll.keyspace
+            'default_keyspace'
+        """
+
+        _keyspace = self.database.keyspace
+        if _keyspace is None:
+            raise ValueError("The collection's DB is set with keyspace=None")
+        return _keyspace
 
     @property
     def name(self) -> str:
@@ -3150,19 +3171,39 @@ class AsyncCollection:
         return self._database
 
     @property
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     def namespace(self) -> str:
         """
         The namespace this collection is in.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "keyspace" property.**
 
         Example:
             >>> my_async_coll.namespace
             'default_keyspace'
         """
 
-        _namespace = self.database.namespace
-        if _namespace is None:
-            raise ValueError("The collection's DB is set with namespace=None")
-        return _namespace
+        return self.keyspace
+
+    @property
+    def keyspace(self) -> str:
+        """
+        The keyspace this collection is in.
+
+        Example:
+            >>> my_coll.keyspace
+            'default_keyspace'
+        """
+
+        _keyspace = self.database.keyspace
+        if _keyspace is None:
+            raise ValueError("The collection's DB is set with keyspace=None")
+        return _keyspace
 
     @property
     def name(self) -> str:

@@ -18,6 +18,9 @@ import logging
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
+import deprecation
+
+from astrapy import __version__
 from astrapy.admin import fetch_database_info, parse_api_endpoint
 from astrapy.api_commander import APICommander
 from astrapy.api_options import CollectionAPIOptions
@@ -33,6 +36,7 @@ from astrapy.defaults import (
     API_VERSION_ENV_MAP,
     DEFAULT_ASTRA_DB_NAMESPACE,
     DEFAULT_DATA_API_AUTH_HEADER,
+    NAMESPACE_DEPRECATION_NOTICE_METHOD,
 )
 from astrapy.exceptions import (
     CollectionAlreadyExistsException,
@@ -428,10 +432,18 @@ class Database:
         self.caller_version = caller_version
         self._api_commander = self._get_api_commander(namespace=self.namespace)
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     def use_namespace(self, namespace: str) -> None:
         """
         Switch to a new working namespace for this database.
         This method changes (mutates) the Database instance.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "use_keyspace" method.**
 
         Note that this method does not create the namespace, which should exist
         already (created for instance with a `DatabaseAdmin.create_namespace` call).
@@ -449,9 +461,32 @@ class Database:
             >>> my_db.list_collection_names()
             []
         """
-        logger.info(f"switching to namespace '{namespace}'")
-        self.using_namespace = namespace
-        self._api_commander = self._get_api_commander(namespace=self.namespace)
+        return self.use_keyspace(keyspace=namespace)
+
+    def use_keyspace(self, keyspace: str) -> None:
+        """
+        Switch to a new working keyspace for this database.
+        This method changes (mutates) the Database instance.
+
+        Note that this method does not create the keyspace, which should exist
+        already (created for instance with a `DatabaseAdmin.create_keyspace` call).
+
+        Args:
+            keyspace: the new keyspace to use as the database working keyspace.
+
+        Returns:
+            None.
+
+        Example:
+            >>> my_db.list_collection_names()
+            ['coll_1', 'coll_2']
+            >>> my_db.use_keyspace("an_empty_keyspace")
+            >>> my_db.list_collection_names()
+            []
+        """
+        logger.info(f"switching to keyspace '{keyspace}'")
+        self.using_namespace = keyspace
+        self._api_commander = self._get_api_commander(namespace=self.keyspace)
 
     def info(self) -> DatabaseInfo:
         """
@@ -523,16 +558,40 @@ class Database:
         return self._name
 
     @property
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     def namespace(self) -> Optional[str]:
         """
         The namespace this database uses as target for all commands when
         no method-call-specific namespace is specified.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "keyspace" property.**
 
         Returns:
             the working namespace (a string), or None if not set.
 
         Example:
             >>> my_db.namespace
+            'the_keyspace'
+        """
+
+        return self.keyspace
+
+    @property
+    def keyspace(self) -> Optional[str]:
+        """
+        The keyspace this database uses as target for all commands when
+        no method-call-specific keyspace is specified.
+
+        Returns:
+            the working keyspace (a string), or None if not set.
+
+        Example:
+            >>> my_db.keyspace
             'the_keyspace'
         """
 
@@ -1365,10 +1424,18 @@ class AsyncDatabase:
         self.caller_version = caller_version
         self._api_commander = self._get_api_commander(namespace=self.namespace)
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     def use_namespace(self, namespace: str) -> None:
         """
         Switch to a new working namespace for this database.
         This method changes (mutates) the AsyncDatabase instance.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "use_keyspace" method.**
 
         Note that this method does not create the namespace, which should exist
         already (created for instance with a `DatabaseAdmin.async_create_namespace` call).
@@ -1386,9 +1453,32 @@ class AsyncDatabase:
             >>> asyncio.run(my_async_db.list_collection_names())
             []
         """
-        logger.info(f"switching to namespace '{namespace}'")
-        self.using_namespace = namespace
-        self._api_commander = self._get_api_commander(namespace=self.namespace)
+        return self.use_keyspace(keyspace=namespace)
+
+    def use_keyspace(self, keyspace: str) -> None:
+        """
+        Switch to a new working keyspace for this database.
+        This method changes (mutates) the AsyncDatabase instance.
+
+        Note that this method does not create the keyspace, which should exist
+        already (created for instance with a `DatabaseAdmin.async_create_keyspace` call).
+
+        Args:
+            keyspace: the new keyspace to use as the database working keyspace.
+
+        Returns:
+            None.
+
+        Example:
+            >>> asyncio.run(my_async_db.list_collection_names())
+            ['coll_1', 'coll_2']
+            >>> my_async_db.use_keyspace("an_empty_keyspace")
+            >>> asyncio.run(my_async_db.list_collection_names())
+            []
+        """
+        logger.info(f"switching to keyspace '{keyspace}'")
+        self.using_namespace = keyspace
+        self._api_commander = self._get_api_commander(namespace=self.keyspace)
 
     def info(self) -> DatabaseInfo:
         """
@@ -1460,16 +1550,40 @@ class AsyncDatabase:
         return self._name
 
     @property
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     def namespace(self) -> Optional[str]:
         """
         The namespace this database uses as target for all commands when
         no method-call-specific namespace is specified.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "keyspace" property.**
 
         Returns:
             the working namespace (a string), or None if not set.
 
         Example:
             >>> my_async_db.namespace
+            'the_keyspace'
+        """
+
+        return self.keyspace
+
+    @property
+    def keyspace(self) -> Optional[str]:
+        """
+        The keyspace this database uses as target for all commands when
+        no method-call-specific keyspace is specified.
+
+        Returns:
+            the working keyspace (a string), or None if not set.
+
+        Example:
+            >>> my_async_db.keyspace
             'the_keyspace'
         """
 
