@@ -293,4 +293,6 @@ class TestDatabasesAsync:
         self,
         async_database: AsyncDatabase,
     ) -> None:
+        with pytest.warns(DeprecationWarning):
+            async_database.namespace
         assert async_database.namespace == async_database.keyspace

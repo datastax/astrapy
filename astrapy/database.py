@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
@@ -208,7 +209,7 @@ class Database:
 
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._api_commander = self._get_api_commander(namespace=self.namespace)
+        self._api_commander = self._get_api_commander(namespace=self.keyspace)
         self._name: Optional[str] = None
 
     def __getattr__(self, collection_name: str) -> Collection:
@@ -430,7 +431,7 @@ class Database:
         logger.info(f"setting caller to {caller_name}/{caller_version}")
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._api_commander = self._get_api_commander(namespace=self.namespace)
+        self._api_commander = self._get_api_commander(namespace=self.keyspace)
 
     @deprecation.deprecated(  # type: ignore[misc]
         deprecated_in="1.5.0",
@@ -558,12 +559,6 @@ class Database:
         return self._name
 
     @property
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.0",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
-    )
     def namespace(self) -> Optional[str]:
         """
         The namespace this database uses as target for all commands when
@@ -578,6 +573,14 @@ class Database:
             >>> my_db.namespace
             'the_keyspace'
         """
+
+        the_warning = deprecation.DeprecatedWarning(
+            "the 'namespace' property",
+            deprecated_in="1.5.0",
+            removed_in="2.0.0",
+            details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+        )
+        warnings.warn(the_warning, stacklevel=2)
 
         return self.keyspace
 
@@ -1183,7 +1186,7 @@ class AsyncDatabase:
 
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._api_commander = self._get_api_commander(namespace=self.namespace)
+        self._api_commander = self._get_api_commander(namespace=self.keyspace)
         self._name: Optional[str] = None
 
     def __getattr__(self, collection_name: str) -> AsyncCollection:
@@ -1422,7 +1425,7 @@ class AsyncDatabase:
         logger.info(f"setting caller to {caller_name}/{caller_version}")
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._api_commander = self._get_api_commander(namespace=self.namespace)
+        self._api_commander = self._get_api_commander(namespace=self.keyspace)
 
     @deprecation.deprecated(  # type: ignore[misc]
         deprecated_in="1.5.0",
@@ -1550,12 +1553,6 @@ class AsyncDatabase:
         return self._name
 
     @property
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.0",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
-    )
     def namespace(self) -> Optional[str]:
         """
         The namespace this database uses as target for all commands when
@@ -1570,6 +1567,14 @@ class AsyncDatabase:
             >>> my_async_db.namespace
             'the_keyspace'
         """
+
+        the_warning = deprecation.DeprecatedWarning(
+            "the 'namespace' property",
+            deprecated_in="1.5.0",
+            removed_in="2.0.0",
+            details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+        )
+        warnings.warn(the_warning, stacklevel=2)
 
         return self.keyspace
 

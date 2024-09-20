@@ -288,4 +288,6 @@ class TestDatabasesSync:
         self,
         sync_database: Database,
     ) -> None:
+        with pytest.warns(DeprecationWarning):
+            sync_database.namespace
         assert sync_database.namespace == sync_database.keyspace

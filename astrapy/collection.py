@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
 from typing import (
@@ -596,12 +597,6 @@ class Collection:
         return self._database
 
     @property
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.0",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
-    )
     def namespace(self) -> str:
         """
         The namespace this collection is in.
@@ -612,6 +607,14 @@ class Collection:
             >>> my_coll.namespace
             'default_keyspace'
         """
+
+        the_warning = deprecation.DeprecatedWarning(
+            "the 'namespace' property",
+            deprecated_in="1.5.0",
+            removed_in="2.0.0",
+            details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+        )
+        warnings.warn(the_warning, stacklevel=2)
 
         return self.keyspace
 
@@ -3171,12 +3174,6 @@ class AsyncCollection:
         return self._database
 
     @property
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.0",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
-    )
     def namespace(self) -> str:
         """
         The namespace this collection is in.
@@ -3187,6 +3184,14 @@ class AsyncCollection:
             >>> my_async_coll.namespace
             'default_keyspace'
         """
+
+        the_warning = deprecation.DeprecatedWarning(
+            "the 'namespace' property",
+            deprecated_in="1.5.0",
+            removed_in="2.0.0",
+            details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+        )
+        warnings.warn(the_warning, stacklevel=2)
 
         return self.keyspace
 

@@ -230,6 +230,8 @@ class TestCollectionsAsync:
         data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
         col1 = await async_database.get_collection("id_test_collection")
+        with pytest.warns(DeprecationWarning):
+            col1.namespace
         assert col1.namespace == async_database.namespace
 
         col2 = await async_database.get_collection(
