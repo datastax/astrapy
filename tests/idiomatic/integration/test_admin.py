@@ -609,19 +609,23 @@ class TestAdmin:
         "test of the update_db_namespace flag for AstraDBDatabaseAdmin, sync"
     )
     def test_astra_updatedbnamespace_sync(self, sync_database: Database) -> None:
-        NEW_NS_NAME_NOT_UPDATED = "tnudn_notupd"
-        NEW_NS_NAME_UPDATED = "tnudn_upd"
+        NEW_KS_NAME_NOT_UPDATED = "tnudn_notupd"
+        NEW_KS_NAME_UPDATED = "tnudn_upd"
 
-        namespace0 = sync_database.namespace
+        keyspace0 = sync_database.keyspace
         database_admin = sync_database.get_database_admin()
-        database_admin.create_namespace(NEW_NS_NAME_NOT_UPDATED)
-        assert sync_database.namespace == namespace0
+        database_admin.create_keyspace(NEW_KS_NAME_NOT_UPDATED)
+        assert sync_database.keyspace == keyspace0
 
-        database_admin.create_namespace(NEW_NS_NAME_UPDATED, update_db_namespace=True)
-        assert sync_database.namespace == NEW_NS_NAME_UPDATED
+        with pytest.warns(DeprecationWarning):
+            database_admin.create_keyspace(
+                NEW_KS_NAME_UPDATED,
+                update_db_namespace=True,
+            )
+        assert sync_database.keyspace == NEW_KS_NAME_UPDATED
 
-        database_admin.drop_namespace(NEW_NS_NAME_NOT_UPDATED)
-        database_admin.drop_namespace(NEW_NS_NAME_UPDATED)
+        database_admin.drop_keyspace(NEW_KS_NAME_NOT_UPDATED)
+        database_admin.drop_keyspace(NEW_KS_NAME_UPDATED)
 
     @pytest.mark.describe(
         "test of the update_db_namespace flag for AstraDBDatabaseAdmin, async"
@@ -629,18 +633,59 @@ class TestAdmin:
     async def test_astra_updatedbnamespace_async(
         self, async_database: AsyncDatabase
     ) -> None:
-        NEW_NS_NAME_NOT_UPDATED = "tnudn_notupd"
-        NEW_NS_NAME_UPDATED = "tnudn_upd"
+        NEW_KS_NAME_NOT_UPDATED = "tnudn_notupd"
+        NEW_KS_NAME_UPDATED = "tnudn_upd"
 
-        namespace0 = async_database.namespace
+        keyspace0 = async_database.keyspace
         database_admin = async_database.get_database_admin()
-        await database_admin.async_create_namespace(NEW_NS_NAME_NOT_UPDATED)
-        assert async_database.namespace == namespace0
+        await database_admin.async_create_keyspace(NEW_KS_NAME_NOT_UPDATED)
+        assert async_database.keyspace == keyspace0
 
-        await database_admin.async_create_namespace(
-            NEW_NS_NAME_UPDATED, update_db_namespace=True
+        with pytest.warns(DeprecationWarning):
+            await database_admin.async_create_keyspace(
+                NEW_KS_NAME_UPDATED, update_db_namespace=True
+            )
+        assert async_database.keyspace == NEW_KS_NAME_UPDATED
+
+        await database_admin.async_drop_keyspace(NEW_KS_NAME_NOT_UPDATED)
+        await database_admin.async_drop_keyspace(NEW_KS_NAME_UPDATED)
+
+    @pytest.mark.describe(
+        "test of the update_db_keyspace flag for AstraDBDatabaseAdmin, sync"
+    )
+    def test_astra_updatedbkeyspace_sync(self, sync_database: Database) -> None:
+        NEW_KS_NAME_NOT_UPDATED = "tnudn_notupd"
+        NEW_KS_NAME_UPDATED = "tnudn_upd"
+
+        keyspace0 = sync_database.keyspace
+        database_admin = sync_database.get_database_admin()
+        database_admin.create_keyspace(NEW_KS_NAME_NOT_UPDATED)
+        assert sync_database.keyspace == keyspace0
+
+        database_admin.create_keyspace(NEW_KS_NAME_UPDATED, update_db_keyspace=True)
+        assert sync_database.keyspace == NEW_KS_NAME_UPDATED
+
+        database_admin.drop_keyspace(NEW_KS_NAME_NOT_UPDATED)
+        database_admin.drop_keyspace(NEW_KS_NAME_UPDATED)
+
+    @pytest.mark.describe(
+        "test of the update_db_keyspace flag for AstraDBDatabaseAdmin, async"
+    )
+    async def test_astra_updatedbkeyspace_async(
+        self, async_database: AsyncDatabase
+    ) -> None:
+        NEW_KS_NAME_NOT_UPDATED = "tnudn_notupd"
+        NEW_KS_NAME_UPDATED = "tnudn_upd"
+
+        keyspace0 = async_database.keyspace
+        database_admin = async_database.get_database_admin()
+        await database_admin.async_create_keyspace(NEW_KS_NAME_NOT_UPDATED)
+        assert async_database.keyspace == keyspace0
+
+        await database_admin.async_create_keyspace(
+            NEW_KS_NAME_UPDATED, update_db_keyspace=True
         )
-        assert async_database.namespace == NEW_NS_NAME_UPDATED
+        assert async_database.keyspace == NEW_KS_NAME_UPDATED
 
-        await database_admin.async_drop_namespace(NEW_NS_NAME_NOT_UPDATED)
-        await database_admin.async_drop_namespace(NEW_NS_NAME_UPDATED)
+        await database_admin.async_drop_keyspace(NEW_KS_NAME_NOT_UPDATED)
+        await database_admin.async_drop_keyspace(NEW_KS_NAME_UPDATED)

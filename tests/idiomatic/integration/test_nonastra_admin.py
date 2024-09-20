@@ -82,7 +82,11 @@ class TestNonAstraAdmin:
         database_admin.create_namespace(NEW_NS_NAME_NOT_UPDATED)
         assert database.namespace == namespace0
 
-        database_admin.create_namespace(NEW_NS_NAME_UPDATED, update_db_namespace=True)
+        with pytest.warns(DeprecationWarning):
+            database_admin.create_namespace(
+                NEW_NS_NAME_UPDATED,
+                update_db_namespace=True,
+            )
         assert database.namespace == NEW_NS_NAME_UPDATED
 
         database_admin.drop_namespace(NEW_NS_NAME_NOT_UPDATED)
@@ -141,9 +145,10 @@ class TestNonAstraAdmin:
         await database_admin.async_create_namespace(NEW_NS_NAME_NOT_UPDATED)
         assert adatabase.namespace == namespace0
 
-        await database_admin.async_create_namespace(
-            NEW_NS_NAME_UPDATED, update_db_namespace=True
-        )
+        with pytest.warns(DeprecationWarning):
+            await database_admin.async_create_namespace(
+                NEW_NS_NAME_UPDATED, update_db_namespace=True
+            )
         assert adatabase.namespace == NEW_NS_NAME_UPDATED
 
         await database_admin.async_drop_namespace(NEW_NS_NAME_NOT_UPDATED)
@@ -164,7 +169,7 @@ class TestNonAstraAdmin:
             - database -> create_collection/list_collection_names
             - drop keyspace
             - list keyspaces, check
-            - ALSO: test the update_db_namespace flag when creating from db->dbadmin
+            - ALSO: test the update_db_keyspace flag when creating from db->dbadmin
         This version uses v2.0-compliant 'keyspace' method names
         """
         NEW_NS_NAME = "tnaa_test_ns_s"
@@ -190,7 +195,7 @@ class TestNonAstraAdmin:
         keyspaces3 = set(database_admin.list_keyspaces())
         assert keyspaces3 == keyspaces1
 
-        # update_db_namespace:
+        # update_db_keyspace:
         NEW_NS_NAME_NOT_UPDATED = "tnudn_notupd"
         NEW_NS_NAME_UPDATED = "tnudn_upd"
 
@@ -201,7 +206,7 @@ class TestNonAstraAdmin:
         database_admin.create_keyspace(NEW_NS_NAME_NOT_UPDATED)
         assert database.keyspace == keyspace0
 
-        database_admin.create_keyspace(NEW_NS_NAME_UPDATED, update_db_namespace=True)
+        database_admin.create_keyspace(NEW_NS_NAME_UPDATED, update_db_keyspace=True)
         assert database.keyspace == NEW_NS_NAME_UPDATED
 
         database_admin.drop_keyspace(NEW_NS_NAME_NOT_UPDATED)
@@ -222,7 +227,7 @@ class TestNonAstraAdmin:
             - database -> create_collection/list_collection_names
             - drop keyspace
             - list keyspaces, check
-            - ALSO: test the update_db_namespace flag when creating from db->dbadmin
+            - ALSO: test the update_db_keyspace flag when creating from db->dbadmin
         This version uses v2.0-compliant 'keyspace' method names
         """
         NEW_NS_NAME = "tnaa_test_ns_a"
@@ -248,7 +253,7 @@ class TestNonAstraAdmin:
         keyspaces3 = set(await database_admin.async_list_keyspaces())
         assert keyspaces3 == keyspaces1
 
-        # update_db_namespace:
+        # update_db_keyspace:
         NEW_NS_NAME_NOT_UPDATED = "tnudn_notupd"
         NEW_NS_NAME_UPDATED = "tnudn_upd"
 
@@ -260,7 +265,7 @@ class TestNonAstraAdmin:
         assert adatabase.keyspace == keyspace0
 
         await database_admin.async_create_keyspace(
-            NEW_NS_NAME_UPDATED, update_db_namespace=True
+            NEW_NS_NAME_UPDATED, update_db_keyspace=True
         )
         assert adatabase.keyspace == NEW_NS_NAME_UPDATED
 

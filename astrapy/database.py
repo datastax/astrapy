@@ -141,7 +141,7 @@ class Database:
             when creating a Database, on Astra DB the name "default_namespace" is set,
             while on other environments the namespace is left unspecified: in this case,
             most operations are unavailable until a namespace is set (through an explicit
-            `use_namespace` invocation or equivalent).
+            `use_keyspace` invocation or equivalent).
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -291,7 +291,7 @@ class Database:
         if driver_commander is None:
             raise ValueError(
                 "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
+                "be set, e.g. through the `use_keyspace` method."
             )
         return driver_commander
 
@@ -661,7 +661,7 @@ class Database:
         if _namespace is None:
             raise ValueError(
                 "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
+                "be set, e.g. through the `use_keyspace` method."
             )
         return Collection(
             self,
@@ -1116,7 +1116,7 @@ class AsyncDatabase:
             when creating a Database, on Astra DB the name "default_namespace" is set,
             while on other environments the namespace is left unspecified: in this case,
             most operations are unavailable until a namespace is set (through an explicit
-            `use_namespace` invocation or equivalent).
+            `use_keyspace` invocation or equivalent).
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -1266,7 +1266,7 @@ class AsyncDatabase:
         if driver_commander is None:
             raise ValueError(
                 "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
+                "be set, e.g. through the `use_keyspace` method."
             )
         return driver_commander
 
@@ -1656,7 +1656,7 @@ class AsyncDatabase:
         if _namespace is None:
             raise ValueError(
                 "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
+                "be set, e.g. through the `use_keyspace` method."
             )
         return AsyncCollection(
             self,

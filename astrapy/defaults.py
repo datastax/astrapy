@@ -107,3 +107,9 @@ NAMESPACE_DEPRECATION_NOTICE_METHOD = (
     "list_collections(keyspace=...)`). See https://docs.datastax.com/en/astra-db-"
     "serverless/api-reference/client-versions.html#version-1-5 for more information."
 )
+NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_SUBJECT = "Parameter `update_db_namespace`"
+NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_DETAILS = (
+    "Please replace the parameter with `update_db_keyspace`. "
+    "See https://docs.datastax.com/en/astra-db-serverless/api-reference/client-"
+    "versions.html#version-1-5 for more information."
+)

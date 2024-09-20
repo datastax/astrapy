@@ -15,9 +15,14 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any
+from typing import Any, Optional
 
 from deprecation import DeprecatedWarning
+
+from astrapy.defaults import (
+    NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_DETAILS,
+    NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_SUBJECT,
+)
 
 
 def check_deprecated_vector_ize(
@@ -58,7 +63,7 @@ def check_deprecated_vector_ize(
             removed_in="2.0.0",
             details=message,
         )
-        # trying to surface the warning at the rick stack level to best inform user:
+        # trying to surface the warning at the right stack level to best inform user:
         # (considering both the error-recast wrap decorator and the internals)
         if from_async_method:
             if from_operation_class:
@@ -74,3 +79,41 @@ def check_deprecated_vector_ize(
             the_warning,
             stacklevel=s_level,
         )
+
+
+def check_update_db_namespace_keyspace(
+    update_db_keyspace: Optional[bool],
+    update_db_namespace: Optional[bool],
+    from_async_method: bool = False,
+) -> Optional[bool]:
+    # normalize the two aliased parameter names, raising deprecation
+    # when needed and an error if both parameter supplied.
+    # The returned value is the final one for the parameter.
+
+    if update_db_namespace is None:
+        # no need for deprecation nor exceptions
+        return update_db_keyspace
+    else:
+        # issue a deprecation warning
+        the_warning = DeprecatedWarning(
+            NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_SUBJECT,
+            deprecated_in="1.5.0",
+            removed_in="2.0.0",
+            details=NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_DETAILS,
+        )
+        # trying to surface the warning at the right stack level to best inform user:
+        # (considering both the error-recast wrap decorator and the internals)
+        s_level = 3
+        warnings.warn(
+            the_warning,
+            stacklevel=s_level,
+        )
+
+        if update_db_keyspace is None:
+            return update_db_namespace
+        else:
+            msg = (
+                "Parameters `update_db_keyspace` and `update_db_namespace` "
+                "(a deprecated alias for the former) cannot be passed at the same time."
+            )
+            raise ValueError(msg)

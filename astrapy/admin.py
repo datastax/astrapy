@@ -57,6 +57,7 @@ from astrapy.exceptions import (
     base_timeout_info,
 )
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo, FindEmbeddingProvidersResult
+from astrapy.meta import check_update_db_namespace_keyspace
 from astrapy.request_tools import HttpMethod
 
 if TYPE_CHECKING:
@@ -1464,6 +1465,7 @@ class DatabaseAdmin(ABC):
         self,
         name: str,
         *,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
@@ -1477,6 +1479,7 @@ class DatabaseAdmin(ABC):
         self,
         name: str,
         *,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
@@ -1517,7 +1520,12 @@ class DatabaseAdmin(ABC):
 
     @abstractmethod
     async def async_create_namespace(
-        self, name: str, *, update_db_namespace: Optional[bool] = None, **kwargs: Any
+        self,
+        name: str,
+        *,
+        update_db_keyspace: Optional[bool] = None,
+        update_db_namespace: Optional[bool] = None,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
@@ -1527,7 +1535,12 @@ class DatabaseAdmin(ABC):
 
     @abstractmethod
     async def async_create_keyspace(
-        self, name: str, *, update_db_namespace: Optional[bool] = None, **kwargs: Any
+        self,
+        name: str,
+        *,
+        update_db_keyspace: Optional[bool] = None,
+        update_db_namespace: Optional[bool] = None,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Create a keyspace in the database, returning {'ok': 1} if successful.
@@ -2242,6 +2255,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
         **kwargs: Any,
@@ -2262,9 +2276,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/namespace availability
                 before working with it.
-            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
-                the newly-created namespace starting when this method returns.
+                the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -2286,6 +2302,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         return self.create_keyspace(
             name=name,
             wait_until_active=wait_until_active,
+            update_db_keyspace=update_db_keyspace,
             update_db_namespace=update_db_namespace,
             max_time_ms=max_time_ms,
             **kwargs,
@@ -2296,6 +2313,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
         **kwargs: Any,
@@ -2314,9 +2332,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/keyspace availability
                 before working with it.
-            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
                 the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -2334,6 +2354,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             >>> my_db_admin.list_keyspaces()
             ['default_keyspace', 'that_other_one']
         """
+
+        _update_db_keyspace = check_update_db_namespace_keyspace(
+            update_db_keyspace=update_db_keyspace,
+            update_db_namespace=update_db_namespace,
+            from_async_method=False,
+        )
 
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, dev_ops_api=True
@@ -2375,7 +2401,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             f"finished creating keyspace '{name}' on "
             f"'{self._database_id}' (DevOps API)"
         )
-        if update_db_namespace:
+        if _update_db_keyspace:
             self.spawner_database.use_keyspace(name)
         return {"ok": 1}
 
@@ -2390,6 +2416,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
         **kwargs: Any,
@@ -2411,9 +2438,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/namespace availability
                 before working with it.
-            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
-                the newly-created namespace starting when this method returns.
+                the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -2433,6 +2462,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         return await self.async_create_keyspace(
             name=name,
             wait_until_active=wait_until_active,
+            update_db_keyspace=update_db_keyspace,
             update_db_namespace=update_db_namespace,
             max_time_ms=max_time_ms,
             **kwargs,
@@ -2443,6 +2473,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
         **kwargs: Any,
@@ -2462,9 +2493,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/keyspace availability
                 before working with it.
-            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
                 the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -2480,6 +2513,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ... )
             {'ok': 1}
         """
+
+        _update_db_keyspace = check_update_db_namespace_keyspace(
+            update_db_keyspace=update_db_keyspace,
+            update_db_namespace=update_db_namespace,
+            from_async_method=True,
+        )
 
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, dev_ops_api=True
@@ -2525,7 +2564,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             f"finished creating keyspace '{name}' on "
             f"'{self._database_id}' (DevOps API), async"
         )
-        if update_db_namespace:
+        if _update_db_keyspace:
             self.spawner_database.use_keyspace(name)
         return {"ok": 1}
 
@@ -3364,6 +3403,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         replication_options: Optional[Dict[str, Any]] = None,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
         **kwargs: Any,
@@ -3381,9 +3421,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 replication of the namespace (across database nodes). If provided,
                 it must have a structure similar to:
                 `{"class": "SimpleStrategy", "replication_factor": 1}`.
-            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
-                the newly-created namespace starting when this method returns.
+                the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -3401,6 +3443,13 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_namespaces()
             ['default_keyspace', 'that_other_one']
         """
+
+        _update_db_keyspace = check_update_db_namespace_keyspace(
+            update_db_keyspace=update_db_keyspace,
+            update_db_namespace=update_db_namespace,
+            from_async_method=False,
+        )
+
         options = {
             k: v
             for k, v in {
@@ -3426,8 +3475,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished creating namespace")
-            if update_db_namespace:
-                self.spawner_database.use_namespace(name)
+            if _update_db_keyspace:
+                self.spawner_database.use_keyspace(name)
             return {k: v for k, v in cn_response["status"].items() if k == "ok"}
 
     def create_keyspace(
@@ -3435,6 +3484,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         replication_options: Optional[Dict[str, Any]] = None,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
         **kwargs: Any,
@@ -3450,9 +3500,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 replication of the keyspace (across database nodes). If provided,
                 it must have a structure similar to:
                 `{"class": "SimpleStrategy", "replication_factor": 1}`.
-            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
                 the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -3470,6 +3522,13 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_keyspaces()
             ['default_keyspace', 'that_other_one']
         """
+
+        _update_db_keyspace = check_update_db_namespace_keyspace(
+            update_db_keyspace=update_db_keyspace,
+            update_db_namespace=update_db_namespace,
+            from_async_method=False,
+        )
+
         options = {
             k: v
             for k, v in {
@@ -3495,7 +3554,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished creating keyspace")
-            if update_db_namespace:
+            if _update_db_keyspace:
                 self.spawner_database.use_keyspace(name)
             return {k: v for k, v in cn_response["status"].items() if k == "ok"}
 
@@ -3674,6 +3733,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         replication_options: Optional[Dict[str, Any]] = None,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
         **kwargs: Any,
@@ -3692,9 +3752,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 replication of the namespace (across database nodes). If provided,
                 it must have a structure similar to:
                 `{"class": "SimpleStrategy", "replication_factor": 1}`.
-            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
-                the newly-created namespace starting when this method returns.
+                the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -3714,6 +3776,13 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_namespaces()
             ['default_keyspace', 'that_other_one']
         """
+
+        _update_db_keyspace = check_update_db_namespace_keyspace(
+            update_db_keyspace=update_db_keyspace,
+            update_db_namespace=update_db_namespace,
+            from_async_method=True,
+        )
+
         options = {
             k: v
             for k, v in {
@@ -3739,8 +3808,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished creating namespace, async")
-            if update_db_namespace:
-                self.spawner_database.use_namespace(name)
+            if _update_db_keyspace:
+                self.spawner_database.use_keyspace(name)
             return {k: v for k, v in cn_response["status"].items() if k == "ok"}
 
     async def async_create_keyspace(
@@ -3748,6 +3817,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         replication_options: Optional[Dict[str, Any]] = None,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
         **kwargs: Any,
@@ -3764,9 +3834,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 replication of the keyspace (across database nodes). If provided,
                 it must have a structure similar to:
                 `{"class": "SimpleStrategy", "replication_factor": 1}`.
-            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
                 the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -3786,6 +3858,13 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_leyspaces()
             ['default_keyspace', 'that_other_one']
         """
+
+        _update_db_keyspace = check_update_db_namespace_keyspace(
+            update_db_keyspace=update_db_keyspace,
+            update_db_namespace=update_db_namespace,
+            from_async_method=True,
+        )
+
         options = {
             k: v
             for k, v in {
@@ -3811,7 +3890,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished creating keyspace, async")
-            if update_db_namespace:
+            if _update_db_keyspace:
                 self.spawner_database.use_keyspace(name)
             return {k: v for k, v in cn_response["status"].items() if k == "ok"}
 
