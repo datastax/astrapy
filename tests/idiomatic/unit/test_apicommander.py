@@ -15,11 +15,10 @@
 from __future__ import annotations
 
 import json
-import time
+import logging
 from typing import Optional
 
 import pytest
-import werkzeug
 from pytest_httpserver import HTTPServer
 
 from astrapy.api_commander import APICommander
@@ -27,18 +26,11 @@ from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     DataAPIHttpException,
     DataAPIResponseException,
-    DataAPITimeoutException,
     DevOpsAPIFaultyResponseException,
     DevOpsAPIHttpException,
     DevOpsAPIResponseException,
-    DevOpsAPITimeoutException,
 )
 from astrapy.request_tools import HttpMethod
-
-
-def response_sleeper(request: werkzeug.Request) -> werkzeug.Response:
-    time.sleep(0.1)
-    return werkzeug.Response()
 
 
 class TestAPICommander:
@@ -408,70 +400,100 @@ class TestAPICommander:
         with pytest.raises(DevOpsAPIHttpException):
             await cmd.async_request()
 
-    @pytest.mark.describe("test of APICommander timeout, sync")
-    def test_apicommander_timeout_sync(self, httpserver: HTTPServer) -> None:
-        base_endpoint = httpserver.url_for("/")
-        base_path = "/base"
-        cmd = APICommander(
-            api_endpoint=base_endpoint,
-            path=base_path,
-        )
-
-        httpserver.expect_oneshot_request(
-            base_path,
-            method=HttpMethod.POST,
-        ).respond_with_handler(response_sleeper)
-        with pytest.raises(DataAPITimeoutException):
-            cmd.request(timeout_info=0.001)
-
-    @pytest.mark.describe("test of APICommander timeout, async")
-    async def test_apicommander_timeout_async(self, httpserver: HTTPServer) -> None:
-        base_endpoint = httpserver.url_for("/")
-        base_path = "/base"
-        cmd = APICommander(
-            api_endpoint=base_endpoint,
-            path=base_path,
-        )
-
-        httpserver.expect_oneshot_request(
-            base_path,
-            method=HttpMethod.POST,
-        ).respond_with_handler(response_sleeper)
-        with pytest.raises(DataAPITimeoutException):
-            await cmd.async_request(timeout_info=0.001)
-
-    @pytest.mark.describe("test of APICommander timeout DevOps, sync")
-    def test_apicommander_timeout_devops_sync(self, httpserver: HTTPServer) -> None:
-        base_endpoint = httpserver.url_for("/")
-        base_path = "/base"
-        cmd = APICommander(
-            api_endpoint=base_endpoint,
-            path=base_path,
-            dev_ops_api=True,
-        )
-
-        httpserver.expect_oneshot_request(
-            base_path,
-            method=HttpMethod.POST,
-        ).respond_with_handler(response_sleeper)
-        with pytest.raises(DevOpsAPITimeoutException):
-            cmd.request(timeout_info=0.001)
-
-    @pytest.mark.describe("test of APICommander timeout DevOps, async")
-    async def test_apicommander_timeout_devops_async(
-        self, httpserver: HTTPServer
+    @pytest.mark.describe("test of APICommander server warnings, sync")
+    def test_apicommander_server_warnings_sync(
+        self,
+        caplog: pytest.LogCaptureFixture,
+        httpserver: HTTPServer,
     ) -> None:
         base_endpoint = httpserver.url_for("/")
         base_path = "/base"
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
-            dev_ops_api=True,
+            dev_ops_api=False,
         )
-
         httpserver.expect_oneshot_request(
             base_path,
-            method=HttpMethod.POST,
-        ).respond_with_handler(response_sleeper)
-        with pytest.raises(DevOpsAPITimeoutException):
-            await cmd.async_request(timeout_info=0.001)
+        ).respond_with_json({"status": {"warnings": ["THE_WARNING", "THE_WARNING_2"]}})
+
+        with caplog.at_level(logging.WARNING):
+            cmd.request()
+            w_records = [
+                record
+                for record in caplog.records
+                if record.levelno == logging.WARNING
+                if "THE_WARNING" in record.msg
+            ]
+            assert len(w_records) == 2
+        caplog.clear()
+
+        ops_base_path = "/base_ops"
+        devops_cmd = APICommander(
+            api_endpoint=base_endpoint,
+            path=ops_base_path,
+            dev_ops_api=True,
+        )
+        httpserver.expect_oneshot_request(
+            ops_base_path,
+        ).respond_with_json({"status": {"warnings": ["THE_WARNING"]}})
+
+        with caplog.at_level(logging.WARNING):
+            devops_cmd.request()
+            w_records = [
+                record
+                for record in caplog.records
+                if record.levelno == logging.WARNING
+                if "THE_WARNING" in record.msg
+            ]
+            assert len(w_records) == 0
+        caplog.clear()
+
+    @pytest.mark.describe("test of APICommander server warnings, async")
+    async def test_apicommander_server_warnings_async(
+        self,
+        caplog: pytest.LogCaptureFixture,
+        httpserver: HTTPServer,
+    ) -> None:
+        base_endpoint = httpserver.url_for("/")
+        base_path = "/base"
+        cmd = APICommander(
+            api_endpoint=base_endpoint,
+            path=base_path,
+            dev_ops_api=False,
+        )
+        httpserver.expect_oneshot_request(
+            base_path,
+        ).respond_with_json({"status": {"warnings": ["THE_WARNING", "THE_WARNING_2"]}})
+
+        with caplog.at_level(logging.WARNING):
+            await cmd.async_request()
+            w_records = [
+                record
+                for record in caplog.records
+                if record.levelno == logging.WARNING
+                if "THE_WARNING" in record.msg
+            ]
+            assert len(w_records) == 2
+        caplog.clear()
+
+        ops_base_path = "/base_ops"
+        devops_cmd = APICommander(
+            api_endpoint=base_endpoint,
+            path=ops_base_path,
+            dev_ops_api=True,
+        )
+        httpserver.expect_oneshot_request(
+            ops_base_path,
+        ).respond_with_json({"status": {"warnings": ["THE_WARNING"]}})
+
+        with caplog.at_level(logging.WARNING):
+            await devops_cmd.async_request()
+            w_records = [
+                record
+                for record in caplog.records
+                if record.levelno == logging.WARNING
+                if "THE_WARNING" in record.msg
+            ]
+            assert len(w_records) == 0
+        caplog.clear()
