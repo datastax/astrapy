@@ -24,7 +24,7 @@ DATA_API_ENVIRONMENT_CASSANDRA = "cassandra"
 DATA_API_ENVIRONMENT_OTHER = "other"
 
 # Defaults/settings for Database management
-DEFAULT_ASTRA_DB_NAMESPACE = "default_keyspace"
+DEFAULT_ASTRA_DB_KEYSPACE = "default_keyspace"
 API_ENDPOINT_TEMPLATE_ENV_MAP = {
     DATA_API_ENVIRONMENT_PROD: "https://{database_id}-{region}.apps.astra.datastax.com",
     DATA_API_ENVIRONMENT_DEV: "https://{database_id}-{region}.apps.astra-dev.datastax.com",
@@ -64,7 +64,7 @@ EMBEDDING_HEADER_API_KEY = "X-Embedding-Api-Key"
 # Defaults/settings for DevOps API requests and admin operations
 DEFAULT_DEV_OPS_AUTH_HEADER = "Authorization"
 DEFAULT_DEV_OPS_AUTH_PREFIX = "Bearer "
-DEV_OPS_NAMESPACE_POLL_INTERVAL_S = 2
+DEV_OPS_KEYSPACE_POLL_INTERVAL_S = 2
 DEV_OPS_DATABASE_POLL_INTERVAL_S = 15
 DEV_OPS_DATABASE_STATUS_MAINTENANCE = "MAINTENANCE"
 DEV_OPS_DATABASE_STATUS_ACTIVE = "ACTIVE"

@@ -35,7 +35,7 @@ from astrapy.cursors import AsyncCommandCursor, CommandCursor
 from astrapy.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
-    DEFAULT_ASTRA_DB_NAMESPACE,
+    DEFAULT_ASTRA_DB_KEYSPACE,
     DEFAULT_DATA_API_AUTH_HEADER,
     NAMESPACE_DEPRECATION_NOTICE_METHOD,
 )
@@ -199,7 +199,7 @@ class Database:
         # enforce defaults if on Astra DB:
         self._using_keyspace: Optional[str]
         if namespace is None and self.environment in Environment.astra_db_values:
-            self._using_keyspace = DEFAULT_ASTRA_DB_NAMESPACE
+            self._using_keyspace = DEFAULT_ASTRA_DB_KEYSPACE
         else:
             self._using_keyspace = namespace
 
@@ -793,7 +793,7 @@ class Database:
             if name in existing_names:
                 raise CollectionAlreadyExistsException(
                     text=f"Collection {name} already exists",
-                    namespace=namespace or self.keyspace or "(unspecified)",
+                    keyspace=namespace or self.keyspace or "(unspecified)",
                     collection_name=name,
                 )
 
@@ -1176,7 +1176,7 @@ class AsyncDatabase:
         # enforce defaults if on Astra DB:
         self._using_keyspace: Optional[str]
         if namespace is None and self.environment in Environment.astra_db_values:
-            self._using_keyspace = DEFAULT_ASTRA_DB_NAMESPACE
+            self._using_keyspace = DEFAULT_ASTRA_DB_KEYSPACE
         else:
             self._using_keyspace = namespace
 
@@ -1794,7 +1794,7 @@ class AsyncDatabase:
             if name in existing_names:
                 raise CollectionAlreadyExistsException(
                     text=f"Collection {name} already exists",
-                    namespace=namespace or self.keyspace or "(unspecified)",
+                    keyspace=namespace or self.keyspace or "(unspecified)",
                     collection_name=name,
                 )
 

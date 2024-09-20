@@ -551,7 +551,7 @@ class Collection:
         else:
             raise CollectionNotFoundException(
                 text=f"Collection {self.keyspace}.{self.name} not found.",
-                namespace=self.keyspace,
+                keyspace=self.keyspace,
                 collection_name=self.name,
             )
 
@@ -3128,7 +3128,7 @@ class AsyncCollection:
         else:
             raise CollectionNotFoundException(
                 text=f"Collection {self.keyspace}.{self.name} not found.",
-                namespace=self.keyspace,
+                keyspace=self.keyspace,
                 collection_name=self.name,
             )
 

@@ -483,11 +483,13 @@ class CollectionNotFoundException(DataAPIException):
 
     Attributes:
         text: a text message about the exception.
-        namespace: the namespace where the collection was supposed to be.
+        keyspace: the keyspace where the collection was supposed to be.
+        namespace: an alias for 'keyspace'. *DEPRECATED*, removal in 2.0
         collection_name: the name of the expected collection.
     """
 
     text: str
+    keyspace: str
     namespace: str
     collection_name: str
 
@@ -495,12 +497,13 @@ class CollectionNotFoundException(DataAPIException):
         self,
         text: str,
         *,
-        namespace: str,
+        keyspace: str,
         collection_name: str,
     ) -> None:
         super().__init__(text)
         self.text = text
-        self.namespace = namespace
+        self.keyspace = keyspace
+        self.namespace = keyspace
         self.collection_name = collection_name
 
 
@@ -512,11 +515,13 @@ class CollectionAlreadyExistsException(DataAPIException):
 
     Attributes:
         text: a text message about the exception.
-        namespace: the namespace where the collection was expected not to exist.
+        keyspace: the keyspace where the collection was expected not to exist.
+        namespace: an alias for 'keyspace'. *DEPRECATED*, removal in 2.0
         collection_name: the name of the collection.
     """
 
     text: str
+    keyspace: str
     namespace: str
     collection_name: str
 
@@ -524,12 +529,13 @@ class CollectionAlreadyExistsException(DataAPIException):
         self,
         text: str,
         *,
-        namespace: str,
+        keyspace: str,
         collection_name: str,
     ) -> None:
         super().__init__(text)
         self.text = text
-        self.namespace = namespace
+        self.keyspace = keyspace
+        self.namespace = keyspace
         self.collection_name = collection_name
 
 

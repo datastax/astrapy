@@ -18,7 +18,7 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase, DataAPIClient
 from astrapy.constants import Environment
-from astrapy.defaults import DEFAULT_ASTRA_DB_NAMESPACE
+from astrapy.defaults import DEFAULT_ASTRA_DB_KEYSPACE
 from astrapy.exceptions import DevOpsAPIException
 
 from ..conftest import (
@@ -252,7 +252,7 @@ class TestDatabasesAsync:
         )
         assert db_o_m.namespace == "M"
         db_a_n = AsyncDatabase("ep", token="t", environment=Environment.PROD)
-        assert db_a_n.namespace == DEFAULT_ASTRA_DB_NAMESPACE
+        assert db_a_n.namespace == DEFAULT_ASTRA_DB_KEYSPACE
         db_o_n = AsyncDatabase("ep", token="t", environment=Environment.OTHER)
         assert db_o_n.namespace is None
 
@@ -266,7 +266,7 @@ class TestDatabasesAsync:
         db_a_m = client_a.get_async_database("ep", region="r", namespace="M")
         assert db_a_m.namespace == "M"
         db_a_n = client_a.get_async_database("ep", region="r")
-        assert db_a_n.namespace == DEFAULT_ASTRA_DB_NAMESPACE
+        assert db_a_n.namespace == DEFAULT_ASTRA_DB_KEYSPACE
 
         client_o = DataAPIClient(environment=Environment.OTHER)
         db_a_m = client_o.get_async_database("http://a", namespace="M")

@@ -18,7 +18,7 @@ import pytest
 
 from astrapy import Collection, DataAPIClient, Database
 from astrapy.constants import Environment
-from astrapy.defaults import DEFAULT_ASTRA_DB_NAMESPACE
+from astrapy.defaults import DEFAULT_ASTRA_DB_KEYSPACE
 from astrapy.exceptions import DevOpsAPIException
 
 from ..conftest import (
@@ -249,7 +249,7 @@ class TestDatabasesSync:
         db_o_m = Database("ep", token="t", namespace="M", environment=Environment.OTHER)
         assert db_o_m.namespace == "M"
         db_a_n = Database("ep", token="t", environment=Environment.PROD)
-        assert db_a_n.namespace == DEFAULT_ASTRA_DB_NAMESPACE
+        assert db_a_n.namespace == DEFAULT_ASTRA_DB_KEYSPACE
         db_o_n = Database("ep", token="t", environment=Environment.OTHER)
         assert db_o_n.namespace is None
 
@@ -261,7 +261,7 @@ class TestDatabasesSync:
         db_a_m = client_a.get_database("id", region="r", namespace="M")
         assert db_a_m.namespace == "M"
         db_a_n = client_a.get_database("id", region="r")
-        assert db_a_n.namespace == DEFAULT_ASTRA_DB_NAMESPACE
+        assert db_a_n.namespace == DEFAULT_ASTRA_DB_KEYSPACE
 
         client_o = DataAPIClient(environment=Environment.OTHER)
         db_a_m = client_o.get_database("http://a", namespace="M")

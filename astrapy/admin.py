@@ -43,7 +43,7 @@ from astrapy.defaults import (
     DEV_OPS_DATABASE_STATUS_MAINTENANCE,
     DEV_OPS_DATABASE_STATUS_PENDING,
     DEV_OPS_DATABASE_STATUS_TERMINATING,
-    DEV_OPS_NAMESPACE_POLL_INTERVAL_S,
+    DEV_OPS_KEYSPACE_POLL_INTERVAL_S,
     DEV_OPS_RESPONSE_HTTP_ACCEPTED,
     DEV_OPS_RESPONSE_HTTP_CREATED,
     DEV_OPS_URL_ENV_MAP,
@@ -2385,7 +2385,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             last_status_seen = DEV_OPS_DATABASE_STATUS_MAINTENANCE
             while last_status_seen == DEV_OPS_DATABASE_STATUS_MAINTENANCE:
                 logger.info(f"sleeping to poll for status of '{self._database_id}'")
-                time.sleep(DEV_OPS_NAMESPACE_POLL_INTERVAL_S)
+                time.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
                 last_status_seen = self.info(
                     max_time_ms=timeout_manager.remaining_timeout_ms(),
                 ).status
@@ -2546,7 +2546,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 logger.info(
                     f"sleeping to poll for status of '{self._database_id}', async"
                 )
-                await asyncio.sleep(DEV_OPS_NAMESPACE_POLL_INTERVAL_S)
+                await asyncio.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
                 last_db_info = await self.async_info(
                     max_time_ms=timeout_manager.remaining_timeout_ms(),
                 )
@@ -2681,7 +2681,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             last_status_seen = DEV_OPS_DATABASE_STATUS_MAINTENANCE
             while last_status_seen == DEV_OPS_DATABASE_STATUS_MAINTENANCE:
                 logger.info(f"sleeping to poll for status of '{self._database_id}'")
-                time.sleep(DEV_OPS_NAMESPACE_POLL_INTERVAL_S)
+                time.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
                 last_status_seen = self.info(
                     max_time_ms=timeout_manager.remaining_timeout_ms(),
                 ).status
@@ -2814,7 +2814,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 logger.info(
                     f"sleeping to poll for status of '{self._database_id}', async"
                 )
-                await asyncio.sleep(DEV_OPS_NAMESPACE_POLL_INTERVAL_S)
+                await asyncio.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
                 last_db_info = await self.async_info(
                     max_time_ms=timeout_manager.remaining_timeout_ms(),
                 )

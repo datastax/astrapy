@@ -29,7 +29,7 @@ from astrapy import DataAPIClient
 from astrapy.admin import parse_api_endpoint
 from astrapy.authentication import TokenProvider
 from astrapy.constants import Environment
-from astrapy.defaults import DEFAULT_ASTRA_DB_NAMESPACE
+from astrapy.defaults import DEFAULT_ASTRA_DB_KEYSPACE
 
 from .preprocess_env import (
     ADMIN_ENV_LIST,
@@ -150,7 +150,7 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         astra_db_creds: DataAPICredentials = {
             "token": ASTRA_DB_TOKEN_PROVIDER or "",
             "api_endpoint": ASTRA_DB_API_ENDPOINT or "",
-            "namespace": ASTRA_DB_KEYSPACE or DEFAULT_ASTRA_DB_NAMESPACE,
+            "namespace": ASTRA_DB_KEYSPACE or DEFAULT_ASTRA_DB_KEYSPACE,
         }
         return astra_db_creds
     else:
@@ -159,7 +159,7 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         local_db_creds: DataAPICredentials = {
             "token": LOCAL_DATA_API_TOKEN_PROVIDER or "",
             "api_endpoint": LOCAL_DATA_API_ENDPOINT or "",
-            "namespace": LOCAL_DATA_API_KEYSPACE or DEFAULT_ASTRA_DB_NAMESPACE,
+            "namespace": LOCAL_DATA_API_KEYSPACE or DEFAULT_ASTRA_DB_KEYSPACE,
         }
 
         # ensure keyspace(s) exist at this point
