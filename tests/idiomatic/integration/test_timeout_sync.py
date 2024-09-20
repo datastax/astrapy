@@ -51,7 +51,7 @@ class TestTimeoutSync:
         info = fetch_database_info(
             sync_database.api_endpoint,
             token=sync_database.token_provider.get_token(),
-            namespace=sync_database.namespace,
+            namespace=sync_database.keyspace,
         )
         assert info is not None
 
@@ -59,7 +59,7 @@ class TestTimeoutSync:
             info = fetch_database_info(
                 sync_database.api_endpoint,
                 token=sync_database.token_provider.get_token(),
-                namespace=sync_database.namespace,
+                namespace=sync_database.keyspace,
                 max_time_ms=1,
             )
             assert info is not None

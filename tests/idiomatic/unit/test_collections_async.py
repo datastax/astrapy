@@ -18,7 +18,11 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
 
-from ..conftest import SECONDARY_NAMESPACE, DataAPICredentialsInfo
+from ..conftest import (
+    SECONDARY_NAMESPACE,
+    DataAPICredentialsInfo,
+    async_fail_if_not_removed,
+)
 
 
 class TestCollectionsAsync:
@@ -89,7 +93,7 @@ class TestCollectionsAsync:
         col3 = col2._copy(
             database=async_database,
             name="id_test_collection",
-            namespace=async_database.namespace,
+            namespace=async_database.keyspace,
         )
         assert col3 == col1
 
@@ -145,7 +149,7 @@ class TestCollectionsAsync:
         col3 = col2s.to_async(
             database=async_database,
             name="id_test_collection",
-            namespace=async_database.namespace,
+            namespace=async_database.keyspace,
         )
         assert col3 == col1
 
@@ -215,6 +219,7 @@ class TestCollectionsAsync:
         assert col1._copy() == col2
         assert col1.to_sync().to_async() == col2
 
+    @async_fail_if_not_removed
     @pytest.mark.skipif(
         SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
     )
@@ -242,3 +247,31 @@ class TestCollectionsAsync:
             namespace=data_api_credentials_info["secondary_namespace"],
         )
         assert col4.namespace == data_api_credentials_info["secondary_namespace"]
+
+    @pytest.mark.skipif(
+        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
+    )
+    @pytest.mark.describe("test collection keyspace property, async")
+    async def test_collection_keyspace_async(
+        self,
+        async_database: AsyncDatabase,
+        data_api_credentials_info: DataAPICredentialsInfo,
+    ) -> None:
+        col1 = await async_database.get_collection("id_test_collection")
+        assert col1.keyspace == async_database.keyspace
+
+        col2 = await async_database.get_collection(
+            "id_test_collection",
+            namespace=data_api_credentials_info["secondary_namespace"],
+        )
+        assert col2.keyspace == data_api_credentials_info["secondary_namespace"]
+
+        col3 = AsyncCollection(async_database, "id_test_collection")
+        assert col3.keyspace == async_database.keyspace
+
+        col4 = AsyncCollection(
+            async_database,
+            "id_test_collection",
+            namespace=data_api_credentials_info["secondary_namespace"],
+        )
+        assert col4.keyspace == data_api_credentials_info["secondary_namespace"]

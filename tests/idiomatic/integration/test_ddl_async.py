@@ -199,7 +199,7 @@ class TestDDLAsync:
         async_collection: AsyncCollection,
     ) -> None:
         info = async_collection.info()
-        assert info.namespace == async_collection.namespace
+        assert info.namespace == async_collection.keyspace
         assert info.namespace == async_collection.database.namespace
 
     @pytest.mark.describe("test of Database list_collections, async")
@@ -252,7 +252,7 @@ class TestDDLAsync:
         assert at_database.namespace == data_api_credentials_kwargs["namespace"]
         assert TEST_COLLECTION_NAME in await at_database.list_collection_names()
 
-        at_database.use_namespace(data_api_credentials_info["secondary_namespace"])  # type: ignore[arg-type]
+        at_database.use_namespace(data_api_credentials_info["secondary_namespace"])
         assert at_database != async_database
         assert at_database.namespace == data_api_credentials_info["secondary_namespace"]
         assert TEST_COLLECTION_NAME not in await at_database.list_collection_names()
@@ -311,7 +311,7 @@ class TestDDLAsync:
         assert isinstance(cmd1["status"]["count"], int)
         cmd2 = await async_database._copy(namespace="...").command(
             {"countDocuments": {}},
-            namespace=async_collection.namespace,
+            namespace=async_collection.keyspace,
             collection_name=async_collection.name,
         )
         assert cmd2 == cmd1
@@ -325,7 +325,7 @@ class TestDDLAsync:
         assert isinstance(cmd1, dict)
         assert isinstance(cmd1["status"]["collections"], list)
         cmd2 = await async_database._copy(namespace="...").command(
-            {"findCollections": {}}, namespace=async_database.namespace
+            {"findCollections": {}}, namespace=async_database.keyspace
         )
         assert cmd2 == cmd1
 

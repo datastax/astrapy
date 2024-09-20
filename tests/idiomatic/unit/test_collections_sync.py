@@ -18,7 +18,11 @@ import pytest
 
 from astrapy import Collection, Database
 
-from ..conftest import SECONDARY_NAMESPACE, DataAPICredentialsInfo
+from ..conftest import (
+    SECONDARY_NAMESPACE,
+    DataAPICredentialsInfo,
+    sync_fail_if_not_removed,
+)
 
 
 class TestCollectionsSync:
@@ -89,7 +93,7 @@ class TestCollectionsSync:
         col3 = col2._copy(
             database=sync_database,
             name="id_test_collection",
-            namespace=sync_database.namespace,
+            namespace=sync_database.keyspace,
         )
         assert col3 == col1
 
@@ -145,7 +149,7 @@ class TestCollectionsSync:
         col3 = col2a.to_sync(
             database=sync_database,
             name="id_test_collection",
-            namespace=sync_database.namespace,
+            namespace=sync_database.keyspace,
         )
         assert col3 == col1
 
@@ -215,6 +219,7 @@ class TestCollectionsSync:
         assert col1._copy() == col2
         assert col1.to_async().to_sync() == col2
 
+    @sync_fail_if_not_removed
     @pytest.mark.skipif(
         SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
     )
@@ -242,3 +247,31 @@ class TestCollectionsSync:
             namespace=data_api_credentials_info["secondary_namespace"],
         )
         assert col4.namespace == data_api_credentials_info["secondary_namespace"]
+
+    @pytest.mark.skipif(
+        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
+    )
+    @pytest.mark.describe("test collection keyspace property, sync")
+    def test_collection_keyspace_sync(
+        self,
+        sync_database: Database,
+        data_api_credentials_info: DataAPICredentialsInfo,
+    ) -> None:
+        col1 = sync_database.get_collection("id_test_collection")
+        assert col1.keyspace == sync_database.keyspace
+
+        col2 = sync_database.get_collection(
+            "id_test_collection",
+            namespace=data_api_credentials_info["secondary_namespace"],
+        )
+        assert col2.keyspace == data_api_credentials_info["secondary_namespace"]
+
+        col3 = Collection(sync_database, "id_test_collection")
+        assert col3.keyspace == sync_database.keyspace
+
+        col4 = Collection(
+            sync_database,
+            "id_test_collection",
+            namespace=data_api_credentials_info["secondary_namespace"],
+        )
+        assert col4.keyspace == data_api_credentials_info["secondary_namespace"]

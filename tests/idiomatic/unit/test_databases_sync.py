@@ -21,7 +21,11 @@ from astrapy.constants import Environment
 from astrapy.defaults import DEFAULT_ASTRA_DB_NAMESPACE
 from astrapy.exceptions import DevOpsAPIException
 
-from ..conftest import TEST_COLLECTION_INSTANCE_NAME, DataAPICredentials
+from ..conftest import (
+    TEST_COLLECTION_INSTANCE_NAME,
+    DataAPICredentials,
+    sync_fail_if_not_removed,
+)
 
 
 class TestDatabasesSync:
@@ -277,3 +281,11 @@ class TestDatabasesSync:
         assert db_m.namespace == "M"
         db_n = db_admin.get_database()
         assert db_n.namespace is None
+
+    @sync_fail_if_not_removed
+    @pytest.mark.describe("test of database keyspace property, sync")
+    def test_database_keyspace_property_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        assert sync_database.namespace == sync_database.keyspace

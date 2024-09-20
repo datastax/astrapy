@@ -151,7 +151,7 @@ class TestExceptionsAsync:
         with pytest.raises(CollectionNotFoundException) as exc:
             await acol.options()
         assert exc.value.collection_name == acol._name
-        assert exc.value.namespace == async_empty_collection.namespace
+        assert exc.value.namespace == async_empty_collection.keyspace
 
     @pytest.mark.describe("test of collection count_documents failure modes, async")
     async def test_collection_count_documents_failures_async(

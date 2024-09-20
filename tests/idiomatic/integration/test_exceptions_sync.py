@@ -141,7 +141,7 @@ class TestExceptionsSync:
         with pytest.raises(CollectionNotFoundException) as exc:
             col.options()
         assert exc.value.collection_name == col._name
-        assert exc.value.namespace == sync_empty_collection.namespace
+        assert exc.value.namespace == sync_empty_collection.keyspace
 
     @pytest.mark.describe("test of collection count_documents failure modes, sync")
     def test_collection_count_documents_failures_sync(

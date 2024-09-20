@@ -198,7 +198,7 @@ class TestDDLSync:
         sync_collection: Collection,
     ) -> None:
         info = sync_collection.info()
-        assert info.namespace == sync_collection.namespace
+        assert info.namespace == sync_collection.keyspace
         assert info.namespace == sync_collection.database.namespace
 
     @pytest.mark.describe("test of Database list_collections, sync")
@@ -249,7 +249,7 @@ class TestDDLSync:
         assert t_database.namespace == data_api_credentials_kwargs["namespace"]
         assert TEST_COLLECTION_NAME in t_database.list_collection_names()
 
-        t_database.use_namespace(data_api_credentials_info["secondary_namespace"])  # type: ignore[arg-type]
+        t_database.use_namespace(data_api_credentials_info["secondary_namespace"])
         assert t_database != sync_database
         assert t_database.namespace == data_api_credentials_info["secondary_namespace"]
         assert TEST_COLLECTION_NAME not in t_database.list_collection_names()
@@ -307,7 +307,7 @@ class TestDDLSync:
         assert isinstance(cmd1["status"]["count"], int)
         cmd2 = sync_database._copy(namespace="...").command(
             {"countDocuments": {}},
-            namespace=sync_collection.namespace,
+            namespace=sync_collection.keyspace,
             collection_name=sync_collection.name,
         )
         assert cmd2 == cmd1
@@ -321,7 +321,7 @@ class TestDDLSync:
         assert isinstance(cmd1, dict)
         assert isinstance(cmd1["status"]["collections"], list)
         cmd2 = sync_database._copy(namespace="...").command(
-            {"findCollections": {}}, namespace=sync_database.namespace
+            {"findCollections": {}}, namespace=sync_database.keyspace
         )
         assert cmd2 == cmd1
 

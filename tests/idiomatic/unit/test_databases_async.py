@@ -21,7 +21,11 @@ from astrapy.constants import Environment
 from astrapy.defaults import DEFAULT_ASTRA_DB_NAMESPACE
 from astrapy.exceptions import DevOpsAPIException
 
-from ..conftest import TEST_COLLECTION_INSTANCE_NAME, DataAPICredentials
+from ..conftest import (
+    TEST_COLLECTION_INSTANCE_NAME,
+    DataAPICredentials,
+    sync_fail_if_not_removed,
+)
 
 
 class TestDatabasesAsync:
@@ -282,3 +286,11 @@ class TestDatabasesAsync:
         assert db_m.namespace == "M"
         db_n = db_admin.get_async_database()
         assert db_n.namespace is None
+
+    @sync_fail_if_not_removed
+    @pytest.mark.describe("test of database keyspace property, async")
+    def test_database_keyspace_property_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        assert async_database.namespace == async_database.keyspace
