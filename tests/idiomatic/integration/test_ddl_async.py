@@ -189,7 +189,7 @@ class TestDDLAsync:
     ) -> None:
         assert isinstance(async_database.id, str)
         assert isinstance(async_database.name(), str)
-        assert async_database.namespace == data_api_credentials_kwargs["namespace"]
+        assert async_database.keyspace == data_api_credentials_kwargs["namespace"]
         assert isinstance(async_database.info(), DatabaseInfo)
         assert isinstance(async_database.info().raw_info, dict)
 
@@ -251,12 +251,12 @@ class TestDDLAsync:
         # make a copy to avoid mutating the fixture
         at_database = async_database._copy()
         assert at_database == async_database
-        assert at_database.namespace == data_api_credentials_kwargs["namespace"]
+        assert at_database.keyspace == data_api_credentials_kwargs["namespace"]
         assert TEST_COLLECTION_NAME in await at_database.list_collection_names()
 
         at_database.use_namespace(data_api_credentials_info["secondary_namespace"])
         assert at_database != async_database
-        assert at_database.namespace == data_api_credentials_info["secondary_namespace"]
+        assert at_database.keyspace == data_api_credentials_info["secondary_namespace"]
         assert TEST_COLLECTION_NAME not in await at_database.list_collection_names()
 
     @pytest.mark.skipif(

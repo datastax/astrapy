@@ -226,10 +226,10 @@ class Database:
         else:
             token_desc = None
         namespace_desc: Optional[str]
-        if self.namespace is None:
+        if self.keyspace is None:
             namespace_desc = "namespace not set"
         else:
-            namespace_desc = f'namespace="{self.namespace}"'
+            namespace_desc = f'namespace="{self.keyspace}"'
         parts = [pt for pt in [ep_desc, token_desc, namespace_desc] if pt is not None]
         return f"{self.__class__.__name__}({', '.join(parts)})"
 
@@ -241,7 +241,7 @@ class Database:
                     self.api_endpoint == other.api_endpoint,
                     self.api_path == other.api_path,
                     self.api_version == other.api_version,
-                    self.namespace == other.namespace,
+                    self.keyspace == other.namespace,
                     self.caller_name == other.caller_name,
                     self.caller_version == other.caller_version,
                     self.api_commander == other.api_commander,
@@ -311,7 +311,7 @@ class Database:
         return Database(
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            namespace=namespace or self.namespace,
+            namespace=namespace or self.keyspace,
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
             environment=environment or self.environment,
@@ -402,7 +402,7 @@ class Database:
         return AsyncDatabase(
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            namespace=namespace or self.namespace,
+            namespace=namespace or self.keyspace,
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
             environment=environment or self.environment,
@@ -513,7 +513,7 @@ class Database:
         database_info = fetch_database_info(
             self.api_endpoint,
             token=self.token_provider.get_token(),
-            namespace=self.namespace,
+            namespace=self.keyspace,
         )
         if database_info is not None:
             logger.info("finished getting database info")
@@ -793,7 +793,7 @@ class Database:
             if name in existing_names:
                 raise CollectionAlreadyExistsException(
                     text=f"Collection {name} already exists",
-                    namespace=namespace or self.namespace or "(unspecified)",
+                    namespace=namespace or self.keyspace or "(unspecified)",
                     collection_name=name,
                 )
 
@@ -1203,10 +1203,10 @@ class AsyncDatabase:
         else:
             token_desc = None
         namespace_desc: Optional[str]
-        if self.namespace is None:
+        if self.keyspace is None:
             namespace_desc = "namespace not set"
         else:
-            namespace_desc = f'namespace="{self.namespace}"'
+            namespace_desc = f'namespace="{self.keyspace}"'
         parts = [pt for pt in [ep_desc, token_desc, namespace_desc] if pt is not None]
         return f"{self.__class__.__name__}({', '.join(parts)})"
 
@@ -1218,7 +1218,7 @@ class AsyncDatabase:
                     self.api_endpoint == other.api_endpoint,
                     self.api_path == other.api_path,
                     self.api_version == other.api_version,
-                    self.namespace == other.namespace,
+                    self.keyspace == other.namespace,
                     self.caller_name == other.caller_name,
                     self.caller_version == other.caller_version,
                     self.api_commander == other.api_commander,
@@ -1304,7 +1304,7 @@ class AsyncDatabase:
         return AsyncDatabase(
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            namespace=namespace or self.namespace,
+            namespace=namespace or self.keyspace,
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
             environment=environment or self.environment,
@@ -1396,7 +1396,7 @@ class AsyncDatabase:
         return Database(
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            namespace=namespace or self.namespace,
+            namespace=namespace or self.keyspace,
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
             environment=environment or self.environment,
@@ -1507,7 +1507,7 @@ class AsyncDatabase:
         database_info = fetch_database_info(
             self.api_endpoint,
             token=self.token_provider.get_token(),
-            namespace=self.namespace,
+            namespace=self.keyspace,
         )
         if database_info is not None:
             logger.info("finished getting database info")
@@ -1794,7 +1794,7 @@ class AsyncDatabase:
             if name in existing_names:
                 raise CollectionAlreadyExistsException(
                     text=f"Collection {name} already exists",
-                    namespace=namespace or self.namespace or "(unspecified)",
+                    namespace=namespace or self.keyspace or "(unspecified)",
                     collection_name=name,
                 )
 

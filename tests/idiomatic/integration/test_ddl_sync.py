@@ -188,7 +188,7 @@ class TestDDLSync:
     ) -> None:
         assert isinstance(sync_database.id, str)
         assert isinstance(sync_database.name(), str)
-        assert sync_database.namespace == data_api_credentials_kwargs["namespace"]
+        assert sync_database.keyspace == data_api_credentials_kwargs["namespace"]
         assert isinstance(sync_database.info(), DatabaseInfo)
         assert isinstance(sync_database.info().raw_info, dict)
 
@@ -248,12 +248,12 @@ class TestDDLSync:
         # make a copy to avoid mutating the fixture
         t_database = sync_database._copy()
         assert t_database == sync_database
-        assert t_database.namespace == data_api_credentials_kwargs["namespace"]
+        assert t_database.keyspace == data_api_credentials_kwargs["namespace"]
         assert TEST_COLLECTION_NAME in t_database.list_collection_names()
 
         t_database.use_namespace(data_api_credentials_info["secondary_namespace"])
         assert t_database != sync_database
-        assert t_database.namespace == data_api_credentials_info["secondary_namespace"]
+        assert t_database.keyspace == data_api_credentials_info["secondary_namespace"]
         assert TEST_COLLECTION_NAME not in t_database.list_collection_names()
 
     @pytest.mark.skipif(

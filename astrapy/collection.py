@@ -298,7 +298,7 @@ class Collection:
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}(name="{self.name}", '
-            f'namespace="{self.namespace}", database={self.database}, '
+            f'namespace="{self.keyspace}", database={self.database}, '
             f"api_options={self.api_options})"
         )
 
@@ -324,7 +324,7 @@ class Collection:
     def _get_api_commander(self) -> APICommander:
         """Instantiate a new APICommander based on the properties of this class."""
 
-        if self._database.namespace is None:
+        if self._database.keyspace is None:
             raise ValueError(
                 "No namespace specified. Collection requires a namespace to "
                 "be set, e.g. through the `namespace` constructor parameter."
@@ -335,7 +335,7 @@ class Collection:
             for comp in (
                 self._database.api_path.strip("/"),
                 self._database.api_version.strip("/"),
-                self._database.namespace,
+                self._database.keyspace,
                 self._name,
             )
             if comp != ""
@@ -362,7 +362,7 @@ class Collection:
         return Collection(
             database=database or self.database._copy(),
             name=name or self.name,
-            namespace=namespace or self.namespace,
+            namespace=namespace or self.keyspace,
             api_options=self.api_options.with_override(api_options),
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
@@ -488,7 +488,7 @@ class Collection:
         return AsyncCollection(
             database=database or self.database.to_async(),
             name=name or self.name,
-            namespace=namespace or self.namespace,
+            namespace=namespace or self.keyspace,
             api_options=self.api_options.with_override(_api_options),
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
@@ -550,8 +550,8 @@ class Collection:
             return self_descriptors[0].options
         else:
             raise CollectionNotFoundException(
-                text=f"Collection {self.namespace}.{self.name} not found.",
-                namespace=self.namespace,
+                text=f"Collection {self.keyspace}.{self.name} not found.",
+                namespace=self.keyspace,
                 collection_name=self.name,
             )
 
@@ -579,7 +579,7 @@ class Collection:
 
         return CollectionInfo(
             database_info=self.database.info(),
-            namespace=self.namespace,
+            namespace=self.keyspace,
             name=self.name,
             full_name=self.full_name,
         )
@@ -656,7 +656,7 @@ class Collection:
             'default_keyspace.my_v_collection'
         """
 
-        return f"{self.namespace}.{self.name}"
+        return f"{self.keyspace}.{self.name}"
 
     def insert_one(
         self,
@@ -2857,7 +2857,7 @@ class AsyncCollection:
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}(name="{self.name}", '
-            f'namespace="{self.namespace}", database={self.database}, '
+            f'namespace="{self.keyspace}", database={self.database}, '
             f"api_options={self.api_options})"
         )
 
@@ -2883,7 +2883,7 @@ class AsyncCollection:
     def _get_api_commander(self) -> APICommander:
         """Instantiate a new APICommander based on the properties of this class."""
 
-        if self._database.namespace is None:
+        if self._database.keyspace is None:
             raise ValueError(
                 "No namespace specified. AsyncCollection requires a namespace to "
                 "be set, e.g. through the `namespace` constructor parameter."
@@ -2894,7 +2894,7 @@ class AsyncCollection:
             for comp in (
                 self._database.api_path.strip("/"),
                 self._database.api_version.strip("/"),
-                self._database.namespace,
+                self._database.keyspace,
                 self._name,
             )
             if comp != ""
@@ -2937,7 +2937,7 @@ class AsyncCollection:
         return AsyncCollection(
             database=database or self.database._copy(),
             name=name or self.name,
-            namespace=namespace or self.namespace,
+            namespace=namespace or self.keyspace,
             api_options=self.api_options.with_override(api_options),
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
@@ -3063,7 +3063,7 @@ class AsyncCollection:
         return Collection(
             database=database or self.database.to_sync(),
             name=name or self.name,
-            namespace=namespace or self.namespace,
+            namespace=namespace or self.keyspace,
             api_options=self.api_options.with_override(_api_options),
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
@@ -3127,8 +3127,8 @@ class AsyncCollection:
             return self_descriptors[0].options
         else:
             raise CollectionNotFoundException(
-                text=f"Collection {self.namespace}.{self.name} not found.",
-                namespace=self.namespace,
+                text=f"Collection {self.keyspace}.{self.name} not found.",
+                namespace=self.keyspace,
                 collection_name=self.name,
             )
 
@@ -3156,7 +3156,7 @@ class AsyncCollection:
 
         return CollectionInfo(
             database_info=self.database.info(),
-            namespace=self.namespace,
+            namespace=self.keyspace,
             name=self.name,
             full_name=self.full_name,
         )
@@ -3233,7 +3233,7 @@ class AsyncCollection:
             'default_keyspace.my_v_collection'
         """
 
-        return f"{self.namespace}.{self.name}"
+        return f"{self.keyspace}.{self.name}"
 
     async def insert_one(
         self,
