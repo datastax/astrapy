@@ -30,6 +30,7 @@ from ..conftest import (
     TEST_COLLECTION_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
+    sync_fail_if_not_removed,
 )
 
 
@@ -232,6 +233,7 @@ class TestDDLSync:
             namespace=data_api_credentials_info["secondary_namespace"]
         )
 
+    @sync_fail_if_not_removed
     @pytest.mark.skipif(
         SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
     )
@@ -252,6 +254,28 @@ class TestDDLSync:
         t_database.use_namespace(data_api_credentials_info["secondary_namespace"])
         assert t_database != sync_database
         assert t_database.namespace == data_api_credentials_info["secondary_namespace"]
+        assert TEST_COLLECTION_NAME not in t_database.list_collection_names()
+
+    @pytest.mark.skipif(
+        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
+    )
+    @pytest.mark.describe("test of Database use_keyspace, sync")
+    def test_database_use_keyspace_sync(
+        self,
+        sync_database: Database,
+        sync_collection: Collection,
+        data_api_credentials_kwargs: DataAPICredentials,
+        data_api_credentials_info: DataAPICredentialsInfo,
+    ) -> None:
+        # make a copy to avoid mutating the fixture
+        t_database = sync_database._copy()
+        assert t_database == sync_database
+        assert t_database.keyspace == data_api_credentials_kwargs["namespace"]
+        assert TEST_COLLECTION_NAME in t_database.list_collection_names()
+
+        t_database.use_keyspace(data_api_credentials_info["secondary_namespace"])  # type: ignore[arg-type]
+        assert t_database != sync_database
+        assert t_database.keyspace == data_api_credentials_info["secondary_namespace"]
         assert TEST_COLLECTION_NAME not in t_database.list_collection_names()
 
     @pytest.mark.skipif(

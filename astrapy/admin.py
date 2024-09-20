@@ -3428,7 +3428,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             logger.info("finished creating namespace")
             if update_db_namespace:
                 self.spawner_database.use_namespace(name)
-            return cn_response["status"]  # type: ignore[no-any-return]
+            return {k: v for k, v in cn_response["status"].items() if k == "ok"}
 
     def create_keyspace(
         self,
@@ -3497,7 +3497,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             logger.info("finished creating keyspace")
             if update_db_namespace:
                 self.spawner_database.use_keyspace(name)
-            return cn_response["status"]  # type: ignore[no-any-return]
+            return {k: v for k, v in cn_response["status"].items() if k == "ok"}
 
     @deprecation.deprecated(  # type: ignore[misc]
         deprecated_in="1.5.0",
@@ -3548,7 +3548,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished dropping namespace")
-            return dn_response["status"]  # type: ignore[no-any-return]
+            return {k: v for k, v in dn_response["status"].items() if k == "ok"}
 
     def drop_keyspace(
         self,
@@ -3591,7 +3591,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished dropping keyspace")
-            return dn_response["status"]  # type: ignore[no-any-return]
+            return {k: v for k, v in dn_response["status"].items() if k == "ok"}
 
     @deprecation.deprecated(  # type: ignore[misc]
         deprecated_in="1.5.0",
@@ -3741,7 +3741,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             logger.info("finished creating namespace, async")
             if update_db_namespace:
                 self.spawner_database.use_namespace(name)
-            return cn_response["status"]  # type: ignore[no-any-return]
+            return {k: v for k, v in cn_response["status"].items() if k == "ok"}
 
     async def async_create_keyspace(
         self,
@@ -3813,7 +3813,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             logger.info("finished creating keyspace, async")
             if update_db_namespace:
                 self.spawner_database.use_keyspace(name)
-            return cn_response["status"]  # type: ignore[no-any-return]
+            return {k: v for k, v in cn_response["status"].items() if k == "ok"}
 
     @deprecation.deprecated(  # type: ignore[misc]
         deprecated_in="1.5.0",
@@ -3867,7 +3867,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished dropping namespace, async")
-            return dn_response["status"]  # type: ignore[no-any-return]
+            return {k: v for k, v in dn_response["status"].items() if k == "ok"}
 
     async def async_drop_keyspace(
         self,
@@ -3913,7 +3913,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished dropping keyspace, async")
-            return dn_response["status"]  # type: ignore[no-any-return]
+            return {k: v for k, v in dn_response["status"].items() if k == "ok"}
 
     def get_database(
         self,

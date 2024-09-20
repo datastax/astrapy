@@ -1,6 +1,7 @@
 master
 ======
-Deprecation of collection bulk_write method (removed in 2.0)
+Deprecation of all *namespace* method names (removal in 2.0)
+Deprecation of collection bulk_write method (removal in 2.0)
 APICommander logs warnings received from the Data API
 Full removal of "core library" from the current API:
     - DevOps API accessed through APICommander everywhere
@@ -18,6 +19,7 @@ Rearrangement into separate modules for:
     - payload/response transformations
     - (sometimes with temporary duplication to avoid depending on 'core')
 Testing:
+    - testing on HCD targets Data API v 1.0.16
     - added tests for APICommander
     - improved tests for admin classes
 Logging of API requests made more uniform and easier to read
