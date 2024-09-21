@@ -41,7 +41,7 @@ def sync_database(
     database = client.get_database(
         data_api_credentials_kwargs["api_endpoint"],
         token=data_api_credentials_kwargs["token"],
-        namespace=data_api_credentials_kwargs["namespace"],
+        keyspace=data_api_credentials_kwargs["namespace"],
     )
     yield database
 
@@ -70,7 +70,7 @@ def sync_service_collection(
     service_collection_parameters: Dict[str, Any],
 ) -> Iterable[Collection]:
     """
-    An actual collection on DB, in the main namespace.
+    An actual collection on DB, in the main keyspace.
     """
     params = service_collection_parameters
     collection = sync_database.create_collection(

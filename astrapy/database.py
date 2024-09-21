@@ -51,7 +51,7 @@ from astrapy.info import (
     CollectionVectorServiceOptions,
     DatabaseInfo,
 )
-from astrapy.meta import check_optional_namespace_keyspace
+from astrapy.meta import check_namespace_keyspace
 
 if TYPE_CHECKING:
     from astrapy.admin import DatabaseAdmin
@@ -182,7 +182,7 @@ class Database:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> None:
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -316,7 +316,7 @@ class Database:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> Database:
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -362,7 +362,7 @@ class Database:
             ... )
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -419,7 +419,7 @@ class Database:
             >>> asyncio.run(my_async_db.list_collection_names())
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -683,7 +683,7 @@ class Database:
                 my_db["coll_name"]
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -802,7 +802,7 @@ class Database:
             the dimension must be compatible with the chosen service.
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -933,7 +933,7 @@ class Database:
             CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -985,7 +985,7 @@ class Database:
             ['a_collection', 'another_col']
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -1043,7 +1043,7 @@ class Database:
             {'status': {'count': 123}}
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -1217,7 +1217,7 @@ class AsyncDatabase:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> None:
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -1367,7 +1367,7 @@ class AsyncDatabase:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> AsyncDatabase:
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -1413,7 +1413,7 @@ class AsyncDatabase:
             ... )
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -1472,7 +1472,7 @@ class AsyncDatabase:
             ['a_collection', 'another_collection']
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -1739,7 +1739,7 @@ class AsyncDatabase:
                 my_async_db["coll_name"]
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -1862,7 +1862,7 @@ class AsyncDatabase:
             the dimension must be compatible with the chosen service.
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -1994,7 +1994,7 @@ class AsyncDatabase:
             * coll: CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -2046,7 +2046,7 @@ class AsyncDatabase:
             ['a_collection', 'another_col']
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -2107,7 +2107,7 @@ class AsyncDatabase:
             {'status': {'count': 123}}
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )

@@ -67,7 +67,7 @@ class TestDatabasesAsync:
         db1 = AsyncDatabase(
             api_endpoint="api_endpoint",
             token="token",
-            namespace="namespace",
+            keyspace="keyspace",
             caller_name="c_n",
             caller_version="c_v",
             api_path="api_path",
@@ -75,7 +75,7 @@ class TestDatabasesAsync:
         )
         assert db1 != db1._copy(api_endpoint="x")
         assert db1 != db1._copy(token="x")
-        assert db1 != db1._copy(namespace="x")
+        assert db1 != db1._copy(keyspace="x")
         assert db1 != db1._copy(caller_name="x")
         assert db1 != db1._copy(caller_version="x")
         assert db1 != db1._copy(api_path="x")
@@ -84,7 +84,7 @@ class TestDatabasesAsync:
         db2 = db1._copy(
             api_endpoint="x",
             token="x",
-            namespace="x",
+            keyspace="x",
             caller_name="x_n",
             caller_version="x_v",
             api_path="x",
@@ -99,16 +99,14 @@ class TestDatabasesAsync:
         db3 = db2._copy(
             api_endpoint="api_endpoint",
             token="token",
-            namespace="namespace",
+            keyspace="keyspace",
             api_path="api_path",
             api_version="api_version",
         )
         assert db3 == db1
 
-        assert db1.with_options(namespace="x") != db1
-        assert (
-            db1.with_options(namespace="x").with_options(namespace="namespace") == db1
-        )
+        assert db1.with_options(keyspace="x") != db1
+        assert db1.with_options(keyspace="x").with_options(keyspace="keyspace") == db1
         assert db1.with_options(caller_name="x") != db1
         assert db1.with_options(caller_name="x").with_options(caller_name="c_n") == db1
         assert db1.with_options(caller_version="x") != db1
@@ -124,7 +122,7 @@ class TestDatabasesAsync:
         db1 = AsyncDatabase(
             api_endpoint="api_endpoint",
             token="token",
-            namespace="namespace",
+            keyspace="keyspace",
             caller_name="c_n",
             caller_version="c_v",
             api_path="api_path",
@@ -132,7 +130,7 @@ class TestDatabasesAsync:
         )
         assert db1 != db1.to_sync(api_endpoint="o").to_async()
         assert db1 != db1.to_sync(token="o").to_async()
-        assert db1 != db1.to_sync(namespace="o").to_async()
+        assert db1 != db1.to_sync(keyspace="o").to_async()
         assert db1 != db1.to_sync(caller_name="o").to_async()
         assert db1 != db1.to_sync(caller_version="o").to_async()
         assert db1 != db1.to_sync(api_path="o").to_async()
@@ -141,7 +139,7 @@ class TestDatabasesAsync:
         db2s = db1.to_sync(
             api_endpoint="x",
             token="x",
-            namespace="x",
+            keyspace="x",
             caller_name="x_n",
             caller_version="x_v",
             api_path="x",
@@ -156,7 +154,7 @@ class TestDatabasesAsync:
         db3 = db2s.to_async(
             api_endpoint="api_endpoint",
             token="token",
-            namespace="namespace",
+            keyspace="keyspace",
             api_path="api_path",
             api_version="api_version",
         )
@@ -195,14 +193,14 @@ class TestDatabasesAsync:
         assert getattr(async_database, TEST_COLLECTION_INSTANCE_NAME) == collection
         assert async_database[TEST_COLLECTION_INSTANCE_NAME] == collection
 
-        NAMESPACE_2 = "other_namespace"
-        collection_ns2 = await async_database.get_collection(
-            TEST_COLLECTION_INSTANCE_NAME, namespace=NAMESPACE_2
+        NAMESPACE_2 = "other_keyspace"
+        collection_ks2 = await async_database.get_collection(
+            TEST_COLLECTION_INSTANCE_NAME, keyspace=NAMESPACE_2
         )
-        assert collection_ns2 == AsyncCollection(
-            async_database, TEST_COLLECTION_INSTANCE_NAME, namespace=NAMESPACE_2
+        assert collection_ks2 == AsyncCollection(
+            async_database, TEST_COLLECTION_INSTANCE_NAME, keyspace=NAMESPACE_2
         )
-        assert collection_ns2.database.keyspace == NAMESPACE_2
+        assert collection_ks2.database.keyspace == NAMESPACE_2
 
     @pytest.mark.describe("test database conversions with caller mutableness, async")
     async def test_database_conversions_caller_mutableness_async(
@@ -241,51 +239,51 @@ class TestDatabasesAsync:
         with pytest.raises(DevOpsAPIException):
             db2.id
 
-    @pytest.mark.describe("test database default namespace per environment, async")
-    async def test_database_default_namespace_per_environment_async(self) -> None:
+    @pytest.mark.describe("test database default keyspace per environment, async")
+    async def test_database_default_keyspace_per_environment_async(self) -> None:
         db_a_m = AsyncDatabase(
-            "ep", token="t", namespace="M", environment=Environment.PROD
+            "ep", token="t", keyspace="M", environment=Environment.PROD
         )
-        assert db_a_m.namespace == "M"
+        assert db_a_m.keyspace == "M"
         db_o_m = AsyncDatabase(
-            "ep", token="t", namespace="M", environment=Environment.OTHER
+            "ep", token="t", keyspace="M", environment=Environment.OTHER
         )
-        assert db_o_m.namespace == "M"
+        assert db_o_m.keyspace == "M"
         db_a_n = AsyncDatabase("ep", token="t", environment=Environment.PROD)
-        assert db_a_n.namespace == DEFAULT_ASTRA_DB_KEYSPACE
+        assert db_a_n.keyspace == DEFAULT_ASTRA_DB_KEYSPACE
         db_o_n = AsyncDatabase("ep", token="t", environment=Environment.OTHER)
-        assert db_o_n.namespace is None
+        assert db_o_n.keyspace is None
 
     @pytest.mark.describe(
-        "test database-from-client default namespace per environment, async"
+        "test database-from-client default keyspace per environment, async"
     )
-    async def test_database_from_client_default_namespace_per_environment_async(
+    async def test_database_from_client_default_keyspace_per_environment_async(
         self,
     ) -> None:
         client_a = DataAPIClient(environment=Environment.PROD)
-        db_a_m = client_a.get_async_database("ep", region="r", namespace="M")
-        assert db_a_m.namespace == "M"
+        db_a_m = client_a.get_async_database("ep", region="r", keyspace="M")
+        assert db_a_m.keyspace == "M"
         db_a_n = client_a.get_async_database("ep", region="r")
-        assert db_a_n.namespace == DEFAULT_ASTRA_DB_KEYSPACE
+        assert db_a_n.keyspace == DEFAULT_ASTRA_DB_KEYSPACE
 
         client_o = DataAPIClient(environment=Environment.OTHER)
-        db_a_m = client_o.get_async_database("http://a", namespace="M")
-        assert db_a_m.namespace == "M"
+        db_a_m = client_o.get_async_database("http://a", keyspace="M")
+        assert db_a_m.keyspace == "M"
         db_a_n = client_o.get_async_database("http://a")
-        assert db_a_n.namespace is None
+        assert db_a_n.keyspace is None
 
     @pytest.mark.describe(
-        "test database-from-dataapidbadmin default namespace per environment, async"
+        "test database-from-dataapidbadmin default keyspace per environment, async"
     )
-    async def test_database_from_dataapidbadmin_default_namespace_per_environment_async(
+    async def test_database_from_dataapidbadmin_default_keyspace_per_environment_async(
         self,
     ) -> None:
         client = DataAPIClient(environment=Environment.OTHER)
         db_admin = client.get_async_database("http://a").get_database_admin()
-        db_m = db_admin.get_async_database(namespace="M")
-        assert db_m.namespace == "M"
+        db_m = db_admin.get_async_database(keyspace="M")
+        assert db_m.keyspace == "M"
         db_n = db_admin.get_async_database()
-        assert db_n.namespace is None
+        assert db_n.keyspace is None
 
     @sync_fail_if_not_removed
     @pytest.mark.describe("test of database keyspace property, async")

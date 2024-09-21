@@ -53,7 +53,7 @@ class TestTimeoutAsync:
         info = await async_fetch_database_info(
             async_database.api_endpoint,
             token=async_database.token_provider.get_token(),
-            namespace=async_database.keyspace,
+            keyspace=async_database.keyspace,
         )
         assert info is not None
 
@@ -61,7 +61,7 @@ class TestTimeoutAsync:
             info = await async_fetch_database_info(
                 async_database.api_endpoint,
                 token=async_database.token_provider.get_token(),
-                namespace=async_database.keyspace,
+                keyspace=async_database.keyspace,
                 max_time_ms=1,
             )
             assert info is not None

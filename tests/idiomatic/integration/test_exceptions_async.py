@@ -151,7 +151,7 @@ class TestExceptionsAsync:
         with pytest.raises(CollectionNotFoundException) as exc:
             await acol.options()
         assert exc.value.collection_name == acol._name
-        assert exc.value.namespace == async_empty_collection.keyspace
+        assert exc.value.keyspace == async_empty_collection.keyspace
 
     @pytest.mark.describe("test of collection count_documents failure modes, async")
     async def test_collection_count_documents_failures_async(
@@ -298,27 +298,27 @@ class TestExceptionsAsync:
         self,
         async_database: AsyncDatabase,
     ) -> None:
-        f_database = async_database._copy(namespace="nonexisting")
+        f_database = async_database._copy(keyspace="nonexisting")
         if IS_ASTRA_DB:
             with pytest.raises(DataAPIResponseException):
                 await f_database.drop_collection("nonexisting")
         with pytest.raises(DataAPIResponseException):
             await async_database.command(body={"myCommand": {"k": "v"}})
         with pytest.raises(DataAPIResponseException):
-            await async_database.command(body={"myCommand": {"k": "v"}}, namespace="ns")
+            await async_database.command(body={"myCommand": {"k": "v"}}, keyspace="ns")
         with pytest.raises(DataAPIResponseException):
             await async_database.command(
-                body={"myCommand": {"k": "v"}}, namespace="ns", collection_name="coll"
+                body={"myCommand": {"k": "v"}}, keyspace="ns", collection_name="coll"
             )
         with pytest.raises(DataAPIResponseException):
             [
                 coll
                 async for coll in async_database.list_collections(
-                    namespace="nonexisting"
+                    keyspace="nonexisting"
                 )
             ]
         with pytest.raises(DataAPIResponseException):
-            await async_database.list_collection_names(namespace="nonexisting")
+            await async_database.list_collection_names(keyspace="nonexisting")
 
     @pytest.mark.describe("test of database info failures, async")
     async def test_get_database_info_failures_async(
@@ -326,9 +326,9 @@ class TestExceptionsAsync:
         async_database: AsyncDatabase,
         data_api_credentials_kwargs: DataAPICredentials,
     ) -> None:
-        hacked_ns = (data_api_credentials_kwargs["namespace"] or "") + "_hacked"
+        hacked_ks = (data_api_credentials_kwargs["namespace"] or "") + "_hacked"
         with pytest.raises(DevOpsAPIException):
-            async_database._copy(namespace=hacked_ns).info()
+            async_database._copy(keyspace=hacked_ks).info()
 
     @pytest.mark.describe("test of hard exceptions in cursors, async")
     async def test_cursor_hard_exceptions_async(
@@ -372,7 +372,7 @@ class TestExceptionsAsync:
         self,
         async_empty_collection: AsyncCollection,
     ) -> None:
-        awcol = async_empty_collection._copy(namespace="nonexisting")
+        awcol = async_empty_collection._copy(keyspace="nonexisting")
         cur1 = awcol.find({})
         cur2 = awcol.find({})
         cur3 = awcol.find({})
@@ -399,7 +399,7 @@ class TestExceptionsAsync:
         async_database: AsyncDatabase,
     ) -> None:
         with pytest.raises(DataAPIResponseException):
-            async_database.list_collections(namespace="nonexisting")
+            async_database.list_collections(keyspace="nonexisting")
 
         cur1 = async_database.list_collections()
         [doc async for doc in cur1]

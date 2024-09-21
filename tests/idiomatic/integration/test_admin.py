@@ -92,13 +92,13 @@ class TestAdmin:
         - create a db (wait)
         - with the AstraDBDatabaseAdmin:
             - info
-            - list namespaces, check
-            - create 2 namespaces (wait, nonwait)
-            - list namespaces, check
+            - list keyspaces, check
+            - create 2 keyspaces (wait, nonwait)
+            - list keyspaces, check
             - get_database -> create_collection/list_collection_names
             - get_async_database, check if == previous
-            - drop namespaces (wait, nonwait)
-            - list namespaces, check
+            - drop keyspaces (wait, nonwait)
+            - list keyspaces, check
             - drop database (wait)
         - check DB not existings
         """
@@ -123,7 +123,7 @@ class TestAdmin:
         # create a db (wait)
         db_admin = admin.create_database(
             name=db_name,
-            namespace="custom_namespace",
+            keyspace="custom_keyspace",
             wait_until_active=True,
             cloud_provider=db_provider,
             region=db_region,
@@ -134,29 +134,29 @@ class TestAdmin:
         assert db_admin.info().id == created_db_id
 
         # list nss
-        namespaces1 = set(db_admin.list_namespaces())
-        assert namespaces1 == {"custom_namespace"}
+        keyspaces1 = set(db_admin.list_keyspaces())
+        assert keyspaces1 == {"custom_keyspace"}
 
-        # create two namespaces
-        w_create_ns_response = db_admin.create_namespace(
-            "waited_ns",
+        # create two keyspaces
+        w_create_ks_response = db_admin.create_keyspace(
+            "waited_ks",
             wait_until_active=True,
         )
-        assert w_create_ns_response == {"ok": 1}
+        assert w_create_ks_response == {"ok": 1}
 
-        nw_create_ns_response = db_admin.create_namespace(
-            "nonwaited_ns",
+        nw_create_ks_response = db_admin.create_keyspace(
+            "nonwaited_ks",
             wait_until_active=False,
         )
-        assert nw_create_ns_response == {"ok": 1}
+        assert nw_create_ks_response == {"ok": 1}
         wait_until_true(
             poll_interval=NAMESPACE_POLL_SLEEP_TIME,
             max_seconds=NAMESPACE_TIMEOUT,
-            condition=lambda: "nonwaited_ns" in db_admin.list_namespaces(),
+            condition=lambda: "nonwaited_ks" in db_admin.list_keyspaces(),
         )
 
-        namespaces3 = set(db_admin.list_namespaces())
-        assert namespaces3 - namespaces1 == {"waited_ns", "nonwaited_ns"}
+        keyspaces3 = set(db_admin.list_keyspaces())
+        assert keyspaces3 - keyspaces1 == {"waited_ks", "nonwaited_ks"}
 
         # get db and use it
         db = db_admin.get_database()
@@ -167,26 +167,26 @@ class TestAdmin:
         assert db_admin.get_async_database().to_sync() == db
 
         # drop nss, wait, nonwait
-        w_drop_ns_response = db_admin.drop_namespace(
-            "waited_ns",
+        w_drop_ks_response = db_admin.drop_keyspace(
+            "waited_ks",
             wait_until_active=True,
         )
-        assert w_drop_ns_response == {"ok": 1}
+        assert w_drop_ks_response == {"ok": 1}
 
-        nw_drop_ns_response = db_admin.drop_namespace(
-            "nonwaited_ns",
+        nw_drop_ks_response = db_admin.drop_keyspace(
+            "nonwaited_ks",
             wait_until_active=False,
         )
-        assert nw_drop_ns_response == {"ok": 1}
+        assert nw_drop_ks_response == {"ok": 1}
         wait_until_true(
             poll_interval=NAMESPACE_POLL_SLEEP_TIME,
             max_seconds=NAMESPACE_TIMEOUT,
-            condition=lambda: "nonwaited_ns" not in db_admin.list_namespaces(),
+            condition=lambda: "nonwaited_ks" not in db_admin.list_keyspaces(),
         )
 
         # check nss after dropping two of them
-        namespaces1b = set(db_admin.list_namespaces())
-        assert namespaces1b == namespaces1
+        keyspaces1b = set(db_admin.list_keyspaces())
+        assert keyspaces1b == keyspaces1
 
         # drop db and check. We wait a little due to "nontransactional cluster md"
         wait_until_true(
@@ -295,7 +295,7 @@ class TestAdmin:
 
         # get db admin from the admin and use it
         db_w_admin = admin.get_database_admin(created_db_id_w)
-        db_w_admin.create_namespace("additional_namespace")
+        db_w_admin.create_keyspace("additional_keyspace")
         db_w_from_admin = db_w_admin.get_database()
         assert isinstance(db_w_from_admin.list_collection_names(), list)
         adb_w_from_admin = db_w_admin.get_async_database()
@@ -344,13 +344,13 @@ class TestAdmin:
         - create a db (wait)
         - with the AstraDBDatabaseAdmin:
             - info
-            - list namespaces, check
-            - create 2 namespaces (wait, nonwait)
-            - list namespaces, check
+            - list keyspaces, check
+            - create 2 keyspaces (wait, nonwait)
+            - list keyspaces, check
             - get_database -> create_collection/list_collection_names
             - get_async_database, check if == previous
-            - drop namespaces (wait, nonwait)
-            - list namespaces, check
+            - drop keyspaces (wait, nonwait)
+            - list keyspaces, check
             - drop database (wait)
         - check DB not existings
         """
@@ -375,7 +375,7 @@ class TestAdmin:
         # create a db (wait)
         db_admin = await admin.async_create_database(
             name=db_name,
-            namespace="custom_namespace",
+            keyspace="custom_keyspace",
             wait_until_active=True,
             cloud_provider=db_provider,
             region=db_region,
@@ -386,24 +386,24 @@ class TestAdmin:
         assert (await db_admin.async_info()).id == created_db_id
 
         # list nss
-        namespaces1 = set(await db_admin.async_list_namespaces())
-        assert namespaces1 == {"custom_namespace"}
+        keyspaces1 = set(await db_admin.async_list_keyspaces())
+        assert keyspaces1 == {"custom_keyspace"}
 
-        # create two namespaces
-        w_create_ns_response = await db_admin.async_create_namespace(
-            "waited_ns",
+        # create two keyspaces
+        w_create_ks_response = await db_admin.async_create_keyspace(
+            "waited_ks",
             wait_until_active=True,
         )
-        assert w_create_ns_response == {"ok": 1}
+        assert w_create_ks_response == {"ok": 1}
 
-        nw_create_ns_response = await db_admin.async_create_namespace(
-            "nonwaited_ns",
+        nw_create_ks_response = await db_admin.async_create_keyspace(
+            "nonwaited_ks",
             wait_until_active=False,
         )
-        assert nw_create_ns_response == {"ok": 1}
+        assert nw_create_ks_response == {"ok": 1}
 
         async def _awaiter1() -> bool:
-            return "nonwaited_ns" in (await db_admin.async_list_namespaces())
+            return "nonwaited_ks" in (await db_admin.async_list_keyspaces())
 
         await await_until_true(
             poll_interval=NAMESPACE_POLL_SLEEP_TIME,
@@ -411,8 +411,8 @@ class TestAdmin:
             acondition=_awaiter1,
         )
 
-        namespaces3 = set(await db_admin.async_list_namespaces())
-        assert namespaces3 - namespaces1 == {"waited_ns", "nonwaited_ns"}
+        keyspaces3 = set(await db_admin.async_list_keyspaces())
+        assert keyspaces3 - keyspaces1 == {"waited_ks", "nonwaited_ks"}
 
         # get db and use it
         adb = db_admin.get_async_database()
@@ -423,21 +423,21 @@ class TestAdmin:
         assert db_admin.get_database().to_async() == adb
 
         # drop nss, wait, nonwait
-        w_drop_ns_response = await db_admin.async_drop_namespace(
-            "waited_ns",
+        w_drop_ks_response = await db_admin.async_drop_keyspace(
+            "waited_ks",
             wait_until_active=True,
         )
-        assert w_drop_ns_response == {"ok": 1}
+        assert w_drop_ks_response == {"ok": 1}
 
-        nw_drop_ns_response = await db_admin.async_drop_namespace(
-            "nonwaited_ns",
+        nw_drop_ks_response = await db_admin.async_drop_keyspace(
+            "nonwaited_ks",
             wait_until_active=False,
         )
-        assert nw_drop_ns_response == {"ok": 1}
+        assert nw_drop_ks_response == {"ok": 1}
 
         async def _awaiter2() -> bool:
-            ns_list = await db_admin.async_list_namespaces()
-            return "nonwaited_ns" not in ns_list
+            ks_list = await db_admin.async_list_keyspaces()
+            return "nonwaited_ks" not in ks_list
 
         await await_until_true(
             poll_interval=NAMESPACE_POLL_SLEEP_TIME,
@@ -446,8 +446,8 @@ class TestAdmin:
         )
 
         # check nss after dropping two of them
-        namespaces1b = set(await db_admin.async_list_namespaces())
-        assert namespaces1b == namespaces1
+        keyspaces1b = set(await db_admin.async_list_keyspaces())
+        assert keyspaces1b == keyspaces1
 
         async def _awaiter3() -> bool:
             a_info = await db_admin.async_info()
@@ -560,7 +560,7 @@ class TestAdmin:
 
         # get db admin from the admin and use it
         db_w_admin = admin.get_database_admin(created_db_id_w)
-        await db_w_admin.async_create_namespace("additional_namespace")
+        await db_w_admin.async_create_keyspace("additional_keyspace")
         adb_w_from_admin = db_w_admin.get_async_database()
         assert isinstance(await adb_w_from_admin.list_collection_names(), list)
         db_w_from_admin = db_w_admin.get_database()
@@ -606,7 +606,7 @@ class TestAdmin:
         )
 
     @pytest.mark.describe(
-        "test of the update_db_namespace flag for AstraDBDatabaseAdmin, sync"
+        "test of the update_db_keyspace flag for AstraDBDatabaseAdmin, sync"
     )
     def test_astra_updatedbnamespace_sync(self, sync_database: Database) -> None:
         NEW_KS_NAME_NOT_UPDATED = "tnudn_notupd"

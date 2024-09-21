@@ -70,7 +70,7 @@ from astrapy.exceptions import (
     base_timeout_info,
 )
 from astrapy.info import CollectionInfo, CollectionOptions
-from astrapy.meta import check_deprecated_vector_ize, check_optional_namespace_keyspace
+from astrapy.meta import check_deprecated_vector_ize, check_namespace_keyspace
 from astrapy.results import (
     BulkWriteResult,
     DeleteResult,
@@ -273,7 +273,7 @@ class Collection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -367,7 +367,7 @@ class Collection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -494,7 +494,7 @@ class Collection:
             77
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -2849,7 +2849,7 @@ class AsyncCollection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -2961,7 +2961,7 @@ class AsyncCollection:
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -3088,7 +3088,7 @@ class AsyncCollection:
             77
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )

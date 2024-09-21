@@ -73,14 +73,14 @@ class TestCollectionsAsync:
         )
         assert col1 != col1._copy(database=async_database._copy(token="x_t"))
         assert col1 != col1._copy(name="o")
-        assert col1 != col1._copy(namespace="o")
+        assert col1 != col1._copy(keyspace="o")
         assert col1 != col1._copy(caller_name="o")
         assert col1 != col1._copy(caller_version="o")
 
         col2 = col1._copy(
             database=async_database._copy(token="x_t"),
             name="other_name",
-            namespace="other_namespace",
+            keyspace="other_keyspace",
             caller_name="x_n",
             caller_version="x_v",
         )
@@ -93,7 +93,7 @@ class TestCollectionsAsync:
         col3 = col2._copy(
             database=async_database,
             name="id_test_collection",
-            namespace=async_database.keyspace,
+            keyspace=async_database.keyspace,
         )
         assert col3 == col1
 
@@ -129,14 +129,14 @@ class TestCollectionsAsync:
             ).to_async()
         )
         assert col1 != col1.to_sync(name="o").to_async()
-        assert col1 != col1.to_sync(namespace="o").to_async()
+        assert col1 != col1.to_sync(keyspace="o").to_async()
         assert col1 != col1.to_sync(caller_name="o").to_async()
         assert col1 != col1.to_sync(caller_version="o").to_async()
 
         col2s = col1.to_sync(
             database=async_database._copy(token="x_t").to_sync(),
             name="other_name",
-            namespace="other_namespace",
+            keyspace="other_keyspace",
             caller_name="x_n",
             caller_version="x_v",
         )
@@ -149,7 +149,7 @@ class TestCollectionsAsync:
         col3 = col2s.to_async(
             database=async_database,
             name="id_test_collection",
-            namespace=async_database.keyspace,
+            keyspace=async_database.keyspace,
         )
         assert col3 == col1
 
@@ -157,10 +157,10 @@ class TestCollectionsAsync:
     async def test_collection_database_property_async(
         self,
     ) -> None:
-        db1 = AsyncDatabase("a", "t", namespace="ns1")
-        db2 = AsyncDatabase("a", "t", namespace="ns2")
+        db1 = AsyncDatabase("a", "t", keyspace="ns1")
+        db2 = AsyncDatabase("a", "t", keyspace="ns2")
         col1 = AsyncCollection(db1, "coll")
-        col2 = AsyncCollection(db1, "coll", namespace="ns2")
+        col2 = AsyncCollection(db1, "coll", keyspace="ns2")
         assert col1.database == db1
         assert col2.database == db2
 
@@ -168,7 +168,7 @@ class TestCollectionsAsync:
     async def test_collection_name_property_async(
         self,
     ) -> None:
-        db1 = AsyncDatabase("a", "t", namespace="ns1")
+        db1 = AsyncDatabase("a", "t", keyspace="ns1")
         col1 = AsyncCollection(db1, "coll")
         assert col1.name == "coll"
 
@@ -221,7 +221,7 @@ class TestCollectionsAsync:
 
     @async_fail_if_not_removed
     @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
+        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
     )
     @pytest.mark.describe("test collection namespace property, async")
     async def test_collection_namespace_async(

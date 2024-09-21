@@ -57,10 +57,7 @@ from astrapy.exceptions import (
     base_timeout_info,
 )
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo, FindEmbeddingProvidersResult
-from astrapy.meta import (
-    check_optional_namespace_keyspace,
-    check_update_db_namespace_keyspace,
-)
+from astrapy.meta import check_namespace_keyspace, check_update_db_namespace_keyspace
 from astrapy.request_tools import HttpMethod
 
 if TYPE_CHECKING:
@@ -324,7 +321,7 @@ def fetch_database_info(
         For valid-looking endpoints, if something goes wrong an exception is raised.
     """
 
-    keyspace_param = check_optional_namespace_keyspace(
+    keyspace_param = check_namespace_keyspace(
         keyspace=keyspace,
         namespace=namespace,
     )
@@ -379,7 +376,7 @@ async def async_fetch_database_info(
         For valid-looking endpoints, if something goes wrong an exception is raised.
     """
 
-    keyspace_param = check_optional_namespace_keyspace(
+    keyspace_param = check_namespace_keyspace(
         keyspace=keyspace,
         namespace=namespace,
     )
@@ -941,7 +938,7 @@ class AstraDBAdmin:
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.2]})
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -1055,7 +1052,7 @@ class AstraDBAdmin:
             AstraDBDatabaseAdmin(id=...)
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -1405,7 +1402,7 @@ class AstraDBAdmin:
             `create_database` method of class AstraDBAdmin.
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -1471,7 +1468,7 @@ class AstraDBAdmin:
         counterpart `get_database`: please see that one for more details.
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -3023,7 +3020,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             see the AstraDBAdmin class.
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -3068,7 +3065,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         counterpart `get_database`: please see that one for more details.
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -4089,7 +4086,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             of the database itself, which should exist beforehand.
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -4125,7 +4122,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         counterpart `get_database`: please see that one for more details.
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )

@@ -50,14 +50,14 @@ def live_provider_info() -> FindEmbeddingProvidersResult:
         database = client.get_database(
             ASTRA_DB_API_ENDPOINT,
             token=ASTRA_DB_TOKEN_PROVIDER,
-            namespace=ASTRA_DB_KEYSPACE,
+            keyspace=ASTRA_DB_KEYSPACE,
         )
     else:
         client = DataAPIClient(environment=Environment.OTHER)
         database = client.get_database(
             LOCAL_DATA_API_ENDPOINT,
             token=LOCAL_DATA_API_TOKEN_PROVIDER,
-            namespace=LOCAL_DATA_API_KEYSPACE,
+            keyspace=LOCAL_DATA_API_KEYSPACE,
         )
 
     database_admin = database.get_database_admin()

@@ -73,14 +73,14 @@ class TestCollectionsSync:
         )
         assert col1 != col1._copy(database=sync_database._copy(token="x_t"))
         assert col1 != col1._copy(name="o")
-        assert col1 != col1._copy(namespace="o")
+        assert col1 != col1._copy(keyspace="o")
         assert col1 != col1._copy(caller_name="o")
         assert col1 != col1._copy(caller_version="o")
 
         col2 = col1._copy(
             database=sync_database._copy(token="x_t"),
             name="other_name",
-            namespace="other_namespace",
+            keyspace="other_keyspace",
             caller_name="x_n",
             caller_version="x_v",
         )
@@ -93,7 +93,7 @@ class TestCollectionsSync:
         col3 = col2._copy(
             database=sync_database,
             name="id_test_collection",
-            namespace=sync_database.keyspace,
+            keyspace=sync_database.keyspace,
         )
         assert col3 == col1
 
@@ -129,14 +129,14 @@ class TestCollectionsSync:
             ).to_sync()
         )
         assert col1 != col1.to_async(name="o").to_sync()
-        assert col1 != col1.to_async(namespace="o").to_sync()
+        assert col1 != col1.to_async(keyspace="o").to_sync()
         assert col1 != col1.to_async(caller_name="o").to_sync()
         assert col1 != col1.to_async(caller_version="o").to_sync()
 
         col2a = col1.to_async(
             database=sync_database._copy(token="x_t").to_async(),
             name="other_name",
-            namespace="other_namespace",
+            keyspace="other_keyspace",
             caller_name="x_n",
             caller_version="x_v",
         )
@@ -149,7 +149,7 @@ class TestCollectionsSync:
         col3 = col2a.to_sync(
             database=sync_database,
             name="id_test_collection",
-            namespace=sync_database.keyspace,
+            keyspace=sync_database.keyspace,
         )
         assert col3 == col1
 
@@ -157,10 +157,10 @@ class TestCollectionsSync:
     def test_collection_database_property_sync(
         self,
     ) -> None:
-        db1 = Database("a", "t", namespace="ns1")
-        db2 = Database("a", "t", namespace="ns2")
+        db1 = Database("a", "t", keyspace="ns1")
+        db2 = Database("a", "t", keyspace="ns2")
         col1 = Collection(db1, "coll")
-        col2 = Collection(db1, "coll", namespace="ns2")
+        col2 = Collection(db1, "coll", keyspace="ns2")
         assert col1.database == db1
         assert col2.database == db2
 
@@ -168,7 +168,7 @@ class TestCollectionsSync:
     def test_collection_name_property_sync(
         self,
     ) -> None:
-        db1 = Database("a", "t", namespace="ns1")
+        db1 = Database("a", "t", keyspace="ns1")
         col1 = Collection(db1, "coll")
         assert col1.name == "coll"
 

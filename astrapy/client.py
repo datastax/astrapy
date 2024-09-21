@@ -31,7 +31,7 @@ from astrapy.admin import (
 )
 from astrapy.authentication import coerce_token_provider, redact_secret
 from astrapy.constants import Environment
-from astrapy.meta import check_optional_namespace_keyspace
+from astrapy.meta import check_namespace_keyspace
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
@@ -273,7 +273,7 @@ class DataAPIClient:
             `create_database` method of class AstraDBAdmin.
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -367,7 +367,7 @@ class DataAPIClient:
         counterpart `get_database`: please see that one for more details.
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -435,7 +435,7 @@ class DataAPIClient:
             `create_database` method of class AstraDBAdmin.
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
@@ -507,7 +507,7 @@ class DataAPIClient:
         for more details.
         """
 
-        keyspace_param = check_optional_namespace_keyspace(
+        keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )

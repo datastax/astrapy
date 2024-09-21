@@ -69,7 +69,7 @@ def check_deprecated_vector_ize(
         )
 
 
-def check_optional_namespace_keyspace(
+def check_namespace_keyspace(
     keyspace: Optional[str],
     namespace: Optional[str],
 ) -> Optional[str]:

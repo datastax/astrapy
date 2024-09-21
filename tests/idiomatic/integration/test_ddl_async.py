@@ -200,8 +200,8 @@ class TestDDLAsync:
         async_collection: AsyncCollection,
     ) -> None:
         info = async_collection.info()
-        assert info.namespace == async_collection.keyspace
-        assert info.namespace == async_collection.database.namespace
+        assert info.keyspace == async_collection.keyspace
+        assert info.keyspace == async_collection.database.keyspace
 
     @pytest.mark.describe("test of Database list_collections, async")
     async def test_database_list_collections_async(
@@ -221,24 +221,22 @@ class TestDDLAsync:
         assert options.vector.dimension == 2
 
     @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
+        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
     )
-    @pytest.mark.describe(
-        "test of Database list_collections on cross-namespaces, async"
-    )
-    async def test_database_list_collections_cross_namespace_async(
+    @pytest.mark.describe("test of Database list_collections on cross-keyspaces, async")
+    async def test_database_list_collections_cross_keyspace_async(
         self,
         async_database: AsyncDatabase,
         async_collection: AsyncCollection,
         data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
         assert TEST_COLLECTION_NAME not in await async_database.list_collection_names(
-            namespace=data_api_credentials_info["secondary_namespace"]
+            keyspace=data_api_credentials_info["secondary_namespace"]
         )
 
     @async_fail_if_not_removed
     @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
+        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
     )
     @pytest.mark.describe("test of Database use_namespace, async")
     async def test_database_use_namespace_async(
@@ -282,30 +280,30 @@ class TestDDLAsync:
         assert TEST_COLLECTION_NAME not in await at_database.list_collection_names()
 
     @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
+        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
     )
-    @pytest.mark.describe("test of cross-namespace collection lifecycle, async")
-    async def test_collection_namespace_async(
+    @pytest.mark.describe("test of cross-keyspace collection lifecycle, async")
+    async def test_collection_keyspace_async(
         self,
         async_database: AsyncDatabase,
         client: DataAPIClient,
         data_api_credentials_kwargs: DataAPICredentials,
         data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
-        TEST_LOCAL_COLLECTION_NAME1 = "test_crossns_coll1"
-        TEST_LOCAL_COLLECTION_NAME2 = "test_crossns_coll2"
+        TEST_LOCAL_COLLECTION_NAME1 = "test_crossks_coll1"
+        TEST_LOCAL_COLLECTION_NAME2 = "test_crossks_coll2"
         database_on_secondary = client.get_async_database(
             data_api_credentials_kwargs["api_endpoint"],
             token=data_api_credentials_kwargs["token"],
-            namespace=data_api_credentials_info["secondary_namespace"],
+            keyspace=data_api_credentials_info["secondary_namespace"],
         )
         await async_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME1,
-            namespace=data_api_credentials_info["secondary_namespace"],
+            keyspace=data_api_credentials_info["secondary_namespace"],
         )
         col2_on_secondary = await async_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME2,
-            namespace=data_api_credentials_info["secondary_namespace"],
+            keyspace=data_api_credentials_info["secondary_namespace"],
         )
         assert (
             TEST_LOCAL_COLLECTION_NAME1
@@ -333,9 +331,9 @@ class TestDDLAsync:
         )
         assert isinstance(cmd1, dict)
         assert isinstance(cmd1["status"]["count"], int)
-        cmd2 = await async_database._copy(namespace="...").command(
+        cmd2 = await async_database._copy(keyspace="...").command(
             {"countDocuments": {}},
-            namespace=async_collection.keyspace,
+            keyspace=async_collection.keyspace,
             collection_name=async_collection.name,
         )
         assert cmd2 == cmd1
@@ -348,8 +346,8 @@ class TestDDLAsync:
         cmd1 = await async_database.command({"findCollections": {}})
         assert isinstance(cmd1, dict)
         assert isinstance(cmd1["status"]["collections"], list)
-        cmd2 = await async_database._copy(namespace="...").command(
-            {"findCollections": {}}, namespace=async_database.keyspace
+        cmd2 = await async_database._copy(keyspace="...").command(
+            {"findCollections": {}}, keyspace=async_database.keyspace
         )
         assert cmd2 == cmd1
 
@@ -374,16 +372,16 @@ class TestDDLAsync:
         a_database = client.get_async_database(
             api_endpoint,
             token=token,
-            namespace=data_api_credentials_kwargs["namespace"],
+            keyspace=data_api_credentials_kwargs["namespace"],
         )
         coll_names = await a_database.list_collection_names()
         assert isinstance(coll_names, list)
 
     @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.describe(
-        "test database-from-admin default namespace per environment, async"
+        "test database-from-admin default keyspace per environment, async"
     )
-    async def test_database_from_admin_default_namespace_per_environment_async(
+    async def test_database_from_admin_default_keyspace_per_environment_async(
         self,
         data_api_credentials_kwargs: DataAPICredentials,
         data_api_credentials_info: DataAPICredentialsInfo,
@@ -392,17 +390,17 @@ class TestDDLAsync:
         admin = client.get_admin(token=data_api_credentials_kwargs["token"])
         db_m = admin.get_async_database(
             data_api_credentials_kwargs["api_endpoint"],
-            namespace="M",
+            keyspace="M",
         )
-        assert db_m.namespace == "M"
+        assert db_m.keyspace == "M"
         db_n = admin.get_async_database(data_api_credentials_kwargs["api_endpoint"])
-        assert isinstance(db_n.namespace, str)  # i.e. resolution took place
+        assert isinstance(db_n.keyspace, str)  # i.e. resolution took place
 
     @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.describe(
-        "test database-from-astradbadmin default namespace per environment, async"
+        "test database-from-astradbadmin default keyspace per environment, async"
     )
-    async def test_database_from_astradbadmin_default_namespace_per_environment_async(
+    async def test_database_from_astradbadmin_default_keyspace_per_environment_async(
         self,
         data_api_credentials_kwargs: DataAPICredentials,
         data_api_credentials_info: DataAPICredentialsInfo,
@@ -410,7 +408,7 @@ class TestDDLAsync:
         client = DataAPIClient(environment=data_api_credentials_info["environment"])
         admin = client.get_admin(token=data_api_credentials_kwargs["token"])
         db_admin = admin.get_database_admin(data_api_credentials_kwargs["api_endpoint"])
-        db_m = db_admin.get_async_database(namespace="M")
-        assert db_m.namespace == "M"
+        db_m = db_admin.get_async_database(keyspace="M")
+        assert db_m.keyspace == "M"
         db_n = db_admin.get_async_database()
-        assert isinstance(db_n.namespace, str)  # i.e. resolution took place
+        assert isinstance(db_n.keyspace, str)  # i.e. resolution took place
