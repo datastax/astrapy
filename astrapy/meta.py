@@ -20,6 +20,8 @@ from typing import Any, Optional
 from deprecation import DeprecatedWarning
 
 from astrapy.defaults import (
+    NAMESPACE_DEPRECATION_NOTICE_NS_DETAILS,
+    NAMESPACE_DEPRECATION_NOTICE_NS_SUBJECT,
     NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_DETAILS,
     NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_SUBJECT,
 )
@@ -65,6 +67,40 @@ def check_deprecated_vector_ize(
             the_warning,
             stacklevel=3,
         )
+
+
+def check_optional_namespace_keyspace(
+    keyspace: Optional[str],
+    namespace: Optional[str],
+) -> Optional[str]:
+    # normalize the two aliased parameter names, raising deprecation
+    # when needed and an error if both parameter supplied.
+    # The returned value is the final one for the parameter.
+
+    if namespace is None:
+        # no need for deprecation nor exceptions
+        return keyspace
+    else:
+        # issue a deprecation warning
+        the_warning = DeprecatedWarning(
+            NAMESPACE_DEPRECATION_NOTICE_NS_SUBJECT,
+            deprecated_in="1.5.0",
+            removed_in="2.0.0",
+            details=NAMESPACE_DEPRECATION_NOTICE_NS_DETAILS,
+        )
+        warnings.warn(
+            the_warning,
+            stacklevel=3,
+        )
+
+        if keyspace is None:
+            return namespace
+        else:
+            msg = (
+                "Parameters `keyspace` and `namespace` "
+                "(a deprecated alias for the former) cannot be passed at the same time."
+            )
+            raise ValueError(msg)
 
 
 def check_update_db_namespace_keyspace(

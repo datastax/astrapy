@@ -57,7 +57,10 @@ from astrapy.exceptions import (
     base_timeout_info,
 )
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo, FindEmbeddingProvidersResult
-from astrapy.meta import check_update_db_namespace_keyspace
+from astrapy.meta import (
+    check_optional_namespace_keyspace,
+    check_update_db_namespace_keyspace,
+)
 from astrapy.request_tools import HttpMethod
 
 if TYPE_CHECKING:
@@ -300,7 +303,8 @@ async def async_fetch_raw_database_info_from_id_token(
 def fetch_database_info(
     api_endpoint: str,
     token: Optional[str],
-    namespace: Optional[str],
+    keyspace: Optional[str] = None,
+    namespace: Optional[str] = None,
     max_time_ms: Optional[int] = None,
 ) -> Optional[DatabaseInfo]:
     """
@@ -309,8 +313,9 @@ def fetch_database_info(
     Args:
         api_endpoint: a full API endpoint for the Data Api.
         token: a valid token to access the database information.
-        namespace: the desired namespace that will be used in the result.
+        keyspace: the desired keyspace that will be used in the result.
             If not specified, the resulting database info will show it as None.
+        namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
         max_time_ms: a timeout, in milliseconds, for waiting on a response.
 
     Returns:
@@ -318,6 +323,11 @@ def fetch_database_info(
         If the API endpoint fails to be parsed, None is returned.
         For valid-looking endpoints, if something goes wrong an exception is raised.
     """
+
+    keyspace_param = check_optional_namespace_keyspace(
+        keyspace=keyspace,
+        namespace=namespace,
+    )
 
     parsed_endpoint = parse_api_endpoint(api_endpoint)
     if parsed_endpoint:
@@ -328,14 +338,14 @@ def fetch_database_info(
             max_time_ms=max_time_ms,
         )
         raw_info = gd_response["info"]
-        if namespace is not None and namespace not in raw_info["keyspaces"]:
-            raise DevOpsAPIException(f"Namespace {namespace} not found on DB.")
+        if keyspace_param is not None and keyspace_param not in raw_info["keyspaces"]:
+            raise DevOpsAPIException(f"Keyspace {keyspace_param} not found on DB.")
         else:
             return DatabaseInfo(
                 id=parsed_endpoint.database_id,
                 region=parsed_endpoint.region,
-                keyspace=namespace,
-                namespace=namespace,
+                keyspace=keyspace_param,
+                namespace=keyspace_param,
                 name=raw_info["name"],
                 environment=parsed_endpoint.environment,
                 raw_info=raw_info,
@@ -347,7 +357,8 @@ def fetch_database_info(
 async def async_fetch_database_info(
     api_endpoint: str,
     token: Optional[str],
-    namespace: Optional[str],
+    keyspace: Optional[str] = None,
+    namespace: Optional[str] = None,
     max_time_ms: Optional[int] = None,
 ) -> Optional[DatabaseInfo]:
     """
@@ -357,8 +368,9 @@ async def async_fetch_database_info(
     Args:
         api_endpoint: a full API endpoint for the Data Api.
         token: a valid token to access the database information.
-        namespace: the desired namespace that will be used in the result.
+        keyspace: the desired keyspace that will be used in the result.
             If not specified, the resulting database info will show it as None.
+        namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
         max_time_ms: a timeout, in milliseconds, for waiting on a response.
 
     Returns:
@@ -366,6 +378,11 @@ async def async_fetch_database_info(
         If the API endpoint fails to be parsed, None is returned.
         For valid-looking endpoints, if something goes wrong an exception is raised.
     """
+
+    keyspace_param = check_optional_namespace_keyspace(
+        keyspace=keyspace,
+        namespace=namespace,
+    )
 
     parsed_endpoint = parse_api_endpoint(api_endpoint)
     if parsed_endpoint:
@@ -376,14 +393,14 @@ async def async_fetch_database_info(
             max_time_ms=max_time_ms,
         )
         raw_info = gd_response["info"]
-        if namespace is not None and namespace not in raw_info["keyspaces"]:
-            raise DevOpsAPIException(f"Namespace {namespace} not found on DB.")
+        if keyspace_param is not None and keyspace_param not in raw_info["keyspaces"]:
+            raise DevOpsAPIException(f"Keyspace {keyspace_param} not found on DB.")
         else:
             return DatabaseInfo(
                 id=parsed_endpoint.database_id,
                 region=parsed_endpoint.region,
-                keyspace=namespace,
-                namespace=namespace,
+                keyspace=keyspace_param,
+                namespace=keyspace_param,
                 name=raw_info["name"],
                 environment=parsed_endpoint.environment,
                 raw_info=raw_info,
@@ -885,6 +902,7 @@ class AstraDBAdmin:
         *,
         cloud_provider: str,
         region: str,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         wait_until_active: bool = True,
         max_time_ms: Optional[int] = None,
@@ -896,8 +914,9 @@ class AstraDBAdmin:
             name: the desired name for the database.
             cloud_provider: one of 'aws', 'gcp' or 'azure'.
             region: any of the available cloud regions.
-            namespace: name for the one namespace the database starts with.
+            keyspace: name for the one keyspace the database starts with.
                 If omitted, DevOps API will use its default.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             wait_until_active: if True (default), the method returns only after
                 the newly-created database is in ACTIVE state (a few minutes,
                 usually). If False, it will return right after issuing the
@@ -922,6 +941,11 @@ class AstraDBAdmin:
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.2]})
         """
 
+        keyspace_param = check_optional_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         cd_payload = {
             k: v
             for k, v in {
@@ -931,7 +955,7 @@ class AstraDBAdmin:
                 "region": region,
                 "capacityUnits": 1,
                 "dbType": "vector",
-                "keyspace": namespace,
+                "keyspace": keyspace_param,
             }.items()
             if v is not None
         }
@@ -991,6 +1015,7 @@ class AstraDBAdmin:
         *,
         cloud_provider: str,
         region: str,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         wait_until_active: bool = True,
         max_time_ms: Optional[int] = None,
@@ -1003,8 +1028,9 @@ class AstraDBAdmin:
             name: the desired name for the database.
             cloud_provider: one of 'aws', 'gcp' or 'azure'.
             region: any of the available cloud regions.
-            namespace: name for the one namespace the database starts with.
+            keyspace: name for the one keyspace the database starts with.
                 If omitted, DevOps API will use its default.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             wait_until_active: if True (default), the method returns only after
                 the newly-created database is in ACTIVE state (a few minutes,
                 usually). If False, it will return right after issuing the
@@ -1029,6 +1055,11 @@ class AstraDBAdmin:
             AstraDBDatabaseAdmin(id=...)
         """
 
+        keyspace_param = check_optional_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         cd_payload = {
             k: v
             for k, v in {
@@ -1038,7 +1069,7 @@ class AstraDBAdmin:
                 "region": region,
                 "capacityUnits": 1,
                 "dbType": "vector",
-                "keyspace": namespace,
+                "keyspace": keyspace_param,
             }.items()
             if v is not None
         }
@@ -1318,6 +1349,7 @@ class AstraDBAdmin:
         *,
         api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -1338,10 +1370,11 @@ class AstraDBAdmin:
                 the one set for this object.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            namespace: used to specify a certain namespace the resulting
+            keyspace: used to specify a certain keyspace the resulting
                 Database will primarily work on. If not specified, similar
                 as for `region`, an additional DevOps API call reveals
-                the default namespace for the target database.
+                the default keyspace for the target database.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             region: the region to use for connecting to the database. The
                 database must be located in that region.
                 The region cannot be specified when the API endoint is used as `id`.
@@ -1372,6 +1405,11 @@ class AstraDBAdmin:
             `create_database` method of class AstraDBAdmin.
         """
 
+        keyspace_param = check_optional_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
@@ -1388,8 +1426,8 @@ class AstraDBAdmin:
         )
 
         _keyspace: Optional[str]
-        if namespace:
-            _keyspace = namespace
+        if keyspace_param:
+            _keyspace = keyspace_param
         else:
             parsed_api_endpoint = parse_api_endpoint(normalized_api_endpoint)
             if parsed_api_endpoint is None:
@@ -1400,7 +1438,7 @@ class AstraDBAdmin:
                 parsed_api_endpoint.database_id,
                 max_time_ms=max_time_ms,
             )
-            _keyspace = this_db_info.info.namespace
+            _keyspace = this_db_info.info.keyspace
 
         return Database(
             api_endpoint=normalized_api_endpoint,
@@ -1419,6 +1457,7 @@ class AstraDBAdmin:
         *,
         api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -1436,6 +1475,7 @@ class AstraDBAdmin:
             id=id,
             api_endpoint=api_endpoint,
             token=token,
+            keyspace=keyspace,
             namespace=namespace,
             region=region,
             api_path=api_path,
@@ -2939,6 +2979,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -2954,8 +2995,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 a least-privilege manner, limiting the permissions for non-admin work.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            namespace: an optional namespace to set in the resulting Database.
+            keyspace: an optional keyspace to set in the resulting Database.
                 The same default logic as for `AstraDBAdmin.get_database` applies.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             region: *This parameter is deprecated and should not be used.*
                 Ignored in the method.
             api_path: path to append to the API Endpoint. In typical usage, this
@@ -2977,6 +3019,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             see the AstraDBAdmin class.
         """
 
+        keyspace_param = check_optional_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         if region is not None:
             the_warning = deprecation.DeprecatedWarning(
                 "The 'region' parameter is deprecated in this method and will be ignored.",
@@ -2992,7 +3039,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         return self._astra_db_admin.get_database(
             id=self.api_endpoint,
             token=token,
-            namespace=namespace,
+            keyspace=keyspace_param,
             api_path=api_path,
             api_version=api_version,
             max_time_ms=max_time_ms,
@@ -3002,6 +3049,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -3018,6 +3066,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         return self.get_database(
             token=token,
+            keyspace=keyspace,
             namespace=namespace,
             region=region,
             api_path=api_path,
@@ -3995,6 +4044,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -4008,9 +4058,10 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 a least-privilege manner, limiting the permissions for non-admin work.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            namespace: an optional namespace to set in the resulting Database.
-                If not provided, no namespace is set, limiting what the Database
-                can do until setting it with e.g. a `useNamespace` method call.
+            keyspace: an optional keyspace to set in the resulting Database.
+                If not provided, no keyspace is set, limiting what the Database
+                can do until setting it with e.g. a `use_keyspace` method call.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "".
             api_version: version specifier to append to the API path. In typical
@@ -4029,13 +4080,18 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             of the database itself, which should exist beforehand.
         """
 
+        keyspace_param = check_optional_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
         return Database(
             api_endpoint=self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            namespace=namespace,
+            keyspace=keyspace_param,
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             environment=self.environment,
@@ -4047,6 +4103,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -4060,6 +4117,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         """
         return self.get_database(
             token=token,
+            keyspace=keyspace,
             namespace=namespace,
             api_path=api_path,
             api_version=api_version,

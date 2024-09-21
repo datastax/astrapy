@@ -31,6 +31,7 @@ from astrapy.admin import (
 )
 from astrapy.authentication import coerce_token_provider, redact_secret
 from astrapy.constants import Environment
+from astrapy.meta import check_optional_namespace_keyspace
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
@@ -216,6 +217,7 @@ class DataAPIClient:
         *,
         api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -236,8 +238,9 @@ class DataAPIClient:
             token: if supplied, is passed to the Database instead of the client token.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            namespace: if provided, it is passed to the Database; otherwise
+            keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             region: the region to use for connecting to the database. The
                 database must be located in that region.
                 The region cannot be specified when the API endoint is used as `id`.
@@ -270,6 +273,11 @@ class DataAPIClient:
             `create_database` method of class AstraDBAdmin.
         """
 
+        keyspace_param = check_optional_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
@@ -286,12 +294,12 @@ class DataAPIClient:
                 return self.get_database_by_api_endpoint(
                     api_endpoint=_id_or_endpoint,
                     token=token,
-                    namespace=namespace,
+                    keyspace=keyspace_param,
                     api_path=api_path,
                     api_version=api_version,
                 )
             else:
-                # handle overrides. Only region is needed (namespace can stay empty)
+                # handle overrides. Only region is needed (keyspace can stay empty)
                 if region:
                     _region = region
                 else:
@@ -316,7 +324,7 @@ class DataAPIClient:
                 return Database(
                     api_endpoint=_api_endpoint,
                     token=_token,
-                    namespace=namespace,
+                    keyspace=keyspace_param,
                     caller_name=self._caller_name,
                     caller_version=self._caller_version,
                     environment=self.environment,
@@ -334,7 +342,7 @@ class DataAPIClient:
             return self.get_database_by_api_endpoint(
                 api_endpoint=_id_or_endpoint,
                 token=token,
-                namespace=namespace,
+                keyspace=keyspace_param,
                 api_path=api_path,
                 api_version=api_version,
             )
@@ -345,6 +353,7 @@ class DataAPIClient:
         *,
         api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -358,11 +367,15 @@ class DataAPIClient:
         counterpart `get_database`: please see that one for more details.
         """
 
+        keyspace_param = check_optional_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
         return self.get_database(
             id=id,
             api_endpoint=api_endpoint,
             token=token,
-            namespace=namespace,
+            keyspace=keyspace_param,
             region=region,
             api_path=api_path,
             api_version=api_version,
@@ -374,6 +387,7 @@ class DataAPIClient:
         api_endpoint: str,
         *,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -391,8 +405,9 @@ class DataAPIClient:
             token: if supplied, is passed to the Database instead of the client token.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            namespace: if provided, it is passed to the Database; otherwise
+            keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -420,6 +435,11 @@ class DataAPIClient:
             `create_database` method of class AstraDBAdmin.
         """
 
+        keyspace_param = check_optional_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
@@ -437,7 +457,7 @@ class DataAPIClient:
                 return Database(
                     api_endpoint=api_endpoint,
                     token=_token,
-                    namespace=namespace,
+                    keyspace=keyspace_param,
                     caller_name=self._caller_name,
                     caller_version=self._caller_version,
                     environment=self.environment,
@@ -454,7 +474,7 @@ class DataAPIClient:
                 return Database(
                     api_endpoint=parsed_generic_api_endpoint,
                     token=_token,
-                    namespace=namespace,
+                    keyspace=keyspace_param,
                     caller_name=self._caller_name,
                     caller_version=self._caller_version,
                     environment=self.environment,
@@ -470,6 +490,7 @@ class DataAPIClient:
         api_endpoint: str,
         *,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -486,10 +507,14 @@ class DataAPIClient:
         for more details.
         """
 
+        keyspace_param = check_optional_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
         return self.get_database_by_api_endpoint(
             api_endpoint=api_endpoint,
             token=token,
-            namespace=namespace,
+            keyspace=keyspace_param,
             api_path=api_path,
             api_version=api_version,
         ).to_async()
