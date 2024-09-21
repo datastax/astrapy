@@ -516,7 +516,7 @@ class EmbeddingProviderParameter:
                 f"an `EmbeddingProviderParameter`: '{','.join(sorted(residual_keys))}'"
             )
         return EmbeddingProviderParameter(
-            default_value=raw_dict["defaultValue"],
+            default_value=raw_dict.get("defaultValue"),
             display_name=raw_dict.get("displayName"),
             help=raw_dict.get("help"),
             hint=raw_dict.get("hint"),

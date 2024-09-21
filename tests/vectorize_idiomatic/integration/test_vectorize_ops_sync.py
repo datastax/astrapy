@@ -19,6 +19,8 @@ import pytest
 from astrapy import Database
 from astrapy.info import EmbeddingProvider, FindEmbeddingProvidersResult
 
+from ..conftest import clean_nulls_from_dict
+
 
 class TestVectorizeOpsSync:
     @pytest.mark.describe("test of find_embedding_providers, sync")
@@ -45,4 +47,8 @@ class TestVectorizeOpsSync:
             ep_name: emb_prov.as_dict()
             for ep_name, emb_prov in ep_result.embedding_providers.items()
         }
-        assert dict_mapping == ep_result.raw_info["embeddingProviders"]  # type: ignore[index]
+        cleaned_dict_mapping = clean_nulls_from_dict(dict_mapping)
+        cleaned_raw_info = clean_nulls_from_dict(
+            ep_result.raw_info["embeddingProviders"]  # type: ignore[index]
+        )
+        assert cleaned_dict_mapping == cleaned_raw_info

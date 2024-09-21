@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import functools
 import warnings
-from typing import Any, Awaitable, Callable, Optional, Tuple, TypedDict
+from typing import Any, Awaitable, Callable, Dict, Optional, Tuple, TypedDict
 
 import pytest
 from deprecation import UnsupportedWarning
@@ -142,6 +142,19 @@ def sync_fail_if_not_removed(method: Callable[..., Any]) -> Callable[..., Any]:
     return test_inner
 
 
+def clean_nulls_from_dict(in_dict: Dict[str, Any]) -> dict[str, Any]:
+
+    def _cleand(_in: Any) -> Any:
+        if isinstance(_in, list):
+            return [_cleand(itm) for itm in _in]
+        elif isinstance(_in, dict):
+            return {k: _cleand(v) for k, v in _in.items() if v is not None}
+        else:
+            return _in
+
+    return _cleand(in_dict)  # type: ignore[no-any-return]
+
+
 @pytest.fixture(scope="session")
 def data_api_credentials_kwargs() -> DataAPICredentials:
     if IS_ASTRA_DB:
@@ -173,9 +186,9 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
             # namespace=local_db_creds["namespace"],
         )
         _database_admin = _database.get_database_admin()
-        _database_admin.create_namespace(local_db_creds["namespace"])
+        _database_admin.create_keyspace(local_db_creds["namespace"])
         if SECONDARY_NAMESPACE:
-            _database_admin.create_namespace(SECONDARY_NAMESPACE)
+            _database_admin.create_keyspace(SECONDARY_NAMESPACE)
         # end of keyspace-ensuring block
 
         return local_db_creds

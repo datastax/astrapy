@@ -26,7 +26,12 @@ import pytest
 from astrapy import AsyncCollection, AsyncDatabase, Collection, DataAPIClient, Database
 from astrapy.constants import VectorMetric
 
-from ..conftest import IS_ASTRA_DB, DataAPICredentials, DataAPICredentialsInfo
+from ..conftest import (
+    IS_ASTRA_DB,
+    DataAPICredentials,
+    DataAPICredentialsInfo,
+    clean_nulls_from_dict,
+)
 
 TEST_SERVICE_COLLECTION_NAME = "test_indepth_vectorize_collection"
 
@@ -104,5 +109,6 @@ def async_empty_service_collection(
 __all__ = [
     "sync_database",
     "async_database",
+    "clean_nulls_from_dict",
     "IS_ASTRA_DB",
 ]
