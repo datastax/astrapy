@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from types import TracebackType
 from typing import (
     TYPE_CHECKING,
@@ -50,7 +51,6 @@ from astrapy.request_tools import (
     HttpMethod,
     log_httpx_request,
     log_httpx_response,
-    logger,
     to_httpx_timeout,
 )
 from astrapy.transform_payload import normalize_for_api, restore_from_api
@@ -66,6 +66,8 @@ if TYPE_CHECKING:
 
 user_agent_astrapy = detect_astrapy_user_agent()
 user_agent_ragstack = detect_ragstack_user_agent()
+
+logger = logging.getLogger(__name__)
 
 
 class APICommander:
@@ -105,6 +107,7 @@ class APICommander:
             self._faulty_response_exc_class = DataAPIFaultyResponseException
             self._response_exc_class = DataAPIResponseException
             self._http_exc_class = DataAPIHttpException
+        self._api_description = "DevOps API" if self.dev_ops_api else "Data API"
 
         full_user_agent_string = compose_full_user_agent(
             [user_agent_ragstack] + self.callers + [user_agent_astrapy]
@@ -201,13 +204,24 @@ class APICommander:
             )
 
         if raise_api_errors and "errors" in raw_response_json:
-            logger.warn(
+            logger.warning(
                 f"APICommander about to raise from: {raw_response_json['errors']}"
             )
             raise self._response_exc_class.from_response(
                 command=payload,
                 raw_response=raw_response_json,
             )
+
+        # no warnings check for DevOps API (there, 'status' may contain a string)
+        if not self.dev_ops_api:
+            warning_messages: List[str] = (raw_response_json.get("status") or {}).get(
+                "warnings"
+            ) or []
+            if warning_messages:
+                for warning_message in warning_messages:
+                    full_warning = f"The {self._api_description} returned a warning: {warning_message}"
+                    logger.warning(full_warning)
+
         # further processing
         response_json = restore_from_api(raw_response_json)
         return response_json

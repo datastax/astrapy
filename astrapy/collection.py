@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import warnings
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
 from typing import (
@@ -53,6 +54,7 @@ from astrapy.defaults import (
     DEFAULT_DATA_API_AUTH_HEADER,
     DEFAULT_INSERT_MANY_CHUNK_SIZE,
     DEFAULT_INSERT_MANY_CONCURRENCY,
+    NAMESPACE_DEPRECATION_NOTICE_METHOD,
 )
 from astrapy.exceptions import (
     BulkWriteException,
@@ -68,7 +70,7 @@ from astrapy.exceptions import (
     base_timeout_info,
 )
 from astrapy.info import CollectionInfo, CollectionOptions
-from astrapy.meta import check_deprecated_vector_ize
+from astrapy.meta import check_deprecated_vector_ize, check_namespace_keyspace
 from astrapy.results import (
     BulkWriteResult,
     DeleteResult,
@@ -229,8 +231,9 @@ class Collection:
             the database the collection belongs to.
         name: the collection name. This parameter should match an existing
             collection on the database.
-        namespace: this is the namespace to which the collection belongs.
-            If not specified, the database's working namespace is used.
+        keyspace: this is the keyspace to which the collection belongs.
+            If not specified, the database's working keyspace is used.
+        namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
         api_options: An instance of `astrapy.api_options.CollectionAPIOptions`
             providing the general settings for interacting with the Data API.
         caller_name: name of the application, or framework, on behalf of which
@@ -264,20 +267,26 @@ class Collection:
         database: Database,
         name: str,
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         if api_options is None:
             self.api_options = CollectionAPIOptions()
         else:
             self.api_options = api_options
-        _namespace = namespace if namespace is not None else database.namespace
-        if _namespace is None:
-            raise ValueError("Attempted to create Collection with 'namespace' unset.")
+        _keyspace = keyspace_param if keyspace_param is not None else database.keyspace
+        if _keyspace is None:
+            raise ValueError("Attempted to create Collection with 'keyspace' unset.")
         self._database = database._copy(
-            namespace=_namespace,
+            keyspace=_keyspace,
             caller_name=caller_name,
             caller_version=caller_version,
         )
@@ -296,7 +305,7 @@ class Collection:
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}(name="{self.name}", '
-            f'namespace="{self.namespace}", database={self.database}, '
+            f'keyspace="{self.keyspace}", database={self.database}, '
             f"api_options={self.api_options})"
         )
 
@@ -322,10 +331,10 @@ class Collection:
     def _get_api_commander(self) -> APICommander:
         """Instantiate a new APICommander based on the properties of this class."""
 
-        if self._database.namespace is None:
+        if self._database.keyspace is None:
             raise ValueError(
-                "No namespace specified. Collection requires a namespace to "
-                "be set, e.g. through the `namespace` constructor parameter."
+                "No keyspace specified. Collection requires a keyspace to "
+                "be set, e.g. through the `keyspace` constructor parameter."
             )
 
         base_path_components = [
@@ -333,7 +342,7 @@ class Collection:
             for comp in (
                 self._database.api_path.strip("/"),
                 self._database.api_version.strip("/"),
-                self._database.namespace,
+                self._database.keyspace,
                 self._name,
             )
             if comp != ""
@@ -352,15 +361,20 @@ class Collection:
         *,
         database: Optional[Database] = None,
         name: Optional[str] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> Collection:
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
         return Collection(
             database=database or self.database._copy(),
             name=name or self.name,
-            namespace=namespace or self.namespace,
+            keyspace=keyspace_param or self.keyspace,
             api_options=self.api_options.with_override(api_options),
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
@@ -381,7 +395,7 @@ class Collection:
         Args:
             name: the name of the collection. This parameter is useful to
                 quickly spawn Collection instances each pointing to a different
-                collection existing in the same namespace.
+                collection existing in the same keyspace.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -430,6 +444,7 @@ class Collection:
         *,
         database: Optional[AsyncDatabase] = None,
         name: Optional[str] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
@@ -447,8 +462,9 @@ class Collection:
                 This represents the database the new collection belongs to.
             name: the collection name. This parameter should match an existing
                 collection on the database.
-            namespace: this is the namespace to which the collection belongs.
-                If not specified, the database's working namespace is used.
+            keyspace: this is the keyspace to which the collection belongs.
+                If not specified, the database's working keyspace is used.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -478,6 +494,10 @@ class Collection:
             77
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
         _api_options = CollectionAPIOptions(
             embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             max_time_ms=collection_max_time_ms,
@@ -486,7 +506,7 @@ class Collection:
         return AsyncCollection(
             database=database or self.database.to_async(),
             name=name or self.name,
-            namespace=namespace or self.namespace,
+            keyspace=keyspace_param or self.keyspace,
             api_options=self.api_options.with_override(_api_options),
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
@@ -548,8 +568,8 @@ class Collection:
             return self_descriptors[0].options
         else:
             raise CollectionNotFoundException(
-                text=f"Collection {self.namespace}.{self.name} not found.",
-                namespace=self.namespace,
+                text=f"Collection {self.keyspace}.{self.name} not found.",
+                keyspace=self.keyspace,
                 collection_name=self.name,
             )
 
@@ -577,7 +597,8 @@ class Collection:
 
         return CollectionInfo(
             database_info=self.database.info(),
-            namespace=self.namespace,
+            keyspace=self.keyspace,
+            namespace=self.keyspace,
             name=self.name,
             full_name=self.full_name,
         )
@@ -599,15 +620,37 @@ class Collection:
         """
         The namespace this collection is in.
 
+        *DEPRECATED* (removal in 2.0). Switch to the "keyspace" property.**
+
         Example:
             >>> my_coll.namespace
             'default_keyspace'
         """
 
-        _namespace = self.database.namespace
-        if _namespace is None:
-            raise ValueError("The collection's DB is set with namespace=None")
-        return _namespace
+        the_warning = deprecation.DeprecatedWarning(
+            "the 'namespace' property",
+            deprecated_in="1.5.0",
+            removed_in="2.0.0",
+            details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+        )
+        warnings.warn(the_warning, stacklevel=2)
+
+        return self.keyspace
+
+    @property
+    def keyspace(self) -> str:
+        """
+        The keyspace this collection is in.
+
+        Example:
+            >>> my_coll.keyspace
+            'default_keyspace'
+        """
+
+        _keyspace = self.database.keyspace
+        if _keyspace is None:
+            raise ValueError("The collection's DB is set with keyspace=None")
+        return _keyspace
 
     @property
     def name(self) -> str:
@@ -625,14 +668,14 @@ class Collection:
     def full_name(self) -> str:
         """
         The fully-qualified collection name within the database,
-        in the form "namespace.collection_name".
+        in the form "keyspace.collection_name".
 
         Example:
             >>> my_coll.full_name
             'default_keyspace.my_v_collection'
         """
 
-        return f"{self.namespace}.{self.name}"
+        return f"{self.keyspace}.{self.name}"
 
     def insert_one(
         self,
@@ -2483,6 +2526,15 @@ class Collection:
                 raw_response=None,
             )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=(
+            "Please switch to managing sequences of DML operations "
+            "in app code instead."
+        ),
+    )
     def bulk_write(
         self,
         requests: Iterable[BaseOperation],
@@ -2753,8 +2805,9 @@ class AsyncCollection:
             the database the collection belongs to.
         name: the collection name. This parameter should match an existing
             collection on the database.
-        namespace: this is the namespace to which the collection belongs.
-            If not specified, the database's working namespace is used.
+        keyspace: this is the keyspace to which the collection belongs.
+            If not specified, the database's working keyspace is used.
+        namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
         api_options: An instance of `astrapy.api_options.CollectionAPIOptions`
             providing the general settings for interacting with the Data API.
         caller_name: name of the application, or framework, on behalf of which
@@ -2790,22 +2843,28 @@ class AsyncCollection:
         database: AsyncDatabase,
         name: str,
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> None:
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         if api_options is None:
             self.api_options = CollectionAPIOptions()
         else:
             self.api_options = api_options
-        _namespace = namespace if namespace is not None else database.namespace
-        if _namespace is None:
+        _keyspace = keyspace_param if keyspace_param is not None else database.keyspace
+        if _keyspace is None:
             raise ValueError(
-                "Attempted to create AsyncCollection with 'namespace' unset."
+                "Attempted to create AsyncCollection with 'keyspace' unset."
             )
         self._database = database._copy(
-            namespace=_namespace,
+            keyspace=_keyspace,
             caller_name=caller_name,
             caller_version=caller_version,
         )
@@ -2824,7 +2883,7 @@ class AsyncCollection:
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}(name="{self.name}", '
-            f'namespace="{self.namespace}", database={self.database}, '
+            f'keyspace="{self.keyspace}", database={self.database}, '
             f"api_options={self.api_options})"
         )
 
@@ -2850,10 +2909,10 @@ class AsyncCollection:
     def _get_api_commander(self) -> APICommander:
         """Instantiate a new APICommander based on the properties of this class."""
 
-        if self._database.namespace is None:
+        if self._database.keyspace is None:
             raise ValueError(
-                "No namespace specified. AsyncCollection requires a namespace to "
-                "be set, e.g. through the `namespace` constructor parameter."
+                "No keyspace specified. AsyncCollection requires a keyspace to "
+                "be set, e.g. through the `keyspace` constructor parameter."
             )
 
         base_path_components = [
@@ -2861,7 +2920,7 @@ class AsyncCollection:
             for comp in (
                 self._database.api_path.strip("/"),
                 self._database.api_version.strip("/"),
-                self._database.namespace,
+                self._database.keyspace,
                 self._name,
             )
             if comp != ""
@@ -2896,15 +2955,20 @@ class AsyncCollection:
         *,
         database: Optional[AsyncDatabase] = None,
         name: Optional[str] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         api_options: Optional[CollectionAPIOptions] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
     ) -> AsyncCollection:
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
         return AsyncCollection(
             database=database or self.database._copy(),
             name=name or self.name,
-            namespace=namespace or self.namespace,
+            keyspace=keyspace_param or self.keyspace,
             api_options=self.api_options.with_override(api_options),
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
@@ -2925,7 +2989,7 @@ class AsyncCollection:
         Args:
             name: the name of the collection. This parameter is useful to
                 quickly spawn AsyncCollection instances each pointing to a different
-                collection existing in the same namespace.
+                collection existing in the same keyspace.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -2974,6 +3038,7 @@ class AsyncCollection:
         *,
         database: Optional[Database] = None,
         name: Optional[str] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
@@ -2991,8 +3056,9 @@ class AsyncCollection:
                 This represents the database the new collection belongs to.
             name: the collection name. This parameter should match an existing
                 collection on the database.
-            namespace: this is the namespace to which the collection belongs.
-                If not specified, the database's working namespace is used.
+            keyspace: this is the keyspace to which the collection belongs.
+                If not specified, the database's working keyspace is used.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -3022,6 +3088,10 @@ class AsyncCollection:
             77
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
         _api_options = CollectionAPIOptions(
             embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             max_time_ms=collection_max_time_ms,
@@ -3030,7 +3100,7 @@ class AsyncCollection:
         return Collection(
             database=database or self.database.to_sync(),
             name=name or self.name,
-            namespace=namespace or self.namespace,
+            keyspace=keyspace_param or self.keyspace,
             api_options=self.api_options.with_override(_api_options),
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
@@ -3094,8 +3164,8 @@ class AsyncCollection:
             return self_descriptors[0].options
         else:
             raise CollectionNotFoundException(
-                text=f"Collection {self.namespace}.{self.name} not found.",
-                namespace=self.namespace,
+                text=f"Collection {self.keyspace}.{self.name} not found.",
+                keyspace=self.keyspace,
                 collection_name=self.name,
             )
 
@@ -3123,7 +3193,8 @@ class AsyncCollection:
 
         return CollectionInfo(
             database_info=self.database.info(),
-            namespace=self.namespace,
+            keyspace=self.keyspace,
+            namespace=self.keyspace,
             name=self.name,
             full_name=self.full_name,
         )
@@ -3145,15 +3216,37 @@ class AsyncCollection:
         """
         The namespace this collection is in.
 
+        *DEPRECATED* (removal in 2.0). Switch to the "keyspace" property.**
+
         Example:
             >>> my_async_coll.namespace
             'default_keyspace'
         """
 
-        _namespace = self.database.namespace
-        if _namespace is None:
-            raise ValueError("The collection's DB is set with namespace=None")
-        return _namespace
+        the_warning = deprecation.DeprecatedWarning(
+            "the 'namespace' property",
+            deprecated_in="1.5.0",
+            removed_in="2.0.0",
+            details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+        )
+        warnings.warn(the_warning, stacklevel=2)
+
+        return self.keyspace
+
+    @property
+    def keyspace(self) -> str:
+        """
+        The keyspace this collection is in.
+
+        Example:
+            >>> my_coll.keyspace
+            'default_keyspace'
+        """
+
+        _keyspace = self.database.keyspace
+        if _keyspace is None:
+            raise ValueError("The collection's DB is set with keyspace=None")
+        return _keyspace
 
     @property
     def name(self) -> str:
@@ -3171,14 +3264,14 @@ class AsyncCollection:
     def full_name(self) -> str:
         """
         The fully-qualified collection name within the database,
-        in the form "namespace.collection_name".
+        in the form "keyspace.collection_name".
 
         Example:
             >>> my_async_coll.full_name
             'default_keyspace.my_v_collection'
         """
 
-        return f"{self.namespace}.{self.name}"
+        return f"{self.keyspace}.{self.name}"
 
     async def insert_one(
         self,
@@ -3246,7 +3339,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="insert",
-            from_async_method=True,
         )
         _document = _collate_vector_to_document(document, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
@@ -3388,7 +3480,6 @@ class AsyncCollection:
             vectors=vectors,
             vectorize=vectorize,
             kind="insert",
-            from_async_method=True,
         )
         if concurrency is None:
             if ordered:
@@ -3855,7 +3946,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
         )
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_cursor = self.find(
@@ -4206,7 +4296,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
@@ -4330,7 +4419,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
@@ -4493,7 +4581,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
@@ -4620,7 +4707,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
@@ -4889,7 +4975,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
@@ -4992,7 +5077,6 @@ class AsyncCollection:
             vectors=None,
             vectorize=vectorize,
             kind="find",
-            from_async_method=True,
         )
         _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
@@ -5174,6 +5258,15 @@ class AsyncCollection:
                 raw_response=None,
             )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=(
+            "Please switch to managing sequences of DML operations "
+            "in app code instead."
+        ),
+    )
     async def bulk_write(
         self,
         requests: Iterable[AsyncBaseOperation],

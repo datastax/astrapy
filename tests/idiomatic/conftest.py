@@ -57,7 +57,7 @@ def sync_database(
     database = client.get_database(
         data_api_credentials_kwargs["api_endpoint"],
         token=data_api_credentials_kwargs["token"],
-        namespace=data_api_credentials_kwargs["namespace"],
+        keyspace=data_api_credentials_kwargs["namespace"],
     )
 
     yield database
@@ -92,7 +92,7 @@ def sync_collection(
     data_api_credentials_kwargs: DataAPICredentials,
     sync_database: Database,
 ) -> Iterable[Collection]:
-    """An actual collection on DB, in the main namespace"""
+    """An actual collection on DB, in the main keyspace"""
     collection = sync_database.create_collection(
         TEST_COLLECTION_NAME,
         dimension=2,

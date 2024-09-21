@@ -15,9 +15,16 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any
+from typing import Any, Optional
 
 from deprecation import DeprecatedWarning
+
+from astrapy.defaults import (
+    NAMESPACE_DEPRECATION_NOTICE_NS_DETAILS,
+    NAMESPACE_DEPRECATION_NOTICE_NS_SUBJECT,
+    NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_DETAILS,
+    NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_SUBJECT,
+)
 
 
 def check_deprecated_vector_ize(
@@ -25,8 +32,6 @@ def check_deprecated_vector_ize(
     vectors: Any,
     vectorize: Any,
     kind: str,
-    from_async_method: bool = False,
-    from_operation_class: bool = False,
 ) -> None:
     # Version check is not done at all - it will be a manual handling once this
     # deprecation becomes a removal.
@@ -51,26 +56,82 @@ def check_deprecated_vector_ize(
             message = "Use $vector or $vectorize fields in the sort clause instead."
         else:
             message = "Replace with $vector or $vectorize appropriately."
-        #
+
         the_warning = DeprecatedWarning(
             passed_desc,
             deprecated_in="1.3.0",
             removed_in="2.0.0",
             details=message,
         )
-        # trying to surface the warning at the rick stack level to best inform user:
-        # (considering both the error-recast wrap decorator and the internals)
-        if from_async_method:
-            if from_operation_class:
-                s_level = 3
-            else:
-                s_level = 2
-        else:
-            if from_operation_class:
-                s_level = 3
-            else:
-                s_level = 4
         warnings.warn(
             the_warning,
-            stacklevel=s_level,
+            stacklevel=3,
         )
+
+
+def check_namespace_keyspace(
+    keyspace: Optional[str],
+    namespace: Optional[str],
+) -> Optional[str]:
+    # normalize the two aliased parameter names, raising deprecation
+    # when needed and an error if both parameter supplied.
+    # The returned value is the final one for the parameter.
+
+    if namespace is None:
+        # no need for deprecation nor exceptions
+        return keyspace
+    else:
+        # issue a deprecation warning
+        the_warning = DeprecatedWarning(
+            NAMESPACE_DEPRECATION_NOTICE_NS_SUBJECT,
+            deprecated_in="1.5.0",
+            removed_in="2.0.0",
+            details=NAMESPACE_DEPRECATION_NOTICE_NS_DETAILS,
+        )
+        warnings.warn(
+            the_warning,
+            stacklevel=3,
+        )
+
+        if keyspace is None:
+            return namespace
+        else:
+            msg = (
+                "Parameters `keyspace` and `namespace` "
+                "(a deprecated alias for the former) cannot be passed at the same time."
+            )
+            raise ValueError(msg)
+
+
+def check_update_db_namespace_keyspace(
+    update_db_keyspace: Optional[bool],
+    update_db_namespace: Optional[bool],
+) -> Optional[bool]:
+    # normalize the two aliased parameter names, raising deprecation
+    # when needed and an error if both parameter supplied.
+    # The returned value is the final one for the parameter.
+
+    if update_db_namespace is None:
+        # no need for deprecation nor exceptions
+        return update_db_keyspace
+    else:
+        # issue a deprecation warning
+        the_warning = DeprecatedWarning(
+            NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_SUBJECT,
+            deprecated_in="1.5.0",
+            removed_in="2.0.0",
+            details=NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_DETAILS,
+        )
+        warnings.warn(
+            the_warning,
+            stacklevel=3,
+        )
+
+        if update_db_keyspace is None:
+            return update_db_namespace
+        else:
+            msg = (
+                "Parameters `update_db_keyspace` and `update_db_namespace` "
+                "(a deprecated alias for the former) cannot be passed at the same time."
+            )
+            raise ValueError(msg)

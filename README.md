@@ -137,8 +137,8 @@ print(db_info.name, db_info.id, db_info.region)
 
 my_database_admin = my_astra_admin.get_database_admin(db_info.id)
 
-my_database_admin.list_namespaces()
-my_database_admin.create_namespace("my_dreamspace")
+my_database_admin.list_keyspaces()
+my_database_admin.create_keyspace("my_dreamspace")
 ```
 
 ### Exceptions

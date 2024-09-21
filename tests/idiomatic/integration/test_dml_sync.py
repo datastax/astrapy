@@ -1372,6 +1372,7 @@ class TestDMLSync:
         assert set(resp_pr2.keys()) == {"f"}
         col.delete_many({})
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of ordered bulk_write, sync")
     def test_collection_ordered_bulk_write_sync(
         self,
@@ -1412,6 +1413,7 @@ class TestDMLSync:
         assert len(found_docs[0]) == 3
         assert found_docs[1] == {"_id": "seq4", "from_upsert": True}
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of unordered bulk_write, sync")
     def test_collection_unordered_bulk_write_sync(
         self,
@@ -1442,6 +1444,7 @@ class TestDMLSync:
         assert {"a": 1} in no_id_found_docs
         assert {"b": 1, "newfield": True} in no_id_found_docs
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of bulk_write with vectors, sync")
     def test_collection_bulk_write_vector_sync(
         self,

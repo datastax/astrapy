@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   hcd:
     image: datastax/hcd:1.0.0
@@ -22,7 +20,7 @@ services:
       retries: 20
 
   data-api:
-    image: stargateio/data-api:v1.0.15
+    image: stargateio/data-api:v1.0.16
     depends_on:
       hcd:
         condition: service_healthy

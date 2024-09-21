@@ -102,9 +102,9 @@ def test_dataapihttpexception_raising_500_sync(httpserver: HTTPServer) -> None:
     """
     root_endpoint = httpserver.url_for("/")
     client = DataAPIClient(environment="other")
-    database = client.get_database(root_endpoint, namespace="xnamespace")
+    database = client.get_database(root_endpoint, keyspace="xkeyspace")
     collection = database.get_collection("xcoll")
-    expected_url = "/v1/xnamespace/xcoll"
+    expected_url = "/v1/xkeyspace/xcoll"
     httpserver.expect_oneshot_request(
         expected_url,
         method="POST",
@@ -138,9 +138,9 @@ def test_dataapihttpexception_raising_404_sync(httpserver: HTTPServer) -> None:
     """
     root_endpoint = httpserver.url_for("/")
     client = DataAPIClient(environment="other")
-    database = client.get_database(root_endpoint, namespace="xnamespace")
+    database = client.get_database(root_endpoint, keyspace="xkeyspace")
     collection = database.get_collection("xcoll")
-    expected_url = "/v1/xnamespace/xcoll"
+    expected_url = "/v1/xkeyspace/xcoll"
     httpserver.expect_oneshot_request(
         expected_url,
         method="POST",
@@ -175,9 +175,9 @@ async def test_dataapihttpexception_raising_500_async(httpserver: HTTPServer) ->
     """
     root_endpoint = httpserver.url_for("/")
     client = DataAPIClient(environment="other")
-    adatabase = client.get_async_database(root_endpoint, namespace="xnamespace")
+    adatabase = client.get_async_database(root_endpoint, keyspace="xkeyspace")
     acollection = await adatabase.get_collection("xcoll")
-    expected_url = "/v1/xnamespace/xcoll"
+    expected_url = "/v1/xkeyspace/xcoll"
     httpserver.expect_oneshot_request(
         expected_url,
         method="POST",
@@ -211,9 +211,9 @@ async def test_dataapihttpexception_raising_404_async(httpserver: HTTPServer) ->
     """
     root_endpoint = httpserver.url_for("/")
     client = DataAPIClient(environment="other")
-    adatabase = client.get_async_database(root_endpoint, namespace="xnamespace")
+    adatabase = client.get_async_database(root_endpoint, keyspace="xkeyspace")
     acollection = await adatabase.get_collection("xcoll")
-    expected_url = "/v1/xnamespace/xcoll"
+    expected_url = "/v1/xkeyspace/xcoll"
     httpserver.expect_oneshot_request(
         expected_url,
         method="POST",

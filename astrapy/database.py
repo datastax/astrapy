@@ -15,9 +15,13 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
 
+import deprecation
+
+from astrapy import __version__
 from astrapy.admin import fetch_database_info, parse_api_endpoint
 from astrapy.api_commander import APICommander
 from astrapy.api_options import CollectionAPIOptions
@@ -31,8 +35,9 @@ from astrapy.cursors import AsyncCommandCursor, CommandCursor
 from astrapy.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
-    DEFAULT_ASTRA_DB_NAMESPACE,
+    DEFAULT_ASTRA_DB_KEYSPACE,
     DEFAULT_DATA_API_AUTH_HEADER,
+    NAMESPACE_DEPRECATION_NOTICE_METHOD,
 )
 from astrapy.exceptions import (
     CollectionAlreadyExistsException,
@@ -46,6 +51,7 @@ from astrapy.info import (
     CollectionVectorServiceOptions,
     DatabaseInfo,
 )
+from astrapy.meta import check_namespace_keyspace
 
 if TYPE_CHECKING:
     from astrapy.admin import DatabaseAdmin
@@ -132,12 +138,13 @@ class Database:
         token: an Access Token to the database. Example: "AstraCS:xyz..."
             This can be either a literal token string or a subclass of
             `astrapy.authentication.TokenProvider`.
-        namespace: this is the namespace all method calls will target, unless
-            one is explicitly specified in the call. If no namespace is supplied
-            when creating a Database, on Astra DB the name "default_namespace" is set,
-            while on other environments the namespace is left unspecified: in this case,
-            most operations are unavailable until a namespace is set (through an explicit
-            `use_namespace` invocation or equivalent).
+        keyspace: this is the keyspace all method calls will target, unless
+            one is explicitly specified in the call. If no keyspace is supplied
+            when creating a Database, on Astra DB the name "default_keyspace" is set,
+            while on other environments the keyspace is left unspecified: in this case,
+            most operations are unavailable until a keyspace is set (through an explicit
+            `use_keyspace` invocation or equivalent).
+        namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -167,6 +174,7 @@ class Database:
         api_endpoint: str,
         token: Optional[Union[str, TokenProvider]] = None,
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -174,6 +182,10 @@ class Database:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> None:
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
         self.environment = (environment or Environment.PROD).lower()
         #
         _api_path: Optional[str]
@@ -192,11 +204,11 @@ class Database:
         self.api_version = _api_version
 
         # enforce defaults if on Astra DB:
-        self.using_namespace: Optional[str]
-        if namespace is None and self.environment in Environment.astra_db_values:
-            self.using_namespace = DEFAULT_ASTRA_DB_NAMESPACE
+        self._using_keyspace: Optional[str]
+        if keyspace_param is None and self.environment in Environment.astra_db_values:
+            self._using_keyspace = DEFAULT_ASTRA_DB_KEYSPACE
         else:
-            self.using_namespace = namespace
+            self._using_keyspace = keyspace_param
 
         self._commander_headers = {
             DEFAULT_DATA_API_AUTH_HEADER: self.token_provider.get_token(),
@@ -204,7 +216,7 @@ class Database:
 
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._api_commander = self._get_api_commander(namespace=self.namespace)
+        self._api_commander = self._get_api_commander(keyspace=self.keyspace)
         self._name: Optional[str] = None
 
     def __getattr__(self, collection_name: str) -> Collection:
@@ -220,12 +232,12 @@ class Database:
             token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
         else:
             token_desc = None
-        namespace_desc: Optional[str]
-        if self.namespace is None:
-            namespace_desc = "namespace not set"
+        keyspace_desc: Optional[str]
+        if self.keyspace is None:
+            keyspace_desc = "keyspace not set"
         else:
-            namespace_desc = f'namespace="{self.namespace}"'
-        parts = [pt for pt in [ep_desc, token_desc, namespace_desc] if pt is not None]
+            keyspace_desc = f'keyspace="{self.keyspace}"'
+        parts = [pt for pt in [ep_desc, token_desc, keyspace_desc] if pt is not None]
         return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:
@@ -236,7 +248,7 @@ class Database:
                     self.api_endpoint == other.api_endpoint,
                     self.api_path == other.api_path,
                     self.api_version == other.api_version,
-                    self.namespace == other.namespace,
+                    self.keyspace == other.keyspace,
                     self.caller_name == other.caller_name,
                     self.caller_version == other.caller_version,
                     self.api_commander == other.api_commander,
@@ -245,15 +257,15 @@ class Database:
         else:
             return False
 
-    def _get_api_commander(self, namespace: Optional[str]) -> Optional[APICommander]:
+    def _get_api_commander(self, keyspace: Optional[str]) -> Optional[APICommander]:
         """
         Instantiate a new APICommander based on the properties of this class
-        and a provided namespace.
+        and a provided keyspace.
 
-        If namespace is None, return None (signaling a "namespace not set").
+        If keyspace is None, return None (signaling a "keyspace not set").
         """
 
-        if namespace is None:
+        if keyspace is None:
             return None
         else:
             base_path_components = [
@@ -261,7 +273,7 @@ class Database:
                 for comp in (
                     self.api_path.strip("/"),
                     self.api_version.strip("/"),
-                    namespace,
+                    keyspace,
                 )
                 if comp != ""
             ]
@@ -274,20 +286,20 @@ class Database:
             )
             return api_commander
 
-    def _get_driver_commander(self, namespace: Optional[str]) -> APICommander:
+    def _get_driver_commander(self, keyspace: Optional[str]) -> APICommander:
         """
-        Building on _get_api_commander, fall back to class namespace in
+        Building on _get_api_commander, fall back to class keyspace in
         creating/returning a commander, and in any case raise an error if not set.
         """
         driver_commander: Optional[APICommander]
-        if namespace:
-            driver_commander = self._get_api_commander(namespace=namespace)
+        if keyspace:
+            driver_commander = self._get_api_commander(keyspace=keyspace)
         else:
             driver_commander = self._api_commander
         if driver_commander is None:
             raise ValueError(
-                "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
+                "No keyspace specified. This operation requires a keyspace to "
+                "be set, e.g. through the `use_keyspace` method."
             )
         return driver_commander
 
@@ -296,6 +308,7 @@ class Database:
         *,
         api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -303,10 +316,14 @@ class Database:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> Database:
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
         return Database(
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            namespace=namespace or self.namespace,
+            keyspace=keyspace_param or self.keyspace,
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
             environment=environment or self.environment,
@@ -317,6 +334,7 @@ class Database:
     def with_options(
         self,
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -325,9 +343,10 @@ class Database:
         Create a clone of this database with some changed attributes.
 
         Args:
-            namespace: this is the namespace all method calls will target, unless
-                one is explicitly specified in the call. If no namespace is supplied
-                when creating a Database, the name "default_namespace" is set.
+            keyspace: this is the keyspace all method calls will target, unless
+                one is explicitly specified in the call. If no keyspace is supplied
+                when creating a Database, the name "default_keyspace" is set.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -337,14 +356,18 @@ class Database:
 
         Example:
             >>> my_db_2 = my_db.with_options(
-            ...     namespace="the_other_namespace",
+            ...     keyspace="the_other_keyspace",
             ...     caller_name="the_caller",
             ...     caller_version="0.1.0",
             ... )
         """
 
-        return self._copy(
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
             namespace=namespace,
+        )
+        return self._copy(
+            keyspace=keyspace_param,
             caller_name=caller_name,
             caller_version=caller_version,
         )
@@ -354,6 +377,7 @@ class Database:
         *,
         api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -372,9 +396,10 @@ class Database:
             token: an Access Token to the database. Example: "AstraCS:xyz..."
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            namespace: this is the namespace all method calls will target, unless
-                one is explicitly specified in the call. If no namespace is supplied
-                when creating a Database, the name "default_namespace" is set.
+            keyspace: this is the keyspace all method calls will target, unless
+                one is explicitly specified in the call. If no keyspace is supplied
+                when creating a Database, the name "default_keyspace" is set.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -394,10 +419,14 @@ class Database:
             >>> asyncio.run(my_async_db.list_collection_names())
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
         return AsyncDatabase(
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            namespace=namespace or self.namespace,
+            keyspace=keyspace_param or self.keyspace,
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
             environment=environment or self.environment,
@@ -426,12 +455,20 @@ class Database:
         logger.info(f"setting caller to {caller_name}/{caller_version}")
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._api_commander = self._get_api_commander(namespace=self.namespace)
+        self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     def use_namespace(self, namespace: str) -> None:
         """
         Switch to a new working namespace for this database.
         This method changes (mutates) the Database instance.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "use_keyspace" method.**
 
         Note that this method does not create the namespace, which should exist
         already (created for instance with a `DatabaseAdmin.create_namespace` call).
@@ -449,9 +486,32 @@ class Database:
             >>> my_db.list_collection_names()
             []
         """
-        logger.info(f"switching to namespace '{namespace}'")
-        self.using_namespace = namespace
-        self._api_commander = self._get_api_commander(namespace=self.namespace)
+        return self.use_keyspace(keyspace=namespace)
+
+    def use_keyspace(self, keyspace: str) -> None:
+        """
+        Switch to a new working keyspace for this database.
+        This method changes (mutates) the Database instance.
+
+        Note that this method does not create the keyspace, which should exist
+        already (created for instance with a `DatabaseAdmin.create_keyspace` call).
+
+        Args:
+            keyspace: the new keyspace to use as the database working keyspace.
+
+        Returns:
+            None.
+
+        Example:
+            >>> my_db.list_collection_names()
+            ['coll_1', 'coll_2']
+            >>> my_db.use_keyspace("an_empty_keyspace")
+            >>> my_db.list_collection_names()
+            []
+        """
+        logger.info(f"switching to keyspace '{keyspace}'")
+        self._using_keyspace = keyspace
+        self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
     def info(self) -> DatabaseInfo:
         """
@@ -477,7 +537,7 @@ class Database:
         database_info = fetch_database_info(
             self.api_endpoint,
             token=self.token_provider.get_token(),
-            namespace=self.namespace,
+            keyspace=self.keyspace,
         )
         if database_info is not None:
             logger.info("finished getting database info")
@@ -528,6 +588,8 @@ class Database:
         The namespace this database uses as target for all commands when
         no method-call-specific namespace is specified.
 
+        *DEPRECATED* (removal in 2.0). Switch to the "keyspace" property.**
+
         Returns:
             the working namespace (a string), or None if not set.
 
@@ -536,12 +598,37 @@ class Database:
             'the_keyspace'
         """
 
-        return self.using_namespace
+        the_warning = deprecation.DeprecatedWarning(
+            "the 'namespace' property",
+            deprecated_in="1.5.0",
+            removed_in="2.0.0",
+            details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+        )
+        warnings.warn(the_warning, stacklevel=2)
+
+        return self.keyspace
+
+    @property
+    def keyspace(self) -> Optional[str]:
+        """
+        The keyspace this database uses as target for all commands when
+        no method-call-specific keyspace is specified.
+
+        Returns:
+            the working keyspace (a string), or None if not set.
+
+        Example:
+            >>> my_db.keyspace
+            'the_keyspace'
+        """
+
+        return self._using_keyspace
 
     def get_collection(
         self,
         name: str,
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
@@ -558,25 +645,26 @@ class Database:
 
         Args:
             name: the name of the collection.
-            namespace: the namespace containing the collection. If no namespace
+            keyspace: the keyspace containing the collection. If no keyspace
                 is specified, the general setting for this database is used.
-        embedding_api_key: optional API key(s) for interacting with the collection.
-            If an embedding service is configured, and this parameter is not None,
-            each Data API call will include the necessary embedding-related headers
-            as specified by this parameter. If a string is passed, it translates
-            into the one "embedding api key" header
-            (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
-            For some vectorize providers/models, if using header-based authentication,
-            specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
-            should be supplied.
-        collection_max_time_ms: a default timeout, in millisecond, for the duration of each
-            operation on the collection. Individual timeouts can be provided to
-            each collection method call and will take precedence, with this value
-            being an overall default.
-            Note that for some methods involving multiple API calls (such as
-            `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
-            to provide a specific timeout as the default one likely wouldn't make
-            much sense.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
+            embedding_api_key: optional API key(s) for interacting with the collection.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
+                For some vectorize providers/models, if using header-based
+                authentication, specialized subclasses of
+                `astrapy.authentication.EmbeddingHeadersProvider` should be supplied.
+            collection_max_time_ms: a default timeout, in millisecond, for the duration
+                of each operation on the collection. Individual timeouts can be
+                provided to each collection method call and will take precedence, with
+                this value being an overall default.
+                Note that for some methods involving multiple API calls (such as `find`,
+                `delete_many`, `insert_many` and so on), it is strongly suggested
+                to provide a specific timeout as the default one likely wouldn't make
+                much sense.
 
         Returns:
             a `Collection` instance, representing the desired collection
@@ -595,19 +683,24 @@ class Database:
                 my_db["coll_name"]
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         # lazy importing here against circular-import error
         from astrapy.collection import Collection
 
-        _namespace = namespace or self.namespace
-        if _namespace is None:
+        _keyspace = keyspace_param or self.keyspace
+        if _keyspace is None:
             raise ValueError(
-                "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
+                "No keyspace specified. This operation requires a keyspace to "
+                "be set, e.g. through the `use_keyspace` method."
             )
         return Collection(
             self,
             name,
-            namespace=_namespace,
+            keyspace=_keyspace,
             api_options=CollectionAPIOptions(
                 embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
                 max_time_ms=collection_max_time_ms,
@@ -618,6 +711,7 @@ class Database:
         self,
         name: str,
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         dimension: Optional[int] = None,
         metric: Optional[str] = None,
@@ -640,8 +734,9 @@ class Database:
 
         Args:
             name: the name of the collection.
-            namespace: the namespace where the collection is to be created.
+            keyspace: the keyspace where the collection is to be created.
                 If not specified, the general setting for this database is used.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             dimension: for vector collections, the dimension of the vectors
                 (i.e. the number of their components).
             metric: the similarity metric used for vector searches.
@@ -707,6 +802,11 @@ class Database:
             the dimension must be compatible with the chosen service.
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         cc_options = _normalize_create_collection_options(
             dimension=dimension,
             metric=metric,
@@ -725,17 +825,17 @@ class Database:
         if _check_exists:
             logger.info(f"checking collection existence for '{name}'")
             existing_names = self.list_collection_names(
-                namespace=namespace,
+                keyspace=keyspace_param,
                 max_time_ms=timeout_manager.remaining_timeout_ms(),
             )
             if name in existing_names:
                 raise CollectionAlreadyExistsException(
                     text=f"Collection {name} already exists",
-                    namespace=namespace or self.namespace or "(unspecified)",
+                    keyspace=keyspace_param or self.keyspace or "(unspecified)",
                     collection_name=name,
                 )
 
-        driver_commander = self._get_driver_commander(namespace=namespace)
+        driver_commander = self._get_driver_commander(keyspace=keyspace_param)
         cc_payload = {"createCollection": {"name": name, "options": cc_options}}
         logger.info(f"createCollection('{name}')")
         driver_commander.request(
@@ -745,7 +845,7 @@ class Database:
         logger.info(f"finished createCollection('{name}')")
         return self.get_collection(
             name,
-            namespace=namespace,
+            keyspace=keyspace_param,
             embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             collection_max_time_ms=collection_max_time_ms,
         )
@@ -777,21 +877,21 @@ class Database:
 
         Note:
             when providing a collection name, it is assumed that the collection
-            is to be found in the namespace set at database instance level.
+            is to be found in the keyspace that was set at database instance level.
         """
 
         # lazy importing here against circular-import error
         from astrapy.collection import Collection
 
-        _namespace: Optional[str]
+        _keyspace: Optional[str]
         _collection_name: str
         if isinstance(name_or_collection, Collection):
-            _namespace = name_or_collection.namespace
+            _keyspace = name_or_collection.keyspace
             _collection_name = name_or_collection.name
         else:
-            _namespace = self.namespace
+            _keyspace = self.keyspace
             _collection_name = name_or_collection
-        driver_commander = self._get_driver_commander(namespace=_namespace)
+        driver_commander = self._get_driver_commander(keyspace=_keyspace)
         dc_payload = {"deleteCollection": {"name": _collection_name}}
         logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = driver_commander.request(
@@ -804,15 +904,17 @@ class Database:
     def list_collections(
         self,
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         max_time_ms: Optional[int] = None,
     ) -> CommandCursor[CollectionDescriptor]:
         """
-        List all collections in a given namespace for this database.
+        List all collections in a given keyspace for this database.
 
         Args:
-            namespace: the namespace to be inspected. If not specified,
+            keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -831,7 +933,12 @@ class Database:
             CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        driver_commander = self._get_driver_commander(namespace=namespace)
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
+        driver_commander = self._get_driver_commander(keyspace=keyspace_param)
         gc_payload = {"findCollections": {"options": {"explain": True}}}
         logger.info("findCollections")
         gc_response = driver_commander.request(
@@ -857,15 +964,17 @@ class Database:
     def list_collection_names(
         self,
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         max_time_ms: Optional[int] = None,
     ) -> List[str]:
         """
-        List the names of all collections in a given namespace of this database.
+        List the names of all collections in a given keyspace of this database.
 
         Args:
-            namespace: the namespace to be inspected. If not specified,
+            keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -876,7 +985,12 @@ class Database:
             ['a_collection', 'another_col']
         """
 
-        driver_commander = self._get_driver_commander(namespace=namespace)
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
+        driver_commander = self._get_driver_commander(keyspace=keyspace_param)
         gc_payload: Dict[str, Any] = {"findCollections": {}}
         logger.info("findCollections")
         gc_response = driver_commander.request(
@@ -897,6 +1011,7 @@ class Database:
         self,
         body: Dict[str, Any],
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         collection_name: Optional[str] = None,
         raise_api_errors: bool = True,
@@ -908,8 +1023,9 @@ class Database:
 
         Args:
             body: a JSON-serializable dictionary, the payload of the request.
-            namespace: the namespace to use. Requests always target a namespace:
+            keyspace: the keyspace to use. Requests always target a keyspace:
                 if not specified, the general setting for this database is assumed.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             collection_name: if provided, the collection name is appended at the end
                 of the endpoint. In this way, this method allows collection-level
                 arbitrary POST requests as well.
@@ -927,11 +1043,16 @@ class Database:
             {'status': {'count': 123}}
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         if collection_name:
-            # if namespace and collection_name both passed, a new database is needed
+            # if keyspace and collection_name both passed, a new database is needed
             _database: Database
-            if namespace:
-                _database = self._copy(namespace=namespace)
+            if keyspace_param:
+                _database = self._copy(keyspace=keyspace_param)
             else:
                 _database = self
             logger.info("deferring to collection " f"'{collection_name}' for command.")
@@ -945,7 +1066,7 @@ class Database:
             )
             return coll_req_response
         else:
-            driver_commander = self._get_driver_commander(namespace=namespace)
+            driver_commander = self._get_driver_commander(keyspace=keyspace_param)
             _cmd_desc = ",".join(sorted(body.keys()))
             logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             req_response = driver_commander.request(
@@ -965,7 +1086,7 @@ class Database:
     ) -> DatabaseAdmin:
         """
         Return a DatabaseAdmin object corresponding to this database, for
-        use in admin tasks such as managing namespaces.
+        use in admin tasks such as managing keyspaces.
 
         This method, depending on the environment where the database resides,
         returns an appropriate subclass of DatabaseAdmin.
@@ -992,10 +1113,10 @@ class Database:
 
         Example:
             >>> my_db_admin = my_db.get_database_admin()
-            >>> if "new_namespace" not in my_db_admin.list_namespaces():
-            ...     my_db_admin.create_namespace("new_namespace")
-            >>> my_db_admin.list_namespaces()
-            ['default_keyspace', 'new_namespace']
+            >>> if "new_keyspace" not in my_db_admin.list_keyspaces():
+            ...     my_db_admin.create_keyspace("new_keyspace")
+            >>> my_db_admin.list_keyspaces()
+            ['default_keyspace', 'new_keyspace']
         """
 
         # lazy importing here to avoid circular dependency
@@ -1052,12 +1173,13 @@ class AsyncDatabase:
         token: an Access Token to the database. Example: "AstraCS:xyz..."
             This can be either a literal token string or a subclass of
             `astrapy.authentication.TokenProvider`.
-        namespace: this is the namespace all method calls will target, unless
-            one is explicitly specified in the call. If no namespace is supplied
-            when creating a Database, on Astra DB the name "default_namespace" is set,
-            while on other environments the namespace is left unspecified: in this case,
-            most operations are unavailable until a namespace is set (through an explicit
-            `use_namespace` invocation or equivalent).
+        keyspace: this is the keyspace all method calls will target, unless
+            one is explicitly specified in the call. If no keyspace is supplied
+            when creating a Database, on Astra DB the name "default_keyspace" is set,
+            while on other environments the keyspace is left unspecified: in this case,
+            most operations are unavailable until a keyspace is set (through an explicit
+            `use_keyspace` invocation or equivalent).
+        namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
         caller_name: name of the application, or framework, on behalf of which
             the Data API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
@@ -1087,6 +1209,7 @@ class AsyncDatabase:
         api_endpoint: str,
         token: Optional[Union[str, TokenProvider]] = None,
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -1094,6 +1217,10 @@ class AsyncDatabase:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> None:
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
         self.environment = (environment or Environment.PROD).lower()
         #
         _api_path: Optional[str]
@@ -1112,11 +1239,11 @@ class AsyncDatabase:
         self.api_version = _api_version
 
         # enforce defaults if on Astra DB:
-        self.using_namespace: Optional[str]
-        if namespace is None and self.environment in Environment.astra_db_values:
-            self.using_namespace = DEFAULT_ASTRA_DB_NAMESPACE
+        self._using_keyspace: Optional[str]
+        if keyspace_param is None and self.environment in Environment.astra_db_values:
+            self._using_keyspace = DEFAULT_ASTRA_DB_KEYSPACE
         else:
-            self.using_namespace = namespace
+            self._using_keyspace = keyspace_param
 
         self._commander_headers = {
             DEFAULT_DATA_API_AUTH_HEADER: self.token_provider.get_token(),
@@ -1124,7 +1251,7 @@ class AsyncDatabase:
 
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._api_commander = self._get_api_commander(namespace=self.namespace)
+        self._api_commander = self._get_api_commander(keyspace=self.keyspace)
         self._name: Optional[str] = None
 
     def __getattr__(self, collection_name: str) -> AsyncCollection:
@@ -1140,12 +1267,12 @@ class AsyncDatabase:
             token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
         else:
             token_desc = None
-        namespace_desc: Optional[str]
-        if self.namespace is None:
-            namespace_desc = "namespace not set"
+        keyspace_desc: Optional[str]
+        if self.keyspace is None:
+            keyspace_desc = "keyspace not set"
         else:
-            namespace_desc = f'namespace="{self.namespace}"'
-        parts = [pt for pt in [ep_desc, token_desc, namespace_desc] if pt is not None]
+            keyspace_desc = f'keyspace="{self.keyspace}"'
+        parts = [pt for pt in [ep_desc, token_desc, keyspace_desc] if pt is not None]
         return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:
@@ -1156,7 +1283,7 @@ class AsyncDatabase:
                     self.api_endpoint == other.api_endpoint,
                     self.api_path == other.api_path,
                     self.api_version == other.api_version,
-                    self.namespace == other.namespace,
+                    self.keyspace == other.keyspace,
                     self.caller_name == other.caller_name,
                     self.caller_version == other.caller_version,
                     self.api_commander == other.api_commander,
@@ -1165,15 +1292,15 @@ class AsyncDatabase:
         else:
             return False
 
-    def _get_api_commander(self, namespace: Optional[str]) -> Optional[APICommander]:
+    def _get_api_commander(self, keyspace: Optional[str]) -> Optional[APICommander]:
         """
         Instantiate a new APICommander based on the properties of this class
-        and a provided namespace.
+        and a provided keyspace.
 
-        If namespace is None, return None (signaling a "namespace not set").
+        If keyspace is None, return None (signaling a "keyspace not set").
         """
 
-        if namespace is None:
+        if keyspace is None:
             return None
         else:
             base_path_components = [
@@ -1181,7 +1308,7 @@ class AsyncDatabase:
                 for comp in (
                     self.api_path.strip("/"),
                     self.api_version.strip("/"),
-                    namespace,
+                    keyspace,
                 )
                 if comp != ""
             ]
@@ -1194,20 +1321,20 @@ class AsyncDatabase:
             )
             return api_commander
 
-    def _get_driver_commander(self, namespace: Optional[str]) -> APICommander:
+    def _get_driver_commander(self, keyspace: Optional[str]) -> APICommander:
         """
-        Building on _get_api_commander, fall back to class namespace in
+        Building on _get_api_commander, fall back to class keyspace in
         creating/returning a commander, and in any case raise an error if not set.
         """
         driver_commander: Optional[APICommander]
-        if namespace:
-            driver_commander = self._get_api_commander(namespace=namespace)
+        if keyspace:
+            driver_commander = self._get_api_commander(keyspace=keyspace)
         else:
             driver_commander = self._api_commander
         if driver_commander is None:
             raise ValueError(
-                "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
+                "No keyspace specified. This operation requires a keyspace to "
+                "be set, e.g. through the `use_keyspace` method."
             )
         return driver_commander
 
@@ -1232,6 +1359,7 @@ class AsyncDatabase:
         *,
         api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -1239,10 +1367,14 @@ class AsyncDatabase:
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
     ) -> AsyncDatabase:
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
         return AsyncDatabase(
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            namespace=namespace or self.namespace,
+            keyspace=keyspace_param or self.keyspace,
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
             environment=environment or self.environment,
@@ -1253,6 +1385,7 @@ class AsyncDatabase:
     def with_options(
         self,
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -1261,9 +1394,10 @@ class AsyncDatabase:
         Create a clone of this database with some changed attributes.
 
         Args:
-            namespace: this is the namespace all method calls will target, unless
-                one is explicitly specified in the call. If no namespace is supplied
-                when creating a Database, the name "default_namespace" is set.
+            keyspace: this is the keyspace all method calls will target, unless
+                one is explicitly specified in the call. If no keyspace is supplied
+                when creating a Database, the name "default_keyspace" is set.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -1273,14 +1407,19 @@ class AsyncDatabase:
 
         Example:
             >>> my_async_db_2 = my_async_db.with_options(
-            ...     namespace="the_other_namespace",
+            ...     keyspace="the_other_keyspace",
             ...     caller_name="the_caller",
             ...     caller_version="0.1.0",
             ... )
         """
 
-        return self._copy(
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
             namespace=namespace,
+        )
+
+        return self._copy(
+            keyspace=keyspace_param,
             caller_name=caller_name,
             caller_version=caller_version,
         )
@@ -1290,6 +1429,7 @@ class AsyncDatabase:
         *,
         api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         caller_name: Optional[str] = None,
         caller_version: Optional[str] = None,
@@ -1308,9 +1448,10 @@ class AsyncDatabase:
             token: an Access Token to the database. Example: "AstraCS:xyz..."
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            namespace: this is the namespace all method calls will target, unless
-                one is explicitly specified in the call. If no namespace is supplied
-                when creating a Database, the name "default_namespace" is set.
+            keyspace: this is the keyspace all method calls will target, unless
+                one is explicitly specified in the call. If no keyspace is supplied
+                when creating a Database, the name "default_keyspace" is set.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             caller_name: name of the application, or framework, on behalf of which
                 the Data API calls are performed. This ends up in the request user-agent.
             caller_version: version of the caller.
@@ -1331,10 +1472,14 @@ class AsyncDatabase:
             ['a_collection', 'another_collection']
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
         return Database(
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            namespace=namespace or self.namespace,
+            keyspace=keyspace_param or self.keyspace,
             caller_name=caller_name or self.caller_name,
             caller_version=caller_version or self.caller_version,
             environment=environment or self.environment,
@@ -1363,12 +1508,20 @@ class AsyncDatabase:
         logger.info(f"setting caller to {caller_name}/{caller_version}")
         self.caller_name = caller_name
         self.caller_version = caller_version
-        self._api_commander = self._get_api_commander(namespace=self.namespace)
+        self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     def use_namespace(self, namespace: str) -> None:
         """
         Switch to a new working namespace for this database.
         This method changes (mutates) the AsyncDatabase instance.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "use_keyspace" method.**
 
         Note that this method does not create the namespace, which should exist
         already (created for instance with a `DatabaseAdmin.async_create_namespace` call).
@@ -1386,9 +1539,32 @@ class AsyncDatabase:
             >>> asyncio.run(my_async_db.list_collection_names())
             []
         """
-        logger.info(f"switching to namespace '{namespace}'")
-        self.using_namespace = namespace
-        self._api_commander = self._get_api_commander(namespace=self.namespace)
+        return self.use_keyspace(keyspace=namespace)
+
+    def use_keyspace(self, keyspace: str) -> None:
+        """
+        Switch to a new working keyspace for this database.
+        This method changes (mutates) the AsyncDatabase instance.
+
+        Note that this method does not create the keyspace, which should exist
+        already (created for instance with a `DatabaseAdmin.async_create_keyspace` call).
+
+        Args:
+            keyspace: the new keyspace to use as the database working keyspace.
+
+        Returns:
+            None.
+
+        Example:
+            >>> asyncio.run(my_async_db.list_collection_names())
+            ['coll_1', 'coll_2']
+            >>> my_async_db.use_keyspace("an_empty_keyspace")
+            >>> asyncio.run(my_async_db.list_collection_names())
+            []
+        """
+        logger.info(f"switching to keyspace '{keyspace}'")
+        self._using_keyspace = keyspace
+        self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
     def info(self) -> DatabaseInfo:
         """
@@ -1414,7 +1590,7 @@ class AsyncDatabase:
         database_info = fetch_database_info(
             self.api_endpoint,
             token=self.token_provider.get_token(),
-            namespace=self.namespace,
+            keyspace=self.keyspace,
         )
         if database_info is not None:
             logger.info("finished getting database info")
@@ -1465,6 +1641,8 @@ class AsyncDatabase:
         The namespace this database uses as target for all commands when
         no method-call-specific namespace is specified.
 
+        *DEPRECATED* (removal in 2.0). Switch to the "keyspace" property.**
+
         Returns:
             the working namespace (a string), or None if not set.
 
@@ -1473,12 +1651,37 @@ class AsyncDatabase:
             'the_keyspace'
         """
 
-        return self.using_namespace
+        the_warning = deprecation.DeprecatedWarning(
+            "the 'namespace' property",
+            deprecated_in="1.5.0",
+            removed_in="2.0.0",
+            details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+        )
+        warnings.warn(the_warning, stacklevel=2)
+
+        return self.keyspace
+
+    @property
+    def keyspace(self) -> Optional[str]:
+        """
+        The keyspace this database uses as target for all commands when
+        no method-call-specific keyspace is specified.
+
+        Returns:
+            the working keyspace (a string), or None if not set.
+
+        Example:
+            >>> my_async_db.keyspace
+            'the_keyspace'
+        """
+
+        return self._using_keyspace
 
     async def get_collection(
         self,
         name: str,
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
         collection_max_time_ms: Optional[int] = None,
@@ -1495,25 +1698,26 @@ class AsyncDatabase:
 
         Args:
             name: the name of the collection.
-            namespace: the namespace containing the collection. If no namespace
+            keyspace: the keyspace containing the collection. If no keyspace
                 is specified, the setting for this database is used.
-        embedding_api_key: optional API key(s) for interacting with the collection.
-            If an embedding service is configured, and this parameter is not None,
-            each Data API call will include the necessary embedding-related headers
-            as specified by this parameter. If a string is passed, it translates
-            into the one "embedding api key" header
-            (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
-            For some vectorize providers/models, if using header-based authentication,
-            specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
-            should be supplied.
-        collection_max_time_ms: a default timeout, in millisecond, for the duration of each
-            operation on the collection. Individual timeouts can be provided to
-            each collection method call and will take precedence, with this value
-            being an overall default.
-            Note that for some methods involving multiple API calls (such as
-            `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
-            to provide a specific timeout as the default one likely wouldn't make
-            much sense.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
+            embedding_api_key: optional API key(s) for interacting with the collection.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
+                For some vectorize providers/models, if using header-based
+                authentication, specialized subclasses of
+                `astrapy.authentication.EmbeddingHeadersProvider` should be supplied.
+            collection_max_time_ms: a default timeout, in millisecond, for the duration
+                of each operation on the collection. Individual timeouts can be
+                provided to each collection method call and will take precedence, with
+                this value being an overall default.
+                Note that for some methods involving multiple API calls (such as `find`,
+                `delete_many`, `insert_many` and so on), it is strongly suggested
+                to provide a specific timeout as the default one likely wouldn't make
+                much sense.
 
         Returns:
             an `AsyncCollection` instance, representing the desired collection
@@ -1535,19 +1739,24 @@ class AsyncDatabase:
                 my_async_db["coll_name"]
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         # lazy importing here against circular-import error
         from astrapy.collection import AsyncCollection
 
-        _namespace = namespace or self.namespace
-        if _namespace is None:
+        _keyspace = keyspace_param or self.keyspace
+        if _keyspace is None:
             raise ValueError(
-                "No namespace specified. This operation requires a namespace to "
-                "be set, e.g. through the `use_namespace` method."
+                "No keyspace specified. This operation requires a keyspace to "
+                "be set, e.g. through the `use_keyspace` method."
             )
         return AsyncCollection(
             self,
             name,
-            namespace=_namespace,
+            keyspace=_keyspace,
             api_options=CollectionAPIOptions(
                 embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
                 max_time_ms=collection_max_time_ms,
@@ -1558,6 +1767,7 @@ class AsyncDatabase:
         self,
         name: str,
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         dimension: Optional[int] = None,
         metric: Optional[str] = None,
@@ -1580,8 +1790,9 @@ class AsyncDatabase:
 
         Args:
             name: the name of the collection.
-            namespace: the namespace where the collection is to be created.
+            keyspace: the keyspace where the collection is to be created.
                 If not specified, the general setting for this database is used.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             dimension: for vector collections, the dimension of the vectors
                 (i.e. the number of their components).
             metric: the similarity metric used for vector searches.
@@ -1651,6 +1862,10 @@ class AsyncDatabase:
             the dimension must be compatible with the chosen service.
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
         cc_options = _normalize_create_collection_options(
             dimension=dimension,
             metric=metric,
@@ -1669,17 +1884,17 @@ class AsyncDatabase:
         if _check_exists:
             logger.info(f"checking collection existence for '{name}'")
             existing_names = await self.list_collection_names(
-                namespace=namespace,
+                keyspace=keyspace_param,
                 max_time_ms=timeout_manager.remaining_timeout_ms(),
             )
             if name in existing_names:
                 raise CollectionAlreadyExistsException(
                     text=f"Collection {name} already exists",
-                    namespace=namespace or self.namespace or "(unspecified)",
+                    keyspace=keyspace_param or self.keyspace or "(unspecified)",
                     collection_name=name,
                 )
 
-        driver_commander = self._get_driver_commander(namespace=namespace)
+        driver_commander = self._get_driver_commander(keyspace=keyspace_param)
         cc_payload = {"createCollection": {"name": name, "options": cc_options}}
         logger.info(f"createCollection('{name}')")
         await driver_commander.async_request(
@@ -1689,7 +1904,7 @@ class AsyncDatabase:
         logger.info(f"createCollection('{name}')")
         return await self.get_collection(
             name,
-            namespace=namespace,
+            keyspace=keyspace_param,
             embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             collection_max_time_ms=collection_max_time_ms,
         )
@@ -1721,21 +1936,21 @@ class AsyncDatabase:
 
         Note:
             when providing a collection name, it is assumed that the collection
-            is to be found in the namespace set at database instance level.
+            is to be found in the keyspace that was set at database instance level.
         """
 
         # lazy importing here against circular-import error
         from astrapy.collection import AsyncCollection
 
-        _namespace: Optional[str]
+        keyspace: Optional[str]
         _collection_name: str
         if isinstance(name_or_collection, AsyncCollection):
-            _namespace = name_or_collection.namespace
+            keyspace = name_or_collection.keyspace
             _collection_name = name_or_collection.name
         else:
-            _namespace = self.namespace
+            keyspace = self.keyspace
             _collection_name = name_or_collection
-        driver_commander = self._get_driver_commander(namespace=_namespace)
+        driver_commander = self._get_driver_commander(keyspace=keyspace)
         dc_payload = {"deleteCollection": {"name": _collection_name}}
         logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = await driver_commander.async_request(
@@ -1748,15 +1963,17 @@ class AsyncDatabase:
     def list_collections(
         self,
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         max_time_ms: Optional[int] = None,
     ) -> AsyncCommandCursor[CollectionDescriptor]:
         """
-        List all collections in a given namespace for this database.
+        List all collections in a given keyspace for this database.
 
         Args:
-            namespace: the namespace to be inspected. If not specified,
+            keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -1777,7 +1994,12 @@ class AsyncDatabase:
             * coll: CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        driver_commander = self._get_driver_commander(namespace=namespace)
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
+        driver_commander = self._get_driver_commander(keyspace=keyspace_param)
         gc_payload = {"findCollections": {"options": {"explain": True}}}
         logger.info("findCollections")
         gc_response = driver_commander.request(
@@ -1803,15 +2025,17 @@ class AsyncDatabase:
     async def list_collection_names(
         self,
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         max_time_ms: Optional[int] = None,
     ) -> List[str]:
         """
-        List the names of all collections in a given namespace of this database.
+        List the names of all collections in a given keyspace of this database.
 
         Args:
-            namespace: the namespace to be inspected. If not specified,
+            keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
 
         Returns:
@@ -1822,7 +2046,12 @@ class AsyncDatabase:
             ['a_collection', 'another_col']
         """
 
-        driver_commander = self._get_driver_commander(namespace=namespace)
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
+        driver_commander = self._get_driver_commander(keyspace=keyspace_param)
         gc_payload: Dict[str, Any] = {"findCollections": {}}
         logger.info("findCollections")
         gc_response = await driver_commander.async_request(
@@ -1843,6 +2072,7 @@ class AsyncDatabase:
         self,
         body: Dict[str, Any],
         *,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         collection_name: Optional[str] = None,
         raise_api_errors: bool = True,
@@ -1854,8 +2084,9 @@ class AsyncDatabase:
 
         Args:
             body: a JSON-serializable dictionary, the payload of the request.
-            namespace: the namespace to use. Requests always target a namespace:
+            keyspace: the keyspace to use. Requests always target a keyspace:
                 if not specified, the general setting for this database is assumed.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             collection_name: if provided, the collection name is appended at the end
                 of the endpoint. In this way, this method allows collection-level
                 arbitrary POST requests as well.
@@ -1876,11 +2107,16 @@ class AsyncDatabase:
             {'status': {'count': 123}}
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         if collection_name:
-            # if namespace and collection_name both passed, a new database is needed
+            # if keyspace and collection_name both passed, a new database is needed
             _database: AsyncDatabase
-            if namespace:
-                _database = self._copy(namespace=namespace)
+            if keyspace_param:
+                _database = self._copy(keyspace=keyspace_param)
             else:
                 _database = self
             logger.info("deferring to collection " f"'{collection_name}' for command.")
@@ -1895,7 +2131,7 @@ class AsyncDatabase:
             )
             return coll_req_response
         else:
-            driver_commander = self._get_driver_commander(namespace=namespace)
+            driver_commander = self._get_driver_commander(keyspace=keyspace_param)
             _cmd_desc = ",".join(sorted(body.keys()))
             logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             req_response = await driver_commander.async_request(
@@ -1915,7 +2151,7 @@ class AsyncDatabase:
     ) -> DatabaseAdmin:
         """
         Return a DatabaseAdmin object corresponding to this database, for
-        use in admin tasks such as managing namespaces.
+        use in admin tasks such as managing keyspaces.
 
         This method, depending on the environment where the database resides,
         returns an appropriate subclass of DatabaseAdmin.
@@ -1942,10 +2178,10 @@ class AsyncDatabase:
 
         Example:
             >>> my_db_admin = my_async_db.get_database_admin()
-            >>> if "new_namespace" not in my_db_admin.list_namespaces():
-            ...     my_db_admin.create_namespace("new_namespace")
-            >>> my_db_admin.list_namespaces()
-            ['default_keyspace', 'new_namespace']
+            >>> if "new_keyspace" not in my_db_admin.list_keyspaces():
+            ...     my_db_admin.create_keyspace("new_keyspace")
+            >>> my_db_admin.list_keyspaces()
+            ['default_keyspace', 'new_keyspace']
         """
 
         # lazy importing here to avoid circular dependency

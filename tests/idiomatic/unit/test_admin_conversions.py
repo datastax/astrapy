@@ -339,11 +339,11 @@ class TestAdminConversions:
         db_id_string = "01234567-89ab-cdef-0123-456789abcdef"
 
         assert admin_t.get_database(
-            db_id_string, token=token_f, namespace="n", region="r"
-        ) == admin_f.get_database(db_id_string, namespace="n", region="r")
+            db_id_string, token=token_f, keyspace="n", region="r"
+        ) == admin_f.get_database(db_id_string, keyspace="n", region="r")
         assert admin_0.get_database(
-            db_id_string, token=token_f, namespace="n", region="r"
-        ) == admin_f.get_database(db_id_string, namespace="n", region="r")
+            db_id_string, token=token_f, keyspace="n", region="r"
+        ) == admin_f.get_database(db_id_string, keyspace="n", region="r")
 
     @pytest.mark.describe(
         "test of token inheritance in spawning from AstraDBDatabaseAdmin"
@@ -360,11 +360,11 @@ class TestAdminConversions:
         adbadmin_f = AstraDBDatabaseAdmin(db_id_string, region="reg", token=token_f)
 
         assert adbadmin_t.get_database(
-            token=token_f, namespace="n", region="r"
-        ) == adbadmin_f.get_database(namespace="n", region="r")
+            token=token_f, keyspace="n", region="r"
+        ) == adbadmin_f.get_database(keyspace="n", region="r")
         assert adbadmin_0.get_database(
-            token=token_f, namespace="n", region="r"
-        ) == adbadmin_f.get_database(namespace="n", region="r")
+            token=token_f, keyspace="n", region="r"
+        ) == adbadmin_f.get_database(keyspace="n", region="r")
 
     @pytest.mark.describe(
         "test of token inheritance in spawning from DataAPIDatabaseAdmin"
@@ -379,11 +379,11 @@ class TestAdminConversions:
         dadbadmin_f = DataAPIDatabaseAdmin(a_e_string, token=token_f)
 
         assert dadbadmin_t.get_database(
-            token=token_f, namespace="n"
-        ) == dadbadmin_f.get_database(namespace="n")
+            token=token_f, keyspace="n"
+        ) == dadbadmin_f.get_database(keyspace="n")
         assert dadbadmin_0.get_database(
-            token=token_f, namespace="n"
-        ) == dadbadmin_f.get_database(namespace="n")
+            token=token_f, keyspace="n"
+        ) == dadbadmin_f.get_database(keyspace="n")
 
     @pytest.mark.describe("test of token inheritance in spawning from Database")
     def test_database_token_inheritance(self) -> None:
@@ -444,11 +444,11 @@ class TestAdminConversions:
         assert db_adm1 == db_adm2
         assert db_adm2 == db_adm3
 
-        db_1 = adm.get_database(db_id, region=db_reg, namespace="the_ns")
-        db_2 = adm.get_database(api_ep, region=db_reg, namespace="the_ns")
-        db_3 = adm.get_database(api_ep, namespace="the_ns")
+        db_1 = adm.get_database(db_id, region=db_reg, keyspace="the_ks")
+        db_2 = adm.get_database(api_ep, region=db_reg, keyspace="the_ks")
+        db_3 = adm.get_database(api_ep, keyspace="the_ks")
         with pytest.raises(ValueError):
-            adm.get_database(api_ep, region="not-that-one", namespace="the_ns")
+            adm.get_database(api_ep, region="not-that-one", keyspace="the_ks")
 
         assert db_1 == db_2
         assert db_2 == db_3
@@ -469,11 +469,9 @@ class TestAdminConversions:
         api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
         db_adm = AstraDBDatabaseAdmin(api_ep)
         with pytest.warns(DeprecationWarning):
-            db1 = db_adm.get_database(
-                region="another-region", namespace="the-namespace"
-            )
+            db1 = db_adm.get_database(region="another-region", keyspace="the-keyspace")
             # it's ignored anyway
-            assert db1 == db_adm.get_database(namespace="the-namespace")
+            assert db1 == db_adm.get_database(keyspace="the-keyspace")
 
     @pytest.mark.describe(
         "test of spawner_database for AstraDBDatabaseAdmin if not provided"
@@ -496,7 +494,7 @@ class TestAdminConversions:
     )
     def test_spawnerdatabase_astradbdatabaseadmin_syncprovided(self) -> None:
         api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
-        db = Database(api_ep, namespace="M")
+        db = Database(api_ep, keyspace="M")
         db_adm = AstraDBDatabaseAdmin(api_ep, spawner_database=db)
         assert db_adm.spawner_database is db
 
@@ -505,7 +503,7 @@ class TestAdminConversions:
     )
     def test_spawnerdatabase_astradbdatabaseadmin_asyncprovided(self) -> None:
         api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
-        adb = AsyncDatabase(api_ep, namespace="M")
+        adb = AsyncDatabase(api_ep, keyspace="M")
         db_adm = AstraDBDatabaseAdmin(api_ep, spawner_database=adb)
         assert db_adm.spawner_database is adb
 
@@ -531,4 +529,4 @@ class TestAdminConversions:
     def test_fromapiendpoint_astradbdatabaseadmin(self) -> None:
         api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
         db_adm = AstraDBDatabaseAdmin.from_api_endpoint(api_ep, token="t")
-        assert db_adm.get_database(namespace="M").api_endpoint == api_ep
+        assert db_adm.get_database(keyspace="M").api_endpoint == api_ep

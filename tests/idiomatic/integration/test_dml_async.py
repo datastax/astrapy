@@ -1481,6 +1481,7 @@ class TestDMLAsync:
         assert set(resp_pr2.keys()) == {"f"}
         await acol.delete_many({})
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of ordered bulk_write, async")
     async def test_collection_ordered_bulk_write_async(
         self,
@@ -1521,6 +1522,7 @@ class TestDMLAsync:
         assert len(found_docs[0]) == 3
         assert found_docs[1] == {"_id": "seq4", "from_upsert": True}
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of unordered bulk_write, async")
     async def test_collection_unordered_bulk_write_async(
         self,
@@ -1551,6 +1553,7 @@ class TestDMLAsync:
         assert {"a": 1} in no_id_found_docs
         assert {"b": 1, "newfield": True} in no_id_found_docs
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of bulk_write with vectors, async")
     async def test_collection_bulk_write_vector_async(
         self,

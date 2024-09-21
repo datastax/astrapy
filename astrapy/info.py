@@ -28,7 +28,8 @@ class DatabaseInfo:
     Attributes:
         id: the database ID.
         region: the ID of the region through which the connection to DB is done.
-        namespace: the namespace this DB is set to work with. None if not set.
+        keyspace: the namespace this DB is set to work with. None if not set.
+        namespace: an alias for 'keyspace'. *DEPRECATED*, removal in 2.0
         name: the database name. Not necessarily unique: there can be multiple
             databases with the same name.
         environment: a label, whose value can be `Environment.PROD`,
@@ -45,12 +46,13 @@ class DatabaseInfo:
             database_info.region != database_info.raw_info["region"]
         Conversely, in case of a DatabaseInfo not obtained through a
         connected database, such as when calling `Admin.list_databases()`,
-        all fields except `environment` (e.g. namespace, region, etc)
+        all fields except `environment` (e.g. keyspace, region, etc)
         are set as found on the DevOps API response directly.
     """
 
     id: str
     region: str
+    keyspace: Optional[str]
     namespace: Optional[str]
     name: str
     environment: str
@@ -117,13 +119,15 @@ class CollectionInfo:
 
     Attributes:
         database_info: a DatabaseInfo instance for the underlying database.
-        namespace: the namespace where the collection is located.
-        name: collection name. Unique within a namespace.
+        keyspace: the keyspace where the collection is located.
+        namespace: an alias for 'keyspace'. *DEPRECATED*, removal in 2.0
+        name: collection name. Unique within a keyspace.
         full_name: identifier for the collection within the database,
-            in the form "namespace.collection_name".
+            in the form "keyspace.collection_name".
     """
 
     database_info: DatabaseInfo
+    keyspace: str
     namespace: str
     name: str
     full_name: str
@@ -512,7 +516,7 @@ class EmbeddingProviderParameter:
                 f"an `EmbeddingProviderParameter`: '{','.join(sorted(residual_keys))}'"
             )
         return EmbeddingProviderParameter(
-            default_value=raw_dict["defaultValue"],
+            default_value=raw_dict.get("defaultValue"),
             display_name=raw_dict.get("displayName"),
             help=raw_dict.get("help"),
             hint=raw_dict.get("hint"),

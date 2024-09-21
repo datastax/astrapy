@@ -26,7 +26,12 @@ import pytest
 from astrapy import AsyncCollection, AsyncDatabase, Collection, DataAPIClient, Database
 from astrapy.constants import VectorMetric
 
-from ..conftest import IS_ASTRA_DB, DataAPICredentials, DataAPICredentialsInfo
+from ..conftest import (
+    IS_ASTRA_DB,
+    DataAPICredentials,
+    DataAPICredentialsInfo,
+    clean_nulls_from_dict,
+)
 
 TEST_SERVICE_COLLECTION_NAME = "test_indepth_vectorize_collection"
 
@@ -41,7 +46,7 @@ def sync_database(
     database = client.get_database(
         data_api_credentials_kwargs["api_endpoint"],
         token=data_api_credentials_kwargs["token"],
-        namespace=data_api_credentials_kwargs["namespace"],
+        keyspace=data_api_credentials_kwargs["namespace"],
     )
     yield database
 
@@ -70,7 +75,7 @@ def sync_service_collection(
     service_collection_parameters: Dict[str, Any],
 ) -> Iterable[Collection]:
     """
-    An actual collection on DB, in the main namespace.
+    An actual collection on DB, in the main keyspace.
     """
     params = service_collection_parameters
     collection = sync_database.create_collection(
@@ -104,5 +109,6 @@ def async_empty_service_collection(
 __all__ = [
     "sync_database",
     "async_database",
+    "clean_nulls_from_dict",
     "IS_ASTRA_DB",
 ]

@@ -23,7 +23,7 @@ from astrapy.admin import async_fetch_database_info
 from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
 from astrapy.operations import AsyncDeleteMany, AsyncInsertMany
 
-from ..conftest import IS_ASTRA_DB
+from ..conftest import IS_ASTRA_DB, async_fail_if_not_removed
 
 
 class TestTimeoutAsync:
@@ -53,7 +53,7 @@ class TestTimeoutAsync:
         info = await async_fetch_database_info(
             async_database.api_endpoint,
             token=async_database.token_provider.get_token(),
-            namespace=async_database.namespace,
+            keyspace=async_database.keyspace,
         )
         assert info is not None
 
@@ -61,7 +61,7 @@ class TestTimeoutAsync:
             info = await async_fetch_database_info(
                 async_database.api_endpoint,
                 token=async_database.token_provider.get_token(),
-                namespace=async_database.namespace,
+                keyspace=async_database.keyspace,
                 max_time_ms=1,
             )
             assert info is not None
@@ -167,6 +167,7 @@ class TestTimeoutAsync:
         with pytest.raises(DataAPITimeoutException):
             await async_collection.delete_many({"f": "delete_many3"}, max_time_ms=2)
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of bulk_write timeouts, async")
     async def test_bulk_write_ordered_timeout_exceptions_async(
         self,
@@ -185,6 +186,7 @@ class TestTimeoutAsync:
                 [im_a, im_b, dm], ordered=True, max_time_ms=1
             )
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of bulk_write timeouts, async")
     async def test_bulk_write_unordered_timeout_exceptions_async(
         self,

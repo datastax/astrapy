@@ -23,8 +23,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from deprecation import DeprecatedWarning
+import deprecation
 
+from astrapy import __version__
 from astrapy.api_commander import APICommander
 from astrapy.authentication import coerce_token_provider, redact_secret
 from astrapy.constants import Environment
@@ -42,11 +43,12 @@ from astrapy.defaults import (
     DEV_OPS_DATABASE_STATUS_MAINTENANCE,
     DEV_OPS_DATABASE_STATUS_PENDING,
     DEV_OPS_DATABASE_STATUS_TERMINATING,
-    DEV_OPS_NAMESPACE_POLL_INTERVAL_S,
+    DEV_OPS_KEYSPACE_POLL_INTERVAL_S,
     DEV_OPS_RESPONSE_HTTP_ACCEPTED,
     DEV_OPS_RESPONSE_HTTP_CREATED,
     DEV_OPS_URL_ENV_MAP,
     DEV_OPS_VERSION_ENV_MAP,
+    NAMESPACE_DEPRECATION_NOTICE_METHOD,
 )
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
@@ -55,6 +57,7 @@ from astrapy.exceptions import (
     base_timeout_info,
 )
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo, FindEmbeddingProvidersResult
+from astrapy.meta import check_namespace_keyspace, check_update_db_namespace_keyspace
 from astrapy.request_tools import HttpMethod
 
 if TYPE_CHECKING:
@@ -297,7 +300,8 @@ async def async_fetch_raw_database_info_from_id_token(
 def fetch_database_info(
     api_endpoint: str,
     token: Optional[str],
-    namespace: Optional[str],
+    keyspace: Optional[str] = None,
+    namespace: Optional[str] = None,
     max_time_ms: Optional[int] = None,
 ) -> Optional[DatabaseInfo]:
     """
@@ -306,8 +310,9 @@ def fetch_database_info(
     Args:
         api_endpoint: a full API endpoint for the Data Api.
         token: a valid token to access the database information.
-        namespace: the desired namespace that will be used in the result.
+        keyspace: the desired keyspace that will be used in the result.
             If not specified, the resulting database info will show it as None.
+        namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
         max_time_ms: a timeout, in milliseconds, for waiting on a response.
 
     Returns:
@@ -315,6 +320,11 @@ def fetch_database_info(
         If the API endpoint fails to be parsed, None is returned.
         For valid-looking endpoints, if something goes wrong an exception is raised.
     """
+
+    keyspace_param = check_namespace_keyspace(
+        keyspace=keyspace,
+        namespace=namespace,
+    )
 
     parsed_endpoint = parse_api_endpoint(api_endpoint)
     if parsed_endpoint:
@@ -325,13 +335,14 @@ def fetch_database_info(
             max_time_ms=max_time_ms,
         )
         raw_info = gd_response["info"]
-        if namespace is not None and namespace not in raw_info["keyspaces"]:
-            raise DevOpsAPIException(f"Namespace {namespace} not found on DB.")
+        if keyspace_param is not None and keyspace_param not in raw_info["keyspaces"]:
+            raise DevOpsAPIException(f"Keyspace {keyspace_param} not found on DB.")
         else:
             return DatabaseInfo(
                 id=parsed_endpoint.database_id,
                 region=parsed_endpoint.region,
-                namespace=namespace,
+                keyspace=keyspace_param,
+                namespace=keyspace_param,
                 name=raw_info["name"],
                 environment=parsed_endpoint.environment,
                 raw_info=raw_info,
@@ -343,7 +354,8 @@ def fetch_database_info(
 async def async_fetch_database_info(
     api_endpoint: str,
     token: Optional[str],
-    namespace: Optional[str],
+    keyspace: Optional[str] = None,
+    namespace: Optional[str] = None,
     max_time_ms: Optional[int] = None,
 ) -> Optional[DatabaseInfo]:
     """
@@ -353,8 +365,9 @@ async def async_fetch_database_info(
     Args:
         api_endpoint: a full API endpoint for the Data Api.
         token: a valid token to access the database information.
-        namespace: the desired namespace that will be used in the result.
+        keyspace: the desired keyspace that will be used in the result.
             If not specified, the resulting database info will show it as None.
+        namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
         max_time_ms: a timeout, in milliseconds, for waiting on a response.
 
     Returns:
@@ -362,6 +375,11 @@ async def async_fetch_database_info(
         If the API endpoint fails to be parsed, None is returned.
         For valid-looking endpoints, if something goes wrong an exception is raised.
     """
+
+    keyspace_param = check_namespace_keyspace(
+        keyspace=keyspace,
+        namespace=namespace,
+    )
 
     parsed_endpoint = parse_api_endpoint(api_endpoint)
     if parsed_endpoint:
@@ -372,13 +390,14 @@ async def async_fetch_database_info(
             max_time_ms=max_time_ms,
         )
         raw_info = gd_response["info"]
-        if namespace is not None and namespace not in raw_info["keyspaces"]:
-            raise DevOpsAPIException(f"Namespace {namespace} not found on DB.")
+        if keyspace_param is not None and keyspace_param not in raw_info["keyspaces"]:
+            raise DevOpsAPIException(f"Keyspace {keyspace_param} not found on DB.")
         else:
             return DatabaseInfo(
                 id=parsed_endpoint.database_id,
                 region=parsed_endpoint.region,
-                namespace=namespace,
+                keyspace=keyspace_param,
+                namespace=keyspace_param,
                 name=raw_info["name"],
                 environment=parsed_endpoint.environment,
                 raw_info=raw_info,
@@ -396,6 +415,7 @@ def _recast_as_admin_database_info(
         info=DatabaseInfo(
             id=admin_database_info_dict["id"],
             region=admin_database_info_dict["info"]["region"],
+            keyspace=admin_database_info_dict["info"]["keyspace"],
             namespace=admin_database_info_dict["info"]["keyspace"],
             name=admin_database_info_dict["info"]["name"],
             environment=environment,
@@ -532,8 +552,8 @@ class AstraDBAdmin:
         >>> database_list[2].id
         '01234567-...'
         >>> my_db_admin = my_astra_db_admin.get_database_admin("01234567-...")
-        >>> my_db_admin.list_namespaces()
-        ['default_keyspace', 'staging_namespace']
+        >>> my_db_admin.list_keyspaces()
+        ['default_keyspace', 'staging_keyspace']
     """
 
     def __init__(
@@ -879,6 +899,7 @@ class AstraDBAdmin:
         *,
         cloud_provider: str,
         region: str,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         wait_until_active: bool = True,
         max_time_ms: Optional[int] = None,
@@ -890,8 +911,9 @@ class AstraDBAdmin:
             name: the desired name for the database.
             cloud_provider: one of 'aws', 'gcp' or 'azure'.
             region: any of the available cloud regions.
-            namespace: name for the one namespace the database starts with.
+            keyspace: name for the one keyspace the database starts with.
                 If omitted, DevOps API will use its default.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             wait_until_active: if True (default), the method returns only after
                 the newly-created database is in ACTIVE state (a few minutes,
                 usually). If False, it will return right after issuing the
@@ -916,6 +938,11 @@ class AstraDBAdmin:
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.2]})
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         cd_payload = {
             k: v
             for k, v in {
@@ -925,7 +952,7 @@ class AstraDBAdmin:
                 "region": region,
                 "capacityUnits": 1,
                 "dbType": "vector",
-                "keyspace": namespace,
+                "keyspace": keyspace_param,
             }.items()
             if v is not None
         }
@@ -985,6 +1012,7 @@ class AstraDBAdmin:
         *,
         cloud_provider: str,
         region: str,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         wait_until_active: bool = True,
         max_time_ms: Optional[int] = None,
@@ -997,8 +1025,9 @@ class AstraDBAdmin:
             name: the desired name for the database.
             cloud_provider: one of 'aws', 'gcp' or 'azure'.
             region: any of the available cloud regions.
-            namespace: name for the one namespace the database starts with.
+            keyspace: name for the one keyspace the database starts with.
                 If omitted, DevOps API will use its default.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             wait_until_active: if True (default), the method returns only after
                 the newly-created database is in ACTIVE state (a few minutes,
                 usually). If False, it will return right after issuing the
@@ -1023,6 +1052,11 @@ class AstraDBAdmin:
             AstraDBDatabaseAdmin(id=...)
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         cd_payload = {
             k: v
             for k, v in {
@@ -1032,7 +1066,7 @@ class AstraDBAdmin:
                 "region": region,
                 "capacityUnits": 1,
                 "dbType": "vector",
-                "keyspace": namespace,
+                "keyspace": keyspace_param,
             }.items()
             if v is not None
         }
@@ -1284,11 +1318,11 @@ class AstraDBAdmin:
 
         Example:
             >>> my_db_admin = my_astra_db_admin.get_database_admin("01234567-...")
-            >>> my_db_admin.list_namespaces()
+            >>> my_db_admin.list_keyspaces()
             ['default_keyspace']
-            >>> my_db_admin.create_namespace("that_other_one")
+            >>> my_db_admin.create_keyspace("that_other_one")
             {'ok': 1}
-            >>> my_db_admin.list_namespaces()
+            >>> my_db_admin.list_keyspaces()
             ['default_keyspace', 'that_other_one']
 
         Note:
@@ -1312,6 +1346,7 @@ class AstraDBAdmin:
         *,
         api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -1332,10 +1367,11 @@ class AstraDBAdmin:
                 the one set for this object.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            namespace: used to specify a certain namespace the resulting
+            keyspace: used to specify a certain keyspace the resulting
                 Database will primarily work on. If not specified, similar
                 as for `region`, an additional DevOps API call reveals
-                the default namespace for the target database.
+                the default keyspace for the target database.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             region: the region to use for connecting to the database. The
                 database must be located in that region.
                 The region cannot be specified when the API endoint is used as `id`.
@@ -1366,6 +1402,11 @@ class AstraDBAdmin:
             `create_database` method of class AstraDBAdmin.
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
@@ -1381,9 +1422,9 @@ class AstraDBAdmin:
             max_time_ms=max_time_ms,
         )
 
-        _namespace: Optional[str]
-        if namespace:
-            _namespace = namespace
+        _keyspace: Optional[str]
+        if keyspace_param:
+            _keyspace = keyspace_param
         else:
             parsed_api_endpoint = parse_api_endpoint(normalized_api_endpoint)
             if parsed_api_endpoint is None:
@@ -1394,12 +1435,12 @@ class AstraDBAdmin:
                 parsed_api_endpoint.database_id,
                 max_time_ms=max_time_ms,
             )
-            _namespace = this_db_info.info.namespace
+            _keyspace = this_db_info.info.keyspace
 
         return Database(
             api_endpoint=normalized_api_endpoint,
             token=_token,
-            namespace=_namespace,
+            keyspace=_keyspace,
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             environment=self.environment,
@@ -1413,6 +1454,7 @@ class AstraDBAdmin:
         *,
         api_endpoint: Optional[str] = None,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -1426,11 +1468,16 @@ class AstraDBAdmin:
         counterpart `get_database`: please see that one for more details.
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         return self.get_database(
             id=id,
             api_endpoint=api_endpoint,
             token=token,
-            namespace=namespace,
+            keyspace=keyspace_param,
             region=region,
             api_path=api_path,
             api_version=api_version,
@@ -1440,7 +1487,7 @@ class AstraDBAdmin:
 class DatabaseAdmin(ABC):
     """
     An abstract class defining the interface for a database admin object.
-    This supports generic namespace crud, as well as spawning databases,
+    This supports generic keyspace crud, as well as spawning databases,
     without committing to a specific database architecture (e.g. Astra DB).
     """
 
@@ -1453,10 +1500,16 @@ class DatabaseAdmin(ABC):
         ...
 
     @abstractmethod
+    def list_keyspaces(self, *pargs: Any, **kwargs: Any) -> List[str]:
+        """Get a list of keyspaces for the database."""
+        ...
+
+    @abstractmethod
     def create_namespace(
         self,
         name: str,
         *,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
@@ -1466,9 +1519,30 @@ class DatabaseAdmin(ABC):
         ...
 
     @abstractmethod
+    def create_keyspace(
+        self,
+        name: str,
+        *,
+        update_db_keyspace: Optional[bool] = None,
+        update_db_namespace: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """
+        Create a keyspace in the database, returning {'ok': 1} if successful.
+        """
+        ...
+
+    @abstractmethod
     def drop_namespace(self, name: str, *pargs: Any, **kwargs: Any) -> Dict[str, Any]:
         """
         Drop (delete) a namespace from the database, returning {'ok': 1} if successful.
+        """
+        ...
+
+    @abstractmethod
+    def drop_keyspace(self, name: str, *pargs: Any, **kwargs: Any) -> Dict[str, Any]:
+        """
+        Drop (delete) a keyspace from the database, returning {'ok': 1} if successful.
         """
         ...
 
@@ -1481,11 +1555,39 @@ class DatabaseAdmin(ABC):
         ...
 
     @abstractmethod
+    async def async_list_keyspaces(self, *pargs: Any, **kwargs: Any) -> List[str]:
+        """
+        Get a list of keyspaces for the database.
+        (Async version of the method.)
+        """
+        ...
+
+    @abstractmethod
     async def async_create_namespace(
-        self, name: str, *, update_db_namespace: Optional[bool] = None, **kwargs: Any
+        self,
+        name: str,
+        *,
+        update_db_keyspace: Optional[bool] = None,
+        update_db_namespace: Optional[bool] = None,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
+        (Async version of the method.)
+        """
+        ...
+
+    @abstractmethod
+    async def async_create_keyspace(
+        self,
+        name: str,
+        *,
+        update_db_keyspace: Optional[bool] = None,
+        update_db_namespace: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """
+        Create a keyspace in the database, returning {'ok': 1} if successful.
         (Async version of the method.)
         """
         ...
@@ -1496,6 +1598,16 @@ class DatabaseAdmin(ABC):
     ) -> Dict[str, Any]:
         """
         Drop (delete) a namespace from the database, returning {'ok': 1} if successful.
+        (Async version of the method.)
+        """
+        ...
+
+    @abstractmethod
+    async def async_drop_keyspace(
+        self, name: str, *pargs: Any, **kwargs: Any
+    ) -> Dict[str, Any]:
+        """
+        Drop (delete) a keyspace from the database, returning {'ok': 1} if successful.
         (Async version of the method.)
         """
         ...
@@ -1530,8 +1642,8 @@ class DatabaseAdmin(ABC):
 
 class AstraDBDatabaseAdmin(DatabaseAdmin):
     """
-    An "admin" object, able to perform administrative tasks at the namespaces level
-    (i.e. within a certain database), such as creating/listing/dropping namespaces.
+    An "admin" object, able to perform administrative tasks at the keyspaces level
+    (i.e. within a certain database), such as creating/listing/dropping keyspaces.
 
     This is one layer below the AstraDBAdmin concept, in that it is tied to
     a single database and enables admin work within it. As such, it is generally
@@ -1573,8 +1685,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             Generally to be left to its Astra DB default of "/v1".
         spawner_database: either a Database or an AsyncDatabase instance. This represents
             the database class which spawns this admin object, so that, if required,
-            a namespace creation can retroactively "use" the new namespace in the spawner.
-            Used to enable the Async/Database.get_admin_database().create_namespace() pattern.
+            a keyspace creation can retroactively "use" the new keyspace in the spawner.
+            Used to enable the Async/Database.get_admin_database().create_keyspace() pattern.
         max_time_ms: a timeout, in milliseconds, for the DevOps API
             HTTP request should it be necessary (see the `region` argument).
 
@@ -1582,8 +1694,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         >>> from astrapy import DataAPIClient
         >>> my_client = DataAPIClient("AstraCS:...")
         >>> admin_for_my_db = my_client.get_admin().get_database_admin("01234567-...")
-        >>> admin_for_my_db.list_namespaces()
-        ['default_keyspace', 'staging_namespace']
+        >>> admin_for_my_db.list_keyspaces()
+        ['default_keyspace', 'staging_keyspace']
         >>> admin_for_my_db.info().status
         'ACTIVE'
 
@@ -1651,12 +1763,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         if spawner_database is not None:
             self.spawner_database = spawner_database
         else:
-            # leaving the namespace to its per-environment default
+            # leaving the keyspace to its per-environment default
             # (a task for the Database)
             self.spawner_database = Database(
                 api_endpoint=self.api_endpoint,
                 token=self.token_provider,
-                namespace=None,
+                keyspace=None,
                 caller_name=self.caller_name,
                 caller_version=self.caller_version,
                 environment=self.environment,
@@ -1670,7 +1782,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         }
         self._api_commander = self._get_api_commander()
 
-        # DevOps-API-commander specific init (namespace CRUD, etc)
+        # DevOps-API-commander specific init (keyspace CRUD, etc)
         self.dev_ops_url = (
             dev_ops_url
             if dev_ops_url is not None
@@ -1914,8 +2026,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ...     id="01234567-...",
             ...     astra_db_admin=DataAPIClient("AstraCS:...").get_admin(),
             ... )
-            >>> admin_for_my_db.list_namespaces()
-            ['default_keyspace', 'staging_namespace']
+            >>> admin_for_my_db.list_keyspaces()
+            ['default_keyspace', 'staging_keyspace']
             >>> admin_for_my_db.info().status
             'ACTIVE'
 
@@ -1974,8 +2086,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ...     api_endpoint="https://01234567-....apps.astra.datastax.com",
             ...     token="AstraCS:...",
             ... )
-            >>> admin_for_my_db.list_namespaces()
-            ['default_keyspace', 'another_namespace']
+            >>> admin_for_my_db.list_keyspaces()
+            ['default_keyspace', 'another_keyspace']
             >>> admin_for_my_db.info().status
             'ACTIVE'
 
@@ -2058,9 +2170,17 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         logger.info(f"finished getting info ('{self._database_id}'), async")
         return req_response
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
         """
         Query the DevOps API for a list of the namespaces in the database.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "list_keyspaces" method.**
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the DevOps API request.
@@ -2073,20 +2193,45 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_namespace']
         """
 
-        logger.info(f"getting namespaces ('{self._database_id}')")
-        info = self.info(max_time_ms=max_time_ms)
-        logger.info(f"finished getting namespaces ('{self._database_id}')")
-        if info.raw_info is None:
-            raise DevOpsAPIException("Could not get the namespace list.")
-        else:
-            return info.raw_info["info"]["keyspaces"]  # type: ignore[no-any-return]
+        return self.list_keyspaces(max_time_ms=max_time_ms)
 
+    def list_keyspaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
+        """
+        Query the DevOps API for a list of the keyspaces in the database.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A list of the keyspaces, each a string, in no particular order.
+
+        Example:
+            >>> admin_for_my_db.list_keyspaces()
+            ['default_keyspace', 'staging_keyspace']
+        """
+
+        logger.info(f"getting keyspaces ('{self._database_id}')")
+        info = self.info(max_time_ms=max_time_ms)
+        logger.info(f"finished getting keyspaces ('{self._database_id}')")
+        if info.raw_info is None:
+            raise DevOpsAPIException("Could not get the keyspace list.")
+        else:
+            return info.raw_info.get("info", {}).get("keyspaces", [])  # type: ignore[no-any-return]
+
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     async def async_list_namespaces(
         self, *, max_time_ms: Optional[int] = None
     ) -> List[str]:
         """
         Query the DevOps API for a list of the namespaces in the database.
         Async version of the method, for use in an asyncio context.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "keyspace" property.**
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the DevOps API request.
@@ -2107,19 +2252,54 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             True
         """
 
-        logger.info(f"getting namespaces ('{self._database_id}'), async")
-        info = await self.async_info(max_time_ms=max_time_ms)
-        logger.info(f"finished getting namespaces ('{self._database_id}'), async")
-        if info.raw_info is None:
-            raise DevOpsAPIException("Could not get the namespace list.")
-        else:
-            return info.raw_info["info"]["keyspaces"]  # type: ignore[no-any-return]
+        return await self.async_list_keyspaces(max_time_ms=max_time_ms)
 
+    async def async_list_keyspaces(
+        self, *, max_time_ms: Optional[int] = None
+    ) -> List[str]:
+        """
+        Query the DevOps API for a list of the keyspaces in the database.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A list of the keyspaces, each a string, in no particular order.
+
+        Example:
+            >>> async def check_if_ks_exists(
+            ...     db_admin: AstraDBDatabaseAdmin, keyspace: str
+            ... ) -> bool:
+            ...     ks_list = await db_admin.async_list_keyspaces()
+            ...     return keyspace in ks_list
+            ...
+            >>> asyncio.run(check_if_ks_exists(admin_for_my_db, "dragons"))
+            False
+            >>> asyncio.run(check_if_db_exists(admin_for_my_db, "app_keyspace"))
+            True
+        """
+
+        logger.info(f"getting keyspaces ('{self._database_id}'), async")
+        info = await self.async_info(max_time_ms=max_time_ms)
+        logger.info(f"finished getting keyspaces ('{self._database_id}'), async")
+        if info.raw_info is None:
+            raise DevOpsAPIException("Could not get the keyspace list.")
+        else:
+            return info.raw_info.get("info", {}).get("keyspaces", [])  # type: ignore[no-any-return]
+
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     def create_namespace(
         self,
         name: str,
         *,
         wait_until_active: bool = True,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
         **kwargs: Any,
@@ -2127,6 +2307,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         """
         Create a namespace in this database as requested,
         optionally waiting for it to be ready.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "keyspace" property.**
 
         Args:
             name: the namespace name. If supplying a namespace that exists
@@ -2138,9 +2320,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/namespace availability
                 before working with it.
-            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
-                the newly-created namespace starting when this method returns.
+                the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -2159,11 +2343,72 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'that_other_one']
         """
 
+        return self.create_keyspace(
+            name=name,
+            wait_until_active=wait_until_active,
+            update_db_keyspace=update_db_keyspace,
+            update_db_namespace=update_db_namespace,
+            max_time_ms=max_time_ms,
+            **kwargs,
+        )
+
+    def create_keyspace(
+        self,
+        name: str,
+        *,
+        wait_until_active: bool = True,
+        update_db_keyspace: Optional[bool] = None,
+        update_db_namespace: Optional[bool] = None,
+        max_time_ms: Optional[int] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """
+        Create a keyspace in this database as requested,
+        optionally waiting for it to be ready.
+
+        Args:
+            name: the keyspace name. If supplying a keyspace that exists
+                already, the method call proceeds as usual, no errors are
+                raised, and the whole invocation is a no-op.
+            wait_until_active: if True (default), the method returns only after
+                the target database is in ACTIVE state again (a few
+                seconds, usually). If False, it will return right after issuing the
+                creation request to the DevOps API, and it will be responsibility
+                of the caller to check the database status/keyspace availability
+                before working with it.
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
+                that spawned this DatabaseAdmin, if any, gets updated to work on
+                the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the creation request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> my_db_admin.keyspaces()
+            ['default_keyspace']
+            >>> my_db_admin.create_keyspace("that_other_one")
+            {'ok': 1}
+            >>> my_db_admin.list_keyspaces()
+            ['default_keyspace', 'that_other_one']
+        """
+
+        _update_db_keyspace = check_update_db_namespace_keyspace(
+            update_db_keyspace=update_db_keyspace,
+            update_db_namespace=update_db_namespace,
+        )
+
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, dev_ops_api=True
         )
         logger.info(
-            f"creating namespace '{name}' on " f"'{self._database_id}' (DevOps API)"
+            f"creating keyspace '{name}' on " f"'{self._database_id}' (DevOps API)"
         )
         cn_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.POST,
@@ -2172,19 +2417,19 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         )
         if cn_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_CREATED:
             raise DevOpsAPIException(
-                f"Namespace creation ('{name}') failed: API returned HTTP "
+                f"keyspace creation ('{name}') failed: API returned HTTP "
                 f"{cn_raw_response.status_code} instead of "
                 f"{DEV_OPS_RESPONSE_HTTP_CREATED} - Created."
             )
         logger.info(
-            "DevOps API returned from creating namespace "
+            "DevOps API returned from creating keyspace "
             f"'{name}' on '{self._database_id}'"
         )
         if wait_until_active:
             last_status_seen = DEV_OPS_DATABASE_STATUS_MAINTENANCE
             while last_status_seen == DEV_OPS_DATABASE_STATUS_MAINTENANCE:
                 logger.info(f"sleeping to poll for status of '{self._database_id}'")
-                time.sleep(DEV_OPS_NAMESPACE_POLL_INTERVAL_S)
+                time.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
                 last_status_seen = self.info(
                     max_time_ms=timeout_manager.remaining_timeout_ms(),
                 ).status
@@ -2192,22 +2437,29 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 raise DevOpsAPIException(
                     f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
                 )
-            # is the namespace found?
-            if name not in self.list_namespaces():
-                raise DevOpsAPIException("Could not create the namespace.")
+            # is the keyspace found?
+            if name not in self.list_keyspaces():
+                raise DevOpsAPIException("Could not create the keyspace.")
         logger.info(
-            f"finished creating namespace '{name}' on "
+            f"finished creating keyspace '{name}' on "
             f"'{self._database_id}' (DevOps API)"
         )
-        if update_db_namespace:
-            self.spawner_database.use_namespace(name)
+        if _update_db_keyspace:
+            self.spawner_database.use_keyspace(name)
         return {"ok": 1}
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     async def async_create_namespace(
         self,
         name: str,
         *,
         wait_until_active: bool = True,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
         **kwargs: Any,
@@ -2216,6 +2468,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Create a namespace in this database as requested,
         optionally waiting for it to be ready.
         Async version of the method, for use in an asyncio context.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "async_create_keyspace" method.**
 
         Args:
             name: the namespace name. If supplying a namespace that exists
@@ -2227,9 +2481,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/namespace availability
                 before working with it.
-            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
-                the newly-created namespace starting when this method returns.
+                the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -2246,11 +2502,71 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             {'ok': 1}
         """
 
+        return await self.async_create_keyspace(
+            name=name,
+            wait_until_active=wait_until_active,
+            update_db_keyspace=update_db_keyspace,
+            update_db_namespace=update_db_namespace,
+            max_time_ms=max_time_ms,
+            **kwargs,
+        )
+
+    async def async_create_keyspace(
+        self,
+        name: str,
+        *,
+        wait_until_active: bool = True,
+        update_db_keyspace: Optional[bool] = None,
+        update_db_namespace: Optional[bool] = None,
+        max_time_ms: Optional[int] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """
+        Create a keyspace in this database as requested,
+        optionally waiting for it to be ready.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            name: the keyspace name. If supplying a keyspace that exists
+                already, the method call proceeds as usual, no errors are
+                raised, and the whole invocation is a no-op.
+            wait_until_active: if True (default), the method returns only after
+                the target database is in ACTIVE state again (a few
+                seconds, usually). If False, it will return right after issuing the
+                creation request to the DevOps API, and it will be responsibility
+                of the caller to check the database status/keyspace availability
+                before working with it.
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
+                that spawned this DatabaseAdmin, if any, gets updated to work on
+                the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the creation request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> asyncio.run(
+            ...     my_db_admin.async_create_keyspace("app_keyspace")
+            ... )
+            {'ok': 1}
+        """
+
+        _update_db_keyspace = check_update_db_namespace_keyspace(
+            update_db_keyspace=update_db_keyspace,
+            update_db_namespace=update_db_namespace,
+        )
+
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, dev_ops_api=True
         )
         logger.info(
-            f"creating namespace '{name}' on "
+            f"creating keyspace '{name}' on "
             f"'{self._database_id}' (DevOps API), async"
         )
         cn_raw_response = await self._dev_ops_api_commander.async_raw_request(
@@ -2260,12 +2576,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         )
         if cn_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_CREATED:
             raise DevOpsAPIException(
-                f"Namespace creation ('{name}') failed: API returned HTTP "
+                f"keyspace creation ('{name}') failed: API returned HTTP "
                 f"{cn_raw_response.status_code} instead of "
                 f"{DEV_OPS_RESPONSE_HTTP_CREATED} - Created."
             )
         logger.info(
-            f"DevOps API returned from creating namespace "
+            f"DevOps API returned from creating keyspace "
             f"'{name}' on '{self._database_id}', async"
         )
         if wait_until_active:
@@ -2274,7 +2590,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 logger.info(
                     f"sleeping to poll for status of '{self._database_id}', async"
                 )
-                await asyncio.sleep(DEV_OPS_NAMESPACE_POLL_INTERVAL_S)
+                await asyncio.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
                 last_db_info = await self.async_info(
                     max_time_ms=timeout_manager.remaining_timeout_ms(),
                 )
@@ -2283,17 +2599,23 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 raise DevOpsAPIException(
                     f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
                 )
-            # is the namespace found?
-            if name not in await self.async_list_namespaces():
-                raise DevOpsAPIException("Could not create the namespace.")
+            # is the keyspace found?
+            if name not in await self.async_list_keyspaces():
+                raise DevOpsAPIException("Could not create the keyspace.")
         logger.info(
-            f"finished creating namespace '{name}' on "
+            f"finished creating keyspace '{name}' on "
             f"'{self._database_id}' (DevOps API), async"
         )
-        if update_db_namespace:
-            self.spawner_database.use_namespace(name)
+        if _update_db_keyspace:
+            self.spawner_database.use_keyspace(name)
         return {"ok": 1}
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     def drop_namespace(
         self,
         name: str,
@@ -2302,8 +2624,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
-        Delete a namespace from the database, optionally waiting for it
+        Delete a namespace from the database, optionally waiting for the database
         to become active again.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "drop_keyspace" method.**
 
         Args:
             name: the namespace to delete. If it does not exist in this database,
@@ -2332,11 +2656,55 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace']
         """
 
+        return self.drop_keyspace(
+            name=name,
+            wait_until_active=wait_until_active,
+            max_time_ms=max_time_ms,
+        )
+
+    def drop_keyspace(
+        self,
+        name: str,
+        *,
+        wait_until_active: bool = True,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Delete a keyspace from the database, optionally waiting for the database
+        to become active again.
+
+        Args:
+            name: the keyspace to delete. If it does not exist in this database,
+                an error is raised.
+            wait_until_active: if True (default), the method returns only after
+                the target database is in ACTIVE state again (a few
+                seconds, usually). If False, it will return right after issuing the
+                deletion request to the DevOps API, and it will be responsibility
+                of the caller to check the database status/keyspace availability
+                before working with it.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the deletion request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> my_db_admin.list_keyspaces()
+            ['default_keyspace', 'that_other_one']
+            >>> my_db_admin.drop_keyspace("that_other_one")
+            {'ok': 1}
+            >>> my_db_admin.list_keyspaces()
+            ['default_keyspace']
+        """
+
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, dev_ops_api=True
         )
         logger.info(
-            f"dropping namespace '{name}' on " f"'{self._database_id}' (DevOps API)"
+            f"dropping keyspace '{name}' on " f"'{self._database_id}' (DevOps API)"
         )
         dk_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.DELETE,
@@ -2345,19 +2713,19 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         )
         if dk_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_ACCEPTED:
             raise DevOpsAPIException(
-                f"Namespace deletion ('{id}') failed: API returned HTTP "
+                f"keyspace deletion ('{id}') failed: API returned HTTP "
                 f"{dk_raw_response.status_code} instead of "
                 f"{DEV_OPS_RESPONSE_HTTP_ACCEPTED} - Created"
             )
         logger.info(
-            "DevOps API returned from dropping namespace "
+            "DevOps API returned from dropping keyspace "
             f"'{name}' on '{self._database_id}'"
         )
         if wait_until_active:
             last_status_seen = DEV_OPS_DATABASE_STATUS_MAINTENANCE
             while last_status_seen == DEV_OPS_DATABASE_STATUS_MAINTENANCE:
                 logger.info(f"sleeping to poll for status of '{self._database_id}'")
-                time.sleep(DEV_OPS_NAMESPACE_POLL_INTERVAL_S)
+                time.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
                 last_status_seen = self.info(
                     max_time_ms=timeout_manager.remaining_timeout_ms(),
                 ).status
@@ -2365,15 +2733,21 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 raise DevOpsAPIException(
                     f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
                 )
-            # is the namespace found?
-            if name in self.list_namespaces():
-                raise DevOpsAPIException("Could not drop the namespace.")
+            # is the keyspace found?
+            if name in self.list_keyspaces():
+                raise DevOpsAPIException("Could not drop the keyspace.")
         logger.info(
-            f"finished dropping namespace '{name}' on "
+            f"finished dropping keyspace '{name}' on "
             f"'{self._database_id}' (DevOps API)"
         )
         return {"ok": 1}
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     async def async_drop_namespace(
         self,
         name: str,
@@ -2382,9 +2756,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         max_time_ms: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
-        Delete a namespace from the database, optionally waiting for it
+        Delete a namespace from the database, optionally waiting for the database
         to become active again.
         Async version of the method, for use in an asyncio context.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "async_drop_namespace" method.**
 
         Args:
             name: the namespace to delete. If it does not exist in this database,
@@ -2411,11 +2787,54 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             {'ok': 1}
         """
 
+        return await self.async_drop_keyspace(
+            name=name,
+            wait_until_active=wait_until_active,
+            max_time_ms=max_time_ms,
+        )
+
+    async def async_drop_keyspace(
+        self,
+        name: str,
+        *,
+        wait_until_active: bool = True,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Delete a keyspace from the database, optionally waiting for the database
+        to become active again.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            name: the keyspace to delete. If it does not exist in this database,
+                an error is raised.
+            wait_until_active: if True (default), the method returns only after
+                the target database is in ACTIVE state again (a few
+                seconds, usually). If False, it will return right after issuing the
+                deletion request to the DevOps API, and it will be responsibility
+                of the caller to check the database status/keyspace availability
+                before working with it.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the deletion request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> asyncio.run(
+            ...     my_db_admin.async_drop_keyspace("app_keyspace")
+            ... )
+            {'ok': 1}
+        """
+
         timeout_manager = MultiCallTimeoutManager(
             overall_max_time_ms=max_time_ms, dev_ops_api=True
         )
         logger.info(
-            f"dropping namespace '{name}' on "
+            f"dropping keyspace '{name}' on "
             f"'{self._database_id}' (DevOps API), async"
         )
         dk_raw_response = await self._dev_ops_api_commander.async_raw_request(
@@ -2425,12 +2844,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         )
         if dk_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_ACCEPTED:
             raise DevOpsAPIException(
-                f"Namespace deletion ('{id}') failed: API returned HTTP "
+                f"keyspace deletion ('{id}') failed: API returned HTTP "
                 f"{dk_raw_response.status_code} instead of "
                 f"{DEV_OPS_RESPONSE_HTTP_ACCEPTED} - Created"
             )
         logger.info(
-            f"DevOps API returned from dropping namespace "
+            f"DevOps API returned from dropping keyspace "
             f"'{name}' on '{self._database_id}', async"
         )
         if wait_until_active:
@@ -2439,7 +2858,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 logger.info(
                     f"sleeping to poll for status of '{self._database_id}', async"
                 )
-                await asyncio.sleep(DEV_OPS_NAMESPACE_POLL_INTERVAL_S)
+                await asyncio.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
                 last_db_info = await self.async_info(
                     max_time_ms=timeout_manager.remaining_timeout_ms(),
                 )
@@ -2448,11 +2867,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 raise DevOpsAPIException(
                     f"Database entered unexpected status {last_status_seen} after MAINTENANCE."
                 )
-            # is the namespace found?
-            if name in await self.async_list_namespaces():
-                raise DevOpsAPIException("Could not drop the namespace.")
+            # is the keyspace found?
+            if name in await self.async_list_keyspaces():
+                raise DevOpsAPIException("Could not drop the keyspace.")
         logger.info(
-            f"finished dropping namespace '{name}' on "
+            f"finished dropping keyspace '{name}' on "
             f"'{self._database_id}' (DevOps API), async"
         )
         return {"ok": 1}
@@ -2486,15 +2905,15 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             Otherwise, an exception is raised.
 
         Example:
-            >>> my_db_admin.list_namespaces()
+            >>> my_db_admin.list_keyspaces()
             ['default_keyspace', 'that_other_one']
             >>> my_db_admin.drop()
             {'ok': 1}
-            >>> my_db_admin.list_namespaces()  # raises a 404 Not Found http error
+            >>> my_db_admin.list_keyspaces()  # raises a 404 Not Found http error
 
         Note:
             Once the method succeeds, methods on this object -- such as `info()`,
-            or `list_namespaces()` -- can still be invoked: however, this hardly
+            or `list_keyspaces()` -- can still be invoked: however, this hardly
             makes sense as the underlying actual database is no more.
             It is responsibility of the developer to design a correct flow
             which avoids using a deceased database any further.
@@ -2543,7 +2962,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         Note:
             Once the method succeeds, methods on this object -- such as `info()`,
-            or `list_namespaces()` -- can still be invoked: however, this hardly
+            or `list_keyspaces()` -- can still be invoked: however, this hardly
             makes sense as the underlying actual database is no more.
             It is responsibility of the developer to design a correct flow
             which avoids using a deceased database any further.
@@ -2561,6 +2980,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -2576,8 +2996,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 a least-privilege manner, limiting the permissions for non-admin work.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            namespace: an optional namespace to set in the resulting Database.
+            keyspace: an optional keyspace to set in the resulting Database.
                 The same default logic as for `AstraDBAdmin.get_database` applies.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             region: *This parameter is deprecated and should not be used.*
                 Ignored in the method.
             api_path: path to append to the API Endpoint. In typical usage, this
@@ -2599,8 +3020,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             see the AstraDBAdmin class.
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         if region is not None:
-            the_warning = DeprecatedWarning(
+            the_warning = deprecation.DeprecatedWarning(
                 "The 'region' parameter is deprecated in this method and will be ignored.",
                 deprecated_in="1.3.2",
                 removed_in="2.0.0",
@@ -2614,7 +3040,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         return self._astra_db_admin.get_database(
             id=self.api_endpoint,
             token=token,
-            namespace=namespace,
+            keyspace=keyspace_param,
             api_path=api_path,
             api_version=api_version,
             max_time_ms=max_time_ms,
@@ -2624,6 +3050,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         region: Optional[str] = None,
         api_path: Optional[str] = None,
@@ -2638,9 +3065,14 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         counterpart `get_database`: please see that one for more details.
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         return self.get_database(
             token=token,
-            namespace=namespace,
+            keyspace=keyspace_param,
             region=region,
             api_path=api_path,
             api_version=api_version,
@@ -2738,11 +3170,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 class DataAPIDatabaseAdmin(DatabaseAdmin):
     """
     An "admin" object for non-Astra Data API environments, to perform administrative
-    tasks at the namespaces level such as creating/listing/dropping namespaces.
+    tasks at the keyspaces level such as creating/listing/dropping keyspaces.
 
     Conforming to the architecture of non-Astra deployments of the Data API,
     this object works within the one existing database. It is within that database
-    that the namespace CRUD operations (and possibly other admin operations)
+    that the keyspace CRUD operations (and possibly other admin operations)
     are performed. Since non-Astra environment lack the concept of an overall
     admin (such as the all-databases AstraDBAdmin class), a `DataAPIDatabaseAdmin`
     is generally created by invoking the `get_database_admin` method of the
@@ -2767,10 +3199,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         caller_name: name of the application, or framework, on behalf of which
             the admin API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
-        spawner_database: either a Database or an AsyncDatabase instance. This represents
-            the database class which spawns this admin object, so that, if required,
-            a namespace creation can retroactively "use" the new namespace in the spawner.
-            Used to enable the Async/Database.get_admin_database().create_namespace() pattern.
+        spawner_database: either a Database or an AsyncDatabase instance.
+            This represents the database class which spawns this admin object, so that,
+            if required, a keyspace creation can retroactively "use" the new keyspace
+            in the spawner. Used to enable the
+            Async/Database.get_admin_database().create_keyspace() pattern.
 
     Example:
         >>> from astrapy import DataAPIClient
@@ -2787,8 +3220,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         >>> database = client.get_database(endpoint)
         >>> admin_for_my_db = database.get_database_admin()
         >>>
-        >>> admin_for_my_db.list_namespaces()
-        ['namespace1', 'namespace2']
+        >>> admin_for_my_db.list_keyspaces()
+        ['keyspace1', 'keyspace2']
     """
 
     def __init__(
@@ -2821,12 +3254,12 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         if spawner_database is not None:
             self.spawner_database = spawner_database
         else:
-            # leaving the namespace to its per-environment default
+            # leaving the keyspace to its per-environment default
             # (a task for the Database)
             self.spawner_database = Database(
                 api_endpoint=self.api_endpoint,
                 token=self.token_provider,
-                namespace=None,
+                keyspace=None,
                 caller_name=self.caller_name,
                 caller_version=self.caller_version,
                 environment=self.environment,
@@ -2951,9 +3384,17 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self.caller_version = caller_version
         self._api_commander = self._get_api_commander()
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
         """
         Query the API for a list of the namespaces in the database.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "list_keyspaces" method.**
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the DevOps API request.
@@ -2979,17 +3420,54 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             logger.info("finished getting list of namespaces")
             return fn_response["status"]["namespaces"]  # type: ignore[no-any-return]
 
+    def list_keyspaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
+        """
+        Query the API for a list of the keyspaces in the database.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A list of the keyspaces, each a string, in no particular order.
+
+        Example:
+            >>> admin_for_my_db.list_keyspaces()
+            ['default_keyspace', 'staging_keyspace']
+        """
+        logger.info("getting list of keyspaces")
+        fn_response = self._api_commander.request(
+            payload={"findKeyspaces": {}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if "keyspaces" not in fn_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findKeyspaces API command.",
+                raw_response=fn_response,
+            )
+        else:
+            logger.info("finished getting list of keyspaces")
+            return fn_response["status"]["keyspaces"]  # type: ignore[no-any-return]
+
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     def create_namespace(
         self,
         name: str,
         *,
         replication_options: Optional[Dict[str, Any]] = None,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
         **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "create_keyspace" method.**
 
         Args:
             name: the namespace name. If supplying a namespace that exists
@@ -2999,9 +3477,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 replication of the namespace (across database nodes). If provided,
                 it must have a structure similar to:
                 `{"class": "SimpleStrategy", "replication_factor": 1}`.
-            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
-                the newly-created namespace starting when this method returns.
+                the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -3019,6 +3499,12 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_namespaces()
             ['default_keyspace', 'that_other_one']
         """
+
+        _update_db_keyspace = check_update_db_namespace_keyspace(
+            update_db_keyspace=update_db_keyspace,
+            update_db_namespace=update_db_namespace,
+        )
+
         options = {
             k: v
             for k, v in {
@@ -3044,10 +3530,94 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished creating namespace")
-            if update_db_namespace:
-                self.spawner_database.use_namespace(name)
-            return cn_response["status"]  # type: ignore[no-any-return]
+            if _update_db_keyspace:
+                self.spawner_database.use_keyspace(name)
+            return {k: v for k, v in cn_response["status"].items() if k == "ok"}
 
+    def create_keyspace(
+        self,
+        name: str,
+        *,
+        replication_options: Optional[Dict[str, Any]] = None,
+        update_db_keyspace: Optional[bool] = None,
+        update_db_namespace: Optional[bool] = None,
+        max_time_ms: Optional[int] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """
+        Create a keyspace in the database, returning {'ok': 1} if successful.
+
+        Args:
+            name: the keyspace name. If supplying a keyspace that exists
+                already, the method call proceeds as usual, no errors are
+                raised, and the whole invocation is a no-op.
+            replication_options: this dictionary can specify the options about
+                replication of the keyspace (across database nodes). If provided,
+                it must have a structure similar to:
+                `{"class": "SimpleStrategy", "replication_factor": 1}`.
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
+                that spawned this DatabaseAdmin, if any, gets updated to work on
+                the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the creation request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> admin_for_my_db.list_keyspaces()
+            ['default_keyspace']
+            >>> admin_for_my_db.create_keyspace("that_other_one")
+            {'ok': 1}
+            >>> admin_for_my_db.list_keyspaces()
+            ['default_keyspace', 'that_other_one']
+        """
+
+        _update_db_keyspace = check_update_db_namespace_keyspace(
+            update_db_keyspace=update_db_keyspace,
+            update_db_namespace=update_db_namespace,
+        )
+
+        options = {
+            k: v
+            for k, v in {
+                "replication": replication_options,
+            }.items()
+            if v
+        }
+        payload = {
+            "createKeyspace": {
+                **{"name": name},
+                **({"options": options} if options else {}),
+            }
+        }
+        logger.info("creating keyspace")
+        cn_response = self._api_commander.request(
+            payload=payload,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if (cn_response.get("status") or {}).get("ok") != 1:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from createKeyspace API command.",
+                raw_response=cn_response,
+            )
+        else:
+            logger.info("finished creating keyspace")
+            if _update_db_keyspace:
+                self.spawner_database.use_keyspace(name)
+            return {k: v for k, v in cn_response["status"].items() if k == "ok"}
+
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     def drop_namespace(
         self,
         name: str,
@@ -3056,6 +3626,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     ) -> Dict[str, Any]:
         """
         Drop (delete) a namespace from the database.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "drop_namespace" method.**
 
         Args:
             name: the namespace to delete. If it does not exist in this database,
@@ -3089,14 +3661,65 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished dropping namespace")
-            return dn_response["status"]  # type: ignore[no-any-return]
+            return {k: v for k, v in dn_response["status"].items() if k == "ok"}
 
+    def drop_keyspace(
+        self,
+        name: str,
+        *,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Drop (delete) a keyspace from the database.
+
+        Args:
+            name: the keyspace to delete. If it does not exist in this database,
+                an error is raised.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the deletion request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> admin_for_my_db.list_keyspaces()
+            ['default_keyspace', 'that_other_one']
+            >>> admin_for_my_db.drop_keyspace("that_other_one")
+            {'ok': 1}
+            >>> admin_for_my_db.list_keyspaces()
+            ['default_keyspace']
+        """
+        logger.info("dropping keyspace")
+        dn_response = self._api_commander.request(
+            payload={"dropKeyspace": {"name": name}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if (dn_response.get("status") or {}).get("ok") != 1:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from dropKeyspace API command.",
+                raw_response=dn_response,
+            )
+        else:
+            logger.info("finished dropping keyspace")
+            return {k: v for k, v in dn_response["status"].items() if k == "ok"}
+
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     async def async_list_namespaces(
         self, *, max_time_ms: Optional[int] = None
     ) -> List[str]:
         """
         Query the API for a list of the namespaces in the database.
         Async version of the method, for use in an asyncio context.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "async_list_keyspaces" method.**
 
         Args:
             max_time_ms: a timeout, in milliseconds, for the DevOps API request.
@@ -3122,11 +3745,49 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             logger.info("finished getting list of namespaces, async")
             return fn_response["status"]["namespaces"]  # type: ignore[no-any-return]
 
+    async def async_list_keyspaces(
+        self, *, max_time_ms: Optional[int] = None
+    ) -> List[str]:
+        """
+        Query the API for a list of the keyspaces in the database.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+
+        Returns:
+            A list of the keyspaces, each a string, in no particular order.
+
+        Example:
+            >>> asyncio.run(admin_for_my_db.async_list_keyspaces())
+            ['default_keyspace', 'staging_keyspace']
+        """
+        logger.info("getting list of keyspaces, async")
+        fn_response = await self._api_commander.async_request(
+            payload={"findKeyspaces": {}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if "keyspaces" not in fn_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findKeyspaces API command.",
+                raw_response=fn_response,
+            )
+        else:
+            logger.info("finished getting list of keyspaces, async")
+            return fn_response["status"]["keyspaces"]  # type: ignore[no-any-return]
+
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     async def async_create_namespace(
         self,
         name: str,
         *,
         replication_options: Optional[Dict[str, Any]] = None,
+        update_db_keyspace: Optional[bool] = None,
         update_db_namespace: Optional[bool] = None,
         max_time_ms: Optional[int] = None,
         **kwargs: Any,
@@ -3134,6 +3795,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
         Async version of the method, for use in an asyncio context.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "async_create_keyspace" method.**
 
         Args:
             name: the namespace name. If supplying a namespace that exists
@@ -3143,9 +3806,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 replication of the namespace (across database nodes). If provided,
                 it must have a structure similar to:
                 `{"class": "SimpleStrategy", "replication_factor": 1}`.
-            update_db_namespace: if True, the `Database` or `AsyncDatabase` class
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
-                the newly-created namespace starting when this method returns.
+                the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
             max_time_ms: a timeout, in milliseconds, for the whole requested
                 operation to complete.
                 Note that a timeout is no guarantee that the creation request
@@ -3165,6 +3830,12 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_namespaces()
             ['default_keyspace', 'that_other_one']
         """
+
+        _update_db_keyspace = check_update_db_namespace_keyspace(
+            update_db_keyspace=update_db_keyspace,
+            update_db_namespace=update_db_namespace,
+        )
+
         options = {
             k: v
             for k, v in {
@@ -3190,10 +3861,97 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished creating namespace, async")
-            if update_db_namespace:
-                self.spawner_database.use_namespace(name)
-            return cn_response["status"]  # type: ignore[no-any-return]
+            if _update_db_keyspace:
+                self.spawner_database.use_keyspace(name)
+            return {k: v for k, v in cn_response["status"].items() if k == "ok"}
 
+    async def async_create_keyspace(
+        self,
+        name: str,
+        *,
+        replication_options: Optional[Dict[str, Any]] = None,
+        update_db_keyspace: Optional[bool] = None,
+        update_db_namespace: Optional[bool] = None,
+        max_time_ms: Optional[int] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """
+        Create a keyspace in the database, returning {'ok': 1} if successful.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            name: the keyspace name. If supplying a keyspace that exists
+                already, the method call proceeds as usual, no errors are
+                raised, and the whole invocation is a no-op.
+            replication_options: this dictionary can specify the options about
+                replication of the keyspace (across database nodes). If provided,
+                it must have a structure similar to:
+                `{"class": "SimpleStrategy", "replication_factor": 1}`.
+            update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
+                that spawned this DatabaseAdmin, if any, gets updated to work on
+                the newly-created keyspace starting when this method returns.
+            update_db_namespace: an alias for update_db_keyspace.
+                *DEPRECATED* as of v1.5.0, removal in v2.0.0.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the creation request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> admin_for_my_db.list_keyspaces()
+            ['default_keyspace']
+            >>> asyncio.run(admin_for_my_db.async_create_keyspace(
+            ...     "that_other_one"
+            ... ))
+            {'ok': 1}
+            >>> admin_for_my_db.list_leyspaces()
+            ['default_keyspace', 'that_other_one']
+        """
+
+        _update_db_keyspace = check_update_db_namespace_keyspace(
+            update_db_keyspace=update_db_keyspace,
+            update_db_namespace=update_db_namespace,
+        )
+
+        options = {
+            k: v
+            for k, v in {
+                "replication": replication_options,
+            }.items()
+            if v
+        }
+        payload = {
+            "createKeyspace": {
+                **{"name": name},
+                **({"options": options} if options else {}),
+            }
+        }
+        logger.info("creating keyspace, async")
+        cn_response = await self._api_commander.async_request(
+            payload=payload,
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if (cn_response.get("status") or {}).get("ok") != 1:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from createKeyspace API command.",
+                raw_response=cn_response,
+            )
+        else:
+            logger.info("finished creating keyspace, async")
+            if _update_db_keyspace:
+                self.spawner_database.use_keyspace(name)
+            return {k: v for k, v in cn_response["status"].items() if k == "ok"}
+
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.0",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    )
     async def async_drop_namespace(
         self,
         name: str,
@@ -3203,6 +3961,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         """
         Drop (delete) a namespace from the database.
         Async version of the method, for use in an asyncio context.
+
+        *DEPRECATED* (removal in 2.0). Switch to the "async_drop_keyspace" method.**
 
         Args:
             name: the namespace to delete. If it does not exist in this database,
@@ -3238,12 +3998,59 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished dropping namespace, async")
-            return dn_response["status"]  # type: ignore[no-any-return]
+            return {k: v for k, v in dn_response["status"].items() if k == "ok"}
+
+    async def async_drop_keyspace(
+        self,
+        name: str,
+        *,
+        max_time_ms: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Drop (delete) a keyspace from the database.
+        Async version of the method, for use in an asyncio context.
+
+        Args:
+            name: the keyspace to delete. If it does not exist in this database,
+                an error is raised.
+            max_time_ms: a timeout, in milliseconds, for the whole requested
+                operation to complete.
+                Note that a timeout is no guarantee that the deletion request
+                has not reached the API server.
+
+        Returns:
+            A dictionary of the form {"ok": 1} in case of success.
+            Otherwise, an exception is raised.
+
+        Example:
+            >>> admin_for_my_db.list_keyspaces()
+            ['that_other_one', 'default_keyspace']
+            >>> asyncio.run(admin_for_my_db.async_drop_keyspace(
+            ...     "that_other_one"
+            ... ))
+            {'ok': 1}
+            >>> admin_for_my_db.list_keyspaces()
+            ['default_keyspace']
+        """
+        logger.info("dropping keyspace, async")
+        dn_response = await self._api_commander.async_request(
+            payload={"dropKeyspace": {"name": name}},
+            timeout_info=base_timeout_info(max_time_ms),
+        )
+        if (dn_response.get("status") or {}).get("ok") != 1:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from dropKeyspace API command.",
+                raw_response=dn_response,
+            )
+        else:
+            logger.info("finished dropping keyspace, async")
+            return {k: v for k, v in dn_response["status"].items() if k == "ok"}
 
     def get_database(
         self,
         *,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -3257,9 +4064,10 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 a least-privilege manner, limiting the permissions for non-admin work.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            namespace: an optional namespace to set in the resulting Database.
-                If not provided, no namespace is set, limiting what the Database
-                can do until setting it with e.g. a `useNamespace` method call.
+            keyspace: an optional keyspace to set in the resulting Database.
+                If not provided, no keyspace is set, limiting what the Database
+                can do until setting it with e.g. a `use_keyspace` method call.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "".
             api_version: version specifier to append to the API path. In typical
@@ -3278,13 +4086,18 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             of the database itself, which should exist beforehand.
         """
 
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
         return Database(
             api_endpoint=self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            namespace=namespace,
+            keyspace=keyspace_param,
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             environment=self.environment,
@@ -3296,6 +4109,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         token: Optional[Union[str, TokenProvider]] = None,
+        keyspace: Optional[str] = None,
         namespace: Optional[str] = None,
         api_path: Optional[str] = None,
         api_version: Optional[str] = None,
@@ -3307,9 +4121,15 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         This method has identical behavior and signature as the sync
         counterpart `get_database`: please see that one for more details.
         """
+
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         return self.get_database(
             token=token,
-            namespace=namespace,
+            keyspace=keyspace_param,
             api_path=api_path,
             api_version=api_version,
         ).to_async()

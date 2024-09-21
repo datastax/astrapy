@@ -29,7 +29,7 @@ from astrapy.exceptions import (
 )
 from astrapy.operations import InsertOne
 
-from ..conftest import IS_ASTRA_DB, DataAPICredentials
+from ..conftest import IS_ASTRA_DB, DataAPICredentials, sync_fail_if_not_removed
 
 
 class TestExceptionsSync:
@@ -141,7 +141,7 @@ class TestExceptionsSync:
         with pytest.raises(CollectionNotFoundException) as exc:
             col.options()
         assert exc.value.collection_name == col._name
-        assert exc.value.namespace == sync_empty_collection.namespace
+        assert exc.value.keyspace == sync_empty_collection.keyspace
 
     @pytest.mark.describe("test of collection count_documents failure modes, sync")
     def test_collection_count_documents_failures_sync(
@@ -183,6 +183,7 @@ class TestExceptionsSync:
         with pytest.raises(DataAPIResponseException):
             col.update_one({"a": 1}, {"$set": {"a": -1}})
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of exceptions in ordered bulk_write, sync")
     def test_ordered_bulk_write_failures_sync(
         self,
@@ -202,6 +203,7 @@ class TestExceptionsSync:
         assert exc.value.partial_result.upserted_ids == {}
         assert sync_empty_collection.count_documents({}, upper_bound=10) == 1
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of hard exceptions in ordered bulk_write, sync")
     def test_ordered_bulk_write_error_sync(
         self,
@@ -213,6 +215,7 @@ class TestExceptionsSync:
         with pytest.raises(TypeError):
             sync_empty_collection.bulk_write([i1, i2])
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of exceptions in unordered bulk_write, sync")
     def test_unordered_bulk_write_failures_sync(
         self,
@@ -233,6 +236,7 @@ class TestExceptionsSync:
         assert exc.value.partial_result.upserted_ids == {}
         assert sync_empty_collection.count_documents({}, upper_bound=10) == 2
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of hard exceptions in unordered bulk_write, sync")
     def test_unordered_bulk_write_error_sync(
         self,
@@ -284,22 +288,22 @@ class TestExceptionsSync:
         self,
         sync_database: Database,
     ) -> None:
-        f_database = sync_database._copy(namespace="nonexisting")
+        f_database = sync_database._copy(keyspace="nonexisting")
         if IS_ASTRA_DB:
             with pytest.raises(DataAPIResponseException):
                 f_database.drop_collection("nonexisting")
         with pytest.raises(DataAPIResponseException):
             sync_database.command(body={"myCommand": {"k": "v"}})
         with pytest.raises(DataAPIResponseException):
-            sync_database.command(body={"myCommand": {"k": "v"}}, namespace="ns")
+            sync_database.command(body={"myCommand": {"k": "v"}}, keyspace="ns")
         with pytest.raises(DataAPIResponseException):
             sync_database.command(
-                body={"myCommand": {"k": "v"}}, namespace="ns", collection_name="coll"
+                body={"myCommand": {"k": "v"}}, keyspace="ns", collection_name="coll"
             )
         with pytest.raises(DataAPIResponseException):
-            list(sync_database.list_collections(namespace="nonexisting"))
+            list(sync_database.list_collections(keyspace="nonexisting"))
         with pytest.raises(DataAPIResponseException):
-            sync_database.list_collection_names(namespace="nonexisting")
+            sync_database.list_collection_names(keyspace="nonexisting")
 
     @pytest.mark.describe("test of database info failures, sync")
     def test_get_database_info_failures_sync(
@@ -307,9 +311,9 @@ class TestExceptionsSync:
         sync_database: Database,
         data_api_credentials_kwargs: DataAPICredentials,
     ) -> None:
-        hacked_ns = (data_api_credentials_kwargs["namespace"] or "") + "_hacked"
+        hacked_ks = (data_api_credentials_kwargs["namespace"] or "") + "_hacked"
         with pytest.raises(DevOpsAPIException):
-            sync_database._copy(namespace=hacked_ns).info()
+            sync_database._copy(keyspace=hacked_ks).info()
 
     @pytest.mark.describe("test of hard exceptions in cursors, sync")
     def test_cursor_hard_exceptions_sync(
@@ -353,7 +357,7 @@ class TestExceptionsSync:
         self,
         sync_empty_collection: Collection,
     ) -> None:
-        wcol = sync_empty_collection._copy(namespace="nonexisting")
+        wcol = sync_empty_collection._copy(keyspace="nonexisting")
         cur1 = wcol.find({})
         cur2 = wcol.find({})
         cur3 = wcol.find({})
@@ -380,7 +384,7 @@ class TestExceptionsSync:
         sync_database: Database,
     ) -> None:
         with pytest.raises(DataAPIResponseException):
-            sync_database.list_collections(namespace="nonexisting")
+            sync_database.list_collections(keyspace="nonexisting")
 
         cur1 = sync_database.list_collections()
         list(cur1)

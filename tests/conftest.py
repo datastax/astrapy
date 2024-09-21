@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import functools
 import warnings
-from typing import Any, Awaitable, Callable, Optional, Tuple, TypedDict
+from typing import Any, Awaitable, Callable, Dict, Optional, Tuple, TypedDict
 
 import pytest
 from deprecation import UnsupportedWarning
@@ -29,7 +29,7 @@ from astrapy import DataAPIClient
 from astrapy.admin import parse_api_endpoint
 from astrapy.authentication import TokenProvider
 from astrapy.constants import Environment
-from astrapy.defaults import DEFAULT_ASTRA_DB_NAMESPACE
+from astrapy.defaults import DEFAULT_ASTRA_DB_KEYSPACE
 
 from .preprocess_env import (
     ADMIN_ENV_LIST,
@@ -142,6 +142,19 @@ def sync_fail_if_not_removed(method: Callable[..., Any]) -> Callable[..., Any]:
     return test_inner
 
 
+def clean_nulls_from_dict(in_dict: Dict[str, Any]) -> dict[str, Any]:
+
+    def _cleand(_in: Any) -> Any:
+        if isinstance(_in, list):
+            return [_cleand(itm) for itm in _in]
+        elif isinstance(_in, dict):
+            return {k: _cleand(v) for k, v in _in.items() if v is not None}
+        else:
+            return _in
+
+    return _cleand(in_dict)  # type: ignore[no-any-return]
+
+
 @pytest.fixture(scope="session")
 def data_api_credentials_kwargs() -> DataAPICredentials:
     if IS_ASTRA_DB:
@@ -150,7 +163,7 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         astra_db_creds: DataAPICredentials = {
             "token": ASTRA_DB_TOKEN_PROVIDER or "",
             "api_endpoint": ASTRA_DB_API_ENDPOINT or "",
-            "namespace": ASTRA_DB_KEYSPACE or DEFAULT_ASTRA_DB_NAMESPACE,
+            "namespace": ASTRA_DB_KEYSPACE or DEFAULT_ASTRA_DB_KEYSPACE,
         }
         return astra_db_creds
     else:
@@ -159,7 +172,7 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         local_db_creds: DataAPICredentials = {
             "token": LOCAL_DATA_API_TOKEN_PROVIDER or "",
             "api_endpoint": LOCAL_DATA_API_ENDPOINT or "",
-            "namespace": LOCAL_DATA_API_KEYSPACE or DEFAULT_ASTRA_DB_NAMESPACE,
+            "namespace": LOCAL_DATA_API_KEYSPACE or DEFAULT_ASTRA_DB_KEYSPACE,
         }
 
         # ensure keyspace(s) exist at this point
@@ -173,9 +186,9 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
             # namespace=local_db_creds["namespace"],
         )
         _database_admin = _database.get_database_admin()
-        _database_admin.create_namespace(local_db_creds["namespace"])
+        _database_admin.create_keyspace(local_db_creds["namespace"])
         if SECONDARY_NAMESPACE:
-            _database_admin.create_namespace(SECONDARY_NAMESPACE)
+            _database_admin.create_keyspace(SECONDARY_NAMESPACE)
         # end of keyspace-ensuring block
 
         return local_db_creds

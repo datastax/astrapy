@@ -23,7 +23,7 @@ from astrapy.admin import fetch_database_info
 from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
 from astrapy.operations import DeleteMany, InsertMany
 
-from ..conftest import IS_ASTRA_DB
+from ..conftest import IS_ASTRA_DB, sync_fail_if_not_removed
 
 
 class TestTimeoutSync:
@@ -51,7 +51,7 @@ class TestTimeoutSync:
         info = fetch_database_info(
             sync_database.api_endpoint,
             token=sync_database.token_provider.get_token(),
-            namespace=sync_database.namespace,
+            keyspace=sync_database.keyspace,
         )
         assert info is not None
 
@@ -59,7 +59,7 @@ class TestTimeoutSync:
             info = fetch_database_info(
                 sync_database.api_endpoint,
                 token=sync_database.token_provider.get_token(),
-                namespace=sync_database.namespace,
+                keyspace=sync_database.keyspace,
                 max_time_ms=1,
             )
             assert info is not None
@@ -165,6 +165,7 @@ class TestTimeoutSync:
         with pytest.raises(DataAPITimeoutException):
             sync_collection.delete_many({"f": "delete_many3"}, max_time_ms=2)
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of bulk_write timeouts, sync")
     def test_bulk_write_ordered_timeout_exceptions_sync(
         self,
@@ -183,6 +184,7 @@ class TestTimeoutSync:
                 [im_a, im_b, dm], ordered=True, max_time_ms=1
             )
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of bulk_write timeouts, sync")
     def test_bulk_write_unordered_timeout_exceptions_sync(
         self,

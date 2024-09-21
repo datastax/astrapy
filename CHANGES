@@ -1,11 +1,18 @@
-master
-======
+v. 1.5.0
+========
+Deprecation of "namespace-" terminology, replaced by "keyspace-" (removal in 2.0)
+    - deprecation of all *namespace* method names
+    - deprecation of the `namespace=` named argument to all methods
+    - deprecation of the `update_db_namespace` parameter to create_*space
+Deprecation of collection bulk_write method (removal in 2.0)
+APICommander logs warnings received from the Data API
 Full removal of "core library" from the current API:
     - DevOps API accessed through APICommander everywhere
     - Admin objects use APICommander consistently
     - [Async]Database and [Async]Collection directly use APICommander
     - Cursor library uses APICommander directly
     - Core library imports triggers a submodule-wide deprecation warning
+    - (simplification of the vector/vectorize deprecator utility)
 Widened exception hierarchy with:
     - DevOpsAPIHttpException
     - DevOpsAPITimeoutException
@@ -16,6 +23,7 @@ Rearrangement into separate modules for:
     - payload/response transformations
     - (sometimes with temporary duplication to avoid depending on 'core')
 Testing:
+    - testing on HCD targets Data API v 1.0.16
     - added tests for APICommander
     - improved tests for admin classes
 Logging of API requests made more uniform and easier to read
@@ -53,7 +61,7 @@ DatabaseAdmin classes retain a reference to the Async/Database instance that spa
     - database admin can retroactively set the db's working namespace upon creation of same
     - Idiom `database = client.get_database(...); database.get_database_admin().create_namespace("the_namespace", update_db_namespace=True)`
 Database (and AsyncDatabase) classes admit null namespace:
-    - default to "default_namespace" only for Astra, otherwise null
+    - default to "default_keyspace" only for Astra, otherwise null
     - as long as null, most operations are unavailable and error out
     - a `use_namespace` method to (mutably) set the working namespace on a database instance
 AstraDBDatabaseAdmin class is fully region-aware:
