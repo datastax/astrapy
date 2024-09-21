@@ -2,6 +2,7 @@ master
 ======
 Deprecation of "namespace-" terminology, replaced by "keyspace-" (removal in 2.0)
     - deprecation of all *namespace* method names
+    - deprecation of the `namespace=` named argument to all methods
     - deprecation of the `update_db_namespace` parameter to create_*space
 Deprecation of collection bulk_write method (removal in 2.0)
 APICommander logs warnings received from the Data API

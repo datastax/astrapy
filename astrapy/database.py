@@ -232,12 +232,12 @@ class Database:
             token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
         else:
             token_desc = None
-        namespace_desc: Optional[str]
+        keyspace_desc: Optional[str]
         if self.keyspace is None:
-            namespace_desc = "namespace not set"
+            keyspace_desc = "keyspace not set"
         else:
-            namespace_desc = f'namespace="{self.keyspace}"'
-        parts = [pt for pt in [ep_desc, token_desc, namespace_desc] if pt is not None]
+            keyspace_desc = f'keyspace="{self.keyspace}"'
+        parts = [pt for pt in [ep_desc, token_desc, keyspace_desc] if pt is not None]
         return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:
@@ -537,7 +537,7 @@ class Database:
         database_info = fetch_database_info(
             self.api_endpoint,
             token=self.token_provider.get_token(),
-            namespace=self.keyspace,
+            keyspace=self.keyspace,
         )
         if database_info is not None:
             logger.info("finished getting database info")
@@ -1267,12 +1267,12 @@ class AsyncDatabase:
             token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
         else:
             token_desc = None
-        namespace_desc: Optional[str]
+        keyspace_desc: Optional[str]
         if self.keyspace is None:
-            namespace_desc = "namespace not set"
+            keyspace_desc = "keyspace not set"
         else:
-            namespace_desc = f'namespace="{self.keyspace}"'
-        parts = [pt for pt in [ep_desc, token_desc, namespace_desc] if pt is not None]
+            keyspace_desc = f'keyspace="{self.keyspace}"'
+        parts = [pt for pt in [ep_desc, token_desc, keyspace_desc] if pt is not None]
         return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:
@@ -1590,7 +1590,7 @@ class AsyncDatabase:
         database_info = fetch_database_info(
             self.api_endpoint,
             token=self.token_provider.get_token(),
-            namespace=self.keyspace,
+            keyspace=self.keyspace,
         )
         if database_info is not None:
             logger.info("finished getting database info")

@@ -305,7 +305,7 @@ class Collection:
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}(name="{self.name}", '
-            f'namespace="{self.keyspace}", database={self.database}, '
+            f'keyspace="{self.keyspace}", database={self.database}, '
             f"api_options={self.api_options})"
         )
 
@@ -2883,7 +2883,7 @@ class AsyncCollection:
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}(name="{self.name}", '
-            f'namespace="{self.keyspace}", database={self.database}, '
+            f'keyspace="{self.keyspace}", database={self.database}, '
             f"api_options={self.api_options})"
         )
 

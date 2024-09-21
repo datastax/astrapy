@@ -424,7 +424,7 @@ class DataAPIClient:
             ... )
             >>> my_db2 = my_client.get_database_by_api_endpoint(
             ...     "https://01234567-....apps.astra.datastax.com",
-            ...     namespace="the_other_namespace",
+            ...     keyspace="the_other_namespace",
             ... )
             >>> my_coll = my_db0.create_collection("movies", dimension=2)
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.5, 0.6]})

@@ -1443,7 +1443,7 @@ class AstraDBAdmin:
         return Database(
             api_endpoint=normalized_api_endpoint,
             token=_token,
-            namespace=_keyspace,
+            keyspace=_keyspace,
             caller_name=self.caller_name,
             caller_version=self.caller_version,
             environment=self.environment,
@@ -1471,12 +1471,16 @@ class AstraDBAdmin:
         counterpart `get_database`: please see that one for more details.
         """
 
+        keyspace_param = check_optional_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
         return self.get_database(
             id=id,
             api_endpoint=api_endpoint,
             token=token,
-            keyspace=keyspace,
-            namespace=namespace,
+            keyspace=keyspace_param,
             region=region,
             api_path=api_path,
             api_version=api_version,
@@ -1762,12 +1766,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         if spawner_database is not None:
             self.spawner_database = spawner_database
         else:
-            # leaving the namespace to its per-environment default
+            # leaving the keyspace to its per-environment default
             # (a task for the Database)
             self.spawner_database = Database(
                 api_endpoint=self.api_endpoint,
                 token=self.token_provider,
-                namespace=None,
+                keyspace=None,
                 caller_name=self.caller_name,
                 caller_version=self.caller_version,
                 environment=self.environment,
@@ -3064,10 +3068,14 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         counterpart `get_database`: please see that one for more details.
         """
 
-        return self.get_database(
-            token=token,
+        keyspace_param = check_optional_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
+        )
+
+        return self.get_database(
+            token=token,
+            keyspace=keyspace_param,
             region=region,
             api_path=api_path,
             api_version=api_version,
@@ -3248,12 +3256,12 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         if spawner_database is not None:
             self.spawner_database = spawner_database
         else:
-            # leaving the namespace to its per-environment default
+            # leaving the keyspace to its per-environment default
             # (a task for the Database)
             self.spawner_database = Database(
                 api_endpoint=self.api_endpoint,
                 token=self.token_provider,
-                namespace=None,
+                keyspace=None,
                 caller_name=self.caller_name,
                 caller_version=self.caller_version,
                 environment=self.environment,
@@ -4115,10 +4123,15 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         This method has identical behavior and signature as the sync
         counterpart `get_database`: please see that one for more details.
         """
-        return self.get_database(
-            token=token,
+
+        keyspace_param = check_optional_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
+        )
+
+        return self.get_database(
+            token=token,
+            keyspace=keyspace_param,
             api_path=api_path,
             api_version=api_version,
         ).to_async()
