@@ -251,16 +251,13 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
                     ]
                     if d_params:
                         d_param = d_params[0]
-                        if d_param.default_value is not None:
-                            if (provider_name, model.name) in FORCE_DIMENSION_MAP:
-                                optional_dimension = False
-                                dimension = FORCE_DIMENSION_MAP[
-                                    (provider_name, model.name)
-                                ]
-                            else:
-                                optional_dimension = True
-                                assert model.vector_dimension is None
-                                dimension = _from_validation(d_param)
+                        if (provider_name, model.name) in FORCE_DIMENSION_MAP:
+                            optional_dimension = False
+                            dimension = FORCE_DIMENSION_MAP[(provider_name, model.name)]
+                        elif d_param.default_value is not None:
+                            optional_dimension = True
+                            assert model.vector_dimension is None
+                            dimension = _from_validation(d_param)
                         else:
                             optional_dimension = False
                             assert model.vector_dimension is None
