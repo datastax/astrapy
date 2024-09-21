@@ -424,7 +424,7 @@ class DataAPIClient:
             ... )
             >>> my_db2 = my_client.get_database_by_api_endpoint(
             ...     "https://01234567-....apps.astra.datastax.com",
-            ...     keyspace="the_other_namespace",
+            ...     keyspace="the_other_keyspace",
             ... )
             >>> my_coll = my_db0.create_collection("movies", dimension=2)
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.5, 0.6]})
@@ -556,7 +556,7 @@ class DataAPIClient:
             ...     cloud_provider="AWS",
             ...     region="eu-west-1",
             ... )
-            >>> my_db_admin.list_namespaces()
+            >>> my_db_admin.list_keyspaces()
             ['default_keyspace', 'that_other_one']
         """
 

@@ -555,8 +555,8 @@ class AstraDBAdmin:
         >>> database_list[2].id
         '01234567-...'
         >>> my_db_admin = my_astra_db_admin.get_database_admin("01234567-...")
-        >>> my_db_admin.list_namespaces()
-        ['default_keyspace', 'staging_namespace']
+        >>> my_db_admin.list_keyspaces()
+        ['default_keyspace', 'staging_keyspace']
     """
 
     def __init__(
@@ -1321,11 +1321,11 @@ class AstraDBAdmin:
 
         Example:
             >>> my_db_admin = my_astra_db_admin.get_database_admin("01234567-...")
-            >>> my_db_admin.list_namespaces()
+            >>> my_db_admin.list_keyspaces()
             ['default_keyspace']
-            >>> my_db_admin.create_namespace("that_other_one")
+            >>> my_db_admin.create_keyspace("that_other_one")
             {'ok': 1}
-            >>> my_db_admin.list_namespaces()
+            >>> my_db_admin.list_keyspaces()
             ['default_keyspace', 'that_other_one']
 
         Note:
@@ -1490,7 +1490,7 @@ class AstraDBAdmin:
 class DatabaseAdmin(ABC):
     """
     An abstract class defining the interface for a database admin object.
-    This supports generic namespace crud, as well as spawning databases,
+    This supports generic keyspace crud, as well as spawning databases,
     without committing to a specific database architecture (e.g. Astra DB).
     """
 
@@ -1645,8 +1645,8 @@ class DatabaseAdmin(ABC):
 
 class AstraDBDatabaseAdmin(DatabaseAdmin):
     """
-    An "admin" object, able to perform administrative tasks at the namespaces level
-    (i.e. within a certain database), such as creating/listing/dropping namespaces.
+    An "admin" object, able to perform administrative tasks at the keyspaces level
+    (i.e. within a certain database), such as creating/listing/dropping keyspaces.
 
     This is one layer below the AstraDBAdmin concept, in that it is tied to
     a single database and enables admin work within it. As such, it is generally
@@ -1688,8 +1688,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             Generally to be left to its Astra DB default of "/v1".
         spawner_database: either a Database or an AsyncDatabase instance. This represents
             the database class which spawns this admin object, so that, if required,
-            a namespace creation can retroactively "use" the new namespace in the spawner.
-            Used to enable the Async/Database.get_admin_database().create_namespace() pattern.
+            a keyspace creation can retroactively "use" the new keyspace in the spawner.
+            Used to enable the Async/Database.get_admin_database().create_keyspace() pattern.
         max_time_ms: a timeout, in milliseconds, for the DevOps API
             HTTP request should it be necessary (see the `region` argument).
 
@@ -1697,8 +1697,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         >>> from astrapy import DataAPIClient
         >>> my_client = DataAPIClient("AstraCS:...")
         >>> admin_for_my_db = my_client.get_admin().get_database_admin("01234567-...")
-        >>> admin_for_my_db.list_namespaces()
-        ['default_keyspace', 'staging_namespace']
+        >>> admin_for_my_db.list_keyspaces()
+        ['default_keyspace', 'staging_keyspace']
         >>> admin_for_my_db.info().status
         'ACTIVE'
 
@@ -1785,7 +1785,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         }
         self._api_commander = self._get_api_commander()
 
-        # DevOps-API-commander specific init (namespace CRUD, etc)
+        # DevOps-API-commander specific init (keyspace CRUD, etc)
         self.dev_ops_url = (
             dev_ops_url
             if dev_ops_url is not None
@@ -2029,8 +2029,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ...     id="01234567-...",
             ...     astra_db_admin=DataAPIClient("AstraCS:...").get_admin(),
             ... )
-            >>> admin_for_my_db.list_namespaces()
-            ['default_keyspace', 'staging_namespace']
+            >>> admin_for_my_db.list_keyspaces()
+            ['default_keyspace', 'staging_keyspace']
             >>> admin_for_my_db.info().status
             'ACTIVE'
 
@@ -2089,8 +2089,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ...     api_endpoint="https://01234567-....apps.astra.datastax.com",
             ...     token="AstraCS:...",
             ... )
-            >>> admin_for_my_db.list_namespaces()
-            ['default_keyspace', 'another_namespace']
+            >>> admin_for_my_db.list_keyspaces()
+            ['default_keyspace', 'another_keyspace']
             >>> admin_for_my_db.info().status
             'ACTIVE'
 
@@ -2908,15 +2908,15 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             Otherwise, an exception is raised.
 
         Example:
-            >>> my_db_admin.list_namespaces()
+            >>> my_db_admin.list_keyspaces()
             ['default_keyspace', 'that_other_one']
             >>> my_db_admin.drop()
             {'ok': 1}
-            >>> my_db_admin.list_namespaces()  # raises a 404 Not Found http error
+            >>> my_db_admin.list_keyspaces()  # raises a 404 Not Found http error
 
         Note:
             Once the method succeeds, methods on this object -- such as `info()`,
-            or `list_namespaces()` -- can still be invoked: however, this hardly
+            or `list_keyspaces()` -- can still be invoked: however, this hardly
             makes sense as the underlying actual database is no more.
             It is responsibility of the developer to design a correct flow
             which avoids using a deceased database any further.
@@ -2965,7 +2965,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         Note:
             Once the method succeeds, methods on this object -- such as `info()`,
-            or `list_namespaces()` -- can still be invoked: however, this hardly
+            or `list_keyspaces()` -- can still be invoked: however, this hardly
             makes sense as the underlying actual database is no more.
             It is responsibility of the developer to design a correct flow
             which avoids using a deceased database any further.
@@ -3173,11 +3173,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 class DataAPIDatabaseAdmin(DatabaseAdmin):
     """
     An "admin" object for non-Astra Data API environments, to perform administrative
-    tasks at the namespaces level such as creating/listing/dropping namespaces.
+    tasks at the keyspaces level such as creating/listing/dropping keyspaces.
 
     Conforming to the architecture of non-Astra deployments of the Data API,
     this object works within the one existing database. It is within that database
-    that the namespace CRUD operations (and possibly other admin operations)
+    that the keyspace CRUD operations (and possibly other admin operations)
     are performed. Since non-Astra environment lack the concept of an overall
     admin (such as the all-databases AstraDBAdmin class), a `DataAPIDatabaseAdmin`
     is generally created by invoking the `get_database_admin` method of the
@@ -3202,10 +3202,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         caller_name: name of the application, or framework, on behalf of which
             the admin API calls are performed. This ends up in the request user-agent.
         caller_version: version of the caller.
-        spawner_database: either a Database or an AsyncDatabase instance. This represents
-            the database class which spawns this admin object, so that, if required,
-            a namespace creation can retroactively "use" the new namespace in the spawner.
-            Used to enable the Async/Database.get_admin_database().create_namespace() pattern.
+        spawner_database: either a Database or an AsyncDatabase instance.
+            This represents the database class which spawns this admin object, so that,
+            if required, a keyspace creation can retroactively "use" the new keyspace
+            in the spawner. Used to enable the
+            Async/Database.get_admin_database().create_keyspace() pattern.
 
     Example:
         >>> from astrapy import DataAPIClient
@@ -3222,8 +3223,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         >>> database = client.get_database(endpoint)
         >>> admin_for_my_db = database.get_database_admin()
         >>>
-        >>> admin_for_my_db.list_namespaces()
-        ['namespace1', 'namespace2']
+        >>> admin_for_my_db.list_keyspaces()
+        ['keyspace1', 'keyspace2']
     """
 
     def __init__(

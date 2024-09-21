@@ -248,7 +248,7 @@ class Database:
                     self.api_endpoint == other.api_endpoint,
                     self.api_path == other.api_path,
                     self.api_version == other.api_version,
-                    self.keyspace == other.namespace,
+                    self.keyspace == other.keyspace,
                     self.caller_name == other.caller_name,
                     self.caller_version == other.caller_version,
                     self.api_commander == other.api_commander,
@@ -356,7 +356,7 @@ class Database:
 
         Example:
             >>> my_db_2 = my_db.with_options(
-            ...     keyspace="the_other_namespace",
+            ...     keyspace="the_other_keyspace",
             ...     caller_name="the_caller",
             ...     caller_version="0.1.0",
             ... )
@@ -1086,7 +1086,7 @@ class Database:
     ) -> DatabaseAdmin:
         """
         Return a DatabaseAdmin object corresponding to this database, for
-        use in admin tasks such as managing namespaces.
+        use in admin tasks such as managing keyspaces.
 
         This method, depending on the environment where the database resides,
         returns an appropriate subclass of DatabaseAdmin.
@@ -1113,10 +1113,10 @@ class Database:
 
         Example:
             >>> my_db_admin = my_db.get_database_admin()
-            >>> if "new_namespace" not in my_db_admin.list_namespaces():
-            ...     my_db_admin.create_namespace("new_namespace")
-            >>> my_db_admin.list_namespaces()
-            ['default_keyspace', 'new_namespace']
+            >>> if "new_keyspace" not in my_db_admin.list_keyspaces():
+            ...     my_db_admin.create_keyspace("new_keyspace")
+            >>> my_db_admin.list_keyspaces()
+            ['default_keyspace', 'new_keyspace']
         """
 
         # lazy importing here to avoid circular dependency
@@ -1283,7 +1283,7 @@ class AsyncDatabase:
                     self.api_endpoint == other.api_endpoint,
                     self.api_path == other.api_path,
                     self.api_version == other.api_version,
-                    self.keyspace == other.namespace,
+                    self.keyspace == other.keyspace,
                     self.caller_name == other.caller_name,
                     self.caller_version == other.caller_version,
                     self.api_commander == other.api_commander,
@@ -1407,7 +1407,7 @@ class AsyncDatabase:
 
         Example:
             >>> my_async_db_2 = my_async_db.with_options(
-            ...     keyspace="the_other_namespace",
+            ...     keyspace="the_other_keyspace",
             ...     caller_name="the_caller",
             ...     caller_version="0.1.0",
             ... )
@@ -2151,7 +2151,7 @@ class AsyncDatabase:
     ) -> DatabaseAdmin:
         """
         Return a DatabaseAdmin object corresponding to this database, for
-        use in admin tasks such as managing namespaces.
+        use in admin tasks such as managing keyspaces.
 
         This method, depending on the environment where the database resides,
         returns an appropriate subclass of DatabaseAdmin.
@@ -2178,10 +2178,10 @@ class AsyncDatabase:
 
         Example:
             >>> my_db_admin = my_async_db.get_database_admin()
-            >>> if "new_namespace" not in my_db_admin.list_namespaces():
-            ...     my_db_admin.create_namespace("new_namespace")
-            >>> my_db_admin.list_namespaces()
-            ['default_keyspace', 'new_namespace']
+            >>> if "new_keyspace" not in my_db_admin.list_keyspaces():
+            ...     my_db_admin.create_keyspace("new_keyspace")
+            >>> my_db_admin.list_keyspaces()
+            ['default_keyspace', 'new_keyspace']
         """
 
         # lazy importing here to avoid circular dependency

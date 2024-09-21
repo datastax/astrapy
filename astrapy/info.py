@@ -121,9 +121,9 @@ class CollectionInfo:
         database_info: a DatabaseInfo instance for the underlying database.
         keyspace: the keyspace where the collection is located.
         namespace: an alias for 'keyspace'. *DEPRECATED*, removal in 2.0
-        name: collection name. Unique within a namespace.
+        name: collection name. Unique within a keyspace.
         full_name: identifier for the collection within the database,
-            in the form "namespace.collection_name".
+            in the form "keyspace.collection_name".
     """
 
     database_info: DatabaseInfo

@@ -284,7 +284,7 @@ class Collection:
             self.api_options = api_options
         _keyspace = keyspace_param if keyspace_param is not None else database.keyspace
         if _keyspace is None:
-            raise ValueError("Attempted to create Collection with 'namespace' unset.")
+            raise ValueError("Attempted to create Collection with 'keyspace' unset.")
         self._database = database._copy(
             keyspace=_keyspace,
             caller_name=caller_name,
@@ -333,8 +333,8 @@ class Collection:
 
         if self._database.keyspace is None:
             raise ValueError(
-                "No namespace specified. Collection requires a namespace to "
-                "be set, e.g. through the `namespace` constructor parameter."
+                "No keyspace specified. Collection requires a keyspace to "
+                "be set, e.g. through the `keyspace` constructor parameter."
             )
 
         base_path_components = [
@@ -395,7 +395,7 @@ class Collection:
         Args:
             name: the name of the collection. This parameter is useful to
                 quickly spawn Collection instances each pointing to a different
-                collection existing in the same namespace.
+                collection existing in the same keyspace.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -668,7 +668,7 @@ class Collection:
     def full_name(self) -> str:
         """
         The fully-qualified collection name within the database,
-        in the form "namespace.collection_name".
+        in the form "keyspace.collection_name".
 
         Example:
             >>> my_coll.full_name
@@ -2861,7 +2861,7 @@ class AsyncCollection:
         _keyspace = keyspace_param if keyspace_param is not None else database.keyspace
         if _keyspace is None:
             raise ValueError(
-                "Attempted to create AsyncCollection with 'namespace' unset."
+                "Attempted to create AsyncCollection with 'keyspace' unset."
             )
         self._database = database._copy(
             keyspace=_keyspace,
@@ -2911,8 +2911,8 @@ class AsyncCollection:
 
         if self._database.keyspace is None:
             raise ValueError(
-                "No namespace specified. AsyncCollection requires a namespace to "
-                "be set, e.g. through the `namespace` constructor parameter."
+                "No keyspace specified. AsyncCollection requires a keyspace to "
+                "be set, e.g. through the `keyspace` constructor parameter."
             )
 
         base_path_components = [
@@ -2989,7 +2989,7 @@ class AsyncCollection:
         Args:
             name: the name of the collection. This parameter is useful to
                 quickly spawn AsyncCollection instances each pointing to a different
-                collection existing in the same namespace.
+                collection existing in the same keyspace.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -3264,7 +3264,7 @@ class AsyncCollection:
     def full_name(self) -> str:
         """
         The fully-qualified collection name within the database,
-        in the form "namespace.collection_name".
+        in the form "keyspace.collection_name".
 
         Example:
             >>> my_async_coll.full_name
