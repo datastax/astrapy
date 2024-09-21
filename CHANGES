@@ -1,5 +1,5 @@
-master
-======
+v. 1.5.0
+========
 Deprecation of "namespace-" terminology, replaced by "keyspace-" (removal in 2.0)
     - deprecation of all *namespace* method names
     - deprecation of the `namespace=` named argument to all methods
