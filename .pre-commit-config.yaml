@@ -1,7 +1,7 @@
 repos:
--   repo: https://github.com/psf/black
-    rev: 24.2.0  # Replace with your desired version or use 'stable'
-    hooks:
-    - id: black
-      args: ['--quiet']
-
+- repo: local
+  hooks:
+    - id: check
+      name: check
+      language: system
+      entry: make format-fix

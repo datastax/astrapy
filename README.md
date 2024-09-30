@@ -242,7 +242,7 @@ Linter, style and typecheck should all pass for a PR:
 make format
 ```
 
-With `make format-fix` the style and imports are autofixed (by `black` and `isort` resp.)
+With `make format-fix` the style and imports are autofixed (by `ruff`)
 
 Features must be thoroughly covered in tests (see `tests/idiomatic/*` for
 naming convention and module structure).

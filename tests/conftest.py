@@ -84,7 +84,7 @@ def env_region_from_endpoint(api_endpoint: str) -> Tuple[str, str]:
 
 
 def async_fail_if_not_removed(
-    method: Callable[..., Awaitable[Any]]
+    method: Callable[..., Awaitable[Any]],
 ) -> Callable[..., Awaitable[Any]]:
     """
     Decorate a test async method to track removal of deprecated code.
@@ -143,7 +143,6 @@ def sync_fail_if_not_removed(method: Callable[..., Any]) -> Callable[..., Any]:
 
 
 def clean_nulls_from_dict(in_dict: Dict[str, Any]) -> dict[str, Any]:
-
     def _cleand(_in: Any) -> Any:
         if isinstance(_in, list):
             return [_cleand(itm) for itm in _in]

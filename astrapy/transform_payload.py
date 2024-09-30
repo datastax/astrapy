@@ -46,7 +46,7 @@ def is_list_of_floats(vector: Iterable[Any]) -> bool:
 
 
 def convert_to_ejson_date_object(
-    date_value: Union[datetime.date, datetime.datetime]
+    date_value: Union[datetime.date, datetime.datetime],
 ) -> Dict[str, int]:
     return {"$date": int(time.mktime(date_value.timetuple()) * 1000)}
 
@@ -60,7 +60,7 @@ def convert_to_ejson_objectid_object(objectid_value: ObjectId) -> Dict[str, str]
 
 
 def convert_ejson_date_object_to_datetime(
-    date_object: Dict[str, int]
+    date_object: Dict[str, int],
 ) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(date_object["$date"] / 1000.0)
 
@@ -70,7 +70,7 @@ def convert_ejson_uuid_object_to_uuid(uuid_object: Dict[str, str]) -> UUID:
 
 
 def convert_ejson_objectid_object_to_objectid(
-    objectid_object: Dict[str, str]
+    objectid_object: Dict[str, str],
 ) -> ObjectId:
     return ObjectId(objectid_object["$objectId"])
 
@@ -105,7 +105,7 @@ def normalize_payload_value(path: List[str], value: Any) -> Any:
 
 
 def normalize_for_api(
-    payload: Union[Dict[str, Any], None]
+    payload: Union[Dict[str, Any], None],
 ) -> Union[Dict[str, Any], None]:
     """
     Normalize a payload for API calls.

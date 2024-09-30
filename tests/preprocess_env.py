@@ -114,7 +114,6 @@ else:
 is_docker_compose_started = False
 if DOCKER_COMPOSE_LOCAL_DATA_API:
     if not is_docker_compose_started:
-
         """
         Note: this is a trick to invoke `docker compose` as opposed to `docker-compose`
         while using testcontainers < 4.
@@ -133,7 +132,6 @@ if DOCKER_COMPOSE_LOCAL_DATA_API:
         """
 
         class RedefineCommandDockerCompose(DockerCompose):
-
             def docker_compose_command(self) -> List[str]:
                 docker_compose_cmd = ["docker", "compose"]
                 for file in self.compose_file_names:

@@ -152,7 +152,7 @@ class CollectionDefaultIDOptions:
 
     @staticmethod
     def from_dict(
-        raw_dict: Optional[Dict[str, Any]]
+        raw_dict: Optional[Dict[str, Any]],
     ) -> Optional[CollectionDefaultIDOptions]:
         """
         Create an instance of CollectionDefaultIDOptions from a dictionary
@@ -201,7 +201,7 @@ class CollectionVectorServiceOptions:
 
     @staticmethod
     def from_dict(
-        raw_dict: Optional[Dict[str, Any]]
+        raw_dict: Optional[Dict[str, Any]],
     ) -> Optional[CollectionVectorServiceOptions]:
         """
         Create an instance of CollectionVectorServiceOptions from a dictionary
@@ -252,7 +252,7 @@ class CollectionVectorOptions:
 
     @staticmethod
     def from_dict(
-        raw_dict: Optional[Dict[str, Any]]
+        raw_dict: Optional[Dict[str, Any]],
     ) -> Optional[CollectionVectorOptions]:
         """
         Create an instance of CollectionVectorOptions from a dictionary

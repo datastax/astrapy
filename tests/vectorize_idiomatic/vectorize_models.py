@@ -173,7 +173,6 @@ FORCE_DIMENSION_MAP = {
 
 
 def live_test_models() -> Iterable[Dict[str, Any]]:
-
     def _from_validation(pspec: EmbeddingProviderParameter) -> int:
         assert pspec.parameter_type == "number"
         if "numericRange" in pspec.validation:

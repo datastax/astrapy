@@ -73,7 +73,6 @@ def _maybe_valid_list_index(key_block: str) -> Optional[int]:
 def _create_document_key_extractor(
     key: str,
 ) -> Callable[[Dict[str, Any]], Iterable[Any]]:
-
     key_blocks0: List[IndexPairType] = [
         (kb_str, _maybe_valid_list_index(kb_str)) for kb_str in key.split(".")
     ]
