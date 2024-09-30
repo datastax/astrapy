@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -52,11 +52,11 @@ class DatabaseInfo:
 
     id: str
     region: str
-    keyspace: Optional[str]
-    namespace: Optional[str]
+    keyspace: str | None
+    namespace: str | None
     name: str
     environment: str
-    raw_info: Optional[Dict[str, Any]]
+    raw_info: dict[str, Any] | None
 
 
 @dataclass
@@ -92,8 +92,8 @@ class AdminDatabaseInfo:
     """
 
     info: DatabaseInfo
-    available_actions: Optional[List[str]]
-    cost: Dict[str, Any]
+    available_actions: list[str] | None
+    cost: dict[str, Any]
     cqlsh_url: str
     creation_time: str
     data_endpoint_url: str
@@ -101,14 +101,14 @@ class AdminDatabaseInfo:
     graphql_url: str
     id: str
     last_usage_time: str
-    metrics: Dict[str, Any]
+    metrics: dict[str, Any]
     observed_status: str
     org_id: str
     owner_id: str
     status: str
-    storage: Dict[str, Any]
+    storage: dict[str, Any]
     termination_time: str
-    raw_info: Optional[Dict[str, Any]]
+    raw_info: dict[str, Any] | None
 
 
 @dataclass
@@ -145,15 +145,15 @@ class CollectionDefaultIDOptions:
 
     default_id_type: str
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
 
         return {"type": self.default_id_type}
 
     @staticmethod
     def from_dict(
-        raw_dict: Optional[Dict[str, Any]]
-    ) -> Optional[CollectionDefaultIDOptions]:
+        raw_dict: dict[str, Any] | None
+    ) -> CollectionDefaultIDOptions | None:
         """
         Create an instance of CollectionDefaultIDOptions from a dictionary
         such as one from the Data API.
@@ -180,12 +180,12 @@ class CollectionVectorServiceOptions:
             in the vector service options.
     """
 
-    provider: Optional[str]
-    model_name: Optional[str]
-    authentication: Optional[Dict[str, Any]] = None
-    parameters: Optional[Dict[str, Any]] = None
+    provider: str | None
+    model_name: str | None
+    authentication: dict[str, Any] | None = None
+    parameters: dict[str, Any] | None = None
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
 
         return {
@@ -201,8 +201,8 @@ class CollectionVectorServiceOptions:
 
     @staticmethod
     def from_dict(
-        raw_dict: Optional[Dict[str, Any]]
-    ) -> Optional[CollectionVectorServiceOptions]:
+        raw_dict: dict[str, Any] | None
+    ) -> CollectionVectorServiceOptions | None:
         """
         Create an instance of CollectionVectorServiceOptions from a dictionary
         such as one from the Data API.
@@ -233,11 +233,11 @@ class CollectionVectorOptions:
             service is configured for the collection.
     """
 
-    dimension: Optional[int]
-    metric: Optional[str]
-    service: Optional[CollectionVectorServiceOptions]
+    dimension: int | None
+    metric: str | None
+    service: CollectionVectorServiceOptions | None
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
 
         return {
@@ -252,8 +252,8 @@ class CollectionVectorOptions:
 
     @staticmethod
     def from_dict(
-        raw_dict: Optional[Dict[str, Any]]
-    ) -> Optional[CollectionVectorOptions]:
+        raw_dict: dict[str, Any] | None
+    ) -> CollectionVectorOptions | None:
         """
         Create an instance of CollectionVectorOptions from a dictionary
         such as one from the Data API.
@@ -284,10 +284,10 @@ class CollectionOptions:
         raw_options: the raw response from the Data API for the collection configuration.
     """
 
-    vector: Optional[CollectionVectorOptions]
-    indexing: Optional[Dict[str, Any]]
-    default_id: Optional[CollectionDefaultIDOptions]
-    raw_options: Optional[Dict[str, Any]]
+    vector: CollectionVectorOptions | None
+    indexing: dict[str, Any] | None
+    default_id: CollectionDefaultIDOptions | None
+    raw_options: dict[str, Any] | None
 
     def __repr__(self) -> str:
         not_null_pieces = [
@@ -310,7 +310,7 @@ class CollectionOptions:
         ]
         return f"{self.__class__.__name__}({', '.join(not_null_pieces)})"
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
 
         return {
@@ -325,17 +325,17 @@ class CollectionOptions:
             if v is not None
         }
 
-    def flatten(self) -> Dict[str, Any]:
+    def flatten(self) -> dict[str, Any]:
         """
         Recast this object as a flat key-value pair suitable for
         use as kwargs in a create_collection method call (including recasts).
         """
 
-        _dimension: Optional[int]
-        _metric: Optional[str]
-        _indexing: Optional[Dict[str, Any]]
-        _service: Optional[Dict[str, Any]]
-        _default_id_type: Optional[str]
+        _dimension: int | None
+        _metric: str | None
+        _indexing: dict[str, Any] | None
+        _service: dict[str, Any] | None
+        _default_id_type: str | None
         if self.vector is not None:
             _dimension = self.vector.dimension
             _metric = self.vector.metric
@@ -366,7 +366,7 @@ class CollectionOptions:
         }
 
     @staticmethod
-    def from_dict(raw_dict: Dict[str, Any]) -> CollectionOptions:
+    def from_dict(raw_dict: dict[str, Any]) -> CollectionOptions:
         """
         Create an instance of CollectionOptions from a dictionary
         such as one from the Data API.
@@ -394,7 +394,7 @@ class CollectionDescriptor:
 
     name: str
     options: CollectionOptions
-    raw_descriptor: Optional[Dict[str, Any]]
+    raw_descriptor: dict[str, Any] | None
 
     def __repr__(self) -> str:
         not_null_pieces = [
@@ -408,7 +408,7 @@ class CollectionDescriptor:
         ]
         return f"{self.__class__.__name__}({', '.join(not_null_pieces)})"
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """
         Recast this object into a dictionary.
         Empty `options` will not be returned at all.
@@ -423,7 +423,7 @@ class CollectionDescriptor:
             if v
         }
 
-    def flatten(self) -> Dict[str, Any]:
+    def flatten(self) -> dict[str, Any]:
         """
         Recast this object as a flat key-value pair suitable for
         use as kwargs in a create_collection method call (including recasts).
@@ -435,7 +435,7 @@ class CollectionDescriptor:
         }
 
     @staticmethod
-    def from_dict(raw_dict: Dict[str, Any]) -> CollectionDescriptor:
+    def from_dict(raw_dict: dict[str, Any]) -> CollectionDescriptor:
         """
         Create an instance of CollectionDescriptor from a dictionary
         such as one from the Data API.
@@ -464,18 +464,18 @@ class EmbeddingProviderParameter:
     """
 
     default_value: Any
-    display_name: Optional[str]
-    help: Optional[str]
-    hint: Optional[str]
+    display_name: str | None
+    help: str | None
+    hint: str | None
     name: str
     required: bool
     parameter_type: str
-    validation: Dict[str, Any]
+    validation: dict[str, Any]
 
     def __repr__(self) -> str:
         return f"EmbeddingProviderParameter(name='{self.name}')"
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
 
         return {
@@ -494,7 +494,7 @@ class EmbeddingProviderParameter:
         }
 
     @staticmethod
-    def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProviderParameter:
+    def from_dict(raw_dict: dict[str, Any]) -> EmbeddingProviderParameter:
         """
         Create an instance of EmbeddingProviderParameter from a dictionary
         such as one from the Data API.
@@ -543,13 +543,13 @@ class EmbeddingProviderModel:
     """
 
     name: str
-    parameters: List[EmbeddingProviderParameter]
-    vector_dimension: Optional[int]
+    parameters: list[EmbeddingProviderParameter]
+    vector_dimension: int | None
 
     def __repr__(self) -> str:
         return f"EmbeddingProviderModel(name='{self.name}')"
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
 
         return {
@@ -559,7 +559,7 @@ class EmbeddingProviderModel:
         }
 
     @staticmethod
-    def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProviderModel:
+    def from_dict(raw_dict: dict[str, Any]) -> EmbeddingProviderModel:
         """
         Create an instance of EmbeddingProviderModel from a dictionary
         such as one from the Data API.
@@ -606,7 +606,7 @@ class EmbeddingProviderToken:
     def __repr__(self) -> str:
         return f"EmbeddingProviderToken('{self.accepted}')"
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
 
         return {
@@ -615,7 +615,7 @@ class EmbeddingProviderToken:
         }
 
     @staticmethod
-    def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProviderToken:
+    def from_dict(raw_dict: dict[str, Any]) -> EmbeddingProviderToken:
         """
         Create an instance of EmbeddingProviderToken from a dictionary
         such as one from the Data API.
@@ -650,7 +650,7 @@ class EmbeddingProviderAuthentication:
     """
 
     enabled: bool
-    tokens: List[EmbeddingProviderToken]
+    tokens: list[EmbeddingProviderToken]
 
     def __repr__(self) -> str:
         return (
@@ -658,7 +658,7 @@ class EmbeddingProviderAuthentication:
             f"tokens={','.join(str(token) for token in self.tokens)})"
         )
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
 
         return {
@@ -667,7 +667,7 @@ class EmbeddingProviderAuthentication:
         }
 
     @staticmethod
-    def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProviderAuthentication:
+    def from_dict(raw_dict: dict[str, Any]) -> EmbeddingProviderAuthentication:
         """
         Create an instance of EmbeddingProviderAuthentication from a dictionary
         such as one from the Data API.
@@ -714,13 +714,13 @@ class EmbeddingProvider:
     def __repr__(self) -> str:
         return f"EmbeddingProvider(display_name='{self.display_name}', models={self.models})"
 
-    display_name: Optional[str]
-    models: List[EmbeddingProviderModel]
-    parameters: List[EmbeddingProviderParameter]
-    supported_authentication: Dict[str, EmbeddingProviderAuthentication]
-    url: Optional[str]
+    display_name: str | None
+    models: list[EmbeddingProviderModel]
+    parameters: list[EmbeddingProviderParameter]
+    supported_authentication: dict[str, EmbeddingProviderAuthentication]
+    url: str | None
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
 
         return {
@@ -735,7 +735,7 @@ class EmbeddingProvider:
         }
 
     @staticmethod
-    def from_dict(raw_dict: Dict[str, Any]) -> EmbeddingProvider:
+    def from_dict(raw_dict: dict[str, Any]) -> EmbeddingProvider:
         """
         Create an instance of EmbeddingProvider from a dictionary
         such as one from the Data API.
@@ -788,10 +788,10 @@ class FindEmbeddingProvidersResult:
             f"{', '.join(sorted(self.embedding_providers.keys()))})"
         )
 
-    embedding_providers: Dict[str, EmbeddingProvider]
-    raw_info: Optional[Dict[str, Any]]
+    embedding_providers: dict[str, EmbeddingProvider]
+    raw_info: dict[str, Any] | None
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
 
         return {
@@ -802,7 +802,7 @@ class FindEmbeddingProvidersResult:
         }
 
     @staticmethod
-    def from_dict(raw_dict: Dict[str, Any]) -> FindEmbeddingProvidersResult:
+    def from_dict(raw_dict: dict[str, Any]) -> FindEmbeddingProvidersResult:
         """
         Create an instance of FindEmbeddingProvidersResult from a dictionary
         such as one from the Data API.

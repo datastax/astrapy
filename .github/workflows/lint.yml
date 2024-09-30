@@ -27,11 +27,11 @@ jobs:
 
     - name: Ruff Linting AstraPy
       run: |
-        poetry run ruff astrapy
+        poetry run ruff check astrapy
 
     - name: Ruff Linting Tests
       run: |
-        poetry run ruff tests
+        poetry run ruff check tests
 
     - name: Isort Linting AstraPy
       run: |

@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -258,7 +258,7 @@ class TestDMLAsync:
         Nsor = {"seq": SortDocuments.DESCENDING}
         Nfil = {"seq": {"$exists": True}}
 
-        async def _alist(acursor: AsyncCursor) -> List[DocumentType]:
+        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:
             return [doc async for doc in acursor]
 
         # case 0000 of find-pattern matrix
@@ -466,7 +466,7 @@ class TestDMLAsync:
         document0b = await cursor0b.__anext__()
         assert "ternary" in document0b
 
-        async def _alist(acursor: AsyncCursor) -> List[DocumentType]:
+        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:
             return [doc async for doc in acursor]
 
         # rewinding, slicing and retrieved
@@ -544,7 +544,7 @@ class TestDMLAsync:
         async_empty_collection: AsyncCollection,
     ) -> None:
         acol = async_empty_collection
-        documents: List[Dict[str, Any]] = [
+        documents: list[dict[str, Any]] = [
             {},
             {"f": 1},
             {"f": "a"},
@@ -685,13 +685,13 @@ class TestDMLAsync:
     ) -> None:
         q_vector = [10, 9]
 
-        async def _alist(acursor: AsyncCursor) -> List[DocumentType]:
+        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:
             return [doc async for doc in acursor]
 
         # with empty collection
         for include_sv in [False, True]:
             for sort_cl_label in ["reg", "vec"]:
-                sort_cl_e: Dict[str, Any] = (
+                sort_cl_e: dict[str, Any] = (
                     {} if sort_cl_label == "reg" else {"$vector": q_vector}
                 )
                 vec_expected = include_sv and sort_cl_label == "vec"
@@ -726,7 +726,7 @@ class TestDMLAsync:
         # with non-empty collection
         for include_sv in [False, True]:
             for sort_cl_label in ["reg", "vec"]:
-                sort_cl_f: Dict[str, Any] = (
+                sort_cl_f: dict[str, Any] = (
                     {} if sort_cl_label == "reg" else {"$vector": q_vector}
                 )
                 vec_expected = include_sv and sort_cl_label == "vec"

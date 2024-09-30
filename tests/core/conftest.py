@@ -19,7 +19,7 @@ Test fixtures for 'core' testing
 from __future__ import annotations
 
 import math
-from typing import AsyncIterable, Dict, Iterable, List, Optional, Set, TypeVar
+from typing import AsyncIterable, Iterable, TypeVar
 
 import pytest
 import pytest_asyncio
@@ -111,7 +111,7 @@ def db(
     if token is None or api_endpoint is None:
         raise ValueError("Required ASTRA DB configuration is missing")
 
-    db_kwargs: Dict[str, str]
+    db_kwargs: dict[str, str]
     if data_api_credentials_info["environment"] in {"prod", "dev", "test"}:
         db_kwargs = {}
     else:
@@ -134,7 +134,7 @@ async def async_db(
     if token is None or api_endpoint is None:
         raise ValueError("Required ASTRA DB configuration is missing")
 
-    db_kwargs: Dict[str, str]
+    db_kwargs: dict[str, str]
     if data_api_credentials_info["environment"] in {"prod", "dev", "test"}:
         db_kwargs = {}
     else:
@@ -151,14 +151,14 @@ async def async_db(
 
 @pytest.fixture(scope="module")
 def invalid_db(
-    data_api_core_bad_credentials_kwargs: Dict[str, Optional[str]],
+    data_api_core_bad_credentials_kwargs: dict[str, str | None],
     data_api_credentials_info: DataAPICredentialsInfo,
 ) -> AstraDB:
     token = data_api_core_bad_credentials_kwargs["token"]
     api_endpoint = data_api_core_bad_credentials_kwargs["api_endpoint"]
     namespace = data_api_core_bad_credentials_kwargs.get("namespace")
 
-    db_kwargs: Dict[str, str]
+    db_kwargs: dict[str, str]
     if data_api_credentials_info["environment"] in {"prod", "dev", "test"}:
         db_kwargs = {}
     else:
@@ -319,11 +319,11 @@ def pagination_v_collection(
     INSERT_BATCH_SIZE = 20  # max 20, fixed by API constraints
     N = 200  # must be EVEN
 
-    def _mk_vector(index: int, n_total_steps: int) -> List[float]:
+    def _mk_vector(index: int, n_total_steps: int) -> list[float]:
         angle = 2 * math.pi * index / n_total_steps
         return [math.cos(angle), math.sin(angle)]
 
-    inserted_ids: Set[str] = set()
+    inserted_ids: set[str] = set()
     for i_batch in _batch_iterable(range(N), INSERT_BATCH_SIZE):
         batch_ids = empty_v_collection.insert_many(
             documents=[{"_id": str(i), "$vector": _mk_vector(i, N)} for i in i_batch]

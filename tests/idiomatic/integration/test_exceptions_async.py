@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-from typing import List
-
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
@@ -62,8 +60,7 @@ class TestExceptionsAsync:
         self,
         async_empty_collection: AsyncCollection,
     ) -> None:
-
-        async def _alist(acursor: AsyncCursor) -> List[DocumentType]:
+        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:
             return [doc async for doc in acursor]
 
         acol = async_empty_collection

@@ -24,18 +24,7 @@ from collections.abc import AsyncGenerator, AsyncIterator
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from types import TracebackType
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-    cast,
-)
+from typing import Any, Callable, Iterator, List, Union, cast
 
 import httpx
 
@@ -71,10 +60,10 @@ class _PrefetchIterator(Iterator[API_DOC]):
         self,
         prefetched: int,
         request_method: PaginableRequestMethod,
-        options: Optional[Dict[str, Any]],
-        raw_response_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        options: dict[str, Any] | None,
+        raw_response_callback: Callable[[dict[str, Any]], None] | None = None,
     ):
-        self.queue: queue.Queue[Optional[API_DOC]] = queue.Queue(prefetched)
+        self.queue: queue.Queue[API_DOC | None] = queue.Queue(prefetched)
         self.request_method = request_method
         self.options = options
         self.raw_response_callback = raw_response_callback
@@ -93,8 +82,8 @@ class _PrefetchIterator(Iterator[API_DOC]):
 
     @staticmethod
     def queue_put(
-        q: queue.Queue[Optional[API_DOC]],
-        item: Optional[API_DOC],
+        q: queue.Queue[API_DOC | None],
+        item: API_DOC | None,
         stop: threading.Event,
     ) -> None:
         while not stop.is_set():
@@ -139,13 +128,13 @@ class AstraDBCollection:
     def __init__(
         self,
         collection_name: str,
-        astra_db: Optional[AstraDB] = None,
-        token: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        additional_headers: Dict[str, str] = {},
+        astra_db: AstraDB | None = None,
+        token: str | None = None,
+        api_endpoint: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        additional_headers: dict[str, str] = {},
     ) -> None:
         """
         Initialize an AstraDBCollection instance.
@@ -188,8 +177,8 @@ class AstraDBCollection:
 
         # Set the remaining instance attributes
         self.astra_db = astra_db
-        self.caller_name: Optional[str] = self.astra_db.caller_name
-        self.caller_version: Optional[str] = self.astra_db.caller_version
+        self.caller_name: str | None = self.astra_db.caller_name
+        self.caller_version: str | None = self.astra_db.caller_version
         self.additional_headers = additional_headers
         self.collection_name = collection_name
         self.base_path: str = f"{self.astra_db.base_path}/{self.collection_name}"
@@ -214,15 +203,15 @@ class AstraDBCollection:
     def copy(
         self,
         *,
-        collection_name: Optional[str] = None,
-        token: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        additional_headers: Optional[Dict[str, str]] = None,
+        collection_name: str | None = None,
+        token: str | None = None,
+        api_endpoint: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        additional_headers: dict[str, str] | None = None,
     ) -> AstraDBCollection:
         return AstraDBCollection(
             collection_name=collection_name or self.collection_name,
@@ -251,8 +240,8 @@ class AstraDBCollection:
 
     def set_caller(
         self,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         self.astra_db.set_caller(
             caller_name=caller_name,
@@ -264,9 +253,9 @@ class AstraDBCollection:
     def _request(
         self,
         method: str = http_methods.POST,
-        path: Optional[str] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-        url_params: Optional[Dict[str, Any]] = None,
+        path: str | None = None,
+        json_data: dict[str, Any] | None = None,
+        url_params: dict[str, Any] | None = None,
         skip_error_check: bool = False,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
@@ -289,7 +278,7 @@ class AstraDBCollection:
         return response
 
     def post_raw_request(
-        self, body: Dict[str, Any], timeout_info: TimeoutInfoWideType = None
+        self, body: dict[str, Any], timeout_info: TimeoutInfoWideType = None
     ) -> API_RESPONSE:
         return self._request(
             method=http_methods.POST,
@@ -300,10 +289,10 @@ class AstraDBCollection:
 
     def _get(
         self,
-        path: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None,
+        path: str | None = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Optional[API_RESPONSE]:
+    ) -> API_RESPONSE | None:
         full_path = f"{self.base_path}/{path}" if path else self.base_path
         response = self._request(
             method=http_methods.GET,
@@ -317,8 +306,8 @@ class AstraDBCollection:
 
     def _put(
         self,
-        path: Optional[str] = None,
-        document: Optional[API_RESPONSE] = None,
+        path: str | None = None,
+        document: API_RESPONSE | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         full_path = f"{self.base_path}/{path}" if path else self.base_path
@@ -332,8 +321,8 @@ class AstraDBCollection:
 
     def _post(
         self,
-        path: Optional[str] = None,
-        document: Optional[API_DOC] = None,
+        path: str | None = None,
+        document: API_DOC | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         full_path = f"{self.base_path}/{path}" if path else self.base_path
@@ -346,8 +335,8 @@ class AstraDBCollection:
         return response
 
     def _recast_as_sort_projection(
-        self, vector: List[float], fields: Optional[List[str]] = None
-    ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+        self, vector: list[float], fields: list[str] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any] | None]:
         """
         Given a vector and optionally a list of fields,
         reformulate them as a sort, projection pair for regular
@@ -362,7 +351,7 @@ class AstraDBCollection:
             raise ValueError("Please use the `include_similarity` parameter")
 
         # Build the new vector parameter
-        sort: Dict[str, Any] = {"$vector": vector}
+        sort: dict[str, Any] = {"$vector": vector}
 
         # Build the new fields parameter
         # Note: do not leave projection={}, make it None
@@ -375,8 +364,8 @@ class AstraDBCollection:
         return sort, projection
 
     def get(
-        self, path: Optional[str] = None, timeout_info: TimeoutInfoWideType = None
-    ) -> Optional[API_RESPONSE]:
+        self, path: str | None = None, timeout_info: TimeoutInfoWideType = None
+    ) -> API_RESPONSE | None:
         """
         Retrieve a document from the collection by its path.
 
@@ -393,10 +382,10 @@ class AstraDBCollection:
 
     def find(
         self,
-        filter: Optional[Dict[str, Any]] = None,
-        projection: Optional[Dict[str, Any]] = None,
-        sort: Optional[Dict[str, Any]] = None,
-        options: Optional[Dict[str, Any]] = None,
+        filter: dict[str, Any] | None = None,
+        projection: dict[str, Any] | None = None,
+        sort: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -428,14 +417,14 @@ class AstraDBCollection:
 
     def vector_find(
         self,
-        vector: List[float],
+        vector: list[float],
         *,
         limit: int,
-        filter: Optional[Dict[str, Any]] = None,
-        fields: Optional[List[str]] = None,
+        filter: dict[str, Any] | None = None,
+        fields: list[str] | None = None,
         include_similarity: bool = True,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> List[API_DOC]:
+    ) -> list[API_DOC]:
         """
         Perform a vector-based search in the collection.
 
@@ -480,8 +469,8 @@ class AstraDBCollection:
     def paginate(
         *,
         request_method: PaginableRequestMethod,
-        options: Optional[Dict[str, Any]],
-        raw_response_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        options: dict[str, Any] | None,
+        raw_response_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> Iterator[API_DOC]:
         """
         Generate paginated results for a given database query method.
@@ -517,13 +506,13 @@ class AstraDBCollection:
 
     def paginated_find(
         self,
-        filter: Optional[Dict[str, Any]] = None,
-        projection: Optional[Dict[str, Any]] = None,
-        sort: Optional[Dict[str, Any]] = None,
-        options: Optional[Dict[str, Any]] = None,
-        prefetched: Optional[int] = None,
+        filter: dict[str, Any] | None = None,
+        projection: dict[str, Any] | None = None,
+        sort: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
+        prefetched: int | None = None,
         timeout_info: TimeoutInfoWideType = None,
-        raw_response_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        raw_response_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> Iterator[API_DOC]:
         """
         Perform a paginated search in the collection.
@@ -569,9 +558,9 @@ class AstraDBCollection:
 
     def pop(
         self,
-        filter: Dict[str, Any],
-        pop: Dict[str, Any],
-        options: Dict[str, Any],
+        filter: dict[str, Any],
+        pop: dict[str, Any],
+        options: dict[str, Any],
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -606,9 +595,9 @@ class AstraDBCollection:
 
     def push(
         self,
-        filter: Dict[str, Any],
-        push: Dict[str, Any],
-        options: Dict[str, Any],
+        filter: dict[str, Any],
+        push: dict[str, Any],
+        options: dict[str, Any],
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -643,12 +632,12 @@ class AstraDBCollection:
 
     def find_one_and_replace(
         self,
-        replacement: Dict[str, Any],
+        replacement: dict[str, Any],
         *,
-        filter: Optional[Dict[str, Any]] = None,
-        projection: Optional[Dict[str, Any]] = None,
-        sort: Optional[Dict[str, Any]] = None,
-        options: Optional[Dict[str, Any]] = None,
+        filter: dict[str, Any] | None = None,
+        projection: dict[str, Any] | None = None,
+        sort: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -686,13 +675,13 @@ class AstraDBCollection:
 
     def vector_find_one_and_replace(
         self,
-        vector: List[float],
-        replacement: Dict[str, Any],
+        vector: list[float],
+        replacement: dict[str, Any],
         *,
-        filter: Optional[Dict[str, Any]] = None,
-        fields: Optional[List[str]] = None,
+        filter: dict[str, Any] | None = None,
+        fields: list[str] | None = None,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Union[API_DOC, None]:
+    ) -> API_DOC | None:
         """
         Perform a vector-based search and replace the first matched document.
 
@@ -727,11 +716,11 @@ class AstraDBCollection:
 
     def find_one_and_update(
         self,
-        update: Dict[str, Any],
-        sort: Optional[Dict[str, Any]] = {},
-        filter: Optional[Dict[str, Any]] = None,
-        options: Optional[Dict[str, Any]] = None,
-        projection: Optional[Dict[str, Any]] = None,
+        update: dict[str, Any],
+        sort: dict[str, Any] | None = {},
+        filter: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
+        projection: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -769,13 +758,13 @@ class AstraDBCollection:
 
     def vector_find_one_and_update(
         self,
-        vector: List[float],
-        update: Dict[str, Any],
+        vector: list[float],
+        update: dict[str, Any],
         *,
-        filter: Optional[Dict[str, Any]] = None,
-        fields: Optional[List[str]] = None,
+        filter: dict[str, Any] | None = None,
+        fields: list[str] | None = None,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Union[API_DOC, None]:
+    ) -> API_DOC | None:
         """
         Perform a vector-based search and update the first matched document.
 
@@ -811,9 +800,9 @@ class AstraDBCollection:
 
     def find_one_and_delete(
         self,
-        sort: Optional[Dict[str, Any]] = {},
-        filter: Optional[Dict[str, Any]] = None,
-        projection: Optional[Dict[str, Any]] = None,
+        sort: dict[str, Any] | None = {},
+        filter: dict[str, Any] | None = None,
+        projection: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -847,7 +836,7 @@ class AstraDBCollection:
         return response
 
     def count_documents(
-        self, filter: Dict[str, Any] = {}, timeout_info: TimeoutInfoWideType = None
+        self, filter: dict[str, Any] = {}, timeout_info: TimeoutInfoWideType = None
     ) -> API_RESPONSE:
         """
         Count documents matching a given predicate (expressed as filter).
@@ -875,10 +864,10 @@ class AstraDBCollection:
 
     def find_one(
         self,
-        filter: Optional[Dict[str, Any]] = {},
-        projection: Optional[Dict[str, Any]] = {},
-        sort: Optional[Dict[str, Any]] = {},
-        options: Optional[Dict[str, Any]] = {},
+        filter: dict[str, Any] | None = {},
+        projection: dict[str, Any] | None = {},
+        sort: dict[str, Any] | None = {},
+        options: dict[str, Any] | None = {},
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -914,13 +903,13 @@ class AstraDBCollection:
 
     def vector_find_one(
         self,
-        vector: List[float],
+        vector: list[float],
         *,
-        filter: Optional[Dict[str, Any]] = None,
-        fields: Optional[List[str]] = None,
+        filter: dict[str, Any] | None = None,
+        fields: list[str] | None = None,
         include_similarity: bool = True,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Union[API_DOC, None]:
+    ) -> API_DOC | None:
         """
         Perform a vector-based search to find a single document in the collection.
 
@@ -986,8 +975,8 @@ class AstraDBCollection:
 
     def insert_many(
         self,
-        documents: List[API_DOC],
-        options: Optional[Dict[str, Any]] = None,
+        documents: list[API_DOC],
+        options: dict[str, Any] | None = None,
         partial_failures_allowed: bool = False,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
@@ -1023,13 +1012,13 @@ class AstraDBCollection:
 
     def chunked_insert_many(
         self,
-        documents: List[API_DOC],
-        options: Optional[Dict[str, Any]] = None,
+        documents: list[API_DOC],
+        options: dict[str, Any] | None = None,
         partial_failures_allowed: bool = False,
         chunk_size: int = DEFAULT_INSERT_NUM_DOCUMENTS,
         concurrency: int = 1,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> List[Union[API_RESPONSE, Exception]]:
+    ) -> list[API_RESPONSE | Exception]:
         """
         Insert multiple documents into the collection, handling chunking and
         optionally with concurrent insertions.
@@ -1054,7 +1043,7 @@ class AstraDBCollection:
                 This is a list of individual responses from the API: the caller
                 will need to inspect them all, e.g. to collate the inserted IDs.
         """
-        results: List[Union[API_RESPONSE, Exception]] = []
+        results: list[API_RESPONSE | Exception] = []
 
         # Raise a warning if ordered and concurrency
         if options and options.get("ordered") is True and concurrency > 1:
@@ -1110,11 +1099,11 @@ class AstraDBCollection:
 
     def update_one(
         self,
-        filter: Dict[str, Any],
-        update: Dict[str, Any],
-        sort: Optional[Dict[str, Any]] = None,
+        filter: dict[str, Any],
+        update: dict[str, Any],
+        sort: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> API_RESPONSE:
         """
         Update a single document in the collection.
@@ -1149,9 +1138,9 @@ class AstraDBCollection:
 
     def update_many(
         self,
-        filter: Dict[str, Any],
-        update: Dict[str, Any],
-        options: Optional[Dict[str, Any]] = None,
+        filter: dict[str, Any],
+        update: dict[str, Any],
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -1204,7 +1193,7 @@ class AstraDBCollection:
     def delete_one(
         self,
         id: str,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -1236,8 +1225,8 @@ class AstraDBCollection:
 
     def delete_one_by_predicate(
         self,
-        filter: Dict[str, Any],
-        sort: Optional[Dict[str, Any]] = None,
+        filter: dict[str, Any],
+        sort: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -1269,7 +1258,7 @@ class AstraDBCollection:
 
     def delete_many(
         self,
-        filter: Dict[str, Any],
+        filter: dict[str, Any],
         skip_error_check: bool = False,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
@@ -1304,8 +1293,8 @@ class AstraDBCollection:
         return response
 
     def chunked_delete_many(
-        self, filter: Dict[str, Any], timeout_info: TimeoutInfoWideType = None
-    ) -> List[API_RESPONSE]:
+        self, filter: dict[str, Any], timeout_info: TimeoutInfoWideType = None
+    ) -> list[API_RESPONSE]:
         """
         Delete many documents from the collection based on a filter condition,
         chaining several API calls until exhaustion of the documents to delete.
@@ -1436,7 +1425,7 @@ class AstraDBCollection:
         concurrency: int = 1,
         partial_failures_allowed: bool = False,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> List[Union[str, Exception]]:
+    ) -> list[str | Exception]:
         """
         Emulate an upsert operation for multiple documents in the collection.
 
@@ -1457,7 +1446,7 @@ class AstraDBCollection:
         Returns:
             List[Union[str, Exception]]: A list of "_id"s of the inserted or updated documents.
         """
-        results: List[Union[str, Exception]] = []
+        results: list[str | Exception] = []
 
         # If concurrency is 1, no need for thread pool
         if concurrency == 1:
@@ -1493,13 +1482,13 @@ class AsyncAstraDBCollection:
     def __init__(
         self,
         collection_name: str,
-        astra_db: Optional[AsyncAstraDB] = None,
-        token: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        additional_headers: Dict[str, str] = {},
+        astra_db: AsyncAstraDB | None = None,
+        token: str | None = None,
+        api_endpoint: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        additional_headers: dict[str, str] = {},
     ) -> None:
         """
         Initialize an AstraDBCollection instance.
@@ -1542,8 +1531,8 @@ class AsyncAstraDBCollection:
 
         # Set the remaining instance attributes
         self.astra_db: AsyncAstraDB = astra_db
-        self.caller_name: Optional[str] = self.astra_db.caller_name
-        self.caller_version: Optional[str] = self.astra_db.caller_version
+        self.caller_name: str | None = self.astra_db.caller_name
+        self.caller_version: str | None = self.astra_db.caller_version
         self.additional_headers = additional_headers
         self.client = astra_db.client
         self.collection_name = collection_name
@@ -1569,15 +1558,15 @@ class AsyncAstraDBCollection:
     def copy(
         self,
         *,
-        collection_name: Optional[str] = None,
-        token: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        additional_headers: Optional[Dict[str, str]] = None,
+        collection_name: str | None = None,
+        token: str | None = None,
+        api_endpoint: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        additional_headers: dict[str, str] | None = None,
     ) -> AsyncAstraDBCollection:
         return AsyncAstraDBCollection(
             collection_name=collection_name or self.collection_name,
@@ -1597,8 +1586,8 @@ class AsyncAstraDBCollection:
 
     def set_caller(
         self,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         self.astra_db.set_caller(
             caller_name=caller_name,
@@ -1619,9 +1608,9 @@ class AsyncAstraDBCollection:
     async def _request(
         self,
         method: str = http_methods.POST,
-        path: Optional[str] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-        url_params: Optional[Dict[str, Any]] = None,
+        path: str | None = None,
+        json_data: dict[str, Any] | None = None,
+        url_params: dict[str, Any] | None = None,
         skip_error_check: bool = False,
         timeout_info: TimeoutInfoWideType = None,
         **kwargs: Any,
@@ -1645,7 +1634,7 @@ class AsyncAstraDBCollection:
         return response
 
     async def post_raw_request(
-        self, body: Dict[str, Any], timeout_info: TimeoutInfoWideType = None
+        self, body: dict[str, Any], timeout_info: TimeoutInfoWideType = None
     ) -> API_RESPONSE:
         return await self._request(
             method=http_methods.POST,
@@ -1656,10 +1645,10 @@ class AsyncAstraDBCollection:
 
     async def _get(
         self,
-        path: Optional[str] = None,
-        options: Optional[Dict[str, Any]] = None,
+        path: str | None = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Optional[API_RESPONSE]:
+    ) -> API_RESPONSE | None:
         full_path = f"{self.base_path}/{path}" if path else self.base_path
         response = await self._request(
             method=http_methods.GET,
@@ -1673,8 +1662,8 @@ class AsyncAstraDBCollection:
 
     async def _put(
         self,
-        path: Optional[str] = None,
-        document: Optional[API_RESPONSE] = None,
+        path: str | None = None,
+        document: API_RESPONSE | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         full_path = f"{self.base_path}/{path}" if path else self.base_path
@@ -1688,8 +1677,8 @@ class AsyncAstraDBCollection:
 
     async def _post(
         self,
-        path: Optional[str] = None,
-        document: Optional[API_DOC] = None,
+        path: str | None = None,
+        document: API_DOC | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         full_path = f"{self.base_path}/{path}" if path else self.base_path
@@ -1702,8 +1691,8 @@ class AsyncAstraDBCollection:
         return response
 
     def _recast_as_sort_projection(
-        self, vector: List[float], fields: Optional[List[str]] = None
-    ) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+        self, vector: list[float], fields: list[str] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any] | None]:
         """
         Given a vector and optionally a list of fields,
         reformulate them as a sort, projection pair for regular
@@ -1718,7 +1707,7 @@ class AsyncAstraDBCollection:
             raise ValueError("Please use the `include_similarity` parameter")
 
         # Build the new vector parameter
-        sort: Dict[str, Any] = {"$vector": vector}
+        sort: dict[str, Any] = {"$vector": vector}
 
         # Build the new fields parameter
         # Note: do not leave projection={}, make it None
@@ -1731,8 +1720,8 @@ class AsyncAstraDBCollection:
         return sort, projection
 
     async def get(
-        self, path: Optional[str] = None, timeout_info: TimeoutInfoWideType = None
-    ) -> Optional[API_RESPONSE]:
+        self, path: str | None = None, timeout_info: TimeoutInfoWideType = None
+    ) -> API_RESPONSE | None:
         """
         Retrieve a document from the collection by its path.
 
@@ -1749,10 +1738,10 @@ class AsyncAstraDBCollection:
 
     async def find(
         self,
-        filter: Optional[Dict[str, Any]] = None,
-        projection: Optional[Dict[str, Any]] = None,
-        sort: Optional[Dict[str, Any]] = None,
-        options: Optional[Dict[str, Any]] = None,
+        filter: dict[str, Any] | None = None,
+        projection: dict[str, Any] | None = None,
+        sort: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -1784,14 +1773,14 @@ class AsyncAstraDBCollection:
 
     async def vector_find(
         self,
-        vector: List[float],
+        vector: list[float],
         *,
         limit: int,
-        filter: Optional[Dict[str, Any]] = None,
-        fields: Optional[List[str]] = None,
+        filter: dict[str, Any] | None = None,
+        fields: list[str] | None = None,
         include_similarity: bool = True,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> List[API_DOC]:
+    ) -> list[API_DOC]:
         """
         Perform a vector-based search in the collection.
 
@@ -1836,10 +1825,10 @@ class AsyncAstraDBCollection:
     async def paginate(
         *,
         request_method: AsyncPaginableRequestMethod,
-        options: Optional[Dict[str, Any]],
-        prefetched: Optional[int] = None,
+        options: dict[str, Any] | None,
+        prefetched: int | None = None,
         timeout_info: TimeoutInfoWideType = None,
-        raw_response_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        raw_response_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> AsyncGenerator[API_DOC, None]:
         """
         Generate paginated results for a given database query method.
@@ -1867,9 +1856,9 @@ class AsyncAstraDBCollection:
         if next_page_state is not None and prefetched:
 
             async def queued_paginate(
-                queue: asyncio.Queue[Optional[API_DOC]],
+                queue: asyncio.Queue[API_DOC | None],
                 request_method: AsyncPaginableRequestMethod,
-                options: Optional[Dict[str, Any]],
+                options: dict[str, Any] | None,
             ) -> None:
                 try:
                     async for doc in AsyncAstraDBCollection.paginate(
@@ -1879,7 +1868,7 @@ class AsyncAstraDBCollection:
                 finally:
                     await queue.put(None)
 
-            queue: asyncio.Queue[Optional[API_DOC]] = asyncio.Queue(prefetched)
+            queue: asyncio.Queue[API_DOC | None] = asyncio.Queue(prefetched)
             options1 = {**options0, **{"pageState": next_page_state}}
             asyncio.create_task(queued_paginate(queue, request_method, options1))
             for document in response0["data"]["documents"]:
@@ -1902,13 +1891,13 @@ class AsyncAstraDBCollection:
 
     def paginated_find(
         self,
-        filter: Optional[Dict[str, Any]] = None,
-        projection: Optional[Dict[str, Any]] = None,
-        sort: Optional[Dict[str, Any]] = None,
-        options: Optional[Dict[str, Any]] = None,
-        prefetched: Optional[int] = None,
+        filter: dict[str, Any] | None = None,
+        projection: dict[str, Any] | None = None,
+        sort: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
+        prefetched: int | None = None,
         timeout_info: TimeoutInfoWideType = None,
-        raw_response_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
+        raw_response_callback: Callable[[dict[str, Any]], None] | None = None,
     ) -> AsyncIterator[API_DOC]:
         """
         Perform a paginated search in the collection.
@@ -1948,9 +1937,9 @@ class AsyncAstraDBCollection:
 
     async def pop(
         self,
-        filter: Dict[str, Any],
-        pop: Dict[str, Any],
-        options: Dict[str, Any],
+        filter: dict[str, Any],
+        pop: dict[str, Any],
+        options: dict[str, Any],
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -1985,9 +1974,9 @@ class AsyncAstraDBCollection:
 
     async def push(
         self,
-        filter: Dict[str, Any],
-        push: Dict[str, Any],
-        options: Dict[str, Any],
+        filter: dict[str, Any],
+        push: dict[str, Any],
+        options: dict[str, Any],
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -2022,12 +2011,12 @@ class AsyncAstraDBCollection:
 
     async def find_one_and_replace(
         self,
-        replacement: Dict[str, Any],
+        replacement: dict[str, Any],
         *,
-        filter: Optional[Dict[str, Any]] = None,
-        projection: Optional[Dict[str, Any]] = None,
-        sort: Optional[Dict[str, Any]] = None,
-        options: Optional[Dict[str, Any]] = None,
+        filter: dict[str, Any] | None = None,
+        projection: dict[str, Any] | None = None,
+        sort: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -2065,13 +2054,13 @@ class AsyncAstraDBCollection:
 
     async def vector_find_one_and_replace(
         self,
-        vector: List[float],
-        replacement: Dict[str, Any],
+        vector: list[float],
+        replacement: dict[str, Any],
         *,
-        filter: Optional[Dict[str, Any]] = None,
-        fields: Optional[List[str]] = None,
+        filter: dict[str, Any] | None = None,
+        fields: list[str] | None = None,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Union[API_DOC, None]:
+    ) -> API_DOC | None:
         """
         Perform a vector-based search and replace the first matched document.
 
@@ -2106,11 +2095,11 @@ class AsyncAstraDBCollection:
 
     async def find_one_and_update(
         self,
-        update: Dict[str, Any],
-        sort: Optional[Dict[str, Any]] = {},
-        filter: Optional[Dict[str, Any]] = None,
-        options: Optional[Dict[str, Any]] = None,
-        projection: Optional[Dict[str, Any]] = None,
+        update: dict[str, Any],
+        sort: dict[str, Any] | None = {},
+        filter: dict[str, Any] | None = None,
+        options: dict[str, Any] | None = None,
+        projection: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -2148,13 +2137,13 @@ class AsyncAstraDBCollection:
 
     async def vector_find_one_and_update(
         self,
-        vector: List[float],
-        update: Dict[str, Any],
+        vector: list[float],
+        update: dict[str, Any],
         *,
-        filter: Optional[Dict[str, Any]] = None,
-        fields: Optional[List[str]] = None,
+        filter: dict[str, Any] | None = None,
+        fields: list[str] | None = None,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Union[API_DOC, None]:
+    ) -> API_DOC | None:
         """
         Perform a vector-based search and update the first matched document.
 
@@ -2190,9 +2179,9 @@ class AsyncAstraDBCollection:
 
     async def find_one_and_delete(
         self,
-        sort: Optional[Dict[str, Any]] = {},
-        filter: Optional[Dict[str, Any]] = None,
-        projection: Optional[Dict[str, Any]] = None,
+        sort: dict[str, Any] | None = {},
+        filter: dict[str, Any] | None = None,
+        projection: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -2226,7 +2215,7 @@ class AsyncAstraDBCollection:
         return response
 
     async def count_documents(
-        self, filter: Dict[str, Any] = {}, timeout_info: TimeoutInfoWideType = None
+        self, filter: dict[str, Any] = {}, timeout_info: TimeoutInfoWideType = None
     ) -> API_RESPONSE:
         """
         Count documents matching a given predicate (expressed as filter).
@@ -2254,10 +2243,10 @@ class AsyncAstraDBCollection:
 
     async def find_one(
         self,
-        filter: Optional[Dict[str, Any]] = {},
-        projection: Optional[Dict[str, Any]] = {},
-        sort: Optional[Dict[str, Any]] = {},
-        options: Optional[Dict[str, Any]] = {},
+        filter: dict[str, Any] | None = {},
+        projection: dict[str, Any] | None = {},
+        sort: dict[str, Any] | None = {},
+        options: dict[str, Any] | None = {},
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -2293,13 +2282,13 @@ class AsyncAstraDBCollection:
 
     async def vector_find_one(
         self,
-        vector: List[float],
+        vector: list[float],
         *,
-        filter: Optional[Dict[str, Any]] = None,
-        fields: Optional[List[str]] = None,
+        filter: dict[str, Any] | None = None,
+        fields: list[str] | None = None,
         include_similarity: bool = True,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Union[API_DOC, None]:
+    ) -> API_DOC | None:
         """
         Perform a vector-based search to find a single document in the collection.
 
@@ -2365,8 +2354,8 @@ class AsyncAstraDBCollection:
 
     async def insert_many(
         self,
-        documents: List[API_DOC],
-        options: Optional[Dict[str, Any]] = None,
+        documents: list[API_DOC],
+        options: dict[str, Any] | None = None,
         partial_failures_allowed: bool = False,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
@@ -2401,13 +2390,13 @@ class AsyncAstraDBCollection:
 
     async def chunked_insert_many(
         self,
-        documents: List[API_DOC],
-        options: Optional[Dict[str, Any]] = None,
+        documents: list[API_DOC],
+        options: dict[str, Any] | None = None,
         partial_failures_allowed: bool = False,
         chunk_size: int = DEFAULT_INSERT_NUM_DOCUMENTS,
         concurrency: int = 1,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> List[Union[API_RESPONSE, Exception]]:
+    ) -> list[API_RESPONSE | Exception]:
         """
         Insert multiple documents into the collection, handling chunking and
         optionally with concurrent insertions.
@@ -2435,10 +2424,10 @@ class AsyncAstraDBCollection:
         sem = asyncio.Semaphore(concurrency)
 
         async def concurrent_insert_many(
-            docs: List[API_DOC],
+            docs: list[API_DOC],
             index: int,
             partial_failures_allowed: bool,
-        ) -> Union[API_RESPONSE, Exception]:
+        ) -> API_RESPONSE | Exception:
             async with sem:
                 logger.debug(f"Processing chunk #{index + 1} of size {len(docs)}")
                 try:
@@ -2488,11 +2477,11 @@ class AsyncAstraDBCollection:
 
     async def update_one(
         self,
-        filter: Dict[str, Any],
-        update: Dict[str, Any],
-        sort: Optional[Dict[str, Any]] = None,
+        filter: dict[str, Any],
+        update: dict[str, Any],
+        sort: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
     ) -> API_RESPONSE:
         """
         Update a single document in the collection.
@@ -2527,9 +2516,9 @@ class AsyncAstraDBCollection:
 
     async def update_many(
         self,
-        filter: Dict[str, Any],
-        update: Dict[str, Any],
-        options: Optional[Dict[str, Any]] = None,
+        filter: dict[str, Any],
+        update: dict[str, Any],
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -2582,7 +2571,7 @@ class AsyncAstraDBCollection:
     async def delete_one(
         self,
         id: str,
-        sort: Optional[Dict[str, Any]] = None,
+        sort: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -2614,8 +2603,8 @@ class AsyncAstraDBCollection:
 
     async def delete_one_by_predicate(
         self,
-        filter: Dict[str, Any],
-        sort: Optional[Dict[str, Any]] = None,
+        filter: dict[str, Any],
+        sort: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -2647,7 +2636,7 @@ class AsyncAstraDBCollection:
 
     async def delete_many(
         self,
-        filter: Dict[str, Any],
+        filter: dict[str, Any],
         skip_error_check: bool = False,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
@@ -2682,8 +2671,8 @@ class AsyncAstraDBCollection:
         return response
 
     async def chunked_delete_many(
-        self, filter: Dict[str, Any], timeout_info: TimeoutInfoWideType = None
-    ) -> List[API_RESPONSE]:
+        self, filter: dict[str, Any], timeout_info: TimeoutInfoWideType = None
+    ) -> list[API_RESPONSE]:
         """
         Delete many documents from the collection based on a filter condition,
         chaining several API calls until exhaustion of the documents to delete.
@@ -2818,7 +2807,7 @@ class AsyncAstraDBCollection:
         concurrency: int = 1,
         partial_failures_allowed: bool = False,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> List[Union[str, Exception]]:
+    ) -> list[str | Exception]:
         """
         Emulate an upsert operation for multiple documents in the collection.
         This method attempts to insert the documents.
@@ -2860,13 +2849,13 @@ class AstraDB:
 
     def __init__(
         self,
-        token: Optional[str],
+        token: str | None,
         api_endpoint: str,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         """
         Initialize an Astra DB instance.
@@ -2940,13 +2929,13 @@ class AstraDB:
     def copy(
         self,
         *,
-        token: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        token: str | None = None,
+        api_endpoint: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> AstraDB:
         return AstraDB(
             token=token or self.token,
@@ -2971,8 +2960,8 @@ class AstraDB:
 
     def set_caller(
         self,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         self.caller_name = caller_name
         self.caller_version = caller_version
@@ -2980,9 +2969,9 @@ class AstraDB:
     def _request(
         self,
         method: str = http_methods.POST,
-        path: Optional[str] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-        url_params: Optional[Dict[str, Any]] = None,
+        path: str | None = None,
+        json_data: dict[str, Any] | None = None,
+        url_params: dict[str, Any] | None = None,
         skip_error_check: bool = False,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
@@ -3005,7 +2994,7 @@ class AstraDB:
         return response
 
     def post_raw_request(
-        self, body: Dict[str, Any], timeout_info: TimeoutInfoWideType = None
+        self, body: dict[str, Any], timeout_info: TimeoutInfoWideType = None
     ) -> API_RESPONSE:
         return self._request(
             method=http_methods.POST,
@@ -3028,7 +3017,7 @@ class AstraDB:
 
     def get_collections(
         self,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -3066,10 +3055,10 @@ class AstraDB:
         self,
         collection_name: str,
         *,
-        options: Optional[Dict[str, Any]] = None,
-        dimension: Optional[int] = None,
-        metric: Optional[str] = None,
-        service_dict: Optional[Dict[str, str]] = None,
+        options: dict[str, Any] | None = None,
+        dimension: int | None = None,
+        metric: str | None = None,
+        service_dict: dict[str, str] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> AstraDBCollection:
         """
@@ -3169,13 +3158,13 @@ class AstraDB:
 class AsyncAstraDB:
     def __init__(
         self,
-        token: Optional[str],
+        token: str | None,
         api_endpoint: str,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         """
         Initialize an Astra DB instance.
@@ -3252,22 +3241,22 @@ class AsyncAstraDB:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]] = None,
-        exc_value: Optional[BaseException] = None,
-        traceback: Optional[TracebackType] = None,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
     ) -> None:
         await self.client.aclose()
 
     def copy(
         self,
         *,
-        token: Optional[str] = None,
-        api_endpoint: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        token: str | None = None,
+        api_endpoint: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> AsyncAstraDB:
         return AsyncAstraDB(
             token=token or self.token,
@@ -3292,8 +3281,8 @@ class AsyncAstraDB:
 
     def set_caller(
         self,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         self.caller_name = caller_name
         self.caller_version = caller_version
@@ -3301,9 +3290,9 @@ class AsyncAstraDB:
     async def _request(
         self,
         method: str = http_methods.POST,
-        path: Optional[str] = None,
-        json_data: Optional[Dict[str, Any]] = None,
-        url_params: Optional[Dict[str, Any]] = None,
+        path: str | None = None,
+        json_data: dict[str, Any] | None = None,
+        url_params: dict[str, Any] | None = None,
         skip_error_check: bool = False,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
@@ -3326,7 +3315,7 @@ class AsyncAstraDB:
         return response
 
     async def post_raw_request(
-        self, body: Dict[str, Any], timeout_info: TimeoutInfoWideType = None
+        self, body: dict[str, Any], timeout_info: TimeoutInfoWideType = None
     ) -> API_RESPONSE:
         return await self._request(
             method=http_methods.POST,
@@ -3352,7 +3341,7 @@ class AsyncAstraDB:
 
     async def get_collections(
         self,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -3390,10 +3379,10 @@ class AsyncAstraDB:
         self,
         collection_name: str,
         *,
-        options: Optional[Dict[str, Any]] = None,
-        dimension: Optional[int] = None,
-        metric: Optional[str] = None,
-        service_dict: Optional[Dict[str, str]] = None,
+        options: dict[str, Any] | None = None,
+        dimension: int | None = None,
+        metric: str | None = None,
+        service_dict: dict[str, str] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> AsyncAstraDBCollection:
         """

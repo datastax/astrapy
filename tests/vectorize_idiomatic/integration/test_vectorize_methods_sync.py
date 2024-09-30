@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 import pytest
 
@@ -28,7 +28,7 @@ class TestVectorizeMethodsSync:
     def test_collection_methods_vectorize_sync(
         self,
         sync_empty_service_collection: Collection,
-        service_collection_parameters: Dict[str, Any],
+        service_collection_parameters: dict[str, Any],
     ) -> None:
         col = sync_empty_service_collection
         service_vector_dimension = service_collection_parameters["dimension"]
@@ -178,7 +178,7 @@ class TestVectorizeMethodsSync:
 
         for include_sv in [False, True]:
             for sort_cl_label in ["vze"]:
-                sort_cl_e: Dict[str, Any] = {"$vectorize": q_text}
+                sort_cl_e: dict[str, Any] = {"$vectorize": q_text}
                 vec_expected = include_sv and sort_cl_label == "vze"
                 # pristine iterator
                 this_ite_1 = sync_empty_service_collection.find(
@@ -214,7 +214,7 @@ class TestVectorizeMethodsSync:
         # with non-empty collection
         for include_sv in [False, True]:
             for sort_cl_label in ["vze"]:
-                sort_cl_f: Dict[str, Any] = {"$vectorize": q_text}
+                sort_cl_f: dict[str, Any] = {"$vectorize": q_text}
                 vec_expected = include_sv and sort_cl_label == "vze"
                 # pristine iterator
                 this_ite_1 = sync_empty_service_collection.find(
@@ -256,7 +256,7 @@ class TestVectorizeMethodsSync:
     def test_database_create_collection_dimension_mismatch_failure_sync(
         self,
         sync_database: Database,
-        service_collection_parameters: Dict[str, Any],
+        service_collection_parameters: dict[str, Any],
     ) -> None:
         with pytest.raises(DataAPIResponseException):
             sync_database.create_collection(

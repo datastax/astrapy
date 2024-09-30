@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, cast
 
 import httpx
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 class APIRequestError(ValueError):
     def __init__(
-        self, response: httpx.Response, payload: Optional[Dict[str, Any]]
+        self, response: httpx.Response, payload: dict[str, Any] | None
     ) -> None:
         super().__init__(response.text)
 
@@ -42,15 +42,15 @@ def raw_api_request(
     client: httpx.Client,
     base_url: str,
     auth_header: str,
-    token: Optional[str],
+    token: str | None,
     method: str,
-    json_data: Optional[Dict[str, Any]],
-    url_params: Optional[Dict[str, Any]],
-    path: Optional[str],
-    caller_name: Optional[str],
-    caller_version: Optional[str],
-    timeout: Optional[Union[httpx.Timeout, float]],
-    additional_headers: Dict[str, str],
+    json_data: dict[str, Any] | None,
+    url_params: dict[str, Any] | None,
+    path: str | None,
+    caller_name: str | None,
+    caller_version: str | None,
+    timeout: httpx.Timeout | float | None,
+    additional_headers: dict[str, str],
 ) -> httpx.Response:
     return make_request(
         client=client,
@@ -71,7 +71,7 @@ def raw_api_request(
 def process_raw_api_response(
     raw_response: httpx.Response,
     skip_error_check: bool,
-    json_data: Optional[Dict[str, Any]],
+    json_data: dict[str, Any] | None,
 ) -> API_RESPONSE:
     # In case of other successful responses, parse the JSON body.
     try:
@@ -95,16 +95,16 @@ def api_request(
     client: httpx.Client,
     base_url: str,
     auth_header: str,
-    token: Optional[str],
+    token: str | None,
     method: str,
-    json_data: Optional[Dict[str, Any]],
-    url_params: Optional[Dict[str, Any]],
-    path: Optional[str],
+    json_data: dict[str, Any] | None,
+    url_params: dict[str, Any] | None,
+    path: str | None,
     skip_error_check: bool,
-    caller_name: Optional[str],
-    caller_version: Optional[str],
-    timeout: Optional[Union[httpx.Timeout, float]],
-    additional_headers: Dict[str, str],
+    caller_name: str | None,
+    caller_version: str | None,
+    timeout: httpx.Timeout | float | None,
+    additional_headers: dict[str, str],
 ) -> API_RESPONSE:
     raw_response = raw_api_request(
         client=client,
@@ -131,15 +131,15 @@ async def async_raw_api_request(
     client: httpx.AsyncClient,
     base_url: str,
     auth_header: str,
-    token: Optional[str],
+    token: str | None,
     method: str,
-    json_data: Optional[Dict[str, Any]],
-    url_params: Optional[Dict[str, Any]],
-    path: Optional[str],
-    caller_name: Optional[str],
-    caller_version: Optional[str],
-    timeout: Optional[Union[httpx.Timeout, float]],
-    additional_headers: Dict[str, str],
+    json_data: dict[str, Any] | None,
+    url_params: dict[str, Any] | None,
+    path: str | None,
+    caller_name: str | None,
+    caller_version: str | None,
+    timeout: httpx.Timeout | float | None,
+    additional_headers: dict[str, str],
 ) -> httpx.Response:
     return await amake_request(
         client=client,
@@ -160,7 +160,7 @@ async def async_raw_api_request(
 async def async_process_raw_api_response(
     raw_response: httpx.Response,
     skip_error_check: bool,
-    json_data: Optional[Dict[str, Any]],
+    json_data: dict[str, Any] | None,
 ) -> API_RESPONSE:
     # In case of other successful responses, parse the JSON body.
     try:
@@ -184,16 +184,16 @@ async def async_api_request(
     client: httpx.AsyncClient,
     base_url: str,
     auth_header: str,
-    token: Optional[str],
+    token: str | None,
     method: str,
-    json_data: Optional[Dict[str, Any]],
-    url_params: Optional[Dict[str, Any]],
-    path: Optional[str],
+    json_data: dict[str, Any] | None,
+    url_params: dict[str, Any] | None,
+    path: str | None,
     skip_error_check: bool,
-    caller_name: Optional[str],
-    caller_version: Optional[str],
-    timeout: Optional[Union[httpx.Timeout, float]],
-    additional_headers: Dict[str, str],
+    caller_name: str | None,
+    caller_version: str | None,
+    timeout: httpx.Timeout | float | None,
+    additional_headers: dict[str, str],
 ) -> API_RESPONSE:
     raw_response = await async_raw_api_request(
         client=client,

@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -36,7 +36,7 @@ class TestVectorizeMethodsAsync:
     async def test_collection_methods_vectorize_async(
         self,
         async_empty_service_collection: AsyncCollection,
-        service_collection_parameters: Dict[str, Any],
+        service_collection_parameters: dict[str, Any],
     ) -> None:
         acol = async_empty_service_collection
         service_vector_dimension = service_collection_parameters["dimension"]
@@ -187,12 +187,12 @@ class TestVectorizeMethodsAsync:
         def _is_vector(v: Any) -> bool:
             return isinstance(v, list) and isinstance(v[0], float)
 
-        async def _alist(acursor: AsyncCursor) -> List[DocumentType]:
+        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:
             return [doc async for doc in acursor]
 
         for include_sv in [False, True]:
             for sort_cl_label in ["vze"]:
-                sort_cl_e: Dict[str, Any] = {"$vectorize": q_text}
+                sort_cl_e: dict[str, Any] = {"$vectorize": q_text}
                 vec_expected = include_sv and sort_cl_label == "vze"
                 # pristine iterator
                 this_ite_1 = async_empty_service_collection.find(
@@ -228,7 +228,7 @@ class TestVectorizeMethodsAsync:
         # with non-empty collection
         for include_sv in [False, True]:
             for sort_cl_label in ["vze"]:
-                sort_cl_f: Dict[str, Any] = {"$vectorize": q_text}
+                sort_cl_f: dict[str, Any] = {"$vectorize": q_text}
                 vec_expected = include_sv and sort_cl_label == "vze"
                 # pristine iterator
                 this_ite_1 = async_empty_service_collection.find(
@@ -274,7 +274,7 @@ class TestVectorizeMethodsAsync:
     async def test_database_create_collection_dimension_mismatch_failure_async(
         self,
         async_database: AsyncDatabase,
-        service_collection_parameters: Dict[str, Any],
+        service_collection_parameters: dict[str, Any],
     ) -> None:
         with pytest.raises(DataAPIResponseException):
             await async_database.create_collection(

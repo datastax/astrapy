@@ -17,7 +17,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import reduce
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Iterable
 
 from astrapy.collection import AsyncCollection, Collection
 from astrapy.constants import DocumentType, SortType, VectorType
@@ -31,7 +31,7 @@ from astrapy.results import (
 )
 
 
-def reduce_bulk_write_results(results: List[BulkWriteResult]) -> BulkWriteResult:
+def reduce_bulk_write_results(results: list[BulkWriteResult]) -> BulkWriteResult:
     """
     Reduce a list of bulk write results into a single one.
 
@@ -79,7 +79,7 @@ class BaseOperation(ABC):
         self,
         collection: Collection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult: ...
 
 
@@ -100,15 +100,15 @@ class InsertOne(BaseOperation):
     """
 
     document: DocumentType
-    vector: Optional[VectorType]
-    vectorize: Optional[str]
+    vector: VectorType | None
+    vectorize: str | None
 
     def __init__(
         self,
         document: DocumentType,
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
     ) -> None:
         self.document = document
         check_deprecated_vector_ize(
@@ -124,7 +124,7 @@ class InsertOne(BaseOperation):
         self,
         collection: Collection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -165,21 +165,21 @@ class InsertMany(BaseOperation):
     """
 
     documents: Iterable[DocumentType]
-    vectors: Optional[Iterable[Optional[VectorType]]]
-    vectorize: Optional[Iterable[Optional[str]]]
+    vectors: Iterable[VectorType | None] | None
+    vectorize: Iterable[str | None] | None
     ordered: bool
-    chunk_size: Optional[int]
-    concurrency: Optional[int]
+    chunk_size: int | None
+    concurrency: int | None
 
     def __init__(
         self,
         documents: Iterable[DocumentType],
         *,
-        vectors: Optional[Iterable[Optional[VectorType]]] = None,
-        vectorize: Optional[Iterable[Optional[str]]] = None,
+        vectors: Iterable[VectorType | None] | None = None,
+        vectorize: Iterable[str | None] | None = None,
         ordered: bool = True,
-        chunk_size: Optional[int] = None,
-        concurrency: Optional[int] = None,
+        chunk_size: int | None = None,
+        concurrency: int | None = None,
     ) -> None:
         self.documents = documents
         self.ordered = ordered
@@ -198,7 +198,7 @@ class InsertMany(BaseOperation):
         self,
         collection: Collection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -241,21 +241,21 @@ class UpdateOne(BaseOperation):
         upsert: controls what to do when no documents are found.
     """
 
-    filter: Dict[str, Any]
-    update: Dict[str, Any]
-    vector: Optional[VectorType]
-    vectorize: Optional[str]
-    sort: Optional[SortType]
+    filter: dict[str, Any]
+    update: dict[str, Any]
+    vector: VectorType | None
+    vectorize: str | None
+    sort: SortType | None
     upsert: bool
 
     def __init__(
         self,
-        filter: Dict[str, Any],
-        update: Dict[str, Any],
+        filter: dict[str, Any],
+        update: dict[str, Any],
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
         upsert: bool = False,
     ) -> None:
         self.filter = filter
@@ -275,7 +275,7 @@ class UpdateOne(BaseOperation):
         self,
         collection: Collection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -309,14 +309,14 @@ class UpdateMany(BaseOperation):
         upsert: controls what to do when no documents are found.
     """
 
-    filter: Dict[str, Any]
-    update: Dict[str, Any]
+    filter: dict[str, Any]
+    update: dict[str, Any]
     upsert: bool
 
     def __init__(
         self,
-        filter: Dict[str, Any],
-        update: Dict[str, Any],
+        filter: dict[str, Any],
+        update: dict[str, Any],
         *,
         upsert: bool = False,
     ) -> None:
@@ -328,7 +328,7 @@ class UpdateMany(BaseOperation):
         self,
         collection: Collection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -368,21 +368,21 @@ class ReplaceOne(BaseOperation):
         upsert: controls what to do when no documents are found.
     """
 
-    filter: Dict[str, Any]
+    filter: dict[str, Any]
     replacement: DocumentType
-    vector: Optional[VectorType]
-    vectorize: Optional[str]
-    sort: Optional[SortType]
+    vector: VectorType | None
+    vectorize: str | None
+    sort: SortType | None
     upsert: bool
 
     def __init__(
         self,
-        filter: Dict[str, Any],
+        filter: dict[str, Any],
         replacement: DocumentType,
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
         upsert: bool = False,
     ) -> None:
         self.filter = filter
@@ -402,7 +402,7 @@ class ReplaceOne(BaseOperation):
         self,
         collection: Collection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -443,18 +443,18 @@ class DeleteOne(BaseOperation):
         sort: controls ordering of results, hence which document is affected.
     """
 
-    filter: Dict[str, Any]
-    vector: Optional[VectorType]
-    vectorize: Optional[str]
-    sort: Optional[SortType]
+    filter: dict[str, Any]
+    vector: VectorType | None
+    vectorize: str | None
+    sort: SortType | None
 
     def __init__(
         self,
-        filter: Dict[str, Any],
+        filter: dict[str, Any],
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
     ) -> None:
         self.filter = filter
         check_deprecated_vector_ize(
@@ -471,7 +471,7 @@ class DeleteOne(BaseOperation):
         self,
         collection: Collection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -501,11 +501,11 @@ class DeleteMany(BaseOperation):
         filter: a filter condition to select target documents.
     """
 
-    filter: Dict[str, Any]
+    filter: dict[str, Any]
 
     def __init__(
         self,
-        filter: Dict[str, Any],
+        filter: dict[str, Any],
     ) -> None:
         self.filter = filter
 
@@ -513,7 +513,7 @@ class DeleteMany(BaseOperation):
         self,
         collection: Collection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -540,7 +540,7 @@ class AsyncBaseOperation(ABC):
         self,
         collection: AsyncCollection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult: ...
 
 
@@ -561,15 +561,15 @@ class AsyncInsertOne(AsyncBaseOperation):
     """
 
     document: DocumentType
-    vector: Optional[VectorType]
-    vectorize: Optional[str]
+    vector: VectorType | None
+    vectorize: str | None
 
     def __init__(
         self,
         document: DocumentType,
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
     ) -> None:
         self.document = document
         check_deprecated_vector_ize(
@@ -585,7 +585,7 @@ class AsyncInsertOne(AsyncBaseOperation):
         self,
         collection: AsyncCollection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -626,21 +626,21 @@ class AsyncInsertMany(AsyncBaseOperation):
     """
 
     documents: Iterable[DocumentType]
-    vectors: Optional[Iterable[Optional[VectorType]]]
-    vectorize: Optional[Iterable[Optional[str]]]
+    vectors: Iterable[VectorType | None] | None
+    vectorize: Iterable[str | None] | None
     ordered: bool
-    chunk_size: Optional[int]
-    concurrency: Optional[int]
+    chunk_size: int | None
+    concurrency: int | None
 
     def __init__(
         self,
         documents: Iterable[DocumentType],
         *,
-        vectors: Optional[Iterable[Optional[VectorType]]] = None,
-        vectorize: Optional[Iterable[Optional[str]]] = None,
+        vectors: Iterable[VectorType | None] | None = None,
+        vectorize: Iterable[str | None] | None = None,
         ordered: bool = True,
-        chunk_size: Optional[int] = None,
-        concurrency: Optional[int] = None,
+        chunk_size: int | None = None,
+        concurrency: int | None = None,
     ) -> None:
         self.documents = documents
         check_deprecated_vector_ize(
@@ -659,7 +659,7 @@ class AsyncInsertMany(AsyncBaseOperation):
         self,
         collection: AsyncCollection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -702,21 +702,21 @@ class AsyncUpdateOne(AsyncBaseOperation):
         upsert: controls what to do when no documents are found.
     """
 
-    filter: Dict[str, Any]
-    update: Dict[str, Any]
-    vector: Optional[VectorType]
-    vectorize: Optional[str]
-    sort: Optional[SortType]
+    filter: dict[str, Any]
+    update: dict[str, Any]
+    vector: VectorType | None
+    vectorize: str | None
+    sort: SortType | None
     upsert: bool
 
     def __init__(
         self,
-        filter: Dict[str, Any],
-        update: Dict[str, Any],
+        filter: dict[str, Any],
+        update: dict[str, Any],
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
         upsert: bool = False,
     ) -> None:
         self.filter = filter
@@ -736,7 +736,7 @@ class AsyncUpdateOne(AsyncBaseOperation):
         self,
         collection: AsyncCollection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -770,14 +770,14 @@ class AsyncUpdateMany(AsyncBaseOperation):
         upsert: controls what to do when no documents are found.
     """
 
-    filter: Dict[str, Any]
-    update: Dict[str, Any]
+    filter: dict[str, Any]
+    update: dict[str, Any]
     upsert: bool
 
     def __init__(
         self,
-        filter: Dict[str, Any],
-        update: Dict[str, Any],
+        filter: dict[str, Any],
+        update: dict[str, Any],
         *,
         upsert: bool = False,
     ) -> None:
@@ -789,7 +789,7 @@ class AsyncUpdateMany(AsyncBaseOperation):
         self,
         collection: AsyncCollection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -829,21 +829,21 @@ class AsyncReplaceOne(AsyncBaseOperation):
         upsert: controls what to do when no documents are found.
     """
 
-    filter: Dict[str, Any]
+    filter: dict[str, Any]
     replacement: DocumentType
-    vector: Optional[VectorType]
-    vectorize: Optional[str]
-    sort: Optional[SortType]
+    vector: VectorType | None
+    vectorize: str | None
+    sort: SortType | None
     upsert: bool
 
     def __init__(
         self,
-        filter: Dict[str, Any],
+        filter: dict[str, Any],
         replacement: DocumentType,
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
         upsert: bool = False,
     ) -> None:
         self.filter = filter
@@ -863,7 +863,7 @@ class AsyncReplaceOne(AsyncBaseOperation):
         self,
         collection: AsyncCollection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -904,18 +904,18 @@ class AsyncDeleteOne(AsyncBaseOperation):
         sort: controls ordering of results, hence which document is affected.
     """
 
-    filter: Dict[str, Any]
-    vector: Optional[VectorType]
-    vectorize: Optional[str]
-    sort: Optional[SortType]
+    filter: dict[str, Any]
+    vector: VectorType | None
+    vectorize: str | None
+    sort: SortType | None
 
     def __init__(
         self,
-        filter: Dict[str, Any],
+        filter: dict[str, Any],
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
     ) -> None:
         self.filter = filter
         check_deprecated_vector_ize(
@@ -932,7 +932,7 @@ class AsyncDeleteOne(AsyncBaseOperation):
         self,
         collection: AsyncCollection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.
@@ -962,11 +962,11 @@ class AsyncDeleteMany(AsyncBaseOperation):
         filter: a filter condition to select target documents.
     """
 
-    filter: Dict[str, Any]
+    filter: dict[str, Any]
 
     def __init__(
         self,
-        filter: Dict[str, Any],
+        filter: dict[str, Any],
     ) -> None:
         self.filter = filter
 
@@ -974,7 +974,7 @@ class AsyncDeleteMany(AsyncBaseOperation):
         self,
         collection: AsyncCollection,
         index_in_bulk_write: int,
-        bulk_write_timeout_ms: Optional[int],
+        bulk_write_timeout_ms: int | None,
     ) -> BulkWriteResult:
         """
         Execute this operation against a collection as part of a bulk write.

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -30,9 +30,9 @@ class OperationResult(ABC):
             list of raw responses can contain exactly one or a number of items.
     """
 
-    raw_results: List[Dict[str, Any]]
+    raw_results: list[dict[str, Any]]
 
-    def _piecewise_repr(self, pieces: List[Optional[str]]) -> str:
+    def _piecewise_repr(self, pieces: list[str | None]) -> str:
         return f"{self.__class__.__name__}({', '.join(pc for pc in pieces if pc)})"
 
     @abstractmethod
@@ -51,7 +51,7 @@ class DeleteResult(OperationResult):
             list of raw responses can contain exactly one or a number of items.
     """
 
-    deleted_count: Optional[int]
+    deleted_count: int | None
 
     def __repr__(self) -> str:
         return self._piecewise_repr(
@@ -115,7 +115,7 @@ class InsertManyResult(OperationResult):
         inserted_ids: list of the IDs of the inserted documents
     """
 
-    inserted_ids: List[Any]
+    inserted_ids: list[Any]
 
     def __repr__(self) -> str:
         return self._piecewise_repr(
@@ -153,7 +153,7 @@ class UpdateResult(OperationResult):
 
     """
 
-    update_info: Dict[str, Any]
+    update_info: dict[str, Any]
 
     def __repr__(self) -> str:
         return self._piecewise_repr(
@@ -201,13 +201,13 @@ class BulkWriteResult:
         upserted_ids: a (sparse) map from indices to ID of the upserted document
     """
 
-    bulk_api_results: Dict[int, List[Dict[str, Any]]]
-    deleted_count: Optional[int]
+    bulk_api_results: dict[int, list[dict[str, Any]]]
+    deleted_count: int | None
     inserted_count: int
     matched_count: int
     modified_count: int
     upserted_count: int
-    upserted_ids: Dict[int, Any]
+    upserted_ids: dict[int, Any]
 
     def __repr__(self) -> str:
         pieces = [

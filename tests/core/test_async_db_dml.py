@@ -22,7 +22,7 @@ from __future__ import annotations
 import datetime
 import logging
 import uuid
-from typing import Any, Dict, Iterable, List, Literal, Optional, Union, cast
+from typing import Any, Iterable, List, Literal, cast
 
 import pytest
 
@@ -33,7 +33,7 @@ from astrapy.core.db import AsyncAstraDB, AsyncAstraDBCollection
 logger = logging.getLogger(__name__)
 
 
-def _cleanvec(doc: Dict[str, Any]) -> Dict[str, Any]:
+def _cleanvec(doc: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in doc.items() if k != "$vector"}
 
 
@@ -135,7 +135,7 @@ async def test_find_find_one_projection(
     sort = {"$vector": query}
     options = {"limit": 1}
 
-    projs: List[Optional[Dict[str, Literal[1]]]] = [
+    projs: list[dict[str, Literal[1]] | None] = [
         None,
         {},
         {"text": 1},
@@ -344,7 +344,7 @@ async def test_insert_many(
 ) -> None:
     _id0 = str(uuid.uuid4())
     _id2 = str(uuid.uuid4())
-    documents: List[API_DOC] = [
+    documents: list[API_DOC] = [
         {
             "_id": _id0,
             "name": "Abba",
@@ -375,7 +375,7 @@ async def test_chunked_insert_many(
     async_writable_v_collection: AsyncAstraDBCollection,
 ) -> None:
     _ids0 = [str(uuid.uuid4()) for _ in range(20)]
-    documents0: List[API_DOC] = [
+    documents0: list[API_DOC] = [
         {
             "_id": _id,
             "specs": {
@@ -387,7 +387,7 @@ async def test_chunked_insert_many(
         for doc_idx, _id in enumerate(_ids0)
     ]
 
-    responses0: List[Union[Dict[str, Any], Exception]] = (
+    responses0: list[dict[str, Any] | Exception] = (
         await async_writable_v_collection.chunked_insert_many(documents0, chunk_size=3)
     )
     assert responses0 is not None
@@ -408,7 +408,7 @@ async def test_chunked_insert_many(
     _ids1 = [
         _id0 if idx % 3 == 0 else str(uuid.uuid4()) for idx, _id0 in enumerate(_ids0)
     ]
-    documents1: List[API_DOC] = [
+    documents1: list[API_DOC] = [
         {
             "_id": _id,
             "specs": {
@@ -458,7 +458,7 @@ async def test_concurrent_chunked_insert_many(
     async_writable_v_collection: AsyncAstraDBCollection,
 ) -> None:
     _ids0 = [str(uuid.uuid4()) for _ in range(20)]
-    documents0: List[API_DOC] = [
+    documents0: list[API_DOC] = [
         {
             "_id": _id,
             "specs": {
@@ -493,7 +493,7 @@ async def test_concurrent_chunked_insert_many(
     _ids1 = [
         _id0 if idx % 3 == 0 else str(uuid.uuid4()) for idx, _id0 in enumerate(_ids0)
     ]
-    documents1: List[API_DOC] = [
+    documents1: list[API_DOC] = [
         {
             "_id": _id,
             "specs": {

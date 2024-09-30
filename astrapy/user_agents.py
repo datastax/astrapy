@@ -16,17 +16,16 @@ from __future__ import annotations
 
 from importlib import metadata
 from importlib.metadata import PackageNotFoundError
-from typing import List, Optional, Tuple
 
 from astrapy import __version__
 
 
-def detect_astrapy_user_agent() -> Tuple[Optional[str], Optional[str]]:
+def detect_astrapy_user_agent() -> tuple[str | None, str | None]:
     package_name = __name__.split(".")[0]
     return (package_name, __version__)
 
 
-def detect_ragstack_user_agent() -> Tuple[Optional[str], Optional[str]]:
+def detect_ragstack_user_agent() -> tuple[str | None, str | None]:
     try:
         ragstack_meta = metadata.metadata("ragstack-ai")
         if ragstack_meta:
@@ -38,8 +37,8 @@ def detect_ragstack_user_agent() -> Tuple[Optional[str], Optional[str]]:
 
 
 def compose_user_agent_string(
-    caller_name: Optional[str], caller_version: Optional[str]
-) -> Optional[str]:
+    caller_name: str | None, caller_version: str | None
+) -> str | None:
     if caller_name:
         if caller_version:
             return f"{caller_name}/{caller_version}"
@@ -49,9 +48,7 @@ def compose_user_agent_string(
         return None
 
 
-def compose_full_user_agent(
-    callers: List[Tuple[Optional[str], Optional[str]]]
-) -> Optional[str]:
+def compose_full_user_agent(callers: list[tuple[str | None, str | None]]) -> str | None:
     user_agent_strings = [
         ua_string
         for ua_string in (

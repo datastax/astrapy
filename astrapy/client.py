@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from astrapy.admin import (
     api_endpoint_parser,
@@ -81,11 +81,11 @@ class DataAPIClient:
 
     def __init__(
         self,
-        token: Optional[Union[str, TokenProvider]] = None,
+        token: str | TokenProvider | None = None,
         *,
-        environment: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        environment: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
@@ -97,12 +97,12 @@ class DataAPIClient:
         self._caller_version = caller_version
 
     def __repr__(self) -> str:
-        token_desc: Optional[str]
+        token_desc: str | None
         if self.token_provider:
             token_desc = f'"{redact_secret(str(self.token_provider), 15)}"'
         else:
             token_desc = None
-        env_desc: Optional[str]
+        env_desc: str | None
         if self.environment == Environment.PROD:
             env_desc = None
         else:
@@ -140,10 +140,10 @@ class DataAPIClient:
     def _copy(
         self,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        environment: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        token: str | TokenProvider | None = None,
+        environment: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> DataAPIClient:
         return DataAPIClient(
             token=coerce_token_provider(token) or self.token_provider,
@@ -155,9 +155,9 @@ class DataAPIClient:
     def with_options(
         self,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        token: str | TokenProvider | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> DataAPIClient:
         """
         Create a clone of this DataAPIClient with some changed attributes.
@@ -189,8 +189,8 @@ class DataAPIClient:
 
     def set_caller(
         self,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         """
         Set a new identity for the application/framework on behalf of which
@@ -213,16 +213,16 @@ class DataAPIClient:
 
     def get_database(
         self,
-        id: Optional[str] = None,
+        id: str | None = None,
         *,
-        api_endpoint: Optional[str] = None,
-        token: Optional[Union[str, TokenProvider]] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        region: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
-        max_time_ms: Optional[int] = None,
+        api_endpoint: str | None = None,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        region: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+        max_time_ms: int | None = None,
     ) -> Database:
         """
         Get a Database object from this client, for doing data-related work.
@@ -349,16 +349,16 @@ class DataAPIClient:
 
     def get_async_database(
         self,
-        id: Optional[str] = None,
+        id: str | None = None,
         *,
-        api_endpoint: Optional[str] = None,
-        token: Optional[Union[str, TokenProvider]] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        region: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
-        max_time_ms: Optional[int] = None,
+        api_endpoint: str | None = None,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        region: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+        max_time_ms: int | None = None,
     ) -> AsyncDatabase:
         """
         Get an AsyncDatabase object from this client.
@@ -386,11 +386,11 @@ class DataAPIClient:
         self,
         api_endpoint: str,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
     ) -> Database:
         """
         Get a Database object from this client, for doing data-related work.
@@ -489,11 +489,11 @@ class DataAPIClient:
         self,
         api_endpoint: str,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
     ) -> AsyncDatabase:
         """
         Get an AsyncDatabase object from this client, for doing data-related work.
@@ -522,9 +522,9 @@ class DataAPIClient:
     def get_admin(
         self,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        dev_ops_url: Optional[str] = None,
-        dev_ops_api_version: Optional[str] = None,
+        token: str | TokenProvider | None = None,
+        dev_ops_url: str | None = None,
+        dev_ops_api_version: str | None = None,
     ) -> AstraDBAdmin:
         """
         Get an AstraDBAdmin instance corresponding to this client, for

@@ -1,3 +1,6 @@
+[project]
+requires-python = ">=3.8"
+
 [tool.poetry]
 name = "astrapy"
 version = "1.5.0"
@@ -47,13 +50,16 @@ pytest = "~8.0.0"
 python-dotenv = "~1.0.1"
 pytest-httpserver = "~1.0.8"
 testcontainers = "~3.7.1"
-ruff = "~0.2.1"
+ruff = "^0.6.6"
 types-toml = "^0.10.8.7"
 isort = "^5.13.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "FA", "UP"]
 
 [tool.mypy]
 disallow_any_generics = true

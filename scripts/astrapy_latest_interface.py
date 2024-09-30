@@ -1,10 +1,9 @@
 import os
 import sys
 
-import astrapy
-
 from dotenv import load_dotenv
 
+import astrapy
 
 sys.path.append("../")
 

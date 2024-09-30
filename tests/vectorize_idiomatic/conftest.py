@@ -19,7 +19,7 @@ Fixtures specific to testing on vectorize-ready Data API.
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Iterable
+from typing import Any, Iterable
 
 import pytest
 
@@ -59,7 +59,7 @@ def async_database(
 
 
 @pytest.fixture(scope="session")
-def service_collection_parameters() -> Iterable[Dict[str, Any]]:
+def service_collection_parameters() -> Iterable[dict[str, Any]]:
     yield {
         "dimension": 1536,
         "provider": "openai",
@@ -72,7 +72,7 @@ def service_collection_parameters() -> Iterable[Dict[str, Any]]:
 def sync_service_collection(
     data_api_credentials_kwargs: DataAPICredentials,
     sync_database: Database,
-    service_collection_parameters: Dict[str, Any],
+    service_collection_parameters: dict[str, Any],
 ) -> Iterable[Collection]:
     """
     An actual collection on DB, in the main keyspace.

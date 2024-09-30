@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 from astrapy.authentication import (
     EmbeddingAPIKeyHeaderProvider,
@@ -41,9 +41,9 @@ class BaseAPIOptions:
             much sense.
     """
 
-    max_time_ms: Optional[int] = None
+    max_time_ms: int | None = None
 
-    def with_default(self: AO, default: Optional[BaseAPIOptions]) -> AO:
+    def with_default(self: AO, default: BaseAPIOptions | None) -> AO:
         """
         Return a new instance created by completing this instance with a default
         API options object.
@@ -70,7 +70,7 @@ class BaseAPIOptions:
         else:
             return self
 
-    def with_override(self: AO, override: Optional[BaseAPIOptions]) -> AO:
+    def with_override(self: AO, override: BaseAPIOptions | None) -> AO:
         """
         Return a new instance created by overriding the members of this instance
         with those taken from a supplied "override" API options object.
