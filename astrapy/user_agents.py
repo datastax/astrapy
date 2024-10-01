@@ -50,7 +50,7 @@ def compose_user_agent_string(
 
 
 def compose_full_user_agent(
-    callers: List[Tuple[Optional[str], Optional[str]]]
+    callers: List[Tuple[Optional[str], Optional[str]]],
 ) -> Optional[str]:
     user_agent_strings = [
         ua_string
