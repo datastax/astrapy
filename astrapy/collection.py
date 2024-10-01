@@ -927,7 +927,7 @@ class Collection:
                 with ThreadPoolExecutor(max_workers=_concurrency) as executor:
 
                     def _chunk_insertor(
-                        document_chunk: list[dict[str, Any]]
+                        document_chunk: list[dict[str, Any]],
                     ) -> dict[str, Any]:
                         im_payload = {
                             "insertMany": {
@@ -5387,7 +5387,6 @@ class AsyncCollection:
             logger.info(f"finished a bulk write on '{self.name}'")
             return full_bw_result
         else:
-
             sem = asyncio.Semaphore(_concurrency)
 
             async def _concurrent_execute_as_either(

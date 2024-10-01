@@ -1,4 +1,4 @@
-name: ruff, isort, black and mypy checks
+name: ruff and mypy checks
 
 on:
   push:
@@ -33,21 +33,13 @@ jobs:
       run: |
         poetry run ruff check tests
 
-    - name: Isort Linting AstraPy
+    - name: Ruff formatting astrapy
       run: |
-        poetry run isort --check astrapy --profile black
-
-    - name: Isort Linting Tests
-      run: |
-        poetry run isort --check tests --profile black
+        poetry run ruff format --check astrapy
   
-    - name: Black linting astrapy
+    - name: Ruff formatting tests
       run: |
-        poetry run black --check astrapy
-  
-    - name: Black linting tests
-      run: |
-        poetry run black --check tests
+        poetry run ruff format --check tests
 
     - name: Run MyPy AstraPy
       run: |

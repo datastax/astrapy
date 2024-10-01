@@ -151,9 +151,7 @@ class CollectionDefaultIDOptions:
         return {"type": self.default_id_type}
 
     @staticmethod
-    def from_dict(
-        raw_dict: dict[str, Any] | None
-    ) -> CollectionDefaultIDOptions | None:
+    def from_dict(raw_dict: dict[str, Any] | None) -> CollectionDefaultIDOptions | None:
         """
         Create an instance of CollectionDefaultIDOptions from a dictionary
         such as one from the Data API.
@@ -201,7 +199,7 @@ class CollectionVectorServiceOptions:
 
     @staticmethod
     def from_dict(
-        raw_dict: dict[str, Any] | None
+        raw_dict: dict[str, Any] | None,
     ) -> CollectionVectorServiceOptions | None:
         """
         Create an instance of CollectionVectorServiceOptions from a dictionary
@@ -251,9 +249,7 @@ class CollectionVectorOptions:
         }
 
     @staticmethod
-    def from_dict(
-        raw_dict: dict[str, Any] | None
-    ) -> CollectionVectorOptions | None:
+    def from_dict(raw_dict: dict[str, Any] | None) -> CollectionVectorOptions | None:
         """
         Create an instance of CollectionVectorOptions from a dictionary
         such as one from the Data API.

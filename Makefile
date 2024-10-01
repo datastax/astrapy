@@ -10,14 +10,12 @@ format: format-src format-tests
 
 format-tests:
 	poetry run ruff check tests
-	poetry run isort tests $(FMT_FLAGS) --profile black
-	poetry run black tests $(FMT_FLAGS)
+	poetry run ruff format tests $(FMT_FLAGS)
 	poetry run mypy tests
 
 format-src:
 	poetry run ruff check astrapy
-	poetry run isort astrapy $(FMT_FLAGS) --profile black
-	poetry run black astrapy $(FMT_FLAGS)
+	poetry run ruff format astrapy $(FMT_FLAGS)
 	poetry run mypy astrapy
 
 format-fix: format-fix-src format-fix-tests

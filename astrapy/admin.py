@@ -500,9 +500,7 @@ def normalize_api_endpoint(
     return _api_endpoint.strip("/")
 
 
-def normalize_id_endpoint_parameters(
-    id: str | None, api_endpoint: str | None
-) -> str:
+def normalize_id_endpoint_parameters(id: str | None, api_endpoint: str | None) -> str:
     if id is None:
         if api_endpoint is None:
             raise ValueError(
@@ -2139,9 +2137,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         logger.info(f"finished getting info ('{self._database_id}')")
         return req_response
 
-    async def async_info(
-        self, *, max_time_ms: int | None = None
-    ) -> AdminDatabaseInfo:
+    async def async_info(self, *, max_time_ms: int | None = None) -> AdminDatabaseInfo:
         """
         Query the DevOps API for the full info on this database.
         Async version of the method, for use in an asyncio context.
