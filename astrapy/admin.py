@@ -21,7 +21,7 @@ import time
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 import deprecation
 
@@ -107,7 +107,7 @@ class ParsedAPIEndpoint:
     environment: str
 
 
-def parse_api_endpoint(api_endpoint: str) -> Optional[ParsedAPIEndpoint]:
+def parse_api_endpoint(api_endpoint: str) -> ParsedAPIEndpoint | None:
     """
     Parse an API Endpoint into a ParsedAPIEndpoint structure.
 
@@ -140,7 +140,7 @@ def api_endpoint_parsing_error_message(failing_url: str) -> str:
     )
 
 
-def parse_generic_api_url(api_endpoint: str) -> Optional[str]:
+def parse_generic_api_url(api_endpoint: str) -> str | None:
     """
     Validate a generic API Endpoint string,
     such as `http://10.1.1.1:123` or `https://my.domain`.
@@ -197,10 +197,10 @@ def build_api_endpoint(environment: str, database_id: str, region: str) -> str:
 def fetch_raw_database_info_from_id_token(
     id: str,
     *,
-    token: Optional[str],
+    token: str | None,
     environment: str = Environment.PROD,
-    max_time_ms: Optional[int] = None,
-) -> Dict[str, Any]:
+    max_time_ms: int | None = None,
+) -> dict[str, Any]:
     """
     Fetch database information through the DevOps API and return it in
     full, exactly like the API gives it back.
@@ -217,7 +217,7 @@ def fetch_raw_database_info_from_id_token(
         The full response from the DevOps API about the database.
     """
 
-    ops_headers: Dict[str, str | None]
+    ops_headers: dict[str, str | None]
     if token is not None:
         ops_headers = {
             DEFAULT_DEV_OPS_AUTH_HEADER: f"{DEFAULT_DEV_OPS_AUTH_PREFIX}{token}",
@@ -248,10 +248,10 @@ def fetch_raw_database_info_from_id_token(
 async def async_fetch_raw_database_info_from_id_token(
     id: str,
     *,
-    token: Optional[str],
+    token: str | None,
     environment: str = Environment.PROD,
-    max_time_ms: Optional[int] = None,
-) -> Dict[str, Any]:
+    max_time_ms: int | None = None,
+) -> dict[str, Any]:
     """
     Fetch database information through the DevOps API and return it in
     full, exactly like the API gives it back.
@@ -269,7 +269,7 @@ async def async_fetch_raw_database_info_from_id_token(
         The full response from the DevOps API about the database.
     """
 
-    ops_headers: Dict[str, str | None]
+    ops_headers: dict[str, str | None]
     if token is not None:
         ops_headers = {
             DEFAULT_DEV_OPS_AUTH_HEADER: f"{DEFAULT_DEV_OPS_AUTH_PREFIX}{token}",
@@ -299,11 +299,11 @@ async def async_fetch_raw_database_info_from_id_token(
 
 def fetch_database_info(
     api_endpoint: str,
-    token: Optional[str],
-    keyspace: Optional[str] = None,
-    namespace: Optional[str] = None,
-    max_time_ms: Optional[int] = None,
-) -> Optional[DatabaseInfo]:
+    token: str | None,
+    keyspace: str | None = None,
+    namespace: str | None = None,
+    max_time_ms: int | None = None,
+) -> DatabaseInfo | None:
     """
     Fetch database information through the DevOps API.
 
@@ -353,11 +353,11 @@ def fetch_database_info(
 
 async def async_fetch_database_info(
     api_endpoint: str,
-    token: Optional[str],
-    keyspace: Optional[str] = None,
-    namespace: Optional[str] = None,
-    max_time_ms: Optional[int] = None,
-) -> Optional[DatabaseInfo]:
+    token: str | None,
+    keyspace: str | None = None,
+    namespace: str | None = None,
+    max_time_ms: int | None = None,
+) -> DatabaseInfo | None:
     """
     Fetch database information through the DevOps API.
     Async version of the function, for use in an asyncio context.
@@ -407,7 +407,7 @@ async def async_fetch_database_info(
 
 
 def _recast_as_admin_database_info(
-    admin_database_info_dict: Dict[str, Any],
+    admin_database_info_dict: dict[str, Any],
     *,
     environment: str,
 ) -> AdminDatabaseInfo:
@@ -443,10 +443,10 @@ def _recast_as_admin_database_info(
 
 def normalize_api_endpoint(
     id_or_endpoint: str,
-    region: Optional[str],
+    region: str | None,
     token: TokenProvider,
     environment: str,
-    max_time_ms: Optional[int] = None,
+    max_time_ms: int | None = None,
 ) -> str:
     """
     Ensure that a id(+region) / endpoint init signature is normalized into
@@ -500,9 +500,7 @@ def normalize_api_endpoint(
     return _api_endpoint.strip("/")
 
 
-def normalize_id_endpoint_parameters(
-    id: Optional[str], api_endpoint: Optional[str]
-) -> str:
+def normalize_id_endpoint_parameters(id: str | None, api_endpoint: str | None) -> str:
     if id is None:
         if api_endpoint is None:
             raise ValueError(
@@ -558,13 +556,13 @@ class AstraDBAdmin:
 
     def __init__(
         self,
-        token: Optional[Union[str, TokenProvider]] = None,
+        token: str | TokenProvider | None = None,
         *,
-        environment: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        dev_ops_url: Optional[str] = None,
-        dev_ops_api_version: Optional[str] = None,
+        environment: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        dev_ops_url: str | None = None,
+        dev_ops_api_version: str | None = None,
     ) -> None:
         self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
@@ -577,7 +575,7 @@ class AstraDBAdmin:
         self._dev_ops_url = dev_ops_url
         self._dev_ops_api_version = dev_ops_api_version
 
-        self._dev_ops_commander_headers: Dict[str, str | None]
+        self._dev_ops_commander_headers: dict[str, str | None]
         if self.token_provider:
             _token = self.token_provider.get_token()
             self._dev_ops_commander_headers = {
@@ -591,12 +589,12 @@ class AstraDBAdmin:
         self._dev_ops_api_commander = self._get_dev_ops_api_commander()
 
     def __repr__(self) -> str:
-        token_desc: Optional[str]
+        token_desc: str | None
         if self.token_provider:
             token_desc = f'"{redact_secret(str(self.token_provider), 15)}"'
         else:
             token_desc = None
-        env_desc: Optional[str]
+        env_desc: str | None
         if self.environment == Environment.PROD:
             env_desc = None
         else:
@@ -640,12 +638,12 @@ class AstraDBAdmin:
     def _copy(
         self,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        environment: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        dev_ops_url: Optional[str] = None,
-        dev_ops_api_version: Optional[str] = None,
+        token: str | TokenProvider | None = None,
+        environment: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        dev_ops_url: str | None = None,
+        dev_ops_api_version: str | None = None,
     ) -> AstraDBAdmin:
         return AstraDBAdmin(
             token=coerce_token_provider(token) or self.token_provider,
@@ -659,9 +657,9 @@ class AstraDBAdmin:
     def with_options(
         self,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        token: str | TokenProvider | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> AstraDBAdmin:
         """
         Create a clone of this AstraDBAdmin with some changed attributes.
@@ -693,8 +691,8 @@ class AstraDBAdmin:
 
     def set_caller(
         self,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         """
         Set a new identity for the application/framework on behalf of which
@@ -722,7 +720,7 @@ class AstraDBAdmin:
     def list_databases(
         self,
         *,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> CommandCursor[AdminDatabaseInfo]:
         """
         Get the list of databases, as obtained with a request to the DevOps API.
@@ -772,7 +770,7 @@ class AstraDBAdmin:
     async def async_list_databases(
         self,
         *,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> CommandCursor[AdminDatabaseInfo]:
         """
         Get the list of databases, as obtained with a request to the DevOps API.
@@ -822,7 +820,7 @@ class AstraDBAdmin:
             )
 
     def database_info(
-        self, id: str, *, max_time_ms: Optional[int] = None
+        self, id: str, *, max_time_ms: int | None = None
     ) -> AdminDatabaseInfo:
         """
         Get the full information on a given database, through a request to the DevOps API.
@@ -858,7 +856,7 @@ class AstraDBAdmin:
         )
 
     async def async_database_info(
-        self, id: str, *, max_time_ms: Optional[int] = None
+        self, id: str, *, max_time_ms: int | None = None
     ) -> AdminDatabaseInfo:
         """
         Get the full information on a given database, through a request to the DevOps API.
@@ -899,10 +897,10 @@ class AstraDBAdmin:
         *,
         cloud_provider: str,
         region: str,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
         wait_until_active: bool = True,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> AstraDBDatabaseAdmin:
         """
         Create a database as requested, optionally waiting for it to be ready.
@@ -1012,10 +1010,10 @@ class AstraDBAdmin:
         *,
         cloud_provider: str,
         region: str,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
         wait_until_active: bool = True,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> AstraDBDatabaseAdmin:
         """
         Create a database as requested, optionally waiting for it to be ready.
@@ -1129,8 +1127,8 @@ class AstraDBAdmin:
         id: str,
         *,
         wait_until_active: bool = True,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Drop a database, i.e. delete it completely and permanently with all its data.
 
@@ -1180,8 +1178,8 @@ class AstraDBAdmin:
             )
         logger.info(f"DevOps API returned from dropping database '{id}'")
         if wait_until_active:
-            last_status_seen: Optional[str] = DEV_OPS_DATABASE_STATUS_TERMINATING
-            _db_name: Optional[str] = None
+            last_status_seen: str | None = DEV_OPS_DATABASE_STATUS_TERMINATING
+            _db_name: str | None = None
             while last_status_seen == DEV_OPS_DATABASE_STATUS_TERMINATING:
                 logger.info(f"sleeping to poll for status of '{id}'")
                 time.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
@@ -1212,8 +1210,8 @@ class AstraDBAdmin:
         id: str,
         *,
         wait_until_active: bool = True,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Drop a database, i.e. delete it completely and permanently with all its data.
         Async version of the method, for use in an asyncio context.
@@ -1260,8 +1258,8 @@ class AstraDBAdmin:
             )
         logger.info(f"DevOps API returned from dropping database '{id}', async")
         if wait_until_active:
-            last_status_seen: Optional[str] = DEV_OPS_DATABASE_STATUS_TERMINATING
-            _db_name: Optional[str] = None
+            last_status_seen: str | None = DEV_OPS_DATABASE_STATUS_TERMINATING
+            _db_name: str | None = None
             while last_status_seen == DEV_OPS_DATABASE_STATUS_TERMINATING:
                 logger.info(f"sleeping to poll for status of '{id}', async")
                 await asyncio.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
@@ -1289,11 +1287,11 @@ class AstraDBAdmin:
 
     def get_database_admin(
         self,
-        id: Optional[str] = None,
+        id: str | None = None,
         *,
-        api_endpoint: Optional[str] = None,
-        region: Optional[str] = None,
-        max_time_ms: Optional[int] = None,
+        api_endpoint: str | None = None,
+        region: str | None = None,
+        max_time_ms: int | None = None,
     ) -> AstraDBDatabaseAdmin:
         """
         Create an AstraDBDatabaseAdmin object for admin work within a certain database.
@@ -1342,16 +1340,16 @@ class AstraDBAdmin:
 
     def get_database(
         self,
-        id: Optional[str] = None,
+        id: str | None = None,
         *,
-        api_endpoint: Optional[str] = None,
-        token: Optional[Union[str, TokenProvider]] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        region: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
-        max_time_ms: Optional[int] = None,
+        api_endpoint: str | None = None,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        region: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+        max_time_ms: int | None = None,
     ) -> Database:
         """
         Create a Database instance for a specific database, to be used
@@ -1422,7 +1420,7 @@ class AstraDBAdmin:
             max_time_ms=max_time_ms,
         )
 
-        _keyspace: Optional[str]
+        _keyspace: str | None
         if keyspace_param:
             _keyspace = keyspace_param
         else:
@@ -1450,15 +1448,15 @@ class AstraDBAdmin:
 
     def get_async_database(
         self,
-        id: Optional[str] = None,
+        id: str | None = None,
         *,
-        api_endpoint: Optional[str] = None,
-        token: Optional[Union[str, TokenProvider]] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        region: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
+        api_endpoint: str | None = None,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        region: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
     ) -> AsyncDatabase:
         """
         Create an AsyncDatabase instance for a specific database, to be used
@@ -1492,15 +1490,15 @@ class DatabaseAdmin(ABC):
     """
 
     environment: str
-    spawner_database: Union[Database, AsyncDatabase]
+    spawner_database: Database | AsyncDatabase
 
     @abstractmethod
-    def list_namespaces(self, *pargs: Any, **kwargs: Any) -> List[str]:
+    def list_namespaces(self, *pargs: Any, **kwargs: Any) -> list[str]:
         """Get a list of namespaces for the database."""
         ...
 
     @abstractmethod
-    def list_keyspaces(self, *pargs: Any, **kwargs: Any) -> List[str]:
+    def list_keyspaces(self, *pargs: Any, **kwargs: Any) -> list[str]:
         """Get a list of keyspaces for the database."""
         ...
 
@@ -1509,10 +1507,10 @@ class DatabaseAdmin(ABC):
         self,
         name: str,
         *,
-        update_db_keyspace: Optional[bool] = None,
-        update_db_namespace: Optional[bool] = None,
+        update_db_keyspace: bool | None = None,
+        update_db_namespace: bool | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
         """
@@ -1523,31 +1521,31 @@ class DatabaseAdmin(ABC):
         self,
         name: str,
         *,
-        update_db_keyspace: Optional[bool] = None,
-        update_db_namespace: Optional[bool] = None,
+        update_db_keyspace: bool | None = None,
+        update_db_namespace: bool | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a keyspace in the database, returning {'ok': 1} if successful.
         """
         ...
 
     @abstractmethod
-    def drop_namespace(self, name: str, *pargs: Any, **kwargs: Any) -> Dict[str, Any]:
+    def drop_namespace(self, name: str, *pargs: Any, **kwargs: Any) -> dict[str, Any]:
         """
         Drop (delete) a namespace from the database, returning {'ok': 1} if successful.
         """
         ...
 
     @abstractmethod
-    def drop_keyspace(self, name: str, *pargs: Any, **kwargs: Any) -> Dict[str, Any]:
+    def drop_keyspace(self, name: str, *pargs: Any, **kwargs: Any) -> dict[str, Any]:
         """
         Drop (delete) a keyspace from the database, returning {'ok': 1} if successful.
         """
         ...
 
     @abstractmethod
-    async def async_list_namespaces(self, *pargs: Any, **kwargs: Any) -> List[str]:
+    async def async_list_namespaces(self, *pargs: Any, **kwargs: Any) -> list[str]:
         """
         Get a list of namespaces for the database.
         (Async version of the method.)
@@ -1555,7 +1553,7 @@ class DatabaseAdmin(ABC):
         ...
 
     @abstractmethod
-    async def async_list_keyspaces(self, *pargs: Any, **kwargs: Any) -> List[str]:
+    async def async_list_keyspaces(self, *pargs: Any, **kwargs: Any) -> list[str]:
         """
         Get a list of keyspaces for the database.
         (Async version of the method.)
@@ -1567,10 +1565,10 @@ class DatabaseAdmin(ABC):
         self,
         name: str,
         *,
-        update_db_keyspace: Optional[bool] = None,
-        update_db_namespace: Optional[bool] = None,
+        update_db_keyspace: bool | None = None,
+        update_db_namespace: bool | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
         (Async version of the method.)
@@ -1582,10 +1580,10 @@ class DatabaseAdmin(ABC):
         self,
         name: str,
         *,
-        update_db_keyspace: Optional[bool] = None,
-        update_db_namespace: Optional[bool] = None,
+        update_db_keyspace: bool | None = None,
+        update_db_namespace: bool | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a keyspace in the database, returning {'ok': 1} if successful.
         (Async version of the method.)
@@ -1595,7 +1593,7 @@ class DatabaseAdmin(ABC):
     @abstractmethod
     async def async_drop_namespace(
         self, name: str, *pargs: Any, **kwargs: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Drop (delete) a namespace from the database, returning {'ok': 1} if successful.
         (Async version of the method.)
@@ -1605,7 +1603,7 @@ class DatabaseAdmin(ABC):
     @abstractmethod
     async def async_drop_keyspace(
         self, name: str, *pargs: Any, **kwargs: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Drop (delete) a keyspace from the database, returning {'ok': 1} if successful.
         (Async version of the method.)
@@ -1707,20 +1705,20 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     def __init__(
         self,
-        id: Optional[str] = None,
+        id: str | None = None,
         *,
-        api_endpoint: Optional[str] = None,
-        token: Optional[Union[str, TokenProvider]] = None,
-        region: Optional[str] = None,
-        environment: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        dev_ops_url: Optional[str] = None,
-        dev_ops_api_version: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
-        spawner_database: Optional[Union[Database, AsyncDatabase]] = None,
-        max_time_ms: Optional[int] = None,
+        api_endpoint: str | None = None,
+        token: str | TokenProvider | None = None,
+        region: str | None = None,
+        environment: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        dev_ops_url: str | None = None,
+        dev_ops_api_version: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+        spawner_database: Database | AsyncDatabase | None = None,
+        max_time_ms: int | None = None,
     ) -> None:
         # lazy import here to avoid circular dependency
         from astrapy.database import Database
@@ -1793,7 +1791,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             if dev_ops_api_version is not None
             else DEV_OPS_VERSION_ENV_MAP[self.environment]
         ).strip("/")
-        self._dev_ops_commander_headers: Dict[str, str | None]
+        self._dev_ops_commander_headers: dict[str, str | None]
         if self.token_provider:
             _token = self.token_provider.get_token()
             self._dev_ops_commander_headers = {
@@ -1815,12 +1813,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     def __repr__(self) -> str:
         ep_desc = f'api_endpoint="{self.api_endpoint}"'
-        token_desc: Optional[str]
+        token_desc: str | None
         if self.token_provider:
             token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
         else:
             token_desc = None
-        env_desc: Optional[str]
+        env_desc: str | None
         if self.environment == Environment.PROD:
             env_desc = None
         else:
@@ -1879,16 +1877,16 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     def _copy(
         self,
-        id: Optional[str] = None,
-        token: Optional[Union[str, TokenProvider]] = None,
-        region: Optional[str] = None,
-        environment: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        dev_ops_url: Optional[str] = None,
-        dev_ops_api_version: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
+        id: str | None = None,
+        token: str | TokenProvider | None = None,
+        region: str | None = None,
+        environment: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        dev_ops_url: str | None = None,
+        dev_ops_api_version: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
     ) -> AstraDBDatabaseAdmin:
         return AstraDBDatabaseAdmin(
             id=id or self._database_id,
@@ -1906,10 +1904,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def with_options(
         self,
         *,
-        id: Optional[str] = None,
-        token: Optional[Union[str, TokenProvider]] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        id: str | None = None,
+        token: str | TokenProvider | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> AstraDBDatabaseAdmin:
         """
         Create a clone of this AstraDBDatabaseAdmin with some changed attributes.
@@ -1942,8 +1940,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     def set_caller(
         self,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         """
         Set a new identity for the application/framework on behalf of which
@@ -1995,9 +1993,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def from_astra_db_admin(
         id: str,
         *,
-        region: Optional[str],
+        region: str | None,
         astra_db_admin: AstraDBAdmin,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> AstraDBDatabaseAdmin:
         """
         Create an AstraDBDatabaseAdmin from an AstraDBAdmin and a database ID.
@@ -2053,11 +2051,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def from_api_endpoint(
         api_endpoint: str,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        dev_ops_url: Optional[str] = None,
-        dev_ops_api_version: Optional[str] = None,
+        token: str | TokenProvider | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        dev_ops_url: str | None = None,
+        dev_ops_api_version: str | None = None,
     ) -> AstraDBDatabaseAdmin:
         """
         Create an AstraDBDatabaseAdmin from an API Endpoint and optionally a token.
@@ -2113,7 +2111,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             msg = api_endpoint_parsing_error_message(api_endpoint)
             raise ValueError(msg)
 
-    def info(self, *, max_time_ms: Optional[int] = None) -> AdminDatabaseInfo:
+    def info(self, *, max_time_ms: int | None = None) -> AdminDatabaseInfo:
         """
         Query the DevOps API for the full info on this database.
 
@@ -2139,9 +2137,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         logger.info(f"finished getting info ('{self._database_id}')")
         return req_response
 
-    async def async_info(
-        self, *, max_time_ms: Optional[int] = None
-    ) -> AdminDatabaseInfo:
+    async def async_info(self, *, max_time_ms: int | None = None) -> AdminDatabaseInfo:
         """
         Query the DevOps API for the full info on this database.
         Async version of the method, for use in an asyncio context.
@@ -2176,7 +2172,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         current_version=__version__,
         details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
     )
-    def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
+    def list_namespaces(self, *, max_time_ms: int | None = None) -> list[str]:
         """
         Query the DevOps API for a list of the namespaces in the database.
 
@@ -2195,7 +2191,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         return self.list_keyspaces(max_time_ms=max_time_ms)
 
-    def list_keyspaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
+    def list_keyspaces(self, *, max_time_ms: int | None = None) -> list[str]:
         """
         Query the DevOps API for a list of the keyspaces in the database.
 
@@ -2225,8 +2221,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
     )
     async def async_list_namespaces(
-        self, *, max_time_ms: Optional[int] = None
-    ) -> List[str]:
+        self, *, max_time_ms: int | None = None
+    ) -> list[str]:
         """
         Query the DevOps API for a list of the namespaces in the database.
         Async version of the method, for use in an asyncio context.
@@ -2255,8 +2251,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         return await self.async_list_keyspaces(max_time_ms=max_time_ms)
 
     async def async_list_keyspaces(
-        self, *, max_time_ms: Optional[int] = None
-    ) -> List[str]:
+        self, *, max_time_ms: int | None = None
+    ) -> list[str]:
         """
         Query the DevOps API for a list of the keyspaces in the database.
         Async version of the method, for use in an asyncio context.
@@ -2299,11 +2295,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
-        update_db_keyspace: Optional[bool] = None,
-        update_db_namespace: Optional[bool] = None,
-        max_time_ms: Optional[int] = None,
+        update_db_keyspace: bool | None = None,
+        update_db_namespace: bool | None = None,
+        max_time_ms: int | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a namespace in this database as requested,
         optionally waiting for it to be ready.
@@ -2357,11 +2353,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
-        update_db_keyspace: Optional[bool] = None,
-        update_db_namespace: Optional[bool] = None,
-        max_time_ms: Optional[int] = None,
+        update_db_keyspace: bool | None = None,
+        update_db_namespace: bool | None = None,
+        max_time_ms: int | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a keyspace in this database as requested,
         optionally waiting for it to be ready.
@@ -2459,11 +2455,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
-        update_db_keyspace: Optional[bool] = None,
-        update_db_namespace: Optional[bool] = None,
-        max_time_ms: Optional[int] = None,
+        update_db_keyspace: bool | None = None,
+        update_db_namespace: bool | None = None,
+        max_time_ms: int | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a namespace in this database as requested,
         optionally waiting for it to be ready.
@@ -2516,11 +2512,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
-        update_db_keyspace: Optional[bool] = None,
-        update_db_namespace: Optional[bool] = None,
-        max_time_ms: Optional[int] = None,
+        update_db_keyspace: bool | None = None,
+        update_db_namespace: bool | None = None,
+        max_time_ms: int | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a keyspace in this database as requested,
         optionally waiting for it to be ready.
@@ -2621,8 +2617,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Delete a namespace from the database, optionally waiting for the database
         to become active again.
@@ -2667,8 +2663,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Delete a keyspace from the database, optionally waiting for the database
         to become active again.
@@ -2753,8 +2749,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Delete a namespace from the database, optionally waiting for the database
         to become active again.
@@ -2798,8 +2794,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Delete a keyspace from the database, optionally waiting for the database
         to become active again.
@@ -2880,8 +2876,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         wait_until_active: bool = True,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Drop this database, i.e. delete it completely and permanently with all its data.
 
@@ -2931,8 +2927,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         wait_until_active: bool = True,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Drop this database, i.e. delete it completely and permanently with all its data.
         Async version of the method, for use in an asyncio context.
@@ -2979,13 +2975,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def get_database(
         self,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        region: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
-        max_time_ms: Optional[int] = None,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        region: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+        max_time_ms: int | None = None,
     ) -> Database:
         """
         Create a Database instance from this database admin, for data-related tasks.
@@ -3049,13 +3045,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def get_async_database(
         self,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        region: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
-        max_time_ms: Optional[int] = None,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        region: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+        max_time_ms: int | None = None,
     ) -> AsyncDatabase:
         """
         Create an AsyncDatabase instance out of this class for working
@@ -3080,7 +3076,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         ).to_async()
 
     def find_embedding_providers(
-        self, *, max_time_ms: Optional[int] = None
+        self, *, max_time_ms: int | None = None
     ) -> FindEmbeddingProvidersResult:
         """
         Query the API for the full information on available embedding providers.
@@ -3123,7 +3119,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
 
     async def async_find_embedding_providers(
-        self, *, max_time_ms: Optional[int] = None
+        self, *, max_time_ms: int | None = None
     ) -> FindEmbeddingProvidersResult:
         """
         Query the API for the full information on available embedding providers.
@@ -3228,13 +3224,13 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         api_endpoint: str,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        environment: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        spawner_database: Optional[Union[Database, AsyncDatabase]] = None,
+        token: str | TokenProvider | None = None,
+        environment: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        spawner_database: Database | AsyncDatabase | None = None,
     ) -> None:
         # lazy import here to avoid circular dependency
         from astrapy.database import Database
@@ -3269,7 +3265,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
     def __repr__(self) -> str:
         ep_desc = f'api_endpoint="{self.api_endpoint}"'
-        token_desc: Optional[str]
+        token_desc: str | None
         if self.token_provider:
             token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
         else:
@@ -3301,13 +3297,13 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
     def _copy(
         self,
-        api_endpoint: Optional[str] = None,
-        token: Optional[Union[str, TokenProvider]] = None,
-        environment: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        api_endpoint: str | None = None,
+        token: str | TokenProvider | None = None,
+        environment: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> DataAPIDatabaseAdmin:
         return DataAPIDatabaseAdmin(
             api_endpoint=api_endpoint or self.api_endpoint,
@@ -3322,10 +3318,10 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     def with_options(
         self,
         *,
-        api_endpoint: Optional[str] = None,
-        token: Optional[Union[str, TokenProvider]] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        api_endpoint: str | None = None,
+        token: str | TokenProvider | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> DataAPIDatabaseAdmin:
         """
         Create a clone of this DataAPIDatabaseAdmin with some changed attributes.
@@ -3358,8 +3354,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
     def set_caller(
         self,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         """
         Set a new identity for the application/framework on behalf of which
@@ -3390,7 +3386,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         current_version=__version__,
         details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
     )
-    def list_namespaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
+    def list_namespaces(self, *, max_time_ms: int | None = None) -> list[str]:
         """
         Query the API for a list of the namespaces in the database.
 
@@ -3420,7 +3416,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             logger.info("finished getting list of namespaces")
             return fn_response["status"]["namespaces"]  # type: ignore[no-any-return]
 
-    def list_keyspaces(self, *, max_time_ms: Optional[int] = None) -> List[str]:
+    def list_keyspaces(self, *, max_time_ms: int | None = None) -> list[str]:
         """
         Query the API for a list of the keyspaces in the database.
 
@@ -3458,12 +3454,12 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         name: str,
         *,
-        replication_options: Optional[Dict[str, Any]] = None,
-        update_db_keyspace: Optional[bool] = None,
-        update_db_namespace: Optional[bool] = None,
-        max_time_ms: Optional[int] = None,
+        replication_options: dict[str, Any] | None = None,
+        update_db_keyspace: bool | None = None,
+        update_db_namespace: bool | None = None,
+        max_time_ms: int | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
 
@@ -3538,12 +3534,12 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         name: str,
         *,
-        replication_options: Optional[Dict[str, Any]] = None,
-        update_db_keyspace: Optional[bool] = None,
-        update_db_namespace: Optional[bool] = None,
-        max_time_ms: Optional[int] = None,
+        replication_options: dict[str, Any] | None = None,
+        update_db_keyspace: bool | None = None,
+        update_db_namespace: bool | None = None,
+        max_time_ms: int | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a keyspace in the database, returning {'ok': 1} if successful.
 
@@ -3622,8 +3618,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         name: str,
         *,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Drop (delete) a namespace from the database.
 
@@ -3667,8 +3663,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         name: str,
         *,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Drop (delete) a keyspace from the database.
 
@@ -3713,8 +3709,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
     )
     async def async_list_namespaces(
-        self, *, max_time_ms: Optional[int] = None
-    ) -> List[str]:
+        self, *, max_time_ms: int | None = None
+    ) -> list[str]:
         """
         Query the API for a list of the namespaces in the database.
         Async version of the method, for use in an asyncio context.
@@ -3746,8 +3742,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             return fn_response["status"]["namespaces"]  # type: ignore[no-any-return]
 
     async def async_list_keyspaces(
-        self, *, max_time_ms: Optional[int] = None
-    ) -> List[str]:
+        self, *, max_time_ms: int | None = None
+    ) -> list[str]:
         """
         Query the API for a list of the keyspaces in the database.
         Async version of the method, for use in an asyncio context.
@@ -3786,12 +3782,12 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         name: str,
         *,
-        replication_options: Optional[Dict[str, Any]] = None,
-        update_db_keyspace: Optional[bool] = None,
-        update_db_namespace: Optional[bool] = None,
-        max_time_ms: Optional[int] = None,
+        replication_options: dict[str, Any] | None = None,
+        update_db_keyspace: bool | None = None,
+        update_db_namespace: bool | None = None,
+        max_time_ms: int | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a namespace in the database, returning {'ok': 1} if successful.
         Async version of the method, for use in an asyncio context.
@@ -3869,12 +3865,12 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         name: str,
         *,
-        replication_options: Optional[Dict[str, Any]] = None,
-        update_db_keyspace: Optional[bool] = None,
-        update_db_namespace: Optional[bool] = None,
-        max_time_ms: Optional[int] = None,
+        replication_options: dict[str, Any] | None = None,
+        update_db_keyspace: bool | None = None,
+        update_db_namespace: bool | None = None,
+        max_time_ms: int | None = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create a keyspace in the database, returning {'ok': 1} if successful.
         Async version of the method, for use in an asyncio context.
@@ -3956,8 +3952,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         name: str,
         *,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Drop (delete) a namespace from the database.
         Async version of the method, for use in an asyncio context.
@@ -4004,8 +4000,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         name: str,
         *,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Drop (delete) a keyspace from the database.
         Async version of the method, for use in an asyncio context.
@@ -4049,11 +4045,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     def get_database(
         self,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
     ) -> Database:
         """
         Create a Database instance out of this class for working with the data in it.
@@ -4108,11 +4104,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     def get_async_database(
         self,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
     ) -> AsyncDatabase:
         """
         Create an AsyncDatabase instance for the database, to be used
@@ -4135,7 +4131,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         ).to_async()
 
     def find_embedding_providers(
-        self, *, max_time_ms: Optional[int] = None
+        self, *, max_time_ms: int | None = None
     ) -> FindEmbeddingProvidersResult:
         """
         Query the API for the full information on available embedding providers.
@@ -4178,7 +4174,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
 
     async def async_find_embedding_providers(
-        self, *, max_time_ms: Optional[int] = None
+        self, *, max_time_ms: int | None = None
     ) -> FindEmbeddingProvidersResult:
         """
         Query the API for the full information on available embedding providers.

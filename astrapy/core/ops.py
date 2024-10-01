@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, TypedDict, Union, cast
+from typing import Any, TypedDict, cast
 
 import httpx
 
@@ -38,11 +38,11 @@ logger = logging.getLogger(__name__)
 
 
 class AstraDBOpsConstructorParams(TypedDict):
-    token: Union[str, None]
-    dev_ops_url: Optional[str]
-    dev_ops_api_version: Optional[str]
-    caller_name: Optional[str]
-    caller_version: Optional[str]
+    token: str | None
+    dev_ops_url: str | None
+    dev_ops_api_version: str | None
+    caller_name: str | None
+    caller_version: str | None
 
 
 class AstraDBOps:
@@ -52,11 +52,11 @@ class AstraDBOps:
 
     def __init__(
         self,
-        token: Union[str, None],
-        dev_ops_url: Optional[str] = None,
-        dev_ops_api_version: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        token: str | None,
+        dev_ops_url: str | None = None,
+        dev_ops_api_version: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         self.caller_name = caller_name
         self.caller_version = caller_version
@@ -74,7 +74,7 @@ class AstraDBOps:
             dev_ops_api_version or DEFAULT_DEV_OPS_API_VERSION
         ).strip("/")
 
-        self.token: Union[str, None]
+        self.token: str | None
         if token is not None:
             self.token = "Bearer " + token
         else:
@@ -98,11 +98,11 @@ class AstraDBOps:
     def copy(
         self,
         *,
-        token: Optional[str] = None,
-        dev_ops_url: Optional[str] = None,
-        dev_ops_api_version: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        token: str | None = None,
+        dev_ops_url: str | None = None,
+        dev_ops_api_version: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> AstraDBOps:
         return AstraDBOps(
             token=token or self.constructor_params["token"],
@@ -115,8 +115,8 @@ class AstraDBOps:
 
     def set_caller(
         self,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         self.caller_name = caller_name
         self.caller_version = caller_version
@@ -125,8 +125,8 @@ class AstraDBOps:
         self,
         method: str,
         path: str,
-        options: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
+        json_data: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> httpx.Response:
         _options = {} if options is None else options
@@ -151,8 +151,8 @@ class AstraDBOps:
         self,
         method: str,
         path: str,
-        options: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
+        json_data: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> httpx.Response:
         _options = {} if options is None else options
@@ -177,8 +177,8 @@ class AstraDBOps:
         self,
         method: str,
         path: str,
-        options: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
+        json_data: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         _options = {} if options is None else options
@@ -204,8 +204,8 @@ class AstraDBOps:
         self,
         method: str,
         path: str,
-        options: Optional[Dict[str, Any]] = None,
-        json_data: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
+        json_data: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         _options = {} if options is None else options
@@ -229,7 +229,7 @@ class AstraDBOps:
 
     def get_databases(
         self,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -252,7 +252,7 @@ class AstraDBOps:
 
     async def async_get_databases(
         self,
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -275,9 +275,9 @@ class AstraDBOps:
 
     def create_database(
         self,
-        database_definition: Optional[Dict[str, Any]] = None,
+        database_definition: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """
         Create a new database.
 
@@ -305,9 +305,9 @@ class AstraDBOps:
 
     async def async_create_database(
         self,
-        database_definition: Optional[Dict[str, Any]] = None,
+        database_definition: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """
         Create a new database - async version of the method.
 
@@ -392,7 +392,7 @@ class AstraDBOps:
     def get_database(
         self,
         database: str = "",
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -418,7 +418,7 @@ class AstraDBOps:
     async def async_get_database(
         self,
         database: str = "",
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> API_RESPONSE:
         """
@@ -446,7 +446,7 @@ class AstraDBOps:
         database: str = "",
         keyspace: str = "",
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """
         Create a keyspace in a specified database.
 
@@ -476,7 +476,7 @@ class AstraDBOps:
         database: str = "",
         keyspace: str = "",
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """
         Create a keyspace in a specified database - async version of the method.
 
@@ -600,7 +600,7 @@ class AstraDBOps:
     def resize_database(
         self,
         database: str = "",
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -623,7 +623,7 @@ class AstraDBOps:
     def reset_database_password(
         self,
         database: str = "",
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -682,7 +682,7 @@ class AstraDBOps:
     def create_datacenter(
         self,
         database: str = "",
-        options: Optional[Dict[str, Any]] = None,
+        options: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -745,7 +745,7 @@ class AstraDBOps:
     def replace_access_list(
         self,
         database: str = "",
-        access_list: Optional[Dict[str, Any]] = None,
+        access_list: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -768,7 +768,7 @@ class AstraDBOps:
     def update_access_list(
         self,
         database: str = "",
-        access_list: Optional[Dict[str, Any]] = None,
+        access_list: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -791,7 +791,7 @@ class AstraDBOps:
     def add_access_list_address(
         self,
         database: str = "",
-        address: Optional[Dict[str, Any]] = None,
+        address: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -873,7 +873,7 @@ class AstraDBOps:
         self,
         database: str = "",
         datacenter: str = "",
-        private_link: Optional[Dict[str, Any]] = None,
+        private_link: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -898,7 +898,7 @@ class AstraDBOps:
         self,
         database: str = "",
         datacenter: str = "",
-        endpoint: Optional[Dict[str, Any]] = None,
+        endpoint: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -923,7 +923,7 @@ class AstraDBOps:
         self,
         database: str = "",
         datacenter: str = "",
-        endpoint: Dict[str, Any] = {},
+        endpoint: dict[str, Any] = {},
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -1035,7 +1035,7 @@ class AstraDBOps:
 
     def create_role(
         self,
-        role_definition: Optional[Dict[str, Any]] = None,
+        role_definition: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -1075,7 +1075,7 @@ class AstraDBOps:
     def update_role(
         self,
         role: str = "",
-        role_definition: Optional[Dict[str, Any]] = None,
+        role_definition: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -1115,7 +1115,7 @@ class AstraDBOps:
 
     def invite_user(
         self,
-        user_definition: Optional[Dict[str, Any]] = None,
+        user_definition: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -1186,7 +1186,7 @@ class AstraDBOps:
     def update_user_roles(
         self,
         user: str = "",
-        roles: Optional[Dict[str, Any]] = None,
+        roles: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -1219,7 +1219,7 @@ class AstraDBOps:
 
     def create_token(
         self,
-        roles: Optional[Dict[str, Any]] = None,
+        roles: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """
@@ -1360,7 +1360,7 @@ class AstraDBOps:
 
     def create_streaming_tenant(
         self,
-        tenant: Optional[Dict[str, Any]] = None,
+        tenant: dict[str, Any] | None = None,
         timeout_info: TimeoutInfoWideType = None,
     ) -> OPS_API_RESPONSE:
         """

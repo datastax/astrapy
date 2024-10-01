@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Any, Dict, List, Union
+from typing import Any
 
 import pytest
 
@@ -31,7 +31,7 @@ from ..conftest import IS_ASTRA_DB
 from ..vectorize_models import live_test_models
 
 
-def enabled_vectorize_models(auth_type: str) -> List[Any]:
+def enabled_vectorize_models(auth_type: str) -> list[Any]:
     """
     This actually returns a List of `_pytest.mark.structures.ParameterSet` instances,
     each wrapping a dict with the needed info to test the model
@@ -41,7 +41,7 @@ def enabled_vectorize_models(auth_type: str) -> List[Any]:
     where `tag` = "provider/model/auth_type/[0 or f]"
     """
     all_test_models = list(live_test_models())
-    all_model_ids: List[str] = [
+    all_model_ids: list[str] = [
         str(model_desc["model_tag"]) for model_desc in all_test_models
     ]
     #
@@ -50,10 +50,10 @@ def enabled_vectorize_models(auth_type: str) -> List[Any]:
         for test_model in all_test_models
         if test_model["auth_type_name"] == auth_type
     ]
-    at_model_ids: List[str] = [
+    at_model_ids: list[str] = [
         str(model_desc["model_tag"]) for model_desc in at_test_models
     ]
-    at_chosen_models: List[Any] = []
+    at_chosen_models: list[Any] = []
     if "EMBEDDING_MODEL_TAGS" in os.environ:
         whitelisted_models = [
             _wmd.strip()
@@ -91,12 +91,12 @@ class TestVectorizeProviders:
     def test_vectorize_usage_auth_type_header_sync(
         self,
         sync_database: Database,
-        testable_vectorize_model: Dict[str, Any],
+        testable_vectorize_model: dict[str, Any],
     ) -> None:
         simple_tag = testable_vectorize_model["simple_tag"].lower()
         # switch betewen header providers according to what is needed
         # For the time being this is necessary on HEADER only
-        embedding_api_key: Union[str, EmbeddingHeadersProvider]
+        embedding_api_key: str | EmbeddingHeadersProvider
         at_tokens = testable_vectorize_model["auth_type_tokens"]
         at_token_lnames = {tk.accepted.lower() for tk in at_tokens}
         if at_token_lnames == {"x-embedding-api-key"}:
@@ -201,7 +201,7 @@ class TestVectorizeProviders:
     def test_vectorize_usage_auth_type_none_sync(
         self,
         sync_database: Database,
-        testable_vectorize_model: Dict[str, Any],
+        testable_vectorize_model: dict[str, Any],
     ) -> None:
         simple_tag = testable_vectorize_model["simple_tag"].lower()
         dimension = testable_vectorize_model.get("dimension")
@@ -281,7 +281,7 @@ class TestVectorizeProviders:
     def test_vectorize_usage_auth_type_shared_secret_sync(
         self,
         sync_database: Database,
-        testable_vectorize_model: Dict[str, Any],
+        testable_vectorize_model: dict[str, Any],
     ) -> None:
         simple_tag = testable_vectorize_model["simple_tag"].lower()
         secret_tag = testable_vectorize_model["secret_tag"]

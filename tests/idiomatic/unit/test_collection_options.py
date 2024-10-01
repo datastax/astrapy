@@ -18,7 +18,7 @@ Unit tests for the validation/parsing of collection options
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import pytest
 
@@ -27,7 +27,7 @@ from astrapy.info import CollectionDescriptor
 
 @pytest.mark.describe("test of recasting the collection options from the api")
 def test_recast_api_collection_dict() -> None:
-    api_coll_descs: List[Tuple[Dict[str, Any], Dict[str, Any]]] = [
+    api_coll_descs: list[tuple[dict[str, Any], dict[str, Any]]] = [
         # minimal:
         (
             {

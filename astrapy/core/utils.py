@@ -18,7 +18,7 @@ import datetime
 import json
 import logging
 import time
-from typing import Any, Dict, Iterable, List, Optional, TypedDict, Union, cast
+from typing import Any, Dict, Iterable, TypedDict, Union, cast
 
 import httpx
 
@@ -57,7 +57,7 @@ package_name = __name__.split(".")[0]
 user_agent_astrapy = f"{package_name}/{__version__}"
 
 
-def detect_ragstack_user_agent() -> Optional[str]:
+def detect_ragstack_user_agent() -> str | None:
     from importlib import metadata
     from importlib.metadata import PackageNotFoundError
 
@@ -77,9 +77,9 @@ user_agent_rs = detect_ragstack_user_agent()
 def log_request(
     method: str,
     url: str,
-    params: Optional[Dict[str, Any]],
-    headers: Dict[str, str],
-    json_data: Optional[Dict[str, Any]],
+    params: dict[str, Any] | None,
+    headers: dict[str, str],
+    json_data: dict[str, Any] | None,
 ) -> None:
     """
     Log the details of an HTTP request for debugging purposes.
@@ -116,8 +116,8 @@ def log_response(r: httpx.Response) -> None:
 
 
 def user_agent_string(
-    caller_name: Optional[str], caller_version: Optional[str]
-) -> Optional[str]:
+    caller_name: str | None, caller_version: str | None
+) -> str | None:
     if caller_name:
         if caller_version:
             return f"{caller_name}/{caller_version}"
@@ -127,9 +127,7 @@ def user_agent_string(
         return None
 
 
-def compose_user_agent(
-    caller_name: Optional[str], caller_version: Optional[str]
-) -> str:
+def compose_user_agent(caller_name: str | None, caller_version: str | None) -> str:
     user_agent_caller = user_agent_string(caller_name, caller_version)
     all_user_agents = [
         ua_block
@@ -152,7 +150,7 @@ class TimeoutInfo(TypedDict, total=False):
 TimeoutInfoWideType = Union[TimeoutInfo, float, None]
 
 
-def to_httpx_timeout(timeout_info: TimeoutInfoWideType) -> Union[httpx.Timeout, None]:
+def to_httpx_timeout(timeout_info: TimeoutInfoWideType) -> httpx.Timeout | None:
     if timeout_info is None:
         return None
     if isinstance(timeout_info, float) or isinstance(timeout_info, int):
@@ -170,15 +168,15 @@ def make_request(
     client: httpx.Client,
     base_url: str,
     auth_header: str,
-    token: Optional[str],
+    token: str | None,
     method: str,
-    json_data: Optional[Dict[str, Any]],
-    url_params: Optional[Dict[str, Any]],
-    path: Optional[str],
-    caller_name: Optional[str],
-    caller_version: Optional[str],
-    timeout: Optional[Union[httpx.Timeout, float]],
-    additional_headers: Dict[str, str],
+    json_data: dict[str, Any] | None,
+    url_params: dict[str, Any] | None,
+    path: str | None,
+    caller_name: str | None,
+    caller_version: str | None,
+    timeout: httpx.Timeout | float | None,
+    additional_headers: dict[str, str],
 ) -> httpx.Response:
     """
     Make an HTTP request to a specified URL.
@@ -233,15 +231,15 @@ async def amake_request(
     client: httpx.AsyncClient,
     base_url: str,
     auth_header: str,
-    token: Optional[str],
+    token: str | None,
     method: str,
-    path: Optional[str],
-    json_data: Optional[Dict[str, Any]],
-    url_params: Optional[Dict[str, Any]],
-    caller_name: Optional[str],
-    caller_version: Optional[str],
-    timeout: Optional[Union[httpx.Timeout, float]],
-    additional_headers: Dict[str, str],
+    path: str | None,
+    json_data: dict[str, Any] | None,
+    url_params: dict[str, Any] | None,
+    caller_name: str | None,
+    caller_version: str | None,
+    timeout: httpx.Timeout | float | None,
+    additional_headers: dict[str, str],
 ) -> httpx.Response:
     """
     Make an HTTP request to a specified URL.
@@ -292,7 +290,7 @@ async def amake_request(
     return r
 
 
-def make_payload(top_level: str, **kwargs: Any) -> Dict[str, Any]:
+def make_payload(top_level: str, **kwargs: Any) -> dict[str, Any]:
     """
     Construct a JSON payload for an HTTP request with a specified top-level key.
 
@@ -307,7 +305,7 @@ def make_payload(top_level: str, **kwargs: Any) -> Dict[str, Any]:
     for key, value in kwargs.items():
         params[key] = value
 
-    json_query: Dict[str, Any] = {top_level: {}}
+    json_query: dict[str, Any] = {top_level: {}}
 
     # Adding keys only if they're provided
     for key, value in params.items():
@@ -317,7 +315,7 @@ def make_payload(top_level: str, **kwargs: Any) -> Dict[str, Any]:
     return json_query
 
 
-def convert_vector_to_floats(vector: Iterable[Any]) -> List[float]:
+def convert_vector_to_floats(vector: Iterable[Any]) -> list[float]:
     """
     Convert a vector of strings to a vector of floats.
 
@@ -341,36 +339,36 @@ def is_list_of_floats(vector: Iterable[Any]) -> bool:
 
 
 def convert_to_ejson_date_object(
-    date_value: Union[datetime.date, datetime.datetime],
-) -> Dict[str, int]:
+    date_value: datetime.date | datetime.datetime,
+) -> dict[str, int]:
     return {"$date": int(time.mktime(date_value.timetuple()) * 1000)}
 
 
-def convert_to_ejson_uuid_object(uuid_value: UUID) -> Dict[str, str]:
+def convert_to_ejson_uuid_object(uuid_value: UUID) -> dict[str, str]:
     return {"$uuid": str(uuid_value)}
 
 
-def convert_to_ejson_objectid_object(objectid_value: ObjectId) -> Dict[str, str]:
+def convert_to_ejson_objectid_object(objectid_value: ObjectId) -> dict[str, str]:
     return {"$objectId": str(objectid_value)}
 
 
 def convert_ejson_date_object_to_datetime(
-    date_object: Dict[str, int],
+    date_object: dict[str, int],
 ) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(date_object["$date"] / 1000.0)
 
 
-def convert_ejson_uuid_object_to_uuid(uuid_object: Dict[str, str]) -> UUID:
+def convert_ejson_uuid_object_to_uuid(uuid_object: dict[str, str]) -> UUID:
     return UUID(uuid_object["$uuid"])
 
 
 def convert_ejson_objectid_object_to_objectid(
-    objectid_object: Dict[str, str],
+    objectid_object: dict[str, str],
 ) -> ObjectId:
     return ObjectId(objectid_object["$objectId"])
 
 
-def _normalize_payload_value(path: List[str], value: Any) -> Any:
+def _normalize_payload_value(path: list[str], value: Any) -> Any:
     """
     The path helps determining special treatments
     """
@@ -401,9 +399,7 @@ def _normalize_payload_value(path: List[str], value: Any) -> Any:
                 return value
 
 
-def normalize_for_api(
-    payload: Union[Dict[str, Any], None],
-) -> Union[Dict[str, Any], None]:
+def normalize_for_api(payload: dict[str, Any] | None) -> dict[str, Any] | None:
     """
     Normalize a payload for API calls.
     This includes e.g. ensuring values for "$vector" key
@@ -422,7 +418,7 @@ def normalize_for_api(
         return payload
 
 
-def _restore_response_value(path: List[str], value: Any) -> Any:
+def _restore_response_value(path: list[str], value: Any) -> Any:
     """
     The path helps determining special treatments
     """

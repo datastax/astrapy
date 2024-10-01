@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Optional, Union
+from typing import Any, Dict, Iterable, Union
 
 from astrapy.defaults import (
     DATA_API_ENVIRONMENT_CASSANDRA,
@@ -40,8 +40,8 @@ VectorType = Iterable[float]
 
 
 def normalize_optional_projection(
-    projection: Optional[ProjectionType],
-) -> Optional[Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]]:
+    projection: ProjectionType | None,
+) -> dict[str, bool | dict[str, int | Iterable[int]]] | None:
     if projection:
         if isinstance(projection, dict):
             # already a dictionary

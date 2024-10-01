@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Awaitable, Callable, List, Optional, Tuple
+from typing import Any, Awaitable, Callable
 
 import pytest
 
@@ -37,15 +37,15 @@ PRE_DROP_SAFETY_POLL_INTERVAL = 5
 PRE_DROP_SAFETY_TIMEOUT = 120
 
 
-def admin_test_envs_tokens() -> List[Any]:
+def admin_test_envs_tokens() -> list[Any]:
     """
     This actually returns a List of `_pytest.mark.structures.ParameterSet` instances,
     each wrapping a Tuple[str, Optional[str]] = (env, token)
     """
-    envs_tokens: List[Any] = []
+    envs_tokens: list[Any] = []
     for admin_env in ADMIN_ENV_LIST:
         markers = []
-        pair: Tuple[str, Optional[str]]
+        pair: tuple[str, str | None]
         if ADMIN_ENV_VARIABLE_MAP[admin_env]["token"]:
             pair = (admin_env, ADMIN_ENV_VARIABLE_MAP[admin_env]["token"])
         else:
@@ -84,7 +84,7 @@ class TestAdmin:
     )
     @pytest.mark.describe("test of the full tour with AstraDBDatabaseAdmin, sync")
     def test_astra_db_database_admin_sync(
-        self, admin_env_token: Tuple[str, str]
+        self, admin_env_token: tuple[str, str]
     ) -> None:
         """
         Test plan (it has to be a single giant test to use one DB throughout):
@@ -206,7 +206,7 @@ class TestAdmin:
     @pytest.mark.describe(
         "test of the full tour with AstraDBAdmin and client methods, sync"
     )
-    def test_astra_db_admin_sync(self, admin_env_token: Tuple[str, str]) -> None:
+    def test_astra_db_admin_sync(self, admin_env_token: tuple[str, str]) -> None:
         """
         Test plan (it has to be a single giant test to use the two DBs throughout):
         - create client -> get_admin
@@ -336,7 +336,7 @@ class TestAdmin:
     )
     @pytest.mark.describe("test of the full tour with AstraDBDatabaseAdmin, async")
     async def test_astra_db_database_admin_async(
-        self, admin_env_token: Tuple[str, str]
+        self, admin_env_token: tuple[str, str]
     ) -> None:
         """
         Test plan (it has to be a single giant test to use one DB throughout):
@@ -471,7 +471,7 @@ class TestAdmin:
     @pytest.mark.describe(
         "test of the full tour with AstraDBAdmin and client methods, async"
     )
-    async def test_astra_db_admin_async(self, admin_env_token: Tuple[str, str]) -> None:
+    async def test_astra_db_admin_async(self, admin_env_token: tuple[str, str]) -> None:
         """
         Test plan (it has to be a single giant test to use the two DBs throughout):
         - create client -> get_admin

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import functools
 import warnings
-from typing import Any, Awaitable, Callable, Dict, Optional, Tuple, TypedDict
+from typing import Any, Awaitable, Callable, TypedDict
 
 import pytest
 from deprecation import UnsupportedWarning
@@ -72,10 +72,10 @@ class DataAPICoreCredentials(TypedDict):
 class DataAPICredentialsInfo(TypedDict):
     environment: str
     region: str
-    secondary_namespace: Optional[str]
+    secondary_namespace: str | None
 
 
-def env_region_from_endpoint(api_endpoint: str) -> Tuple[str, str]:
+def env_region_from_endpoint(api_endpoint: str) -> tuple[str, str]:
     parsed = parse_api_endpoint(api_endpoint)
     if parsed is not None:
         return (parsed.environment, parsed.region)
@@ -105,10 +105,7 @@ def async_fail_if_not_removed(
         for warning in caught_warnings:
             if warning.category == UnsupportedWarning:
                 raise AssertionError(
-                    (
-                        "%s uses a function that should be removed: %s"
-                        % (method, str(warning.message))
-                    )
+                    f"{method} uses a function that should be removed: {str(warning.message)}"
                 )
         return rv
 
@@ -132,17 +129,14 @@ def sync_fail_if_not_removed(method: Callable[..., Any]) -> Callable[..., Any]:
         for warning in caught_warnings:
             if warning.category == UnsupportedWarning:
                 raise AssertionError(
-                    (
-                        "%s uses a function that should be removed: %s"
-                        % (method, str(warning.message))
-                    )
+                    f"{method} uses a function that should be removed: {str(warning.message)}"
                 )
         return rv
 
     return test_inner
 
 
-def clean_nulls_from_dict(in_dict: Dict[str, Any]) -> dict[str, Any]:
+def clean_nulls_from_dict(in_dict: dict[str, Any]) -> dict[str, Any]:
     def _cleand(_in: Any) -> Any:
         if isinstance(_in, list):
             return [_cleand(itm) for itm in _in]

@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -57,7 +57,7 @@ class TestDocumentExtractors:
         }
 
         def assert_extracts(
-            document: Dict[str, Any], key: str, expected: List[Any]
+            document: dict[str, Any], key: str, expected: list[Any]
         ) -> None:
             _extractor = _create_document_key_extractor(key)
             _extracted = list(_extractor(document))

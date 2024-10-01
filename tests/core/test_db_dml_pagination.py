@@ -20,7 +20,6 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Optional
 
 import pytest
 
@@ -44,7 +43,7 @@ PREFETCHED = 42  # Keep this > 20 and <= FIND_LIMIT to actually trigger prefetch
     ],
 )
 def test_find_paginated(
-    prefetched: Optional[int],
+    prefetched: int | None,
     pagination_v_collection: AstraDBCollection,
     caplog: pytest.LogCaptureFixture,
 ) -> None:

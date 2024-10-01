@@ -19,7 +19,6 @@ Tests for the `db.py` parts on pagination primitives
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import pytest
 
@@ -43,7 +42,7 @@ PREFETCHED = 42  # Keep this > 20 and <= FIND_LIMIT to actually trigger prefetch
     ],
 )
 async def test_find_paginated(
-    prefetched: Optional[int],
+    prefetched: int | None,
     async_pagination_v_collection: AsyncAstraDBCollection,
 ) -> None:
     options = {"limit": FIND_LIMIT}

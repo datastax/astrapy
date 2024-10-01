@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-from typing import List
 
 from astrapy.info import EmbeddingProviderParameter, FindEmbeddingProvidersResult
 
@@ -113,7 +112,7 @@ if __name__ == "__main__":
             for test_model in all_test_models
             if test_model["auth_type_name"] == auth_type
         ]
-        at_model_ids: List[str] = sorted(
+        at_model_ids: list[str] = sorted(
             [str(model_desc["model_tag"]) for model_desc in at_test_models]
         )
         if at_model_ids:

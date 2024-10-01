@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -478,7 +478,7 @@ class TestDMLSync:
         sync_empty_collection: Collection,
     ) -> None:
         col = sync_empty_collection
-        documents: List[Dict[str, Any]] = [
+        documents: list[dict[str, Any]] = [
             {},
             {"f": 1},
             {"f": "a"},
@@ -619,7 +619,7 @@ class TestDMLSync:
         # with empty collection
         for include_sv in [False, True]:
             for sort_cl_label in ["reg", "vec"]:
-                sort_cl_e: Dict[str, Any] = (
+                sort_cl_e: dict[str, Any] = (
                     {} if sort_cl_label == "reg" else {"$vector": q_vector}
                 )
                 vec_expected = include_sv and sort_cl_label == "vec"
@@ -654,7 +654,7 @@ class TestDMLSync:
         # with non-empty collection
         for include_sv in [False, True]:
             for sort_cl_label in ["reg", "vec"]:
-                sort_cl_f: Dict[str, Any] = (
+                sort_cl_f: dict[str, Any] = (
                     {} if sort_cl_label == "reg" else {"$vector": q_vector}
                 )
                 vec_expected = include_sv and sort_cl_label == "vec"

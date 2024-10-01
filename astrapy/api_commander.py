@@ -17,18 +17,7 @@ from __future__ import annotations
 import json
 import logging
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Dict, Iterable, cast
 
 import httpx
 
@@ -77,8 +66,8 @@ class APICommander:
         self,
         api_endpoint: str,
         path: str,
-        headers: Dict[str, Union[str, None]] = {},
-        callers: List[Tuple[Optional[str], Optional[str]]] = [],
+        headers: dict[str, str | None] = {},
+        callers: list[tuple[str | None, str | None]] = [],
         redacted_header_names: Iterable[str] = DEFAULT_REDACTED_HEADER_NAMES,
         dev_ops_api: bool = False,
     ) -> None:
@@ -90,15 +79,14 @@ class APICommander:
         self.redacted_header_names = set(redacted_header_names)
         self.dev_ops_api = dev_ops_api
 
-        self._faulty_response_exc_class: Union[
-            Type[DevOpsAPIFaultyResponseException], Type[DataAPIFaultyResponseException]
-        ]
-        self._response_exc_class: Union[
-            Type[DevOpsAPIResponseException], Type[DataAPIResponseException]
-        ]
-        self._http_exc_class: Union[
-            Type[DataAPIHttpException], Type[DevOpsAPIHttpException]
-        ]
+        self._faulty_response_exc_class: (
+            type[DevOpsAPIFaultyResponseException]
+            | type[DataAPIFaultyResponseException]
+        )
+        self._response_exc_class: (
+            type[DevOpsAPIResponseException] | type[DataAPIResponseException]
+        )
+        self._http_exc_class: type[DataAPIHttpException] | type[DevOpsAPIHttpException]
         if self.dev_ops_api:
             self._faulty_response_exc_class = DevOpsAPIFaultyResponseException
             self._response_exc_class = DevOpsAPIResponseException
@@ -112,10 +100,10 @@ class APICommander:
         full_user_agent_string = compose_full_user_agent(
             [user_agent_ragstack] + self.callers + [user_agent_astrapy]
         )
-        self.caller_header: Dict[str, str] = (
+        self.caller_header: dict[str, str] = (
             {"User-Agent": full_user_agent_string} if full_user_agent_string else {}
         )
-        self.full_headers: Dict[str, str] = {
+        self.full_headers: dict[str, str] = {
             **{k: v for k, v in self.headers.items() if v is not None},
             **self.caller_header,
             **{"Content-Type": "application/json"},
@@ -146,20 +134,20 @@ class APICommander:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]] = None,
-        exc_value: Optional[BaseException] = None,
-        traceback: Optional[TracebackType] = None,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
     ) -> None:
         await self.async_client.aclose()
 
     def _copy(
         self,
-        api_endpoint: Optional[str] = None,
-        path: Optional[str] = None,
-        headers: Optional[Dict[str, Union[str, None]]] = None,
-        callers: Optional[List[Tuple[Optional[str], Optional[str]]]] = None,
-        redacted_header_names: Optional[List[str]] = None,
-        dev_ops_api: Optional[bool] = None,
+        api_endpoint: str | None = None,
+        path: str | None = None,
+        headers: dict[str, str | None] | None = None,
+        callers: list[tuple[str | None, str | None]] | None = None,
+        redacted_header_names: list[str] | None = None,
+        dev_ops_api: bool | None = None,
     ) -> APICommander:
         # some care in allowing e.g. {} to override (but not None):
         return APICommander(
@@ -181,10 +169,10 @@ class APICommander:
         self,
         raw_response: httpx.Response,
         raise_api_errors: bool,
-        payload: Optional[Dict[str, Any]],
-    ) -> Dict[str, Any]:
+        payload: dict[str, Any] | None,
+    ) -> dict[str, Any]:
         # try to process the httpx raw response into a JSON or throw a failure
-        raw_response_json: Dict[str, Any]
+        raw_response_json: dict[str, Any]
         try:
             raw_response_json = cast(
                 Dict[str, Any],
@@ -214,7 +202,7 @@ class APICommander:
 
         # no warnings check for DevOps API (there, 'status' may contain a string)
         if not self.dev_ops_api:
-            warning_messages: List[str] = (raw_response_json.get("status") or {}).get(
+            warning_messages: list[str] = (raw_response_json.get("status") or {}).get(
                 "warnings"
             ) or []
             if warning_messages:
@@ -226,15 +214,15 @@ class APICommander:
         response_json = restore_from_api(raw_response_json)
         return response_json
 
-    def _compose_request_url(self, additional_path: Optional[str]) -> str:
+    def _compose_request_url(self, additional_path: str | None) -> str:
         if additional_path:
             return "/".join([self.full_path.rstrip("/"), additional_path.lstrip("/")])
         else:
             return self.full_path
 
     def _encode_payload(
-        self, normalized_payload: Optional[Dict[str, Any]]
-    ) -> Optional[bytes]:
+        self, normalized_payload: dict[str, Any] | None
+    ) -> bytes | None:
         if normalized_payload is not None:
             return json.dumps(
                 normalized_payload,
@@ -248,8 +236,8 @@ class APICommander:
         self,
         *,
         http_method: str = HttpMethod.POST,
-        payload: Optional[Dict[str, Any]] = None,
-        additional_path: Optional[str] = None,
+        payload: dict[str, Any] | None = None,
+        additional_path: str | None = None,
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> httpx.Response:
@@ -290,8 +278,8 @@ class APICommander:
         self,
         *,
         http_method: str = HttpMethod.POST,
-        payload: Optional[Dict[str, Any]] = None,
-        additional_path: Optional[str] = None,
+        payload: dict[str, Any] | None = None,
+        additional_path: str | None = None,
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> httpx.Response:
@@ -332,11 +320,11 @@ class APICommander:
         self,
         *,
         http_method: str = HttpMethod.POST,
-        payload: Optional[Dict[str, Any]] = None,
-        additional_path: Optional[str] = None,
+        payload: dict[str, Any] | None = None,
+        additional_path: str | None = None,
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         raw_response = self.raw_request(
             http_method=http_method,
             payload=payload,
@@ -352,11 +340,11 @@ class APICommander:
         self,
         *,
         http_method: str = HttpMethod.POST,
-        payload: Optional[Dict[str, Any]] = None,
-        additional_path: Optional[str] = None,
+        payload: dict[str, Any] | None = None,
+        additional_path: str | None = None,
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         raw_response = await self.async_raw_request(
             http_method=http_method,
             payload=payload,

@@ -20,17 +20,7 @@ import logging
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Iterable
 
 import deprecation
 
@@ -87,7 +77,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _prepare_update_info(statuses: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _prepare_update_info(statuses: list[dict[str, Any]]) -> dict[str, Any]:
     reduced_status = {
         "matchedCount": sum(
             status["matchedCount"] for status in statuses if "matchedCount" in status
@@ -118,11 +108,11 @@ def _prepare_update_info(statuses: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def _collate_vector_to_sort(
-    sort: Optional[SortType],
-    vector: Optional[VectorType],
-    vectorize: Optional[str],
-) -> Optional[SortType]:
-    _vsort: Dict[str, Any]
+    sort: SortType | None,
+    vector: VectorType | None,
+    vectorize: str | None,
+) -> SortType | None:
+    _vsort: dict[str, Any]
     if vector is None:
         if vectorize is None:
             return sort
@@ -149,7 +139,7 @@ def _collate_vector_to_sort(
             )
 
 
-def _is_vector_sort(sort: Optional[SortType]) -> bool:
+def _is_vector_sort(sort: SortType | None) -> bool:
     if sort is None:
         return False
     else:
@@ -157,7 +147,7 @@ def _is_vector_sort(sort: Optional[SortType]) -> bool:
 
 
 def _collate_vector_to_document(
-    document0: DocumentType, vector: Optional[VectorType], vectorize: Optional[str]
+    document0: DocumentType, vector: VectorType | None, vectorize: str | None
 ) -> DocumentType:
     if vector is None:
         if vectorize is None:
@@ -193,9 +183,9 @@ def _collate_vector_to_document(
 
 def _collate_vectors_to_documents(
     documents: Iterable[DocumentType],
-    vectors: Optional[Iterable[Optional[VectorType]]],
-    vectorize: Optional[Iterable[Optional[str]]],
-) -> List[DocumentType]:
+    vectors: Iterable[VectorType | None] | None,
+    vectorize: Iterable[str | None] | None,
+) -> list[DocumentType]:
     if vectors is None and vectorize is None:
         return list(documents)
     else:
@@ -267,11 +257,11 @@ class Collection:
         database: Database,
         name: str,
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        api_options: Optional[CollectionAPIOptions] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        api_options: CollectionAPIOptions | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
@@ -359,13 +349,13 @@ class Collection:
     def _copy(
         self,
         *,
-        database: Optional[Database] = None,
-        name: Optional[str] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        api_options: Optional[CollectionAPIOptions] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        database: Database | None = None,
+        name: str | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        api_options: CollectionAPIOptions | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> Collection:
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
@@ -383,11 +373,11 @@ class Collection:
     def with_options(
         self,
         *,
-        name: Optional[str] = None,
-        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
-        collection_max_time_ms: Optional[int] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        name: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | None = None,
+        collection_max_time_ms: int | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> Collection:
         """
         Create a clone of this collection with some changed attributes.
@@ -442,14 +432,14 @@ class Collection:
     def to_async(
         self,
         *,
-        database: Optional[AsyncDatabase] = None,
-        name: Optional[str] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
-        collection_max_time_ms: Optional[int] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        database: AsyncDatabase | None = None,
+        name: str | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | None = None,
+        collection_max_time_ms: int | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> AsyncCollection:
         """
         Create an AsyncCollection from this one. Save for the arguments
@@ -514,8 +504,8 @@ class Collection:
 
     def set_caller(
         self,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         """
         Set a new identity for the application/framework on behalf of which
@@ -535,7 +525,7 @@ class Collection:
         self.caller_version = caller_version or self.caller_version
         self._api_commander = self._get_api_commander()
 
-    def options(self, *, max_time_ms: Optional[int] = None) -> CollectionOptions:
+    def options(self, *, max_time_ms: int | None = None) -> CollectionOptions:
         """
         Get the collection options, i.e. its configuration as read from the database.
 
@@ -681,9 +671,9 @@ class Collection:
         self,
         document: DocumentType,
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        max_time_ms: Optional[int] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        max_time_ms: int | None = None,
     ) -> InsertOneResult:
         """
         Insert a single document in the collection in an atomic operation.
@@ -769,12 +759,12 @@ class Collection:
         self,
         documents: Iterable[DocumentType],
         *,
-        vectors: Optional[Iterable[Optional[VectorType]]] = None,
-        vectorize: Optional[Iterable[Optional[str]]] = None,
+        vectors: Iterable[VectorType | None] | None = None,
+        vectorize: Iterable[str | None] | None = None,
         ordered: bool = False,
-        chunk_size: Optional[int] = None,
-        concurrency: Optional[int] = None,
-        max_time_ms: Optional[int] = None,
+        chunk_size: int | None = None,
+        concurrency: int | None = None,
+        max_time_ms: int | None = None,
     ) -> InsertManyResult:
         """
         Insert a list of documents into the collection.
@@ -883,11 +873,11 @@ class Collection:
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
-        raw_results: List[Dict[str, Any]] = []
+        raw_results: list[dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         if ordered:
             options = {"ordered": True}
-            inserted_ids: List[Any] = []
+            inserted_ids: list[Any] = []
             for i in range(0, len(_documents), _chunk_size):
                 im_payload = {
                     "insertMany": {
@@ -937,8 +927,8 @@ class Collection:
                 with ThreadPoolExecutor(max_workers=_concurrency) as executor:
 
                     def _chunk_insertor(
-                        document_chunk: List[Dict[str, Any]],
-                    ) -> Dict[str, Any]:
+                        document_chunk: list[dict[str, Any]],
+                    ) -> dict[str, Any]:
                         im_payload = {
                             "insertMany": {
                                 "documents": document_chunk,
@@ -1014,17 +1004,17 @@ class Collection:
 
     def find(
         self,
-        filter: Optional[FilterType] = None,
+        filter: FilterType | None = None,
         *,
-        projection: Optional[ProjectionType] = None,
-        skip: Optional[int] = None,
-        limit: Optional[int] = None,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        include_similarity: Optional[bool] = None,
-        include_sort_vector: Optional[bool] = None,
-        sort: Optional[SortType] = None,
-        max_time_ms: Optional[int] = None,
+        projection: ProjectionType | None = None,
+        skip: int | None = None,
+        limit: int | None = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        sort: SortType | None = None,
+        max_time_ms: int | None = None,
     ) -> Cursor:
         """
         Find documents on the collection, matching a certain provided filter.
@@ -1227,15 +1217,15 @@ class Collection:
 
     def find_one(
         self,
-        filter: Optional[FilterType] = None,
+        filter: FilterType | None = None,
         *,
-        projection: Optional[ProjectionType] = None,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        include_similarity: Optional[bool] = None,
-        sort: Optional[SortType] = None,
-        max_time_ms: Optional[int] = None,
-    ) -> Union[DocumentType, None]:
+        projection: ProjectionType | None = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        include_similarity: bool | None = None,
+        sort: SortType | None = None,
+        max_time_ms: int | None = None,
+    ) -> DocumentType | None:
         """
         Run a search, returning the first document in the collection that matches
         provided filters, if any is found.
@@ -1336,9 +1326,9 @@ class Collection:
         self,
         key: str,
         *,
-        filter: Optional[FilterType] = None,
-        max_time_ms: Optional[int] = None,
-    ) -> List[Any]:
+        filter: FilterType | None = None,
+        max_time_ms: int | None = None,
+    ) -> list[Any]:
         """
         Return a list of the unique values of `key` across the documents
         in the collection that match the provided filter.
@@ -1416,7 +1406,7 @@ class Collection:
         filter: FilterType,
         *,
         upper_bound: int,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> int:
         """
         Count the documents in the collection matching the specified filter.
@@ -1496,7 +1486,7 @@ class Collection:
     def estimated_document_count(
         self,
         *,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> int:
         """
         Query the API server for an estimate of the document count in the collection.
@@ -1515,7 +1505,7 @@ class Collection:
             35700
         """
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        ed_payload: Dict[str, Any] = {"estimatedDocumentCount": {}}
+        ed_payload: dict[str, Any] = {"estimatedDocumentCount": {}}
         logger.info(f"estimatedDocumentCount on '{self.name}'")
         ed_response = self._api_commander.request(
             payload=ed_payload,
@@ -1536,14 +1526,14 @@ class Collection:
         filter: FilterType,
         replacement: DocumentType,
         *,
-        projection: Optional[ProjectionType] = None,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
+        projection: ProjectionType | None = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
-        max_time_ms: Optional[int] = None,
-    ) -> Union[DocumentType, None]:
+        max_time_ms: int | None = None,
+    ) -> DocumentType | None:
         """
         Find a document on the collection and replace it entirely with a new one,
         optionally inserting a new one if no match is found.
@@ -1684,11 +1674,11 @@ class Collection:
         filter: FilterType,
         replacement: DocumentType,
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
         upsert: bool = False,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> UpdateResult:
         """
         Replace a single document on the collection with a new one,
@@ -1785,16 +1775,16 @@ class Collection:
     def find_one_and_update(
         self,
         filter: FilterType,
-        update: Dict[str, Any],
+        update: dict[str, Any],
         *,
-        projection: Optional[ProjectionType] = None,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
+        projection: ProjectionType | None = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
-        max_time_ms: Optional[int] = None,
-    ) -> Union[DocumentType, None]:
+        max_time_ms: int | None = None,
+    ) -> DocumentType | None:
         """
         Find a document on the collection and update it as requested,
         optionally inserting a new one if no match is found.
@@ -1939,13 +1929,13 @@ class Collection:
     def update_one(
         self,
         filter: FilterType,
-        update: Dict[str, Any],
+        update: dict[str, Any],
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
         upsert: bool = False,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> UpdateResult:
         """
         Update a single document on the collection as requested,
@@ -2046,10 +2036,10 @@ class Collection:
     def update_many(
         self,
         filter: FilterType,
-        update: Dict[str, Any],
+        update: dict[str, Any],
         *,
         upsert: bool = False,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> UpdateResult:
         """
         Apply an update operations to all documents matching a condition,
@@ -2109,9 +2099,9 @@ class Collection:
         api_options = {
             "upsert": upsert,
         }
-        page_state_options: Dict[str, str] = {}
-        um_responses: List[Dict[str, Any]] = []
-        um_statuses: List[Dict[str, Any]] = []
+        page_state_options: dict[str, str] = {}
+        um_responses: list[dict[str, Any]] = []
+        um_statuses: list[dict[str, Any]] = []
         must_proceed = True
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"starting update_many on '{self.name}'")
@@ -2177,12 +2167,12 @@ class Collection:
         self,
         filter: FilterType,
         *,
-        projection: Optional[ProjectionType] = None,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
-        max_time_ms: Optional[int] = None,
-    ) -> Union[DocumentType, None]:
+        projection: ProjectionType | None = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
+        max_time_ms: int | None = None,
+    ) -> DocumentType | None:
         """
         Find a document in the collection and delete it. The deleted document,
         however, is the return value of the method.
@@ -2294,10 +2284,10 @@ class Collection:
         self,
         filter: FilterType,
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
-        max_time_ms: Optional[int] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
+        max_time_ms: int | None = None,
     ) -> DeleteResult:
         """
         Delete one document matching a provided filter.
@@ -2399,7 +2389,7 @@ class Collection:
         self,
         filter: FilterType,
         *,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> DeleteResult:
         """
         Delete all documents matching a provided filter.
@@ -2443,7 +2433,7 @@ class Collection:
             collection is devoid of matches.
             An exception is the `filter={}` case, whereby the operation is atomic.
         """
-        dm_responses: List[Dict[str, Any]] = []
+        dm_responses: list[dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
@@ -2493,7 +2483,7 @@ class Collection:
         current_version=__version__,
         details="Use delete_many with filter={} instead.",
     )
-    def delete_all(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
+    def delete_all(self, *, max_time_ms: int | None = None) -> dict[str, Any]:
         """
         Delete all documents in a collection.
 
@@ -2540,8 +2530,8 @@ class Collection:
         requests: Iterable[BaseOperation],
         *,
         ordered: bool = False,
-        concurrency: Optional[int] = None,
-        max_time_ms: Optional[int] = None,
+        concurrency: int | None = None,
+        max_time_ms: int | None = None,
     ) -> BulkWriteResult:
         """
         Execute an arbitrary amount of operations such as inserts, updates, deletes
@@ -2605,7 +2595,7 @@ class Collection:
         logger.info(f"startng a bulk write on '{self.name}'")
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         if ordered:
-            bulk_write_results: List[BulkWriteResult] = []
+            bulk_write_results: list[BulkWriteResult] = []
             for operation_i, operation in enumerate(requests):
                 try:
                     this_bw_result = operation.execute(
@@ -2652,7 +2642,7 @@ class Collection:
 
             def _execute_as_either(
                 operation: BaseOperation, operation_i: int
-            ) -> Tuple[Optional[BulkWriteResult], Optional[DataAPIResponseException]]:
+            ) -> tuple[BulkWriteResult | None, DataAPIResponseException | None]:
                 try:
                     ex_result = operation.execute(
                         self,
@@ -2712,7 +2702,7 @@ class Collection:
                     logger.info(f"finished a bulk write on '{self.name}'")
                     return reduce_bulk_write_results(bulk_write_successes)
 
-    def drop(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
+    def drop(self, *, max_time_ms: int | None = None) -> dict[str, Any]:
         """
         Drop the collection, i.e. delete it from the database along with
         all the documents it contains.
@@ -2755,11 +2745,11 @@ class Collection:
 
     def command(
         self,
-        body: Dict[str, Any],
+        body: dict[str, Any],
         *,
         raise_api_errors: bool = True,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Send a POST request to the Data API for this collection with
         an arbitrary, caller-provided payload.
@@ -2843,11 +2833,11 @@ class AsyncCollection:
         database: AsyncDatabase,
         name: str,
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        api_options: Optional[CollectionAPIOptions] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        api_options: CollectionAPIOptions | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
@@ -2939,9 +2929,9 @@ class AsyncCollection:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]] = None,
-        exc_value: Optional[BaseException] = None,
-        traceback: Optional[TracebackType] = None,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
     ) -> None:
         if self._api_commander is not None:
             await self._api_commander.__aexit__(
@@ -2953,13 +2943,13 @@ class AsyncCollection:
     def _copy(
         self,
         *,
-        database: Optional[AsyncDatabase] = None,
-        name: Optional[str] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        api_options: Optional[CollectionAPIOptions] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        database: AsyncDatabase | None = None,
+        name: str | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        api_options: CollectionAPIOptions | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> AsyncCollection:
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
@@ -2977,11 +2967,11 @@ class AsyncCollection:
     def with_options(
         self,
         *,
-        name: Optional[str] = None,
-        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
-        collection_max_time_ms: Optional[int] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        name: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | None = None,
+        collection_max_time_ms: int | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> AsyncCollection:
         """
         Create a clone of this collection with some changed attributes.
@@ -3036,14 +3026,14 @@ class AsyncCollection:
     def to_sync(
         self,
         *,
-        database: Optional[Database] = None,
-        name: Optional[str] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
-        collection_max_time_ms: Optional[int] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        database: Database | None = None,
+        name: str | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | None = None,
+        collection_max_time_ms: int | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> Collection:
         """
         Create a Collection from this one. Save for the arguments
@@ -3108,8 +3098,8 @@ class AsyncCollection:
 
     def set_caller(
         self,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         """
         Set a new identity for the application/framework on behalf of which
@@ -3129,7 +3119,7 @@ class AsyncCollection:
         self.caller_version = caller_version or self.caller_version
         self._api_commander = self._get_api_commander()
 
-    async def options(self, *, max_time_ms: Optional[int] = None) -> CollectionOptions:
+    async def options(self, *, max_time_ms: int | None = None) -> CollectionOptions:
         """
         Get the collection options, i.e. its configuration as read from the database.
 
@@ -3277,9 +3267,9 @@ class AsyncCollection:
         self,
         document: DocumentType,
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        max_time_ms: Optional[int] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        max_time_ms: int | None = None,
     ) -> InsertOneResult:
         """
         Insert a single document in the collection in an atomic operation.
@@ -3371,12 +3361,12 @@ class AsyncCollection:
         self,
         documents: Iterable[DocumentType],
         *,
-        vectors: Optional[Iterable[Optional[VectorType]]] = None,
-        vectorize: Optional[Iterable[Optional[str]]] = None,
+        vectors: Iterable[VectorType | None] | None = None,
+        vectorize: Iterable[str | None] | None = None,
         ordered: bool = False,
-        chunk_size: Optional[int] = None,
-        concurrency: Optional[int] = None,
-        max_time_ms: Optional[int] = None,
+        chunk_size: int | None = None,
+        concurrency: int | None = None,
+        max_time_ms: int | None = None,
     ) -> InsertManyResult:
         """
         Insert a list of documents into the collection.
@@ -3497,11 +3487,11 @@ class AsyncCollection:
         _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
-        raw_results: List[Dict[str, Any]] = []
+        raw_results: list[dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         if ordered:
             options = {"ordered": True}
-            inserted_ids: List[Any] = []
+            inserted_ids: list[Any] = []
             for i in range(0, len(_documents), _chunk_size):
                 im_payload = {
                     "insertMany": {
@@ -3551,8 +3541,8 @@ class AsyncCollection:
             sem = asyncio.Semaphore(_concurrency)
 
             async def concurrent_insert_chunk(
-                document_chunk: List[DocumentType],
-            ) -> Dict[str, Any]:
+                document_chunk: list[DocumentType],
+            ) -> dict[str, Any]:
                 async with sem:
                     im_payload = {
                         "insertMany": {
@@ -3618,17 +3608,17 @@ class AsyncCollection:
 
     def find(
         self,
-        filter: Optional[FilterType] = None,
+        filter: FilterType | None = None,
         *,
-        projection: Optional[ProjectionType] = None,
-        skip: Optional[int] = None,
-        limit: Optional[int] = None,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        include_similarity: Optional[bool] = None,
-        include_sort_vector: Optional[bool] = None,
-        sort: Optional[SortType] = None,
-        max_time_ms: Optional[int] = None,
+        projection: ProjectionType | None = None,
+        skip: int | None = None,
+        limit: int | None = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        sort: SortType | None = None,
+        max_time_ms: int | None = None,
     ) -> AsyncCursor:
         """
         Find documents on the collection, matching a certain provided filter.
@@ -3841,15 +3831,15 @@ class AsyncCollection:
 
     async def find_one(
         self,
-        filter: Optional[FilterType] = None,
+        filter: FilterType | None = None,
         *,
-        projection: Optional[ProjectionType] = None,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        include_similarity: Optional[bool] = None,
-        sort: Optional[SortType] = None,
-        max_time_ms: Optional[int] = None,
-    ) -> Union[DocumentType, None]:
+        projection: ProjectionType | None = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        include_similarity: bool | None = None,
+        sort: SortType | None = None,
+        max_time_ms: int | None = None,
+    ) -> DocumentType | None:
         """
         Run a search, returning the first document in the collection that matches
         provided filters, if any is found.
@@ -3969,9 +3959,9 @@ class AsyncCollection:
         self,
         key: str,
         *,
-        filter: Optional[FilterType] = None,
-        max_time_ms: Optional[int] = None,
-    ) -> List[Any]:
+        filter: FilterType | None = None,
+        max_time_ms: int | None = None,
+    ) -> list[Any]:
         """
         Return a list of the unique values of `key` across the documents
         in the collection that match the provided filter.
@@ -4057,7 +4047,7 @@ class AsyncCollection:
         filter: FilterType,
         *,
         upper_bound: int,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> int:
         """
         Count the documents in the collection matching the specified filter.
@@ -4142,7 +4132,7 @@ class AsyncCollection:
     async def estimated_document_count(
         self,
         *,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> int:
         """
         Query the API server for an estimate of the document count in the collection.
@@ -4161,7 +4151,7 @@ class AsyncCollection:
             35700
         """
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        ed_payload: Dict[str, Any] = {"estimatedDocumentCount": {}}
+        ed_payload: dict[str, Any] = {"estimatedDocumentCount": {}}
         logger.info(f"estimatedDocumentCount on '{self.name}'")
         ed_response = await self._api_commander.async_request(
             payload=ed_payload,
@@ -4182,14 +4172,14 @@ class AsyncCollection:
         filter: FilterType,
         replacement: DocumentType,
         *,
-        projection: Optional[ProjectionType] = None,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
+        projection: ProjectionType | None = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
-        max_time_ms: Optional[int] = None,
-    ) -> Union[DocumentType, None]:
+        max_time_ms: int | None = None,
+    ) -> DocumentType | None:
         """
         Find a document on the collection and replace it entirely with a new one,
         optionally inserting a new one if no match is found.
@@ -4339,11 +4329,11 @@ class AsyncCollection:
         filter: FilterType,
         replacement: DocumentType,
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
         upsert: bool = False,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> UpdateResult:
         """
         Replace a single document on the collection with a new one,
@@ -4459,16 +4449,16 @@ class AsyncCollection:
     async def find_one_and_update(
         self,
         filter: FilterType,
-        update: Dict[str, Any],
+        update: dict[str, Any],
         *,
-        projection: Optional[ProjectionType] = None,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
+        projection: ProjectionType | None = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
-        max_time_ms: Optional[int] = None,
-    ) -> Union[DocumentType, None]:
+        max_time_ms: int | None = None,
+    ) -> DocumentType | None:
         """
         Find a document on the collection and update it as requested,
         optionally inserting a new one if no match is found.
@@ -4622,13 +4612,13 @@ class AsyncCollection:
     async def update_one(
         self,
         filter: FilterType,
-        update: Dict[str, Any],
+        update: dict[str, Any],
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
         upsert: bool = False,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> UpdateResult:
         """
         Update a single document on the collection as requested,
@@ -4747,10 +4737,10 @@ class AsyncCollection:
     async def update_many(
         self,
         filter: FilterType,
-        update: Dict[str, Any],
+        update: dict[str, Any],
         *,
         upsert: bool = False,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> UpdateResult:
         """
         Apply an update operations to all documents matching a condition,
@@ -4821,9 +4811,9 @@ class AsyncCollection:
         api_options = {
             "upsert": upsert,
         }
-        page_state_options: Dict[str, str] = {}
-        um_responses: List[Dict[str, Any]] = []
-        um_statuses: List[Dict[str, Any]] = []
+        page_state_options: dict[str, str] = {}
+        um_responses: list[dict[str, Any]] = []
+        um_statuses: list[dict[str, Any]] = []
         must_proceed = True
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         logger.info(f"starting update_many on '{self.name}'")
@@ -4889,12 +4879,12 @@ class AsyncCollection:
         self,
         filter: FilterType,
         *,
-        projection: Optional[ProjectionType] = None,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
-        max_time_ms: Optional[int] = None,
-    ) -> Union[DocumentType, None]:
+        projection: ProjectionType | None = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
+        max_time_ms: int | None = None,
+    ) -> DocumentType | None:
         """
         Find a document in the collection and delete it. The deleted document,
         however, is the return value of the method.
@@ -5013,10 +5003,10 @@ class AsyncCollection:
         self,
         filter: FilterType,
         *,
-        vector: Optional[VectorType] = None,
-        vectorize: Optional[str] = None,
-        sort: Optional[SortType] = None,
-        max_time_ms: Optional[int] = None,
+        vector: VectorType | None = None,
+        vectorize: str | None = None,
+        sort: SortType | None = None,
+        max_time_ms: int | None = None,
     ) -> DeleteResult:
         """
         Delete one document matching a provided filter.
@@ -5119,7 +5109,7 @@ class AsyncCollection:
         self,
         filter: FilterType,
         *,
-        max_time_ms: Optional[int] = None,
+        max_time_ms: int | None = None,
     ) -> DeleteResult:
         """
         Delete all documents matching a provided filter.
@@ -5168,7 +5158,7 @@ class AsyncCollection:
             collection is devoid of matches.
             An exception is the `filter={}` case, whereby the operation is atomic.
         """
-        dm_responses: List[Dict[str, Any]] = []
+        dm_responses: list[dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
@@ -5218,7 +5208,7 @@ class AsyncCollection:
         current_version=__version__,
         details="Use delete_many with filter={} instead.",
     )
-    async def delete_all(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
+    async def delete_all(self, *, max_time_ms: int | None = None) -> dict[str, Any]:
         """
         Delete all documents in a collection.
 
@@ -5272,8 +5262,8 @@ class AsyncCollection:
         requests: Iterable[AsyncBaseOperation],
         *,
         ordered: bool = False,
-        concurrency: Optional[int] = None,
-        max_time_ms: Optional[int] = None,
+        concurrency: int | None = None,
+        max_time_ms: int | None = None,
     ) -> BulkWriteResult:
         """
         Execute an arbitrary amount of operations such as inserts, updates, deletes
@@ -5353,7 +5343,7 @@ class AsyncCollection:
         logger.info(f"startng a bulk write on '{self.name}'")
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
         if ordered:
-            bulk_write_results: List[BulkWriteResult] = []
+            bulk_write_results: list[BulkWriteResult] = []
             for operation_i, operation in enumerate(requests):
                 try:
                     this_bw_result = await operation.execute(
@@ -5401,7 +5391,7 @@ class AsyncCollection:
 
             async def _concurrent_execute_as_either(
                 operation: AsyncBaseOperation, operation_i: int
-            ) -> Tuple[Optional[BulkWriteResult], Optional[DataAPIResponseException]]:
+            ) -> tuple[BulkWriteResult | None, DataAPIResponseException | None]:
                 async with sem:
                     try:
                         ex_result = await operation.execute(
@@ -5452,7 +5442,7 @@ class AsyncCollection:
                 logger.info(f"finished a bulk write on '{self.name}'")
                 return reduce_bulk_write_results(bulk_write_successes)
 
-    async def drop(self, *, max_time_ms: Optional[int] = None) -> Dict[str, Any]:
+    async def drop(self, *, max_time_ms: int | None = None) -> dict[str, Any]:
         """
         Drop the collection, i.e. delete it from the database along with
         all the documents it contains.
@@ -5502,11 +5492,11 @@ class AsyncCollection:
 
     async def command(
         self,
-        body: Dict[str, Any],
+        body: dict[str, Any],
         *,
         raise_api_errors: bool = True,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Send a POST request to the Data API for this collection with
         an arbitrary, caller-provided payload.

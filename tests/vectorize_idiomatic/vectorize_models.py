@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Iterable
 
 from astrapy.defaults import (
     EMBEDDING_HEADER_API_KEY,
@@ -85,7 +85,7 @@ TEST_ASSETS_MAP = {
     ("voyageAI", "voyage-code-2"): CODE_TEST_ASSETS,
 }
 
-USE_INSERT_ONE_MAP: Dict[Tuple[str, str], bool] = {
+USE_INSERT_ONE_MAP: dict[tuple[str, str], bool] = {
     # ("upstageAI", "solar-1-mini-embedding"): True,
 }
 
@@ -172,7 +172,7 @@ FORCE_DIMENSION_MAP = {
 }
 
 
-def live_test_models() -> Iterable[Dict[str, Any]]:
+def live_test_models() -> Iterable[dict[str, Any]]:
     def _from_validation(pspec: EmbeddingProviderParameter) -> int:
         assert pspec.parameter_type == "number"
         if "numericRange" in pspec.validation:
@@ -180,7 +180,7 @@ def live_test_models() -> Iterable[Dict[str, Any]]:
             m1: int = pspec.validation["numericRange"][1]
             return (m0 + m1) // 2
         elif "options" in pspec.validation:
-            options: List[int] = pspec.validation["options"]
+            options: list[int] = pspec.validation["options"]
             if len(options) > 1:
                 return options[1]
             else:

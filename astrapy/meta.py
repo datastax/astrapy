@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Optional
+from typing import Any
 
 from deprecation import DeprecatedWarning
 
@@ -70,9 +70,9 @@ def check_deprecated_vector_ize(
 
 
 def check_namespace_keyspace(
-    keyspace: Optional[str],
-    namespace: Optional[str],
-) -> Optional[str]:
+    keyspace: str | None,
+    namespace: str | None,
+) -> str | None:
     # normalize the two aliased parameter names, raising deprecation
     # when needed and an error if both parameter supplied.
     # The returned value is the final one for the parameter.
@@ -104,9 +104,9 @@ def check_namespace_keyspace(
 
 
 def check_update_db_namespace_keyspace(
-    update_db_keyspace: Optional[bool],
-    update_db_namespace: Optional[bool],
-) -> Optional[bool]:
+    update_db_keyspace: bool | None,
+    update_db_namespace: bool | None,
+) -> bool | None:
     # normalize the two aliased parameter names, raising deprecation
     # when needed and an error if both parameter supplied.
     # The returned value is the final one for the parameter.

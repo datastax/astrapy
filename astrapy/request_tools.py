@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, TypedDict, Union
+from typing import Any, TypedDict, Union
 
 import httpx
 
@@ -27,9 +27,9 @@ logger = logging.getLogger(__name__)
 def log_httpx_request(
     http_method: str,
     full_url: str,
-    request_params: Optional[Dict[str, Any]],
-    redacted_request_headers: Dict[str, str],
-    payload: Optional[Dict[str, Any]],
+    request_params: dict[str, Any] | None,
+    redacted_request_headers: dict[str, str],
+    payload: dict[str, Any] | None,
 ) -> None:
     """
     Log the details of an HTTP request for debugging purposes.
@@ -79,7 +79,7 @@ class TimeoutInfo(TypedDict, total=False):
 TimeoutInfoWideType = Union[TimeoutInfo, float, None]
 
 
-def to_httpx_timeout(timeout_info: TimeoutInfoWideType) -> Union[httpx.Timeout, None]:
+def to_httpx_timeout(timeout_info: TimeoutInfoWideType) -> httpx.Timeout | None:
     if timeout_info is None:
         return None
     if isinstance(timeout_info, float) or isinstance(timeout_info, int):

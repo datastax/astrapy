@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -55,15 +55,15 @@ class DevOpsAPIHttpException(DevOpsAPIException, httpx.HTTPStatusError):
             found in the response.
     """
 
-    text: Optional[str]
-    error_descriptors: List[DevOpsAPIErrorDescriptor]
+    text: str | None
+    error_descriptors: list[DevOpsAPIErrorDescriptor]
 
     def __init__(
         self,
-        text: Optional[str],
+        text: str | None,
         *,
         httpx_error: httpx.HTTPStatusError,
-        error_descriptors: List[DevOpsAPIErrorDescriptor],
+        error_descriptors: list[DevOpsAPIErrorDescriptor],
     ) -> None:
         DataAPIException.__init__(self, text)
         httpx.HTTPStatusError.__init__(
@@ -87,7 +87,7 @@ class DevOpsAPIHttpException(DevOpsAPIException, httpx.HTTPStatusError):
     ) -> DevOpsAPIHttpException:
         """Parse a httpx status error into this exception."""
 
-        raw_response: Dict[str, Any]
+        raw_response: dict[str, Any]
         # the attempt to extract a response structure cannot afford failure.
         try:
             raw_response = httpx_error.response.json()
@@ -128,16 +128,16 @@ class DevOpsAPITimeoutException(DevOpsAPIException):
 
     text: str
     timeout_type: str
-    endpoint: Optional[str]
-    raw_payload: Optional[str]
+    endpoint: str | None
+    raw_payload: str | None
 
     def __init__(
         self,
         text: str,
         *,
         timeout_type: str,
-        endpoint: Optional[str],
-        raw_payload: Optional[str],
+        endpoint: str | None,
+        raw_payload: str | None,
     ) -> None:
         super().__init__(text)
         self.text = text
@@ -160,11 +160,11 @@ class DevOpsAPIErrorDescriptor:
         attributes: a dict with any further key-value pairs returned by the API.
     """
 
-    id: Optional[int]
-    message: Optional[str]
-    attributes: Dict[str, Any]
+    id: int | None
+    message: str | None
+    attributes: dict[str, Any]
 
-    def __init__(self, error_dict: Dict[str, Any]) -> None:
+    def __init__(self, error_dict: dict[str, Any]) -> None:
         self.id = error_dict.get("ID")
         self.message = error_dict.get("message")
         self.attributes = {
@@ -184,12 +184,12 @@ class DevOpsAPIFaultyResponseException(DevOpsAPIException):
     """
 
     text: str
-    raw_response: Optional[Dict[str, Any]]
+    raw_response: dict[str, Any] | None
 
     def __init__(
         self,
         text: str,
-        raw_response: Optional[Dict[str, Any]],
+        raw_response: dict[str, Any] | None,
     ) -> None:
         super().__init__(text)
         self.text = text
@@ -208,16 +208,16 @@ class DevOpsAPIResponseException(DevOpsAPIException):
             returned by the API in the response.
     """
 
-    text: Optional[str]
-    command: Optional[Dict[str, Any]]
-    error_descriptors: List[DevOpsAPIErrorDescriptor]
+    text: str | None
+    command: dict[str, Any] | None
+    error_descriptors: list[DevOpsAPIErrorDescriptor]
 
     def __init__(
         self,
-        text: Optional[str] = None,
+        text: str | None = None,
         *,
-        command: Optional[Dict[str, Any]] = None,
-        error_descriptors: List[DevOpsAPIErrorDescriptor] = [],
+        command: dict[str, Any] | None = None,
+        error_descriptors: list[DevOpsAPIErrorDescriptor] = [],
     ) -> None:
         super().__init__(text or self.__class__.__name__)
         self.text = text
@@ -226,8 +226,8 @@ class DevOpsAPIResponseException(DevOpsAPIException):
 
     @staticmethod
     def from_response(
-        command: Optional[Dict[str, Any]],
-        raw_response: Dict[str, Any],
+        command: dict[str, Any] | None,
+        raw_response: dict[str, Any],
     ) -> DevOpsAPIResponseException:
         """Parse a raw response from the API into this exception."""
 
@@ -263,13 +263,13 @@ class DataAPIErrorDescriptor:
         attributes: a dict with any further key-value pairs returned by the API.
     """
 
-    title: Optional[str]
-    error_code: Optional[str]
-    message: Optional[str]
-    family: Optional[str]
-    scope: Optional[str]
-    id: Optional[str]
-    attributes: Dict[str, Any]
+    title: str | None
+    error_code: str | None
+    message: str | None
+    family: str | None
+    scope: str | None
+    id: str | None
+    attributes: dict[str, Any]
 
     _known_dict_fields = {
         "title",
@@ -280,7 +280,7 @@ class DataAPIErrorDescriptor:
         "id",
     }
 
-    def __init__(self, error_dict: Dict[str, str]) -> None:
+    def __init__(self, error_dict: dict[str, str]) -> None:
         self.title = error_dict.get("title")
         self.error_code = error_dict.get("errorCode")
         self.message = error_dict.get("message")
@@ -322,9 +322,9 @@ class DataAPIDetailedErrorDescriptor:
         raw_response: the full API response in the form of a dict.
     """
 
-    error_descriptors: List[DataAPIErrorDescriptor]
-    command: Optional[Dict[str, Any]]
-    raw_response: Dict[str, Any]
+    error_descriptors: list[DataAPIErrorDescriptor]
+    command: dict[str, Any] | None
+    raw_response: dict[str, Any]
 
 
 class DataAPIException(ValueError):
@@ -356,15 +356,15 @@ class DataAPIHttpException(DataAPIException, httpx.HTTPStatusError):
             found in the response.
     """
 
-    text: Optional[str]
-    error_descriptors: List[DataAPIErrorDescriptor]
+    text: str | None
+    error_descriptors: list[DataAPIErrorDescriptor]
 
     def __init__(
         self,
-        text: Optional[str],
+        text: str | None,
         *,
         httpx_error: httpx.HTTPStatusError,
-        error_descriptors: List[DataAPIErrorDescriptor],
+        error_descriptors: list[DataAPIErrorDescriptor],
     ) -> None:
         DataAPIException.__init__(self, text)
         httpx.HTTPStatusError.__init__(
@@ -388,7 +388,7 @@ class DataAPIHttpException(DataAPIException, httpx.HTTPStatusError):
     ) -> DataAPIHttpException:
         """Parse a httpx status error into this exception."""
 
-        raw_response: Dict[str, Any]
+        raw_response: dict[str, Any]
         # the attempt to extract a response structure cannot afford failure.
         try:
             raw_response = httpx_error.response.json()
@@ -431,16 +431,16 @@ class DataAPITimeoutException(DataAPIException):
 
     text: str
     timeout_type: str
-    endpoint: Optional[str]
-    raw_payload: Optional[str]
+    endpoint: str | None
+    raw_payload: str | None
 
     def __init__(
         self,
         text: str,
         *,
         timeout_type: str,
-        endpoint: Optional[str],
-        raw_payload: Optional[str],
+        endpoint: str | None,
+        raw_payload: str | None,
     ) -> None:
         super().__init__(text)
         self.text = text
@@ -579,12 +579,12 @@ class DataAPIFaultyResponseException(DataAPIException):
     """
 
     text: str
-    raw_response: Optional[Dict[str, Any]]
+    raw_response: dict[str, Any] | None
 
     def __init__(
         self,
         text: str,
-        raw_response: Optional[Dict[str, Any]],
+        raw_response: dict[str, Any] | None,
     ) -> None:
         super().__init__(text)
         self.text = text
@@ -614,16 +614,16 @@ class DataAPIResponseException(DataAPIException):
             has a single element.
     """
 
-    text: Optional[str]
-    error_descriptors: List[DataAPIErrorDescriptor]
-    detailed_error_descriptors: List[DataAPIDetailedErrorDescriptor]
+    text: str | None
+    error_descriptors: list[DataAPIErrorDescriptor]
+    detailed_error_descriptors: list[DataAPIDetailedErrorDescriptor]
 
     def __init__(
         self,
-        text: Optional[str],
+        text: str | None,
         *,
-        error_descriptors: List[DataAPIErrorDescriptor],
-        detailed_error_descriptors: List[DataAPIDetailedErrorDescriptor],
+        error_descriptors: list[DataAPIErrorDescriptor],
+        detailed_error_descriptors: list[DataAPIDetailedErrorDescriptor],
     ) -> None:
         super().__init__(text)
         self.text = text
@@ -633,8 +633,8 @@ class DataAPIResponseException(DataAPIException):
     @classmethod
     def from_response(
         cls,
-        command: Optional[Dict[str, Any]],
-        raw_response: Dict[str, Any],
+        command: dict[str, Any] | None,
+        raw_response: dict[str, Any],
         **kwargs: Any,
     ) -> DataAPIResponseException:
         """Parse a raw response from the API into this exception."""
@@ -648,13 +648,13 @@ class DataAPIResponseException(DataAPIException):
     @classmethod
     def from_responses(
         cls,
-        commands: List[Optional[Dict[str, Any]]],
-        raw_responses: List[Dict[str, Any]],
+        commands: list[dict[str, Any] | None],
+        raw_responses: list[dict[str, Any]],
         **kwargs: Any,
     ) -> DataAPIResponseException:
         """Parse a list of raw responses from the API into this exception."""
 
-        detailed_error_descriptors: List[DataAPIDetailedErrorDescriptor] = []
+        detailed_error_descriptors: list[DataAPIDetailedErrorDescriptor] = []
         for command, raw_response in zip(commands, raw_responses):
             if raw_response.get("errors", []):
                 error_descriptors = [
@@ -838,13 +838,13 @@ class BulkWriteException(DataAPIResponseException):
     """
 
     partial_result: BulkWriteResult
-    exceptions: List[DataAPIResponseException]
+    exceptions: list[DataAPIResponseException]
 
     def __init__(
         self,
-        text: Optional[str],
+        text: str | None,
         partial_result: BulkWriteResult,
-        exceptions: List[DataAPIResponseException],
+        exceptions: list[DataAPIResponseException],
         *pargs: Any,
         **kwargs: Any,
     ) -> None:
@@ -916,7 +916,7 @@ def to_devopsapi_timeout_exception(
     )
 
 
-def base_timeout_info(max_time_ms: Optional[int]) -> Union[TimeoutInfo, None]:
+def base_timeout_info(max_time_ms: int | None) -> TimeoutInfo | None:
     if max_time_ms is not None:
         return {"base": max_time_ms / 1000.0}
     else:
@@ -937,12 +937,12 @@ class MultiCallTimeoutManager:
         deadline_ms: optional deadline in milliseconds (computed by the class).
     """
 
-    overall_max_time_ms: Optional[int]
+    overall_max_time_ms: int | None
     started_ms: int = -1
-    deadline_ms: Optional[int]
+    deadline_ms: int | None
 
     def __init__(
-        self, overall_max_time_ms: Optional[int], dev_ops_api: bool = False
+        self, overall_max_time_ms: int | None, dev_ops_api: bool = False
     ) -> None:
         self.started_ms = int(time.time() * 1000)
         self.overall_max_time_ms = overall_max_time_ms
@@ -952,7 +952,7 @@ class MultiCallTimeoutManager:
         else:
             self.deadline_ms = None
 
-    def remaining_timeout_ms(self) -> Union[int, None]:
+    def remaining_timeout_ms(self) -> int | None:
         """
         Ensure the deadline, if any, is not yet in the past.
         If it is, raise an appropriate timeout error.
@@ -981,7 +981,7 @@ class MultiCallTimeoutManager:
         else:
             return None
 
-    def remaining_timeout_info(self) -> Union[TimeoutInfo, None]:
+    def remaining_timeout_info(self) -> TimeoutInfo | None:
         """
         Ensure the deadline, if any, is not yet in the past.
         If it is, raise an appropriate timeout error.

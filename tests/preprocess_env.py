@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import os
 import time
-from typing import List, Optional
 
 from testcontainers.compose import DockerCompose
 
@@ -40,18 +39,18 @@ docker_compose_filepath = os.path.join(base_dir, "hcd_compose")
 
 IS_ASTRA_DB: bool
 DOCKER_COMPOSE_LOCAL_DATA_API: bool
-SECONDARY_NAMESPACE: Optional[str] = None
-ASTRA_DB_API_ENDPOINT: Optional[str] = None
-ASTRA_DB_APPLICATION_TOKEN: Optional[str] = None
-ASTRA_DB_KEYSPACE: Optional[str] = None
-LOCAL_DATA_API_USERNAME: Optional[str] = None
-LOCAL_DATA_API_PASSWORD: Optional[str] = None
-LOCAL_DATA_API_APPLICATION_TOKEN: Optional[str] = None
-LOCAL_DATA_API_ENDPOINT: Optional[str] = None
-LOCAL_DATA_API_KEYSPACE: Optional[str] = None
+SECONDARY_NAMESPACE: str | None = None
+ASTRA_DB_API_ENDPOINT: str | None = None
+ASTRA_DB_APPLICATION_TOKEN: str | None = None
+ASTRA_DB_KEYSPACE: str | None = None
+LOCAL_DATA_API_USERNAME: str | None = None
+LOCAL_DATA_API_PASSWORD: str | None = None
+LOCAL_DATA_API_APPLICATION_TOKEN: str | None = None
+LOCAL_DATA_API_ENDPOINT: str | None = None
+LOCAL_DATA_API_KEYSPACE: str | None = None
 
-ASTRA_DB_TOKEN_PROVIDER: Optional[TokenProvider] = None
-LOCAL_DATA_API_TOKEN_PROVIDER: Optional[TokenProvider] = None
+ASTRA_DB_TOKEN_PROVIDER: TokenProvider | None = None
+LOCAL_DATA_API_TOKEN_PROVIDER: TokenProvider | None = None
 
 # idiomatic-related settings
 if "LOCAL_DATA_API_ENDPOINT" in os.environ:
@@ -132,7 +131,7 @@ if DOCKER_COMPOSE_LOCAL_DATA_API:
         """
 
         class RedefineCommandDockerCompose(DockerCompose):
-            def docker_compose_command(self) -> List[str]:
+            def docker_compose_command(self) -> list[str]:
                 docker_compose_cmd = ["docker", "compose"]
                 for file in self.compose_file_names:
                     docker_compose_cmd += ["-f", file]

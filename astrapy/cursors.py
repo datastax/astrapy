@@ -23,15 +23,12 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
     Generic,
     Iterable,
     Iterator,
-    List,
     Optional,
     Tuple,
     TypeVar,
-    Union,
 )
 
 from astrapy.constants import (
@@ -58,7 +55,7 @@ T = TypeVar("T")
 IndexPairType = Tuple[str, Optional[int]]
 
 
-def _maybe_valid_list_index(key_block: str) -> Optional[int]:
+def _maybe_valid_list_index(key_block: str) -> int | None:
     # '0', '1' is good. '00', '01', '-30' are not.
     try:
         kb_index = int(key_block)
@@ -72,8 +69,8 @@ def _maybe_valid_list_index(key_block: str) -> Optional[int]:
 
 def _create_document_key_extractor(
     key: str,
-) -> Callable[[Dict[str, Any]], Iterable[Any]]:
-    key_blocks0: List[IndexPairType] = [
+) -> Callable[[dict[str, Any]], Iterable[Any]]:
+    key_blocks0: list[IndexPairType] = [
         (kb_str, _maybe_valid_list_index(kb_str)) for kb_str in key.split(".")
     ]
     if key_blocks0 == []:
@@ -82,7 +79,7 @@ def _create_document_key_extractor(
         raise ValueError("Field path components cannot be empty")
 
     def _extract_with_key_blocks(
-        key_blocks: List[IndexPairType], value: Any
+        key_blocks: list[IndexPairType], value: Any
     ) -> Iterable[Any]:
         if key_blocks == []:
             if isinstance(value, list):
@@ -122,7 +119,7 @@ def _create_document_key_extractor(
                 # keyblocks are deeper than the document. Nothing to extract.
                 return
 
-    def _item_extractor(document: Dict[str, Any]) -> Iterable[Any]:
+    def _item_extractor(document: dict[str, Any]) -> Iterable[Any]:
         return _extract_with_key_blocks(key_blocks=key_blocks0, value=document)
 
     return _item_extractor
@@ -147,7 +144,7 @@ def _reduce_distinct_key_to_safe(distinct_key: str) -> str:
     return ".".join(valid_portion)
 
 
-def _hash_document(document: Dict[str, Any]) -> str:
+def _hash_document(document: dict[str, Any]) -> str:
     _normalized_item = normalize_payload_value(path=[], value=document)
     _normalized_json = json.dumps(
         _normalized_item, sort_keys=True, separators=(",", ":")
@@ -164,7 +161,7 @@ class _LookAheadIterator:
 
     def __init__(self, iterator: Iterator[DocumentType]):
         self.iterator = iterator
-        self.preread_item: Optional[DocumentType] = None
+        self.preread_item: DocumentType | None = None
         self.has_preread = False
         self.preread_exhausted = False
 
@@ -200,7 +197,7 @@ class _AsyncLookAheadIterator:
 
     def __init__(self, async_iterator: AsyncIterator[DocumentType]):
         self.async_iterator = async_iterator
-        self.preread_item: Optional[DocumentType] = None
+        self.preread_item: DocumentType | None = None
         self.has_preread = False
         self.preread_exhausted = False
 
@@ -236,30 +233,30 @@ class BaseCursor:
     See classes Cursor and AsyncCursor for more information.
     """
 
-    _collection: Union[Collection, AsyncCollection]
-    _filter: Optional[Dict[str, Any]]
-    _projection: Optional[ProjectionType]
-    _max_time_ms: Optional[int]
-    _overall_max_time_ms: Optional[int]
-    _started_time_s: Optional[float]
-    _limit: Optional[int]
-    _skip: Optional[int]
-    _include_similarity: Optional[bool]
-    _include_sort_vector: Optional[bool]
-    _sort: Optional[Dict[str, Any]]
+    _collection: Collection | AsyncCollection
+    _filter: dict[str, Any] | None
+    _projection: ProjectionType | None
+    _max_time_ms: int | None
+    _overall_max_time_ms: int | None
+    _started_time_s: float | None
+    _limit: int | None
+    _skip: int | None
+    _include_similarity: bool | None
+    _include_sort_vector: bool | None
+    _sort: dict[str, Any] | None
     _started: bool
     _retrieved: int
     _alive: bool
-    _iterator: Optional[Union[_LookAheadIterator, _AsyncLookAheadIterator]] = None
-    _api_response_status: Optional[Dict[str, Any]]
+    _iterator: _LookAheadIterator | _AsyncLookAheadIterator | None = None
+    _api_response_status: dict[str, Any] | None
 
     def __init__(
         self,
-        collection: Union[Collection, AsyncCollection],
-        filter: Optional[Dict[str, Any]],
-        projection: Optional[ProjectionType],
-        max_time_ms: Optional[int],
-        overall_max_time_ms: Optional[int],
+        collection: Collection | AsyncCollection,
+        filter: dict[str, Any] | None,
+        projection: ProjectionType | None,
+        max_time_ms: int | None,
+        overall_max_time_ms: int | None,
     ) -> None:
         raise NotImplementedError
 
@@ -314,15 +311,15 @@ class BaseCursor:
     def _copy(
         self: BC,
         *,
-        projection: Optional[ProjectionType] = None,
-        max_time_ms: Optional[int] = None,
-        overall_max_time_ms: Optional[int] = None,
-        limit: Optional[int] = None,
-        skip: Optional[int] = None,
-        include_similarity: Optional[bool] = None,
-        include_sort_vector: Optional[bool] = None,
-        started: Optional[bool] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        projection: ProjectionType | None = None,
+        max_time_ms: int | None = None,
+        overall_max_time_ms: int | None = None,
+        limit: int | None = None,
+        skip: int | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        started: bool | None = None,
+        sort: dict[str, Any] | None = None,
     ) -> BC:
         new_cursor = self.__class__(
             collection=self._collection,
@@ -416,7 +413,7 @@ class BaseCursor:
 
         return id(self)
 
-    def limit(self: BC, limit: Optional[int]) -> BC:
+    def limit(self: BC, limit: int | None) -> BC:
         """
         Set a new `limit` value for this cursor.
 
@@ -432,7 +429,7 @@ class BaseCursor:
         self._limit = limit if limit != 0 else None
         return self
 
-    def include_similarity(self: BC, include_similarity: Optional[bool]) -> BC:
+    def include_similarity(self: BC, include_similarity: bool | None) -> BC:
         """
         Set a new `include_similarity` value for this cursor.
 
@@ -448,7 +445,7 @@ class BaseCursor:
         self._include_similarity = include_similarity
         return self
 
-    def include_sort_vector(self: BC, include_sort_vector: Optional[bool]) -> BC:
+    def include_sort_vector(self: BC, include_sort_vector: bool | None) -> BC:
         """
         Set a new `include_sort_vector` value for this cursor.
 
@@ -486,7 +483,7 @@ class BaseCursor:
         self._iterator = None
         return self
 
-    def skip(self: BC, skip: Optional[int]) -> BC:
+    def skip(self: BC, skip: int | None) -> BC:
         """
         Set a new `skip` value for this cursor.
 
@@ -508,7 +505,7 @@ class BaseCursor:
 
     def sort(
         self: BC,
-        sort: Optional[Dict[str, Any]],
+        sort: dict[str, Any] | None,
     ) -> BC:
         """
         Set a new `sort` value for this cursor.
@@ -580,10 +577,10 @@ class Cursor(BaseCursor):
     def __init__(
         self,
         collection: Collection,
-        filter: Optional[Dict[str, Any]],
-        projection: Optional[ProjectionType],
-        max_time_ms: Optional[int],
-        overall_max_time_ms: Optional[int],
+        filter: dict[str, Any] | None,
+        projection: ProjectionType | None,
+        max_time_ms: int | None,
+        overall_max_time_ms: int | None,
     ) -> None:
         self._collection: Collection = collection
         self._filter = filter
@@ -593,17 +590,17 @@ class Cursor(BaseCursor):
             self._max_time_ms = min(max_time_ms, overall_max_time_ms)
         else:
             self._max_time_ms = max_time_ms
-        self._limit: Optional[int] = None
-        self._skip: Optional[int] = None
-        self._include_similarity: Optional[bool] = None
-        self._include_sort_vector: Optional[bool] = None
-        self._sort: Optional[Dict[str, Any]] = None
+        self._limit: int | None = None
+        self._skip: int | None = None
+        self._include_similarity: bool | None = None
+        self._include_sort_vector: bool | None = None
+        self._sort: dict[str, Any] | None = None
         self._started = False
         self._retrieved = 0
         self._alive = True
         #
-        self._iterator: Optional[_LookAheadIterator] = None
-        self._api_response_status: Optional[Dict[str, Any]] = None
+        self._iterator: _LookAheadIterator | None = None
+        self._api_response_status: dict[str, Any] | None = None
 
     def __iter__(self) -> Cursor:
         self._ensure_alive()
@@ -637,7 +634,7 @@ class Cursor(BaseCursor):
             self._alive = False
             raise
 
-    def get_sort_vector(self) -> Optional[List[float]]:
+    def get_sort_vector(self) -> list[float] | None:
         """
         Return the vector used in this ANN search, if applicable.
         If this is not an ANN search, or it was invoked without the
@@ -694,7 +691,7 @@ class Cursor(BaseCursor):
         }
 
         def _find_iterator() -> Iterator[DocumentType]:
-            next_page_state: Optional[str] = None
+            next_page_state: str | None = None
             #
             resp_0 = self._collection.command(
                 body=f0_payload,
@@ -761,7 +758,7 @@ class Cursor(BaseCursor):
 
         return self._collection
 
-    def distinct(self, key: str, max_time_ms: Optional[int] = None) -> List[Any]:
+    def distinct(self, key: str, max_time_ms: int | None = None) -> list[Any]:
         """
         Compute a list of unique values for a specific field across all
         documents the cursor iterates through.
@@ -859,10 +856,10 @@ class AsyncCursor(BaseCursor):
     def __init__(
         self,
         collection: AsyncCollection,
-        filter: Optional[Dict[str, Any]],
-        projection: Optional[ProjectionType],
-        max_time_ms: Optional[int],
-        overall_max_time_ms: Optional[int],
+        filter: dict[str, Any] | None,
+        projection: ProjectionType | None,
+        max_time_ms: int | None,
+        overall_max_time_ms: int | None,
     ) -> None:
         self._collection: AsyncCollection = collection
         self._filter = filter
@@ -872,17 +869,17 @@ class AsyncCursor(BaseCursor):
             self._max_time_ms = min(max_time_ms, overall_max_time_ms)
         else:
             self._max_time_ms = max_time_ms
-        self._limit: Optional[int] = None
-        self._skip: Optional[int] = None
-        self._include_similarity: Optional[bool] = None
-        self._include_sort_vector: Optional[bool] = None
-        self._sort: Optional[Dict[str, Any]] = None
+        self._limit: int | None = None
+        self._skip: int | None = None
+        self._include_similarity: bool | None = None
+        self._include_sort_vector: bool | None = None
+        self._sort: dict[str, Any] | None = None
         self._started = False
         self._retrieved = 0
         self._alive = True
         #
-        self._iterator: Optional[_AsyncLookAheadIterator] = None
-        self._api_response_status: Optional[Dict[str, Any]] = None
+        self._iterator: _AsyncLookAheadIterator | None = None
+        self._api_response_status: dict[str, Any] | None = None
 
     def __aiter__(self) -> AsyncCursor:
         self._ensure_alive()
@@ -916,7 +913,7 @@ class AsyncCursor(BaseCursor):
             self._alive = False
             raise
 
-    async def get_sort_vector(self) -> Optional[List[float]]:
+    async def get_sort_vector(self) -> list[float] | None:
         """
         Return the vector used in this ANN search, if applicable.
         If this is not an ANN search, or it was invoked without the
@@ -1033,12 +1030,12 @@ class AsyncCursor(BaseCursor):
     def _to_sync(
         self: AsyncCursor,
         *,
-        limit: Optional[int] = None,
-        skip: Optional[int] = None,
-        include_similarity: Optional[bool] = None,
-        include_sort_vector: Optional[bool] = None,
-        started: Optional[bool] = None,
-        sort: Optional[Dict[str, Any]] = None,
+        limit: int | None = None,
+        skip: int | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        started: bool | None = None,
+        sort: dict[str, Any] | None = None,
     ) -> Cursor:
         new_cursor = Cursor(
             collection=self._collection.to_sync(),
@@ -1078,7 +1075,7 @@ class AsyncCursor(BaseCursor):
 
         return self._collection
 
-    async def distinct(self, key: str, max_time_ms: Optional[int] = None) -> List[Any]:
+    async def distinct(self, key: str, max_time_ms: int | None = None) -> list[Any]:
         """
         Compute a list of unique values for a specific field across all
         documents the cursor iterates through.
@@ -1141,7 +1138,7 @@ class CommandCursor(Generic[T]):
     (such as the database `list_collections` method).
     """
 
-    def __init__(self, address: str, items: List[T]) -> None:
+    def __init__(self, address: str, items: list[T]) -> None:
         self._address = address
         self.items = items
         self.iterable = items.__iter__()
@@ -1224,7 +1221,7 @@ class AsyncCommandCursor(Generic[T]):
     (such as the database `list_collections` method).
     """
 
-    def __init__(self, address: str, items: List[T]) -> None:
+    def __init__(self, address: str, items: list[T]) -> None:
         self._address = address
         self.items = items
         self.iterable = items.__iter__()

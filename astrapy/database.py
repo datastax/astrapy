@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import warnings
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type, Union
+from typing import TYPE_CHECKING, Any
 
 import deprecation
 
@@ -63,13 +63,13 @@ logger = logging.getLogger(__name__)
 
 
 def _normalize_create_collection_options(
-    dimension: Optional[int],
-    metric: Optional[str],
-    service: Optional[Union[CollectionVectorServiceOptions, Dict[str, Any]]],
-    indexing: Optional[Dict[str, Any]],
-    default_id_type: Optional[str],
-    additional_options: Optional[Dict[str, Any]],
-) -> Dict[str, Any]:
+    dimension: int | None,
+    metric: str | None,
+    service: CollectionVectorServiceOptions | dict[str, Any] | None,
+    indexing: dict[str, Any] | None,
+    default_id_type: str | None,
+    additional_options: dict[str, Any] | None,
+) -> dict[str, Any]:
     """Raise errors related to invalid input, and return a ready-to-send payload."""
     is_vector: bool
     if service is not None or dimension is not None:
@@ -82,7 +82,7 @@ def _normalize_create_collection_options(
             "create_collection method."
         )
     # prepare the payload
-    service_dict: Optional[Dict[str, Any]]
+    service_dict: dict[str, Any] | None
     if service is not None:
         service_dict = service if isinstance(service, dict) else service.as_dict()
     else:
@@ -172,15 +172,15 @@ class Database:
     def __init__(
         self,
         api_endpoint: str,
-        token: Optional[Union[str, TokenProvider]] = None,
+        token: str | TokenProvider | None = None,
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        environment: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        environment: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
     ) -> None:
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
@@ -188,8 +188,8 @@ class Database:
         )
         self.environment = (environment or Environment.PROD).lower()
         #
-        _api_path: Optional[str]
-        _api_version: Optional[str]
+        _api_path: str | None
+        _api_version: str | None
         if api_path is None:
             _api_path = API_PATH_ENV_MAP[self.environment]
         else:
@@ -204,7 +204,7 @@ class Database:
         self.api_version = _api_version
 
         # enforce defaults if on Astra DB:
-        self._using_keyspace: Optional[str]
+        self._using_keyspace: str | None
         if keyspace_param is None and self.environment in Environment.astra_db_values:
             self._using_keyspace = DEFAULT_ASTRA_DB_KEYSPACE
         else:
@@ -217,7 +217,7 @@ class Database:
         self.caller_name = caller_name
         self.caller_version = caller_version
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
-        self._name: Optional[str] = None
+        self._name: str | None = None
 
     def __getattr__(self, collection_name: str) -> Collection:
         return self.get_collection(name=collection_name)
@@ -227,12 +227,12 @@ class Database:
 
     def __repr__(self) -> str:
         ep_desc = f'api_endpoint="{self.api_endpoint}"'
-        token_desc: Optional[str]
+        token_desc: str | None
         if self.token_provider:
             token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
         else:
             token_desc = None
-        keyspace_desc: Optional[str]
+        keyspace_desc: str | None
         if self.keyspace is None:
             keyspace_desc = "keyspace not set"
         else:
@@ -257,7 +257,7 @@ class Database:
         else:
             return False
 
-    def _get_api_commander(self, keyspace: Optional[str]) -> Optional[APICommander]:
+    def _get_api_commander(self, keyspace: str | None) -> APICommander | None:
         """
         Instantiate a new APICommander based on the properties of this class
         and a provided keyspace.
@@ -286,12 +286,12 @@ class Database:
             )
             return api_commander
 
-    def _get_driver_commander(self, keyspace: Optional[str]) -> APICommander:
+    def _get_driver_commander(self, keyspace: str | None) -> APICommander:
         """
         Building on _get_api_commander, fall back to class keyspace in
         creating/returning a commander, and in any case raise an error if not set.
         """
-        driver_commander: Optional[APICommander]
+        driver_commander: APICommander | None
         if keyspace:
             driver_commander = self._get_api_commander(keyspace=keyspace)
         else:
@@ -306,15 +306,15 @@ class Database:
     def _copy(
         self,
         *,
-        api_endpoint: Optional[str] = None,
-        token: Optional[Union[str, TokenProvider]] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        environment: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
+        api_endpoint: str | None = None,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        environment: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
     ) -> Database:
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
@@ -334,10 +334,10 @@ class Database:
     def with_options(
         self,
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> Database:
         """
         Create a clone of this database with some changed attributes.
@@ -375,15 +375,15 @@ class Database:
     def to_async(
         self,
         *,
-        api_endpoint: Optional[str] = None,
-        token: Optional[Union[str, TokenProvider]] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        environment: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
+        api_endpoint: str | None = None,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        environment: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
     ) -> AsyncDatabase:
         """
         Create an AsyncDatabase from this one. Save for the arguments
@@ -436,8 +436,8 @@ class Database:
 
     def set_caller(
         self,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         """
         Set a new identity for the application/framework on behalf of which
@@ -583,7 +583,7 @@ class Database:
         return self._name
 
     @property
-    def namespace(self) -> Optional[str]:
+    def namespace(self) -> str | None:
         """
         The namespace this database uses as target for all commands when
         no method-call-specific namespace is specified.
@@ -609,7 +609,7 @@ class Database:
         return self.keyspace
 
     @property
-    def keyspace(self) -> Optional[str]:
+    def keyspace(self) -> str | None:
         """
         The keyspace this database uses as target for all commands when
         no method-call-specific keyspace is specified.
@@ -628,10 +628,10 @@ class Database:
         self,
         name: str,
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
-        collection_max_time_ms: Optional[int] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | None = None,
+        collection_max_time_ms: int | None = None,
     ) -> Collection:
         """
         Spawn a `Collection` object instance representing a collection
@@ -711,18 +711,18 @@ class Database:
         self,
         name: str,
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        dimension: Optional[int] = None,
-        metric: Optional[str] = None,
-        service: Optional[Union[CollectionVectorServiceOptions, Dict[str, Any]]] = None,
-        indexing: Optional[Dict[str, Any]] = None,
-        default_id_type: Optional[str] = None,
-        additional_options: Optional[Dict[str, Any]] = None,
-        check_exists: Optional[bool] = None,
-        max_time_ms: Optional[int] = None,
-        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
-        collection_max_time_ms: Optional[int] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        dimension: int | None = None,
+        metric: str | None = None,
+        service: CollectionVectorServiceOptions | dict[str, Any] | None = None,
+        indexing: dict[str, Any] | None = None,
+        default_id_type: str | None = None,
+        additional_options: dict[str, Any] | None = None,
+        check_exists: bool | None = None,
+        max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | None = None,
+        collection_max_time_ms: int | None = None,
     ) -> Collection:
         """
         Creates a collection on the database and return the Collection
@@ -852,10 +852,10 @@ class Database:
 
     def drop_collection(
         self,
-        name_or_collection: Union[str, Collection],
+        name_or_collection: str | Collection,
         *,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Drop a collection from the database, along with all documents therein.
 
@@ -883,7 +883,7 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.collection import Collection
 
-        _keyspace: Optional[str]
+        _keyspace: str | None
         _collection_name: str
         if isinstance(name_or_collection, Collection):
             _keyspace = name_or_collection.keyspace
@@ -904,9 +904,9 @@ class Database:
     def list_collections(
         self,
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        max_time_ms: Optional[int] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        max_time_ms: int | None = None,
     ) -> CommandCursor[CollectionDescriptor]:
         """
         List all collections in a given keyspace for this database.
@@ -964,10 +964,10 @@ class Database:
     def list_collection_names(
         self,
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        max_time_ms: Optional[int] = None,
-    ) -> List[str]:
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        max_time_ms: int | None = None,
+    ) -> list[str]:
         """
         List the names of all collections in a given keyspace of this database.
 
@@ -991,7 +991,7 @@ class Database:
         )
 
         driver_commander = self._get_driver_commander(keyspace=keyspace_param)
-        gc_payload: Dict[str, Any] = {"findCollections": {}}
+        gc_payload: dict[str, Any] = {"findCollections": {}}
         logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
@@ -1009,14 +1009,14 @@ class Database:
 
     def command(
         self,
-        body: Dict[str, Any],
+        body: dict[str, Any],
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        collection_name: Optional[str] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        collection_name: str | None = None,
         raise_api_errors: bool = True,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Send a POST request to the Data API for this database with
         an arbitrary, caller-provided payload.
@@ -1080,9 +1080,9 @@ class Database:
     def get_database_admin(
         self,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        dev_ops_url: Optional[str] = None,
-        dev_ops_api_version: Optional[str] = None,
+        token: str | TokenProvider | None = None,
+        dev_ops_url: str | None = None,
+        dev_ops_api_version: str | None = None,
     ) -> DatabaseAdmin:
         """
         Return a DatabaseAdmin object corresponding to this database, for
@@ -1207,15 +1207,15 @@ class AsyncDatabase:
     def __init__(
         self,
         api_endpoint: str,
-        token: Optional[Union[str, TokenProvider]] = None,
+        token: str | TokenProvider | None = None,
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        environment: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        environment: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
     ) -> None:
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
@@ -1223,8 +1223,8 @@ class AsyncDatabase:
         )
         self.environment = (environment or Environment.PROD).lower()
         #
-        _api_path: Optional[str]
-        _api_version: Optional[str]
+        _api_path: str | None
+        _api_version: str | None
         if api_path is None:
             _api_path = API_PATH_ENV_MAP[self.environment]
         else:
@@ -1239,7 +1239,7 @@ class AsyncDatabase:
         self.api_version = _api_version
 
         # enforce defaults if on Astra DB:
-        self._using_keyspace: Optional[str]
+        self._using_keyspace: str | None
         if keyspace_param is None and self.environment in Environment.astra_db_values:
             self._using_keyspace = DEFAULT_ASTRA_DB_KEYSPACE
         else:
@@ -1252,7 +1252,7 @@ class AsyncDatabase:
         self.caller_name = caller_name
         self.caller_version = caller_version
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
-        self._name: Optional[str] = None
+        self._name: str | None = None
 
     def __getattr__(self, collection_name: str) -> AsyncCollection:
         return self.to_sync().get_collection(name=collection_name).to_async()
@@ -1262,12 +1262,12 @@ class AsyncDatabase:
 
     def __repr__(self) -> str:
         ep_desc = f'api_endpoint="{self.api_endpoint}"'
-        token_desc: Optional[str]
+        token_desc: str | None
         if self.token_provider:
             token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
         else:
             token_desc = None
-        keyspace_desc: Optional[str]
+        keyspace_desc: str | None
         if self.keyspace is None:
             keyspace_desc = "keyspace not set"
         else:
@@ -1292,7 +1292,7 @@ class AsyncDatabase:
         else:
             return False
 
-    def _get_api_commander(self, keyspace: Optional[str]) -> Optional[APICommander]:
+    def _get_api_commander(self, keyspace: str | None) -> APICommander | None:
         """
         Instantiate a new APICommander based on the properties of this class
         and a provided keyspace.
@@ -1321,12 +1321,12 @@ class AsyncDatabase:
             )
             return api_commander
 
-    def _get_driver_commander(self, keyspace: Optional[str]) -> APICommander:
+    def _get_driver_commander(self, keyspace: str | None) -> APICommander:
         """
         Building on _get_api_commander, fall back to class keyspace in
         creating/returning a commander, and in any case raise an error if not set.
         """
-        driver_commander: Optional[APICommander]
+        driver_commander: APICommander | None
         if keyspace:
             driver_commander = self._get_api_commander(keyspace=keyspace)
         else:
@@ -1343,9 +1343,9 @@ class AsyncDatabase:
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]] = None,
-        exc_value: Optional[BaseException] = None,
-        traceback: Optional[TracebackType] = None,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
     ) -> None:
         if self._api_commander is not None:
             await self._api_commander.__aexit__(
@@ -1357,15 +1357,15 @@ class AsyncDatabase:
     def _copy(
         self,
         *,
-        api_endpoint: Optional[str] = None,
-        token: Optional[Union[str, TokenProvider]] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        environment: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
+        api_endpoint: str | None = None,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        environment: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
     ) -> AsyncDatabase:
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
@@ -1385,10 +1385,10 @@ class AsyncDatabase:
     def with_options(
         self,
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> AsyncDatabase:
         """
         Create a clone of this database with some changed attributes.
@@ -1427,15 +1427,15 @@ class AsyncDatabase:
     def to_sync(
         self,
         *,
-        api_endpoint: Optional[str] = None,
-        token: Optional[Union[str, TokenProvider]] = None,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
-        environment: Optional[str] = None,
-        api_path: Optional[str] = None,
-        api_version: Optional[str] = None,
+        api_endpoint: str | None = None,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
+        environment: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
     ) -> Database:
         """
         Create a (synchronous) Database from this one. Save for the arguments
@@ -1489,8 +1489,8 @@ class AsyncDatabase:
 
     def set_caller(
         self,
-        caller_name: Optional[str] = None,
-        caller_version: Optional[str] = None,
+        caller_name: str | None = None,
+        caller_version: str | None = None,
     ) -> None:
         """
         Set a new identity for the application/framework on behalf of which
@@ -1636,7 +1636,7 @@ class AsyncDatabase:
         return self._name
 
     @property
-    def namespace(self) -> Optional[str]:
+    def namespace(self) -> str | None:
         """
         The namespace this database uses as target for all commands when
         no method-call-specific namespace is specified.
@@ -1662,7 +1662,7 @@ class AsyncDatabase:
         return self.keyspace
 
     @property
-    def keyspace(self) -> Optional[str]:
+    def keyspace(self) -> str | None:
         """
         The keyspace this database uses as target for all commands when
         no method-call-specific keyspace is specified.
@@ -1681,10 +1681,10 @@ class AsyncDatabase:
         self,
         name: str,
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
-        collection_max_time_ms: Optional[int] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | None = None,
+        collection_max_time_ms: int | None = None,
     ) -> AsyncCollection:
         """
         Spawn an `AsyncCollection` object instance representing a collection
@@ -1767,18 +1767,18 @@ class AsyncDatabase:
         self,
         name: str,
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        dimension: Optional[int] = None,
-        metric: Optional[str] = None,
-        service: Optional[Union[CollectionVectorServiceOptions, Dict[str, Any]]] = None,
-        indexing: Optional[Dict[str, Any]] = None,
-        default_id_type: Optional[str] = None,
-        additional_options: Optional[Dict[str, Any]] = None,
-        check_exists: Optional[bool] = None,
-        max_time_ms: Optional[int] = None,
-        embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]] = None,
-        collection_max_time_ms: Optional[int] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        dimension: int | None = None,
+        metric: str | None = None,
+        service: CollectionVectorServiceOptions | dict[str, Any] | None = None,
+        indexing: dict[str, Any] | None = None,
+        default_id_type: str | None = None,
+        additional_options: dict[str, Any] | None = None,
+        check_exists: bool | None = None,
+        max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | None = None,
+        collection_max_time_ms: int | None = None,
     ) -> AsyncCollection:
         """
         Creates a collection on the database and return the AsyncCollection
@@ -1911,10 +1911,10 @@ class AsyncDatabase:
 
     async def drop_collection(
         self,
-        name_or_collection: Union[str, AsyncCollection],
+        name_or_collection: str | AsyncCollection,
         *,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Drop a collection from the database, along with all documents therein.
 
@@ -1942,7 +1942,7 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.collection import AsyncCollection
 
-        keyspace: Optional[str]
+        keyspace: str | None
         _collection_name: str
         if isinstance(name_or_collection, AsyncCollection):
             keyspace = name_or_collection.keyspace
@@ -1963,9 +1963,9 @@ class AsyncDatabase:
     def list_collections(
         self,
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        max_time_ms: Optional[int] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        max_time_ms: int | None = None,
     ) -> AsyncCommandCursor[CollectionDescriptor]:
         """
         List all collections in a given keyspace for this database.
@@ -2025,10 +2025,10 @@ class AsyncDatabase:
     async def list_collection_names(
         self,
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        max_time_ms: Optional[int] = None,
-    ) -> List[str]:
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        max_time_ms: int | None = None,
+    ) -> list[str]:
         """
         List the names of all collections in a given keyspace of this database.
 
@@ -2052,7 +2052,7 @@ class AsyncDatabase:
         )
 
         driver_commander = self._get_driver_commander(keyspace=keyspace_param)
-        gc_payload: Dict[str, Any] = {"findCollections": {}}
+        gc_payload: dict[str, Any] = {"findCollections": {}}
         logger.info("findCollections")
         gc_response = await driver_commander.async_request(
             payload=gc_payload,
@@ -2070,14 +2070,14 @@ class AsyncDatabase:
 
     async def command(
         self,
-        body: Dict[str, Any],
+        body: dict[str, Any],
         *,
-        keyspace: Optional[str] = None,
-        namespace: Optional[str] = None,
-        collection_name: Optional[str] = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        collection_name: str | None = None,
         raise_api_errors: bool = True,
-        max_time_ms: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
         """
         Send a POST request to the Data API for this database with
         an arbitrary, caller-provided payload.
@@ -2145,9 +2145,9 @@ class AsyncDatabase:
     def get_database_admin(
         self,
         *,
-        token: Optional[Union[str, TokenProvider]] = None,
-        dev_ops_url: Optional[str] = None,
-        dev_ops_api_version: Optional[str] = None,
+        token: str | TokenProvider | None = None,
+        dev_ops_url: str | None = None,
+        dev_ops_api_version: str | None = None,
     ) -> DatabaseAdmin:
         """
         Return a DatabaseAdmin object corresponding to this database, for

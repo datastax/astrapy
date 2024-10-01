@@ -35,7 +35,7 @@ from ..conftest import (
 logger = logging.getLogger(__name__)
 
 
-def find_new_name(existing: List[str], prefix: str) -> str:
+def find_new_name(existing: list[str], prefix: str) -> str:
     candidate_name = prefix
     for idx in itertools.count():
         candidate_name = f"{prefix}{idx}"

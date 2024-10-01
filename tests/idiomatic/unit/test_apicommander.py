@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Optional
 
 import pytest
 from pytest_httpserver import HTTPServer
@@ -82,7 +81,7 @@ class TestAPICommander:
             callers=[("cn", "cv")],
         )
 
-        def hv_matcher(hk: str, hv: Optional[str], ev: str) -> bool:
+        def hv_matcher(hk: str, hv: str | None, ev: str) -> bool:
             if hk == "v":
                 return hv == ev
             elif hk.lower() == "user-agent":
@@ -130,7 +129,7 @@ class TestAPICommander:
             callers=[("cn", "cv")],
         )
 
-        def hv_matcher(hk: str, hv: Optional[str], ev: str) -> bool:
+        def hv_matcher(hk: str, hv: str | None, ev: str) -> bool:
             if hk == "v":
                 return hv == ev
             elif hk.lower() == "user-agent":

@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import base64
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 from astrapy.defaults import (
     EMBEDDING_HEADER_API_KEY,
@@ -28,7 +28,7 @@ from astrapy.defaults import (
 )
 
 
-def coerce_token_provider(token: Optional[Union[str, TokenProvider]]) -> TokenProvider:
+def coerce_token_provider(token: str | TokenProvider | None) -> TokenProvider:
     if isinstance(token, TokenProvider):
         return token
     else:
@@ -36,7 +36,7 @@ def coerce_token_provider(token: Optional[Union[str, TokenProvider]]) -> TokenPr
 
 
 def coerce_embedding_headers_provider(
-    embedding_api_key: Optional[Union[str, EmbeddingHeadersProvider]],
+    embedding_api_key: str | EmbeddingHeadersProvider | None,
 ) -> EmbeddingHeadersProvider:
     if isinstance(embedding_api_key, EmbeddingHeadersProvider):
         return embedding_api_key
@@ -121,7 +121,7 @@ class TokenProvider(ABC):
         return self.get_token() is not None
 
     @abstractmethod
-    def get_token(self) -> Union[str, None]:
+    def get_token(self) -> str | None:
         """
         Produce a string for direct use as token in a subsequent API request,
         or None for no token.
@@ -146,7 +146,7 @@ class StaticTokenProvider(TokenProvider):
         ... )
     """
 
-    def __init__(self, token: Union[str, None]) -> None:
+    def __init__(self, token: str | None) -> None:
         self.token = token
 
     def __repr__(self) -> str:
@@ -155,7 +155,7 @@ class StaticTokenProvider(TokenProvider):
         else:
             return self.token
 
-    def get_token(self) -> Union[str, None]:
+    def get_token(self) -> str | None:
         return self.token
 
 
@@ -230,7 +230,7 @@ class EmbeddingHeadersProvider(ABC):
         return self.get_headers() != {}
 
     @abstractmethod
-    def get_headers(self) -> Dict[str, str]:
+    def get_headers(self) -> dict[str, str]:
         """
         Produce a dictionary for use as (part of) the headers in HTTP requests
         to the Data API.
@@ -277,7 +277,7 @@ class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
         ... )
     """
 
-    def __init__(self, embedding_api_key: Optional[str]) -> None:
+    def __init__(self, embedding_api_key: str | None) -> None:
         self.embedding_api_key = embedding_api_key
 
     def __repr__(self) -> str:
@@ -286,7 +286,7 @@ class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
         else:
             return f'{self.__class__.__name__}("{redact_secret(self.embedding_api_key, 8)}")'
 
-    def get_headers(self) -> Dict[str, str]:
+    def get_headers(self) -> dict[str, str]:
         if self.embedding_api_key is not None:
             return {EMBEDDING_HEADER_API_KEY: self.embedding_api_key}
         else:
@@ -347,7 +347,7 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
             f'embedding_secret_id="{redact_secret(self.embedding_secret_id, 6)}")'
         )
 
-    def get_headers(self) -> Dict[str, str]:
+    def get_headers(self) -> dict[str, str]:
         return {
             EMBEDDING_HEADER_AWS_ACCESS_ID: self.embedding_access_id,
             EMBEDDING_HEADER_AWS_SECRET_ID: self.embedding_secret_id,
