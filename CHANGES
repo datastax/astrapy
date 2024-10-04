@@ -3,6 +3,8 @@ master
 Admins: resilience against DevOps API omitting keyspace/keyspaces if none is found
 Consistent handling of deletedCount=-1 from the API (always returned as-is)
 Deprecation of all `set_caller` (=> to be set at constructor-time) (removal in 2.0)
+Callers and user-agent string:
+    - remove RAGStack automatic detection
 Repo housekeeping
     - using ruff for imports and formatting (instead of isort+black) by @cbornet
     - add ruff rules UP(pyupgrade)

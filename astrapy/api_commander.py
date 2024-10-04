@@ -46,7 +46,6 @@ from astrapy.transform_payload import normalize_for_api, restore_from_api
 from astrapy.user_agents import (
     compose_full_user_agent,
     detect_astrapy_user_agent,
-    detect_ragstack_user_agent,
 )
 
 if TYPE_CHECKING:
@@ -54,7 +53,6 @@ if TYPE_CHECKING:
 
 
 user_agent_astrapy = detect_astrapy_user_agent()
-user_agent_ragstack = detect_ragstack_user_agent()
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +96,7 @@ class APICommander:
         self._api_description = "DevOps API" if self.dev_ops_api else "Data API"
 
         full_user_agent_string = compose_full_user_agent(
-            [user_agent_ragstack] + self.callers + [user_agent_astrapy]
+            self.callers + [user_agent_astrapy]
         )
         self.caller_header: dict[str, str] = (
             {"User-Agent": full_user_agent_string} if full_user_agent_string else {}
