@@ -1,5 +1,6 @@
 master
 ======
+Admins: resilience against DevOps API omitting keyspace/keyspaces if none is found
 Repo housekeeping
     - using ruff for imports and formatting (instead of isort+black) by @cbornet
     - add ruff rules UP(pyupgrade)
