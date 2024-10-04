@@ -18,6 +18,9 @@ import logging
 import re
 from typing import TYPE_CHECKING, Any
 
+import deprecation
+
+from astrapy import __version__
 from astrapy.admin import (
     api_endpoint_parser,
     api_endpoint_parsing_error_message,
@@ -31,6 +34,7 @@ from astrapy.admin import (
 )
 from astrapy.authentication import coerce_token_provider, redact_secret
 from astrapy.constants import Environment
+from astrapy.defaults import SET_CALLER_DEPRECATION_NOTICE
 from astrapy.meta import check_namespace_keyspace
 
 if TYPE_CHECKING:
@@ -187,6 +191,12 @@ class DataAPIClient:
             caller_version=caller_version,
         )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.1",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=SET_CALLER_DEPRECATION_NOTICE,
+    )
     def set_caller(
         self,
         caller_name: str | None = None,

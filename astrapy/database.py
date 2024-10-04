@@ -38,6 +38,7 @@ from astrapy.defaults import (
     DEFAULT_ASTRA_DB_KEYSPACE,
     DEFAULT_DATA_API_AUTH_HEADER,
     NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    SET_CALLER_DEPRECATION_NOTICE,
 )
 from astrapy.exceptions import (
     CollectionAlreadyExistsException,
@@ -434,6 +435,12 @@ class Database:
             api_version=api_version or self.api_version,
         )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.1",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=SET_CALLER_DEPRECATION_NOTICE,
+    )
     def set_caller(
         self,
         caller_name: str | None = None,
@@ -1487,6 +1494,12 @@ class AsyncDatabase:
             api_version=api_version or self.api_version,
         )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.1",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=SET_CALLER_DEPRECATION_NOTICE,
+    )
     def set_caller(
         self,
         caller_name: str | None = None,

@@ -60,6 +60,7 @@ class TestDatabasesSync:
         assert db1 == db1.with_options()
         assert db1 == db1.to_async().to_sync()
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of Database rich _copy, sync")
     def test_rich_copy_database_sync(
         self,
@@ -115,6 +116,7 @@ class TestDatabasesSync:
             == db1
         )
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of Database rich conversions, sync")
     def test_rich_convert_database_sync(
         self,
@@ -160,6 +162,7 @@ class TestDatabasesSync:
         )
         assert db3 == db1
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of Database set_caller, sync")
     def test_database_set_caller_sync(
         self,
@@ -203,6 +206,7 @@ class TestDatabasesSync:
         )
         assert collection_ks2.database.keyspace == NAMESPACE_2
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test database conversions with caller mutableness, sync")
     def test_database_conversions_caller_mutableness_sync(
         self,

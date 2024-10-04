@@ -24,6 +24,7 @@ from astrapy.exceptions import DevOpsAPIException
 from ..conftest import (
     TEST_COLLECTION_INSTANCE_NAME,
     DataAPICredentials,
+    async_fail_if_not_removed,
     sync_fail_if_not_removed,
 )
 
@@ -60,6 +61,7 @@ class TestDatabasesAsync:
         assert db1 == db1.with_options()
         assert db1 == db1.to_sync().to_async()
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of Database rich _copy, async")
     async def test_rich_copy_database_async(
         self,
@@ -115,6 +117,7 @@ class TestDatabasesAsync:
             == db1
         )
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of Database rich conversions, async")
     async def test_rich_convert_database_async(
         self,
@@ -160,6 +163,7 @@ class TestDatabasesAsync:
         )
         assert db3 == db1
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of Database set_caller, async")
     async def test_database_set_caller_async(
         self,
@@ -202,6 +206,7 @@ class TestDatabasesAsync:
         )
         assert collection_ks2.database.keyspace == NAMESPACE_2
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test database conversions with caller mutableness, async")
     async def test_database_conversions_caller_mutableness_async(
         self,

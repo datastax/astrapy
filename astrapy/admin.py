@@ -49,6 +49,7 @@ from astrapy.defaults import (
     DEV_OPS_URL_ENV_MAP,
     DEV_OPS_VERSION_ENV_MAP,
     NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    SET_CALLER_DEPRECATION_NOTICE,
 )
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
@@ -693,6 +694,12 @@ class AstraDBAdmin:
             caller_version=caller_version,
         )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.1",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=SET_CALLER_DEPRECATION_NOTICE,
+    )
     def set_caller(
         self,
         caller_name: str | None = None,
@@ -1942,6 +1949,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             caller_version=caller_version,
         )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.1",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=SET_CALLER_DEPRECATION_NOTICE,
+    )
     def set_caller(
         self,
         caller_name: str | None = None,
@@ -3356,6 +3369,12 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             caller_version=caller_version,
         )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.1",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=SET_CALLER_DEPRECATION_NOTICE,
+    )
     def set_caller(
         self,
         caller_name: str | None = None,

@@ -60,6 +60,7 @@ class TestCollectionsAsync:
         assert col1 == col1.with_options()
         assert col1 == col1.to_sync().to_async()
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of Collection rich _copy, async")
     async def test_rich_copy_collection_async(
         self,
@@ -111,6 +112,7 @@ class TestCollectionsAsync:
             == col1
         )
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of Collection rich conversions, async")
     async def test_rich_convert_collection_async(
         self,
@@ -172,6 +174,7 @@ class TestCollectionsAsync:
         col1 = AsyncCollection(db1, "coll")
         assert col1.name == "coll"
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test of Collection set_caller, async")
     async def test_collection_set_caller_async(
         self,
@@ -195,6 +198,7 @@ class TestCollectionsAsync:
         )
         assert col1 == col2
 
+    @async_fail_if_not_removed
     @pytest.mark.describe("test collection conversions with caller mutableness, async")
     async def test_collection_conversions_caller_mutableness_async(
         self,

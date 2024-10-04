@@ -28,8 +28,11 @@ from astrapy import (
 from astrapy.authentication import StaticTokenProvider, UsernamePasswordTokenProvider
 from astrapy.constants import Environment
 
+from ..conftest import sync_fail_if_not_removed
+
 
 class TestAdminConversions:
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of DataAPIClient conversions and comparison functions")
     def test_dataapiclient_conversions(self) -> None:
         dac1 = DataAPIClient(
@@ -108,6 +111,7 @@ class TestAdminConversions:
         with pytest.raises(ValueError):
             client.get_database(endpoint, region=database_region)
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of AstraDBAdmin conversions and comparison functions")
     def test_astradbadmin_conversions(self) -> None:
         adm1 = AstraDBAdmin(
@@ -160,6 +164,7 @@ class TestAdminConversions:
         adm1b.set_caller("cn", "cv")
         assert adm1b == adm1
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe(
         "test of AstraDBDatabaseAdmin conversions and comparison functions"
     )
@@ -238,6 +243,7 @@ class TestAdminConversions:
         adda1b.set_caller("cn", "cv")
         assert adda1b == adda1
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe(
         "test of DataAPIDBDatabaseAdmin conversions and comparison functions"
     )

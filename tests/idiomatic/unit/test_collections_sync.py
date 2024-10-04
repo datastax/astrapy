@@ -60,6 +60,7 @@ class TestCollectionsSync:
         assert col1 == col1.with_options()
         assert col1 == col1.to_async().to_sync()
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of Collection rich _copy, sync")
     def test_rich_copy_collection_sync(
         self,
@@ -111,6 +112,7 @@ class TestCollectionsSync:
             == col1
         )
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of Collection rich conversions, sync")
     def test_rich_convert_collection_sync(
         self,
@@ -172,6 +174,7 @@ class TestCollectionsSync:
         col1 = Collection(db1, "coll")
         assert col1.name == "coll"
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test of Collection set_caller, sync")
     def test_collection_set_caller_sync(
         self,
@@ -195,6 +198,7 @@ class TestCollectionsSync:
         )
         assert col1 == col2
 
+    @sync_fail_if_not_removed
     @pytest.mark.describe("test collection conversions with caller mutableness, sync")
     def test_collection_conversions_caller_mutableness_sync(
         self,
