@@ -335,7 +335,9 @@ def fetch_database_info(
             max_time_ms=max_time_ms,
         )
         raw_info = gd_response["info"]
-        if keyspace_param is not None and keyspace_param not in raw_info["keyspaces"]:
+        if keyspace_param is not None and keyspace_param not in (
+            raw_info.get("keyspaces") or []
+        ):
             raise DevOpsAPIException(f"Keyspace {keyspace_param} not found on DB.")
         else:
             return DatabaseInfo(
@@ -390,7 +392,9 @@ async def async_fetch_database_info(
             max_time_ms=max_time_ms,
         )
         raw_info = gd_response["info"]
-        if keyspace_param is not None and keyspace_param not in raw_info["keyspaces"]:
+        if keyspace_param is not None and keyspace_param not in (
+            raw_info.get("keyspaces") or []
+        ):
             raise DevOpsAPIException(f"Keyspace {keyspace_param} not found on DB.")
         else:
             return DatabaseInfo(
@@ -415,8 +419,8 @@ def _recast_as_admin_database_info(
         info=DatabaseInfo(
             id=admin_database_info_dict["id"],
             region=admin_database_info_dict["info"]["region"],
-            keyspace=admin_database_info_dict["info"]["keyspace"],
-            namespace=admin_database_info_dict["info"]["keyspace"],
+            keyspace=admin_database_info_dict["info"].get("keyspace"),
+            namespace=admin_database_info_dict["info"].get("keyspace"),
             name=admin_database_info_dict["info"]["name"],
             environment=environment,
             raw_info=admin_database_info_dict["info"],
@@ -2212,7 +2216,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         if info.raw_info is None:
             raise DevOpsAPIException("Could not get the keyspace list.")
         else:
-            return info.raw_info.get("info", {}).get("keyspaces", [])  # type: ignore[no-any-return]
+            return info.raw_info.get("info", {}).get("keyspaces") or []
 
     @deprecation.deprecated(  # type: ignore[misc]
         deprecated_in="1.5.0",
@@ -2282,7 +2286,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         if info.raw_info is None:
             raise DevOpsAPIException("Could not get the keyspace list.")
         else:
-            return info.raw_info.get("info", {}).get("keyspaces", [])  # type: ignore[no-any-return]
+            return info.raw_info.get("info", {}).get("keyspaces") or []
 
     @deprecation.deprecated(  # type: ignore[misc]
         deprecated_in="1.5.0",
