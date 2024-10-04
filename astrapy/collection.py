@@ -2368,17 +2368,10 @@ class Collection:
         logger.info(f"finished deleteOne on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
-            if deleted_count == -1:
-                return DeleteResult(
-                    deleted_count=None,
-                    raw_results=[do_response],
-                )
-            else:
-                # expected a non-negative integer:
-                return DeleteResult(
-                    deleted_count=deleted_count,
-                    raw_results=[do_response],
-                )
+            return DeleteResult(
+                deleted_count=deleted_count,
+                raw_results=[do_response],
+            )
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from delete_one API command.",
@@ -5088,17 +5081,10 @@ class AsyncCollection:
         logger.info(f"finished deleteOne on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
-            if deleted_count == -1:
-                return DeleteResult(
-                    deleted_count=None,
-                    raw_results=[do_response],
-                )
-            else:
-                # expected a non-negative integer:
-                return DeleteResult(
-                    deleted_count=deleted_count,
-                    raw_results=[do_response],
-                )
+            return DeleteResult(
+                deleted_count=deleted_count,
+                raw_results=[do_response],
+            )
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from delete_one API command.",
