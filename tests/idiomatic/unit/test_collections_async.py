@@ -75,6 +75,7 @@ class TestCollectionsAsync:
         assert col1 != col1._copy(database=async_database._copy(token="x_t"))
         assert col1 != col1._copy(name="o")
         assert col1 != col1._copy(keyspace="o")
+        assert col1 != col1._copy(caller_name="o", caller_version="o")
         assert col1 != col1._copy(caller_name="o")
         assert col1 != col1._copy(caller_version="o")
 
@@ -99,16 +100,17 @@ class TestCollectionsAsync:
         assert col3 == col1
 
         assert col1.with_options(name="x") != col1
+        assert col1.with_options(caller_name="x", caller_version="x") != col1
+        assert col1.with_options(caller_name="x") != col1
+        assert col1.with_options(caller_version="x") != col1
+
         assert (
             col1.with_options(name="x").with_options(name="id_test_collection") == col1
         )
-        assert col1.with_options(caller_name="x") != col1
         assert (
-            col1.with_options(caller_name="x").with_options(caller_name="c_n") == col1
-        )
-        assert col1.with_options(caller_version="x") != col1
-        assert (
-            col1.with_options(caller_version="x").with_options(caller_version="c_v")
+            col1.with_options(caller_name="x", caller_version="x").with_options(
+                caller_name="c_n", caller_version="c_v"
+            )
             == col1
         )
 

@@ -123,5 +123,9 @@ NAMESPACE_DEPRECATION_NOTICE_NS_DETAILS = (
 # Other deprecation notices
 SET_CALLER_DEPRECATION_NOTICE = (
     "Please provide the caller(s) at constructor time through the "
-    "`caller_identities` list-of-pairs parameter."
+    "`callers` list parameter."
+)
+CALLER_NAME_VERSION_DEPRECATION_NOTICE_DETAILS = (
+    "Please pass any caller identities as the `callers` constructor parameter: "
+    "`callers=[('cname1', 'cversion1'), ('cname2', 'cversion2'), ...]`."
 )

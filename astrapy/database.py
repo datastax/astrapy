@@ -30,7 +30,7 @@ from astrapy.authentication import (
     coerce_token_provider,
     redact_secret,
 )
-from astrapy.constants import Environment
+from astrapy.constants import CallerType, Environment
 from astrapy.cursors import AsyncCommandCursor, CommandCursor
 from astrapy.defaults import (
     API_PATH_ENV_MAP,
@@ -52,7 +52,7 @@ from astrapy.info import (
     CollectionVectorServiceOptions,
     DatabaseInfo,
 )
-from astrapy.meta import check_namespace_keyspace
+from astrapy.meta import check_caller_parameters, check_namespace_keyspace
 
 if TYPE_CHECKING:
     from astrapy.admin import DatabaseAdmin
@@ -146,9 +146,14 @@ class Database:
             most operations are unavailable until a keyspace is set (through an explicit
             `use_keyspace` invocation or equivalent).
         namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
-        caller_name: name of the application, or framework, on behalf of which
-            the Data API calls are performed. This ends up in the request user-agent.
-        caller_version: version of the caller.
+        callers: a list of caller identities, i.e. applications, or frameworks,
+            on behalf of which the Data API calls are performed. These end up
+            in the request user-agent.
+            Each caller identity is a ("caller_name", "caller_version") pair.
+        caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
+            application, or framework, on behalf of which the Data API calls
+            are performed. This ends up in the request user-agent.
+        caller_version: version of the caller. *DEPRECATED*, use `callers`. Removal 2.0.
         environment: a string representing the target Data API environment.
             It can be left unspecified for the default value of `Environment.PROD`;
             other values include `Environment.OTHER`, `Environment.DSE`.
@@ -177,12 +182,14 @@ class Database:
         *,
         keyspace: str | None = None,
         namespace: str | None = None,
+        callers: list[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         environment: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
     ) -> None:
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -215,8 +222,7 @@ class Database:
             DEFAULT_DATA_API_AUTH_HEADER: self.token_provider.get_token(),
         }
 
-        self.caller_name = caller_name
-        self.caller_version = caller_version
+        self.callers = callers_param
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
         self._name: str | None = None
 
@@ -250,8 +256,7 @@ class Database:
                     self.api_path == other.api_path,
                     self.api_version == other.api_version,
                     self.keyspace == other.keyspace,
-                    self.caller_name == other.caller_name,
-                    self.caller_version == other.caller_version,
+                    self.callers == other.callers,
                     self.api_commander == other.api_commander,
                 ]
             )
@@ -283,7 +288,7 @@ class Database:
                 api_endpoint=self.api_endpoint,
                 path=base_path,
                 headers=self._commander_headers,
-                callers=[(self.caller_name, self.caller_version)],
+                callers=self.callers,
             )
             return api_commander
 
@@ -311,12 +316,14 @@ class Database:
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
         namespace: str | None = None,
+        callers: list[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         environment: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
     ) -> Database:
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -325,8 +332,7 @@ class Database:
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
             keyspace=keyspace_param or self.keyspace,
-            caller_name=caller_name or self.caller_name,
-            caller_version=caller_version or self.caller_version,
+            callers=callers_param or self.callers,
             environment=environment or self.environment,
             api_path=api_path or self.api_path,
             api_version=api_version or self.api_version,
@@ -337,6 +343,7 @@ class Database:
         *,
         keyspace: str | None = None,
         namespace: str | None = None,
+        callers: list[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> Database:
@@ -348,9 +355,15 @@ class Database:
                 one is explicitly specified in the call. If no keyspace is supplied
                 when creating a Database, the name "default_keyspace" is set.
             namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
+            callers: a list of caller identities, i.e. applications, or frameworks,
+                on behalf of which the Data API calls are performed. These end up
+                in the request user-agent.
+                Each caller identity is a ("caller_name", "caller_version") pair.
+            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
+                application, or framework, on behalf of which the Data API calls
+                are performed. This ends up in the request user-agent.
+            caller_version: version of the caller. *DEPRECATED*, use `callers`.
+                Removal 2.0.
 
         Returns:
             a new `Database` instance.
@@ -363,14 +376,14 @@ class Database:
             ... )
         """
 
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
         return self._copy(
             keyspace=keyspace_param,
-            caller_name=caller_name,
-            caller_version=caller_version,
+            callers=callers_param,
         )
 
     def to_async(
@@ -380,6 +393,7 @@ class Database:
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
         namespace: str | None = None,
+        callers: list[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         environment: str | None = None,
@@ -401,9 +415,15 @@ class Database:
                 one is explicitly specified in the call. If no keyspace is supplied
                 when creating a Database, the name "default_keyspace" is set.
             namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
+            callers: a list of caller identities, i.e. applications, or frameworks,
+                on behalf of which the Data API calls are performed. These end up
+                in the request user-agent.
+                Each caller identity is a ("caller_name", "caller_version") pair.
+            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
+                application, or framework, on behalf of which the Data API calls
+                are performed. This ends up in the request user-agent.
+            caller_version: version of the caller. *DEPRECATED*, use `callers`.
+                Removal 2.0.
             environment: a string representing the target Data API environment.
                 Values are, for example, `Environment.PROD`, `Environment.OTHER`,
                 or `Environment.DSE`.
@@ -420,6 +440,7 @@ class Database:
             >>> asyncio.run(my_async_db.list_collection_names())
         """
 
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -428,8 +449,7 @@ class Database:
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
             keyspace=keyspace_param or self.keyspace,
-            caller_name=caller_name or self.caller_name,
-            caller_version=caller_version or self.caller_version,
+            callers=callers_param or self.callers,
             environment=environment or self.environment,
             api_path=api_path or self.api_path,
             api_version=api_version or self.api_version,
@@ -460,8 +480,8 @@ class Database:
         """
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
-        self.caller_name = caller_name
-        self.caller_version = caller_version
+        callers_param = check_caller_parameters([], caller_name, caller_version)
+        self.callers = callers_param
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
     @deprecation.deprecated(  # type: ignore[misc]
@@ -1134,8 +1154,7 @@ class Database:
                 api_endpoint=self.api_endpoint,
                 token=coerce_token_provider(token) or self.token_provider,
                 environment=self.environment,
-                caller_name=self.caller_name,
-                caller_version=self.caller_version,
+                callers=self.callers,
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
                 spawner_database=self,
@@ -1155,8 +1174,7 @@ class Database:
                 environment=self.environment,
                 api_path=self.api_path,
                 api_version=self.api_version,
-                caller_name=self.caller_name,
-                caller_version=self.caller_version,
+                callers=self.callers,
                 spawner_database=self,
             )
 
@@ -1187,9 +1205,14 @@ class AsyncDatabase:
             most operations are unavailable until a keyspace is set (through an explicit
             `use_keyspace` invocation or equivalent).
         namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
-        caller_name: name of the application, or framework, on behalf of which
-            the Data API calls are performed. This ends up in the request user-agent.
-        caller_version: version of the caller.
+        callers: a list of caller identities, i.e. applications, or frameworks,
+            on behalf of which the Data API calls are performed. These end up
+            in the request user-agent.
+            Each caller identity is a ("caller_name", "caller_version") pair.
+        caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
+            application, or framework, on behalf of which the Data API calls
+            are performed. This ends up in the request user-agent.
+        caller_version: version of the caller. *DEPRECATED*, use `callers`. Removal 2.0.
         environment: a string representing the target Data API environment.
             It can be left unspecified for the default value of `Environment.PROD`;
             other values include `Environment.OTHER`, `Environment.DSE`.
@@ -1218,12 +1241,14 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         namespace: str | None = None,
+        callers: list[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         environment: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
     ) -> None:
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -1256,8 +1281,7 @@ class AsyncDatabase:
             DEFAULT_DATA_API_AUTH_HEADER: self.token_provider.get_token(),
         }
 
-        self.caller_name = caller_name
-        self.caller_version = caller_version
+        self.callers = callers_param
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
         self._name: str | None = None
 
@@ -1291,8 +1315,7 @@ class AsyncDatabase:
                     self.api_path == other.api_path,
                     self.api_version == other.api_version,
                     self.keyspace == other.keyspace,
-                    self.caller_name == other.caller_name,
-                    self.caller_version == other.caller_version,
+                    self.callers == other.callers,
                     self.api_commander == other.api_commander,
                 ]
             )
@@ -1324,7 +1347,7 @@ class AsyncDatabase:
                 api_endpoint=self.api_endpoint,
                 path=base_path,
                 headers=self._commander_headers,
-                callers=[(self.caller_name, self.caller_version)],
+                callers=self.callers,
             )
             return api_commander
 
@@ -1368,12 +1391,14 @@ class AsyncDatabase:
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
         namespace: str | None = None,
+        callers: list[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         environment: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
     ) -> AsyncDatabase:
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -1382,8 +1407,7 @@ class AsyncDatabase:
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
             keyspace=keyspace_param or self.keyspace,
-            caller_name=caller_name or self.caller_name,
-            caller_version=caller_version or self.caller_version,
+            callers=callers_param or self.callers,
             environment=environment or self.environment,
             api_path=api_path or self.api_path,
             api_version=api_version or self.api_version,
@@ -1394,6 +1418,7 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         namespace: str | None = None,
+        callers: list[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> AsyncDatabase:
@@ -1405,9 +1430,15 @@ class AsyncDatabase:
                 one is explicitly specified in the call. If no keyspace is supplied
                 when creating a Database, the name "default_keyspace" is set.
             namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
+            callers: a list of caller identities, i.e. applications, or frameworks,
+                on behalf of which the Data API calls are performed. These end up
+                in the request user-agent.
+                Each caller identity is a ("caller_name", "caller_version") pair.
+            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
+                application, or framework, on behalf of which the Data API calls
+                are performed. This ends up in the request user-agent.
+            caller_version: version of the caller. *DEPRECATED*, use `callers`.
+                Removal 2.0.
 
         Returns:
             a new `AsyncDatabase` instance.
@@ -1420,6 +1451,7 @@ class AsyncDatabase:
             ... )
         """
 
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -1427,8 +1459,7 @@ class AsyncDatabase:
 
         return self._copy(
             keyspace=keyspace_param,
-            caller_name=caller_name,
-            caller_version=caller_version,
+            callers=callers_param,
         )
 
     def to_sync(
@@ -1438,6 +1469,7 @@ class AsyncDatabase:
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
         namespace: str | None = None,
+        callers: list[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         environment: str | None = None,
@@ -1459,9 +1491,15 @@ class AsyncDatabase:
                 one is explicitly specified in the call. If no keyspace is supplied
                 when creating a Database, the name "default_keyspace" is set.
             namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
+            callers: a list of caller identities, i.e. applications, or frameworks,
+                on behalf of which the Data API calls are performed. These end up
+                in the request user-agent.
+                Each caller identity is a ("caller_name", "caller_version") pair.
+            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
+                application, or framework, on behalf of which the Data API calls
+                are performed. This ends up in the request user-agent.
+            caller_version: version of the caller. *DEPRECATED*, use `callers`.
+                Removal 2.0.
             environment: a string representing the target Data API environment.
                 Values are, for example, `Environment.PROD`, `Environment.OTHER`,
                 or `Environment.DSE`.
@@ -1479,6 +1517,7 @@ class AsyncDatabase:
             ['a_collection', 'another_collection']
         """
 
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -1487,8 +1526,7 @@ class AsyncDatabase:
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
             keyspace=keyspace_param or self.keyspace,
-            caller_name=caller_name or self.caller_name,
-            caller_version=caller_version or self.caller_version,
+            callers=callers_param or self.callers,
             environment=environment or self.environment,
             api_path=api_path or self.api_path,
             api_version=api_version or self.api_version,
@@ -1519,8 +1557,8 @@ class AsyncDatabase:
         """
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
-        self.caller_name = caller_name
-        self.caller_version = caller_version
+        callers_param = check_caller_parameters([], caller_name, caller_version)
+        self.callers = callers_param
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
     @deprecation.deprecated(  # type: ignore[misc]
@@ -2205,8 +2243,7 @@ class AsyncDatabase:
                 api_endpoint=self.api_endpoint,
                 token=coerce_token_provider(token) or self.token_provider,
                 environment=self.environment,
-                caller_name=self.caller_name,
-                caller_version=self.caller_version,
+                callers=self.callers,
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
                 spawner_database=self,
@@ -2226,7 +2263,6 @@ class AsyncDatabase:
                 environment=self.environment,
                 api_path=self.api_path,
                 api_version=self.api_version,
-                caller_name=self.caller_name,
-                caller_version=self.caller_version,
+                callers=self.callers,
                 spawner_database=self,
             )

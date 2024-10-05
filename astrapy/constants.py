@@ -37,6 +37,7 @@ ProjectionType = Union[
 SortType = Dict[str, Any]
 FilterType = Dict[str, Any]
 VectorType = Iterable[float]
+CallerType = tuple[str | None, str | None]
 
 
 def normalize_optional_projection(

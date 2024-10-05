@@ -5,6 +5,8 @@ Consistent handling of deletedCount=-1 from the API (always returned as-is)
 Deprecation of all `set_caller` (=> to be set at constructor-time) (removal in 2.0)
 Callers and user-agent string:
     - remove RAGStack automatic detection
+    - Deprecate caller_name/caller_version parameters in favour of "callers" pair list
+    - (minor) breaking change: passing only one of caller_name/caller_version to _copy/with_options will override the whole one-item callers pair list
 Repo housekeeping
     - using ruff for imports and formatting (instead of isort+black) by @cbornet
     - add ruff rules UP(pyupgrade)

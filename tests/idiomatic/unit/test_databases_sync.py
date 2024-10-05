@@ -77,6 +77,7 @@ class TestDatabasesSync:
         assert db1 != db1._copy(api_endpoint="x")
         assert db1 != db1._copy(token="x")
         assert db1 != db1._copy(keyspace="x")
+        assert db1 != db1._copy(caller_name="x", caller_version="x")
         assert db1 != db1._copy(caller_name="x")
         assert db1 != db1._copy(caller_version="x")
         assert db1 != db1._copy(api_path="x")
@@ -107,12 +108,15 @@ class TestDatabasesSync:
         assert db3 == db1
 
         assert db1.with_options(keyspace="x") != db1
-        assert db1.with_options(keyspace="x").with_options(keyspace="keyspace") == db1
+        assert db1.with_options(caller_name="x", caller_version="x") != db1
         assert db1.with_options(caller_name="x") != db1
-        assert db1.with_options(caller_name="x").with_options(caller_name="c_n") == db1
         assert db1.with_options(caller_version="x") != db1
+
+        assert db1.with_options(keyspace="x").with_options(keyspace="keyspace") == db1
         assert (
-            db1.with_options(caller_version="x").with_options(caller_version="c_v")
+            db1.with_options(caller_name="x", caller_version="x").with_options(
+                caller_name="c_n", caller_version="c_v"
+            )
             == db1
         )
 

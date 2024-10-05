@@ -33,9 +33,9 @@ from astrapy.admin import (
     parse_generic_api_url,
 )
 from astrapy.authentication import coerce_token_provider, redact_secret
-from astrapy.constants import Environment
+from astrapy.constants import CallerType, Environment
 from astrapy.defaults import SET_CALLER_DEPRECATION_NOTICE
-from astrapy.meta import check_namespace_keyspace
+from astrapy.meta import check_caller_parameters, check_namespace_keyspace
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
@@ -63,10 +63,15 @@ class DataAPIClient:
         environment: a string representing the target Data API environment.
             It can be left unspecified for the default value of `Environment.PROD`;
             other values include `Environment.OTHER`, `Environment.DSE`.
-        caller_name: name of the application, or framework, on behalf of which
-            the Data API and DevOps API calls are performed. This ends up in
-            the request user-agent.
-        caller_version: version of the caller.
+        callers: a list of caller identities, i.e. applications, or frameworks,
+            on behalf of which Data API and DevOps API calls are performed.
+            These end up in the request user-agent.
+            Each caller identity is a ("caller_name", "caller_version") pair.
+        caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
+            application, or framework, on behalf of which the Data API and
+            DevOps API calls are performed. This ends up in the request user-agent.
+        caller_version: version of the caller. *DEPRECATED*, use `callers`.
+            Removal 2.0.
 
     Example:
         >>> from astrapy import DataAPIClient
@@ -88,17 +93,18 @@ class DataAPIClient:
         token: str | TokenProvider | None = None,
         *,
         environment: str | None = None,
+        callers: list[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> None:
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
 
         if self.environment not in Environment.values:
             raise ValueError(f"Unsupported `environment` value: '{self.environment}'.")
 
-        self._caller_name = caller_name
-        self._caller_version = caller_version
+        self.callers = callers_param
 
     def __repr__(self) -> str:
         token_desc: str | None
@@ -120,8 +126,7 @@ class DataAPIClient:
                 [
                     self.token_provider == other.token_provider,
                     self.environment == other.environment,
-                    self._caller_name == other._caller_name,
-                    self._caller_version == other._caller_version,
+                    self.callers == other.callers,
                 ]
             )
         else:
@@ -146,20 +151,22 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | None = None,
         environment: str | None = None,
+        callers: list[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> DataAPIClient:
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         return DataAPIClient(
             token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
-            caller_name=caller_name or self._caller_name,
-            caller_version=caller_version or self._caller_version,
+            callers=callers_param or self.callers,
         )
 
     def with_options(
         self,
         *,
         token: str | TokenProvider | None = None,
+        callers: list[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> DataAPIClient:
@@ -170,10 +177,15 @@ class DataAPIClient:
             token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API and DevOps API calls are performed. This ends up in
-                the request user-agent.
-            caller_version: version of the caller.
+            callers: a list of caller identities, i.e. applications, or frameworks,
+                on behalf of which Data API and DevOps API calls are performed.
+                These end up in the request user-agent.
+                Each caller identity is a ("caller_name", "caller_version") pair.
+            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
+                application, or framework, on behalf of which the Data API and
+                DevOps API calls are performed. This ends up in the request user-agent.
+            caller_version: version of the caller. *DEPRECATED*, use `callers`.
+                Removal 2.0.
 
         Returns:
             a new DataAPIClient instance.
@@ -185,10 +197,10 @@ class DataAPIClient:
             ... )
         """
 
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         return self._copy(
             token=token,
-            caller_name=caller_name,
-            caller_version=caller_version,
+            callers=callers_param,
         )
 
     @deprecation.deprecated(  # type: ignore[misc]
@@ -218,8 +230,8 @@ class DataAPIClient:
         """
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
-        self._caller_name = caller_name
-        self._caller_version = caller_version
+        callers_param = check_caller_parameters([], caller_name, caller_version)
+        self.callers = callers_param
 
     def get_database(
         self,
@@ -335,8 +347,7 @@ class DataAPIClient:
                     api_endpoint=_api_endpoint,
                     token=_token,
                     keyspace=keyspace_param,
-                    caller_name=self._caller_name,
-                    caller_version=self._caller_version,
+                    callers=self.callers,
                     environment=self.environment,
                     api_path=api_path,
                     api_version=api_version,
@@ -468,8 +479,7 @@ class DataAPIClient:
                     api_endpoint=api_endpoint,
                     token=_token,
                     keyspace=keyspace_param,
-                    caller_name=self._caller_name,
-                    caller_version=self._caller_version,
+                    callers=self.callers,
                     environment=self.environment,
                     api_path=api_path,
                     api_version=api_version,
@@ -485,8 +495,7 @@ class DataAPIClient:
                     api_endpoint=parsed_generic_api_endpoint,
                     token=_token,
                     keyspace=keyspace_param,
-                    caller_name=self._caller_name,
-                    caller_version=self._caller_version,
+                    callers=self.callers,
                     environment=self.environment,
                     api_path=api_path,
                     api_version=api_version,
@@ -579,8 +588,7 @@ class DataAPIClient:
         return AstraDBAdmin(
             token=coerce_token_provider(token) or self.token_provider,
             environment=self.environment,
-            caller_name=self._caller_name,
-            caller_version=self._caller_version,
+            callers=self.callers,
             dev_ops_url=dev_ops_url,
             dev_ops_api_version=dev_ops_api_version,
         )
