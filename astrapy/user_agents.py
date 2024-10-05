@@ -14,10 +14,13 @@
 
 from __future__ import annotations
 
+from typing import Sequence
+
 from astrapy import __version__
+from astrapy.constants import CallerType
 
 
-def detect_astrapy_user_agent() -> tuple[str | None, str | None]:
+def detect_astrapy_user_agent() -> CallerType:
     package_name = __name__.split(".")[0]
     return (package_name, __version__)
 
@@ -34,7 +37,7 @@ def compose_user_agent_string(
         return None
 
 
-def compose_full_user_agent(callers: list[tuple[str | None, str | None]]) -> str | None:
+def compose_full_user_agent(callers: Sequence[CallerType]) -> str | None:
     user_agent_strings = [
         ua_string
         for ua_string in (

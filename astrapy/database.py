@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import warnings
 from types import TracebackType
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Sequence
 
 import deprecation
 
@@ -182,7 +182,7 @@ class Database:
         *,
         keyspace: str | None = None,
         namespace: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         environment: str | None = None,
@@ -316,7 +316,7 @@ class Database:
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
         namespace: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         environment: str | None = None,
@@ -343,7 +343,7 @@ class Database:
         *,
         keyspace: str | None = None,
         namespace: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> Database:
@@ -393,7 +393,7 @@ class Database:
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
         namespace: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         environment: str | None = None,
@@ -1241,7 +1241,7 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         namespace: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         environment: str | None = None,
@@ -1391,7 +1391,7 @@ class AsyncDatabase:
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
         namespace: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         environment: str | None = None,
@@ -1418,7 +1418,7 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         namespace: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> AsyncDatabase:
@@ -1469,7 +1469,7 @@ class AsyncDatabase:
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
         namespace: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         environment: str | None = None,

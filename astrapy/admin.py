@@ -21,7 +21,7 @@ import time
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Sequence
 
 import deprecation
 
@@ -573,7 +573,7 @@ class AstraDBAdmin:
         token: str | TokenProvider | None = None,
         *,
         environment: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         dev_ops_url: str | None = None,
@@ -654,7 +654,7 @@ class AstraDBAdmin:
         *,
         token: str | TokenProvider | None = None,
         environment: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         dev_ops_url: str | None = None,
@@ -673,7 +673,7 @@ class AstraDBAdmin:
         self,
         *,
         token: str | TokenProvider | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> AstraDBAdmin:
@@ -1742,7 +1742,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         token: str | TokenProvider | None = None,
         region: str | None = None,
         environment: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         dev_ops_url: str | None = None,
@@ -1910,7 +1910,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         token: str | TokenProvider | None = None,
         region: str | None = None,
         environment: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         dev_ops_url: str | None = None,
@@ -1936,7 +1936,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         *,
         id: str | None = None,
         token: str | TokenProvider | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> AstraDBDatabaseAdmin:
@@ -2093,7 +2093,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         api_endpoint: str,
         *,
         token: str | TokenProvider | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         dev_ops_url: str | None = None,
@@ -3281,7 +3281,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         environment: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
         spawner_database: Database | AsyncDatabase | None = None,
@@ -3355,7 +3355,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         environment: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> DataAPIDatabaseAdmin:
@@ -3374,7 +3374,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         *,
         api_endpoint: str | None = None,
         token: str | TokenProvider | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> DataAPIDatabaseAdmin:

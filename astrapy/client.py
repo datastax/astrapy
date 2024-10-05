@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Sequence
 
 import deprecation
 
@@ -93,7 +93,7 @@ class DataAPIClient:
         token: str | TokenProvider | None = None,
         *,
         environment: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> None:
@@ -151,7 +151,7 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | None = None,
         environment: str | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> DataAPIClient:
@@ -166,7 +166,7 @@ class DataAPIClient:
         self,
         *,
         token: str | TokenProvider | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> DataAPIClient:

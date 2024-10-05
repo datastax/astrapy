@@ -20,7 +20,7 @@ import logging
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable, Sequence
 
 import deprecation
 
@@ -271,7 +271,7 @@ class Collection:
         keyspace: str | None = None,
         namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> None:
@@ -365,7 +365,7 @@ class Collection:
         keyspace: str | None = None,
         namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> Collection:
@@ -388,7 +388,7 @@ class Collection:
         name: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> Collection:
@@ -457,7 +457,7 @@ class Collection:
         namespace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> AsyncCollection:
@@ -2866,7 +2866,7 @@ class AsyncCollection:
         keyspace: str | None = None,
         namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> None:
@@ -2978,7 +2978,7 @@ class AsyncCollection:
         keyspace: str | None = None,
         namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> AsyncCollection:
@@ -3001,7 +3001,7 @@ class AsyncCollection:
         name: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> AsyncCollection:
@@ -3070,7 +3070,7 @@ class AsyncCollection:
         namespace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
-        callers: list[CallerType] = [],
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> Collection:

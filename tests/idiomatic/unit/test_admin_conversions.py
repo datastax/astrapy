@@ -33,43 +33,82 @@ from ..conftest import sync_fail_if_not_removed
 
 class TestAdminConversions:
     @sync_fail_if_not_removed
-    @pytest.mark.describe("test of DataAPIClient conversions and comparison functions")
-    def test_dataapiclient_conversions(self) -> None:
-        dac1 = DataAPIClient(
-            "t1", environment="dev", caller_name="cn", caller_version="cv"
-        )
+    @pytest.mark.describe(
+        "test of DataAPIClient set_caller and caller_name in conversions"
+    )
+    def test_dataapiclient_deprecated_caller_in_conversions(self) -> None:
+        with pytest.warns(DeprecationWarning):
+            dac1 = DataAPIClient(
+                "t1", environment="dev", caller_name="cn", caller_version="cv"
+            )
         dac2 = DataAPIClient(
-            "t1", environment="dev", caller_name="cn", caller_version="cv"
+            "t1",
+            environment="dev",
+            callers=[("cn", "cv")],
         )
         assert dac1 == dac2
 
-        assert dac1 != dac1._copy(token="x")
-        assert dac1 != dac1._copy(environment="test")
-        assert dac1 != dac1._copy(caller_name="x", caller_version="x")
-        assert dac1 != dac1._copy(caller_name="x")
-        assert dac1 != dac1._copy(caller_version="x")
+        with pytest.warns(DeprecationWarning):
+            assert dac1 != dac1._copy(caller_name="x", caller_version="x")
+        with pytest.warns(DeprecationWarning):
+            assert dac1 != dac1._copy(caller_name="x")
+        with pytest.warns(DeprecationWarning):
+            assert dac1 != dac1._copy(caller_version="x")
 
-        assert dac1 == dac1._copy(token="x")._copy(token="t1")
-        assert dac1 == dac1._copy(environment="test")._copy(environment="dev")
-        assert dac1 == dac1._copy(caller_name="x", caller_version="x")._copy(
-            caller_name="cn", caller_version="cv"
-        )
+        with pytest.warns(DeprecationWarning):
+            assert dac1 == dac1._copy(caller_name="x", caller_version="x")._copy(
+                caller_name="cn", caller_version="cv"
+            )
 
-        assert dac1 != dac1.with_options(token="x")
-        assert dac1 != dac1.with_options(caller_name="x", caller_version="x")
-        assert dac1 != dac1.with_options(caller_name="x")
-        assert dac1 != dac1.with_options(caller_version="x")
+        with pytest.warns(DeprecationWarning):
+            assert dac1 != dac1.with_options(caller_name="x", caller_version="x")
+        with pytest.warns(DeprecationWarning):
+            assert dac1 != dac1.with_options(caller_name="x")
+        with pytest.warns(DeprecationWarning):
+            assert dac1 != dac1.with_options(caller_version="x")
 
-        assert dac1 == dac1.with_options(token="x").with_options(token="t1")
-        assert dac1 == dac1.with_options(
-            caller_name="x", caller_version="x"
-        ).with_options(caller_name="cn", caller_version="cv")
+        with pytest.warns(DeprecationWarning):
+            assert dac1 == dac1.with_options(
+                caller_name="x", caller_version="x"
+            ).with_options(caller_name="cn", caller_version="cv")
 
         dac1b = dac1._copy()
         dac1b.set_caller("cn2", "cv2")
         assert dac1b != dac1
         dac1b.set_caller("cn", "cv")
         assert dac1b == dac1
+
+    @pytest.mark.describe("test of DataAPIClient conversions and comparison functions")
+    def test_dataapiclient_conversions(self) -> None:
+        callers0 = [("cn", "cv"), ("dn", "dv")]
+        callers1 = [("x", "y")]
+        dac1 = DataAPIClient(
+            "t1",
+            environment="dev",
+            callers=callers0,
+        )
+        dac2 = DataAPIClient(
+            "t1",
+            environment="dev",
+            callers=callers0,
+        )
+        assert dac1 == dac2
+
+        assert dac1 != dac1._copy(token="x")
+        assert dac1 != dac1._copy(environment="test")
+        assert dac1 != dac1._copy(callers=callers1)
+
+        assert dac1 == dac1._copy(token="x")._copy(token="t1")
+        assert dac1 == dac1._copy(environment="test")._copy(environment="dev")
+        assert dac1 == dac1._copy(callers=callers1)._copy(callers=callers0)
+
+        assert dac1 != dac1.with_options(token="x")
+        assert dac1 != dac1.with_options(callers=callers1)
+
+        assert dac1 == dac1.with_options(token="x").with_options(token="t1")
+        assert dac1 == dac1.with_options(callers=callers1).with_options(
+            callers=callers0
+        )
 
         a_e_string = (
             "https://01234567-89ab-cdef-0123-456789abcdef-us-east1"
@@ -80,8 +119,7 @@ class TestAdminConversions:
         expected_db_1 = Database(
             api_endpoint=a_e_string,
             token="t1",
-            caller_name="cn",
-            caller_version="cv",
+            callers=callers0,
         )
         assert db1 == expected_db_1
         with pytest.raises(httpx.HTTPStatusError):
@@ -99,8 +137,7 @@ class TestAdminConversions:
         client = DataAPIClient(
             token=token,
             environment=Environment.PROD,
-            caller_name="cn",
-            caller_version="cv",
+            callers=[("cn", "cv")],
         )
 
         db1 = client.get_database(endpoint)
@@ -114,53 +151,53 @@ class TestAdminConversions:
             client.get_database(endpoint, region=database_region)
 
     @sync_fail_if_not_removed
-    @pytest.mark.describe("test of AstraDBAdmin conversions and comparison functions")
-    def test_astradbadmin_conversions(self) -> None:
-        adm1 = AstraDBAdmin(
-            "t1",
-            environment="dev",
-            caller_name="cn",
-            caller_version="cv",
-            dev_ops_url="dou",
-            dev_ops_api_version="dvv",
-        )
-        adm2 = AstraDBAdmin(
-            "t1",
-            environment="dev",
-            caller_name="cn",
-            caller_version="cv",
-            dev_ops_url="dou",
-            dev_ops_api_version="dvv",
-        )
+    @pytest.mark.describe(
+        "test of AstraDBAdmin set_caller and caller_name in conversions"
+    )
+    def test_astradbadmin_deprecated_caller_in_conversions(self) -> None:
+        with pytest.warns(DeprecationWarning):
+            adm1 = AstraDBAdmin(
+                "t1",
+                environment="dev",
+                caller_name="cn",
+                caller_version="cv",
+                dev_ops_url="dou",
+                dev_ops_api_version="dvv",
+            )
+        with pytest.warns(DeprecationWarning):
+            adm2 = AstraDBAdmin(
+                "t1",
+                environment="dev",
+                caller_name="cn",
+                caller_version="cv",
+                dev_ops_url="dou",
+                dev_ops_api_version="dvv",
+            )
         assert adm1 == adm2
 
-        assert adm1 != adm1._copy(token="x")
-        assert adm1 != adm1._copy(environment="test")
-        assert adm1 != adm1._copy(caller_name="x", caller_version="x")
-        assert adm1 != adm1._copy(caller_version="x")
-        assert adm1 != adm1._copy(caller_name="x")
-        assert adm1 != adm1._copy(dev_ops_url="x")
-        assert adm1 != adm1._copy(dev_ops_api_version="x")
+        with pytest.warns(DeprecationWarning):
+            assert adm1 != adm1._copy(caller_name="x", caller_version="x")
+        with pytest.warns(DeprecationWarning):
+            assert adm1 != adm1._copy(caller_version="x")
+        with pytest.warns(DeprecationWarning):
+            assert adm1 != adm1._copy(caller_name="x")
 
-        assert adm1 == adm1._copy(token="x")._copy(token="t1")
-        assert adm1 == adm1._copy(environment="test")._copy(environment="dev")
-        assert adm1 == adm1._copy(caller_name="x", caller_version="x")._copy(
-            caller_name="cn", caller_version="cv"
-        )
-        assert adm1 == adm1._copy(dev_ops_url="x")._copy(dev_ops_url="dou")
-        assert adm1 == adm1._copy(dev_ops_api_version="x")._copy(
-            dev_ops_api_version="dvv"
-        )
+        with pytest.warns(DeprecationWarning):
+            assert adm1 == adm1._copy(caller_name="x", caller_version="x")._copy(
+                caller_name="cn", caller_version="cv"
+            )
 
-        assert adm1 != adm1.with_options(token="x")
-        assert adm1 != adm1.with_options(caller_name="x", caller_version="x")
-        assert adm1 != adm1.with_options(caller_name="x")
-        assert adm1 != adm1.with_options(caller_version="x")
+        with pytest.warns(DeprecationWarning):
+            assert adm1 != adm1.with_options(caller_name="x", caller_version="x")
+        with pytest.warns(DeprecationWarning):
+            assert adm1 != adm1.with_options(caller_name="x")
+        with pytest.warns(DeprecationWarning):
+            assert adm1 != adm1.with_options(caller_version="x")
 
-        assert adm1 == adm1.with_options(token="x").with_options(token="t1")
-        assert adm1 == adm1.with_options(
-            caller_name="x", caller_version="x"
-        ).with_options(caller_name="cn", caller_version="cv")
+        with pytest.warns(DeprecationWarning):
+            assert adm1 == adm1.with_options(
+                caller_name="x", caller_version="x"
+            ).with_options(caller_name="cn", caller_version="cv")
 
         adm1b = adm1._copy()
         adm1b.set_caller("cn2", "cv2")
@@ -168,18 +205,123 @@ class TestAdminConversions:
         adm1b.set_caller("cn", "cv")
         assert adm1b == adm1
 
+    @pytest.mark.describe("test of AstraDBAdmin conversions and comparison functions")
+    def test_astradbadmin_conversions(self) -> None:
+        callers0 = [("cn", "cv"), ("dn", "dv")]
+        callers1 = [("x", "y")]
+        adm1 = AstraDBAdmin(
+            "t1",
+            environment="dev",
+            callers=callers0,
+            dev_ops_url="dou",
+            dev_ops_api_version="dvv",
+        )
+        adm2 = AstraDBAdmin(
+            "t1",
+            environment="dev",
+            callers=callers0,
+            dev_ops_url="dou",
+            dev_ops_api_version="dvv",
+        )
+        assert adm1 == adm2
+
+        assert adm1 != adm1._copy(token="x")
+        assert adm1 != adm1._copy(environment="test")
+        assert adm1 != adm1._copy(callers=callers1)
+        assert adm1 != adm1._copy(dev_ops_url="x")
+        assert adm1 != adm1._copy(dev_ops_api_version="x")
+
+        assert adm1 == adm1._copy(token="x")._copy(token="t1")
+        assert adm1 == adm1._copy(environment="test")._copy(environment="dev")
+        assert adm1 == adm1._copy(callers=callers1)._copy(callers=callers0)
+        assert adm1 == adm1._copy(dev_ops_url="x")._copy(dev_ops_url="dou")
+        assert adm1 == adm1._copy(dev_ops_api_version="x")._copy(
+            dev_ops_api_version="dvv"
+        )
+
+        assert adm1 != adm1.with_options(token="x")
+        assert adm1 != adm1.with_options(callers=callers1)
+
+        assert adm1 == adm1.with_options(token="x").with_options(token="t1")
+        assert adm1 == adm1.with_options(callers=callers1).with_options(
+            callers=callers0
+        )
+
     @sync_fail_if_not_removed
+    @pytest.mark.describe(
+        "test of AstraDBDatabaseAdmin set_caller and caller_name in conversions"
+    )
+    def test_astradbdatabaseadmin_deprecated_caller_in_conversions(self) -> None:
+        with pytest.warns(DeprecationWarning):
+            adda1 = AstraDBDatabaseAdmin(
+                "01234567-89ab-cdef-0123-456789abcdef",
+                token="t1",
+                region="reg",
+                environment="dev",
+                caller_name="cn",
+                caller_version="cv",
+                dev_ops_url="dou",
+                dev_ops_api_version="dvv",
+                api_path="appi",
+                api_version="vX",
+            )
+        with pytest.warns(DeprecationWarning):
+            adda2 = AstraDBDatabaseAdmin(
+                "01234567-89ab-cdef-0123-456789abcdef",
+                token="t1",
+                region="reg",
+                environment="dev",
+                caller_name="cn",
+                caller_version="cv",
+                dev_ops_url="dou",
+                dev_ops_api_version="dvv",
+                api_path="appi",
+                api_version="vX",
+            )
+        assert adda1 == adda2
+
+        with pytest.warns(DeprecationWarning):
+            assert adda1 != adda1._copy(caller_name="x", caller_version="x")
+        with pytest.warns(DeprecationWarning):
+            assert adda1 != adda1._copy(caller_name="x")
+        with pytest.warns(DeprecationWarning):
+            assert adda1 != adda1._copy(caller_version="x")
+
+        with pytest.warns(DeprecationWarning):
+            assert adda1 == adda1._copy(caller_name="x", caller_version="x")._copy(
+                caller_name="cn", caller_version="cv"
+            )
+
+        with pytest.warns(DeprecationWarning):
+            assert adda1 != adda1.with_options(caller_name="x", caller_version="x")
+        with pytest.warns(DeprecationWarning):
+            assert adda1 != adda1.with_options(caller_name="x")
+        with pytest.warns(DeprecationWarning):
+            assert adda1 != adda1.with_options(caller_version="x")
+
+        with pytest.warns(DeprecationWarning):
+            assert adda1 == adda1.with_options(
+                caller_name="x", caller_version="x"
+            ).with_options(caller_name="cn", caller_version="cv")
+
+        adda1b = adda1._copy()
+        adda1b.set_caller("cn2", "cv2")
+        assert adda1b != adda1
+        adda1b.set_caller("cn", "cv")
+        assert adda1b == adda1
+
     @pytest.mark.describe(
         "test of AstraDBDatabaseAdmin conversions and comparison functions"
     )
     def test_astradbdatabaseadmin_conversions(self) -> None:
+        callers0 = [("cn", "cv"), ("dn", "dv")]
+        callers1 = [("x", "y")]
         adda1 = AstraDBDatabaseAdmin(
             "01234567-89ab-cdef-0123-456789abcdef",
             token="t1",
             region="reg",
             environment="dev",
-            caller_name="cn",
-            caller_version="cv",
+            callers=callers0,
             dev_ops_url="dou",
             dev_ops_api_version="dvv",
             api_path="appi",
@@ -190,8 +332,7 @@ class TestAdminConversions:
             token="t1",
             region="reg",
             environment="dev",
-            caller_name="cn",
-            caller_version="cv",
+            callers=callers0,
             dev_ops_url="dou",
             dev_ops_api_version="dvv",
             api_path="appi",
@@ -203,9 +344,7 @@ class TestAdminConversions:
         assert adda1 != adda1._copy(token="x")
         assert adda1 != adda1._copy(region="x")
         assert adda1 != adda1._copy(environment="test")
-        assert adda1 != adda1._copy(caller_name="x", caller_version="x")
-        assert adda1 != adda1._copy(caller_name="x")
-        assert adda1 != adda1._copy(caller_version="x")
+        assert adda1 != adda1._copy(callers=callers1)
         assert adda1 != adda1._copy(dev_ops_url="x")
         assert adda1 != adda1._copy(dev_ops_api_version="x")
         assert adda1 != adda1._copy(api_path="x")
@@ -217,9 +356,7 @@ class TestAdminConversions:
         assert adda1 == adda1._copy(token="x")._copy(token="t1")
         assert adda1 == adda1._copy(region="x")._copy(region="reg")
         assert adda1 == adda1._copy(environment="test")._copy(environment="dev")
-        assert adda1 == adda1._copy(caller_name="x", caller_version="x")._copy(
-            caller_name="cn", caller_version="cv"
-        )
+        assert adda1 == adda1._copy(callers=callers1)._copy(callers=callers0)
         assert adda1 == adda1._copy(dev_ops_url="x")._copy(dev_ops_url="dou")
         assert adda1 == adda1._copy(dev_ops_api_version="x")._copy(
             dev_ops_api_version="dvv"
@@ -229,37 +366,86 @@ class TestAdminConversions:
 
         assert adda1 != adda1.with_options(id="99999999-89ab-cdef-0123-456789abcdef")
         assert adda1 != adda1.with_options(token="x")
-        assert adda1 != adda1.with_options(caller_name="x", caller_version="x")
-        assert adda1 != adda1.with_options(caller_name="x")
-        assert adda1 != adda1.with_options(caller_version="x")
+        assert adda1 != adda1.with_options(callers=callers1)
 
         assert adda1 == adda1.with_options(
             id="99999999-89ab-cdef-0123-456789abcdef"
         ).with_options(id="01234567-89ab-cdef-0123-456789abcdef")
         assert adda1 == adda1.with_options(token="x").with_options(token="t1")
-        assert adda1 == adda1.with_options(
-            caller_name="x", caller_version="x"
-        ).with_options(caller_name="cn", caller_version="cv")
-
-        adda1b = adda1._copy()
-        adda1b.set_caller("cn2", "cv2")
-        assert adda1b != adda1
-        adda1b.set_caller("cn", "cv")
-        assert adda1b == adda1
+        assert adda1 == adda1.with_options(callers=callers1).with_options(
+            callers=callers0
+        )
 
     @sync_fail_if_not_removed
+    @pytest.mark.describe(
+        "test of DataAPIDBDatabaseAdmin set_caller and caller_name in conversions"
+    )
+    def test_dataapidatabaseadmin_deprecated_caller_in_conversions(self) -> None:
+        with pytest.warns(DeprecationWarning):
+            dada1 = DataAPIDatabaseAdmin(
+                "http://a.b.c:1234",
+                token="t1",
+                environment="hcd",
+                api_path="appi",
+                api_version="v9",
+                caller_name="cn",
+                caller_version="cv",
+            )
+        with pytest.warns(DeprecationWarning):
+            dada2 = DataAPIDatabaseAdmin(
+                "http://a.b.c:1234",
+                token="t1",
+                environment="hcd",
+                api_path="appi",
+                api_version="v9",
+                caller_name="cn",
+                caller_version="cv",
+            )
+        assert dada1 == dada2
+
+        with pytest.warns(DeprecationWarning):
+            assert dada1 != dada1._copy(caller_name="x", caller_version="x")
+        with pytest.warns(DeprecationWarning):
+            assert dada1 != dada1._copy(caller_name="x")
+        with pytest.warns(DeprecationWarning):
+            assert dada1 != dada1._copy(caller_version="x")
+
+        with pytest.warns(DeprecationWarning):
+            assert dada1 == dada1._copy(caller_name="x", caller_version="x")._copy(
+                caller_name="cn", caller_version="cv"
+            )
+
+        with pytest.warns(DeprecationWarning):
+            assert dada1 != dada1.with_options(caller_name="x", caller_version="x")
+        with pytest.warns(DeprecationWarning):
+            assert dada1 != dada1.with_options(caller_name="x")
+        with pytest.warns(DeprecationWarning):
+            assert dada1 != dada1.with_options(caller_version="x")
+
+        with pytest.warns(DeprecationWarning):
+            assert dada1 == dada1.with_options(
+                caller_name="x", caller_version="x"
+            ).with_options(caller_name="cn", caller_version="cv")
+
+        dada1b = dada1._copy()
+        dada1b.set_caller("cn2", "cv2")
+        assert dada1b != dada1
+        dada1b.set_caller("cn", "cv")
+        assert dada1b == dada1
+
     @pytest.mark.describe(
         "test of DataAPIDBDatabaseAdmin conversions and comparison functions"
     )
     def test_dataapidatabaseadmin_conversions(self) -> None:
+        callers0 = [("cn", "cv"), ("dn", "dv")]
+        callers1 = [("x", "y")]
         dada1 = DataAPIDatabaseAdmin(
             "http://a.b.c:1234",
             token="t1",
             environment="hcd",
             api_path="appi",
             api_version="v9",
-            caller_name="cn",
-            caller_version="cv",
+            callers=callers0,
         )
         dada2 = DataAPIDatabaseAdmin(
             "http://a.b.c:1234",
@@ -267,8 +453,7 @@ class TestAdminConversions:
             environment="hcd",
             api_path="appi",
             api_version="v9",
-            caller_name="cn",
-            caller_version="cv",
+            callers=callers0,
         )
         assert dada1 == dada2
 
@@ -277,9 +462,7 @@ class TestAdminConversions:
         assert dada1 != dada1._copy(environment="en")
         assert dada1 != dada1._copy(api_path="ap")
         assert dada1 != dada1._copy(api_version="av")
-        assert dada1 != dada1._copy(caller_name="x", caller_version="x")
-        assert dada1 != dada1._copy(caller_name="x")
-        assert dada1 != dada1._copy(caller_version="x")
+        assert dada1 != dada1._copy(callers=callers1)
 
         assert dada1 == dada1._copy(api_endpoint="x")._copy(
             api_endpoint="http://a.b.c:1234"
@@ -288,29 +471,19 @@ class TestAdminConversions:
         assert dada1 == dada1._copy(environment="x")._copy(environment="hcd")
         assert dada1 == dada1._copy(api_path="x")._copy(api_path="appi")
         assert dada1 == dada1._copy(api_version="x")._copy(api_version="v9")
-        assert dada1 == dada1._copy(caller_name="x", caller_version="x")._copy(
-            caller_name="cn", caller_version="cv"
-        )
+        assert dada1 == dada1._copy(callers=callers1)._copy(callers=callers0)
 
         assert dada1 != dada1.with_options(api_endpoint="https://x.y.z:9876")
         assert dada1 != dada1.with_options(token="x")
-        assert dada1 != dada1.with_options(caller_name="x", caller_version="x")
-        assert dada1 != dada1.with_options(caller_name="x")
-        assert dada1 != dada1.with_options(caller_version="x")
+        assert dada1 != dada1.with_options(callers=callers1)
 
         assert dada1 == dada1.with_options(
             api_endpoint="https://x.y.z:9876"
         ).with_options(api_endpoint="http://a.b.c:1234")
         assert dada1 == dada1.with_options(token="x").with_options(token="t1")
-        assert dada1 == dada1.with_options(
-            caller_name="x", caller_version="x"
-        ).with_options(caller_name="cn", caller_version="cv")
-
-        dada1b = dada1._copy()
-        dada1b.set_caller("cn2", "cv2")
-        assert dada1b != dada1
-        dada1b.set_caller("cn", "cv")
-        assert dada1b == dada1
+        assert dada1 == dada1.with_options(callers=callers1).with_options(
+            callers=callers0
+        )
 
     @pytest.mark.describe("test of token inheritance in spawning from DataAPIClient")
     def test_dataapiclient_token_inheritance(self) -> None:

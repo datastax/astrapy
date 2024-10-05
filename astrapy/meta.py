@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any
+from typing import Any, Sequence
 
 from deprecation import DeprecatedWarning
 
@@ -72,10 +72,10 @@ def check_deprecated_vector_ize(
 
 
 def check_caller_parameters(
-    callers: list[CallerType],
+    callers: Sequence[CallerType],
     caller_name: str | None,
     caller_version: str | None,
-) -> list[CallerType]:
+) -> Sequence[CallerType]:
     if caller_name is None and caller_version is None:
         return callers
     else:

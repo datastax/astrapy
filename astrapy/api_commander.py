@@ -17,10 +17,11 @@ from __future__ import annotations
 import json
 import logging
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Dict, Iterable, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Sequence, cast
 
 import httpx
 
+from astrapy.constants import CallerType
 from astrapy.defaults import (
     DEFAULT_REDACTED_HEADER_NAMES,
     DEFAULT_REQUEST_TIMEOUT_MS,
@@ -65,7 +66,7 @@ class APICommander:
         api_endpoint: str,
         path: str,
         headers: dict[str, str | None] = {},
-        callers: list[tuple[str | None, str | None]] = [],
+        callers: Sequence[CallerType] = [],
         redacted_header_names: Iterable[str] = DEFAULT_REDACTED_HEADER_NAMES,
         dev_ops_api: bool = False,
     ) -> None:
@@ -96,7 +97,7 @@ class APICommander:
         self._api_description = "DevOps API" if self.dev_ops_api else "Data API"
 
         full_user_agent_string = compose_full_user_agent(
-            self.callers + [user_agent_astrapy]
+            list(self.callers) + [user_agent_astrapy]
         )
         self.caller_header: dict[str, str] = (
             {"User-Agent": full_user_agent_string} if full_user_agent_string else {}
@@ -143,7 +144,7 @@ class APICommander:
         api_endpoint: str | None = None,
         path: str | None = None,
         headers: dict[str, str | None] | None = None,
-        callers: list[tuple[str | None, str | None]] | None = None,
+        callers: Sequence[CallerType] | None = None,
         redacted_header_names: list[str] | None = None,
         dev_ops_api: bool | None = None,
     ) -> APICommander:
