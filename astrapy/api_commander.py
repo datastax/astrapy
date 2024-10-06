@@ -237,6 +237,7 @@ class APICommander:
         http_method: str = HttpMethod.POST,
         payload: dict[str, Any] | None = None,
         additional_path: str | None = None,
+        request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> httpx.Response:
@@ -246,7 +247,7 @@ class APICommander:
         log_httpx_request(
             http_method=http_method,
             full_url=request_url,
-            request_params={},
+            request_params=request_params,
             redacted_request_headers=self._loggable_headers,
             payload=normalized_payload,
         )
@@ -257,6 +258,7 @@ class APICommander:
                 method=http_method,
                 url=request_url,
                 content=encoded_payload,
+                params=request_params,
                 timeout=timeout or DEFAULT_REQUEST_TIMEOUT_MS,
                 headers=self.full_headers,
             )
@@ -279,6 +281,7 @@ class APICommander:
         http_method: str = HttpMethod.POST,
         payload: dict[str, Any] | None = None,
         additional_path: str | None = None,
+        request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> httpx.Response:
@@ -288,7 +291,7 @@ class APICommander:
         log_httpx_request(
             http_method=http_method,
             full_url=request_url,
-            request_params={},
+            request_params=request_params,
             redacted_request_headers=self._loggable_headers,
             payload=normalized_payload,
         )
@@ -299,6 +302,7 @@ class APICommander:
                 method=http_method,
                 url=request_url,
                 content=encoded_payload,
+                params=request_params,
                 timeout=timeout or DEFAULT_REQUEST_TIMEOUT_MS,
                 headers=self.full_headers,
             )
@@ -321,6 +325,7 @@ class APICommander:
         http_method: str = HttpMethod.POST,
         payload: dict[str, Any] | None = None,
         additional_path: str | None = None,
+        request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> dict[str, Any]:
@@ -328,6 +333,7 @@ class APICommander:
             http_method=http_method,
             payload=payload,
             additional_path=additional_path,
+            request_params=request_params,
             raise_api_errors=raise_api_errors,
             timeout_info=timeout_info,
         )
@@ -341,6 +347,7 @@ class APICommander:
         http_method: str = HttpMethod.POST,
         payload: dict[str, Any] | None = None,
         additional_path: str | None = None,
+        request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> dict[str, Any]:
@@ -348,6 +355,7 @@ class APICommander:
             http_method=http_method,
             payload=payload,
             additional_path=additional_path,
+            request_params=request_params,
             raise_api_errors=raise_api_errors,
             timeout_info=timeout_info,
         )

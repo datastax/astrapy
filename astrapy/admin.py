@@ -43,6 +43,7 @@ from astrapy.defaults import (
     DEV_OPS_DATABASE_STATUS_MAINTENANCE,
     DEV_OPS_DATABASE_STATUS_PENDING,
     DEV_OPS_DATABASE_STATUS_TERMINATING,
+    DEV_OPS_DEFAULT_DATABASES_PAGE_SIZE,
     DEV_OPS_KEYSPACE_POLL_INTERVAL_S,
     DEV_OPS_RESPONSE_HTTP_ACCEPTED,
     DEV_OPS_RESPONSE_HTTP_CREATED,
@@ -745,12 +746,22 @@ class AstraDBAdmin:
     def list_databases(
         self,
         *,
+        include: str | None = None,
+        provider: str | None = None,
+        page_size: int | None = None,
         max_time_ms: int | None = None,
     ) -> CommandCursor[AdminDatabaseInfo]:
         """
         Get the list of databases, as obtained with a request to the DevOps API.
 
         Args:
+            include: a filter on what databases are to be returned. As per
+                DevOps API, defaults to "nonterminated". Pass "all" to include
+                the already terminated databases.
+            provider: a filter on the cloud provider for the databases.
+                As per DevOps API, defaults to "ALL". Pass e.g. "AWS" to
+                restrict the results.
+            page_size: number of results per page from the DevOps API. Optional.
             max_time_ms: a timeout, in milliseconds, for the API request.
 
         Returns:
@@ -771,30 +782,76 @@ class AstraDBAdmin:
         """
 
         logger.info("getting databases (DevOps API)")
-        gd_list_response = self._dev_ops_api_commander.request(
-            http_method=HttpMethod.GET, timeout_info=base_timeout_info(max_time_ms)
+        request_params_0 = {
+            k: v
+            for k, v in {
+                "include": include,
+                "provider": provider,
+                "limit": page_size or DEV_OPS_DEFAULT_DATABASES_PAGE_SIZE,
+            }.items()
+            if v is not None
+        }
+        responses: list[dict[str, Any]] = []
+        logger.info("request 0, getting databases (DevOps API)")
+        response_0 = self._dev_ops_api_commander.request(
+            http_method=HttpMethod.GET,
+            request_params=request_params_0,
+            timeout_info=base_timeout_info(max_time_ms),
         )
-        logger.info("finished getting databases (DevOps API)")
-        if not isinstance(gd_list_response, list):
+        if not isinstance(response_0, list):
             raise DevOpsAPIException(
                 "Faulty response from get-databases DevOps API command.",
             )
-        else:
-            # we know this is a list of dicts which need a little adjusting
-            return CommandCursor(
-                address=self._dev_ops_api_commander.full_path,
-                items=[
-                    _recast_as_admin_database_info(
-                        db_dict,
-                        environment=self.environment,
-                    )
-                    for db_dict in gd_list_response
-                ],
+        logger.info("finished request 0, getting databases (DevOps API)")
+        responses += [response_0]
+        while len(responses[-1]) >= request_params_0["limit"]:
+            if "id" not in responses[-1][-1]:
+                raise DevOpsAPIException(
+                    "Faulty response from get-databases DevOps API command.",
+                )
+            last_received_db_id = responses[-1][-1]["id"]
+            request_params_n = {
+                **request_params_0,
+                **{"starting_after": last_received_db_id},
+            }
+            logger.info(
+                "request %s, getting databases (DevOps API)",
+                len(responses),
             )
+            response_n = self._dev_ops_api_commander.request(
+                http_method=HttpMethod.GET,
+                request_params=request_params_n,
+                timeout_info=base_timeout_info(max_time_ms),
+            )
+            logger.info(
+                "finished request %s, getting databases (DevOps API)",
+                len(responses),
+            )
+            if not isinstance(response_n, list):
+                raise DevOpsAPIException(
+                    "Faulty response from get-databases DevOps API command.",
+                )
+            responses += [response_n]
+
+        logger.info("finished getting databases (DevOps API)")
+        return CommandCursor(
+            address=self._dev_ops_api_commander.full_path,
+            items=[
+                _recast_as_admin_database_info(
+                    db_dict,
+                    environment=self.environment,
+                )
+                for response in responses
+                for db_dict in response
+            ],
+        )
 
     async def async_list_databases(
         self,
         *,
+        include: str | None = None,
+        provider: str | None = None,
+        page_size: int | None = None,
         max_time_ms: int | None = None,
     ) -> CommandCursor[AdminDatabaseInfo]:
         """
@@ -802,6 +859,13 @@ class AstraDBAdmin:
         Async version of the method, for use in an asyncio context.
 
         Args:
+            include: a filter on what databases are to be returned. As per
+                DevOps API, defaults to "nonterminated". Pass "all" to include
+                the already terminated databases.
+            provider: a filter on the cloud provider for the databases.
+                As per DevOps API, defaults to "ALL". Pass e.g. "AWS" to
+                restrict the results.
+            page_size: number of results per page from the DevOps API. Optional.
             max_time_ms: a timeout, in milliseconds, for the API request.
 
         Returns:
@@ -823,26 +887,69 @@ class AstraDBAdmin:
         """
 
         logger.info("getting databases (DevOps API), async")
-        gd_list_response = await self._dev_ops_api_commander.async_request(
-            http_method=HttpMethod.GET, timeout_info=base_timeout_info(max_time_ms)
+        request_params_0 = {
+            k: v
+            for k, v in {
+                "include": include,
+                "provider": provider,
+                "limit": page_size or DEV_OPS_DEFAULT_DATABASES_PAGE_SIZE,
+            }.items()
+            if v is not None
+        }
+        responses: list[dict[str, Any]] = []
+        logger.info("request 0, getting databases (DevOps API), async")
+        response_0 = await self._dev_ops_api_commander.async_request(
+            http_method=HttpMethod.GET,
+            request_params=request_params_0,
+            timeout_info=base_timeout_info(max_time_ms),
         )
-        logger.info("finished getting databases (DevOps API), async")
-        if not isinstance(gd_list_response, list):
+        if not isinstance(response_0, list):
             raise DevOpsAPIException(
                 "Faulty response from get-databases DevOps API command.",
             )
-        else:
-            # we know this is a list of dicts which need a little adjusting
-            return CommandCursor(
-                address=self._dev_ops_api_commander.full_path,
-                items=[
-                    _recast_as_admin_database_info(
-                        db_dict,
-                        environment=self.environment,
-                    )
-                    for db_dict in gd_list_response
-                ],
+        logger.info("finished request 0, getting databases (DevOps API), async")
+        responses += [response_0]
+        while len(responses[-1]) >= request_params_0["limit"]:
+            if "id" not in responses[-1][-1]:
+                raise DevOpsAPIException(
+                    "Faulty response from get-databases DevOps API command.",
+                )
+            last_received_db_id = responses[-1][-1]["id"]
+            request_params_n = {
+                **request_params_0,
+                **{"starting_after": last_received_db_id},
+            }
+            logger.info(
+                "request %s, getting databases (DevOps API)",
+                len(responses),
             )
+            response_n = await self._dev_ops_api_commander.async_request(
+                http_method=HttpMethod.GET,
+                request_params=request_params_n,
+                timeout_info=base_timeout_info(max_time_ms),
+            )
+            logger.info(
+                "finished request %s, getting databases (DevOps API), async",
+                len(responses),
+            )
+            if not isinstance(response_n, list):
+                raise DevOpsAPIException(
+                    "Faulty response from get-databases DevOps API command.",
+                )
+            responses += [response_n]
+
+        logger.info("finished getting databases (DevOps API), async")
+        return CommandCursor(
+            address=self._dev_ops_api_commander.full_path,
+            items=[
+                _recast_as_admin_database_info(
+                    db_dict,
+                    environment=self.environment,
+                )
+                for response in responses
+                for db_dict in response
+            ],
+        )
 
     def database_info(
         self, id: str, *, max_time_ms: int | None = None

@@ -1,6 +1,7 @@
 master
 ======
 Admins: resilience against DevOps API omitting keyspace/keyspaces if none is found
+AstraDBAdmin: added filters and automatic pagination to [async_]list_databases
 Consistent handling of deletedCount=-1 from the API (always returned as-is)
 Deprecation of all `set_caller` (=> to be set at constructor-time) (removal in 2.0)
 Callers and user-agent string:
