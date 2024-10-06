@@ -432,7 +432,7 @@ class Collection:
         Example:
             >>> my_other_coll = my_coll.with_options(
             ...     name="the_other_coll",
-            ...     caller_name="caller_identity",
+            ...     callers=[("caller_identity", "0.1.2")],
             ... )
         """
 
@@ -3045,7 +3045,7 @@ class AsyncCollection:
         Example:
             >>> my_other_async_coll = my_async_coll.with_options(
             ...     name="the_other_coll",
-            ...     caller_name="caller_identity",
+            ...     callers=[("caller_identity", "0.1.2")],
             ... )
         """
 

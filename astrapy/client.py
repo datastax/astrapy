@@ -192,8 +192,7 @@ class DataAPIClient:
 
         Example:
             >>> another_client = my_client.with_options(
-            ...     caller_name="caller_identity",
-            ...     caller_version="1.2.0",
+            ...     callers=[("caller_identity", "1.2.0")],
             ... )
         """
 

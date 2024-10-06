@@ -371,8 +371,7 @@ class Database:
         Example:
             >>> my_db_2 = my_db.with_options(
             ...     keyspace="the_other_keyspace",
-            ...     caller_name="the_caller",
-            ...     caller_version="0.1.0",
+            ...     callers=[("the_caller", "0.1.0")],
             ... )
         """
 
@@ -1446,8 +1445,7 @@ class AsyncDatabase:
         Example:
             >>> my_async_db_2 = my_async_db.with_options(
             ...     keyspace="the_other_keyspace",
-            ...     caller_name="the_caller",
-            ...     caller_version="0.1.0",
+            ...     callers=[("the_caller", "0.1.0")],
             ... )
         """
 

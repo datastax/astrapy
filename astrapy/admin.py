@@ -699,8 +699,7 @@ class AstraDBAdmin:
 
         Example:
             >>> another_astra_db_admin = my_astra_db_admin.with_options(
-            ...     caller_name="caller_identity",
-            ...     caller_version="1.2.0",
+            ...     callers=[("caller_identity", "1.2.0")],
             ... )
         """
 
@@ -734,8 +733,7 @@ class AstraDBAdmin:
 
         Example:
             >>> my_astra_db_admin.set_caller(
-            ...     caller_name="the_caller",
-            ...     caller_version="0.1.0",
+            ...     callers=[("the_caller", "0.1.0")],
             ... )
         """
 
