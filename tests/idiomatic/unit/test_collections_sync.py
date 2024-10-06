@@ -68,6 +68,25 @@ class TestCollectionsSync:
                 caller_name="c_n",
                 caller_version="c_v",
             )
+        assert col1 == Collection(
+            sync_database,
+            "id_test_collection",
+            callers=[("c_n", "c_v")],
+        )
+        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
+            Collection(
+                sync_database,
+                "id_test_collection",
+                callers=[("c_n", "c_v")],
+                caller_name="c_n",
+            )
+        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
+            Collection(
+                sync_database,
+                "id_test_collection",
+                callers=[("c_n", "c_v")],
+                caller_version="c_v",
+            )
         with pytest.warns(DeprecationWarning):
             assert col1 != col1._copy(caller_name="o", caller_version="o")
         with pytest.warns(DeprecationWarning):

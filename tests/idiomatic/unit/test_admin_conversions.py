@@ -41,6 +41,21 @@ class TestAdminConversions:
             dac1 = DataAPIClient(
                 "t1", environment="dev", caller_name="cn", caller_version="cv"
             )
+        assert dac1 == DataAPIClient("t1", environment="dev", callers=[("cn", "cv")])
+        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
+            DataAPIClient(
+                "t1",
+                environment="dev",
+                callers=[("cn", "cv")],
+                caller_name="cn",
+            )
+        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
+            DataAPIClient(
+                "t1",
+                environment="dev",
+                callers=[("cn", "cv")],
+                caller_version="cv",
+            )
         dac2 = DataAPIClient(
             "t1",
             environment="dev",

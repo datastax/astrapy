@@ -73,6 +73,30 @@ class TestDatabasesAsync:
                 api_path="api_path",
                 api_version="api_version",
             )
+        assert db1 == AsyncDatabase(
+            api_endpoint="api_endpoint",
+            token="token",
+            keyspace="keyspace",
+            callers=[("c_n", "c_v")],
+            api_path="api_path",
+            api_version="api_version",
+        )
+        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
+            assert db1 == AsyncDatabase(
+                api_endpoint="api_endpoint",
+                token="token",
+                keyspace="keyspace",
+                callers=[("c_n", "c_v")],
+                caller_name="c_n",
+            )
+        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
+            assert db1 == AsyncDatabase(
+                api_endpoint="api_endpoint",
+                token="token",
+                keyspace="keyspace",
+                callers=[("c_n", "c_v")],
+                caller_version="c_v",
+            )
         with pytest.warns(DeprecationWarning):
             assert db1 != db1._copy(caller_name="x", caller_version="x")
         with pytest.warns(DeprecationWarning):
