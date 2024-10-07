@@ -101,6 +101,31 @@ def check_caller_parameters(
             raise ValueError(msg)
 
 
+def check_deprecated_id_region(
+    id: str | None,
+    region: str | None,
+) -> None:
+    # issue a deprecation warning if a database "id" is passed,
+    # possibly accompanied by a "region".
+
+    if id is not None:
+        if region is None:
+            deprecation_subject = "Passing an `id` parameter"
+        else:
+            deprecation_subject = "Passing an `id` parameter with a `region`"
+        # issue a deprecation warning
+        the_warning = DeprecatedWarning(
+            deprecation_subject,
+            deprecated_in="1.5.1",
+            removed_in="2.0.0",
+            details="Please switch to using the API Endpoint.",
+        )
+        warnings.warn(
+            the_warning,
+            stacklevel=3,
+        )
+
+
 def check_namespace_keyspace(
     keyspace: str | None,
     namespace: str | None,

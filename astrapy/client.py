@@ -32,7 +32,11 @@ from astrapy.admin import (
 from astrapy.authentication import coerce_token_provider, redact_secret
 from astrapy.constants import CallerType, Environment
 from astrapy.defaults import SET_CALLER_DEPRECATION_NOTICE
-from astrapy.meta import check_caller_parameters, check_namespace_keyspace
+from astrapy.meta import (
+    check_caller_parameters,
+    check_deprecated_id_region,
+    check_namespace_keyspace,
+)
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
@@ -286,6 +290,7 @@ class DataAPIClient:
         _api_endpoint_p, _id_p = check_id_endpoint_parg_kwargs(
             p_arg=api_endpoint_or_id, api_endpoint=api_endpoint, id=id
         )
+        check_deprecated_id_region(_id_p, region)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -423,16 +428,19 @@ class DataAPIClient:
             `create_database` method of class AstraDBAdmin.
         """
 
+        _api_endpoint_p, _id_p = check_id_endpoint_parg_kwargs(
+            p_arg=api_endpoint_or_id, api_endpoint=api_endpoint, id=id
+        )
+        check_deprecated_id_region(_id_p, region)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
         return self.get_database(
-            api_endpoint_or_id=api_endpoint_or_id,
-            api_endpoint=api_endpoint,
+            api_endpoint=_api_endpoint_p,
             token=token,
             keyspace=keyspace_param,
-            id=id,
+            id=_id_p,
             region=region,
             api_path=api_path,
             api_version=api_version,

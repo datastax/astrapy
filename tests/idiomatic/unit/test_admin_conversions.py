@@ -166,7 +166,8 @@ class TestAdminConversions:
         )
 
         db1 = client.get_database(endpoint)
-        db2 = client.get_database(database_id, region=database_region)
+        with pytest.warns(DeprecationWarning):
+            db2 = client.get_database(database_id, region=database_region)
         db3 = client.get_database(endpoint)
 
         assert db1 == db2
