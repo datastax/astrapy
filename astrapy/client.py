@@ -24,8 +24,8 @@ from astrapy.admin import (
     api_endpoint_parsing_error_message,
     build_api_endpoint,
     check_id_endpoint_parg_kwargs,
-    fetch_raw_database_info_from_id_token,
     generic_api_url_parsing_error_message,
+    normalize_region_for_id,
     parse_api_endpoint,
     parse_generic_api_url,
 )
@@ -312,22 +312,14 @@ class DataAPIClient:
             else:
                 if _id_p is None:
                     raise ValueError("Either `api_endpoint` or `id` must be supplied.")
-                if region:
-                    _region = region
-                else:
-                    logger.info(f"fetching raw database info for {_id_p}")
-                    this_db_info = fetch_raw_database_info_from_id_token(
-                        id=_id_p,
-                        token=(
-                            coerce_token_provider(token) or self.token_provider
-                        ).get_token(),
-                        environment=self.environment,
-                        max_time_ms=max_time_ms,
-                    )
-                    logger.info(f"finished fetching raw database info for {_id_p}")
-                    _region = this_db_info["info"]["region"]
-
                 _token = coerce_token_provider(token) or self.token_provider
+                _region = normalize_region_for_id(
+                    database_id=_id_p,
+                    token_str=_token.get_token(),
+                    environment=self.environment,
+                    region_param=region,
+                    max_time_ms=max_time_ms,
+                )
                 _api_endpoint = build_api_endpoint(
                     environment=self.environment,
                     database_id=_id_p,

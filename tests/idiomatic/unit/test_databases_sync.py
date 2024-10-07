@@ -27,6 +27,10 @@ from ..conftest import (
     sync_fail_if_not_removed,
 )
 
+api_ep5643_prod = (
+    "https://56439999-89ab-cdef-0123-456789abcdef-region.apps.astra.datastax.com"
+)
+
 
 class TestDatabasesSync:
     @pytest.mark.describe("test of instantiating Database, sync")
@@ -372,10 +376,14 @@ class TestDatabasesSync:
     )
     def test_database_from_client_default_keyspace_per_environment_sync(self) -> None:
         client_a = DataAPIClient(environment=Environment.PROD)
-        db_a_m = client_a.get_database("id", region="r", keyspace="M")
+        db_a_m = client_a.get_database(id="id", region="r", keyspace="M")
         assert db_a_m.keyspace == "M"
-        db_a_n = client_a.get_database("id", region="r")
+        db_a_n = client_a.get_database(id="id", region="r")
         assert db_a_n.keyspace == DEFAULT_ASTRA_DB_KEYSPACE
+        db_a_me = client_a.get_database(api_ep5643_prod, keyspace="M")
+        assert db_a_me.keyspace == "M"
+        db_a_ne = client_a.get_database(api_ep5643_prod)
+        assert db_a_ne.keyspace == DEFAULT_ASTRA_DB_KEYSPACE
 
         client_o = DataAPIClient(environment=Environment.OTHER)
         db_a_m = client_o.get_database("http://a", keyspace="M")

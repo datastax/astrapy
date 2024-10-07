@@ -30,6 +30,16 @@ from astrapy.constants import Environment
 
 from ..conftest import sync_fail_if_not_removed
 
+api_ep0123_dev = (
+    "https://01234567-89ab-cdef-0123-456789abcdef-region.apps.astra-dev.datastax.com"
+)
+api_ep7777_dev = (
+    "https://77777777-89ab-cdef-0123-456789abcdef-region.apps.astra-dev.datastax.com"
+)
+api_ep9999_test = (
+    "https://99999999-89ab-cdef-0123-456789abcdef-region.apps.astra-test.datastax.com"
+)
+
 
 class TestAdminConversions:
     @sync_fail_if_not_removed
@@ -269,9 +279,8 @@ class TestAdminConversions:
     def test_astradbdatabaseadmin_deprecated_caller_in_conversions(self) -> None:
         with pytest.warns(DeprecationWarning):
             adda1 = AstraDBDatabaseAdmin(
-                "01234567-89ab-cdef-0123-456789abcdef",
+                api_ep0123_dev,
                 token="t1",
-                region="reg",
                 environment="dev",
                 caller_name="cn",
                 caller_version="cv",
@@ -282,9 +291,8 @@ class TestAdminConversions:
             )
         with pytest.warns(DeprecationWarning):
             adda2 = AstraDBDatabaseAdmin(
-                "01234567-89ab-cdef-0123-456789abcdef",
+                api_ep0123_dev,
                 token="t1",
-                region="reg",
                 environment="dev",
                 caller_name="cn",
                 caller_version="cv",
@@ -332,9 +340,8 @@ class TestAdminConversions:
         callers0 = [("cn", "cv"), ("dn", "dv")]
         callers1 = [("x", "y")]
         adda1 = AstraDBDatabaseAdmin(
-            "01234567-89ab-cdef-0123-456789abcdef",
+            api_ep0123_dev,
             token="t1",
-            region="reg",
             environment="dev",
             callers=callers0,
             dev_ops_url="dou",
@@ -343,9 +350,8 @@ class TestAdminConversions:
             api_version="vX",
         )
         adda2 = AstraDBDatabaseAdmin(
-            "01234567-89ab-cdef-0123-456789abcdef",
+            api_ep0123_dev,
             token="t1",
-            region="reg",
             environment="dev",
             callers=callers0,
             dev_ops_url="dou",
@@ -355,22 +361,18 @@ class TestAdminConversions:
         )
         assert adda1 == adda2
 
-        assert adda1 != adda1._copy(id="99999999-89ab-cdef-0123-456789abcdef")
+        assert adda1 != adda1._copy(api_ep9999_test, environment="test")
         assert adda1 != adda1._copy(token="x")
-        assert adda1 != adda1._copy(region="x")
-        assert adda1 != adda1._copy(environment="test")
         assert adda1 != adda1._copy(callers=callers1)
         assert adda1 != adda1._copy(dev_ops_url="x")
         assert adda1 != adda1._copy(dev_ops_api_version="x")
         assert adda1 != adda1._copy(api_path="x")
         assert adda1 != adda1._copy(api_version="x")
 
-        assert adda1 == adda1._copy(id="99999999-89ab-cdef-0123-456789abcdef")._copy(
-            id="01234567-89ab-cdef-0123-456789abcdef"
-        )
         assert adda1 == adda1._copy(token="x")._copy(token="t1")
-        assert adda1 == adda1._copy(region="x")._copy(region="reg")
-        assert adda1 == adda1._copy(environment="test")._copy(environment="dev")
+        assert adda1 == adda1._copy(api_ep9999_test, environment="test")._copy(
+            api_ep0123_dev, environment="dev"
+        )
         assert adda1 == adda1._copy(callers=callers1)._copy(callers=callers0)
         assert adda1 == adda1._copy(dev_ops_url="x")._copy(dev_ops_url="dou")
         assert adda1 == adda1._copy(dev_ops_api_version="x")._copy(
@@ -379,13 +381,11 @@ class TestAdminConversions:
         assert adda1 == adda1._copy(api_path="x")._copy(api_path="appi")
         assert adda1 == adda1._copy(api_version="x")._copy(api_version="vX")
 
-        assert adda1 != adda1.with_options(id="99999999-89ab-cdef-0123-456789abcdef")
+        assert adda1 != adda1.with_options(api_ep7777_dev)
         assert adda1 != adda1.with_options(token="x")
         assert adda1 != adda1.with_options(callers=callers1)
 
-        assert adda1 == adda1.with_options(
-            id="99999999-89ab-cdef-0123-456789abcdef"
-        ).with_options(id="01234567-89ab-cdef-0123-456789abcdef")
+        assert adda1 == adda1.with_options(api_ep7777_dev).with_options(api_ep0123_dev)
         assert adda1 == adda1.with_options(token="x").with_options(token="t1")
         assert adda1 == adda1.with_options(callers=callers1).with_options(
             callers=callers0
@@ -547,22 +547,30 @@ class TestAdminConversions:
         "test of token inheritance in spawning from AstraDBDatabaseAdmin"
     )
     def test_astradbdatabaseadmin_token_inheritance(self) -> None:
-        db_id_string = "01234567-89ab-cdef-0123-456789abcdef"
         adbadmin_t = AstraDBDatabaseAdmin(
-            db_id_string,
+            api_ep0123_dev,
             token=StaticTokenProvider("static"),
-            region="reg",
+            environment=Environment.DEV,
         )
-        adbadmin_0 = AstraDBDatabaseAdmin(db_id_string, region="reg")
+        adbadmin_0 = AstraDBDatabaseAdmin(
+            api_ep0123_dev,
+            environment=Environment.DEV,
+        )
         token_f = UsernamePasswordTokenProvider(username="u", password="p")
-        adbadmin_f = AstraDBDatabaseAdmin(db_id_string, region="reg", token=token_f)
+        adbadmin_f = AstraDBDatabaseAdmin(
+            api_ep0123_dev,
+            token=token_f,
+            environment=Environment.DEV,
+        )
 
         assert adbadmin_t.get_database(
-            token=token_f, keyspace="n", region="r"
-        ) == adbadmin_f.get_database(keyspace="n", region="r")
+            token=token_f,
+            keyspace="n",
+        ) == adbadmin_f.get_database(keyspace="n")
         assert adbadmin_0.get_database(
-            token=token_f, keyspace="n", region="r"
-        ) == adbadmin_f.get_database(keyspace="n", region="r")
+            token=token_f,
+            keyspace="n",
+        ) == adbadmin_f.get_database(keyspace="n")
 
     @pytest.mark.describe(
         "test of token inheritance in spawning from DataAPIDatabaseAdmin"
@@ -634,31 +642,22 @@ class TestAdminConversions:
         adm = AstraDBAdmin("t1")
 
         db_adm1 = adm.get_database_admin(db_id, region=db_reg)
-        db_adm2 = adm.get_database_admin(api_ep, region=db_reg)
+        with pytest.raises(ValueError):
+            adm.get_database_admin(api_ep, region=db_reg)
         db_adm3 = adm.get_database_admin(api_ep)
         with pytest.raises(ValueError):
             adm.get_database_admin(api_ep, region="not-that-one")
 
-        assert db_adm1 == db_adm2
-        assert db_adm2 == db_adm3
+        assert db_adm1 == db_adm3
 
         db_1 = adm.get_database(db_id, region=db_reg, keyspace="the_ks")
-        db_2 = adm.get_database(api_ep, region=db_reg, keyspace="the_ks")
+        with pytest.raises(ValueError):
+            adm.get_database(api_ep, region=db_reg, keyspace="the_ks")
         db_3 = adm.get_database(api_ep, keyspace="the_ks")
         with pytest.raises(ValueError):
             adm.get_database(api_ep, region="not-that-one", keyspace="the_ks")
 
-        assert db_1 == db_2
-        assert db_2 == db_3
-
-        db_adm_m1 = AstraDBDatabaseAdmin(db_id, token="t", region=db_reg)
-        db_adm_m2 = AstraDBDatabaseAdmin(api_ep, token="t", region=db_reg)
-        db_adm_m3 = AstraDBDatabaseAdmin(api_ep, token="t")
-        with pytest.raises(ValueError):
-            AstraDBDatabaseAdmin(api_ep, token="t", region="not-that-one")
-
-        assert db_adm_m1 == db_adm_m2
-        assert db_adm_m1 == db_adm_m3
+        assert db_1 == db_3
 
     @pytest.mark.describe(
         "test of region being deprecated in AstraDBDatabaseAdmin.get_database"

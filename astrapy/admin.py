@@ -491,82 +491,30 @@ def _recast_as_admin_database_info(
     )
 
 
-def normalize_api_endpoint(
-    id_or_endpoint: str,
-    region: str | None,
-    token: TokenProvider,
+def normalize_region_for_id(
+    database_id: str,
+    token_str: str | None,
     environment: str,
-    max_time_ms: int | None = None,
+    region_param: str | None,
+    max_time_ms: int | None,
 ) -> str:
-    """
-    Ensure that a id(+region) / endpoint init signature is normalized into
-    an api_endpoint string.
-
-    This is an impure function: if necessary, attempt a DevOps API call to
-    integrate the information (i.e. if a DB ID without region is passed).
-
-    This function is tasked with raising an exception if region is passed along
-    with an API endpoint (and they do not match).
-
-    Args:
-        id_or_endpoint: either the Database ID or a full standard endpoint.
-        region: a string with the database region.
-        token: a TokenProvider for the possible DevOps request to issue.
-        environment: one of the Astra DB `astrapy.constants.Environment` values.
-        max_time_ms: used in case the DevOps API request is necessary.
-
-    Returns:
-        a normalized API Endpoint string (unless it raises an exception).
-    """
-    _api_endpoint: str
-    parsed_endpoint = parse_api_endpoint(id_or_endpoint)
-    if parsed_endpoint is not None:
-        if region is not None and region != parsed_endpoint.region:
-            raise ValueError(
-                "An explicit `region` parameter is provided, which does not match "
-                "the supplied API endpoint. Please refrain from specifying `region`."
-            )
-        _api_endpoint = id_or_endpoint
+    if region_param:
+        return region_param
     else:
-        # it's a genuine ID
-        _region: str
-        if region:
-            _region = region
-        else:
-            logger.info(f"fetching raw database info for {id_or_endpoint}")
-            this_db_info = fetch_raw_database_info_from_id_token(
-                id=id_or_endpoint,
-                token=token.get_token(),
-                environment=environment,
-                max_time_ms=max_time_ms,
-            )
-            logger.info(f"finished fetching raw database info for {id_or_endpoint}")
-            _region = this_db_info["info"]["region"]
-        _api_endpoint = build_api_endpoint(
+        logger.info(f"fetching raw database info for {database_id}")
+        this_db_info = fetch_raw_database_info_from_id_token(
+            id=database_id,
+            token=token_str,
             environment=environment,
-            database_id=id_or_endpoint,
-            region=_region,
+            max_time_ms=max_time_ms,
         )
-    return _api_endpoint.strip("/")
-
-
-def normalize_id_endpoint_parameters(id: str | None, api_endpoint: str | None) -> str:
-    if id is None:
-        if api_endpoint is None:
+        logger.info(f"finished fetching raw database info for {database_id}")
+        found_region = this_db_info.get("info", {}).get("region")
+        if not isinstance(found_region, str):
             raise ValueError(
-                "Exactly one of the `id` and `api_endpoint` "
-                "synonymous parameters must be passed."
+                f"Could not determine 'region' from database info: {str(this_db_info)}"
             )
-        else:
-            return api_endpoint
-    else:
-        if api_endpoint is not None:
-            raise ValueError(
-                "The `id` and `api_endpoint` synonymous parameters "
-                "cannot be supplied at the same time."
-            )
-        else:
-            return id
+        return found_region
 
 
 class AstraDBAdmin:
@@ -1529,18 +1477,14 @@ class AstraDBAdmin:
         else:
             if _id_p is None:
                 raise ValueError("Either `api_endpoint` or `id` must be supplied.")
-            if region:
-                _region = region
-            else:
-                logger.info(f"fetching raw database info for {_id_p}")
-                this_db_info = fetch_raw_database_info_from_id_token(
-                    id=_id_p,
-                    token=self.token_provider.get_token(),
-                    environment=self.environment,
-                    max_time_ms=max_time_ms,
-                )
-                logger.info(f"finished fetching raw database info for {_id_p}")
-                _region = this_db_info["info"]["region"]
+
+            _region = normalize_region_for_id(
+                database_id=_id_p,
+                token_str=self.token_provider.get_token(),
+                environment=self.environment,
+                region_param=region,
+                max_time_ms=max_time_ms,
+            )
             return AstraDBDatabaseAdmin.from_astra_db_admin(
                 api_endpoint=build_api_endpoint(
                     environment=self.environment,
@@ -1654,19 +1598,13 @@ class AstraDBAdmin:
             # the case where an ID is passed:
             if _id_p is None:
                 raise ValueError("Either `api_endpoint` or `id` must be supplied.")
-            if region:
-                _region = region
-            else:
-                logger.info(f"fetching raw database info for {_id_p}")
-                this_db_info = fetch_raw_database_info_from_id_token(
-                    id=_id_p,
-                    token=self.token_provider.get_token(),
-                    environment=self.environment,
-                    max_time_ms=max_time_ms,
-                )
-                logger.info(f"finished fetching raw database info for {_id_p}")
-                _region = this_db_info["info"]["region"]
-
+            _region = normalize_region_for_id(
+                database_id=_id_p,
+                token_str=self.token_provider.get_token(),
+                environment=self.environment,
+                region_param=region,
+                max_time_ms=max_time_ms,
+            )
             if keyspace_param:
                 _keyspace = keyspace_param
             else:
@@ -3337,7 +3275,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             )
 
         return self._astra_db_admin.get_database(
-            id=self.api_endpoint,
+            api_endpoint=self.api_endpoint,
             token=token,
             keyspace=keyspace_param,
             api_path=api_path,
