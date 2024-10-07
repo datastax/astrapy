@@ -310,27 +310,27 @@ class DataAPIClient:
                     api_version=api_version,
                 )
             else:
-                # _id_p is to be used, guaranteed not null at this point
-                s_id_p: str = _id_p  # type: ignore[assignment]
+                if _id_p is None:
+                    raise ValueError("Either `api_endpoint` or `id` must be supplied.")
                 if region:
                     _region = region
                 else:
-                    logger.info(f"fetching raw database info for {s_id_p}")
+                    logger.info(f"fetching raw database info for {_id_p}")
                     this_db_info = fetch_raw_database_info_from_id_token(
-                        id=s_id_p,
+                        id=_id_p,
                         token=(
                             coerce_token_provider(token) or self.token_provider
                         ).get_token(),
                         environment=self.environment,
                         max_time_ms=max_time_ms,
                     )
-                    logger.info(f"finished fetching raw database info for {s_id_p}")
+                    logger.info(f"finished fetching raw database info for {_id_p}")
                     _region = this_db_info["info"]["region"]
 
                 _token = coerce_token_provider(token) or self.token_provider
                 _api_endpoint = build_api_endpoint(
                     environment=self.environment,
-                    database_id=s_id_p,
+                    database_id=_id_p,
                     region=_region,
                 )
                 return Database(
@@ -352,9 +352,11 @@ class DataAPIClient:
                 raise ValueError(
                     "Parameter `region` not supported outside of Astra DB."
                 )
+            if _api_endpoint_p is None:
+                raise ValueError("Parameter `api_endpoint` is required.")
             # _api_endpoint_p guaranteed not null at this point
             return self.get_database_by_api_endpoint(
-                api_endpoint=_api_endpoint_p,  # type: ignore[arg-type]
+                api_endpoint=_api_endpoint_p,
                 token=token,
                 keyspace=keyspace_param,
                 api_path=api_path,
