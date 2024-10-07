@@ -118,7 +118,7 @@ def parse_api_endpoint(api_endpoint: str) -> ParsedAPIEndpoint | None:
     Parse an API Endpoint into a ParsedAPIEndpoint structure.
 
     Args:
-        api_endpoint: a full API endpoint for the Data Api.
+        api_endpoint: a full API endpoint for the Data API.
 
     Returns:
         The parsed ParsedAPIEndpoint. If parsing fails, return None.
@@ -354,7 +354,7 @@ def fetch_database_info(
     Fetch database information through the DevOps API.
 
     Args:
-        api_endpoint: a full API endpoint for the Data Api.
+        api_endpoint: a full API endpoint for the Data API.
         token: a valid token to access the database information.
         keyspace: the desired keyspace that will be used in the result.
             If not specified, the resulting database info will show it as None.
@@ -411,7 +411,7 @@ async def async_fetch_database_info(
     Async version of the function, for use in an asyncio context.
 
     Args:
-        api_endpoint: a full API endpoint for the Data Api.
+        api_endpoint: a full API endpoint for the Data API.
         token: a valid token to access the database information.
         keyspace: the desired keyspace that will be used in the result.
             If not specified, the resulting database info will show it as None.
@@ -1459,9 +1459,10 @@ class AstraDBAdmin:
 
     def get_database_admin(
         self,
-        id: str | None = None,
+        api_endpoint_or_id: str | None = None,
         *,
         api_endpoint: str | None = None,
+        id: str | None = None,
         region: str | None = None,
         max_time_ms: int | None = None,
     ) -> AstraDBDatabaseAdmin:
@@ -1469,15 +1470,18 @@ class AstraDBAdmin:
         Create an AstraDBDatabaseAdmin object for admin work within a certain database.
 
         Args:
-            id: the target database ID (e.g. `01234567-89ab-cdef-0123-456789abcdef`)
-                or the corresponding API Endpoint
+            api_endpoint_or_id: positional parameter that can stand for both
+                `api_endpoint` and `id`. Passing them together is an error.
+            api_endpoint: the API Endpoint for the target database
                 (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
-            api_endpoint: a named alias for the `id` first (positional) parameter,
-                with the same meaning. It cannot be passed together with `id`.
+                The database must exist already for the resulting object
+                to be effectively used; in other words, this invocation
+                does not create the database, just the object instance.
+            id: the target database ID. This is alternative to using the API Endpoint.
             region: the region to use for connecting to the database. The
-                database must be located in that region.
-                The region cannot be specified when the API endpoint is used as `id`.
-                Note that if this parameter is not passed, and cannot be inferred
+                database must be located in that region. This parameter can be used
+                only if the database is specified by its ID (instead of API Endpoint).
+                If this parameter is not passed, and cannot be inferred
                 from the API endpoint, an additional DevOps API request is made
                 to determine the default region and use it subsequently.
             max_time_ms: a timeout, in milliseconds, for the DevOps API
@@ -1501,14 +1505,45 @@ class AstraDBAdmin:
             `create_database` method.
         """
 
-        _id_or_endpoint = normalize_id_endpoint_parameters(id, api_endpoint)
-
-        return AstraDBDatabaseAdmin.from_astra_db_admin(
-            id=_id_or_endpoint,
-            region=region,
-            astra_db_admin=self,
-            max_time_ms=max_time_ms,
+        _api_endpoint_p, _id_p = check_id_endpoint_parg_kwargs(
+            p_arg=api_endpoint_or_id, api_endpoint=api_endpoint, id=id
         )
+        # handle the "endpoint passed as id" case first:
+        if _api_endpoint_p is not None:
+            if region is not None:
+                raise ValueError(
+                    "Parameter `region` not supported with an API endpoint."
+                )
+            # in this case max_time_ms is ignored (no calls take place)
+            return AstraDBDatabaseAdmin.from_astra_db_admin(
+                api_endpoint=_api_endpoint_p,
+                astra_db_admin=self,
+                max_time_ms=max_time_ms,
+            )
+        else:
+            if _id_p is None:
+                raise ValueError("Either `api_endpoint` or `id` must be supplied.")
+            if region:
+                _region = region
+            else:
+                logger.info(f"fetching raw database info for {_id_p}")
+                this_db_info = fetch_raw_database_info_from_id_token(
+                    id=_id_p,
+                    token=self.token_provider.get_token(),
+                    environment=self.environment,
+                    max_time_ms=max_time_ms,
+                )
+                logger.info(f"finished fetching raw database info for {_id_p}")
+                _region = this_db_info["info"]["region"]
+            return AstraDBDatabaseAdmin.from_astra_db_admin(
+                id=build_api_endpoint(
+                    environment=self.environment,
+                    database_id=_id_p,
+                    region=_region,
+                ),
+                astra_db_admin=self,
+                max_time_ms=max_time_ms,
+            )
 
     def get_database(
         self,
@@ -1819,20 +1854,14 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     created by a method call on an AstraDBAdmin.
 
     Args:
-        id: the target database ID (e.g. `01234567-89ab-cdef-0123-456789abcdef`)
-            or the corresponding API Endpoint
+        api_endpoint: the API Endpoint for the target database
             (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
-        api_endpoint: a named alias for the `id` first (positional) parameter,
-            with the same meaning. It cannot be passed together with `id`.
+            The database must exist already for the resulting object
+            to be effectively used; in other words, this invocation
+            does not create the database, just the object instance.
         token: an access token with enough permission to perform admin tasks.
             This can be either a literal token string or a subclass of
             `astrapy.authentication.TokenProvider`.
-        region: the region to use for connecting to the database. The
-            database must be located in that region.
-            The region cannot be specified when the API endpoint is used as `id`.
-            Note that if this parameter is not passed, and cannot be inferred
-            from the API endpoint, an additional DevOps API request is made
-            to determine the default region and use it subsequently.
         environment: a label, whose value is one of Environment.PROD (default),
             Environment.DEV or Environment.TEST.
         callers: a list of caller identities, i.e. applications, or frameworks,
@@ -1867,7 +1896,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     Example:
         >>> from astrapy import DataAPIClient
         >>> my_client = DataAPIClient("AstraCS:...")
-        >>> admin_for_my_db = my_client.get_admin().get_database_admin("01234567-...")
+        >>> admin_for_my_db = my_client.get_admin().get_database_admin(
+        ...     "https://<ID>-<REGION>.apps.astra.datastax.com"
+        ... )
         >>> admin_for_my_db.list_keyspaces()
         ['default_keyspace', 'staging_keyspace']
         >>> admin_for_my_db.info().status
@@ -1881,11 +1912,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     def __init__(
         self,
-        id: str | None = None,
-        *,
         api_endpoint: str | None = None,
+        *,
         token: str | TokenProvider | None = None,
-        region: str | None = None,
         environment: str | None = None,
         callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
@@ -1903,15 +1932,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         callers_param = check_caller_parameters(callers, caller_name, caller_version)
         self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
-        _id_or_endpoint = normalize_id_endpoint_parameters(id, api_endpoint)
-        normalized_api_endpoint = normalize_api_endpoint(
-            id_or_endpoint=_id_or_endpoint,
-            region=region,
-            token=self.token_provider,
-            environment=self.environment,
-            max_time_ms=max_time_ms,
-        )
-        self.api_endpoint = normalized_api_endpoint
+        self.api_endpoint = api_endpoint
         parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
         if parsed_api_endpoint is None:
             msg = api_endpoint_parsing_error_message(self.api_endpoint)
@@ -2051,9 +2072,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     def _copy(
         self,
-        id: str | None = None,
+        api_endpoint: str | None = None,
+        *,
         token: str | TokenProvider | None = None,
-        region: str | None = None,
         environment: str | None = None,
         callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
@@ -2065,9 +2086,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     ) -> AstraDBDatabaseAdmin:
         callers_param = check_caller_parameters(callers, caller_name, caller_version)
         return AstraDBDatabaseAdmin(
-            id=id or self._database_id,
+            api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
-            region=region or self._region,
             environment=environment or self.environment,
             callers=callers_param or self.callers,
             dev_ops_url=dev_ops_url or self.dev_ops_url,
@@ -2078,8 +2098,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     def with_options(
         self,
+        api_endpoint: str | None = None,
         *,
-        id: str | None = None,
         token: str | TokenProvider | None = None,
         callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
@@ -2089,7 +2109,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Create a clone of this AstraDBDatabaseAdmin with some changed attributes.
 
         Args:
-            id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
+            api_endpoint: the API Endpoint for the target database
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+                The database must exist already for the resulting object
+                to be effectively used; in other words, this invocation
+                does not create the database, just the object instance.
             token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
@@ -2108,13 +2132,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         Example:
             >>> admin_for_my_other_db = admin_for_my_db.with_options(
-            ...     id="abababab-0101-2323-4545-6789abcdef01",
+            ...     "https://<ID>-<REGION>.apps.astra.datastax.com",
             ... )
         """
 
         callers_param = check_caller_parameters(callers, caller_name, caller_version)
         return self._copy(
-            id=id,
+            api_endpoint=api_endpoint,
             token=token,
             callers=callers_param,
         )
@@ -2178,25 +2202,20 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     @staticmethod
     def from_astra_db_admin(
-        id: str,
+        api_endpoint: str | None = None,
         *,
-        region: str | None,
         astra_db_admin: AstraDBAdmin,
         max_time_ms: int | None = None,
     ) -> AstraDBDatabaseAdmin:
         """
-        Create an AstraDBDatabaseAdmin from an AstraDBAdmin and a database ID.
+        Create an AstraDBDatabaseAdmin from an AstraDBAdmin and an API Endpoint.
 
         Args:
-            id: the target database ID (e.g. `01234567-89ab-cdef-0123-456789abcdef`)
-                or the corresponding API Endpoint
+            api_endpoint: the API Endpoint for the target database
                 (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
-            region: the region to use for connecting to the database. The
-                database must be located in that region.
-                The region cannot be specified when the API endpoint is used as `id`.
-                Note that if this parameter is not passed, and cannot be inferred
-                from the API endpoint, an additional DevOps API request is made
-                to determine the default region and use it subsequently.
+                The database must exist already for the resulting object
+                to be effectively used; in other words, this invocation
+                does not create the database, just the object instance.
             astra_db_admin: an AstraDBAdmin object that has visibility over
                 the target database.
             max_time_ms: a timeout, in milliseconds, for the DevOps API
@@ -2208,7 +2227,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Example:
             >>> from astrapy import DataAPIClient, AstraDBDatabaseAdmin
             >>> admin_for_my_db = AstraDBDatabaseAdmin.from_astra_db_admin(
-            ...     id="01234567-...",
+            ...     "https://<ID>-<REGION>.apps.astra.datastax.com",
             ...     astra_db_admin=DataAPIClient("AstraCS:...").get_admin(),
             ... )
             >>> admin_for_my_db.list_keyspaces()
@@ -2223,9 +2242,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         """
 
         return AstraDBDatabaseAdmin(
-            id=id,
+            api_endpoint=api_endpoint,
             token=astra_db_admin.token_provider,
-            region=region,
             environment=astra_db_admin.environment,
             callers=astra_db_admin.callers,
             dev_ops_url=astra_db_admin._dev_ops_url,
@@ -2248,7 +2266,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Create an AstraDBDatabaseAdmin from an API Endpoint and optionally a token.
 
         Args:
-            api_endpoint: a full API endpoint for the Data Api.
+            api_endpoint: the API Endpoint for the target database
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+                The database must exist already for the resulting object
+                to be effectively used; in other words, this invocation
+                does not create the database, just the object instance.
             token: an access token with enough permissions to do admin work.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
@@ -2292,9 +2314,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         parsed_api_endpoint = parse_api_endpoint(api_endpoint)
         if parsed_api_endpoint:
             return AstraDBDatabaseAdmin(
-                id=parsed_api_endpoint.database_id,
+                api_endpoint=api_endpoint,
                 token=token,
-                region=parsed_api_endpoint.region,
                 environment=parsed_api_endpoint.environment,
                 callers=callers_param,
                 dev_ops_url=dev_ops_url,
