@@ -1436,7 +1436,7 @@ class AstraDBAdmin:
                 with the same meaning. It cannot be passed together with `id`.
             region: the region to use for connecting to the database. The
                 database must be located in that region.
-                The region cannot be specified when the API endoint is used as `id`.
+                The region cannot be specified when the API endpoint is used as `id`.
                 Note that if this parameter is not passed, and cannot be inferred
                 from the API endpoint, an additional DevOps API request is made
                 to determine the default region and use it subsequently.
@@ -1504,7 +1504,7 @@ class AstraDBAdmin:
             namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             region: the region to use for connecting to the database. The
                 database must be located in that region.
-                The region cannot be specified when the API endoint is used as `id`.
+                The region cannot be specified when the API endpoint is used as `id`.
                 Note that if this parameter is not passed, and cannot be inferred
                 from the API endpoint, an additional DevOps API request is made
                 to determine the default region and use it subsequently.
@@ -1789,7 +1789,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             `astrapy.authentication.TokenProvider`.
         region: the region to use for connecting to the database. The
             database must be located in that region.
-            The region cannot be specified when the API endoint is used as `id`.
+            The region cannot be specified when the API endpoint is used as `id`.
             Note that if this parameter is not passed, and cannot be inferred
             from the API endpoint, an additional DevOps API request is made
             to determine the default region and use it subsequently.
@@ -2153,7 +2153,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
             region: the region to use for connecting to the database. The
                 database must be located in that region.
-                The region cannot be specified when the API endoint is used as `id`.
+                The region cannot be specified when the API endpoint is used as `id`.
                 Note that if this parameter is not passed, and cannot be inferred
                 from the API endpoint, an additional DevOps API request is made
                 to determine the default region and use it subsequently.
