@@ -200,6 +200,46 @@ def build_api_endpoint(environment: str, database_id: str, region: str) -> str:
     )
 
 
+def check_id_endpoint_parg_kwargs(
+    p_arg: str | None,
+    api_endpoint: str | None,
+    id: str | None,
+) -> tuple[str | None, str | None]:
+    """
+    Utility function helping with the transition to endpoint-first constructors,
+    with ID being the other possibility.
+
+    It is called with the positional argument, the api_endpoint and id kwargs: it
+    then verifies legitimacy and returns a normalized (endpoint, id) "either" value.
+
+    Note: this uses the ID regexp to recognize IDs. Crucially, no endpoint regexp
+    here, since even non-Astra endpoints must be properly processed by this validator.
+    """
+    if p_arg is not None:
+        if id is not None:
+            raise ValueError(
+                "Cannot pass `id` with the id/endpoint positional parameter."
+            )
+        if api_endpoint is not None:
+            raise ValueError(
+                "Cannot pass `api_endpoint` with the id/endpoint positional parameter."
+            )
+        if re.match(database_id_matcher, p_arg):
+            return (None, p_arg)
+        # p_arg is an endpoint:
+        return (p_arg, None)
+    # p_arg is None:
+    if api_endpoint is None and id is None:
+        return (None, None)
+    if id is not None:
+        if api_endpoint is None:
+            return (None, id)
+        else:
+            raise ValueError("Cannot pass `api_endpoint` and `id` at the same time.")
+    # endpoint is not None:
+    return (api_endpoint, None)
+
+
 def fetch_raw_database_info_from_id_token(
     id: str,
     *,

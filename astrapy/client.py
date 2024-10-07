@@ -15,20 +15,17 @@
 from __future__ import annotations
 
 import logging
-import re
 from typing import TYPE_CHECKING, Any, Sequence
 
 import deprecation
 
 from astrapy import __version__
 from astrapy.admin import (
-    api_endpoint_parser,
     api_endpoint_parsing_error_message,
     build_api_endpoint,
-    database_id_matcher,
+    check_id_endpoint_parg_kwargs,
     fetch_raw_database_info_from_id_token,
     generic_api_url_parsing_error_message,
-    normalize_id_endpoint_parameters,
     parse_api_endpoint,
     parse_generic_api_url,
 )
@@ -133,18 +130,7 @@ class DataAPIClient:
             return False
 
     def __getitem__(self, database_id_or_api_endpoint: str) -> Database:
-        if self.environment in Environment.astra_db_values:
-            if re.match(database_id_matcher, database_id_or_api_endpoint):
-                return self.get_database(database_id_or_api_endpoint)
-            elif re.match(api_endpoint_parser, database_id_or_api_endpoint):
-                return self.get_database_by_api_endpoint(database_id_or_api_endpoint)
-            else:
-                raise ValueError(
-                    "The provided input does not look like either a database ID "
-                    f"or an API endpoint ('{database_id_or_api_endpoint}')."
-                )
-        else:
-            return self.get_database_by_api_endpoint(database_id_or_api_endpoint)
+        return self.get_database(api_endpoint_or_id=database_id_or_api_endpoint)
 
     def _copy(
         self,
@@ -234,12 +220,13 @@ class DataAPIClient:
 
     def get_database(
         self,
-        id: str | None = None,
+        api_endpoint_or_id: str | None = None,
         *,
         api_endpoint: str | None = None,
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
         namespace: str | None = None,
+        id: str | None = None,
         region: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
@@ -249,23 +236,25 @@ class DataAPIClient:
         Get a Database object from this client, for doing data-related work.
 
         Args:
-            id: the target database ID or the corresponding API Endpoint.
+            api_endpoint_or_id: positional parameter that can stand for both
+                `api_endpoint` and `id`. Passing them together is an error.
+            api_endpoint: the API Endpoint for the target database
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
                 The database must exist already for the resulting object
                 to be effectively used; in other words, this invocation
                 does not create the database, just the object instance.
                 Actual admin work can be achieved by using the AstraDBAdmin object.
-            api_endpoint: a named alias for the `id` first (positional) parameter,
-                with the same meaning. It cannot be passed together with `id`.
             token: if supplied, is passed to the Database instead of the client token.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
             namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
+            id: the target database ID. This is alternative to using the API Endpoint.
             region: the region to use for connecting to the database. The
-                database must be located in that region.
-                The region cannot be specified when the API endoint is used as `id`.
-                Note that if this parameter is not passed, and cannot be inferred
+                database must be located in that region. This parameter can be used
+                only if the database is specified by its ID (instead of API Endpoint).
+                If this parameter is not passed, and cannot be inferred
                 from the API endpoint, an additional DevOps API request is made
                 to determine the default region and use it subsequently.
             api_path: path to append to the API Endpoint. In typical usage, this
@@ -294,6 +283,9 @@ class DataAPIClient:
             `create_database` method of class AstraDBAdmin.
         """
 
+        _api_endpoint_p, _id_p = check_id_endpoint_parg_kwargs(
+            p_arg=api_endpoint_or_id, api_endpoint=api_endpoint, id=id
+        )
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -302,44 +294,43 @@ class DataAPIClient:
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
-        # id/endpoint parameter normalization
-        _id_or_endpoint = normalize_id_endpoint_parameters(id, api_endpoint)
         if self.environment in Environment.astra_db_values:
             # handle the "endpoint passed as id" case first:
-            if re.match(api_endpoint_parser, _id_or_endpoint):
+            if _api_endpoint_p is not None:
                 if region is not None:
                     raise ValueError(
-                        "Parameter `region` not supported when supplying an API endpoint."
+                        "Parameter `region` not supported with an API endpoint."
                     )
                 # in this case max_time_ms is ignored (no calls take place)
                 return self.get_database_by_api_endpoint(
-                    api_endpoint=_id_or_endpoint,
+                    api_endpoint=_api_endpoint_p,
                     token=token,
                     keyspace=keyspace_param,
                     api_path=api_path,
                     api_version=api_version,
                 )
             else:
-                # handle overrides. Only region is needed (keyspace can stay empty)
+                # _id_p is to be used, guaranteed not null at this point
+                s_id_p: str = _id_p  # type: ignore[assignment]
                 if region:
                     _region = region
                 else:
-                    logger.info(f"fetching raw database info for {_id_or_endpoint}")
+                    logger.info(f"fetching raw database info for {s_id_p}")
                     this_db_info = fetch_raw_database_info_from_id_token(
-                        id=_id_or_endpoint,
-                        token=self.token_provider.get_token(),
+                        id=s_id_p,
+                        token=(
+                            coerce_token_provider(token) or self.token_provider
+                        ).get_token(),
                         environment=self.environment,
                         max_time_ms=max_time_ms,
                     )
-                    logger.info(
-                        f"finished fetching raw database info for {_id_or_endpoint}"
-                    )
+                    logger.info(f"finished fetching raw database info for {s_id_p}")
                     _region = this_db_info["info"]["region"]
 
                 _token = coerce_token_provider(token) or self.token_provider
                 _api_endpoint = build_api_endpoint(
                     environment=self.environment,
-                    database_id=_id_or_endpoint,
+                    database_id=s_id_p,
                     region=_region,
                 )
                 return Database(
@@ -354,13 +345,16 @@ class DataAPIClient:
         else:
             # in this case, this call is an alias for get_database_by_api_endpoint
             #   - max_time_ms ignored
-            #   - assume `_id_or_endpoint` is actually the endpoint
+            #   - require the endpoint to be passed
+            if _id_p is not None:
+                raise ValueError("Cannot use a Database ID outside of Astra DB.")
             if region is not None:
                 raise ValueError(
                     "Parameter `region` not supported outside of Astra DB."
                 )
+            # _api_endpoint_p guaranteed not null at this point
             return self.get_database_by_api_endpoint(
-                api_endpoint=_id_or_endpoint,
+                api_endpoint=_api_endpoint_p,  # type: ignore[arg-type]
                 token=token,
                 keyspace=keyspace_param,
                 api_path=api_path,
@@ -369,22 +363,70 @@ class DataAPIClient:
 
     def get_async_database(
         self,
-        id: str | None = None,
+        api_endpoint_or_id: str | None = None,
         *,
         api_endpoint: str | None = None,
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
         namespace: str | None = None,
+        id: str | None = None,
         region: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
         max_time_ms: int | None = None,
     ) -> AsyncDatabase:
         """
-        Get an AsyncDatabase object from this client.
+        Get an AsyncDatabase object from this client, for doing data-related work.
 
-        This method has identical behavior and signature as the sync
-        counterpart `get_database`: please see that one for more details.
+        Args:
+            api_endpoint_or_id: positional parameter that can stand for both
+                `api_endpoint` and `id`. Passing them together is an error.
+            api_endpoint: the API Endpoint for the target database
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+                The database must exist already for the resulting object
+                to be effectively used; in other words, this invocation
+                does not create the database, just the object instance.
+                Actual admin work can be achieved by using the AstraDBAdmin object.
+            token: if supplied, is passed to the Database instead of the client token.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
+            keyspace: if provided, it is passed to the Database; otherwise
+                the Database class will apply an environment-specific default.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
+            id: the target database ID. This is alternative to using the API Endpoint.
+            region: the region to use for connecting to the database. The
+                database must be located in that region. This parameter can be used
+                only if the database is specified by its ID (instead of API Endpoint).
+                If this parameter is not passed, and cannot be inferred
+                from the API endpoint, an additional DevOps API request is made
+                to determine the default region and use it subsequently.
+            api_path: path to append to the API Endpoint. In typical usage, this
+                should be left to its default of "/api/json".
+            api_version: version specifier to append to the API path. In typical
+                usage, this should be left to its default of "v1".
+            max_time_ms: a timeout, in milliseconds, for the DevOps API
+                HTTP request should it be necessary (see the `region` argument).
+
+        Returns:
+            a Database object with which to work on Data API collections.
+
+        Example:
+            >>> async def create_use_db(cl: DataAPIClient, api_ep: str) -> None:
+            ...     async_db = cl.get_async_database(api_ep)
+            ...     my_a_coll = await async_db.create_collection("movies", dimension=2)
+            ...     await my_a_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
+            ...
+            >>> asyncio.run(
+            ...   create_use_db(
+            ...       my_client,
+            ...       "https://01234567-...us-west1.apps.astra.datastax.com",
+            ...   )
+            ... )
+
+        Note:
+            This method does not perform any admin-level operation through
+            the DevOps API. For actual creation of a database, see the
+            `create_database` method of class AstraDBAdmin.
         """
 
         keyspace_param = check_namespace_keyspace(
@@ -392,10 +434,11 @@ class DataAPIClient:
             namespace=namespace,
         )
         return self.get_database(
-            id=id,
+            api_endpoint_or_id=api_endpoint_or_id,
             api_endpoint=api_endpoint,
             token=token,
             keyspace=keyspace_param,
+            id=id,
             region=region,
             api_path=api_path,
             api_version=api_version,
