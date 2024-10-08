@@ -1,3 +1,8 @@
+v. 1.5.2
+========
+Bugfix: `Database.get_collection` uses callers inheritance (same for async)
+
+
 v. 1.5.1
 ========
 Switching to endpoint as the only/primary way of specifying databases:
