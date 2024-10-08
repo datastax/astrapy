@@ -51,7 +51,7 @@ class DeleteResult(OperationResult):
             list of raw responses can contain exactly one or a number of items.
     """
 
-    deleted_count: int | None
+    deleted_count: int
 
     def __repr__(self) -> str:
         return self._piecewise_repr(
@@ -202,7 +202,7 @@ class BulkWriteResult:
     """
 
     bulk_api_results: dict[int, list[dict[str, Any]]]
-    deleted_count: int | None
+    deleted_count: int
     inserted_count: int
     matched_count: int
     modified_count: int

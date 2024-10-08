@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Union
+from typing import Any, Dict, Iterable, Tuple, Union
 
 from astrapy.defaults import (
     DATA_API_ENVIRONMENT_CASSANDRA,
@@ -37,6 +37,7 @@ ProjectionType = Union[
 SortType = Dict[str, Any]
 FilterType = Dict[str, Any]
 VectorType = Iterable[float]
+CallerType = Tuple[Union[str, None], Union[str, None]]
 
 
 def normalize_optional_projection(

@@ -15,11 +15,13 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any
+from typing import Any, Sequence
 
 from deprecation import DeprecatedWarning
 
+from astrapy.constants import CallerType
 from astrapy.defaults import (
+    CALLER_NAME_VERSION_DEPRECATION_NOTICE_DETAILS,
     NAMESPACE_DEPRECATION_NOTICE_NS_DETAILS,
     NAMESPACE_DEPRECATION_NOTICE_NS_SUBJECT,
     NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_DETAILS,
@@ -62,6 +64,61 @@ def check_deprecated_vector_ize(
             deprecated_in="1.3.0",
             removed_in="2.0.0",
             details=message,
+        )
+        warnings.warn(
+            the_warning,
+            stacklevel=3,
+        )
+
+
+def check_caller_parameters(
+    callers: Sequence[CallerType],
+    caller_name: str | None,
+    caller_version: str | None,
+) -> Sequence[CallerType]:
+    if caller_name is None and caller_version is None:
+        return callers
+    else:
+        # issue a deprecation warning
+        the_warning = DeprecatedWarning(
+            "Use of parameters `caller_name` and `caller_version`",
+            deprecated_in="1.5.1",
+            removed_in="2.0.0",
+            details=CALLER_NAME_VERSION_DEPRECATION_NOTICE_DETAILS,
+        )
+        warnings.warn(
+            the_warning,
+            stacklevel=3,
+        )
+        if not callers:
+            return [(caller_name, caller_version)]
+        else:
+            msg = (
+                "None of the deprecated `caller_name` and `caller_version` "
+                "parameters can be passed if the newer `callers` parameter is "
+                "also provided."
+            )
+            raise ValueError(msg)
+
+
+def check_deprecated_id_region(
+    id: str | None,
+    region: str | None,
+) -> None:
+    # issue a deprecation warning if a database "id" is passed,
+    # possibly accompanied by a "region".
+
+    if id is not None:
+        if region is None:
+            deprecation_subject = "Passing an `id` parameter"
+        else:
+            deprecation_subject = "Passing an `id` parameter with a `region`"
+        # issue a deprecation warning
+        the_warning = DeprecatedWarning(
+            deprecation_subject,
+            deprecated_in="1.5.1",
+            removed_in="2.0.0",
+            details="Please switch to using the API Endpoint.",
         )
         warnings.warn(
             the_warning,

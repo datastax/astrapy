@@ -17,10 +17,11 @@ from __future__ import annotations
 import json
 import logging
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Dict, Iterable, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Sequence, cast
 
 import httpx
 
+from astrapy.constants import CallerType
 from astrapy.defaults import (
     DEFAULT_REDACTED_HEADER_NAMES,
     DEFAULT_REQUEST_TIMEOUT_MS,
@@ -46,7 +47,6 @@ from astrapy.transform_payload import normalize_for_api, restore_from_api
 from astrapy.user_agents import (
     compose_full_user_agent,
     detect_astrapy_user_agent,
-    detect_ragstack_user_agent,
 )
 
 if TYPE_CHECKING:
@@ -54,7 +54,6 @@ if TYPE_CHECKING:
 
 
 user_agent_astrapy = detect_astrapy_user_agent()
-user_agent_ragstack = detect_ragstack_user_agent()
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +66,7 @@ class APICommander:
         api_endpoint: str,
         path: str,
         headers: dict[str, str | None] = {},
-        callers: list[tuple[str | None, str | None]] = [],
+        callers: Sequence[CallerType] = [],
         redacted_header_names: Iterable[str] = DEFAULT_REDACTED_HEADER_NAMES,
         dev_ops_api: bool = False,
     ) -> None:
@@ -98,7 +97,7 @@ class APICommander:
         self._api_description = "DevOps API" if self.dev_ops_api else "Data API"
 
         full_user_agent_string = compose_full_user_agent(
-            [user_agent_ragstack] + self.callers + [user_agent_astrapy]
+            list(self.callers) + [user_agent_astrapy]
         )
         self.caller_header: dict[str, str] = (
             {"User-Agent": full_user_agent_string} if full_user_agent_string else {}
@@ -145,7 +144,7 @@ class APICommander:
         api_endpoint: str | None = None,
         path: str | None = None,
         headers: dict[str, str | None] | None = None,
-        callers: list[tuple[str | None, str | None]] | None = None,
+        callers: Sequence[CallerType] | None = None,
         redacted_header_names: list[str] | None = None,
         dev_ops_api: bool | None = None,
     ) -> APICommander:
@@ -238,6 +237,7 @@ class APICommander:
         http_method: str = HttpMethod.POST,
         payload: dict[str, Any] | None = None,
         additional_path: str | None = None,
+        request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> httpx.Response:
@@ -247,7 +247,7 @@ class APICommander:
         log_httpx_request(
             http_method=http_method,
             full_url=request_url,
-            request_params={},
+            request_params=request_params,
             redacted_request_headers=self._loggable_headers,
             payload=normalized_payload,
         )
@@ -258,6 +258,7 @@ class APICommander:
                 method=http_method,
                 url=request_url,
                 content=encoded_payload,
+                params=request_params,
                 timeout=timeout or DEFAULT_REQUEST_TIMEOUT_MS,
                 headers=self.full_headers,
             )
@@ -280,6 +281,7 @@ class APICommander:
         http_method: str = HttpMethod.POST,
         payload: dict[str, Any] | None = None,
         additional_path: str | None = None,
+        request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> httpx.Response:
@@ -289,7 +291,7 @@ class APICommander:
         log_httpx_request(
             http_method=http_method,
             full_url=request_url,
-            request_params={},
+            request_params=request_params,
             redacted_request_headers=self._loggable_headers,
             payload=normalized_payload,
         )
@@ -300,6 +302,7 @@ class APICommander:
                 method=http_method,
                 url=request_url,
                 content=encoded_payload,
+                params=request_params,
                 timeout=timeout or DEFAULT_REQUEST_TIMEOUT_MS,
                 headers=self.full_headers,
             )
@@ -322,6 +325,7 @@ class APICommander:
         http_method: str = HttpMethod.POST,
         payload: dict[str, Any] | None = None,
         additional_path: str | None = None,
+        request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> dict[str, Any]:
@@ -329,6 +333,7 @@ class APICommander:
             http_method=http_method,
             payload=payload,
             additional_path=additional_path,
+            request_params=request_params,
             raise_api_errors=raise_api_errors,
             timeout_info=timeout_info,
         )
@@ -342,6 +347,7 @@ class APICommander:
         http_method: str = HttpMethod.POST,
         payload: dict[str, Any] | None = None,
         additional_path: str | None = None,
+        request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
         timeout_info: TimeoutInfoWideType = None,
     ) -> dict[str, Any]:
@@ -349,6 +355,7 @@ class APICommander:
             http_method=http_method,
             payload=payload,
             additional_path=additional_path,
+            request_params=request_params,
             raise_api_errors=raise_api_errors,
             timeout_info=timeout_info,
         )

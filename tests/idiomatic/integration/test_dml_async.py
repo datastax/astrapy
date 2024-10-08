@@ -460,11 +460,21 @@ class TestDMLAsync:
 
         # projection
         cursor0 = async_empty_collection.find(projection={"ternary": False})
+        assert cursor0.consumed == 0
+        with pytest.warns(DeprecationWarning):
+            assert cursor0.retrieved == 0
         document0 = await cursor0.__anext__()
+        assert cursor0.consumed == 1
+        with pytest.warns(DeprecationWarning):
+            assert cursor0.retrieved == 1
         assert "ternary" not in document0
         cursor0b = async_empty_collection.find(projection={"ternary": True})
         document0b = await cursor0b.__anext__()
         assert "ternary" in document0b
+
+        assert cursor0b.data_source == async_empty_collection
+        with pytest.warns(DeprecationWarning):
+            assert cursor0b.collection == async_empty_collection
 
         async def _alist(acursor: AsyncCursor) -> list[DocumentType]:
             return [doc async for doc in acursor]

@@ -63,33 +63,14 @@ class TestBulkWriteResults:
         )
         assert reduced_a == expected_a
 
-        bwr_n = BulkWriteResult(
-            bulk_api_results={},
-            deleted_count=None,
-            inserted_count=0,
-            matched_count=0,
-            modified_count=0,
-            upserted_count=0,
-            upserted_ids={},
+        reduced_b = reduce_bulk_write_results([bwr1, bwr2, bwr1])
+        expected_b = BulkWriteResult(
+            bulk_api_results={1: [{"seq1": 1}]},
+            deleted_count=210,
+            inserted_count=420,
+            matched_count=630,
+            modified_count=840,
+            upserted_count=1050,
+            upserted_ids={1: {"useq1": 1}, 2: {"useq2": 2}},
         )
-        bwr_1 = BulkWriteResult(
-            bulk_api_results={},
-            deleted_count=1,
-            inserted_count=1,
-            matched_count=1,
-            modified_count=1,
-            upserted_count=1,
-            upserted_ids={},
-        )
-
-        reduced_n = reduce_bulk_write_results([bwr_1, bwr_n, bwr_1])
-        expected_n = BulkWriteResult(
-            bulk_api_results={},
-            deleted_count=None,
-            inserted_count=2,
-            matched_count=2,
-            modified_count=2,
-            upserted_count=2,
-            upserted_ids={},
-        )
-        assert reduced_n == expected_n
+        assert reduced_b == expected_b

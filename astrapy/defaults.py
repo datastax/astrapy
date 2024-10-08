@@ -84,6 +84,7 @@ DEV_OPS_VERSION_ENV_MAP = {
 }
 DEV_OPS_RESPONSE_HTTP_ACCEPTED = 202
 DEV_OPS_RESPONSE_HTTP_CREATED = 201
+DEV_OPS_DEFAULT_DATABASES_PAGE_SIZE = 25
 
 # Settings for redacting secrets in string representations and logging
 SECRETS_REDACT_ENDING = "..."
@@ -118,4 +119,14 @@ NAMESPACE_DEPRECATION_NOTICE_NS_DETAILS = (
     "Please replace the parameter with `keyspace`. "
     "See https://docs.datastax.com/en/astra-db-serverless/api-reference/client-"
     "versions.html#version-1-5 for more information."
+)
+
+# Other deprecation notices
+SET_CALLER_DEPRECATION_NOTICE = (
+    "Please provide the caller(s) at constructor time through the "
+    "`callers` list parameter."
+)
+CALLER_NAME_VERSION_DEPRECATION_NOTICE_DETAILS = (
+    "Please pass any caller identities as the `callers` constructor parameter: "
+    "`callers=[('cname1', 'cversion1'), ('cname2', 'cversion2'), ...]`."
 )

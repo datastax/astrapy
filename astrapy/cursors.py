@@ -18,7 +18,9 @@ import hashlib
 import json
 import logging
 import time
+import warnings
 from collections.abc import AsyncIterator
+from enum import Enum
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -30,6 +32,8 @@ from typing import (
     Tuple,
     TypeVar,
 )
+
+import deprecation
 
 from astrapy.constants import (
     DocumentType,
@@ -53,6 +57,15 @@ logger = logging.getLogger(__name__)
 BC = TypeVar("BC", bound="BaseCursor")
 T = TypeVar("T")
 IndexPairType = Tuple[str, Optional[int]]
+
+
+class CursorState(Enum):
+    # Iteration over results has not started yet (alive=T, started=F)
+    IDLE = "idle"
+    # Iteration has started, *can* still yield results (alive=T, started=T)
+    STARTED = "started"
+    # Finished/forcibly stopped. Won't return more documents (alive=F)
+    CLOSED = "closed"
 
 
 def _maybe_valid_list_index(key_block: str) -> int | None:
@@ -244,9 +257,8 @@ class BaseCursor:
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _sort: dict[str, Any] | None
-    _started: bool
-    _retrieved: int
-    _alive: bool
+    _state: CursorState
+    _consumed: int
     _iterator: _LookAheadIterator | _AsyncLookAheadIterator | None = None
     _api_response_status: dict[str, Any] | None
 
@@ -260,34 +272,11 @@ class BaseCursor:
     ) -> None:
         raise NotImplementedError
 
-    # Note: this, i.e. cursor[i]/cursor[i:j], is disabled
-    # pending full skip/limit support by the Data API.
-    #
-    # def __getitem__(self: BC, index: Union[int, slice]) -> Union[BC, DocumentType]:
-    #     self._ensure_not_started()
-    #     self._ensure_alive()
-    #     if isinstance(index, int):
-    #         # In this case, a separate cursor is run, not touching self
-    #         return self._item_at_index(index)
-    #     elif isinstance(index, slice):
-    #         start = index.start
-    #         stop = index.stop
-    #         step = index.step
-    #         if step is not None and step != 1:
-    #             raise ValueError("Cursor slicing cannot have arbitrary step")
-    #         _skip = start
-    #         _limit = stop - start
-    #         return self.limit(_limit).skip(_skip)
-    #     else:
-    #         raise TypeError(
-    #             f"cursor indices must be integers or slices, not {type(index).__name__}"
-    #         )
-
     def __repr__(self) -> str:
         return (
             f'{self.__class__.__name__}("{self._collection.name}", '
             f"{self.state}, "
-            f"retrieved so far: {self.retrieved})"
+            f"consumed so far: {self.consumed})"
         )
 
     def _item_at_index(self, index: int) -> DocumentType:
@@ -295,16 +284,16 @@ class BaseCursor:
         raise NotImplementedError
 
     def _ensure_alive(self) -> None:
-        if not self._alive:
+        if not self.alive:
             raise CursorIsStartedException(
-                text="Cursor is closed.",
+                text="Cursor not alive.",
                 cursor_state=self.state,
             )
 
-    def _ensure_not_started(self) -> None:
-        if self._started:
+    def _ensure_idle(self) -> None:
+        if self._state != CursorState.IDLE:
             raise CursorIsStartedException(
-                text="Cursor is started already.",
+                text="Cursor started already.",
                 cursor_state=self.state,
             )
 
@@ -318,7 +307,6 @@ class BaseCursor:
         skip: int | None = None,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
-        started: bool | None = None,
         sort: dict[str, Any] | None = None,
     ) -> BC:
         new_cursor = self.__class__(
@@ -341,34 +329,17 @@ class BaseCursor:
             if include_sort_vector is not None
             else self._include_sort_vector
         )
-        new_cursor._started = started if started is not None else self._started
         new_cursor._sort = sort if sort is not None else self._sort
-        if started is False:
-            new_cursor._retrieved = 0
-            new_cursor._alive = True
-        else:
-            new_cursor._retrieved = self._retrieved
-            new_cursor._alive = self._alive
         return new_cursor
 
     @property
     def state(self) -> str:
         """
-        The current state of this cursor, which can be:
-            - "new": if iteration over results has not started yet
-            - "running": iteration has started, can still yield results
-            - "exhausted": the cursor has finished and won't return documents
+        The current state of this cursor, which can be one of
+        the astrapy.cursors.CursorState enum.
         """
 
-        state_desc: str
-        if self._started:
-            if self._alive:
-                state_desc = "running"
-            else:
-                state_desc = "exhausted"
-        else:
-            state_desc = "new"
-        return state_desc
+        return self._state.value
 
     @property
     def address(self) -> str:
@@ -385,7 +356,7 @@ class BaseCursor:
         Whether the cursor has the potential to yield more data.
         """
 
-        return self._alive
+        return self._state != CursorState.CLOSED
 
     def clone(self: BC) -> BC:
         """
@@ -396,14 +367,14 @@ class BaseCursor:
             i.e. fully un-consumed.
         """
 
-        return self._copy(started=False)
+        return self._copy()
 
     def close(self) -> None:
         """
         Stop/kill the cursor, regardless of its status.
         """
 
-        self._alive = False
+        self._state = CursorState.CLOSED
 
     @property
     def cursor_id(self) -> int:
@@ -424,7 +395,7 @@ class BaseCursor:
             this cursor itself.
         """
 
-        self._ensure_not_started()
+        self._ensure_idle()
         self._ensure_alive()
         self._limit = limit if limit != 0 else None
         return self
@@ -440,7 +411,7 @@ class BaseCursor:
             this cursor itself.
         """
 
-        self._ensure_not_started()
+        self._ensure_idle()
         self._ensure_alive()
         self._include_similarity = include_similarity
         return self
@@ -456,7 +427,7 @@ class BaseCursor:
             this cursor itself.
         """
 
-        self._ensure_not_started()
+        self._ensure_idle()
         self._ensure_alive()
         self._include_sort_vector = include_sort_vector
         return self
@@ -464,10 +435,26 @@ class BaseCursor:
     @property
     def retrieved(self) -> int:
         """
-        The number of documents retrieved so far by the code consuming the cursor.
+        The number of documents consumed so far (by the code consuming the cursor).
         """
 
-        return self._retrieved
+        the_warning = deprecation.DeprecatedWarning(
+            "the 'retrieved' property of Cursor objects",
+            deprecated_in="1.5.1",
+            removed_in="2.0.0",
+            details="Please use the 'consumed' property",
+        )
+        warnings.warn(the_warning, stacklevel=2)
+
+        return self.consumed
+
+    @property
+    def consumed(self) -> int:
+        """
+        The number of documents consumed so far (by the code consuming the cursor).
+        """
+
+        return self._consumed
 
     def rewind(self: BC) -> BC:
         """
@@ -477,9 +464,8 @@ class BaseCursor:
             this cursor itself.
         """
 
-        self._started = False
-        self._retrieved = 0
-        self._alive = True
+        self._state = CursorState.IDLE
+        self._consumed = 0
         self._iterator = None
         return self
 
@@ -498,7 +484,7 @@ class BaseCursor:
             `sort` criterion of the ascending/descending type (i.e. it cannot
             be used when not sorting, nor with vector-based ANN search).
         """
-        self._ensure_not_started()
+        self._ensure_idle()
         self._ensure_alive()
         self._skip = skip
         return self
@@ -530,7 +516,7 @@ class BaseCursor:
             a command such as `.distinct()` on a cursor.
         """
 
-        self._ensure_not_started()
+        self._ensure_idle()
         self._ensure_alive()
         self._sort = sort
         return self
@@ -595,9 +581,8 @@ class Cursor(BaseCursor):
         self._include_similarity: bool | None = None
         self._include_sort_vector: bool | None = None
         self._sort: dict[str, Any] | None = None
-        self._started = False
-        self._retrieved = 0
-        self._alive = True
+        self._state = CursorState.IDLE
+        self._consumed = 0
         #
         self._iterator: _LookAheadIterator | None = None
         self._api_response_status: dict[str, Any] | None = None
@@ -606,7 +591,7 @@ class Cursor(BaseCursor):
         self._ensure_alive()
         if self._iterator is None:
             self._iterator = self._create_iterator()
-            self._started = True
+            self._state = CursorState.STARTED
         return self
 
     def __next__(self) -> DocumentType:
@@ -615,7 +600,7 @@ class Cursor(BaseCursor):
             raise StopIteration
         if self._iterator is None:
             self._iterator = self._create_iterator()
-            self._started = True
+            self._state = CursorState.STARTED
         # check for overall timing out
         if self._overall_max_time_ms is not None:
             _elapsed = time.time() - self._started_time_s  # type: ignore[operator]
@@ -628,10 +613,10 @@ class Cursor(BaseCursor):
                 )
         try:
             next_item = self._iterator.__next__()
-            self._retrieved = self._retrieved + 1
+            self._consumed = self._consumed + 1
             return next_item
         except StopIteration:
-            self._alive = False
+            self.close()
             raise
 
     def get_sort_vector(self) -> list[float] | None:
@@ -646,7 +631,7 @@ class Cursor(BaseCursor):
 
         if self._iterator is None:
             self._iterator = self._create_iterator()
-            self._started = True
+            self._state = CursorState.STARTED
         self._iterator.preread()
         if self._api_response_status:
             return self._api_response_status.get("sortVector")
@@ -662,7 +647,7 @@ class Cursor(BaseCursor):
             raise IndexError("no such item for Cursor instance")
 
     def _create_iterator(self) -> _LookAheadIterator:
-        self._ensure_not_started()
+        self._ensure_idle()
         self._ensure_alive()
         _options_0 = {
             k: v
@@ -756,6 +741,22 @@ class Cursor(BaseCursor):
         The (synchronous) collection this cursor is targeting.
         """
 
+        the_warning = deprecation.DeprecatedWarning(
+            "the 'collection' property of Cursor objects",
+            deprecated_in="1.5.1",
+            removed_in="2.0.0",
+            details="Please use the 'data_source' property",
+        )
+        warnings.warn(the_warning, stacklevel=2)
+
+        return self.data_source
+
+    @property
+    def data_source(self) -> Collection:
+        """
+        The (synchronous) collection this cursor is targeting.
+        """
+
         return self._collection
 
     def distinct(self, key: str, max_time_ms: int | None = None) -> list[Any]:
@@ -800,7 +801,6 @@ class Cursor(BaseCursor):
 
         d_cursor = self._copy(
             projection={_key: True},
-            started=False,
             overall_max_time_ms=max_time_ms,
         )
         logger.info(f"running distinct() on '{self._collection.name}'")
@@ -874,9 +874,8 @@ class AsyncCursor(BaseCursor):
         self._include_similarity: bool | None = None
         self._include_sort_vector: bool | None = None
         self._sort: dict[str, Any] | None = None
-        self._started = False
-        self._retrieved = 0
-        self._alive = True
+        self._state = CursorState.IDLE
+        self._consumed = 0
         #
         self._iterator: _AsyncLookAheadIterator | None = None
         self._api_response_status: dict[str, Any] | None = None
@@ -885,7 +884,7 @@ class AsyncCursor(BaseCursor):
         self._ensure_alive()
         if self._iterator is None:
             self._iterator = self._create_iterator()
-            self._started = True
+            self._state = CursorState.STARTED
         return self
 
     async def __anext__(self) -> DocumentType:
@@ -894,7 +893,7 @@ class AsyncCursor(BaseCursor):
             raise StopAsyncIteration
         if self._iterator is None:
             self._iterator = self._create_iterator()
-            self._started = True
+            self._state = CursorState.STARTED
         # check for overall timing out
         if self._overall_max_time_ms is not None:
             _elapsed = time.time() - self._started_time_s  # type: ignore[operator]
@@ -907,10 +906,10 @@ class AsyncCursor(BaseCursor):
                 )
         try:
             next_item = await self._iterator.__anext__()
-            self._retrieved = self._retrieved + 1
+            self._consumed = self._consumed + 1
             return next_item
         except StopAsyncIteration:
-            self._alive = False
+            self.close()
             raise
 
     async def get_sort_vector(self) -> list[float] | None:
@@ -925,7 +924,7 @@ class AsyncCursor(BaseCursor):
 
         if self._iterator is None:
             self._iterator = self._create_iterator()
-            self._started = True
+            self._state = CursorState.STARTED
         await self._iterator.preread()
         if self._api_response_status:
             return self._api_response_status.get("sortVector")
@@ -941,7 +940,7 @@ class AsyncCursor(BaseCursor):
             raise IndexError("no such item for AsyncCursor instance")
 
     def _create_iterator(self) -> _AsyncLookAheadIterator:
-        self._ensure_not_started()
+        self._ensure_idle()
         self._ensure_alive()
         _options_0 = {
             k: v
@@ -1034,7 +1033,6 @@ class AsyncCursor(BaseCursor):
         skip: int | None = None,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
-        started: bool | None = None,
         sort: dict[str, Any] | None = None,
     ) -> Cursor:
         new_cursor = Cursor(
@@ -1057,18 +1055,27 @@ class AsyncCursor(BaseCursor):
             if include_sort_vector is not None
             else self._include_sort_vector
         )
-        new_cursor._started = started if started is not None else self._started
         new_cursor._sort = sort if sort is not None else self._sort
-        if started is False:
-            new_cursor._retrieved = 0
-            new_cursor._alive = True
-        else:
-            new_cursor._retrieved = self._retrieved
-            new_cursor._alive = self._alive
         return new_cursor
 
     @property
     def collection(self) -> AsyncCollection:
+        """
+        The (asynchronous) collection this cursor is targeting.
+        """
+
+        the_warning = deprecation.DeprecatedWarning(
+            "the 'collection' property of Cursor objects",
+            deprecated_in="1.5.1",
+            removed_in="2.0.0",
+            details="Please use the 'data_source' property",
+        )
+        warnings.warn(the_warning, stacklevel=2)
+
+        return self.data_source
+
+    @property
+    def data_source(self) -> AsyncCollection:
         """
         The (asynchronous) collection this cursor is targeting.
         """
@@ -1111,7 +1118,6 @@ class AsyncCursor(BaseCursor):
 
         d_cursor = self._copy(
             projection={_key: True},
-            started=False,
             overall_max_time_ms=max_time_ms,
         )
         logger.info(f"running distinct() on '{self._collection.name}'")

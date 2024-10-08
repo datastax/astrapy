@@ -17,6 +17,7 @@ from __future__ import annotations
 import pytest
 
 from astrapy import Collection, Database
+from astrapy.cursors import CursorState
 from astrapy.exceptions import (
     BulkWriteException,
     CollectionAlreadyExistsException,
@@ -345,12 +346,12 @@ class TestExceptionsSync:
         cur1.__next__()
         with pytest.raises(CursorIsStartedException) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == "running"
+        assert exc.value.cursor_state == CursorState.STARTED.value
 
         list(cur1)
         with pytest.raises(CursorIsStartedException) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == "exhausted"
+        assert exc.value.cursor_state == CursorState.CLOSED.value
 
     @pytest.mark.describe("test of standard exceptions in cursors, sync")
     def test_cursor_standard_exceptions_sync(

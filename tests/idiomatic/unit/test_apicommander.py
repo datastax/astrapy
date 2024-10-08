@@ -78,7 +78,7 @@ class TestAPICommander:
             api_endpoint=base_endpoint,
             path=base_path,
             headers={"h": "v"},
-            callers=[("cn", "cv")],
+            callers=[("cn0", "cv0"), ("cn1", "cv1")],
         )
 
         def hv_matcher(hk: str, hv: str | None, ev: str) -> bool:
@@ -94,7 +94,7 @@ class TestAPICommander:
             method=HttpMethod.PUT,
             headers={
                 "h": "v",
-                "User-Agent": "cn/cv",
+                "User-Agent": "cn0/cv0 cn1/cv1",
             },
             header_value_matcher=hv_matcher,
             data="{}",
@@ -126,7 +126,7 @@ class TestAPICommander:
             api_endpoint=base_endpoint,
             path=base_path,
             headers={"h": "v"},
-            callers=[("cn", "cv")],
+            callers=[("cn0", "cv0"), ("cn1", "cv1")],
         )
 
         def hv_matcher(hk: str, hv: str | None, ev: str) -> bool:
@@ -143,7 +143,7 @@ class TestAPICommander:
             data="{}",
             headers={
                 "h": "v",
-                "User-Agent": "cn/cv",
+                "User-Agent": "cn0/cv0 cn1/cv1",
             },
             header_value_matcher=hv_matcher,
         ).respond_with_json({"r": 1})

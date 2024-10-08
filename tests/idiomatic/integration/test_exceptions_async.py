@@ -18,7 +18,7 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.constants import DocumentType
-from astrapy.cursors import AsyncCursor
+from astrapy.cursors import AsyncCursor, CursorState
 from astrapy.exceptions import (
     BulkWriteException,
     CollectionAlreadyExistsException,
@@ -357,12 +357,12 @@ class TestExceptionsAsync:
         await cur1.__anext__()
         with pytest.raises(CursorIsStartedException) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == "running"
+        assert exc.value.cursor_state == CursorState.STARTED.value
 
         [doc async for doc in cur1]
         with pytest.raises(CursorIsStartedException) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == "exhausted"
+        assert exc.value.cursor_state == CursorState.CLOSED.value
 
     @pytest.mark.describe("test of standard exceptions in cursors, async")
     async def test_cursor_standard_exceptions_async(

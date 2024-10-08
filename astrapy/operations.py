@@ -46,10 +46,7 @@ def reduce_bulk_write_results(results: list[BulkWriteResult]) -> BulkWriteResult
 
     def _sum_results(r1: BulkWriteResult, r2: BulkWriteResult) -> BulkWriteResult:
         bulk_api_results = {**r1.bulk_api_results, **r2.bulk_api_results}
-        if r1.deleted_count is None or r2.deleted_count is None:
-            deleted_count = None
-        else:
-            deleted_count = r1.deleted_count + r2.deleted_count
+        deleted_count = r1.deleted_count + r2.deleted_count
         inserted_count = r1.inserted_count + r2.inserted_count
         matched_count = r1.matched_count + r2.matched_count
         modified_count = r1.modified_count + r2.modified_count

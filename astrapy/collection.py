@@ -20,7 +20,7 @@ import logging
 import warnings
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable, Sequence
 
 import deprecation
 
@@ -29,6 +29,7 @@ from astrapy.api_commander import APICommander
 from astrapy.api_options import CollectionAPIOptions
 from astrapy.authentication import coerce_embedding_headers_provider
 from astrapy.constants import (
+    CallerType,
     DocumentType,
     FilterType,
     ProjectionType,
@@ -45,6 +46,7 @@ from astrapy.defaults import (
     DEFAULT_INSERT_MANY_CHUNK_SIZE,
     DEFAULT_INSERT_MANY_CONCURRENCY,
     NAMESPACE_DEPRECATION_NOTICE_METHOD,
+    SET_CALLER_DEPRECATION_NOTICE,
 )
 from astrapy.exceptions import (
     BulkWriteException,
@@ -60,7 +62,11 @@ from astrapy.exceptions import (
     base_timeout_info,
 )
 from astrapy.info import CollectionInfo, CollectionOptions
-from astrapy.meta import check_deprecated_vector_ize, check_namespace_keyspace
+from astrapy.meta import (
+    check_caller_parameters,
+    check_deprecated_vector_ize,
+    check_namespace_keyspace,
+)
 from astrapy.results import (
     BulkWriteResult,
     DeleteResult,
@@ -226,9 +232,14 @@ class Collection:
         namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
         api_options: An instance of `astrapy.api_options.CollectionAPIOptions`
             providing the general settings for interacting with the Data API.
-        caller_name: name of the application, or framework, on behalf of which
-            the Data API calls are performed. This ends up in the request user-agent.
-        caller_version: version of the caller.
+        callers: a list of caller identities, i.e. applications, or frameworks,
+            on behalf of which the Data API calls are performed. These end up
+            in the request user-agent.
+            Each caller identity is a ("caller_name", "caller_version") pair.
+        caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
+            application, or framework, on behalf of which the Data API calls
+            are performed. This ends up in the request user-agent.
+        caller_version: version of the caller. *DEPRECATED*, use `callers`. Removal 2.0.
 
     Examples:
         >>> from astrapy import DataAPIClient, Collection
@@ -260,9 +271,11 @@ class Collection:
         keyspace: str | None = None,
         namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> None:
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -277,8 +290,7 @@ class Collection:
             raise ValueError("Attempted to create Collection with 'keyspace' unset.")
         self._database = database._copy(
             keyspace=_keyspace,
-            caller_name=caller_name,
-            caller_version=caller_version,
+            callers=callers_param,
         )
         self._name = name
 
@@ -288,8 +300,7 @@ class Collection:
             **additional_headers,
         }
 
-        self.caller_name = caller_name
-        self.caller_version = caller_version
+        self.callers = callers_param
         self._api_commander = self._get_api_commander()
 
     def __repr__(self) -> str:
@@ -342,7 +353,7 @@ class Collection:
             api_endpoint=self._database.api_endpoint,
             path=base_path,
             headers=self._commander_headers,
-            callers=[(self.caller_name, self.caller_version)],
+            callers=self.callers,
         )
         return api_commander
 
@@ -354,9 +365,11 @@ class Collection:
         keyspace: str | None = None,
         namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> Collection:
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -366,8 +379,7 @@ class Collection:
             name=name or self.name,
             keyspace=keyspace_param or self.keyspace,
             api_options=self.api_options.with_override(api_options),
-            caller_name=caller_name or self.caller_name,
-            caller_version=caller_version or self.caller_version,
+            callers=callers_param or self.callers,
         )
 
     def with_options(
@@ -376,6 +388,7 @@ class Collection:
         name: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> Collection:
@@ -403,9 +416,15 @@ class Collection:
                 `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
                 to provide a specific timeout as the default one likely wouldn't make
                 much sense.
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
+            callers: a list of caller identities, i.e. applications, or frameworks,
+                on behalf of which the Data API calls are performed. These end up
+                in the request user-agent.
+                Each caller identity is a ("caller_name", "caller_version") pair.
+            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
+                application, or framework, on behalf of which the Data API calls
+                are performed. This ends up in the request user-agent.
+            caller_version: version of the caller. *DEPRECATED*, use `callers`.
+                Removal 2.0.
 
         Returns:
             a new Collection instance.
@@ -413,10 +432,11 @@ class Collection:
         Example:
             >>> my_other_coll = my_coll.with_options(
             ...     name="the_other_coll",
-            ...     caller_name="caller_identity",
+            ...     callers=[("caller_identity", "0.1.2")],
             ... )
         """
 
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         _api_options = CollectionAPIOptions(
             embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             max_time_ms=collection_max_time_ms,
@@ -425,8 +445,7 @@ class Collection:
         return self._copy(
             name=name,
             api_options=_api_options,
-            caller_name=caller_name,
-            caller_version=caller_version,
+            callers=callers_param,
         )
 
     def to_async(
@@ -438,6 +457,7 @@ class Collection:
         namespace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> AsyncCollection:
@@ -472,9 +492,15 @@ class Collection:
                 `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
                 to provide a specific timeout as the default one likely wouldn't make
                 much sense.
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
+            callers: a list of caller identities, i.e. applications, or frameworks,
+                on behalf of which the Data API calls are performed. These end up
+                in the request user-agent.
+                Each caller identity is a ("caller_name", "caller_version") pair.
+            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
+                application, or framework, on behalf of which the Data API calls
+                are performed. This ends up in the request user-agent.
+            caller_version: version of the caller. *DEPRECATED*, use `callers`.
+                Removal 2.0.
 
         Returns:
             the new copy, an AsyncCollection instance.
@@ -484,6 +510,7 @@ class Collection:
             77
         """
 
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -498,10 +525,15 @@ class Collection:
             name=name or self.name,
             keyspace=keyspace_param or self.keyspace,
             api_options=self.api_options.with_override(_api_options),
-            caller_name=caller_name or self.caller_name,
-            caller_version=caller_version or self.caller_version,
+            callers=callers_param or self.callers,
         )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.1",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=SET_CALLER_DEPRECATION_NOTICE,
+    )
     def set_caller(
         self,
         caller_name: str | None = None,
@@ -521,8 +553,8 @@ class Collection:
         """
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
-        self.caller_name = caller_name or self.caller_name
-        self.caller_version = caller_version or self.caller_version
+        callers_param = check_caller_parameters([], caller_name, caller_version)
+        self.callers = callers_param or self.callers
         self._api_commander = self._get_api_commander()
 
     def options(self, *, max_time_ms: int | None = None) -> CollectionOptions:
@@ -2368,17 +2400,10 @@ class Collection:
         logger.info(f"finished deleteOne on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
-            if deleted_count == -1:
-                return DeleteResult(
-                    deleted_count=None,
-                    raw_results=[do_response],
-                )
-            else:
-                # expected a non-negative integer:
-                return DeleteResult(
-                    deleted_count=deleted_count,
-                    raw_results=[do_response],
-                )
+            return DeleteResult(
+                deleted_count=deleted_count,
+                raw_results=[do_response],
+            )
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from delete_one API command.",
@@ -2800,9 +2825,14 @@ class AsyncCollection:
         namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
         api_options: An instance of `astrapy.api_options.CollectionAPIOptions`
             providing the general settings for interacting with the Data API.
-        caller_name: name of the application, or framework, on behalf of which
-            the Data API calls are performed. This ends up in the request user-agent.
-        caller_version: version of the caller.
+        callers: a list of caller identities, i.e. applications, or frameworks,
+            on behalf of which the Data API calls are performed. These end up
+            in the request user-agent.
+            Each caller identity is a ("caller_name", "caller_version") pair.
+        caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
+            application, or framework, on behalf of which the Data API calls
+            are performed. This ends up in the request user-agent.
+        caller_version: version of the caller. *DEPRECATED*, use `callers`. Removal 2.0.
 
     Examples:
         >>> from astrapy import DataAPIClient, AsyncCollection
@@ -2836,9 +2866,11 @@ class AsyncCollection:
         keyspace: str | None = None,
         namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> None:
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -2855,8 +2887,7 @@ class AsyncCollection:
             )
         self._database = database._copy(
             keyspace=_keyspace,
-            caller_name=caller_name,
-            caller_version=caller_version,
+            callers=callers_param,
         )
         self._name = name
 
@@ -2866,8 +2897,7 @@ class AsyncCollection:
             **additional_headers,
         }
 
-        self.caller_name = caller_name
-        self.caller_version = caller_version
+        self.callers = callers_param
         self._api_commander = self._get_api_commander()
 
     def __repr__(self) -> str:
@@ -2920,7 +2950,7 @@ class AsyncCollection:
             api_endpoint=self._database.api_endpoint,
             path=base_path,
             headers=self._commander_headers,
-            callers=[(self.caller_name, self.caller_version)],
+            callers=self.callers,
         )
         return api_commander
 
@@ -2948,9 +2978,11 @@ class AsyncCollection:
         keyspace: str | None = None,
         namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> AsyncCollection:
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -2960,8 +2992,7 @@ class AsyncCollection:
             name=name or self.name,
             keyspace=keyspace_param or self.keyspace,
             api_options=self.api_options.with_override(api_options),
-            caller_name=caller_name or self.caller_name,
-            caller_version=caller_version or self.caller_version,
+            callers=callers_param or self.callers,
         )
 
     def with_options(
@@ -2970,6 +3001,7 @@ class AsyncCollection:
         name: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> AsyncCollection:
@@ -2997,9 +3029,15 @@ class AsyncCollection:
                 `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
                 to provide a specific timeout as the default one likely wouldn't make
                 much sense.
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
+            callers: a list of caller identities, i.e. applications, or frameworks,
+                on behalf of which the Data API calls are performed. These end up
+                in the request user-agent.
+                Each caller identity is a ("caller_name", "caller_version") pair.
+            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
+                application, or framework, on behalf of which the Data API calls
+                are performed. This ends up in the request user-agent.
+            caller_version: version of the caller. *DEPRECATED*, use `callers`.
+                Removal 2.0.
 
         Returns:
             a new AsyncCollection instance.
@@ -3007,10 +3045,11 @@ class AsyncCollection:
         Example:
             >>> my_other_async_coll = my_async_coll.with_options(
             ...     name="the_other_coll",
-            ...     caller_name="caller_identity",
+            ...     callers=[("caller_identity", "0.1.2")],
             ... )
         """
 
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         _api_options = CollectionAPIOptions(
             embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             max_time_ms=collection_max_time_ms,
@@ -3019,8 +3058,7 @@ class AsyncCollection:
         return self._copy(
             name=name,
             api_options=_api_options,
-            caller_name=caller_name,
-            caller_version=caller_version,
+            callers=callers_param,
         )
 
     def to_sync(
@@ -3032,6 +3070,7 @@ class AsyncCollection:
         namespace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
+        callers: Sequence[CallerType] = [],
         caller_name: str | None = None,
         caller_version: str | None = None,
     ) -> Collection:
@@ -3066,9 +3105,15 @@ class AsyncCollection:
                 `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
                 to provide a specific timeout as the default one likely wouldn't make
                 much sense.
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
+            callers: a list of caller identities, i.e. applications, or frameworks,
+                on behalf of which the Data API calls are performed. These end up
+                in the request user-agent.
+                Each caller identity is a ("caller_name", "caller_version") pair.
+            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
+                application, or framework, on behalf of which the Data API calls
+                are performed. This ends up in the request user-agent.
+            caller_version: version of the caller. *DEPRECATED*, use `callers`.
+                Removal 2.0.
 
         Returns:
             the new copy, a Collection instance.
@@ -3078,6 +3123,7 @@ class AsyncCollection:
             77
         """
 
+        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -3092,10 +3138,15 @@ class AsyncCollection:
             name=name or self.name,
             keyspace=keyspace_param or self.keyspace,
             api_options=self.api_options.with_override(_api_options),
-            caller_name=caller_name or self.caller_name,
-            caller_version=caller_version or self.caller_version,
+            callers=callers_param or self.callers,
         )
 
+    @deprecation.deprecated(  # type: ignore[misc]
+        deprecated_in="1.5.1",
+        removed_in="2.0.0",
+        current_version=__version__,
+        details=SET_CALLER_DEPRECATION_NOTICE,
+    )
     def set_caller(
         self,
         caller_name: str | None = None,
@@ -3115,8 +3166,8 @@ class AsyncCollection:
         """
 
         logger.info(f"setting caller to {caller_name}/{caller_version}")
-        self.caller_name = caller_name or self.caller_name
-        self.caller_version = caller_version or self.caller_version
+        callers_param = check_caller_parameters([], caller_name, caller_version)
+        self.callers = callers_param or self.callers
         self._api_commander = self._get_api_commander()
 
     async def options(self, *, max_time_ms: int | None = None) -> CollectionOptions:
@@ -5088,17 +5139,10 @@ class AsyncCollection:
         logger.info(f"finished deleteOne on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
-            if deleted_count == -1:
-                return DeleteResult(
-                    deleted_count=None,
-                    raw_results=[do_response],
-                )
-            else:
-                # expected a non-negative integer:
-                return DeleteResult(
-                    deleted_count=deleted_count,
-                    raw_results=[do_response],
-                )
+            return DeleteResult(
+                deleted_count=deleted_count,
+                raw_results=[do_response],
+            )
         else:
             raise DataAPIFaultyResponseException(
                 text="Faulty response from delete_one API command.",

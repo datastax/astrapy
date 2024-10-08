@@ -19,7 +19,7 @@ import time
 import pytest
 
 from astrapy import Collection, DataAPIClient, Database
-from astrapy.admin import AstraDBDatabaseAdmin, parse_api_endpoint
+from astrapy.admin import parse_api_endpoint
 from astrapy.constants import DefaultIdType, VectorMetric
 from astrapy.ids import UUID, ObjectId
 from astrapy.info import CollectionDescriptor, DatabaseInfo
@@ -403,17 +403,6 @@ class TestDDLSync:
             keyspace="the_ks",
         ) == adm.get_database(
             data_api_credentials_kwargs["api_endpoint"], keyspace="the_ks"
-        )
-
-        # auto-region for the init of AstraDBDatabaseAdmin
-        assert AstraDBDatabaseAdmin(
-            data_api_credentials_kwargs["api_endpoint"],
-            token=data_api_credentials_kwargs["token"],
-            environment=data_api_credentials_info["environment"],
-        ) == AstraDBDatabaseAdmin(
-            parsed_api_endpoint.database_id,
-            token=data_api_credentials_kwargs["token"],
-            environment=data_api_credentials_info["environment"],
         )
 
     @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
