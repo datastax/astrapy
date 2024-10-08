@@ -731,6 +731,7 @@ class Database:
                 embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
                 max_time_ms=collection_max_time_ms,
             ),
+            callers=self.callers,
         )
 
     def create_collection(
@@ -1810,6 +1811,7 @@ class AsyncDatabase:
                 embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
                 max_time_ms=collection_max_time_ms,
             ),
+            callers=self.callers,
         )
 
     async def create_collection(
