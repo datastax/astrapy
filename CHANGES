@@ -5,11 +5,11 @@ Switching to endpoint as the only/primary way of specifying databases:
     - (internal-use constructors and utilities only accept API Endpoint)
     - AstraDBAdmin is the only place where id[/region] will remain an allowed path in 2.0
     - all tests adapted to reflect this simplification
-Admins: resilience against DevOps API omitting keyspace/keyspaces if none is found
+Admins: resilience against DevOps responses omitting 'keyspace'/'keyspaces'
 AstraDBAdmin: added filters and automatic pagination to [async_]list_databases
 Consistent handling of deletedCount=-1 from the API (always returned as-is)
 Cursors: alignment and rework
-    - states are an enum; state names reworked for clarity
+    - states are an enum; state names reworked for clarity (better cursor `__repr__`)
     - _copy and _to_sync methods always return a clean pristine cursor
     - "retrieved" property deprecated (removal 2.0). Use `consumed`.
     - "collection" property deprecated (removal 2.0). Use `data_source`.
@@ -20,7 +20,8 @@ Callers and user-agent string:
     - (minor) breaking change: passing only one of caller_name/caller_version to _copy/with_options will override the whole one-item callers pair list
 Repo housekeeping
     - using ruff for imports and formatting (instead of isort+black) by @cbornet
-    - add ruff rules UP(pyupgrade)
+    - add ruff rules UP(pyupgrade) by @cbornet
+    - remove `cassio` unused dependency
 
 
 v. 1.5.0
