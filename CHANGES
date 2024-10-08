@@ -1,5 +1,10 @@
 master
 ======
+Switching to endpoint as the only/primary way of specifying databases:
+    - AstraDBClient tolerates (deprecated, removal in 2.0) id[/region] in get_database
+    - (internal-use constructors and utilities only accept API Endpoint)
+    - AstraDBAdmin is the only place where id[/region] will remain an allowed path in 2.0
+    - all tests adapted to reflect this simplification
 Admins: resilience against DevOps API omitting keyspace/keyspaces if none is found
 AstraDBAdmin: added filters and automatic pagination to [async_]list_databases
 Consistent handling of deletedCount=-1 from the API (always returned as-is)
