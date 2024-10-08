@@ -11,7 +11,8 @@ Consistent handling of deletedCount=-1 from the API (always returned as-is)
 Cursors: alignment and rework
     - states are an enum; state names reworked for clarity
     - _copy and _to_sync methods always return a clean pristine cursor
-    - "retrieved" property deprecated (removal 2.0). Use `consumed`
+    - "retrieved" property deprecated (removal 2.0). Use `consumed`.
+    - "collection" property deprecated (removal 2.0). Use `data_source`.
 Deprecation of all `set_caller` (=> to be set at constructor-time) (removal in 2.0)
 Callers and user-agent string:
     - remove RAGStack automatic detection

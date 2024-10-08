@@ -741,6 +741,22 @@ class Cursor(BaseCursor):
         The (synchronous) collection this cursor is targeting.
         """
 
+        the_warning = deprecation.DeprecatedWarning(
+            "the 'collection' property of Cursor objects",
+            deprecated_in="1.5.1",
+            removed_in="2.0.0",
+            details="Please use the 'data_source' property",
+        )
+        warnings.warn(the_warning, stacklevel=2)
+
+        return self.data_source
+
+    @property
+    def data_source(self) -> Collection:
+        """
+        The (synchronous) collection this cursor is targeting.
+        """
+
         return self._collection
 
     def distinct(self, key: str, max_time_ms: int | None = None) -> list[Any]:
@@ -1044,6 +1060,22 @@ class AsyncCursor(BaseCursor):
 
     @property
     def collection(self) -> AsyncCollection:
+        """
+        The (asynchronous) collection this cursor is targeting.
+        """
+
+        the_warning = deprecation.DeprecatedWarning(
+            "the 'collection' property of Cursor objects",
+            deprecated_in="1.5.1",
+            removed_in="2.0.0",
+            details="Please use the 'data_source' property",
+        )
+        warnings.warn(the_warning, stacklevel=2)
+
+        return self.data_source
+
+    @property
+    def data_source(self) -> AsyncCollection:
         """
         The (asynchronous) collection this cursor is targeting.
         """

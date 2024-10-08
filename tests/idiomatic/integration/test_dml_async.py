@@ -472,6 +472,10 @@ class TestDMLAsync:
         document0b = await cursor0b.__anext__()
         assert "ternary" in document0b
 
+        assert cursor0b.data_source == async_empty_collection
+        with pytest.warns(DeprecationWarning):
+            assert cursor0b.collection == async_empty_collection
+
         async def _alist(acursor: AsyncCursor) -> list[DocumentType]:
             return [doc async for doc in acursor]
 
