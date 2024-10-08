@@ -18,6 +18,7 @@ import hashlib
 import json
 import logging
 import time
+import warnings
 from collections.abc import AsyncIterator
 from enum import Enum
 from typing import (
@@ -31,6 +32,8 @@ from typing import (
     Tuple,
     TypeVar,
 )
+
+import deprecation
 
 from astrapy.constants import (
     DocumentType,
@@ -255,7 +258,7 @@ class BaseCursor:
     _include_sort_vector: bool | None
     _sort: dict[str, Any] | None
     _state: CursorState
-    _retrieved: int
+    _consumed: int
     _iterator: _LookAheadIterator | _AsyncLookAheadIterator | None = None
     _api_response_status: dict[str, Any] | None
 
@@ -273,7 +276,7 @@ class BaseCursor:
         return (
             f'{self.__class__.__name__}("{self._collection.name}", '
             f"{self.state}, "
-            f"retrieved so far: {self.retrieved})"
+            f"consumed so far: {self.consumed})"
         )
 
     def _item_at_index(self, index: int) -> DocumentType:
@@ -432,10 +435,26 @@ class BaseCursor:
     @property
     def retrieved(self) -> int:
         """
-        The number of documents retrieved so far by the code consuming the cursor.
+        The number of documents consumed so far (by the code consuming the cursor).
         """
 
-        return self._retrieved
+        the_warning = deprecation.DeprecatedWarning(
+            "the 'retrieved' property of Cursor objects",
+            deprecated_in="1.5.1",
+            removed_in="2.0.0",
+            details="Please use the 'consumed' property",
+        )
+        warnings.warn(the_warning, stacklevel=2)
+
+        return self.consumed
+
+    @property
+    def consumed(self) -> int:
+        """
+        The number of documents consumed so far (by the code consuming the cursor).
+        """
+
+        return self._consumed
 
     def rewind(self: BC) -> BC:
         """
@@ -446,7 +465,7 @@ class BaseCursor:
         """
 
         self._state = CursorState.IDLE
-        self._retrieved = 0
+        self._consumed = 0
         self._iterator = None
         return self
 
@@ -563,7 +582,7 @@ class Cursor(BaseCursor):
         self._include_sort_vector: bool | None = None
         self._sort: dict[str, Any] | None = None
         self._state = CursorState.IDLE
-        self._retrieved = 0
+        self._consumed = 0
         #
         self._iterator: _LookAheadIterator | None = None
         self._api_response_status: dict[str, Any] | None = None
@@ -594,7 +613,7 @@ class Cursor(BaseCursor):
                 )
         try:
             next_item = self._iterator.__next__()
-            self._retrieved = self._retrieved + 1
+            self._consumed = self._consumed + 1
             return next_item
         except StopIteration:
             self.close()
@@ -840,7 +859,7 @@ class AsyncCursor(BaseCursor):
         self._include_sort_vector: bool | None = None
         self._sort: dict[str, Any] | None = None
         self._state = CursorState.IDLE
-        self._retrieved = 0
+        self._consumed = 0
         #
         self._iterator: _AsyncLookAheadIterator | None = None
         self._api_response_status: dict[str, Any] | None = None
@@ -871,7 +890,7 @@ class AsyncCursor(BaseCursor):
                 )
         try:
             next_item = await self._iterator.__anext__()
-            self._retrieved = self._retrieved + 1
+            self._consumed = self._consumed + 1
             return next_item
         except StopAsyncIteration:
             self.close()

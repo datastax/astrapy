@@ -397,7 +397,13 @@ class TestDMLSync:
 
         # projection
         cursor0 = sync_empty_collection.find(projection={"ternary": False})
+        assert cursor0.consumed == 0
+        with pytest.warns(DeprecationWarning):
+            assert cursor0.retrieved == 0
         document0 = cursor0.__next__()
+        assert cursor0.consumed == 1
+        with pytest.warns(DeprecationWarning):
+            assert cursor0.retrieved == 1
         assert "ternary" not in document0
         cursor0b = sync_empty_collection.find(projection={"ternary": True})
         document0b = cursor0b.__next__()
