@@ -382,20 +382,14 @@ class TestDMLSync:
         # projection
         cursor0 = sync_empty_collection.find(projection={"ternary": False})
         assert cursor0.consumed == 0
-        with pytest.warns(DeprecationWarning):
-            assert cursor0.retrieved == 0
         document0 = cursor0.__next__()
         assert cursor0.consumed == 1
-        with pytest.warns(DeprecationWarning):
-            assert cursor0.retrieved == 1
         assert "ternary" not in document0
         cursor0b = sync_empty_collection.find(projection={"ternary": True})
         document0b = cursor0b.__next__()
         assert "ternary" in document0b
 
         assert cursor0b.data_source == sync_empty_collection
-        with pytest.warns(DeprecationWarning):
-            assert cursor0b.collection == sync_empty_collection
 
         # rewinding, slicing and retrieved
         cursor1 = sync_empty_collection.find(sort={"seq": 1})
@@ -407,17 +401,10 @@ class TestDMLSync:
         )
         cursor1.rewind()
 
-        # Note: this, i.e. cursor[i]/cursor[i:j], is disabled
-        # pending full skip/limit support by the Data API.
-        # # slice indexing of cursor
-        # cursor1.rewind()
-        # assert items1 == list(cursor1[2:4])
-        # assert cursor1.retrieved == 2
-
         # address, cursor_id, collection
         assert cursor1.address == sync_empty_collection._api_commander.full_path
         assert isinstance(cursor1.cursor_id, int)
-        assert cursor1.collection == sync_empty_collection
+        assert cursor1.data_source == sync_empty_collection
 
         # clone, alive
         cursor2 = sync_empty_collection.find()

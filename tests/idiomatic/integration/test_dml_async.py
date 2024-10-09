@@ -445,20 +445,14 @@ class TestDMLAsync:
         # projection
         cursor0 = async_empty_collection.find(projection={"ternary": False})
         assert cursor0.consumed == 0
-        with pytest.warns(DeprecationWarning):
-            assert cursor0.retrieved == 0
         document0 = await cursor0.__anext__()
         assert cursor0.consumed == 1
-        with pytest.warns(DeprecationWarning):
-            assert cursor0.retrieved == 1
         assert "ternary" not in document0
         cursor0b = async_empty_collection.find(projection={"ternary": True})
         document0b = await cursor0b.__anext__()
         assert "ternary" in document0b
 
         assert cursor0b.data_source == async_empty_collection
-        with pytest.warns(DeprecationWarning):
-            assert cursor0b.collection == async_empty_collection
 
         async def _alist(acursor: AsyncCursor) -> list[DocumentType]:
             return [doc async for doc in acursor]
@@ -473,17 +467,10 @@ class TestDMLAsync:
         )
         cursor1.rewind()
 
-        # Note: this, i.e. cursor[i]/cursor[i:j], is disabled
-        # pending full skip/limit support by the Data API.
-        # # slice indexing of cursor
-        # cursor1.rewind()
-        # assert items1 == await _alist(cursor1[2:4])  # type: ignore[arg-type]
-        # assert cursor1.retrieved == 2
-
         # address, cursor_id, collection
         assert cursor1.address == async_empty_collection._api_commander.full_path
         assert isinstance(cursor1.cursor_id, int)
-        assert cursor1.collection == async_empty_collection
+        assert cursor1.data_source == async_empty_collection
 
         # clone, alive
         cursor2 = async_empty_collection.find()
