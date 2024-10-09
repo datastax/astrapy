@@ -98,8 +98,7 @@ class TestDMLSync:
         self,
         sync_empty_collection: Collection,
     ) -> None:
-        with pytest.warns(DeprecationWarning):
-            sync_empty_collection.insert_one({"tag": "v1"}, vector=[-1, -2])
+        sync_empty_collection.insert_one({"tag": "v1", "$vector": [-1, -2]})
         retrieved1 = sync_empty_collection.find_one({"tag": "v1"}, projection={"*": 1})
         assert retrieved1 is not None
         assert retrieved1["$vector"] == [-1, -2]
@@ -108,12 +107,6 @@ class TestDMLSync:
         retrieved2 = sync_empty_collection.find_one({"tag": "v2"}, projection={"*": 1})
         assert retrieved2 is not None
         assert retrieved2["$vector"] == [-3, -4]
-
-        with pytest.raises(ValueError):
-            sync_empty_collection.insert_one(
-                {"tag": "v3", "$vector": [-5, -6]},
-                vector=[-5, -6],
-            )
 
     @pytest.mark.describe("test of collection delete_one, sync")
     def test_collection_delete_one_sync(
@@ -791,29 +784,18 @@ class TestDMLSync:
         sync_empty_collection: Collection,
     ) -> None:
         col = sync_empty_collection
-        with pytest.warns(DeprecationWarning):
-            col.insert_many([{"t": 0}, {"t": 1}], vectors=[[0, 1], [1, 0]])
-        with pytest.warns(DeprecationWarning):
-            col.insert_many(
-                [{"t": 2, "$vector": [0, 2]}, {"t": 3}], vectors=[None, [2, 0]]
-            )
-        with pytest.warns(DeprecationWarning):
-            col.insert_many(
-                [{"t": 4, "$vector": [0, 3]}, {"t": 5, "$vector": [3, 0]}],
-                vectors=[None, None],
-            )
+        col.insert_many(
+            [
+                {"t": 0, "$vector": [0, 1]},
+                {"t": 1, "$vector": [1, 0]},
+                {"t": 4, "$vector": [0, 3]},
+                {"t": 5, "$vector": [3, 0]},
+            ]
+        )
 
         assert all(
             len(doc["$vector"]) == 2 for doc in col.find({}, projection={"*": 1})
         )
-
-        with pytest.raises(ValueError):
-            col.insert_many(
-                [{"t": "z1"}, {"t": "z2"}, {"t": "z3"}], vectors=[None, None]
-            )
-
-        with pytest.raises(ValueError):
-            col.insert_many([{"t": "z4", "$vector": [2, 2]}], vectors=[[1, 1]])
 
     @pytest.mark.describe("test of collection find_one, sync")
     def test_collection_find_one_sync(

@@ -50,22 +50,19 @@ class TestVectorizeMethodsAsync:
                     "t": "seeds",
                     "$vectorize": "Other plants rely on wind to propagate their seeds.",
                 },
+                {
+                    "t": "dog",
+                    "$vector": [0.01] * service_vector_dimension,
+                },
+                {
+                    "t": "cat_novector",
+                },
+                {
+                    "t": "spider",
+                    "$vectorize": "The eye pattern is a primary criterion to the family.",
+                },
             ],
         )
-        with pytest.warns(DeprecationWarning):
-            await acol.insert_many(
-                [{"t": "dog"}, {"t": "cat_novector"}, {"t": "spider"}],
-                vectorize=[
-                    None,
-                    None,
-                    "The eye pattern is a primary criterion to the family.",
-                ],
-                vectors=[
-                    [0.01] * service_vector_dimension,
-                    None,
-                    None,
-                ],
-            )
 
         doc = await acol.find_one(
             {},

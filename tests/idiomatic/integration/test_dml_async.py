@@ -117,8 +117,7 @@ class TestDMLAsync:
         self,
         async_empty_collection: AsyncCollection,
     ) -> None:
-        with pytest.warns(DeprecationWarning):
-            await async_empty_collection.insert_one({"tag": "v1"}, vector=[-1, -2])
+        await async_empty_collection.insert_one({"tag": "v1", "$vector": [-1, -2]})
         retrieved1 = await async_empty_collection.find_one(
             {"tag": "v1"}, projection={"*": 1}
         )
@@ -131,12 +130,6 @@ class TestDMLAsync:
         )
         assert retrieved2 is not None
         assert retrieved2["$vector"] == [-3, -4]
-
-        with pytest.raises(ValueError):
-            await async_empty_collection.insert_one(
-                {"tag": "v3", "$vector": [-5, -6]},
-                vector=[-5, -6],
-            )
 
     @pytest.mark.describe("test of collection delete_one, async")
     async def test_collection_delete_one_async(
@@ -870,28 +863,17 @@ class TestDMLAsync:
         async_empty_collection: AsyncCollection,
     ) -> None:
         acol = async_empty_collection
-        with pytest.warns(DeprecationWarning):
-            await acol.insert_many([{"t": 0}, {"t": 1}], vectors=[[0, 1], [1, 0]])
-        with pytest.warns(DeprecationWarning):
-            await acol.insert_many(
-                [{"t": 2, "$vector": [0, 2]}, {"t": 3}], vectors=[None, [2, 0]]
-            )
-        with pytest.warns(DeprecationWarning):
-            await acol.insert_many(
-                [{"t": 4, "$vector": [0, 3]}, {"t": 5, "$vector": [3, 0]}],
-                vectors=[None, None],
-            )
+        await acol.insert_many(
+            [
+                {"t": 0, "$vector": [0, 1]},
+                {"t": 1, "$vector": [1, 0]},
+                {"t": 4, "$vector": [0, 3]},
+                {"t": 5, "$vector": [3, 0]},
+            ]
+        )
 
         vectors = [doc["$vector"] async for doc in acol.find({}, projection={"*": 1})]
         assert all(len(vec) == 2 for vec in vectors)
-
-        with pytest.raises(ValueError):
-            await acol.insert_many(
-                [{"t": "z1"}, {"t": "z2"}, {"t": "z3"}], vectors=[None, None]
-            )
-
-        with pytest.raises(ValueError):
-            await acol.insert_many([{"t": "z4", "$vector": [2, 2]}], vectors=[[1, 1]])
 
     @pytest.mark.describe("test of collection find_one, async")
     async def test_collection_find_one_async(

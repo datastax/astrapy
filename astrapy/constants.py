@@ -36,7 +36,6 @@ ProjectionType = Union[
 ]
 SortType = Dict[str, Any]
 FilterType = Dict[str, Any]
-VectorType = Iterable[float]
 CallerType = Tuple[Union[str, None], Union[str, None]]
 
 
