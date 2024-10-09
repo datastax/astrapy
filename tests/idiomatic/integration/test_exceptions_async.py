@@ -20,7 +20,6 @@ from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.constants import DocumentType
 from astrapy.cursors import AsyncCursor, CursorState
 from astrapy.exceptions import (
-    BulkWriteException,
     CollectionAlreadyExistsException,
     CollectionNotFoundException,
     CursorIsStartedException,
@@ -29,9 +28,8 @@ from astrapy.exceptions import (
     InsertManyException,
     TooManyDocumentsToCountException,
 )
-from astrapy.operations import AsyncInsertOne
 
-from ..conftest import IS_ASTRA_DB, DataAPICredentials, async_fail_if_not_removed
+from ..conftest import IS_ASTRA_DB, DataAPICredentials
 
 
 class TestExceptionsAsync:
@@ -189,71 +187,6 @@ class TestExceptionsAsync:
             await acol.replace_one({"a": 1}, {"a": -1})
         with pytest.raises(DataAPIResponseException):
             await acol.update_one({"a": 1}, {"$set": {"a": -1}})
-
-    @async_fail_if_not_removed
-    @pytest.mark.describe("test of exceptions in ordered bulk_write, async")
-    async def test_ordered_bulk_write_failures_async(
-        self,
-        async_empty_collection: AsyncCollection,
-    ) -> None:
-        i1 = AsyncInsertOne({"_id": "a"})
-        i3 = AsyncInsertOne({"_id": "z"})
-
-        with pytest.raises(BulkWriteException) as exc:
-            await async_empty_collection.bulk_write([i1, i1, i3], ordered=True)
-        assert set(exc.value.partial_result.bulk_api_results.keys()) == {0}
-        assert exc.value.partial_result.deleted_count == 0
-        assert exc.value.partial_result.inserted_count == 1
-        assert exc.value.partial_result.matched_count == 0
-        assert exc.value.partial_result.modified_count == 0
-        assert exc.value.partial_result.upserted_count == 0
-        assert exc.value.partial_result.upserted_ids == {}
-        assert await async_empty_collection.count_documents({}, upper_bound=10) == 1
-
-    @async_fail_if_not_removed
-    @pytest.mark.describe("test of hard exceptions in ordered bulk_write, async")
-    async def test_ordered_bulk_write_error_async(
-        self,
-        async_empty_collection: AsyncCollection,
-    ) -> None:
-        i1 = AsyncInsertOne({"_id": "a"})
-        i2 = AsyncInsertOne({"_id": ValueError("unserializable")})
-
-        with pytest.raises(TypeError):
-            await async_empty_collection.bulk_write([i1, i2])
-
-    @async_fail_if_not_removed
-    @pytest.mark.describe("test of exceptions in unordered bulk_write, async")
-    async def test_unordered_bulk_write_failures_async(
-        self,
-        async_empty_collection: AsyncCollection,
-    ) -> None:
-        i1 = AsyncInsertOne({"_id": "a"})
-        i3 = AsyncInsertOne({"_id": "z"})
-
-        with pytest.raises(BulkWriteException) as exc:
-            await async_empty_collection.bulk_write([i1, i1, i3], ordered=False)
-        # whether '0' or '1' succeeds in inserting 'a' is random:
-        assert set(exc.value.partial_result.bulk_api_results.keys()) in [{0, 2}, {1, 2}]
-        assert exc.value.partial_result.deleted_count == 0
-        assert exc.value.partial_result.inserted_count == 2
-        assert exc.value.partial_result.matched_count == 0
-        assert exc.value.partial_result.modified_count == 0
-        assert exc.value.partial_result.upserted_count == 0
-        assert exc.value.partial_result.upserted_ids == {}
-        assert await async_empty_collection.count_documents({}, upper_bound=10) == 2
-
-    @async_fail_if_not_removed
-    @pytest.mark.describe("test of hard exceptions in unordered bulk_write, async")
-    async def test_unordered_bulk_write_error_async(
-        self,
-        async_empty_collection: AsyncCollection,
-    ) -> None:
-        i1 = AsyncInsertOne({"_id": "a"})
-        i2 = AsyncInsertOne({"_id": ValueError("unserializable")})
-
-        with pytest.raises(TypeError):
-            await async_empty_collection.bulk_write([i1, i2], ordered=False)
 
     @pytest.mark.describe("test of check_exists for database create_collection, async")
     async def test_database_create_collection_check_exists_async(

@@ -41,7 +41,6 @@ from astrapy.constants import (
 from astrapy.cursors import AsyncCursor, Cursor
 from astrapy.database import AsyncDatabase, Database
 from astrapy.defaults import (
-    DEFAULT_BULK_WRITE_CONCURRENCY,
     DEFAULT_DATA_API_AUTH_HEADER,
     DEFAULT_INSERT_MANY_CHUNK_SIZE,
     DEFAULT_INSERT_MANY_CONCURRENCY,
@@ -49,11 +48,8 @@ from astrapy.defaults import (
     SET_CALLER_DEPRECATION_NOTICE,
 )
 from astrapy.exceptions import (
-    BulkWriteException,
     CollectionNotFoundException,
-    CumulativeOperationException,
     DataAPIFaultyResponseException,
-    DataAPIResponseException,
     DeleteManyException,
     InsertManyException,
     MultiCallTimeoutManager,
@@ -68,7 +64,6 @@ from astrapy.meta import (
     check_namespace_keyspace,
 )
 from astrapy.results import (
-    BulkWriteResult,
     DeleteResult,
     InsertManyResult,
     InsertOneResult,
@@ -77,7 +72,6 @@ from astrapy.results import (
 
 if TYPE_CHECKING:
     from astrapy.authentication import EmbeddingHeadersProvider
-    from astrapy.operations import AsyncBaseOperation, BaseOperation
 
 
 logger = logging.getLogger(__name__)
@@ -2074,7 +2068,7 @@ class Collection:
         max_time_ms: int | None = None,
     ) -> UpdateResult:
         """
-        Apply an update operations to all documents matching a condition,
+        Apply an update operation to all documents matching a condition,
         optionally inserting one documents in absence of matches.
 
         Args:
@@ -2540,192 +2534,6 @@ class Collection:
                 text="Unexpected response from collection.delete_many({}).",
                 raw_response=None,
             )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.0",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=(
-            "Please switch to managing sequences of DML operations "
-            "in app code instead."
-        ),
-    )
-    def bulk_write(
-        self,
-        requests: Iterable[BaseOperation],
-        *,
-        ordered: bool = False,
-        concurrency: int | None = None,
-        max_time_ms: int | None = None,
-    ) -> BulkWriteResult:
-        """
-        Execute an arbitrary amount of operations such as inserts, updates, deletes
-        either sequentially or concurrently.
-
-        This method does not execute atomically, i.e. individual operations are
-        each performed in the same way as the corresponding collection method,
-        and each one is a different and unrelated database mutation.
-
-        Args:
-            requests: an iterable over concrete subclasses of `BaseOperation`,
-                such as `InsertMany` or `ReplaceOne`. Each such object
-                represents an operation ready to be executed on a collection,
-                and is instantiated by passing the same parameters as one
-                would the corresponding collection method.
-            ordered: whether to launch the `requests` one after the other or
-                in arbitrary order, possibly in a concurrent fashion. For
-                performance reasons, False (default) should be preferred
-                when compatible with the needs of the application flow.
-            concurrency: maximum number of concurrent operations executing at
-                a given time. It cannot be more than one for ordered bulk writes.
-            max_time_ms: a timeout, in milliseconds, for the whole bulk write.
-                Remember that, if the method call times out, then there's no
-                guarantee about what portion of the bulk write has been received
-                and successfully executed by the Data API.
-                If not passed, the collection-level setting is used instead:
-                in most cases, however, one should pass a relaxed timeout
-                if longer sequences of operations are to be executed in bulk.
-
-        Returns:
-            A single BulkWriteResult summarizing the whole list of requested
-            operations. The keys in the map attributes of BulkWriteResult
-            (when present) are the integer indices of the corresponding operation
-            in the `requests` iterable.
-
-        Example:
-            >>> from astrapy.operations import InsertMany, ReplaceOne
-            >>> op1 = InsertMany([{"a": 1}, {"a": 2}])
-            >>> op2 = ReplaceOne({"z": 9}, replacement={"z": 9, "replaced": True}, upsert=True)
-            >>> my_coll.bulk_write([op1, op2])
-            BulkWriteResult(bulk_api_results={0: ..., 1: ...}, deleted_count=0, inserted_count=3, matched_count=0, modified_count=0, upserted_count=1, upserted_ids={1: '2addd676-...'})
-            >>> my_coll.count_documents({}, upper_bound=100)
-            3
-            >>> my_coll.distinct("replaced")
-            [True]
-        """
-
-        # lazy importing here against circular-import error
-        from astrapy.operations import reduce_bulk_write_results
-
-        if concurrency is None:
-            if ordered:
-                _concurrency = 1
-            else:
-                _concurrency = DEFAULT_BULK_WRITE_CONCURRENCY
-        else:
-            _concurrency = concurrency
-        if _concurrency > 1 and ordered:
-            raise ValueError("Cannot run ordered bulk_write concurrently.")
-        _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"startng a bulk write on '{self.name}'")
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
-        if ordered:
-            bulk_write_results: list[BulkWriteResult] = []
-            for operation_i, operation in enumerate(requests):
-                try:
-                    this_bw_result = operation.execute(
-                        self,
-                        index_in_bulk_write=operation_i,
-                        bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
-                    )
-                    bulk_write_results.append(this_bw_result)
-                except CumulativeOperationException as exc:
-                    partial_result = exc.partial_result
-                    partial_bw_result = reduce_bulk_write_results(
-                        bulk_write_results
-                        + [
-                            partial_result.to_bulk_write_result(
-                                index_in_bulk_write=operation_i
-                            )
-                        ]
-                    )
-                    dar_exception = exc.data_api_response_exception()
-                    raise BulkWriteException(
-                        text=dar_exception.text,
-                        error_descriptors=dar_exception.error_descriptors,
-                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
-                        partial_result=partial_bw_result,
-                        exceptions=[dar_exception],
-                    )
-                except DataAPIResponseException as exc:
-                    # the cumulative exceptions, with their
-                    # partially-done-info, are handled above:
-                    # here it's just one-shot d.a.r. exceptions
-                    partial_bw_result = reduce_bulk_write_results(bulk_write_results)
-                    dar_exception = exc.data_api_response_exception()
-                    raise BulkWriteException(
-                        text=dar_exception.text,
-                        error_descriptors=dar_exception.error_descriptors,
-                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
-                        partial_result=partial_bw_result,
-                        exceptions=[dar_exception],
-                    )
-            full_bw_result = reduce_bulk_write_results(bulk_write_results)
-            logger.info(f"finished a bulk write on '{self.name}'")
-            return full_bw_result
-        else:
-
-            def _execute_as_either(
-                operation: BaseOperation, operation_i: int
-            ) -> tuple[BulkWriteResult | None, DataAPIResponseException | None]:
-                try:
-                    ex_result = operation.execute(
-                        self,
-                        index_in_bulk_write=operation_i,
-                        bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
-                    )
-                    return (ex_result, None)
-                except DataAPIResponseException as exc:
-                    return (None, exc)
-
-            with ThreadPoolExecutor(max_workers=_concurrency) as executor:
-                bulk_write_either_futures = [
-                    executor.submit(
-                        _execute_as_either,
-                        operation,
-                        operation_i,
-                    )
-                    for operation_i, operation in enumerate(requests)
-                ]
-                bulk_write_either_results = [
-                    bulk_write_either_future.result()
-                    for bulk_write_either_future in bulk_write_either_futures
-                ]
-                # regroup
-                bulk_write_successes = [
-                    bwr for bwr, _ in bulk_write_either_results if bwr
-                ]
-                bulk_write_failures = [
-                    bwf for _, bwf in bulk_write_either_results if bwf
-                ]
-                if bulk_write_failures:
-                    # extract and cumulate
-                    partial_results_from_failures = [
-                        failure.partial_result.to_bulk_write_result(
-                            index_in_bulk_write=operation_i
-                        )
-                        for failure in bulk_write_failures
-                        if isinstance(failure, CumulativeOperationException)
-                    ]
-                    partial_bw_result = reduce_bulk_write_results(
-                        bulk_write_successes + partial_results_from_failures
-                    )
-                    # raise and recast the first exception
-                    all_dar_exceptions = [
-                        bw_failure.data_api_response_exception()
-                        for bw_failure in bulk_write_failures
-                    ]
-                    dar_exception = all_dar_exceptions[0]
-                    raise BulkWriteException(
-                        text=dar_exception.text,
-                        error_descriptors=dar_exception.error_descriptors,
-                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
-                        partial_result=partial_bw_result,
-                        exceptions=all_dar_exceptions,
-                    )
-                else:
-                    logger.info(f"finished a bulk write on '{self.name}'")
-                    return reduce_bulk_write_results(bulk_write_successes)
 
     def drop(self, *, max_time_ms: int | None = None) -> dict[str, Any]:
         """
@@ -4794,7 +4602,7 @@ class AsyncCollection:
         max_time_ms: int | None = None,
     ) -> UpdateResult:
         """
-        Apply an update operations to all documents matching a condition,
+        Apply an update operation to all documents matching a condition,
         optionally inserting one documents in absence of matches.
 
         Args:
@@ -5291,200 +5099,6 @@ class AsyncCollection:
                 text="Unexpected response from collection.delete_many({}).",
                 raw_response=None,
             )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.0",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=(
-            "Please switch to managing sequences of DML operations "
-            "in app code instead."
-        ),
-    )
-    async def bulk_write(
-        self,
-        requests: Iterable[AsyncBaseOperation],
-        *,
-        ordered: bool = False,
-        concurrency: int | None = None,
-        max_time_ms: int | None = None,
-    ) -> BulkWriteResult:
-        """
-        Execute an arbitrary amount of operations such as inserts, updates, deletes
-        either sequentially or concurrently.
-
-        This method does not execute atomically, i.e. individual operations are
-        each performed in the same way as the corresponding collection method,
-        and each one is a different and unrelated database mutation.
-
-        Args:
-            requests: an iterable over concrete subclasses of `BaseOperation`,
-                such as `AsyncInsertMany` or `AsyncReplaceOne`. Each such object
-                represents an operation ready to be executed on a collection,
-                and is instantiated by passing the same parameters as one
-                would the corresponding collection method.
-            ordered: whether to launch the `requests` one after the other or
-                in arbitrary order, possibly in a concurrent fashion. For
-                performance reasons, False (default) should be preferred
-                when compatible with the needs of the application flow.
-            concurrency: maximum number of concurrent operations executing at
-                a given time. It cannot be more than one for ordered bulk writes.
-            max_time_ms: a timeout, in milliseconds, for the whole bulk write.
-                Remember that, if the method call times out, then there's no
-                guarantee about what portion of the bulk write has been received
-                and successfully executed by the Data API.
-                If not passed, the collection-level setting is used instead:
-                in most cases, however, one should pass a relaxed timeout
-                if longer sequences of operations are to be executed in bulk.
-
-        Returns:
-            A single BulkWriteResult summarizing the whole list of requested
-            operations. The keys in the map attributes of BulkWriteResult
-            (when present) are the integer indices of the corresponding operation
-            in the `requests` iterable.
-
-        Example:
-            >>> from astrapy.operations import AsyncInsertMany, AsyncReplaceOne, AsyncOperation
-            >>> from astrapy.results import BulkWriteResult
-            >>>
-            >>> async def do_bulk_write(
-            ...     acol: AsyncCollection,
-            ...     async_operations: List[AsyncOperation],
-            ... ) -> BulkWriteResult:
-            ...     bw_result = await acol.bulk_write(async_operations)
-            ...     count0 = await acol.count_documents({}, upper_bound=100)
-            ...     print("count0", count0)
-            ...     distinct0 = await acol.distinct("replaced")
-            ...     print("distinct0", distinct0)
-            ...     return bw_result
-            ...
-            >>> op1 = AsyncInsertMany([{"a": 1}, {"a": 2}])
-            >>> op2 = AsyncReplaceOne(
-            ...     {"z": 9},
-            ...     replacement={"z": 9, "replaced": True},
-            ...     upsert=True,
-            ... )
-            >>> result = asyncio.run(do_bulk_write(my_async_coll, [op1, op2]))
-            count0 3
-            distinct0 [True]
-            >>> print("result", result)
-            result BulkWriteResult(bulk_api_results={0: ..., 1: ...}, deleted_count=0, inserted_count=3, matched_count=0, modified_count=0, upserted_count=1, upserted_ids={1: 'ccd0a800-...'})
-        """
-
-        # lazy importing here against circular-import error
-        from astrapy.operations import reduce_bulk_write_results
-
-        if concurrency is None:
-            if ordered:
-                _concurrency = 1
-            else:
-                _concurrency = DEFAULT_BULK_WRITE_CONCURRENCY
-        else:
-            _concurrency = concurrency
-        if _concurrency > 1 and ordered:
-            raise ValueError("Cannot run ordered bulk_write concurrently.")
-        _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"startng a bulk write on '{self.name}'")
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
-        if ordered:
-            bulk_write_results: list[BulkWriteResult] = []
-            for operation_i, operation in enumerate(requests):
-                try:
-                    this_bw_result = await operation.execute(
-                        self,
-                        index_in_bulk_write=operation_i,
-                        bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
-                    )
-                    bulk_write_results.append(this_bw_result)
-                except CumulativeOperationException as exc:
-                    partial_result = exc.partial_result
-                    partial_bw_result = reduce_bulk_write_results(
-                        bulk_write_results
-                        + [
-                            partial_result.to_bulk_write_result(
-                                index_in_bulk_write=operation_i
-                            )
-                        ]
-                    )
-                    dar_exception = exc.data_api_response_exception()
-                    raise BulkWriteException(
-                        text=dar_exception.text,
-                        error_descriptors=dar_exception.error_descriptors,
-                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
-                        partial_result=partial_bw_result,
-                        exceptions=[dar_exception],
-                    )
-                except DataAPIResponseException as exc:
-                    # the cumulative exceptions, with their
-                    # partially-done-info, are handled above:
-                    # here it's just one-shot d.a.r. exceptions
-                    partial_bw_result = reduce_bulk_write_results(bulk_write_results)
-                    dar_exception = exc.data_api_response_exception()
-                    raise BulkWriteException(
-                        text=dar_exception.text,
-                        error_descriptors=dar_exception.error_descriptors,
-                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
-                        partial_result=partial_bw_result,
-                        exceptions=[dar_exception],
-                    )
-            full_bw_result = reduce_bulk_write_results(bulk_write_results)
-            logger.info(f"finished a bulk write on '{self.name}'")
-            return full_bw_result
-        else:
-            sem = asyncio.Semaphore(_concurrency)
-
-            async def _concurrent_execute_as_either(
-                operation: AsyncBaseOperation, operation_i: int
-            ) -> tuple[BulkWriteResult | None, DataAPIResponseException | None]:
-                async with sem:
-                    try:
-                        ex_result = await operation.execute(
-                            self,
-                            index_in_bulk_write=operation_i,
-                            bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
-                        )
-                        return (ex_result, None)
-                    except DataAPIResponseException as exc:
-                        return (None, exc)
-
-            tasks = [
-                asyncio.create_task(
-                    _concurrent_execute_as_either(operation, operation_i)
-                )
-                for operation_i, operation in enumerate(requests)
-            ]
-            bulk_write_either_results = await asyncio.gather(*tasks)
-            # regroup
-            bulk_write_successes = [bwr for bwr, _ in bulk_write_either_results if bwr]
-            bulk_write_failures = [bwf for _, bwf in bulk_write_either_results if bwf]
-            if bulk_write_failures:
-                # extract and cumulate
-                partial_results_from_failures = [
-                    failure.partial_result.to_bulk_write_result(
-                        index_in_bulk_write=operation_i
-                    )
-                    for failure in bulk_write_failures
-                    if isinstance(failure, CumulativeOperationException)
-                ]
-                partial_bw_result = reduce_bulk_write_results(
-                    bulk_write_successes + partial_results_from_failures
-                )
-                # raise and recast the first exception
-                all_dar_exceptions = [
-                    bw_failure.data_api_response_exception()
-                    for bw_failure in bulk_write_failures
-                ]
-                dar_exception = all_dar_exceptions[0]
-                raise BulkWriteException(
-                    text=dar_exception.text,
-                    error_descriptors=dar_exception.error_descriptors,
-                    detailed_error_descriptors=dar_exception.detailed_error_descriptors,
-                    partial_result=partial_bw_result,
-                    exceptions=all_dar_exceptions,
-                )
-            else:
-                logger.info(f"finished a bulk write on '{self.name}'")
-                return reduce_bulk_write_results(bulk_write_successes)
 
     async def drop(self, *, max_time_ms: int | None = None) -> dict[str, Any]:
         """

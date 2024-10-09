@@ -21,9 +21,8 @@ import pytest
 from astrapy import Collection, Database
 from astrapy.admin import fetch_database_info
 from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
-from astrapy.operations import DeleteMany, InsertMany
 
-from ..conftest import IS_ASTRA_DB, sync_fail_if_not_removed
+from ..conftest import IS_ASTRA_DB
 
 
 class TestTimeoutSync:
@@ -164,41 +163,3 @@ class TestTimeoutSync:
         sync_collection.delete_many({"f": "delete_many2"}, max_time_ms=20000)
         with pytest.raises(DataAPITimeoutException):
             sync_collection.delete_many({"f": "delete_many3"}, max_time_ms=2)
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of bulk_write timeouts, sync")
-    def test_bulk_write_ordered_timeout_exceptions_sync(
-        self,
-        sync_empty_collection: Collection,
-    ) -> None:
-        im_a = InsertMany([{"seq": i, "group": "A"} for i in range(100)])
-        im_b = InsertMany([{"seq": i, "group": "B"} for i in range(100)])
-        dm = DeleteMany(filter={"group": "A"})
-
-        sync_empty_collection.bulk_write([im_a, im_b, dm], ordered=True)
-        sync_empty_collection.bulk_write(
-            [im_a, im_b, dm], ordered=True, max_time_ms=50000
-        )
-        with pytest.raises(DataAPITimeoutException):
-            sync_empty_collection.bulk_write(
-                [im_a, im_b, dm], ordered=True, max_time_ms=1
-            )
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of bulk_write timeouts, sync")
-    def test_bulk_write_unordered_timeout_exceptions_sync(
-        self,
-        sync_empty_collection: Collection,
-    ) -> None:
-        im_a = InsertMany([{"seq": i, "group": "A"} for i in range(100)])
-        im_b = InsertMany([{"seq": i, "group": "B"} for i in range(100)])
-        dm = DeleteMany(filter={"group": "A"})
-
-        sync_empty_collection.bulk_write([im_a, im_b, dm], ordered=False)
-        sync_empty_collection.bulk_write(
-            [im_a, im_b, dm], ordered=False, max_time_ms=50000
-        )
-        with pytest.raises(DataAPITimeoutException):
-            sync_empty_collection.bulk_write(
-                [im_a, im_b, dm], ordered=False, max_time_ms=5
-            )

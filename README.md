@@ -408,29 +408,6 @@ from astrapy.ids import (
 )
 ```
 
-Operations (for `bulk_write` collection method):
-
-```python
-from astrapy.operations import (
-    BaseOperation,
-    InsertOne,
-    InsertMany,
-    UpdateOne,
-    UpdateMany,
-    ReplaceOne,
-    DeleteOne,
-    DeleteMany,
-    AsyncBaseOperation,
-    AsyncInsertOne,
-    AsyncInsertMany,
-    AsyncUpdateOne,
-    AsyncUpdateMany,
-    AsyncReplaceOne,
-    AsyncDeleteOne,
-    AsyncDeleteMany,
-)
-```
-
 Result classes:
 
 ```python
@@ -440,7 +417,6 @@ from astrapy.results import (
     InsertOneResult,
     InsertManyResult,
     UpdateResult,
-    BulkWriteResult,
 )
 ```
 
@@ -448,7 +424,6 @@ Exceptions:
 
 ```python
 from astrapy.exceptions import (
-    BulkWriteException,
     CollectionAlreadyExistsException,
     CollectionNotFoundException,
     CumulativeOperationException,

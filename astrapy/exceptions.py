@@ -23,7 +23,6 @@ import httpx
 if TYPE_CHECKING:
     from astrapy.request_tools import TimeoutInfo
     from astrapy.results import (
-        BulkWriteResult,
         DeleteResult,
         InsertManyResult,
         OperationResult,
@@ -808,50 +807,6 @@ class UpdateManyException(CumulativeOperationException):
     ) -> None:
         super().__init__(text, *pargs, **kwargs)
         self.partial_result = partial_result
-
-
-@dataclass
-class BulkWriteException(DataAPIResponseException):
-    """
-    An exception of type DataAPIResponseException (see) occurred
-    during a bulk_write of a list of operations.
-    As such, besides information on the error, it may have accumulated
-    a partial result from past successful operations.
-
-    Attributes:
-        text: a text message about the exception.
-        error_descriptors: a list of all DataAPIErrorDescriptor objects
-            found across all requests involved in the first
-            operation that has failed.
-        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
-            objects, one for each of the requests performed during the first operation
-            that has failed.
-        partial_result: a BulkWriteResult object, just like the one that would
-            be the return value of the operation, had it succeeded completely.
-        exceptions: a list of DataAPIResponseException objects, one for each
-            operation in the bulk that has failed. This information is made
-            available here since the top-level fields of this error
-            only surface the first such failure that is detected across the bulk.
-            In case of bulk_writes with ordered=True, this trivially contains
-            a single element, the same described by the top-level fields
-            text, error_descriptors and detailed_error_descriptors.
-    """
-
-    partial_result: BulkWriteResult
-    exceptions: list[DataAPIResponseException]
-
-    def __init__(
-        self,
-        text: str | None,
-        partial_result: BulkWriteResult,
-        exceptions: list[DataAPIResponseException],
-        *pargs: Any,
-        **kwargs: Any,
-    ) -> None:
-        _text = text or "Bulk write exception"
-        super().__init__(_text, *pargs, **kwargs)
-        self.partial_result = partial_result
-        self.exceptions = exceptions
 
 
 def to_dataapi_timeout_exception(
