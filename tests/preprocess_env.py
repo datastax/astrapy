@@ -167,19 +167,3 @@ ADMIN_ENV_VARIABLE_MAP = {
     }
     for admin_env in ADMIN_ENV_LIST
 }
-
-# core-specific (legacy) flags
-TEST_SKIP_COLLECTION_DELETE: bool
-if os.getenv("TEST_SKIP_COLLECTION_DELETE"):
-    TEST_SKIP_COLLECTION_DELETE = int(os.environ["TEST_SKIP_COLLECTION_DELETE"]) != 0
-else:
-    TEST_SKIP_COLLECTION_DELETE = False
-
-ASTRA_DB_OPS_APPLICATION_TOKEN = os.environ.get(
-    "ASTRA_DB_OPS_APPLICATION_TOKEN",
-    ASTRA_DB_APPLICATION_TOKEN or "no_token!",
-)
-ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID", "")
-ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE")
-ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION")
-TEST_ASTRADBOPS = int(os.environ.get("TEST_ASTRADBOPS", "0")) != 0

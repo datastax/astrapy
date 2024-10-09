@@ -36,10 +36,7 @@ from .preprocess_env import (
     ADMIN_ENV_VARIABLE_MAP,
     ASTRA_DB_API_ENDPOINT,
     ASTRA_DB_APPLICATION_TOKEN,
-    ASTRA_DB_ID,
     ASTRA_DB_KEYSPACE,
-    ASTRA_DB_OPS_APPLICATION_TOKEN,
-    ASTRA_DB_REGION,
     ASTRA_DB_TOKEN_PROVIDER,
     DO_IDIOMATIC_ADMIN_TESTS,
     DOCKER_COMPOSE_LOCAL_DATA_API,
@@ -51,20 +48,11 @@ from .preprocess_env import (
     LOCAL_DATA_API_TOKEN_PROVIDER,
     LOCAL_DATA_API_USERNAME,
     SECONDARY_NAMESPACE,
-    TEST_ASTRADBOPS,
-    TEST_SKIP_COLLECTION_DELETE,
 )
 
 
 class DataAPICredentials(TypedDict):
     token: str | TokenProvider
-    api_endpoint: str
-    namespace: str
-
-
-# to be used for 'core' testing, derived from above
-class DataAPICoreCredentials(TypedDict):
-    token: str
     api_endpoint: str
     namespace: str
 
@@ -188,29 +176,6 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
 
 
 @pytest.fixture(scope="session")
-def data_api_core_credentials_kwargs(
-    data_api_credentials_kwargs: DataAPICredentials,
-) -> DataAPICoreCredentials:
-    token_str: str
-    if isinstance(data_api_credentials_kwargs["token"], str):
-        token_str = data_api_credentials_kwargs["token"]
-    elif isinstance(data_api_credentials_kwargs["token"], TokenProvider):
-        token_str0 = data_api_credentials_kwargs["token"].get_token()
-        if token_str0 is None:
-            raise ValueError("Token cannot be made into a string in fixture")
-        else:
-            token_str = token_str0
-    else:
-        # this should not happen
-        token_str = str(data_api_credentials_kwargs["token"])
-    return {
-        "token": token_str,
-        "api_endpoint": data_api_credentials_kwargs["api_endpoint"],
-        "namespace": data_api_credentials_kwargs["namespace"],
-    }
-
-
-@pytest.fixture(scope="session")
 def data_api_credentials_info(
     data_api_credentials_kwargs: DataAPICredentials,
 ) -> DataAPICredentialsInfo:
@@ -226,26 +191,10 @@ def data_api_credentials_info(
     return astra_db_cred_info
 
 
-@pytest.fixture(scope="session")
-def data_api_core_bad_credentials_kwargs(
-    data_api_core_credentials_kwargs: DataAPICoreCredentials,
-) -> DataAPICoreCredentials:
-    astra_db_creds: DataAPICoreCredentials = {
-        "token": data_api_core_credentials_kwargs["token"],
-        "namespace": data_api_core_credentials_kwargs["namespace"],
-        "api_endpoint": "http://localhost:1234",
-    }
-
-    return astra_db_creds
-
-
 __all__ = [
     "ASTRA_DB_API_ENDPOINT",
     "ASTRA_DB_APPLICATION_TOKEN",
-    "ASTRA_DB_ID",
     "ASTRA_DB_KEYSPACE",
-    "ASTRA_DB_OPS_APPLICATION_TOKEN",
-    "ASTRA_DB_REGION",
     "DOCKER_COMPOSE_LOCAL_DATA_API",
     "IS_ASTRA_DB",
     "LOCAL_DATA_API_APPLICATION_TOKEN",
@@ -254,8 +203,6 @@ __all__ = [
     "LOCAL_DATA_API_PASSWORD",
     "LOCAL_DATA_API_USERNAME",
     "SECONDARY_NAMESPACE",
-    "TEST_ASTRADBOPS",
-    "TEST_SKIP_COLLECTION_DELETE",
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",
     "DO_IDIOMATIC_ADMIN_TESTS",
