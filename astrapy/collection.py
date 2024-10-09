@@ -57,7 +57,6 @@ from astrapy.exceptions import (
 )
 from astrapy.info import CollectionInfo, CollectionOptions
 from astrapy.meta import (
-    check_caller_parameters,
     check_namespace_keyspace,
 )
 from astrapy.results import (
@@ -134,10 +133,6 @@ class Collection:
             on behalf of which the Data API calls are performed. These end up
             in the request user-agent.
             Each caller identity is a ("caller_name", "caller_version") pair.
-        caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-            application, or framework, on behalf of which the Data API calls
-            are performed. This ends up in the request user-agent.
-        caller_version: version of the caller. *DEPRECATED*, use `callers`. Removal 2.0.
 
     Examples:
         >>> from astrapy import DataAPIClient, Collection
@@ -170,10 +165,7 @@ class Collection:
         namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> None:
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -188,7 +180,7 @@ class Collection:
             raise ValueError("Attempted to create Collection with 'keyspace' unset.")
         self._database = database._copy(
             keyspace=_keyspace,
-            callers=callers_param,
+            callers=callers,
         )
         self._name = name
 
@@ -198,7 +190,7 @@ class Collection:
             **additional_headers,
         }
 
-        self.callers = callers_param
+        self.callers = callers
         self._api_commander = self._get_api_commander()
 
     def __repr__(self) -> str:
@@ -264,10 +256,7 @@ class Collection:
         namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> Collection:
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -277,7 +266,7 @@ class Collection:
             name=name or self.name,
             keyspace=keyspace_param or self.keyspace,
             api_options=self.api_options.with_override(api_options),
-            callers=callers_param or self.callers,
+            callers=callers or self.callers,
         )
 
     def with_options(
@@ -287,8 +276,6 @@ class Collection:
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> Collection:
         """
         Create a clone of this collection with some changed attributes.
@@ -318,11 +305,6 @@ class Collection:
                 on behalf of which the Data API calls are performed. These end up
                 in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
-            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-                application, or framework, on behalf of which the Data API calls
-                are performed. This ends up in the request user-agent.
-            caller_version: version of the caller. *DEPRECATED*, use `callers`.
-                Removal 2.0.
 
         Returns:
             a new Collection instance.
@@ -334,7 +316,6 @@ class Collection:
             ... )
         """
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         _api_options = CollectionAPIOptions(
             embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             max_time_ms=collection_max_time_ms,
@@ -343,7 +324,7 @@ class Collection:
         return self._copy(
             name=name,
             api_options=_api_options,
-            callers=callers_param,
+            callers=callers,
         )
 
     def to_async(
@@ -356,8 +337,6 @@ class Collection:
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> AsyncCollection:
         """
         Create an AsyncCollection from this one. Save for the arguments
@@ -394,11 +373,6 @@ class Collection:
                 on behalf of which the Data API calls are performed. These end up
                 in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
-            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-                application, or framework, on behalf of which the Data API calls
-                are performed. This ends up in the request user-agent.
-            caller_version: version of the caller. *DEPRECATED*, use `callers`.
-                Removal 2.0.
 
         Returns:
             the new copy, an AsyncCollection instance.
@@ -408,7 +382,6 @@ class Collection:
             77
         """
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -423,7 +396,7 @@ class Collection:
             name=name or self.name,
             keyspace=keyspace_param or self.keyspace,
             api_options=self.api_options.with_override(_api_options),
-            callers=callers_param or self.callers,
+            callers=callers or self.callers,
         )
 
     def options(self, *, max_time_ms: int | None = None) -> CollectionOptions:
@@ -2332,10 +2305,6 @@ class AsyncCollection:
             on behalf of which the Data API calls are performed. These end up
             in the request user-agent.
             Each caller identity is a ("caller_name", "caller_version") pair.
-        caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-            application, or framework, on behalf of which the Data API calls
-            are performed. This ends up in the request user-agent.
-        caller_version: version of the caller. *DEPRECATED*, use `callers`. Removal 2.0.
 
     Examples:
         >>> from astrapy import DataAPIClient, AsyncCollection
@@ -2370,10 +2339,7 @@ class AsyncCollection:
         namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> None:
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -2390,7 +2356,7 @@ class AsyncCollection:
             )
         self._database = database._copy(
             keyspace=_keyspace,
-            callers=callers_param,
+            callers=callers,
         )
         self._name = name
 
@@ -2400,7 +2366,7 @@ class AsyncCollection:
             **additional_headers,
         }
 
-        self.callers = callers_param
+        self.callers = callers
         self._api_commander = self._get_api_commander()
 
     def __repr__(self) -> str:
@@ -2482,10 +2448,7 @@ class AsyncCollection:
         namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> AsyncCollection:
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -2495,7 +2458,7 @@ class AsyncCollection:
             name=name or self.name,
             keyspace=keyspace_param or self.keyspace,
             api_options=self.api_options.with_override(api_options),
-            callers=callers_param or self.callers,
+            callers=callers or self.callers,
         )
 
     def with_options(
@@ -2505,8 +2468,6 @@ class AsyncCollection:
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> AsyncCollection:
         """
         Create a clone of this collection with some changed attributes.
@@ -2536,11 +2497,6 @@ class AsyncCollection:
                 on behalf of which the Data API calls are performed. These end up
                 in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
-            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-                application, or framework, on behalf of which the Data API calls
-                are performed. This ends up in the request user-agent.
-            caller_version: version of the caller. *DEPRECATED*, use `callers`.
-                Removal 2.0.
 
         Returns:
             a new AsyncCollection instance.
@@ -2552,7 +2508,6 @@ class AsyncCollection:
             ... )
         """
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         _api_options = CollectionAPIOptions(
             embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             max_time_ms=collection_max_time_ms,
@@ -2561,7 +2516,7 @@ class AsyncCollection:
         return self._copy(
             name=name,
             api_options=_api_options,
-            callers=callers_param,
+            callers=callers,
         )
 
     def to_sync(
@@ -2574,8 +2529,6 @@ class AsyncCollection:
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> Collection:
         """
         Create a Collection from this one. Save for the arguments
@@ -2612,11 +2565,6 @@ class AsyncCollection:
                 on behalf of which the Data API calls are performed. These end up
                 in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
-            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-                application, or framework, on behalf of which the Data API calls
-                are performed. This ends up in the request user-agent.
-            caller_version: version of the caller. *DEPRECATED*, use `callers`.
-                Removal 2.0.
 
         Returns:
             the new copy, a Collection instance.
@@ -2626,7 +2574,6 @@ class AsyncCollection:
             77
         """
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
@@ -2641,7 +2588,7 @@ class AsyncCollection:
             name=name or self.name,
             keyspace=keyspace_param or self.keyspace,
             api_options=self.api_options.with_override(_api_options),
-            callers=callers_param or self.callers,
+            callers=callers or self.callers,
         )
 
     async def options(self, *, max_time_ms: int | None = None) -> CollectionOptions:

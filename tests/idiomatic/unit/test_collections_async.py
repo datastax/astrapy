@@ -57,70 +57,6 @@ class TestCollectionsAsync:
         assert col1 == col1.with_options()
         assert col1 == col1.to_sync().to_async()
 
-    @async_fail_if_not_removed
-    @pytest.mark.describe("test of Collection caller_name in rich _copy, async")
-    async def test_deprecated_caller_in_rich_copy_collection_async(
-        self,
-        async_database: AsyncDatabase,
-    ) -> None:
-        with pytest.warns(DeprecationWarning):
-            col1 = AsyncCollection(
-                async_database,
-                "id_test_collection",
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        assert col1 == AsyncCollection(
-            async_database,
-            "id_test_collection",
-            callers=[("c_n", "c_v")],
-        )
-        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
-            AsyncCollection(
-                async_database,
-                "id_test_collection",
-                callers=[("c_n", "c_v")],
-                caller_name="c_n",
-            )
-        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
-            AsyncCollection(
-                async_database,
-                "id_test_collection",
-                callers=[("c_n", "c_v")],
-                caller_version="c_v",
-            )
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1._copy(caller_name="o", caller_version="o")
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1._copy(caller_name="o")
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1._copy(caller_version="o")
-
-        with pytest.warns(DeprecationWarning):
-            col2 = col1._copy(
-                database=async_database._copy(token="x_t"),
-                name="other_name",
-                keyspace="other_keyspace",
-                caller_name="x_n",
-                caller_version="x_v",
-            )
-        assert col2 != col1
-
-        with pytest.warns(DeprecationWarning):
-            assert col1.with_options(caller_name="x", caller_version="x") != col1
-        with pytest.warns(DeprecationWarning):
-            assert col1.with_options(caller_name="x") != col1
-        with pytest.warns(DeprecationWarning):
-            assert col1.with_options(caller_version="x") != col1
-
-        with pytest.warns(DeprecationWarning):
-            assert (
-                col1.with_options(caller_name="x", caller_version="x").with_options(
-                    caller_name="c_n", caller_version="c_v"
-                )
-                == col1
-            )
-
     @pytest.mark.describe("test of Collection rich _copy, async")
     async def test_rich_copy_collection_async(
         self,
@@ -155,34 +91,6 @@ class TestCollectionsAsync:
         assert (
             col1.with_options(callers=callers1).with_options(callers=callers0) == col1
         )
-
-    @async_fail_if_not_removed
-    @pytest.mark.describe("test of caller_name in Collection rich conversions, async")
-    async def test_deprecated_caller_in_rich_convert_collection_async(
-        self,
-        async_database: AsyncDatabase,
-    ) -> None:
-        with pytest.warns(DeprecationWarning):
-            col1 = AsyncCollection(
-                async_database,
-                "id_test_collection",
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1.to_sync(caller_name="o").to_async()
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1.to_sync(caller_version="o").to_async()
-
-        with pytest.warns(DeprecationWarning):
-            col2s = col1.to_sync(
-                database=async_database._copy(token="x_t").to_sync(),
-                name="other_name",
-                keyspace="other_keyspace",
-                caller_name="x_n",
-                caller_version="x_v",
-            )
-        assert col2s.to_async() != col1
 
     @pytest.mark.describe("test of Collection rich conversions, async")
     async def test_rich_convert_collection_async(

@@ -61,79 +61,6 @@ class TestDatabasesSync:
         assert db1 == db1.with_options()
         assert db1 == db1.to_async().to_sync()
 
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of caller deprecation in Database rich _copy, sync")
-    def test_caller_deprecation_in_rich_copy_database_sync(
-        self,
-    ) -> None:
-        with pytest.warns(DeprecationWarning):
-            db1 = Database(
-                api_endpoint="api_endpoint",
-                token="token",
-                keyspace="keyspace",
-                caller_name="c_n",
-                caller_version="c_v",
-                api_path="api_path",
-                api_version="api_version",
-            )
-        assert db1 == Database(
-            api_endpoint="api_endpoint",
-            token="token",
-            keyspace="keyspace",
-            callers=[("c_n", "c_v")],
-            api_path="api_path",
-            api_version="api_version",
-        )
-        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
-            assert db1 == Database(
-                api_endpoint="api_endpoint",
-                token="token",
-                keyspace="keyspace",
-                callers=[("c_n", "c_v")],
-                caller_name="c_n",
-            )
-        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
-            assert db1 == Database(
-                api_endpoint="api_endpoint",
-                token="token",
-                keyspace="keyspace",
-                callers=[("c_n", "c_v")],
-                caller_version="c_v",
-            )
-        with pytest.warns(DeprecationWarning):
-            assert db1 != db1._copy(caller_name="x", caller_version="x")
-        with pytest.warns(DeprecationWarning):
-            assert db1 != db1._copy(caller_name="x")
-        with pytest.warns(DeprecationWarning):
-            assert db1 != db1._copy(caller_version="x")
-
-        with pytest.warns(DeprecationWarning):
-            db2 = db1._copy(
-                api_endpoint="x",
-                token="x",
-                keyspace="x",
-                caller_name="x_n",
-                caller_version="x_v",
-                api_path="x",
-                api_version="x",
-            )
-        assert db2 != db1
-
-        with pytest.warns(DeprecationWarning):
-            assert db1.with_options(caller_name="x", caller_version="x") != db1
-        with pytest.warns(DeprecationWarning):
-            assert db1.with_options(caller_name="x") != db1
-        with pytest.warns(DeprecationWarning):
-            assert db1.with_options(caller_version="x") != db1
-
-        with pytest.warns(DeprecationWarning):
-            assert (
-                db1.with_options(caller_name="x", caller_version="x").with_options(
-                    caller_name="c_n", caller_version="c_v"
-                )
-                == db1
-            )
-
     @pytest.mark.describe("test of Database rich _copy, sync")
     def test_rich_copy_database_sync(
         self,
@@ -170,40 +97,6 @@ class TestDatabasesSync:
 
         assert db1.with_options(keyspace="x").with_options(keyspace="keyspace") == db1
         assert db1.with_options(callers=callers1).with_options(callers=callers0) == db1
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe(
-        "test of caller deprecation in Database rich conversions, sync"
-    )
-    def test_caller_deprecation_in_rich_convert_database_sync(
-        self,
-    ) -> None:
-        with pytest.warns(DeprecationWarning):
-            db1 = Database(
-                api_endpoint="api_endpoint",
-                token="token",
-                keyspace="keyspace",
-                caller_name="c_n",
-                caller_version="c_v",
-                api_path="api_path",
-                api_version="api_version",
-            )
-        with pytest.warns(DeprecationWarning):
-            assert db1 != db1.to_async(caller_name="o").to_sync()
-        with pytest.warns(DeprecationWarning):
-            assert db1 != db1.to_async(caller_version="o").to_sync()
-
-        with pytest.warns(DeprecationWarning):
-            db2a = db1.to_async(
-                api_endpoint="x",
-                token="x",
-                keyspace="x",
-                caller_name="x_n",
-                caller_version="x_v",
-                api_path="x",
-                api_version="x",
-            )
-        assert db2a.to_sync() != db1
 
     @pytest.mark.describe("test of Database rich conversions, sync")
     def test_rich_convert_database_sync(

@@ -53,70 +53,6 @@ class TestCollectionsSync:
         assert col1 == col1.with_options()
         assert col1 == col1.to_async().to_sync()
 
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of Collection caller_name in rich _copy, sync")
-    def test_deprecated_caller_in_rich_copy_collection_sync(
-        self,
-        sync_database: Database,
-    ) -> None:
-        with pytest.warns(DeprecationWarning):
-            col1 = Collection(
-                sync_database,
-                "id_test_collection",
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        assert col1 == Collection(
-            sync_database,
-            "id_test_collection",
-            callers=[("c_n", "c_v")],
-        )
-        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
-            Collection(
-                sync_database,
-                "id_test_collection",
-                callers=[("c_n", "c_v")],
-                caller_name="c_n",
-            )
-        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
-            Collection(
-                sync_database,
-                "id_test_collection",
-                callers=[("c_n", "c_v")],
-                caller_version="c_v",
-            )
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1._copy(caller_name="o", caller_version="o")
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1._copy(caller_name="o")
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1._copy(caller_version="o")
-
-        with pytest.warns(DeprecationWarning):
-            col2 = col1._copy(
-                database=sync_database._copy(token="x_t"),
-                name="other_name",
-                keyspace="other_keyspace",
-                caller_name="x_n",
-                caller_version="x_v",
-            )
-        assert col2 != col1
-
-        with pytest.warns(DeprecationWarning):
-            assert col1.with_options(caller_name="x", caller_version="x") != col1
-        with pytest.warns(DeprecationWarning):
-            assert col1.with_options(caller_name="x") != col1
-        with pytest.warns(DeprecationWarning):
-            assert col1.with_options(caller_version="x") != col1
-
-        with pytest.warns(DeprecationWarning):
-            assert (
-                col1.with_options(caller_name="x", caller_version="x").with_options(
-                    caller_name="c_n", caller_version="c_v"
-                )
-                == col1
-            )
-
     @pytest.mark.describe("test of Collection rich _copy, sync")
     def test_rich_copy_collection_sync(
         self,
@@ -151,34 +87,6 @@ class TestCollectionsSync:
         assert (
             col1.with_options(callers=callers1).with_options(callers=callers0) == col1
         )
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of caller_name in Collection rich conversions, sync")
-    def test_deprecated_caller_in_rich_convert_collection_sync(
-        self,
-        sync_database: Database,
-    ) -> None:
-        with pytest.warns(DeprecationWarning):
-            col1 = Collection(
-                sync_database,
-                "id_test_collection",
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1.to_async(caller_name="o").to_sync()
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1.to_async(caller_version="o").to_sync()
-
-        with pytest.warns(DeprecationWarning):
-            col2a = col1.to_async(
-                database=sync_database._copy(token="x_t").to_async(),
-                name="other_name",
-                keyspace="other_keyspace",
-                caller_name="x_n",
-                caller_version="x_v",
-            )
-        assert col2a.to_sync() != col1
 
     @pytest.mark.describe("test of Collection rich conversions, sync")
     def test_rich_convert_collection_sync(

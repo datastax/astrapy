@@ -119,9 +119,3 @@ NAMESPACE_DEPRECATION_NOTICE_NS_DETAILS = (
     "See https://docs.datastax.com/en/astra-db-serverless/api-reference/client-"
     "versions.html#version-1-5 for more information."
 )
-
-# Other deprecation notices
-CALLER_NAME_VERSION_DEPRECATION_NOTICE_DETAILS = (
-    "Please pass any caller identities as the `callers` constructor parameter: "
-    "`callers=[('cname1', 'cversion1'), ('cname2', 'cversion2'), ...]`."
-)

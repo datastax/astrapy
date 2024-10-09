@@ -29,7 +29,6 @@ from astrapy.admin import (
 from astrapy.authentication import coerce_token_provider, redact_secret
 from astrapy.constants import CallerType, Environment
 from astrapy.meta import (
-    check_caller_parameters,
     check_deprecated_id_region,
     check_namespace_keyspace,
 )
@@ -64,11 +63,6 @@ class DataAPIClient:
             on behalf of which Data API and DevOps API calls are performed.
             These end up in the request user-agent.
             Each caller identity is a ("caller_name", "caller_version") pair.
-        caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-            application, or framework, on behalf of which the Data API and
-            DevOps API calls are performed. This ends up in the request user-agent.
-        caller_version: version of the caller. *DEPRECATED*, use `callers`.
-            Removal 2.0.
 
     Example:
         >>> from astrapy import DataAPIClient
@@ -91,17 +85,14 @@ class DataAPIClient:
         *,
         environment: str | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> None:
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
 
         if self.environment not in Environment.values:
             raise ValueError(f"Unsupported `environment` value: '{self.environment}'.")
 
-        self.callers = callers_param
+        self.callers = callers
 
     def __repr__(self) -> str:
         token_desc: str | None
@@ -138,14 +129,11 @@ class DataAPIClient:
         token: str | TokenProvider | None = None,
         environment: str | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> DataAPIClient:
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         return DataAPIClient(
             token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
-            callers=callers_param or self.callers,
+            callers=callers or self.callers,
         )
 
     def with_options(
@@ -153,8 +141,6 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> DataAPIClient:
         """
         Create a clone of this DataAPIClient with some changed attributes.
@@ -167,11 +153,6 @@ class DataAPIClient:
                 on behalf of which Data API and DevOps API calls are performed.
                 These end up in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
-            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-                application, or framework, on behalf of which the Data API and
-                DevOps API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller. *DEPRECATED*, use `callers`.
-                Removal 2.0.
 
         Returns:
             a new DataAPIClient instance.
@@ -182,10 +163,9 @@ class DataAPIClient:
             ... )
         """
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         return self._copy(
             token=token,
-            callers=callers_param,
+            callers=callers,
         )
 
     def get_database(

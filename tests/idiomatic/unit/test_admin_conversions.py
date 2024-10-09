@@ -28,8 +28,6 @@ from astrapy import (
 from astrapy.authentication import StaticTokenProvider, UsernamePasswordTokenProvider
 from astrapy.constants import Environment
 
-from ..conftest import sync_fail_if_not_removed
-
 api_ep0123_dev = (
     "https://01234567-89ab-cdef-0123-456789abcdef-region.apps.astra-dev.datastax.com"
 )
@@ -42,59 +40,6 @@ api_ep9999_test = (
 
 
 class TestAdminConversions:
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of DataAPIClient caller_name in conversions")
-    def test_dataapiclient_deprecated_caller_in_conversions(self) -> None:
-        with pytest.warns(DeprecationWarning):
-            dac1 = DataAPIClient(
-                "t1", environment="dev", caller_name="cn", caller_version="cv"
-            )
-        assert dac1 == DataAPIClient("t1", environment="dev", callers=[("cn", "cv")])
-        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
-            DataAPIClient(
-                "t1",
-                environment="dev",
-                callers=[("cn", "cv")],
-                caller_name="cn",
-            )
-        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
-            DataAPIClient(
-                "t1",
-                environment="dev",
-                callers=[("cn", "cv")],
-                caller_version="cv",
-            )
-        dac2 = DataAPIClient(
-            "t1",
-            environment="dev",
-            callers=[("cn", "cv")],
-        )
-        assert dac1 == dac2
-
-        with pytest.warns(DeprecationWarning):
-            assert dac1 != dac1._copy(caller_name="x", caller_version="x")
-        with pytest.warns(DeprecationWarning):
-            assert dac1 != dac1._copy(caller_name="x")
-        with pytest.warns(DeprecationWarning):
-            assert dac1 != dac1._copy(caller_version="x")
-
-        with pytest.warns(DeprecationWarning):
-            assert dac1 == dac1._copy(caller_name="x", caller_version="x")._copy(
-                caller_name="cn", caller_version="cv"
-            )
-
-        with pytest.warns(DeprecationWarning):
-            assert dac1 != dac1.with_options(caller_name="x", caller_version="x")
-        with pytest.warns(DeprecationWarning):
-            assert dac1 != dac1.with_options(caller_name="x")
-        with pytest.warns(DeprecationWarning):
-            assert dac1 != dac1.with_options(caller_version="x")
-
-        with pytest.warns(DeprecationWarning):
-            assert dac1 == dac1.with_options(
-                caller_name="x", caller_version="x"
-            ).with_options(caller_name="cn", caller_version="cv")
-
     @pytest.mark.describe("test of DataAPIClient conversions and comparison functions")
     def test_dataapiclient_conversions(self) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
@@ -168,53 +113,6 @@ class TestAdminConversions:
         with pytest.raises(ValueError):
             client.get_database(endpoint, region=database_region)
 
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of AstraDBAdmin caller_name in conversions")
-    def test_astradbadmin_deprecated_caller_in_conversions(self) -> None:
-        with pytest.warns(DeprecationWarning):
-            adm1 = AstraDBAdmin(
-                "t1",
-                environment="dev",
-                caller_name="cn",
-                caller_version="cv",
-                dev_ops_url="dou",
-                dev_ops_api_version="dvv",
-            )
-        with pytest.warns(DeprecationWarning):
-            adm2 = AstraDBAdmin(
-                "t1",
-                environment="dev",
-                caller_name="cn",
-                caller_version="cv",
-                dev_ops_url="dou",
-                dev_ops_api_version="dvv",
-            )
-        assert adm1 == adm2
-
-        with pytest.warns(DeprecationWarning):
-            assert adm1 != adm1._copy(caller_name="x", caller_version="x")
-        with pytest.warns(DeprecationWarning):
-            assert adm1 != adm1._copy(caller_version="x")
-        with pytest.warns(DeprecationWarning):
-            assert adm1 != adm1._copy(caller_name="x")
-
-        with pytest.warns(DeprecationWarning):
-            assert adm1 == adm1._copy(caller_name="x", caller_version="x")._copy(
-                caller_name="cn", caller_version="cv"
-            )
-
-        with pytest.warns(DeprecationWarning):
-            assert adm1 != adm1.with_options(caller_name="x", caller_version="x")
-        with pytest.warns(DeprecationWarning):
-            assert adm1 != adm1.with_options(caller_name="x")
-        with pytest.warns(DeprecationWarning):
-            assert adm1 != adm1.with_options(caller_version="x")
-
-        with pytest.warns(DeprecationWarning):
-            assert adm1 == adm1.with_options(
-                caller_name="x", caller_version="x"
-            ).with_options(caller_name="cn", caller_version="cv")
-
     @pytest.mark.describe("test of AstraDBAdmin conversions and comparison functions")
     def test_astradbadmin_conversions(self) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
@@ -256,59 +154,6 @@ class TestAdminConversions:
         assert adm1 == adm1.with_options(callers=callers1).with_options(
             callers=callers0
         )
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of AstraDBDatabaseAdmin caller_name in conversions")
-    def test_astradbdatabaseadmin_deprecated_caller_in_conversions(self) -> None:
-        with pytest.warns(DeprecationWarning):
-            adda1 = AstraDBDatabaseAdmin(
-                api_ep0123_dev,
-                token="t1",
-                environment="dev",
-                caller_name="cn",
-                caller_version="cv",
-                dev_ops_url="dou",
-                dev_ops_api_version="dvv",
-                api_path="appi",
-                api_version="vX",
-            )
-        with pytest.warns(DeprecationWarning):
-            adda2 = AstraDBDatabaseAdmin(
-                api_ep0123_dev,
-                token="t1",
-                environment="dev",
-                caller_name="cn",
-                caller_version="cv",
-                dev_ops_url="dou",
-                dev_ops_api_version="dvv",
-                api_path="appi",
-                api_version="vX",
-            )
-        assert adda1 == adda2
-
-        with pytest.warns(DeprecationWarning):
-            assert adda1 != adda1._copy(caller_name="x", caller_version="x")
-        with pytest.warns(DeprecationWarning):
-            assert adda1 != adda1._copy(caller_name="x")
-        with pytest.warns(DeprecationWarning):
-            assert adda1 != adda1._copy(caller_version="x")
-
-        with pytest.warns(DeprecationWarning):
-            assert adda1 == adda1._copy(caller_name="x", caller_version="x")._copy(
-                caller_name="cn", caller_version="cv"
-            )
-
-        with pytest.warns(DeprecationWarning):
-            assert adda1 != adda1.with_options(caller_name="x", caller_version="x")
-        with pytest.warns(DeprecationWarning):
-            assert adda1 != adda1.with_options(caller_name="x")
-        with pytest.warns(DeprecationWarning):
-            assert adda1 != adda1.with_options(caller_version="x")
-
-        with pytest.warns(DeprecationWarning):
-            assert adda1 == adda1.with_options(
-                caller_name="x", caller_version="x"
-            ).with_options(caller_name="cn", caller_version="cv")
 
     @pytest.mark.describe(
         "test of AstraDBDatabaseAdmin conversions and comparison functions"
@@ -367,55 +212,6 @@ class TestAdminConversions:
         assert adda1 == adda1.with_options(callers=callers1).with_options(
             callers=callers0
         )
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of DataAPIDBDatabaseAdmin caller_name in conversions")
-    def test_dataapidatabaseadmin_deprecated_caller_in_conversions(self) -> None:
-        with pytest.warns(DeprecationWarning):
-            dada1 = DataAPIDatabaseAdmin(
-                "http://a.b.c:1234",
-                token="t1",
-                environment="hcd",
-                api_path="appi",
-                api_version="v9",
-                caller_name="cn",
-                caller_version="cv",
-            )
-        with pytest.warns(DeprecationWarning):
-            dada2 = DataAPIDatabaseAdmin(
-                "http://a.b.c:1234",
-                token="t1",
-                environment="hcd",
-                api_path="appi",
-                api_version="v9",
-                caller_name="cn",
-                caller_version="cv",
-            )
-        assert dada1 == dada2
-
-        with pytest.warns(DeprecationWarning):
-            assert dada1 != dada1._copy(caller_name="x", caller_version="x")
-        with pytest.warns(DeprecationWarning):
-            assert dada1 != dada1._copy(caller_name="x")
-        with pytest.warns(DeprecationWarning):
-            assert dada1 != dada1._copy(caller_version="x")
-
-        with pytest.warns(DeprecationWarning):
-            assert dada1 == dada1._copy(caller_name="x", caller_version="x")._copy(
-                caller_name="cn", caller_version="cv"
-            )
-
-        with pytest.warns(DeprecationWarning):
-            assert dada1 != dada1.with_options(caller_name="x", caller_version="x")
-        with pytest.warns(DeprecationWarning):
-            assert dada1 != dada1.with_options(caller_name="x")
-        with pytest.warns(DeprecationWarning):
-            assert dada1 != dada1.with_options(caller_version="x")
-
-        with pytest.warns(DeprecationWarning):
-            assert dada1 == dada1.with_options(
-                caller_name="x", caller_version="x"
-            ).with_options(caller_name="cn", caller_version="cv")
 
     @pytest.mark.describe(
         "test of DataAPIDBDatabaseAdmin conversions and comparison functions"

@@ -59,7 +59,6 @@ from astrapy.exceptions import (
 )
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo, FindEmbeddingProvidersResult
 from astrapy.meta import (
-    check_caller_parameters,
     check_namespace_keyspace,
     check_update_db_namespace_keyspace,
 )
@@ -531,10 +530,6 @@ class AstraDBAdmin:
             on behalf of which DevOps API calls are performed. These end up in
             the request user-agent.
             Each caller identity is a ("caller_name", "caller_version") pair.
-        caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-            application, or framework, on behalf of which the DevOps API calls
-            are performed. This ends up in the request user-agent.
-        caller_version: version of the caller. *DEPRECATED*, use `callers`. Removal 2.0.
         dev_ops_url: in case of custom deployments, this can be used to specify
             the URL to the DevOps API, such as "https://api.astra.datastax.com".
             Generally it can be omitted. The environment (prod/dev/...) is
@@ -562,12 +557,9 @@ class AstraDBAdmin:
         *,
         environment: str | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
         dev_ops_url: str | None = None,
         dev_ops_api_version: str | None = None,
     ) -> None:
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
         if self.environment not in Environment.astra_db_values:
@@ -588,7 +580,7 @@ class AstraDBAdmin:
         else:
             self._dev_ops_commander_headers = {}
 
-        self.callers = callers_param
+        self.callers = callers
         self._dev_ops_api_commander = self._get_dev_ops_api_commander()
 
     def __repr__(self) -> str:
@@ -643,16 +635,13 @@ class AstraDBAdmin:
         token: str | TokenProvider | None = None,
         environment: str | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
         dev_ops_url: str | None = None,
         dev_ops_api_version: str | None = None,
     ) -> AstraDBAdmin:
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         return AstraDBAdmin(
             token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
-            callers=callers_param or self.callers,
+            callers=callers or self.callers,
             dev_ops_url=dev_ops_url or self._dev_ops_url,
             dev_ops_api_version=dev_ops_api_version or self._dev_ops_api_version,
         )
@@ -662,8 +651,6 @@ class AstraDBAdmin:
         *,
         token: str | TokenProvider | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> AstraDBAdmin:
         """
         Create a clone of this AstraDBAdmin with some changed attributes.
@@ -676,11 +663,6 @@ class AstraDBAdmin:
                 on behalf of which DevOps API calls are performed. These end up in
                 the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
-            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-                application, or framework, on behalf of which the DevOps API calls
-                are performed. This ends up in the request user-agent.
-            caller_version: version of the caller. *DEPRECATED*, use `callers`.
-                Removal 2.0.
 
         Returns:
             a new AstraDBAdmin instance.
@@ -691,10 +673,9 @@ class AstraDBAdmin:
             ... )
         """
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         return self._copy(
             token=token,
-            callers=callers_param,
+            callers=callers,
         )
 
     def list_databases(
@@ -1861,10 +1842,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             on behalf of which Data API and DevOps API calls are performed.
             These end up in the request user-agent.
             Each caller identity is a ("caller_name", "caller_version") pair.
-        caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-            application, or framework, on behalf of which the Data API and
-            DevOps API calls are performed. This ends up in the request user-agent.
-        caller_version: version of the caller. *DEPRECATED*, use `callers`. Removal 2.0.
         dev_ops_url: in case of custom deployments, this can be used to specify
             the URL to the DevOps API, such as "https://api.astra.datastax.com".
             Generally it can be omitted. The environment (prod/dev/...) is
@@ -1910,8 +1887,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         token: str | TokenProvider | None = None,
         environment: str | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
         dev_ops_url: str | None = None,
         dev_ops_api_version: str | None = None,
         api_path: str | None = None,
@@ -1922,7 +1897,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         # lazy import here to avoid circular dependency
         from astrapy.database import Database
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         self.token_provider = coerce_token_provider(token)
         self.environment = (environment or Environment.PROD).lower()
         self.api_endpoint = api_endpoint
@@ -1940,7 +1914,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 f'`environment="{parsed_api_endpoint.environment}"` '
                 "to the class constructor."
             )
-        self.callers = callers_param
+        self.callers = callers
         self.api_path = (
             api_path if api_path is not None else API_PATH_ENV_MAP[self.environment]
         )
@@ -2070,19 +2044,16 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         token: str | TokenProvider | None = None,
         environment: str | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
         dev_ops_url: str | None = None,
         dev_ops_api_version: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
     ) -> AstraDBDatabaseAdmin:
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         return AstraDBDatabaseAdmin(
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
-            callers=callers_param or self.callers,
+            callers=callers or self.callers,
             dev_ops_url=dev_ops_url or self.dev_ops_url,
             dev_ops_api_version=dev_ops_api_version or self.dev_ops_api_version,
             api_path=api_path or self.api_path,
@@ -2095,8 +2066,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         *,
         token: str | TokenProvider | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> AstraDBDatabaseAdmin:
         """
         Create a clone of this AstraDBDatabaseAdmin with some changed attributes.
@@ -2114,11 +2083,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 on behalf of which Data API and DevOps API calls are performed.
                 These end up in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
-            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-                application, or framework, on behalf of which the Data API and
-                DevOps API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller. *DEPRECATED*, use `callers`.
-                Removal 2.0.
 
         Returns:
             a new AstraDBDatabaseAdmin instance.
@@ -2129,11 +2093,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ... )
         """
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         return self._copy(
             api_endpoint=api_endpoint,
             token=token,
-            callers=callers_param,
+            callers=callers,
         )
 
     @property
@@ -2215,8 +2178,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         *,
         token: str | TokenProvider | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
         dev_ops_url: str | None = None,
         dev_ops_api_version: str | None = None,
     ) -> AstraDBDatabaseAdmin:
@@ -2236,11 +2197,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 on behalf of which Data API and DevOps API calls are performed.
                 These end up in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
-            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-                application, or framework, on behalf of which the Data API and
-                DevOps API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller. *DEPRECATED*, use `callers`.
-                Removal 2.0.
             dev_ops_url: in case of custom deployments, this can be used to specify
                 the URL to the DevOps API, such as "https://api.astra.datastax.com".
                 Generally it can be omitted. The environment (prod/dev/...) is
@@ -2268,14 +2224,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             see the AstraDBAdmin class.
         """
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         parsed_api_endpoint = parse_api_endpoint(api_endpoint)
         if parsed_api_endpoint:
             return AstraDBDatabaseAdmin(
                 api_endpoint=api_endpoint,
                 token=token,
                 environment=parsed_api_endpoint.environment,
-                callers=callers_param,
+                callers=callers,
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
             )
@@ -3368,10 +3323,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             on behalf of which Data API calls are performed. These end up in the
             request user-agent.
             Each caller identity is a ("caller_name", "caller_version") pair.
-        caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-            application, or framework, on behalf of which the Data API calls
-            are performed. This ends up in the request user-agent.
-        caller_version: version of the caller. *DEPRECATED*, use `callers`. Removal 2.0.
         spawner_database: either a Database or an AsyncDatabase instance.
             This represents the database class which spawns this admin object, so that,
             if required, a keyspace creation can retroactively "use" the new keyspace
@@ -3406,18 +3357,15 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         api_path: str | None = None,
         api_version: str | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
         spawner_database: Database | AsyncDatabase | None = None,
     ) -> None:
         # lazy import here to avoid circular dependency
         from astrapy.database import Database
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         self.environment = (environment or Environment.OTHER).lower()
         self.token_provider = coerce_token_provider(token)
         self.api_endpoint = api_endpoint
-        self.callers = callers_param
+        self.callers = callers
         self.api_path = api_path if api_path is not None else ""
         self.api_version = api_version if api_version is not None else ""
         self._commander_headers = {
@@ -3480,17 +3428,14 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         api_path: str | None = None,
         api_version: str | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> DataAPIDatabaseAdmin:
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         return DataAPIDatabaseAdmin(
             api_endpoint=api_endpoint or self.api_endpoint,
             token=coerce_token_provider(token) or self.token_provider,
             environment=environment or self.environment,
             api_path=api_path or self.api_path,
             api_version=api_version or self.api_version,
-            callers=callers_param or self.callers,
+            callers=callers or self.callers,
         )
 
     def with_options(
@@ -3499,8 +3444,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         api_endpoint: str | None = None,
         token: str | TokenProvider | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> DataAPIDatabaseAdmin:
         """
         Create a clone of this DataAPIDatabaseAdmin with some changed attributes.
@@ -3515,11 +3458,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 on behalf of which Data API calls are performed. These end up in the
                 request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
-            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-                application, or framework, on behalf of which the Data API calls
-                are performed. This ends up in the request user-agent.
-            caller_version: version of the caller. *DEPRECATED*, use `callers`.
-                Removal 2.0.
 
         Returns:
             a new DataAPIDatabaseAdmin instance.
@@ -3530,11 +3468,10 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ... )
         """
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         return self._copy(
             api_endpoint=api_endpoint,
             token=token,
-            callers=callers_param,
+            callers=callers,
         )
 
     @deprecation.deprecated(  # type: ignore[misc]
