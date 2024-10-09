@@ -120,20 +120,6 @@ class TestDatabasesSync:
         assert db2 != db1
 
         with pytest.warns(DeprecationWarning):
-            db2.set_caller(
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        db3 = db2._copy(
-            api_endpoint="api_endpoint",
-            token="token",
-            keyspace="keyspace",
-            api_path="api_path",
-            api_version="api_version",
-        )
-        assert db3 == db1
-
-        with pytest.warns(DeprecationWarning):
             assert db1.with_options(caller_name="x", caller_version="x") != db1
         with pytest.warns(DeprecationWarning):
             assert db1.with_options(caller_name="x") != db1
@@ -219,20 +205,6 @@ class TestDatabasesSync:
             )
         assert db2a.to_sync() != db1
 
-        with pytest.warns(DeprecationWarning):
-            db2a.set_caller(
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        db3 = db2a.to_sync(
-            api_endpoint="api_endpoint",
-            token="token",
-            keyspace="keyspace",
-            api_path="api_path",
-            api_version="api_version",
-        )
-        assert db3 == db1
-
     @pytest.mark.describe("test of Database rich conversions, sync")
     def test_rich_convert_database_sync(
         self,
@@ -274,30 +246,6 @@ class TestDatabasesSync:
         )
         assert db3 == db1
 
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of Database set_caller, sync")
-    def test_database_set_caller_sync(
-        self,
-        data_api_credentials_kwargs: DataAPICredentials,
-    ) -> None:
-        with pytest.warns(DeprecationWarning):
-            db1 = Database(
-                caller_name="c_n1",
-                caller_version="c_v1",
-                **data_api_credentials_kwargs,
-            )
-        with pytest.warns(DeprecationWarning):
-            db2 = Database(
-                caller_name="c_n2",
-                caller_version="c_v2",
-                **data_api_credentials_kwargs,
-            )
-        db2.set_caller(
-            caller_name="c_n1",
-            caller_version="c_v1",
-        )
-        assert db1 == db2
-
     @pytest.mark.describe("test get_collection method, sync")
     def test_database_get_collection_sync(
         self,
@@ -319,31 +267,6 @@ class TestDatabasesSync:
             sync_database, TEST_COLLECTION_INSTANCE_NAME, keyspace=NAMESPACE_2
         )
         assert collection_ks2.database.keyspace == NAMESPACE_2
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test database conversions with caller mutableness, sync")
-    def test_database_conversions_caller_mutableness_sync(
-        self,
-        data_api_credentials_kwargs: DataAPICredentials,
-    ) -> None:
-        with pytest.warns(DeprecationWarning):
-            db1 = Database(
-                caller_name="c_n1",
-                caller_version="c_v1",
-                **data_api_credentials_kwargs,
-            )
-        db1.set_caller(
-            caller_name="c_n2",
-            caller_version="c_v2",
-        )
-        with pytest.warns(DeprecationWarning):
-            db2 = Database(
-                caller_name="c_n2",
-                caller_version="c_v2",
-                **data_api_credentials_kwargs,
-            )
-        assert db1.to_async().to_sync() == db2
-        assert db1._copy() == db2
 
     @pytest.mark.describe("test database id, sync")
     def test_database_id_sync(self) -> None:

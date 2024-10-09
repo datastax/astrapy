@@ -5,6 +5,7 @@ Removal of several deprecated modules/features from previous versions:
     - 'collection.bulk_write' and the associated result and exception classes
     - 'vector=', 'vectorize=' and 'vectors=' parameters from collection methods
     - 'retrieved' (=> `consumed`) and 'collection' (=> `data_source`) for cursors
+    - 'set_caller' method of `DataAPIClient`, `AstraDBAdmin`, `DataAPIDatabaseAdmin`, `AstraDBDatabaseAdmin`, `[Async]Database`, `[Async]Collection`
 Removal of unused imports from toplevel __init__.py (ids, constants, cursors)
 
 v. 1.5.2

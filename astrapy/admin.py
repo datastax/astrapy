@@ -50,7 +50,6 @@ from astrapy.defaults import (
     DEV_OPS_URL_ENV_MAP,
     DEV_OPS_VERSION_ENV_MAP,
     NAMESPACE_DEPRECATION_NOTICE_METHOD,
-    SET_CALLER_DEPRECATION_NOTICE,
 )
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
@@ -697,39 +696,6 @@ class AstraDBAdmin:
             token=token,
             callers=callers_param,
         )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.1",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=SET_CALLER_DEPRECATION_NOTICE,
-    )
-    def set_caller(
-        self,
-        caller_name: str | None = None,
-        caller_version: str | None = None,
-    ) -> None:
-        """
-        Set a new identity for the application/framework on behalf of which
-        the DevOps API calls will be performed (the "caller").
-
-        New objects spawned from this client afterwards will inherit the new settings.
-
-        Args:
-            caller_name: name of the application, or framework, on behalf of which
-                the DevOps API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
-
-        Example:
-            >>> my_astra_db_admin.set_caller(
-            ...     callers=[("the_caller", "0.1.0")],
-            ... )
-        """
-
-        logger.info(f"setting caller to {caller_name}/{caller_version}")
-        callers_param = check_caller_parameters([], caller_name, caller_version)
-        self.callers = callers_param
-        self._dev_ops_api_commander = self._get_dev_ops_api_commander()
 
     def list_databases(
         self,
@@ -2170,41 +2136,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             callers=callers_param,
         )
 
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.1",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=SET_CALLER_DEPRECATION_NOTICE,
-    )
-    def set_caller(
-        self,
-        caller_name: str | None = None,
-        caller_version: str | None = None,
-    ) -> None:
-        """
-        Set a new identity for the application/framework on behalf of which
-        the DevOps API calls will be performed (the "caller").
-
-        New objects spawned from this client afterwards will inherit the new settings.
-
-        Args:
-            caller_name: name of the application, or framework, on behalf of which
-                the DevOps API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
-
-        Example:
-            >>> admin_for_my_db.set_caller(
-            ...     caller_name="the_caller",
-            ...     caller_version="0.1.0",
-            ... )
-        """
-
-        logger.info(f"setting caller to {caller_name}/{caller_version}")
-        callers_param = check_caller_parameters([], caller_name, caller_version)
-        self.callers = callers_param or self.callers
-        self._api_commander = self._get_api_commander()
-        self._dev_ops_api_commander = self._get_dev_ops_api_commander()
-
     @property
     def id(self) -> str:
         """
@@ -3605,40 +3536,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             token=token,
             callers=callers_param,
         )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.1",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=SET_CALLER_DEPRECATION_NOTICE,
-    )
-    def set_caller(
-        self,
-        caller_name: str | None = None,
-        caller_version: str | None = None,
-    ) -> None:
-        """
-        Set a new identity for the application/framework on behalf of which
-        the DevOps API calls will be performed (the "caller").
-
-        New objects spawned from this client afterwards will inherit the new settings.
-
-        Args:
-            caller_name: name of the application, or framework, on behalf of which
-                the DevOps API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
-
-        Example:
-            >>> admin_for_my_db.set_caller(
-            ...     caller_name="the_caller",
-            ...     caller_version="0.1.0",
-            ... )
-        """
-
-        logger.info(f"setting caller to {caller_name}/{caller_version}")
-        callers_param = check_caller_parameters([], caller_name, caller_version)
-        self.callers = callers_param
-        self._api_commander = self._get_api_commander()
 
     @deprecation.deprecated(  # type: ignore[misc]
         deprecated_in="1.5.0",

@@ -44,7 +44,6 @@ from astrapy.defaults import (
     DEFAULT_INSERT_MANY_CHUNK_SIZE,
     DEFAULT_INSERT_MANY_CONCURRENCY,
     NAMESPACE_DEPRECATION_NOTICE_METHOD,
-    SET_CALLER_DEPRECATION_NOTICE,
 )
 from astrapy.exceptions import (
     CollectionNotFoundException,
@@ -426,35 +425,6 @@ class Collection:
             api_options=self.api_options.with_override(_api_options),
             callers=callers_param or self.callers,
         )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.1",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=SET_CALLER_DEPRECATION_NOTICE,
-    )
-    def set_caller(
-        self,
-        caller_name: str | None = None,
-        caller_version: str | None = None,
-    ) -> None:
-        """
-        Set a new identity for the application/framework on behalf of which
-        the Data API calls are performed (the "caller").
-
-        Args:
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
-
-        Example:
-            >>> my_coll.set_caller(caller_name="the_caller", caller_version="0.1.0")
-        """
-
-        logger.info(f"setting caller to {caller_name}/{caller_version}")
-        callers_param = check_caller_parameters([], caller_name, caller_version)
-        self.callers = callers_param or self.callers
-        self._api_commander = self._get_api_commander()
 
     def options(self, *, max_time_ms: int | None = None) -> CollectionOptions:
         """
@@ -2673,35 +2643,6 @@ class AsyncCollection:
             api_options=self.api_options.with_override(_api_options),
             callers=callers_param or self.callers,
         )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.1",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=SET_CALLER_DEPRECATION_NOTICE,
-    )
-    def set_caller(
-        self,
-        caller_name: str | None = None,
-        caller_version: str | None = None,
-    ) -> None:
-        """
-        Set a new identity for the application/framework on behalf of which
-        the Data API calls are performed (the "caller").
-
-        Args:
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
-
-        Example:
-            >>> my_coll.set_caller(caller_name="the_caller", caller_version="0.1.0")
-        """
-
-        logger.info(f"setting caller to {caller_name}/{caller_version}")
-        callers_param = check_caller_parameters([], caller_name, caller_version)
-        self.callers = callers_param or self.callers
-        self._api_commander = self._get_api_commander()
 
     async def options(self, *, max_time_ms: int | None = None) -> CollectionOptions:
         """

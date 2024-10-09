@@ -38,7 +38,6 @@ from astrapy.defaults import (
     DEFAULT_ASTRA_DB_KEYSPACE,
     DEFAULT_DATA_API_AUTH_HEADER,
     NAMESPACE_DEPRECATION_NOTICE_METHOD,
-    SET_CALLER_DEPRECATION_NOTICE,
 )
 from astrapy.exceptions import (
     CollectionAlreadyExistsException,
@@ -453,35 +452,6 @@ class Database:
             api_path=api_path or self.api_path,
             api_version=api_version or self.api_version,
         )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.1",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=SET_CALLER_DEPRECATION_NOTICE,
-    )
-    def set_caller(
-        self,
-        caller_name: str | None = None,
-        caller_version: str | None = None,
-    ) -> None:
-        """
-        Set a new identity for the application/framework on behalf of which
-        the Data API calls are performed (the "caller").
-
-        Args:
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
-
-        Example:
-            >>> my_db.set_caller(caller_name="the_caller", caller_version="0.1.0")
-        """
-
-        logger.info(f"setting caller to {caller_name}/{caller_version}")
-        callers_param = check_caller_parameters([], caller_name, caller_version)
-        self.callers = callers_param
-        self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
     @deprecation.deprecated(  # type: ignore[misc]
         deprecated_in="1.5.0",
@@ -1530,35 +1500,6 @@ class AsyncDatabase:
             api_path=api_path or self.api_path,
             api_version=api_version or self.api_version,
         )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.1",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=SET_CALLER_DEPRECATION_NOTICE,
-    )
-    def set_caller(
-        self,
-        caller_name: str | None = None,
-        caller_version: str | None = None,
-    ) -> None:
-        """
-        Set a new identity for the application/framework on behalf of which
-        the Data API calls are performed (the "caller").
-
-        Args:
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
-
-        Example:
-            >>> my_db.set_caller(caller_name="the_caller", caller_version="0.1.0")
-        """
-
-        logger.info(f"setting caller to {caller_name}/{caller_version}")
-        callers_param = check_caller_parameters([], caller_name, caller_version)
-        self.callers = callers_param
-        self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
     @deprecation.deprecated(  # type: ignore[misc]
         deprecated_in="1.5.0",

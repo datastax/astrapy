@@ -17,9 +17,6 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, Sequence
 
-import deprecation
-
-from astrapy import __version__
 from astrapy.admin import (
     api_endpoint_parsing_error_message,
     build_api_endpoint,
@@ -31,7 +28,6 @@ from astrapy.admin import (
 )
 from astrapy.authentication import coerce_token_provider, redact_secret
 from astrapy.constants import CallerType, Environment
-from astrapy.defaults import SET_CALLER_DEPRECATION_NOTICE
 from astrapy.meta import (
     check_caller_parameters,
     check_deprecated_id_region,
@@ -191,36 +187,6 @@ class DataAPIClient:
             token=token,
             callers=callers_param,
         )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.1",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=SET_CALLER_DEPRECATION_NOTICE,
-    )
-    def set_caller(
-        self,
-        caller_name: str | None = None,
-        caller_version: str | None = None,
-    ) -> None:
-        """
-        Set a new identity for the application/framework on behalf of which
-        the API calls will be performed (the "caller").
-
-        New objects spawned from this client afterwards will inherit the new settings.
-
-        Args:
-            caller_name: name of the application, or framework, on behalf of which
-                the API API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
-
-        Example:
-            >>> my_client.set_caller(caller_name="the_caller", caller_version="0.1.0")
-        """
-
-        logger.info(f"setting caller to {caller_name}/{caller_version}")
-        callers_param = check_caller_parameters([], caller_name, caller_version)
-        self.callers = callers_param
 
     def get_database(
         self,

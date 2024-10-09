@@ -54,9 +54,7 @@ class TestCollectionsSync:
         assert col1 == col1.to_async().to_sync()
 
     @sync_fail_if_not_removed
-    @pytest.mark.describe(
-        "test of Collection set_caller and caller_name in rich _copy, sync"
-    )
+    @pytest.mark.describe("test of Collection caller_name in rich _copy, sync")
     def test_deprecated_caller_in_rich_copy_collection_sync(
         self,
         sync_database: Database,
@@ -103,18 +101,6 @@ class TestCollectionsSync:
                 caller_version="x_v",
             )
         assert col2 != col1
-
-        with pytest.warns(DeprecationWarning):
-            col2.set_caller(
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        col3 = col2._copy(
-            database=sync_database,
-            name="id_test_collection",
-            keyspace=sync_database.keyspace,
-        )
-        assert col3 == col1
 
         with pytest.warns(DeprecationWarning):
             assert col1.with_options(caller_name="x", caller_version="x") != col1
@@ -167,9 +153,7 @@ class TestCollectionsSync:
         )
 
     @sync_fail_if_not_removed
-    @pytest.mark.describe(
-        "test of set_caller and caller_name in Collection rich conversions, sync"
-    )
+    @pytest.mark.describe("test of caller_name in Collection rich conversions, sync")
     def test_deprecated_caller_in_rich_convert_collection_sync(
         self,
         sync_database: Database,
@@ -195,18 +179,6 @@ class TestCollectionsSync:
                 caller_version="x_v",
             )
         assert col2a.to_sync() != col1
-
-        with pytest.warns(DeprecationWarning):
-            col2a.set_caller(
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        col3 = col2a.to_sync(
-            database=sync_database,
-            name="id_test_collection",
-            keyspace=sync_database.keyspace,
-        )
-        assert col3 == col1
 
     @pytest.mark.describe("test of Collection rich conversions, sync")
     def test_rich_convert_collection_sync(
@@ -265,55 +237,6 @@ class TestCollectionsSync:
         db1 = Database("a", "t", keyspace="ns1")
         col1 = Collection(db1, "coll")
         assert col1.name == "coll"
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of Collection set_caller, sync")
-    def test_collection_set_caller_sync(
-        self,
-        sync_database: Database,
-    ) -> None:
-        col1 = Collection(
-            sync_database,
-            "id_test_collection",
-            caller_name="c_n1",
-            caller_version="c_v1",
-        )
-        col2 = Collection(
-            sync_database,
-            "id_test_collection",
-            caller_name="c_n2",
-            caller_version="c_v2",
-        )
-        col2.set_caller(
-            caller_name="c_n1",
-            caller_version="c_v1",
-        )
-        assert col1 == col2
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test collection conversions with caller mutableness, sync")
-    def test_collection_conversions_caller_mutableness_sync(
-        self,
-        sync_database: Database,
-    ) -> None:
-        col1 = Collection(
-            sync_database,
-            "id_test_collection",
-            caller_name="c_n1",
-            caller_version="c_v1",
-        )
-        col1.set_caller(
-            caller_name="c_n2",
-            caller_version="c_v2",
-        )
-        col2 = Collection(
-            sync_database,
-            "id_test_collection",
-            caller_name="c_n2",
-            caller_version="c_v2",
-        )
-        assert col1._copy() == col2
-        assert col1.to_async().to_sync() == col2
 
     @sync_fail_if_not_removed
     @pytest.mark.skipif(

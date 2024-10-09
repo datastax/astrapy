@@ -43,9 +43,7 @@ api_ep9999_test = (
 
 class TestAdminConversions:
     @sync_fail_if_not_removed
-    @pytest.mark.describe(
-        "test of DataAPIClient set_caller and caller_name in conversions"
-    )
+    @pytest.mark.describe("test of DataAPIClient caller_name in conversions")
     def test_dataapiclient_deprecated_caller_in_conversions(self) -> None:
         with pytest.warns(DeprecationWarning):
             dac1 = DataAPIClient(
@@ -96,12 +94,6 @@ class TestAdminConversions:
             assert dac1 == dac1.with_options(
                 caller_name="x", caller_version="x"
             ).with_options(caller_name="cn", caller_version="cv")
-
-        dac1b = dac1._copy()
-        dac1b.set_caller("cn2", "cv2")
-        assert dac1b != dac1
-        dac1b.set_caller("cn", "cv")
-        assert dac1b == dac1
 
     @pytest.mark.describe("test of DataAPIClient conversions and comparison functions")
     def test_dataapiclient_conversions(self) -> None:
@@ -177,9 +169,7 @@ class TestAdminConversions:
             client.get_database(endpoint, region=database_region)
 
     @sync_fail_if_not_removed
-    @pytest.mark.describe(
-        "test of AstraDBAdmin set_caller and caller_name in conversions"
-    )
+    @pytest.mark.describe("test of AstraDBAdmin caller_name in conversions")
     def test_astradbadmin_deprecated_caller_in_conversions(self) -> None:
         with pytest.warns(DeprecationWarning):
             adm1 = AstraDBAdmin(
@@ -225,12 +215,6 @@ class TestAdminConversions:
                 caller_name="x", caller_version="x"
             ).with_options(caller_name="cn", caller_version="cv")
 
-        adm1b = adm1._copy()
-        adm1b.set_caller("cn2", "cv2")
-        assert adm1b != adm1
-        adm1b.set_caller("cn", "cv")
-        assert adm1b == adm1
-
     @pytest.mark.describe("test of AstraDBAdmin conversions and comparison functions")
     def test_astradbadmin_conversions(self) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
@@ -274,9 +258,7 @@ class TestAdminConversions:
         )
 
     @sync_fail_if_not_removed
-    @pytest.mark.describe(
-        "test of AstraDBDatabaseAdmin set_caller and caller_name in conversions"
-    )
+    @pytest.mark.describe("test of AstraDBDatabaseAdmin caller_name in conversions")
     def test_astradbdatabaseadmin_deprecated_caller_in_conversions(self) -> None:
         with pytest.warns(DeprecationWarning):
             adda1 = AstraDBDatabaseAdmin(
@@ -327,12 +309,6 @@ class TestAdminConversions:
             assert adda1 == adda1.with_options(
                 caller_name="x", caller_version="x"
             ).with_options(caller_name="cn", caller_version="cv")
-
-        adda1b = adda1._copy()
-        adda1b.set_caller("cn2", "cv2")
-        assert adda1b != adda1
-        adda1b.set_caller("cn", "cv")
-        assert adda1b == adda1
 
     @pytest.mark.describe(
         "test of AstraDBDatabaseAdmin conversions and comparison functions"
@@ -393,9 +369,7 @@ class TestAdminConversions:
         )
 
     @sync_fail_if_not_removed
-    @pytest.mark.describe(
-        "test of DataAPIDBDatabaseAdmin set_caller and caller_name in conversions"
-    )
+    @pytest.mark.describe("test of DataAPIDBDatabaseAdmin caller_name in conversions")
     def test_dataapidatabaseadmin_deprecated_caller_in_conversions(self) -> None:
         with pytest.warns(DeprecationWarning):
             dada1 = DataAPIDatabaseAdmin(
@@ -442,12 +416,6 @@ class TestAdminConversions:
             assert dada1 == dada1.with_options(
                 caller_name="x", caller_version="x"
             ).with_options(caller_name="cn", caller_version="cv")
-
-        dada1b = dada1._copy()
-        dada1b.set_caller("cn2", "cv2")
-        assert dada1b != dada1
-        dada1b.set_caller("cn", "cv")
-        assert dada1b == dada1
 
     @pytest.mark.describe(
         "test of DataAPIDBDatabaseAdmin conversions and comparison functions"

@@ -58,9 +58,7 @@ class TestCollectionsAsync:
         assert col1 == col1.to_sync().to_async()
 
     @async_fail_if_not_removed
-    @pytest.mark.describe(
-        "test of Collection set_caller and caller_name in rich _copy, async"
-    )
+    @pytest.mark.describe("test of Collection caller_name in rich _copy, async")
     async def test_deprecated_caller_in_rich_copy_collection_async(
         self,
         async_database: AsyncDatabase,
@@ -107,18 +105,6 @@ class TestCollectionsAsync:
                 caller_version="x_v",
             )
         assert col2 != col1
-
-        with pytest.warns(DeprecationWarning):
-            col2.set_caller(
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        col3 = col2._copy(
-            database=async_database,
-            name="id_test_collection",
-            keyspace=async_database.keyspace,
-        )
-        assert col3 == col1
 
         with pytest.warns(DeprecationWarning):
             assert col1.with_options(caller_name="x", caller_version="x") != col1
@@ -171,9 +157,7 @@ class TestCollectionsAsync:
         )
 
     @async_fail_if_not_removed
-    @pytest.mark.describe(
-        "test of set_caller and caller_name in Collection rich conversions, async"
-    )
+    @pytest.mark.describe("test of caller_name in Collection rich conversions, async")
     async def test_deprecated_caller_in_rich_convert_collection_async(
         self,
         async_database: AsyncDatabase,
@@ -199,18 +183,6 @@ class TestCollectionsAsync:
                 caller_version="x_v",
             )
         assert col2s.to_async() != col1
-
-        with pytest.warns(DeprecationWarning):
-            col2s.set_caller(
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        col3 = col2s.to_async(
-            database=async_database,
-            name="id_test_collection",
-            keyspace=async_database.keyspace,
-        )
-        assert col3 == col1
 
     @pytest.mark.describe("test of Collection rich conversions, async")
     async def test_rich_convert_collection_async(
@@ -269,55 +241,6 @@ class TestCollectionsAsync:
         db1 = AsyncDatabase("a", "t", keyspace="ns1")
         col1 = AsyncCollection(db1, "coll")
         assert col1.name == "coll"
-
-    @async_fail_if_not_removed
-    @pytest.mark.describe("test of Collection set_caller, async")
-    async def test_collection_set_caller_async(
-        self,
-        async_database: AsyncDatabase,
-    ) -> None:
-        col1 = AsyncCollection(
-            async_database,
-            "id_test_collection",
-            caller_name="c_n1",
-            caller_version="c_v1",
-        )
-        col2 = AsyncCollection(
-            async_database,
-            "id_test_collection",
-            caller_name="c_n2",
-            caller_version="c_v2",
-        )
-        col2.set_caller(
-            caller_name="c_n1",
-            caller_version="c_v1",
-        )
-        assert col1 == col2
-
-    @async_fail_if_not_removed
-    @pytest.mark.describe("test collection conversions with caller mutableness, async")
-    async def test_collection_conversions_caller_mutableness_async(
-        self,
-        async_database: AsyncDatabase,
-    ) -> None:
-        col1 = AsyncCollection(
-            async_database,
-            "id_test_collection",
-            caller_name="c_n1",
-            caller_version="c_v1",
-        )
-        col1.set_caller(
-            caller_name="c_n2",
-            caller_version="c_v2",
-        )
-        col2 = AsyncCollection(
-            async_database,
-            "id_test_collection",
-            caller_name="c_n2",
-            caller_version="c_v2",
-        )
-        assert col1._copy() == col2
-        assert col1.to_sync().to_async() == col2
 
     @async_fail_if_not_removed
     @pytest.mark.skipif(
