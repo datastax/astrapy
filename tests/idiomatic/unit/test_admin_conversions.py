@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import httpx
 import pytest
 
 from astrapy import (
@@ -76,7 +75,6 @@ class TestAdminConversions:
             "https://01234567-89ab-cdef-0123-456789abcdef-us-east1"
             ".apps.astra-dev.datastax.com"
         )
-        d_id_string = "01234567-89ab-cdef-0123-456789abcdef"
         db1 = dac1[a_e_string]
         expected_db_1 = Database(
             api_endpoint=a_e_string,
@@ -84,8 +82,6 @@ class TestAdminConversions:
             callers=callers0,
         )
         assert db1 == expected_db_1
-        with pytest.raises(httpx.HTTPStatusError):
-            dac1[d_id_string]
         with pytest.raises(ValueError):
             dac1["abc"]
 
@@ -103,15 +99,9 @@ class TestAdminConversions:
         )
 
         db1 = client.get_database(endpoint)
-        with pytest.warns(DeprecationWarning):
-            db2 = client.get_database(database_id, region=database_region)
         db3 = client.get_database(endpoint)
 
-        assert db1 == db2
         assert db1 == db3
-
-        with pytest.raises(ValueError):
-            client.get_database(endpoint, region=database_region)
 
     @pytest.mark.describe("test of AstraDBAdmin conversions and comparison functions")
     def test_astradbadmin_conversions(self) -> None:

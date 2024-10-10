@@ -26,29 +26,41 @@ from astrapy.defaults import (
 )
 
 
-def check_deprecated_id_region(
-    id: str | None,
-    region: str | None,
-) -> None:
-    # issue a deprecation warning if a database "id" is passed,
-    # possibly accompanied by a "region".
+def check_deprecated_alias(
+    new_name: str | None,
+    deprecated_name: str | None,
+) -> str | None:
+    """Generic blueprint utility for deprecating parameters through an alias.
 
-    if id is not None:
-        if region is None:
-            deprecation_subject = "Passing an `id` parameter"
-        else:
-            deprecation_subject = "Passing an `id` parameter with a `region`"
+    Normalize the two aliased parameter names, raising deprecation
+    when needed and an error if both parameter supplied.
+    The returned value is the final one for the parameter.
+    """
+
+    if deprecated_name is None:
+        # no need for deprecation nor exceptions
+        return new_name
+    else:
         # issue a deprecation warning
         the_warning = DeprecatedWarning(
-            deprecation_subject,
-            deprecated_in="1.5.1",
-            removed_in="2.0.0",
-            details="Please switch to using the API Endpoint.",
+            "Parameter 'deprecated_name'",
+            deprecated_in="2.0.0",
+            removed_in="3.0.0",
+            details="Please use 'new_name' instead.",
         )
         warnings.warn(
             the_warning,
             stacklevel=3,
         )
+
+        if new_name is None:
+            return deprecated_name
+        else:
+            msg = (
+                "Parameters `new_name` and `deprecated_name` "
+                "(a deprecated alias for the former) cannot be passed at the same time."
+            )
+            raise ValueError(msg)
 
 
 def check_namespace_keyspace(

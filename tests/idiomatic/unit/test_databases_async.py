@@ -197,10 +197,6 @@ class TestDatabasesAsync:
         self,
     ) -> None:
         client_a = DataAPIClient(environment=Environment.PROD)
-        db_a_m = client_a.get_async_database(id="id", region="r", keyspace="M")
-        assert db_a_m.keyspace == "M"
-        db_a_n = client_a.get_async_database(id="id", region="r")
-        assert db_a_n.keyspace == DEFAULT_ASTRA_DB_KEYSPACE
         db_a_me = client_a.get_async_database(api_ep5643_prod, keyspace="M")
         assert db_a_me.keyspace == "M"
         db_a_ne = client_a.get_async_database(api_ep5643_prod)
