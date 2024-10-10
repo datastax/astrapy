@@ -10,6 +10,11 @@ Removal of several deprecated modules/features from previous versions:
     - 'id' and 'region' to DataAPIClient's 'get_database' (and async version). Use `api_endpoint` which is now the one positional parameter.
     - The 'max_time_ms' parameter in DataAPIClient's 'get_database' method.
     - Accordingly, the syntax `client[api_endpoint]` also does not accept a database ID anymore.
+    - 'namespace' parameter of several methods of: DataAPIClient, admin objects, Database and Collection (use `keyspace`)
+    - 'namespace' property of CollectionInfo, DatabaseInfo, CollectionNotFoundException, CollectionAlreadyExistsException (use `keyspace`)
+    - 'namespace' property of Databases and Collections (switch to `keyspace`)
+    - 'update_db_namespace' parameter to for admin keyspace CRD methods (use `update_db_keyspace`)
+    - 'use_namespace' for Databases (switch to `use_keyspace`)
 Removal of unused imports from toplevel __init__.py (ids, constants, cursors)
 
 v. 1.5.2

@@ -25,7 +25,6 @@ from astrapy.admin import (
 )
 from astrapy.authentication import coerce_token_provider, redact_secret
 from astrapy.constants import CallerType, Environment
-from astrapy.meta import check_namespace_keyspace
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
@@ -168,7 +167,6 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
-        namespace: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
     ) -> Database:
@@ -187,7 +185,6 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -214,11 +211,6 @@ class DataAPIClient:
             `create_database` method of class AstraDBAdmin.
         """
 
-        keyspace_param = check_namespace_keyspace(
-            keyspace=keyspace,
-            namespace=namespace,
-        )
-
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
@@ -236,7 +228,7 @@ class DataAPIClient:
                 return Database(
                     api_endpoint=api_endpoint,
                     token=_token,
-                    keyspace=keyspace_param,
+                    keyspace=keyspace,
                     callers=self.callers,
                     environment=self.environment,
                     api_path=api_path,
@@ -252,7 +244,7 @@ class DataAPIClient:
                 return Database(
                     api_endpoint=parsed_generic_api_endpoint,
                     token=_token,
-                    keyspace=keyspace_param,
+                    keyspace=keyspace,
                     callers=self.callers,
                     environment=self.environment,
                     api_path=api_path,
@@ -268,7 +260,6 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
-        namespace: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
     ) -> AsyncDatabase:
@@ -287,7 +278,6 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -315,14 +305,10 @@ class DataAPIClient:
             `create_database` method of class AstraDBAdmin.
         """
 
-        keyspace_param = check_namespace_keyspace(
-            keyspace=keyspace,
-            namespace=namespace,
-        )
         return self.get_database(
             api_endpoint=api_endpoint,
             token=token,
-            keyspace=keyspace_param,
+            keyspace=keyspace,
             api_path=api_path,
             api_version=api_version,
         ).to_async()
@@ -333,7 +319,6 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
-        namespace: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
     ) -> Database:
@@ -354,7 +339,6 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -364,15 +348,10 @@ class DataAPIClient:
             a Database object with which to work on Data API collections.
         """
 
-        keyspace_param = check_namespace_keyspace(
-            keyspace=keyspace,
-            namespace=namespace,
-        )
-
         return self.get_database(
             api_endpoint=api_endpoint,
             token=token,
-            keyspace=keyspace_param,
+            keyspace=keyspace,
             api_path=api_path,
             api_version=api_version,
         )
@@ -383,7 +362,6 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
-        namespace: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
     ) -> AsyncDatabase:
@@ -404,7 +382,6 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
@@ -414,15 +391,10 @@ class DataAPIClient:
             an AsyncDatabase object with which to work on Data API collections.
         """
 
-        keyspace_param = check_namespace_keyspace(
-            keyspace=keyspace,
-            namespace=namespace,
-        )
-
         return self.get_async_database(
             api_endpoint=api_endpoint,
             token=token,
-            keyspace=keyspace_param,
+            keyspace=keyspace,
             api_path=api_path,
             api_version=api_version,
         )

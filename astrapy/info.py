@@ -28,8 +28,7 @@ class DatabaseInfo:
     Attributes:
         id: the database ID.
         region: the ID of the region through which the connection to DB is done.
-        keyspace: the namespace this DB is set to work with. None if not set.
-        namespace: an alias for 'keyspace'. *DEPRECATED*, removal in 2.0
+        keyspace: the keyspace this DB is set to work with. None if not set.
         name: the database name. Not necessarily unique: there can be multiple
             databases with the same name.
         environment: a label, whose value can be `Environment.PROD`,
@@ -53,7 +52,6 @@ class DatabaseInfo:
     id: str
     region: str
     keyspace: str | None
-    namespace: str | None
     name: str
     environment: str
     raw_info: dict[str, Any] | None
@@ -120,7 +118,6 @@ class CollectionInfo:
     Attributes:
         database_info: a DatabaseInfo instance for the underlying database.
         keyspace: the keyspace where the collection is located.
-        namespace: an alias for 'keyspace'. *DEPRECATED*, removal in 2.0
         name: collection name. Unique within a keyspace.
         full_name: identifier for the collection within the database,
             in the form "keyspace.collection_name".
@@ -128,7 +125,6 @@ class CollectionInfo:
 
     database_info: DatabaseInfo
     keyspace: str
-    namespace: str
     name: str
     full_name: str
 

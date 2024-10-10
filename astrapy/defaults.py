@@ -97,25 +97,3 @@ DEFAULT_REDACTED_HEADER_NAMES = {
     EMBEDDING_HEADER_AWS_SECRET_ID,
     EMBEDDING_HEADER_API_KEY,
 }
-
-# Deprecation notices for the phasing out of 'namespace'
-NAMESPACE_DEPRECATION_NOTICE_METHOD = (
-    "The term 'namespace' is being replaced by 'keyspace' throughout the Data API and "
-    "the clients. Please adapt method and parameter names consistently (examples: "
-    "`db_admin.findNamespaces` => `db_admin.findKeyspaces`; `collection.namespace` => "
-    "`collection.keyspace`; `database.list_collections(namespace=...)` => `database."
-    "list_collections(keyspace=...)`). See https://docs.datastax.com/en/astra-db-"
-    "serverless/api-reference/client-versions.html#version-1-5 for more information."
-)
-NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_SUBJECT = "Parameter `update_db_namespace`"
-NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_DETAILS = (
-    "Please replace the parameter with `update_db_keyspace`. "
-    "See https://docs.datastax.com/en/astra-db-serverless/api-reference/client-"
-    "versions.html#version-1-5 for more information."
-)
-NAMESPACE_DEPRECATION_NOTICE_NS_SUBJECT = "Parameter `namespace`"
-NAMESPACE_DEPRECATION_NOTICE_NS_DETAILS = (
-    "Please replace the parameter with `keyspace`. "
-    "See https://docs.datastax.com/en/astra-db-serverless/api-reference/client-"
-    "versions.html#version-1-5 for more information."
-)

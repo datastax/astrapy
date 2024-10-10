@@ -18,13 +18,6 @@ import warnings
 
 from deprecation import DeprecatedWarning
 
-from astrapy.defaults import (
-    NAMESPACE_DEPRECATION_NOTICE_NS_DETAILS,
-    NAMESPACE_DEPRECATION_NOTICE_NS_SUBJECT,
-    NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_DETAILS,
-    NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_SUBJECT,
-)
-
 
 def check_deprecated_alias(
     new_name: str | None,
@@ -58,74 +51,6 @@ def check_deprecated_alias(
         else:
             msg = (
                 "Parameters `new_name` and `deprecated_name` "
-                "(a deprecated alias for the former) cannot be passed at the same time."
-            )
-            raise ValueError(msg)
-
-
-def check_namespace_keyspace(
-    keyspace: str | None,
-    namespace: str | None,
-) -> str | None:
-    # normalize the two aliased parameter names, raising deprecation
-    # when needed and an error if both parameter supplied.
-    # The returned value is the final one for the parameter.
-
-    if namespace is None:
-        # no need for deprecation nor exceptions
-        return keyspace
-    else:
-        # issue a deprecation warning
-        the_warning = DeprecatedWarning(
-            NAMESPACE_DEPRECATION_NOTICE_NS_SUBJECT,
-            deprecated_in="1.5.0",
-            removed_in="2.0.0",
-            details=NAMESPACE_DEPRECATION_NOTICE_NS_DETAILS,
-        )
-        warnings.warn(
-            the_warning,
-            stacklevel=3,
-        )
-
-        if keyspace is None:
-            return namespace
-        else:
-            msg = (
-                "Parameters `keyspace` and `namespace` "
-                "(a deprecated alias for the former) cannot be passed at the same time."
-            )
-            raise ValueError(msg)
-
-
-def check_update_db_namespace_keyspace(
-    update_db_keyspace: bool | None,
-    update_db_namespace: bool | None,
-) -> bool | None:
-    # normalize the two aliased parameter names, raising deprecation
-    # when needed and an error if both parameter supplied.
-    # The returned value is the final one for the parameter.
-
-    if update_db_namespace is None:
-        # no need for deprecation nor exceptions
-        return update_db_keyspace
-    else:
-        # issue a deprecation warning
-        the_warning = DeprecatedWarning(
-            NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_SUBJECT,
-            deprecated_in="1.5.0",
-            removed_in="2.0.0",
-            details=NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_DETAILS,
-        )
-        warnings.warn(
-            the_warning,
-            stacklevel=3,
-        )
-
-        if update_db_keyspace is None:
-            return update_db_namespace
-        else:
-            msg = (
-                "Parameters `update_db_keyspace` and `update_db_namespace` "
                 "(a deprecated alias for the former) cannot be passed at the same time."
             )
             raise ValueError(msg)
