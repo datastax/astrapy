@@ -26,8 +26,6 @@ from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import DeleteResult, InsertOneResult
 
-from ..conftest import async_fail_if_not_removed
-
 
 class TestDMLAsync:
     @pytest.mark.describe("test of collection count_documents, async")
@@ -192,23 +190,6 @@ class TestDMLAsync:
         do_result2 = await async_empty_collection.delete_many({"a": 1})
         assert do_result2.deleted_count == 50
         assert await async_empty_collection.count_documents({}, upper_bound=100) == 0
-
-    @async_fail_if_not_removed
-    @pytest.mark.describe("test of collection delete_all, async")
-    async def test_collection_delete_all_async(
-        self,
-        async_empty_collection: AsyncCollection,
-    ) -> None:
-        await async_empty_collection.insert_many([{"a": 1}, {"a": 2}, {"a": 3}])
-        assert (
-            await async_empty_collection.count_documents(filter={}, upper_bound=100)
-            == 3
-        )
-        await async_empty_collection.delete_all()
-        assert (
-            await async_empty_collection.count_documents(filter={}, upper_bound=100)
-            == 0
-        )
 
     @pytest.mark.describe("test of collection chunk-requiring delete_many, async")
     async def test_collection_chunked_delete_many_async(

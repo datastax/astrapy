@@ -24,7 +24,6 @@ from astrapy.exceptions import DevOpsAPIException
 from ..conftest import (
     TEST_COLLECTION_INSTANCE_NAME,
     DataAPICredentials,
-    sync_fail_if_not_removed,
 )
 
 api_ep5643_prod = (
@@ -152,14 +151,14 @@ class TestDatabasesSync:
         assert getattr(sync_database, TEST_COLLECTION_INSTANCE_NAME) == collection
         assert sync_database[TEST_COLLECTION_INSTANCE_NAME] == collection
 
-        NAMESPACE_2 = "other_keyspace"
+        KEYSPACE_2 = "other_keyspace"
         collection_ks2 = sync_database.get_collection(
-            TEST_COLLECTION_INSTANCE_NAME, keyspace=NAMESPACE_2
+            TEST_COLLECTION_INSTANCE_NAME, keyspace=KEYSPACE_2
         )
         assert collection_ks2 == Collection(
-            sync_database, TEST_COLLECTION_INSTANCE_NAME, keyspace=NAMESPACE_2
+            sync_database, TEST_COLLECTION_INSTANCE_NAME, keyspace=KEYSPACE_2
         )
-        assert collection_ks2.database.keyspace == NAMESPACE_2
+        assert collection_ks2.database.keyspace == KEYSPACE_2
 
     @pytest.mark.describe("test database id, sync")
     def test_database_id_sync(self) -> None:
@@ -216,12 +215,9 @@ class TestDatabasesSync:
         db_n = db_admin.get_database()
         assert db_n.keyspace is None
 
-    @sync_fail_if_not_removed
     @pytest.mark.describe("test of database keyspace property, sync")
     def test_database_keyspace_property_sync(
         self,
         sync_database: Database,
     ) -> None:
-        with pytest.warns(DeprecationWarning):
-            sync_database.namespace
-        assert sync_database.namespace == sync_database.keyspace
+        assert isinstance(sync_database.keyspace, str)

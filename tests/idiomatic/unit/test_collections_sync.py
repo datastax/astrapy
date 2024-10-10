@@ -19,9 +19,8 @@ import pytest
 from astrapy import Collection, Database
 
 from ..conftest import (
-    SECONDARY_NAMESPACE,
+    SECONDARY_KEYSPACE,
     DataAPICredentialsInfo,
-    sync_fail_if_not_removed,
 )
 
 
@@ -146,39 +145,8 @@ class TestCollectionsSync:
         col1 = Collection(db1, "coll")
         assert col1.name == "coll"
 
-    @sync_fail_if_not_removed
     @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
-    )
-    @pytest.mark.describe("test collection namespace property, sync")
-    def test_collection_namespace_sync(
-        self,
-        sync_database: Database,
-        data_api_credentials_info: DataAPICredentialsInfo,
-    ) -> None:
-        col1 = sync_database.get_collection("id_test_collection")
-        with pytest.warns(DeprecationWarning):
-            col1.namespace
-        assert col1.namespace == sync_database.namespace
-
-        col2 = sync_database.get_collection(
-            "id_test_collection",
-            namespace=data_api_credentials_info["secondary_namespace"],
-        )
-        assert col2.namespace == data_api_credentials_info["secondary_namespace"]
-
-        col3 = Collection(sync_database, "id_test_collection")
-        assert col3.namespace == sync_database.namespace
-
-        col4 = Collection(
-            sync_database,
-            "id_test_collection",
-            namespace=data_api_credentials_info["secondary_namespace"],
-        )
-        assert col4.namespace == data_api_credentials_info["secondary_namespace"]
-
-    @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
+        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
     )
     @pytest.mark.describe("test collection keyspace property, sync")
     def test_collection_keyspace_sync(
@@ -191,9 +159,9 @@ class TestCollectionsSync:
 
         col2 = sync_database.get_collection(
             "id_test_collection",
-            namespace=data_api_credentials_info["secondary_namespace"],
+            keyspace=data_api_credentials_info["secondary_keyspace"],
         )
-        assert col2.keyspace == data_api_credentials_info["secondary_namespace"]
+        assert col2.keyspace == data_api_credentials_info["secondary_keyspace"]
 
         col3 = Collection(sync_database, "id_test_collection")
         assert col3.keyspace == sync_database.keyspace
@@ -201,6 +169,8 @@ class TestCollectionsSync:
         col4 = Collection(
             sync_database,
             "id_test_collection",
-            namespace=data_api_credentials_info["secondary_namespace"],
+            keyspace=data_api_credentials_info["secondary_keyspace"],
         )
-        assert col4.keyspace == data_api_credentials_info["secondary_namespace"]
+        assert col4.keyspace == data_api_credentials_info["secondary_keyspace"]
+        assert col1 == col3
+        assert col2 == col4

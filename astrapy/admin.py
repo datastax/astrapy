@@ -18,12 +18,9 @@ import asyncio
 import logging
 import re
 import time
-import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Sequence
-
-import deprecation
 
 from astrapy.api_commander import APICommander
 from astrapy.authentication import coerce_token_provider, redact_secret
@@ -1445,7 +1442,8 @@ class AstraDBAdmin:
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
             max_time_ms: a timeout, in milliseconds, for the DevOps API
-                HTTP request should it be necessary (see the `region` argument).
+                HTTP request should it be necessary (see the
+                `region` and `keyspace` arguments).
 
         Returns:
             A Database object ready to be used.
@@ -1567,7 +1565,8 @@ class AstraDBAdmin:
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
             max_time_ms: a timeout, in milliseconds, for the DevOps API
-                HTTP request should it be necessary (see the `region` argument).
+                HTTP request should it be necessary (see the
+                `region` and `keyspace` arguments).
 
         Returns:
             An AsyncDatabase object ready to be used.
@@ -2681,7 +2680,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         *,
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
-        region: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
         max_time_ms: int | None = None,
@@ -2697,12 +2695,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 `astrapy.authentication.TokenProvider`.
             keyspace: an optional keyspace to set in the resulting Database.
                 The same default logic as for `AstraDBAdmin.get_database` applies.
-            region: *This parameter is deprecated and should not be used.*
-                Ignored in the method.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
+            max_time_ms: a timeout, in milliseconds, for the DevOps API
+                HTTP request (see the `get_database` method of AstraDBAdmin).
 
         Returns:
             A Database object, ready to be used for working with data and collections.
@@ -2718,18 +2716,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             see the AstraDBAdmin class.
         """
 
-        if region is not None:
-            the_warning = deprecation.DeprecatedWarning(
-                "The 'region' parameter is deprecated in this method and will be ignored.",
-                deprecated_in="1.3.2",
-                removed_in="2.0.0",
-                details="The database class whose method is invoked already has a region set.",
-            )
-            warnings.warn(
-                the_warning,
-                stacklevel=2,
-            )
-
         return self._astra_db_admin.get_database(
             api_endpoint=self.api_endpoint,
             token=token,
@@ -2744,23 +2730,37 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         *,
         token: str | TokenProvider | None = None,
         keyspace: str | None = None,
-        region: str | None = None,
         api_path: str | None = None,
         api_version: str | None = None,
         max_time_ms: int | None = None,
     ) -> AsyncDatabase:
         """
-        Create an AsyncDatabase instance out of this class for working
-        with the data in it.
+        Create an AsyncDatabase instance from this database admin,
+        for data-related tasks.
 
-        This method has identical behavior and signature as the sync
-        counterpart `get_database`: please see that one for more details.
+        Args:
+            token: if supplied, is passed to the Database instead of
+                the one set for this object. Useful if one wants to work in
+                a least-privilege manner, limiting the permissions for non-admin work.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
+            keyspace: an optional keyspace to set in the resulting Database.
+                The same default logic as for `AstraDBAdmin.get_database` applies.
+            api_path: path to append to the API Endpoint. In typical usage, this
+                should be left to its default of "/api/json".
+            api_version: version specifier to append to the API path. In typical
+                usage, this should be left to its default of "v1".
+            max_time_ms: a timeout, in milliseconds, for the DevOps API
+                HTTP request (see the `get_database` method of AstraDBAdmin).
+
+        Returns:
+            An AsyncDatabase object, ready to be used for working with
+            data and collections.
         """
 
         return self.get_database(
             token=token,
             keyspace=keyspace,
-            region=region,
             api_path=api_path,
             api_version=api_version,
             max_time_ms=max_time_ms,

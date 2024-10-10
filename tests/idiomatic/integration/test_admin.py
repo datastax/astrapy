@@ -29,8 +29,8 @@ from ..conftest import (
     IS_ASTRA_DB,
 )
 
-NAMESPACE_POLL_SLEEP_TIME = 2
-NAMESPACE_TIMEOUT = 30
+KEYSPACE_POLL_SLEEP_TIME = 2
+KEYSPACE_TIMEOUT = 30
 DATABASE_POLL_SLEEP_TIME = 10
 DATABASE_TIMEOUT = 480
 PRE_DROP_SAFETY_POLL_INTERVAL = 5
@@ -150,8 +150,8 @@ class TestAdmin:
         )
         assert nw_create_ks_response == {"ok": 1}
         wait_until_true(
-            poll_interval=NAMESPACE_POLL_SLEEP_TIME,
-            max_seconds=NAMESPACE_TIMEOUT,
+            poll_interval=KEYSPACE_POLL_SLEEP_TIME,
+            max_seconds=KEYSPACE_TIMEOUT,
             condition=lambda: "nonwaited_ks" in db_admin.list_keyspaces(),
         )
 
@@ -179,8 +179,8 @@ class TestAdmin:
         )
         assert nw_drop_ks_response == {"ok": 1}
         wait_until_true(
-            poll_interval=NAMESPACE_POLL_SLEEP_TIME,
-            max_seconds=NAMESPACE_TIMEOUT,
+            poll_interval=KEYSPACE_POLL_SLEEP_TIME,
+            max_seconds=KEYSPACE_TIMEOUT,
             condition=lambda: "nonwaited_ks" not in db_admin.list_keyspaces(),
         )
 
@@ -398,8 +398,8 @@ class TestAdmin:
             return "nonwaited_ks" in (await db_admin.async_list_keyspaces())
 
         await await_until_true(
-            poll_interval=NAMESPACE_POLL_SLEEP_TIME,
-            max_seconds=NAMESPACE_TIMEOUT,
+            poll_interval=KEYSPACE_POLL_SLEEP_TIME,
+            max_seconds=KEYSPACE_TIMEOUT,
             acondition=_awaiter1,
         )
 
@@ -432,8 +432,8 @@ class TestAdmin:
             return "nonwaited_ks" not in ks_list
 
         await await_until_true(
-            poll_interval=NAMESPACE_POLL_SLEEP_TIME,
-            max_seconds=NAMESPACE_TIMEOUT,
+            poll_interval=KEYSPACE_POLL_SLEEP_TIME,
+            max_seconds=KEYSPACE_TIMEOUT,
             acondition=_awaiter2,
         )
 

@@ -415,17 +415,6 @@ class TestAdminConversions:
         assert db_1 == db_3
 
     @pytest.mark.describe(
-        "test of region being deprecated in AstraDBDatabaseAdmin.get_database"
-    )
-    def test_region_deprecation_astradbdatabaseadmin_getdatabase(self) -> None:
-        api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
-        db_adm = AstraDBDatabaseAdmin(api_ep)
-        with pytest.warns(DeprecationWarning):
-            db1 = db_adm.get_database(region="another-region", keyspace="the-keyspace")
-            # it's ignored anyway
-            assert db1 == db_adm.get_database(keyspace="the-keyspace")
-
-    @pytest.mark.describe(
         "test of spawner_database for AstraDBDatabaseAdmin if not provided"
     )
     def test_spawnerdatabase_astradbdatabaseadmin_notprovided(self) -> None:

@@ -47,20 +47,20 @@ from .preprocess_env import (
     LOCAL_DATA_API_PASSWORD,
     LOCAL_DATA_API_TOKEN_PROVIDER,
     LOCAL_DATA_API_USERNAME,
-    SECONDARY_NAMESPACE,
+    SECONDARY_KEYSPACE,
 )
 
 
 class DataAPICredentials(TypedDict):
     token: str | TokenProvider
     api_endpoint: str
-    namespace: str
+    keyspace: str
 
 
 class DataAPICredentialsInfo(TypedDict):
     environment: str
     region: str
-    secondary_namespace: str | None
+    secondary_keyspace: str | None
 
 
 def env_region_from_endpoint(api_endpoint: str) -> tuple[str, str]:
@@ -144,7 +144,7 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         astra_db_creds: DataAPICredentials = {
             "token": ASTRA_DB_TOKEN_PROVIDER or "",
             "api_endpoint": ASTRA_DB_API_ENDPOINT or "",
-            "namespace": ASTRA_DB_KEYSPACE or DEFAULT_ASTRA_DB_KEYSPACE,
+            "keyspace": ASTRA_DB_KEYSPACE or DEFAULT_ASTRA_DB_KEYSPACE,
         }
         return astra_db_creds
     else:
@@ -153,7 +153,7 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         local_db_creds: DataAPICredentials = {
             "token": LOCAL_DATA_API_TOKEN_PROVIDER or "",
             "api_endpoint": LOCAL_DATA_API_ENDPOINT or "",
-            "namespace": LOCAL_DATA_API_KEYSPACE or DEFAULT_ASTRA_DB_KEYSPACE,
+            "keyspace": LOCAL_DATA_API_KEYSPACE or DEFAULT_ASTRA_DB_KEYSPACE,
         }
 
         # ensure keyspace(s) exist at this point
@@ -164,12 +164,11 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         _database = _client.get_database(
             local_db_creds["api_endpoint"],
             token=local_db_creds["token"],
-            # namespace=local_db_creds["namespace"],
         )
         _database_admin = _database.get_database_admin()
-        _database_admin.create_keyspace(local_db_creds["namespace"])
-        if SECONDARY_NAMESPACE:
-            _database_admin.create_keyspace(SECONDARY_NAMESPACE)
+        _database_admin.create_keyspace(local_db_creds["keyspace"])
+        if SECONDARY_KEYSPACE:
+            _database_admin.create_keyspace(SECONDARY_KEYSPACE)
         # end of keyspace-ensuring block
 
         return local_db_creds
@@ -185,7 +184,7 @@ def data_api_credentials_info(
     astra_db_cred_info: DataAPICredentialsInfo = {
         "environment": env,
         "region": reg,
-        "secondary_namespace": SECONDARY_NAMESPACE,
+        "secondary_keyspace": SECONDARY_KEYSPACE,
     }
 
     return astra_db_cred_info
@@ -202,7 +201,7 @@ __all__ = [
     "LOCAL_DATA_API_KEYSPACE",
     "LOCAL_DATA_API_PASSWORD",
     "LOCAL_DATA_API_USERNAME",
-    "SECONDARY_NAMESPACE",
+    "SECONDARY_KEYSPACE",
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",
     "DO_IDIOMATIC_ADMIN_TESTS",

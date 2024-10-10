@@ -25,8 +25,6 @@ from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import DeleteResult, InsertOneResult
 
-from ..conftest import sync_fail_if_not_removed
-
 
 class TestDMLSync:
     @pytest.mark.describe("test of collection count_documents, sync")
@@ -146,17 +144,6 @@ class TestDMLSync:
         do_result2 = sync_empty_collection.delete_many({"a": 1})
         assert do_result2.deleted_count == 50
         assert sync_empty_collection.count_documents({}, upper_bound=100) == 0
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of collection delete_all, sync")
-    def test_collection_delete_all_sync(
-        self,
-        sync_empty_collection: Collection,
-    ) -> None:
-        sync_empty_collection.insert_many([{"a": 1}, {"a": 2}, {"a": 3}])
-        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 3
-        sync_empty_collection.delete_all()
-        assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 0
 
     @pytest.mark.describe("test of collection chunk-requiring delete_many, sync")
     def test_collection_chunked_delete_many_sync(

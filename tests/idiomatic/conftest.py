@@ -28,7 +28,7 @@ from ..conftest import (
     ADMIN_ENV_VARIABLE_MAP,
     DO_IDIOMATIC_ADMIN_TESTS,
     IS_ASTRA_DB,
-    SECONDARY_NAMESPACE,
+    SECONDARY_KEYSPACE,
     DataAPICredentials,
     DataAPICredentialsInfo,
     async_fail_if_not_removed,
@@ -57,7 +57,7 @@ def sync_database(
     database = client.get_database(
         data_api_credentials_kwargs["api_endpoint"],
         token=data_api_credentials_kwargs["token"],
-        keyspace=data_api_credentials_kwargs["namespace"],
+        keyspace=data_api_credentials_kwargs["keyspace"],
     )
 
     yield database
@@ -138,5 +138,5 @@ __all__ = [
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",
     "DO_IDIOMATIC_ADMIN_TESTS",
-    "SECONDARY_NAMESPACE",
+    "SECONDARY_KEYSPACE",
 ]

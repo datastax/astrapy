@@ -256,7 +256,7 @@ class TestExceptionsAsync:
         async_database: AsyncDatabase,
         data_api_credentials_kwargs: DataAPICredentials,
     ) -> None:
-        hacked_ks = (data_api_credentials_kwargs["namespace"] or "") + "_hacked"
+        hacked_ks = (data_api_credentials_kwargs["keyspace"] or "") + "_hacked"
         with pytest.raises(DevOpsAPIException):
             async_database._copy(keyspace=hacked_ks).info()
 

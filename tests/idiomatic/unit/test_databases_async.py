@@ -24,7 +24,6 @@ from astrapy.exceptions import DevOpsAPIException
 from ..conftest import (
     TEST_COLLECTION_INSTANCE_NAME,
     DataAPICredentials,
-    sync_fail_if_not_removed,
 )
 
 api_ep5643_prod = (
@@ -151,14 +150,14 @@ class TestDatabasesAsync:
         assert getattr(async_database, TEST_COLLECTION_INSTANCE_NAME) == collection
         assert async_database[TEST_COLLECTION_INSTANCE_NAME] == collection
 
-        NAMESPACE_2 = "other_keyspace"
+        KEYSPACE_2 = "other_keyspace"
         collection_ks2 = await async_database.get_collection(
-            TEST_COLLECTION_INSTANCE_NAME, keyspace=NAMESPACE_2
+            TEST_COLLECTION_INSTANCE_NAME, keyspace=KEYSPACE_2
         )
         assert collection_ks2 == AsyncCollection(
-            async_database, TEST_COLLECTION_INSTANCE_NAME, keyspace=NAMESPACE_2
+            async_database, TEST_COLLECTION_INSTANCE_NAME, keyspace=KEYSPACE_2
         )
-        assert collection_ks2.database.keyspace == NAMESPACE_2
+        assert collection_ks2.database.keyspace == KEYSPACE_2
 
     @pytest.mark.describe("test database id, async")
     async def test_database_id_async(self) -> None:
@@ -221,12 +220,9 @@ class TestDatabasesAsync:
         db_n = db_admin.get_async_database()
         assert db_n.keyspace is None
 
-    @sync_fail_if_not_removed
     @pytest.mark.describe("test of database keyspace property, async")
     def test_database_keyspace_property_async(
         self,
         async_database: AsyncDatabase,
     ) -> None:
-        with pytest.warns(DeprecationWarning):
-            async_database.namespace
-        assert async_database.namespace == async_database.keyspace
+        assert isinstance(async_database.keyspace, str)

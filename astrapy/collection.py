@@ -21,9 +21,6 @@ from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Iterable, Sequence
 
-import deprecation
-
-from astrapy import __version__
 from astrapy.api_commander import APICommander
 from astrapy.api_options import CollectionAPIOptions
 from astrapy.authentication import coerce_embedding_headers_provider
@@ -2117,45 +2114,6 @@ class Collection:
             deleted_count=deleted_count,
             raw_results=dm_responses,
         )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.3.0",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details="Use delete_many with filter={} instead.",
-    )
-    def delete_all(self, *, max_time_ms: int | None = None) -> dict[str, Any]:
-        """
-        Delete all documents in a collection.
-
-        Args:
-            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
-                If not passed, the collection-level setting is used instead.
-
-        Returns:
-            a dictionary of the form {"ok": 1} to signal successful deletion.
-
-        Example:
-            >>> my_coll.distinct("seq")
-            [2, 1, 0]
-            >>> my_coll.count_documents({}, upper_bound=100)
-            4
-            >>> my_coll.delete_all()
-            {'ok': 1}
-            >>> my_coll.count_documents({}, upper_bound=100)
-            0
-
-        Note:
-            Use with caution.
-        """
-        dm_result = self.delete_many(filter={}, max_time_ms=max_time_ms)
-        if dm_result.deleted_count == -1:
-            return {"ok": 1}
-        else:
-            raise DataAPIFaultyResponseException(
-                text="Unexpected response from collection.delete_many({}).",
-                raw_response=None,
-            )
 
     def drop(self, *, max_time_ms: int | None = None) -> dict[str, Any]:
         """
@@ -4380,52 +4338,6 @@ class AsyncCollection:
             deleted_count=deleted_count,
             raw_results=dm_responses,
         )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.3.0",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details="Use delete_many with filter={} instead.",
-    )
-    async def delete_all(self, *, max_time_ms: int | None = None) -> dict[str, Any]:
-        """
-        Delete all documents in a collection.
-
-        Args:
-            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
-                If not passed, the collection-level setting is used instead.
-
-        Returns:
-            a dictionary of the form {"ok": 1} to signal successful deletion.
-
-        Example:
-            >>> async def do_delete_all(acol: AsyncCollection) -> None:
-            ...     distinct0 = await acol.distinct("seq")
-            ...     print("distinct0", distinct0)
-            ...     count1 = await acol.count_documents({}, upper_bound=100)
-            ...     print("count1", count1)
-            ...     delete_result2 = await acol.delete_all()
-            ...     print("delete_result2", delete_result2)
-            ...     count3 = await acol.count_documents({}, upper_bound=100)
-            ...     print("count3", count3)
-            ...
-            >>> asyncio.run(do_delete_all(my_async_coll))
-            distinct0 [4, 2, 3, 0, 1]
-            count1 5
-            delete_result2 {'ok': 1}
-            count3 0
-
-        Note:
-            Use with caution.
-        """
-        dm_result = await self.delete_many(filter={}, max_time_ms=max_time_ms)
-        if dm_result.deleted_count == -1:
-            return {"ok": 1}
-        else:
-            raise DataAPIFaultyResponseException(
-                text="Unexpected response from collection.delete_many({}).",
-                raw_response=None,
-            )
 
     async def drop(self, *, max_time_ms: int | None = None) -> dict[str, Any]:
         """
