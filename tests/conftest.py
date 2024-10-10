@@ -36,10 +36,7 @@ from .preprocess_env import (
     ADMIN_ENV_VARIABLE_MAP,
     ASTRA_DB_API_ENDPOINT,
     ASTRA_DB_APPLICATION_TOKEN,
-    ASTRA_DB_ID,
     ASTRA_DB_KEYSPACE,
-    ASTRA_DB_OPS_APPLICATION_TOKEN,
-    ASTRA_DB_REGION,
     ASTRA_DB_TOKEN_PROVIDER,
     DO_IDIOMATIC_ADMIN_TESTS,
     DOCKER_COMPOSE_LOCAL_DATA_API,
@@ -50,29 +47,20 @@ from .preprocess_env import (
     LOCAL_DATA_API_PASSWORD,
     LOCAL_DATA_API_TOKEN_PROVIDER,
     LOCAL_DATA_API_USERNAME,
-    SECONDARY_NAMESPACE,
-    TEST_ASTRADBOPS,
-    TEST_SKIP_COLLECTION_DELETE,
+    SECONDARY_KEYSPACE,
 )
 
 
 class DataAPICredentials(TypedDict):
     token: str | TokenProvider
     api_endpoint: str
-    namespace: str
-
-
-# to be used for 'core' testing, derived from above
-class DataAPICoreCredentials(TypedDict):
-    token: str
-    api_endpoint: str
-    namespace: str
+    keyspace: str
 
 
 class DataAPICredentialsInfo(TypedDict):
     environment: str
     region: str
-    secondary_namespace: str | None
+    secondary_keyspace: str | None
 
 
 def env_region_from_endpoint(api_endpoint: str) -> tuple[str, str]:
@@ -156,7 +144,7 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         astra_db_creds: DataAPICredentials = {
             "token": ASTRA_DB_TOKEN_PROVIDER or "",
             "api_endpoint": ASTRA_DB_API_ENDPOINT or "",
-            "namespace": ASTRA_DB_KEYSPACE or DEFAULT_ASTRA_DB_KEYSPACE,
+            "keyspace": ASTRA_DB_KEYSPACE or DEFAULT_ASTRA_DB_KEYSPACE,
         }
         return astra_db_creds
     else:
@@ -165,7 +153,7 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         local_db_creds: DataAPICredentials = {
             "token": LOCAL_DATA_API_TOKEN_PROVIDER or "",
             "api_endpoint": LOCAL_DATA_API_ENDPOINT or "",
-            "namespace": LOCAL_DATA_API_KEYSPACE or DEFAULT_ASTRA_DB_KEYSPACE,
+            "keyspace": LOCAL_DATA_API_KEYSPACE or DEFAULT_ASTRA_DB_KEYSPACE,
         }
 
         # ensure keyspace(s) exist at this point
@@ -176,38 +164,14 @@ def data_api_credentials_kwargs() -> DataAPICredentials:
         _database = _client.get_database(
             local_db_creds["api_endpoint"],
             token=local_db_creds["token"],
-            # namespace=local_db_creds["namespace"],
         )
         _database_admin = _database.get_database_admin()
-        _database_admin.create_keyspace(local_db_creds["namespace"])
-        if SECONDARY_NAMESPACE:
-            _database_admin.create_keyspace(SECONDARY_NAMESPACE)
+        _database_admin.create_keyspace(local_db_creds["keyspace"])
+        if SECONDARY_KEYSPACE:
+            _database_admin.create_keyspace(SECONDARY_KEYSPACE)
         # end of keyspace-ensuring block
 
         return local_db_creds
-
-
-@pytest.fixture(scope="session")
-def data_api_core_credentials_kwargs(
-    data_api_credentials_kwargs: DataAPICredentials,
-) -> DataAPICoreCredentials:
-    token_str: str
-    if isinstance(data_api_credentials_kwargs["token"], str):
-        token_str = data_api_credentials_kwargs["token"]
-    elif isinstance(data_api_credentials_kwargs["token"], TokenProvider):
-        token_str0 = data_api_credentials_kwargs["token"].get_token()
-        if token_str0 is None:
-            raise ValueError("Token cannot be made into a string in fixture")
-        else:
-            token_str = token_str0
-    else:
-        # this should not happen
-        token_str = str(data_api_credentials_kwargs["token"])
-    return {
-        "token": token_str,
-        "api_endpoint": data_api_credentials_kwargs["api_endpoint"],
-        "namespace": data_api_credentials_kwargs["namespace"],
-    }
 
 
 @pytest.fixture(scope="session")
@@ -220,32 +184,16 @@ def data_api_credentials_info(
     astra_db_cred_info: DataAPICredentialsInfo = {
         "environment": env,
         "region": reg,
-        "secondary_namespace": SECONDARY_NAMESPACE,
+        "secondary_keyspace": SECONDARY_KEYSPACE,
     }
 
     return astra_db_cred_info
 
 
-@pytest.fixture(scope="session")
-def data_api_core_bad_credentials_kwargs(
-    data_api_core_credentials_kwargs: DataAPICoreCredentials,
-) -> DataAPICoreCredentials:
-    astra_db_creds: DataAPICoreCredentials = {
-        "token": data_api_core_credentials_kwargs["token"],
-        "namespace": data_api_core_credentials_kwargs["namespace"],
-        "api_endpoint": "http://localhost:1234",
-    }
-
-    return astra_db_creds
-
-
 __all__ = [
     "ASTRA_DB_API_ENDPOINT",
     "ASTRA_DB_APPLICATION_TOKEN",
-    "ASTRA_DB_ID",
     "ASTRA_DB_KEYSPACE",
-    "ASTRA_DB_OPS_APPLICATION_TOKEN",
-    "ASTRA_DB_REGION",
     "DOCKER_COMPOSE_LOCAL_DATA_API",
     "IS_ASTRA_DB",
     "LOCAL_DATA_API_APPLICATION_TOKEN",
@@ -253,9 +201,7 @@ __all__ = [
     "LOCAL_DATA_API_KEYSPACE",
     "LOCAL_DATA_API_PASSWORD",
     "LOCAL_DATA_API_USERNAME",
-    "SECONDARY_NAMESPACE",
-    "TEST_ASTRADBOPS",
-    "TEST_SKIP_COLLECTION_DELETE",
+    "SECONDARY_KEYSPACE",
     "ADMIN_ENV_LIST",
     "ADMIN_ENV_VARIABLE_MAP",
     "DO_IDIOMATIC_ADMIN_TESTS",

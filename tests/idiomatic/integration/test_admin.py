@@ -29,8 +29,8 @@ from ..conftest import (
     IS_ASTRA_DB,
 )
 
-NAMESPACE_POLL_SLEEP_TIME = 2
-NAMESPACE_TIMEOUT = 30
+KEYSPACE_POLL_SLEEP_TIME = 2
+KEYSPACE_TIMEOUT = 30
 DATABASE_POLL_SLEEP_TIME = 10
 DATABASE_TIMEOUT = 480
 PRE_DROP_SAFETY_POLL_INTERVAL = 5
@@ -100,7 +100,7 @@ class TestAdmin:
             - drop keyspaces (wait, nonwait)
             - list keyspaces, check
             - drop database (wait)
-        - check DB not existings
+        - check DB not existing
         """
         admin_env, token = admin_env_token
         db_name = f"test_database_{admin_env}"
@@ -150,8 +150,8 @@ class TestAdmin:
         )
         assert nw_create_ks_response == {"ok": 1}
         wait_until_true(
-            poll_interval=NAMESPACE_POLL_SLEEP_TIME,
-            max_seconds=NAMESPACE_TIMEOUT,
+            poll_interval=KEYSPACE_POLL_SLEEP_TIME,
+            max_seconds=KEYSPACE_TIMEOUT,
             condition=lambda: "nonwaited_ks" in db_admin.list_keyspaces(),
         )
 
@@ -179,8 +179,8 @@ class TestAdmin:
         )
         assert nw_drop_ks_response == {"ok": 1}
         wait_until_true(
-            poll_interval=NAMESPACE_POLL_SLEEP_TIME,
-            max_seconds=NAMESPACE_TIMEOUT,
+            poll_interval=KEYSPACE_POLL_SLEEP_TIME,
+            max_seconds=KEYSPACE_TIMEOUT,
             condition=lambda: "nonwaited_ks" not in db_admin.list_keyspaces(),
         )
 
@@ -280,18 +280,10 @@ class TestAdmin:
             database_id=created_db_id_w,
             region=db_region,
         )
-        db_w_d = client.get_database(created_db_id_w)
-        db_w_r = client.get_database(created_db_id_w, region=db_region)
         db_w_e = client.get_database(synthetic_api_endpoint)
-        adb_w_d = client.get_async_database(created_db_id_w)
-        adb_w_r = client.get_async_database(created_db_id_w, region=db_region)
         adb_w_e = client.get_async_database(synthetic_api_endpoint)
-        assert isinstance(db_w_d.list_collection_names(), list)
-        assert db_w_r == db_w_d
-        assert db_w_e == db_w_d
-        assert adb_w_d.to_sync() == db_w_d
-        assert adb_w_r.to_sync() == db_w_d
-        assert adb_w_e.to_sync() == db_w_d
+        assert isinstance(db_w_e.list_collection_names(), list)
+        assert adb_w_e.to_sync() == db_w_e
 
         # get db admin from the admin and use it
         db_w_admin = admin.get_database_admin(created_db_id_w)
@@ -352,7 +344,7 @@ class TestAdmin:
             - drop keyspaces (wait, nonwait)
             - list keyspaces, check
             - drop database (wait)
-        - check DB not existings
+        - check DB not existing
         """
         admin_env, token = admin_env_token
         db_name = f"test_database_{admin_env}"
@@ -406,8 +398,8 @@ class TestAdmin:
             return "nonwaited_ks" in (await db_admin.async_list_keyspaces())
 
         await await_until_true(
-            poll_interval=NAMESPACE_POLL_SLEEP_TIME,
-            max_seconds=NAMESPACE_TIMEOUT,
+            poll_interval=KEYSPACE_POLL_SLEEP_TIME,
+            max_seconds=KEYSPACE_TIMEOUT,
             acondition=_awaiter1,
         )
 
@@ -440,8 +432,8 @@ class TestAdmin:
             return "nonwaited_ks" not in ks_list
 
         await await_until_true(
-            poll_interval=NAMESPACE_POLL_SLEEP_TIME,
-            max_seconds=NAMESPACE_TIMEOUT,
+            poll_interval=KEYSPACE_POLL_SLEEP_TIME,
+            max_seconds=KEYSPACE_TIMEOUT,
             acondition=_awaiter2,
         )
 
@@ -545,18 +537,10 @@ class TestAdmin:
             database_id=created_db_id_w,
             region=db_region,
         )
-        adb_w_d = client.get_async_database(created_db_id_w)
-        adb_w_r = client.get_async_database(created_db_id_w, region=db_region)
         adb_w_e = client.get_async_database(synthetic_api_endpoint)
-        db_w_d = client.get_database(created_db_id_w)
-        db_w_r = client.get_database(created_db_id_w, region=db_region)
         db_w_e = client.get_database(synthetic_api_endpoint)
-        assert isinstance(await adb_w_d.list_collection_names(), list)
-        assert adb_w_r == adb_w_d
-        assert adb_w_e == adb_w_d
-        assert db_w_d.to_async() == adb_w_d
-        assert db_w_r.to_async() == adb_w_d
-        assert db_w_e.to_async() == adb_w_d
+        assert isinstance(await adb_w_e.list_collection_names(), list)
+        assert db_w_e.to_async() == adb_w_e
 
         # get db admin from the admin and use it
         db_w_admin = admin.get_database_admin(created_db_id_w)
@@ -608,51 +592,6 @@ class TestAdmin:
     @pytest.mark.describe(
         "test of the update_db_keyspace flag for AstraDBDatabaseAdmin, sync"
     )
-    def test_astra_updatedbnamespace_sync(self, sync_database: Database) -> None:
-        NEW_KS_NAME_NOT_UPDATED = "tnudn_notupd"
-        NEW_KS_NAME_UPDATED = "tnudn_upd"
-
-        keyspace0 = sync_database.keyspace
-        database_admin = sync_database.get_database_admin()
-        database_admin.create_keyspace(NEW_KS_NAME_NOT_UPDATED)
-        assert sync_database.keyspace == keyspace0
-
-        with pytest.warns(DeprecationWarning):
-            database_admin.create_keyspace(
-                NEW_KS_NAME_UPDATED,
-                update_db_namespace=True,
-            )
-        assert sync_database.keyspace == NEW_KS_NAME_UPDATED
-
-        database_admin.drop_keyspace(NEW_KS_NAME_NOT_UPDATED)
-        database_admin.drop_keyspace(NEW_KS_NAME_UPDATED)
-
-    @pytest.mark.describe(
-        "test of the update_db_namespace flag for AstraDBDatabaseAdmin, async"
-    )
-    async def test_astra_updatedbnamespace_async(
-        self, async_database: AsyncDatabase
-    ) -> None:
-        NEW_KS_NAME_NOT_UPDATED = "tnudn_notupd"
-        NEW_KS_NAME_UPDATED = "tnudn_upd"
-
-        keyspace0 = async_database.keyspace
-        database_admin = async_database.get_database_admin()
-        await database_admin.async_create_keyspace(NEW_KS_NAME_NOT_UPDATED)
-        assert async_database.keyspace == keyspace0
-
-        with pytest.warns(DeprecationWarning):
-            await database_admin.async_create_keyspace(
-                NEW_KS_NAME_UPDATED, update_db_namespace=True
-            )
-        assert async_database.keyspace == NEW_KS_NAME_UPDATED
-
-        await database_admin.async_drop_keyspace(NEW_KS_NAME_NOT_UPDATED)
-        await database_admin.async_drop_keyspace(NEW_KS_NAME_UPDATED)
-
-    @pytest.mark.describe(
-        "test of the update_db_keyspace flag for AstraDBDatabaseAdmin, sync"
-    )
     def test_astra_updatedbkeyspace_sync(self, sync_database: Database) -> None:
         NEW_KS_NAME_NOT_UPDATED = "tnudn_notupd"
         NEW_KS_NAME_UPDATED = "tnudn_upd"
@@ -662,7 +601,10 @@ class TestAdmin:
         database_admin.create_keyspace(NEW_KS_NAME_NOT_UPDATED)
         assert sync_database.keyspace == keyspace0
 
-        database_admin.create_keyspace(NEW_KS_NAME_UPDATED, update_db_keyspace=True)
+        database_admin.create_keyspace(
+            NEW_KS_NAME_UPDATED,
+            update_db_keyspace=True,
+        )
         assert sync_database.keyspace == NEW_KS_NAME_UPDATED
 
         database_admin.drop_keyspace(NEW_KS_NAME_NOT_UPDATED)
@@ -683,7 +625,8 @@ class TestAdmin:
         assert async_database.keyspace == keyspace0
 
         await database_admin.async_create_keyspace(
-            NEW_KS_NAME_UPDATED, update_db_keyspace=True
+            NEW_KS_NAME_UPDATED,
+            update_db_keyspace=True,
         )
         assert async_database.keyspace == NEW_KS_NAME_UPDATED
 

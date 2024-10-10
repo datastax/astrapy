@@ -18,7 +18,6 @@ import hashlib
 import json
 import logging
 import time
-import warnings
 from collections.abc import AsyncIterator
 from enum import Enum
 from typing import (
@@ -32,8 +31,6 @@ from typing import (
     Tuple,
     TypeVar,
 )
-
-import deprecation
 
 from astrapy.constants import (
     DocumentType,
@@ -433,22 +430,6 @@ class BaseCursor:
         return self
 
     @property
-    def retrieved(self) -> int:
-        """
-        The number of documents consumed so far (by the code consuming the cursor).
-        """
-
-        the_warning = deprecation.DeprecatedWarning(
-            "the 'retrieved' property of Cursor objects",
-            deprecated_in="1.5.1",
-            removed_in="2.0.0",
-            details="Please use the 'consumed' property",
-        )
-        warnings.warn(the_warning, stacklevel=2)
-
-        return self.consumed
-
-    @property
     def consumed(self) -> int:
         """
         The number of documents consumed so far (by the code consuming the cursor).
@@ -734,22 +715,6 @@ class Cursor(BaseCursor):
         logger.info(f"finished creating iterator on '{self._collection.name}'")
         self._started_time_s = time.time()
         return _LookAheadIterator(iterator)
-
-    @property
-    def collection(self) -> Collection:
-        """
-        The (synchronous) collection this cursor is targeting.
-        """
-
-        the_warning = deprecation.DeprecatedWarning(
-            "the 'collection' property of Cursor objects",
-            deprecated_in="1.5.1",
-            removed_in="2.0.0",
-            details="Please use the 'data_source' property",
-        )
-        warnings.warn(the_warning, stacklevel=2)
-
-        return self.data_source
 
     @property
     def data_source(self) -> Collection:
@@ -1057,22 +1022,6 @@ class AsyncCursor(BaseCursor):
         )
         new_cursor._sort = sort if sort is not None else self._sort
         return new_cursor
-
-    @property
-    def collection(self) -> AsyncCollection:
-        """
-        The (asynchronous) collection this cursor is targeting.
-        """
-
-        the_warning = deprecation.DeprecatedWarning(
-            "the 'collection' property of Cursor objects",
-            deprecated_in="1.5.1",
-            removed_in="2.0.0",
-            details="Please use the 'data_source' property",
-        )
-        warnings.warn(the_warning, stacklevel=2)
-
-        return self.data_source
 
     @property
     def data_source(self) -> AsyncCollection:

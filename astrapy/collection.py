@@ -17,14 +17,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import warnings
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Iterable, Sequence
 
-import deprecation
-
-from astrapy import __version__
 from astrapy.api_commander import APICommander
 from astrapy.api_options import CollectionAPIOptions
 from astrapy.authentication import coerce_embedding_headers_provider
@@ -35,25 +31,18 @@ from astrapy.constants import (
     ProjectionType,
     ReturnDocument,
     SortType,
-    VectorType,
     normalize_optional_projection,
 )
 from astrapy.cursors import AsyncCursor, Cursor
 from astrapy.database import AsyncDatabase, Database
 from astrapy.defaults import (
-    DEFAULT_BULK_WRITE_CONCURRENCY,
     DEFAULT_DATA_API_AUTH_HEADER,
     DEFAULT_INSERT_MANY_CHUNK_SIZE,
     DEFAULT_INSERT_MANY_CONCURRENCY,
-    NAMESPACE_DEPRECATION_NOTICE_METHOD,
-    SET_CALLER_DEPRECATION_NOTICE,
 )
 from astrapy.exceptions import (
-    BulkWriteException,
     CollectionNotFoundException,
-    CumulativeOperationException,
     DataAPIFaultyResponseException,
-    DataAPIResponseException,
     DeleteManyException,
     InsertManyException,
     MultiCallTimeoutManager,
@@ -62,13 +51,7 @@ from astrapy.exceptions import (
     base_timeout_info,
 )
 from astrapy.info import CollectionInfo, CollectionOptions
-from astrapy.meta import (
-    check_caller_parameters,
-    check_deprecated_vector_ize,
-    check_namespace_keyspace,
-)
 from astrapy.results import (
-    BulkWriteResult,
     DeleteResult,
     InsertManyResult,
     InsertOneResult,
@@ -77,7 +60,6 @@ from astrapy.results import (
 
 if TYPE_CHECKING:
     from astrapy.authentication import EmbeddingHeadersProvider
-    from astrapy.operations import AsyncBaseOperation, BaseOperation
 
 
 logger = logging.getLogger(__name__)
@@ -113,104 +95,11 @@ def _prepare_update_info(statuses: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _collate_vector_to_sort(
-    sort: SortType | None,
-    vector: VectorType | None,
-    vectorize: str | None,
-) -> SortType | None:
-    _vsort: dict[str, Any]
-    if vector is None:
-        if vectorize is None:
-            return sort
-        else:
-            _vsort = {"$vectorize": vectorize}
-            if sort is None:
-                return _vsort
-            else:
-                raise ValueError(
-                    "The `vectorize` and `sort` clauses are mutually exclusive."
-                )
-    else:
-        if vectorize is None:
-            _vsort = {"$vector": vector}
-            if sort is None:
-                return _vsort
-            else:
-                raise ValueError(
-                    "The `vector` and `sort` clauses are mutually exclusive."
-                )
-        else:
-            raise ValueError(
-                "The `vector` and `vectorize` parameters cannot be passed at the same time."
-            )
-
-
 def _is_vector_sort(sort: SortType | None) -> bool:
     if sort is None:
         return False
     else:
         return "$vector" in sort or "$vectorize" in sort
-
-
-def _collate_vector_to_document(
-    document0: DocumentType, vector: VectorType | None, vectorize: str | None
-) -> DocumentType:
-    if vector is None:
-        if vectorize is None:
-            return document0
-        else:
-            if "$vectorize" in document0:
-                raise ValueError(
-                    "Cannot specify the `vectorize` separately for a document with "
-                    "its '$vectorize' field already."
-                )
-            else:
-                return {
-                    **document0,
-                    **{"$vectorize": vectorize},
-                }
-    else:
-        if vectorize is None:
-            if "$vector" in document0:
-                raise ValueError(
-                    "Cannot specify the `vector` separately for a document with "
-                    "its '$vector' field already."
-                )
-            else:
-                return {
-                    **document0,
-                    **{"$vector": vector},
-                }
-        else:
-            raise ValueError(
-                "The `vector` and `vectorize` parameters cannot be passed at the same time."
-            )
-
-
-def _collate_vectors_to_documents(
-    documents: Iterable[DocumentType],
-    vectors: Iterable[VectorType | None] | None,
-    vectorize: Iterable[str | None] | None,
-) -> list[DocumentType]:
-    if vectors is None and vectorize is None:
-        return list(documents)
-    else:
-        _documents = list(documents)
-        _ndocs = len(_documents)
-        _vectors = list(vectors) if vectors else [None] * _ndocs
-        _vectorize = list(vectorize) if vectorize else [None] * _ndocs
-        if _ndocs != len(_vectors):
-            raise ValueError(
-                "The `documents` and `vectors` parameters must have the same length"
-            )
-        elif _ndocs != len(_vectorize):
-            raise ValueError(
-                "The `documents` and `vectorize` parameters must have the same length"
-            )
-        return [
-            _collate_vector_to_document(_doc, _vec, _vecize)
-            for _doc, _vec, _vecize in zip(_documents, _vectors, _vectorize)
-        ]
 
 
 class Collection:
@@ -229,17 +118,12 @@ class Collection:
             collection on the database.
         keyspace: this is the keyspace to which the collection belongs.
             If not specified, the database's working keyspace is used.
-        namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
         api_options: An instance of `astrapy.api_options.CollectionAPIOptions`
             providing the general settings for interacting with the Data API.
         callers: a list of caller identities, i.e. applications, or frameworks,
             on behalf of which the Data API calls are performed. These end up
             in the request user-agent.
             Each caller identity is a ("caller_name", "caller_version") pair.
-        caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-            application, or framework, on behalf of which the Data API calls
-            are performed. This ends up in the request user-agent.
-        caller_version: version of the caller. *DEPRECATED*, use `callers`. Removal 2.0.
 
     Examples:
         >>> from astrapy import DataAPIClient, Collection
@@ -269,28 +153,19 @@ class Collection:
         name: str,
         *,
         keyspace: str | None = None,
-        namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> None:
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
-        keyspace_param = check_namespace_keyspace(
-            keyspace=keyspace,
-            namespace=namespace,
-        )
-
         if api_options is None:
             self.api_options = CollectionAPIOptions()
         else:
             self.api_options = api_options
-        _keyspace = keyspace_param if keyspace_param is not None else database.keyspace
+        _keyspace = keyspace if keyspace is not None else database.keyspace
         if _keyspace is None:
             raise ValueError("Attempted to create Collection with 'keyspace' unset.")
         self._database = database._copy(
             keyspace=_keyspace,
-            callers=callers_param,
+            callers=callers,
         )
         self._name = name
 
@@ -300,7 +175,7 @@ class Collection:
             **additional_headers,
         }
 
-        self.callers = callers_param
+        self.callers = callers
         self._api_commander = self._get_api_commander()
 
     def __repr__(self) -> str:
@@ -363,23 +238,15 @@ class Collection:
         database: Database | None = None,
         name: str | None = None,
         keyspace: str | None = None,
-        namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> Collection:
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
-        keyspace_param = check_namespace_keyspace(
-            keyspace=keyspace,
-            namespace=namespace,
-        )
         return Collection(
             database=database or self.database._copy(),
             name=name or self.name,
-            keyspace=keyspace_param or self.keyspace,
+            keyspace=keyspace or self.keyspace,
             api_options=self.api_options.with_override(api_options),
-            callers=callers_param or self.callers,
+            callers=callers or self.callers,
         )
 
     def with_options(
@@ -389,8 +256,6 @@ class Collection:
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> Collection:
         """
         Create a clone of this collection with some changed attributes.
@@ -420,11 +285,6 @@ class Collection:
                 on behalf of which the Data API calls are performed. These end up
                 in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
-            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-                application, or framework, on behalf of which the Data API calls
-                are performed. This ends up in the request user-agent.
-            caller_version: version of the caller. *DEPRECATED*, use `callers`.
-                Removal 2.0.
 
         Returns:
             a new Collection instance.
@@ -436,7 +296,6 @@ class Collection:
             ... )
         """
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         _api_options = CollectionAPIOptions(
             embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             max_time_ms=collection_max_time_ms,
@@ -445,7 +304,7 @@ class Collection:
         return self._copy(
             name=name,
             api_options=_api_options,
-            callers=callers_param,
+            callers=callers,
         )
 
     def to_async(
@@ -454,12 +313,9 @@ class Collection:
         database: AsyncDatabase | None = None,
         name: str | None = None,
         keyspace: str | None = None,
-        namespace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> AsyncCollection:
         """
         Create an AsyncCollection from this one. Save for the arguments
@@ -474,7 +330,6 @@ class Collection:
                 collection on the database.
             keyspace: this is the keyspace to which the collection belongs.
                 If not specified, the database's working keyspace is used.
-            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -496,11 +351,6 @@ class Collection:
                 on behalf of which the Data API calls are performed. These end up
                 in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
-            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-                application, or framework, on behalf of which the Data API calls
-                are performed. This ends up in the request user-agent.
-            caller_version: version of the caller. *DEPRECATED*, use `callers`.
-                Removal 2.0.
 
         Returns:
             the new copy, an AsyncCollection instance.
@@ -510,11 +360,6 @@ class Collection:
             77
         """
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
-        keyspace_param = check_namespace_keyspace(
-            keyspace=keyspace,
-            namespace=namespace,
-        )
         _api_options = CollectionAPIOptions(
             embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             max_time_ms=collection_max_time_ms,
@@ -523,39 +368,10 @@ class Collection:
         return AsyncCollection(
             database=database or self.database.to_async(),
             name=name or self.name,
-            keyspace=keyspace_param or self.keyspace,
+            keyspace=keyspace or self.keyspace,
             api_options=self.api_options.with_override(_api_options),
-            callers=callers_param or self.callers,
+            callers=callers or self.callers,
         )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.1",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=SET_CALLER_DEPRECATION_NOTICE,
-    )
-    def set_caller(
-        self,
-        caller_name: str | None = None,
-        caller_version: str | None = None,
-    ) -> None:
-        """
-        Set a new identity for the application/framework on behalf of which
-        the Data API calls are performed (the "caller").
-
-        Args:
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
-
-        Example:
-            >>> my_coll.set_caller(caller_name="the_caller", caller_version="0.1.0")
-        """
-
-        logger.info(f"setting caller to {caller_name}/{caller_version}")
-        callers_param = check_caller_parameters([], caller_name, caller_version)
-        self.callers = callers_param or self.callers
-        self._api_commander = self._get_api_commander()
 
     def options(self, *, max_time_ms: int | None = None) -> CollectionOptions:
         """
@@ -620,7 +436,6 @@ class Collection:
         return CollectionInfo(
             database_info=self.database.info(),
             keyspace=self.keyspace,
-            namespace=self.keyspace,
             name=self.name,
             full_name=self.full_name,
         )
@@ -636,28 +451,6 @@ class Collection:
         """
 
         return self._database
-
-    @property
-    def namespace(self) -> str:
-        """
-        The namespace this collection is in.
-
-        *DEPRECATED* (removal in 2.0). Switch to the "keyspace" property.**
-
-        Example:
-            >>> my_coll.namespace
-            'default_keyspace'
-        """
-
-        the_warning = deprecation.DeprecatedWarning(
-            "the 'namespace' property",
-            deprecated_in="1.5.0",
-            removed_in="2.0.0",
-            details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
-        )
-        warnings.warn(the_warning, stacklevel=2)
-
-        return self.keyspace
 
     @property
     def keyspace(self) -> str:
@@ -703,8 +496,6 @@ class Collection:
         self,
         document: DocumentType,
         *,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         max_time_ms: int | None = None,
     ) -> InsertOneResult:
         """
@@ -714,17 +505,6 @@ class Collection:
             document: the dictionary expressing the document to insert.
                 The `_id` field of the document can be left out, in which
                 case it will be created automatically.
-            vector: a vector (a list of numbers appropriate for the collection)
-                for the document. Passing this parameter is equivalent to
-                providing a `$vector` field within the document itself,
-                however the two are mutually exclusive.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the document instead.
-            vectorize: a string to be made into a vector, if such a service
-                is configured for the collection. Passing this parameter is
-                equivalent to providing a `$vectorize` field in the document itself,
-                however the two are mutually exclusive.
-                Moreover, this parameter cannot coexist with `vector`.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the document instead.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
                 If not passed, the collection-level setting is used instead.
 
@@ -757,12 +537,8 @@ class Collection:
             the insertion fails.
         """
 
-        check_deprecated_vector_ize(
-            vector=vector, vectors=None, vectorize=vectorize, kind="insert"
-        )
-        _document = _collate_vector_to_document(document, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        io_payload = {"insertOne": {"document": _document}}
+        io_payload = {"insertOne": {"document": document}}
         logger.info(f"insertOne on '{self.name}'")
         io_response = self._api_commander.request(
             payload=io_payload,
@@ -791,8 +567,6 @@ class Collection:
         self,
         documents: Iterable[DocumentType],
         *,
-        vectors: Iterable[VectorType | None] | None = None,
-        vectorize: Iterable[str | None] | None = None,
         ordered: bool = False,
         chunk_size: int | None = None,
         concurrency: int | None = None,
@@ -806,16 +580,6 @@ class Collection:
             documents: an iterable of dictionaries, each a document to insert.
                 Documents may specify their `_id` field or leave it out, in which
                 case it will be added automatically.
-            vectors: an optional list of vectors (as many vectors as the provided
-                documents) to associate to the documents when inserting.
-                Passing vectors this way is indeed equivalent to the "$vector" field
-                of the documents, however the two are mutually exclusive.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the documents instead.
-            vectorize: an optional list of strings to be made into as many vectors
-                (one per document), if such a service is configured for the collection.
-                Passing this parameter is equivalent to providing a `$vectorize`
-                field in the documents themselves, however the two are mutually exclusive.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the documents instead.
             ordered: if False (default), the insertions can occur in arbitrary order
                 and possibly concurrently. If True, they are processed sequentially.
                 If there are no specific reasons against it, unordered insertions are to
@@ -886,9 +650,6 @@ class Collection:
             have made their way to the database.
         """
 
-        check_deprecated_vector_ize(
-            vector=None, vectors=vectors, vectorize=vectorize, kind="insert"
-        )
         if concurrency is None:
             if ordered:
                 _concurrency = 1
@@ -902,8 +663,8 @@ class Collection:
             _chunk_size = DEFAULT_INSERT_MANY_CHUNK_SIZE
         else:
             _chunk_size = chunk_size
-        _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
+        _documents = list(documents)
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
@@ -1041,8 +802,6 @@ class Collection:
         projection: ProjectionType | None = None,
         skip: int | None = None,
         limit: int | None = None,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -1092,21 +851,6 @@ class Collection:
             limit: this (integer) parameter sets a limit over how many documents
                 are returned. Once `limit` is reached (or the cursor is exhausted
                 for lack of matching documents), nothing more is returned.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to perform vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search).
-                When running similarity search on a collection, no other sorting
-                criteria can be specified. Moreover, there is an upper bound
-                to the number of documents that can be returned. For details,
-                see the Note about upper bounds and the Data API documentation.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
                 returned document. Can only be used for vector ANN search, i.e.
@@ -1223,12 +967,8 @@ class Collection:
             changes in the data would be picked up by the cursor.
         """
 
-        check_deprecated_vector_ize(
-            vector=vector, vectors=None, vectorize=vectorize, kind="find"
-        )
-        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        if include_similarity is not None and not _is_vector_sort(_sort):
+        if include_similarity is not None and not _is_vector_sort(sort):
             raise ValueError(
                 "Cannot use `include_similarity` unless for vector search."
             )
@@ -1242,7 +982,7 @@ class Collection:
             )
             .skip(skip)
             .limit(limit)
-            .sort(_sort)
+            .sort(sort)
             .include_similarity(include_similarity)
             .include_sort_vector(include_sort_vector)
         )
@@ -1252,8 +992,6 @@ class Collection:
         filter: FilterType | None = None,
         *,
         projection: ProjectionType | None = None,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         include_similarity: bool | None = None,
         sort: SortType | None = None,
         max_time_ms: int | None = None,
@@ -1286,16 +1024,6 @@ class Collection:
                 The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to perform vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search), extracting the most
-                similar document in the collection matching the filter.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                Using vectorize assumes a suitable service is configured for the collection.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in the
                 returned document. Can only be used for vector ANN search, i.e.
@@ -1333,17 +1061,12 @@ class Collection:
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
-        check_deprecated_vector_ize(
-            vector=vector, vectors=None, vectorize=vectorize, kind="find"
-        )
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_cursor = self.find(
             filter=filter,
             projection=projection,
             skip=None,
             limit=1,
-            vector=vector,
-            vectorize=vectorize,
             include_similarity=include_similarity,
             sort=sort,
             max_time_ms=_max_time_ms,
@@ -1559,8 +1282,6 @@ class Collection:
         replacement: DocumentType,
         *,
         projection: ProjectionType | None = None,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         sort: SortType | None = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
@@ -1595,17 +1316,6 @@ class Collection:
                 The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to use vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search), as the sorting criterion.
-                In this way, the matched document (if any) will be the one
-                that is most similar to the provided vector.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                Using vectorize assumes a suitable service is configured for the collection.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1661,10 +1371,6 @@ class Collection:
             {'text': 'F=ma'}
         """
 
-        check_deprecated_vector_ize(
-            vector=vector, vectors=None, vectorize=vectorize, kind="find"
-        )
-        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -1678,7 +1384,7 @@ class Collection:
                     "projection": normalize_optional_projection(projection),
                     "replacement": replacement,
                     "options": options,
-                    "sort": _sort,
+                    "sort": sort,
                 }.items()
                 if v is not None
             }
@@ -1706,8 +1412,6 @@ class Collection:
         filter: FilterType,
         replacement: DocumentType,
         *,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         sort: SortType | None = None,
         upsert: bool = False,
         max_time_ms: int | None = None,
@@ -1725,17 +1429,6 @@ class Collection:
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to use vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search), as the sorting criterion.
-                In this way, the matched document (if any) will be the one
-                that is most similar to the provided vector.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                Using vectorize assumes a suitable service is configured for the collection.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1765,10 +1458,6 @@ class Collection:
             UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '931b47d6-...'})
         """
 
-        check_deprecated_vector_ize(
-            vector=vector, vectors=None, vectorize=vectorize, kind="find"
-        )
-        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "upsert": upsert,
         }
@@ -1780,7 +1469,7 @@ class Collection:
                     "filter": filter,
                     "replacement": replacement,
                     "options": options,
-                    "sort": _sort,
+                    "sort": sort,
                 }.items()
                 if v is not None
             }
@@ -1810,8 +1499,6 @@ class Collection:
         update: dict[str, Any],
         *,
         projection: ProjectionType | None = None,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         sort: SortType | None = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
@@ -1851,17 +1538,6 @@ class Collection:
                 The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to use vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search), as the sorting criterion.
-                In this way, the matched document (if any) will be the one
-                that is most similar to the provided vector.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                Using vectorize assumes a suitable service is configured for the collection.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -1918,10 +1594,6 @@ class Collection:
             {'_id': 'cb4ef2ab-...', 'name': 'Johnny', 'rank': 0}
         """
 
-        check_deprecated_vector_ize(
-            vector=vector, vectors=None, vectorize=vectorize, kind="find"
-        )
-        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -1934,7 +1606,7 @@ class Collection:
                     "filter": filter,
                     "update": update,
                     "options": options,
-                    "sort": _sort,
+                    "sort": sort,
                     "projection": normalize_optional_projection(projection),
                 }.items()
                 if v is not None
@@ -1963,8 +1635,6 @@ class Collection:
         filter: FilterType,
         update: dict[str, Any],
         *,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         sort: SortType | None = None,
         upsert: bool = False,
         max_time_ms: int | None = None,
@@ -1987,17 +1657,6 @@ class Collection:
                     {"$inc": {"counter": 10}}
                     {"$unset": {"field": ""}}
                 See the Data API documentation for the full syntax.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to use vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search), as the sorting criterion.
-                In this way, the matched document (if any) will be the one
-                that is most similar to the provided vector.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                Using vectorize assumes a suitable service is configured for the collection.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -2026,10 +1685,6 @@ class Collection:
             UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '2a45ff60-...'})
         """
 
-        check_deprecated_vector_ize(
-            vector=vector, vectors=None, vectorize=vectorize, kind="find"
-        )
-        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "upsert": upsert,
         }
@@ -2041,7 +1696,7 @@ class Collection:
                     "filter": filter,
                     "update": update,
                     "options": options,
-                    "sort": _sort,
+                    "sort": sort,
                 }.items()
                 if v is not None
             }
@@ -2074,7 +1729,7 @@ class Collection:
         max_time_ms: int | None = None,
     ) -> UpdateResult:
         """
-        Apply an update operations to all documents matching a condition,
+        Apply an update operation to all documents matching a condition,
         optionally inserting one documents in absence of matches.
 
         Args:
@@ -2200,8 +1855,6 @@ class Collection:
         filter: FilterType,
         *,
         projection: ProjectionType | None = None,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         sort: SortType | None = None,
         max_time_ms: int | None = None,
     ) -> DocumentType | None:
@@ -2233,21 +1886,6 @@ class Collection:
                 The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to use vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search), as the sorting criterion.
-                In this way, the matched document (if any) will be the one
-                that is most similar to the provided vector.
-                This parameter cannot be used together with `sort`.
-                See the `find` method for more details on this parameter.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -2276,10 +1914,6 @@ class Collection:
             >>> # (returns None for no matches)
         """
 
-        check_deprecated_vector_ize(
-            vector=vector, vectors=None, vectorize=vectorize, kind="find"
-        )
-        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_payload = {
@@ -2287,7 +1921,7 @@ class Collection:
                 k: v
                 for k, v in {
                     "filter": filter,
-                    "sort": _sort,
+                    "sort": sort,
                     "projection": _projection,
                 }.items()
                 if v is not None
@@ -2316,8 +1950,6 @@ class Collection:
         self,
         filter: FilterType,
         *,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         sort: SortType | None = None,
         max_time_ms: int | None = None,
     ) -> DeleteResult:
@@ -2334,21 +1966,6 @@ class Collection:
                     {"price": {"$lt": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to use vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search), as the sorting criterion.
-                In this way, the matched document (if any) will be the one
-                that is most similar to the provided vector.
-                This parameter cannot be used together with `sort`.
-                See the `find` method for more details on this parameter.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -2377,17 +1994,13 @@ class Collection:
             DeleteResult(raw_results=..., deleted_count=0)
         """
 
-        check_deprecated_vector_ize(
-            vector=vector, vectors=None, vectorize=vectorize, kind="find"
-        )
-        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         do_payload = {
             "deleteOne": {
                 k: v
                 for k, v in {
                     "filter": filter,
-                    "sort": _sort,
+                    "sort": sort,
                 }.items()
                 if v is not None
             }
@@ -2502,231 +2115,6 @@ class Collection:
             raw_results=dm_responses,
         )
 
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.3.0",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details="Use delete_many with filter={} instead.",
-    )
-    def delete_all(self, *, max_time_ms: int | None = None) -> dict[str, Any]:
-        """
-        Delete all documents in a collection.
-
-        Args:
-            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
-                If not passed, the collection-level setting is used instead.
-
-        Returns:
-            a dictionary of the form {"ok": 1} to signal successful deletion.
-
-        Example:
-            >>> my_coll.distinct("seq")
-            [2, 1, 0]
-            >>> my_coll.count_documents({}, upper_bound=100)
-            4
-            >>> my_coll.delete_all()
-            {'ok': 1}
-            >>> my_coll.count_documents({}, upper_bound=100)
-            0
-
-        Note:
-            Use with caution.
-        """
-        dm_result = self.delete_many(filter={}, max_time_ms=max_time_ms)
-        if dm_result.deleted_count == -1:
-            return {"ok": 1}
-        else:
-            raise DataAPIFaultyResponseException(
-                text="Unexpected response from collection.delete_many({}).",
-                raw_response=None,
-            )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.0",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=(
-            "Please switch to managing sequences of DML operations "
-            "in app code instead."
-        ),
-    )
-    def bulk_write(
-        self,
-        requests: Iterable[BaseOperation],
-        *,
-        ordered: bool = False,
-        concurrency: int | None = None,
-        max_time_ms: int | None = None,
-    ) -> BulkWriteResult:
-        """
-        Execute an arbitrary amount of operations such as inserts, updates, deletes
-        either sequentially or concurrently.
-
-        This method does not execute atomically, i.e. individual operations are
-        each performed in the same way as the corresponding collection method,
-        and each one is a different and unrelated database mutation.
-
-        Args:
-            requests: an iterable over concrete subclasses of `BaseOperation`,
-                such as `InsertMany` or `ReplaceOne`. Each such object
-                represents an operation ready to be executed on a collection,
-                and is instantiated by passing the same parameters as one
-                would the corresponding collection method.
-            ordered: whether to launch the `requests` one after the other or
-                in arbitrary order, possibly in a concurrent fashion. For
-                performance reasons, False (default) should be preferred
-                when compatible with the needs of the application flow.
-            concurrency: maximum number of concurrent operations executing at
-                a given time. It cannot be more than one for ordered bulk writes.
-            max_time_ms: a timeout, in milliseconds, for the whole bulk write.
-                Remember that, if the method call times out, then there's no
-                guarantee about what portion of the bulk write has been received
-                and successfully executed by the Data API.
-                If not passed, the collection-level setting is used instead:
-                in most cases, however, one should pass a relaxed timeout
-                if longer sequences of operations are to be executed in bulk.
-
-        Returns:
-            A single BulkWriteResult summarizing the whole list of requested
-            operations. The keys in the map attributes of BulkWriteResult
-            (when present) are the integer indices of the corresponding operation
-            in the `requests` iterable.
-
-        Example:
-            >>> from astrapy.operations import InsertMany, ReplaceOne
-            >>> op1 = InsertMany([{"a": 1}, {"a": 2}])
-            >>> op2 = ReplaceOne({"z": 9}, replacement={"z": 9, "replaced": True}, upsert=True)
-            >>> my_coll.bulk_write([op1, op2])
-            BulkWriteResult(bulk_api_results={0: ..., 1: ...}, deleted_count=0, inserted_count=3, matched_count=0, modified_count=0, upserted_count=1, upserted_ids={1: '2addd676-...'})
-            >>> my_coll.count_documents({}, upper_bound=100)
-            3
-            >>> my_coll.distinct("replaced")
-            [True]
-        """
-
-        # lazy importing here against circular-import error
-        from astrapy.operations import reduce_bulk_write_results
-
-        if concurrency is None:
-            if ordered:
-                _concurrency = 1
-            else:
-                _concurrency = DEFAULT_BULK_WRITE_CONCURRENCY
-        else:
-            _concurrency = concurrency
-        if _concurrency > 1 and ordered:
-            raise ValueError("Cannot run ordered bulk_write concurrently.")
-        _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"startng a bulk write on '{self.name}'")
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
-        if ordered:
-            bulk_write_results: list[BulkWriteResult] = []
-            for operation_i, operation in enumerate(requests):
-                try:
-                    this_bw_result = operation.execute(
-                        self,
-                        index_in_bulk_write=operation_i,
-                        bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
-                    )
-                    bulk_write_results.append(this_bw_result)
-                except CumulativeOperationException as exc:
-                    partial_result = exc.partial_result
-                    partial_bw_result = reduce_bulk_write_results(
-                        bulk_write_results
-                        + [
-                            partial_result.to_bulk_write_result(
-                                index_in_bulk_write=operation_i
-                            )
-                        ]
-                    )
-                    dar_exception = exc.data_api_response_exception()
-                    raise BulkWriteException(
-                        text=dar_exception.text,
-                        error_descriptors=dar_exception.error_descriptors,
-                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
-                        partial_result=partial_bw_result,
-                        exceptions=[dar_exception],
-                    )
-                except DataAPIResponseException as exc:
-                    # the cumulative exceptions, with their
-                    # partially-done-info, are handled above:
-                    # here it's just one-shot d.a.r. exceptions
-                    partial_bw_result = reduce_bulk_write_results(bulk_write_results)
-                    dar_exception = exc.data_api_response_exception()
-                    raise BulkWriteException(
-                        text=dar_exception.text,
-                        error_descriptors=dar_exception.error_descriptors,
-                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
-                        partial_result=partial_bw_result,
-                        exceptions=[dar_exception],
-                    )
-            full_bw_result = reduce_bulk_write_results(bulk_write_results)
-            logger.info(f"finished a bulk write on '{self.name}'")
-            return full_bw_result
-        else:
-
-            def _execute_as_either(
-                operation: BaseOperation, operation_i: int
-            ) -> tuple[BulkWriteResult | None, DataAPIResponseException | None]:
-                try:
-                    ex_result = operation.execute(
-                        self,
-                        index_in_bulk_write=operation_i,
-                        bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
-                    )
-                    return (ex_result, None)
-                except DataAPIResponseException as exc:
-                    return (None, exc)
-
-            with ThreadPoolExecutor(max_workers=_concurrency) as executor:
-                bulk_write_either_futures = [
-                    executor.submit(
-                        _execute_as_either,
-                        operation,
-                        operation_i,
-                    )
-                    for operation_i, operation in enumerate(requests)
-                ]
-                bulk_write_either_results = [
-                    bulk_write_either_future.result()
-                    for bulk_write_either_future in bulk_write_either_futures
-                ]
-                # regroup
-                bulk_write_successes = [
-                    bwr for bwr, _ in bulk_write_either_results if bwr
-                ]
-                bulk_write_failures = [
-                    bwf for _, bwf in bulk_write_either_results if bwf
-                ]
-                if bulk_write_failures:
-                    # extract and cumulate
-                    partial_results_from_failures = [
-                        failure.partial_result.to_bulk_write_result(
-                            index_in_bulk_write=operation_i
-                        )
-                        for failure in bulk_write_failures
-                        if isinstance(failure, CumulativeOperationException)
-                    ]
-                    partial_bw_result = reduce_bulk_write_results(
-                        bulk_write_successes + partial_results_from_failures
-                    )
-                    # raise and recast the first exception
-                    all_dar_exceptions = [
-                        bw_failure.data_api_response_exception()
-                        for bw_failure in bulk_write_failures
-                    ]
-                    dar_exception = all_dar_exceptions[0]
-                    raise BulkWriteException(
-                        text=dar_exception.text,
-                        error_descriptors=dar_exception.error_descriptors,
-                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
-                        partial_result=partial_bw_result,
-                        exceptions=all_dar_exceptions,
-                    )
-                else:
-                    logger.info(f"finished a bulk write on '{self.name}'")
-                    return reduce_bulk_write_results(bulk_write_successes)
-
     def drop(self, *, max_time_ms: int | None = None) -> dict[str, Any]:
         """
         Drop the collection, i.e. delete it from the database along with
@@ -2822,17 +2210,12 @@ class AsyncCollection:
             collection on the database.
         keyspace: this is the keyspace to which the collection belongs.
             If not specified, the database's working keyspace is used.
-        namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
         api_options: An instance of `astrapy.api_options.CollectionAPIOptions`
             providing the general settings for interacting with the Data API.
         callers: a list of caller identities, i.e. applications, or frameworks,
             on behalf of which the Data API calls are performed. These end up
             in the request user-agent.
             Each caller identity is a ("caller_name", "caller_version") pair.
-        caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-            application, or framework, on behalf of which the Data API calls
-            are performed. This ends up in the request user-agent.
-        caller_version: version of the caller. *DEPRECATED*, use `callers`. Removal 2.0.
 
     Examples:
         >>> from astrapy import DataAPIClient, AsyncCollection
@@ -2864,30 +2247,21 @@ class AsyncCollection:
         name: str,
         *,
         keyspace: str | None = None,
-        namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> None:
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
-        keyspace_param = check_namespace_keyspace(
-            keyspace=keyspace,
-            namespace=namespace,
-        )
-
         if api_options is None:
             self.api_options = CollectionAPIOptions()
         else:
             self.api_options = api_options
-        _keyspace = keyspace_param if keyspace_param is not None else database.keyspace
+        _keyspace = keyspace if keyspace is not None else database.keyspace
         if _keyspace is None:
             raise ValueError(
                 "Attempted to create AsyncCollection with 'keyspace' unset."
             )
         self._database = database._copy(
             keyspace=_keyspace,
-            callers=callers_param,
+            callers=callers,
         )
         self._name = name
 
@@ -2897,7 +2271,7 @@ class AsyncCollection:
             **additional_headers,
         }
 
-        self.callers = callers_param
+        self.callers = callers
         self._api_commander = self._get_api_commander()
 
     def __repr__(self) -> str:
@@ -2976,23 +2350,15 @@ class AsyncCollection:
         database: AsyncDatabase | None = None,
         name: str | None = None,
         keyspace: str | None = None,
-        namespace: str | None = None,
         api_options: CollectionAPIOptions | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> AsyncCollection:
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
-        keyspace_param = check_namespace_keyspace(
-            keyspace=keyspace,
-            namespace=namespace,
-        )
         return AsyncCollection(
             database=database or self.database._copy(),
             name=name or self.name,
-            keyspace=keyspace_param or self.keyspace,
+            keyspace=keyspace or self.keyspace,
             api_options=self.api_options.with_override(api_options),
-            callers=callers_param or self.callers,
+            callers=callers or self.callers,
         )
 
     def with_options(
@@ -3002,8 +2368,6 @@ class AsyncCollection:
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> AsyncCollection:
         """
         Create a clone of this collection with some changed attributes.
@@ -3033,11 +2397,6 @@ class AsyncCollection:
                 on behalf of which the Data API calls are performed. These end up
                 in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
-            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-                application, or framework, on behalf of which the Data API calls
-                are performed. This ends up in the request user-agent.
-            caller_version: version of the caller. *DEPRECATED*, use `callers`.
-                Removal 2.0.
 
         Returns:
             a new AsyncCollection instance.
@@ -3049,7 +2408,6 @@ class AsyncCollection:
             ... )
         """
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
         _api_options = CollectionAPIOptions(
             embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             max_time_ms=collection_max_time_ms,
@@ -3058,7 +2416,7 @@ class AsyncCollection:
         return self._copy(
             name=name,
             api_options=_api_options,
-            callers=callers_param,
+            callers=callers,
         )
 
     def to_sync(
@@ -3067,12 +2425,9 @@ class AsyncCollection:
         database: Database | None = None,
         name: str | None = None,
         keyspace: str | None = None,
-        namespace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | None = None,
         collection_max_time_ms: int | None = None,
         callers: Sequence[CallerType] = [],
-        caller_name: str | None = None,
-        caller_version: str | None = None,
     ) -> Collection:
         """
         Create a Collection from this one. Save for the arguments
@@ -3087,7 +2442,6 @@ class AsyncCollection:
                 collection on the database.
             keyspace: this is the keyspace to which the collection belongs.
                 If not specified, the database's working keyspace is used.
-            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -3109,11 +2463,6 @@ class AsyncCollection:
                 on behalf of which the Data API calls are performed. These end up
                 in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
-            caller_name: *DEPRECATED*, use `callers`. Removal 2.0. Name of the
-                application, or framework, on behalf of which the Data API calls
-                are performed. This ends up in the request user-agent.
-            caller_version: version of the caller. *DEPRECATED*, use `callers`.
-                Removal 2.0.
 
         Returns:
             the new copy, a Collection instance.
@@ -3123,11 +2472,6 @@ class AsyncCollection:
             77
         """
 
-        callers_param = check_caller_parameters(callers, caller_name, caller_version)
-        keyspace_param = check_namespace_keyspace(
-            keyspace=keyspace,
-            namespace=namespace,
-        )
         _api_options = CollectionAPIOptions(
             embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
             max_time_ms=collection_max_time_ms,
@@ -3136,39 +2480,10 @@ class AsyncCollection:
         return Collection(
             database=database or self.database.to_sync(),
             name=name or self.name,
-            keyspace=keyspace_param or self.keyspace,
+            keyspace=keyspace or self.keyspace,
             api_options=self.api_options.with_override(_api_options),
-            callers=callers_param or self.callers,
+            callers=callers or self.callers,
         )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.1",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=SET_CALLER_DEPRECATION_NOTICE,
-    )
-    def set_caller(
-        self,
-        caller_name: str | None = None,
-        caller_version: str | None = None,
-    ) -> None:
-        """
-        Set a new identity for the application/framework on behalf of which
-        the Data API calls are performed (the "caller").
-
-        Args:
-            caller_name: name of the application, or framework, on behalf of which
-                the Data API calls are performed. This ends up in the request user-agent.
-            caller_version: version of the caller.
-
-        Example:
-            >>> my_coll.set_caller(caller_name="the_caller", caller_version="0.1.0")
-        """
-
-        logger.info(f"setting caller to {caller_name}/{caller_version}")
-        callers_param = check_caller_parameters([], caller_name, caller_version)
-        self.callers = callers_param or self.callers
-        self._api_commander = self._get_api_commander()
 
     async def options(self, *, max_time_ms: int | None = None) -> CollectionOptions:
         """
@@ -3235,7 +2550,6 @@ class AsyncCollection:
         return CollectionInfo(
             database_info=self.database.info(),
             keyspace=self.keyspace,
-            namespace=self.keyspace,
             name=self.name,
             full_name=self.full_name,
         )
@@ -3251,28 +2565,6 @@ class AsyncCollection:
         """
 
         return self._database
-
-    @property
-    def namespace(self) -> str:
-        """
-        The namespace this collection is in.
-
-        *DEPRECATED* (removal in 2.0). Switch to the "keyspace" property.**
-
-        Example:
-            >>> my_async_coll.namespace
-            'default_keyspace'
-        """
-
-        the_warning = deprecation.DeprecatedWarning(
-            "the 'namespace' property",
-            deprecated_in="1.5.0",
-            removed_in="2.0.0",
-            details=NAMESPACE_DEPRECATION_NOTICE_METHOD,
-        )
-        warnings.warn(the_warning, stacklevel=2)
-
-        return self.keyspace
 
     @property
     def keyspace(self) -> str:
@@ -3318,8 +2610,6 @@ class AsyncCollection:
         self,
         document: DocumentType,
         *,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         max_time_ms: int | None = None,
     ) -> InsertOneResult:
         """
@@ -3329,17 +2619,6 @@ class AsyncCollection:
             document: the dictionary expressing the document to insert.
                 The `_id` field of the document can be left out, in which
                 case it will be created automatically.
-            vector: a vector (a list of numbers appropriate for the collection)
-                for the document. Passing this parameter is equivalent to
-                providing a `$vector` field within the document itself,
-                however the two are mutually exclusive.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the document instead.
-            vectorize: a string to be made into a vector, if such a service
-                is configured for the collection. Passing this parameter is
-                equivalent to providing a `$vectorize` field in the document itself,
-                however the two are mutually exclusive.
-                Moreover, this parameter cannot coexist with `vector`.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the document instead.
             max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
                 If not passed, the collection-level setting is used instead.
 
@@ -3375,15 +2654,8 @@ class AsyncCollection:
             the insertion fails.
         """
 
-        check_deprecated_vector_ize(
-            vector=vector,
-            vectors=None,
-            vectorize=vectorize,
-            kind="insert",
-        )
-        _document = _collate_vector_to_document(document, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        io_payload = {"insertOne": {"document": _document}}
+        io_payload = {"insertOne": {"document": document}}
         logger.info(f"insertOne on '{self.name}'")
         io_response = await self._api_commander.async_request(
             payload=io_payload,
@@ -3412,8 +2684,6 @@ class AsyncCollection:
         self,
         documents: Iterable[DocumentType],
         *,
-        vectors: Iterable[VectorType | None] | None = None,
-        vectorize: Iterable[str | None] | None = None,
         ordered: bool = False,
         chunk_size: int | None = None,
         concurrency: int | None = None,
@@ -3427,16 +2697,6 @@ class AsyncCollection:
             documents: an iterable of dictionaries, each a document to insert.
                 Documents may specify their `_id` field or leave it out, in which
                 case it will be added automatically.
-            vectors: an optional list of vectors (as many vectors as the provided
-                documents) to associate to the documents when inserting.
-                Passing vectors this way is indeed equivalent to the "$vector" field
-                of the documents, however the two are mutually exclusive.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the documents instead.
-            vectorize: an optional list of strings to be made into as many vectors
-                (one per document), if such a service is configured for the collection.
-                Passing this parameter is equivalent to providing a `$vectorize`
-                field in the documents themselves, however the two are mutually exclusive.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the documents instead.
             ordered: if False (default), the insertions can occur in arbitrary order
                 and possibly concurrently. If True, they are processed sequentially.
                 If there are no specific reasons against it, unordered insertions are to
@@ -3516,12 +2776,6 @@ class AsyncCollection:
             have made their way to the database.
         """
 
-        check_deprecated_vector_ize(
-            vector=None,
-            vectors=vectors,
-            vectorize=vectorize,
-            kind="insert",
-        )
         if concurrency is None:
             if ordered:
                 _concurrency = 1
@@ -3535,8 +2789,8 @@ class AsyncCollection:
             _chunk_size = DEFAULT_INSERT_MANY_CHUNK_SIZE
         else:
             _chunk_size = chunk_size
-        _documents = _collate_vectors_to_documents(documents, vectors, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
+        _documents = list(documents)
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
@@ -3664,8 +2918,6 @@ class AsyncCollection:
         projection: ProjectionType | None = None,
         skip: int | None = None,
         limit: int | None = None,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
@@ -3715,21 +2967,6 @@ class AsyncCollection:
             limit: this (integer) parameter sets a limit over how many documents
                 are returned. Once `limit` is reached (or the cursor is exhausted
                 for lack of matching documents), nothing more is returned.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to perform vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search).
-                When running similarity search on a collection, no other sorting
-                criteria can be specified. Moreover, there is an upper bound
-                to the number of documents that can be returned. For details,
-                see the Note about upper bounds and the Data API documentation.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                This can be supplied in (exclusive) alternative to `vector`,
-                provided such a service is configured for the collection,
-                and achieves the same effect.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in each
                 returned document. Can only be used for vector ANN search, i.e.
@@ -3856,12 +3093,8 @@ class AsyncCollection:
             changes in the data would be picked up by the cursor.
         """
 
-        check_deprecated_vector_ize(
-            vector=vector, vectors=None, vectorize=vectorize, kind="find"
-        )
-        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        if include_similarity is not None and not _is_vector_sort(_sort):
+        if include_similarity is not None and not _is_vector_sort(sort):
             raise ValueError(
                 "Cannot use `include_similarity` unless for vector search."
             )
@@ -3875,7 +3108,7 @@ class AsyncCollection:
             )
             .skip(skip)
             .limit(limit)
-            .sort(_sort)
+            .sort(sort)
             .include_similarity(include_similarity)
             .include_sort_vector(include_sort_vector)
         )
@@ -3885,8 +3118,6 @@ class AsyncCollection:
         filter: FilterType | None = None,
         *,
         projection: ProjectionType | None = None,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         include_similarity: bool | None = None,
         sort: SortType | None = None,
         max_time_ms: int | None = None,
@@ -3919,16 +3150,6 @@ class AsyncCollection:
                 The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to perform vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search), extracting the most
-                similar document in the collection matching the filter.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                Using vectorize assumes a suitable service is configured for the collection.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             include_similarity: a boolean to request the numeric value of the
                 similarity to be returned as an added "$similarity" key in the
                 returned document. Can only be used for vector ANN search, i.e.
@@ -3982,20 +3203,12 @@ class AsyncCollection:
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
-        check_deprecated_vector_ize(
-            vector=vector,
-            vectors=None,
-            vectorize=vectorize,
-            kind="find",
-        )
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_cursor = self.find(
             filter=filter,
             projection=projection,
             skip=None,
             limit=1,
-            vector=vector,
-            vectorize=vectorize,
             include_similarity=include_similarity,
             sort=sort,
             max_time_ms=_max_time_ms,
@@ -4224,8 +3437,6 @@ class AsyncCollection:
         replacement: DocumentType,
         *,
         projection: ProjectionType | None = None,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         sort: SortType | None = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
@@ -4261,17 +3472,6 @@ class AsyncCollection:
                 The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to use vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search), as the sorting criterion.
-                In this way, the matched document (if any) will be the one
-                that is most similar to the provided vector.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                Using vectorize assumes a suitable service is configured for the collection.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -4332,13 +3532,6 @@ class AsyncCollection:
             result3 {'text': 'F=ma'}
         """
 
-        check_deprecated_vector_ize(
-            vector=vector,
-            vectors=None,
-            vectorize=vectorize,
-            kind="find",
-        )
-        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -4352,7 +3545,7 @@ class AsyncCollection:
                     "projection": normalize_optional_projection(projection),
                     "replacement": replacement,
                     "options": options,
-                    "sort": _sort,
+                    "sort": sort,
                 }.items()
                 if v is not None
             }
@@ -4380,8 +3573,6 @@ class AsyncCollection:
         filter: FilterType,
         replacement: DocumentType,
         *,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         sort: SortType | None = None,
         upsert: bool = False,
         max_time_ms: int | None = None,
@@ -4399,17 +3590,6 @@ class AsyncCollection:
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             replacement: the new document to write into the collection.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to use vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search), as the sorting criterion.
-                In this way, the matched document (if any) will be the one
-                that is most similar to the provided vector.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                Using vectorize assumes a suitable service is configured for the collection.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -4455,13 +3635,6 @@ class AsyncCollection:
             result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '30e34e00-...'}
         """
 
-        check_deprecated_vector_ize(
-            vector=vector,
-            vectors=None,
-            vectorize=vectorize,
-            kind="find",
-        )
-        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "upsert": upsert,
         }
@@ -4473,7 +3646,7 @@ class AsyncCollection:
                     "filter": filter,
                     "replacement": replacement,
                     "options": options,
-                    "sort": _sort,
+                    "sort": sort,
                 }.items()
                 if v is not None
             }
@@ -4503,8 +3676,6 @@ class AsyncCollection:
         update: dict[str, Any],
         *,
         projection: ProjectionType | None = None,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         sort: SortType | None = None,
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
@@ -4544,17 +3715,6 @@ class AsyncCollection:
                 The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to use vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search), as the sorting criterion.
-                In this way, the matched document (if any) will be the one
-                that is most similar to the provided vector.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                Using vectorize assumes a suitable service is configured for the collection.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -4617,13 +3777,6 @@ class AsyncCollection:
             result3 {'_id': 'db3d678d-14d4-4caa-82d2-d5fb77dab7ec', 'name': 'Johnny', 'rank': 0}
         """
 
-        check_deprecated_vector_ize(
-            vector=vector,
-            vectors=None,
-            vectorize=vectorize,
-            kind="find",
-        )
-        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "returnDocument": return_document,
             "upsert": upsert,
@@ -4636,7 +3789,7 @@ class AsyncCollection:
                     "filter": filter,
                     "update": update,
                     "options": options,
-                    "sort": _sort,
+                    "sort": sort,
                     "projection": normalize_optional_projection(projection),
                 }.items()
                 if v is not None
@@ -4665,8 +3818,6 @@ class AsyncCollection:
         filter: FilterType,
         update: dict[str, Any],
         *,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         sort: SortType | None = None,
         upsert: bool = False,
         max_time_ms: int | None = None,
@@ -4689,17 +3840,6 @@ class AsyncCollection:
                     {"$inc": {"counter": 10}}
                     {"$unset": {"field": ""}}
                 See the Data API documentation for the full syntax.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to use vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search), as the sorting criterion.
-                In this way, the matched document (if any) will be the one
-                that is most similar to the provided vector.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                Using vectorize assumes a suitable service is configured for the collection.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -4743,13 +3883,6 @@ class AsyncCollection:
             result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '75748092-...'}
         """
 
-        check_deprecated_vector_ize(
-            vector=vector,
-            vectors=None,
-            vectorize=vectorize,
-            kind="find",
-        )
-        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         options = {
             "upsert": upsert,
         }
@@ -4761,7 +3894,7 @@ class AsyncCollection:
                     "filter": filter,
                     "update": update,
                     "options": options,
-                    "sort": _sort,
+                    "sort": sort,
                 }.items()
                 if v is not None
             }
@@ -4794,7 +3927,7 @@ class AsyncCollection:
         max_time_ms: int | None = None,
     ) -> UpdateResult:
         """
-        Apply an update operations to all documents matching a condition,
+        Apply an update operation to all documents matching a condition,
         optionally inserting one documents in absence of matches.
 
         Args:
@@ -4931,8 +4064,6 @@ class AsyncCollection:
         filter: FilterType,
         *,
         projection: ProjectionType | None = None,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         sort: SortType | None = None,
         max_time_ms: int | None = None,
     ) -> DocumentType | None:
@@ -4964,17 +4095,6 @@ class AsyncCollection:
                 The default projection (used if this parameter is not passed) does not
                 necessarily include "special" fields such as `$vector` or `$vectorize`.
                 See the Data API documentation for more on projections.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to use vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search), as the sorting criterion.
-                In this way, the matched document (if any) will be the one
-                that is most similar to the provided vector.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                Using vectorize assumes a suitable service is configured for the collection.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -5011,13 +4131,6 @@ class AsyncCollection:
             delete_result1 None
         """
 
-        check_deprecated_vector_ize(
-            vector=vector,
-            vectors=None,
-            vectorize=vectorize,
-            kind="find",
-        )
-        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _projection = normalize_optional_projection(projection)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         fo_payload = {
@@ -5025,7 +4138,7 @@ class AsyncCollection:
                 k: v
                 for k, v in {
                     "filter": filter,
-                    "sort": _sort,
+                    "sort": sort,
                     "projection": _projection,
                 }.items()
                 if v is not None
@@ -5054,8 +4167,6 @@ class AsyncCollection:
         self,
         filter: FilterType,
         *,
-        vector: VectorType | None = None,
-        vectorize: str | None = None,
         sort: SortType | None = None,
         max_time_ms: int | None = None,
     ) -> DeleteResult:
@@ -5072,17 +4183,6 @@ class AsyncCollection:
                     {"price": {"$lt": 100}}
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
-            vector: a suitable vector, i.e. a list of float numbers of the appropriate
-                dimensionality, to use vector search (i.e. ANN,
-                or "approximate nearest-neighbours" search), as the sorting criterion.
-                In this way, the matched document (if any) will be the one
-                that is most similar to the provided vector.
-                *DEPRECATED* (removal in 2.0). Use a `$vector` key in the
-                sort clause dict instead.
-            vectorize: a string to be made into a vector to perform vector search.
-                Using vectorize assumes a suitable service is configured for the collection.
-                *DEPRECATED* (removal in 2.0). Use a `$vectorize` key in the
-                sort clause dict instead.
             sort: with this dictionary parameter one can control the sorting
                 order of the documents matching the filter, effectively
                 determining what document will come first and hence be the
@@ -5113,20 +4213,13 @@ class AsyncCollection:
             DeleteResult(raw_results=..., deleted_count=0)
         """
 
-        check_deprecated_vector_ize(
-            vector=vector,
-            vectors=None,
-            vectorize=vectorize,
-            kind="find",
-        )
-        _sort = _collate_vector_to_sort(sort, vector, vectorize)
         _max_time_ms = max_time_ms or self.api_options.max_time_ms
         do_payload = {
             "deleteOne": {
                 k: v
                 for k, v in {
                     "filter": filter,
-                    "sort": _sort,
+                    "sort": sort,
                 }.items()
                 if v is not None
             }
@@ -5245,246 +4338,6 @@ class AsyncCollection:
             deleted_count=deleted_count,
             raw_results=dm_responses,
         )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.3.0",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details="Use delete_many with filter={} instead.",
-    )
-    async def delete_all(self, *, max_time_ms: int | None = None) -> dict[str, Any]:
-        """
-        Delete all documents in a collection.
-
-        Args:
-            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
-                If not passed, the collection-level setting is used instead.
-
-        Returns:
-            a dictionary of the form {"ok": 1} to signal successful deletion.
-
-        Example:
-            >>> async def do_delete_all(acol: AsyncCollection) -> None:
-            ...     distinct0 = await acol.distinct("seq")
-            ...     print("distinct0", distinct0)
-            ...     count1 = await acol.count_documents({}, upper_bound=100)
-            ...     print("count1", count1)
-            ...     delete_result2 = await acol.delete_all()
-            ...     print("delete_result2", delete_result2)
-            ...     count3 = await acol.count_documents({}, upper_bound=100)
-            ...     print("count3", count3)
-            ...
-            >>> asyncio.run(do_delete_all(my_async_coll))
-            distinct0 [4, 2, 3, 0, 1]
-            count1 5
-            delete_result2 {'ok': 1}
-            count3 0
-
-        Note:
-            Use with caution.
-        """
-        dm_result = await self.delete_many(filter={}, max_time_ms=max_time_ms)
-        if dm_result.deleted_count == -1:
-            return {"ok": 1}
-        else:
-            raise DataAPIFaultyResponseException(
-                text="Unexpected response from collection.delete_many({}).",
-                raw_response=None,
-            )
-
-    @deprecation.deprecated(  # type: ignore[misc]
-        deprecated_in="1.5.0",
-        removed_in="2.0.0",
-        current_version=__version__,
-        details=(
-            "Please switch to managing sequences of DML operations "
-            "in app code instead."
-        ),
-    )
-    async def bulk_write(
-        self,
-        requests: Iterable[AsyncBaseOperation],
-        *,
-        ordered: bool = False,
-        concurrency: int | None = None,
-        max_time_ms: int | None = None,
-    ) -> BulkWriteResult:
-        """
-        Execute an arbitrary amount of operations such as inserts, updates, deletes
-        either sequentially or concurrently.
-
-        This method does not execute atomically, i.e. individual operations are
-        each performed in the same way as the corresponding collection method,
-        and each one is a different and unrelated database mutation.
-
-        Args:
-            requests: an iterable over concrete subclasses of `BaseOperation`,
-                such as `AsyncInsertMany` or `AsyncReplaceOne`. Each such object
-                represents an operation ready to be executed on a collection,
-                and is instantiated by passing the same parameters as one
-                would the corresponding collection method.
-            ordered: whether to launch the `requests` one after the other or
-                in arbitrary order, possibly in a concurrent fashion. For
-                performance reasons, False (default) should be preferred
-                when compatible with the needs of the application flow.
-            concurrency: maximum number of concurrent operations executing at
-                a given time. It cannot be more than one for ordered bulk writes.
-            max_time_ms: a timeout, in milliseconds, for the whole bulk write.
-                Remember that, if the method call times out, then there's no
-                guarantee about what portion of the bulk write has been received
-                and successfully executed by the Data API.
-                If not passed, the collection-level setting is used instead:
-                in most cases, however, one should pass a relaxed timeout
-                if longer sequences of operations are to be executed in bulk.
-
-        Returns:
-            A single BulkWriteResult summarizing the whole list of requested
-            operations. The keys in the map attributes of BulkWriteResult
-            (when present) are the integer indices of the corresponding operation
-            in the `requests` iterable.
-
-        Example:
-            >>> from astrapy.operations import AsyncInsertMany, AsyncReplaceOne, AsyncOperation
-            >>> from astrapy.results import BulkWriteResult
-            >>>
-            >>> async def do_bulk_write(
-            ...     acol: AsyncCollection,
-            ...     async_operations: List[AsyncOperation],
-            ... ) -> BulkWriteResult:
-            ...     bw_result = await acol.bulk_write(async_operations)
-            ...     count0 = await acol.count_documents({}, upper_bound=100)
-            ...     print("count0", count0)
-            ...     distinct0 = await acol.distinct("replaced")
-            ...     print("distinct0", distinct0)
-            ...     return bw_result
-            ...
-            >>> op1 = AsyncInsertMany([{"a": 1}, {"a": 2}])
-            >>> op2 = AsyncReplaceOne(
-            ...     {"z": 9},
-            ...     replacement={"z": 9, "replaced": True},
-            ...     upsert=True,
-            ... )
-            >>> result = asyncio.run(do_bulk_write(my_async_coll, [op1, op2]))
-            count0 3
-            distinct0 [True]
-            >>> print("result", result)
-            result BulkWriteResult(bulk_api_results={0: ..., 1: ...}, deleted_count=0, inserted_count=3, matched_count=0, modified_count=0, upserted_count=1, upserted_ids={1: 'ccd0a800-...'})
-        """
-
-        # lazy importing here against circular-import error
-        from astrapy.operations import reduce_bulk_write_results
-
-        if concurrency is None:
-            if ordered:
-                _concurrency = 1
-            else:
-                _concurrency = DEFAULT_BULK_WRITE_CONCURRENCY
-        else:
-            _concurrency = concurrency
-        if _concurrency > 1 and ordered:
-            raise ValueError("Cannot run ordered bulk_write concurrently.")
-        _max_time_ms = max_time_ms or self.api_options.max_time_ms
-        logger.info(f"startng a bulk write on '{self.name}'")
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=_max_time_ms)
-        if ordered:
-            bulk_write_results: list[BulkWriteResult] = []
-            for operation_i, operation in enumerate(requests):
-                try:
-                    this_bw_result = await operation.execute(
-                        self,
-                        index_in_bulk_write=operation_i,
-                        bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
-                    )
-                    bulk_write_results.append(this_bw_result)
-                except CumulativeOperationException as exc:
-                    partial_result = exc.partial_result
-                    partial_bw_result = reduce_bulk_write_results(
-                        bulk_write_results
-                        + [
-                            partial_result.to_bulk_write_result(
-                                index_in_bulk_write=operation_i
-                            )
-                        ]
-                    )
-                    dar_exception = exc.data_api_response_exception()
-                    raise BulkWriteException(
-                        text=dar_exception.text,
-                        error_descriptors=dar_exception.error_descriptors,
-                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
-                        partial_result=partial_bw_result,
-                        exceptions=[dar_exception],
-                    )
-                except DataAPIResponseException as exc:
-                    # the cumulative exceptions, with their
-                    # partially-done-info, are handled above:
-                    # here it's just one-shot d.a.r. exceptions
-                    partial_bw_result = reduce_bulk_write_results(bulk_write_results)
-                    dar_exception = exc.data_api_response_exception()
-                    raise BulkWriteException(
-                        text=dar_exception.text,
-                        error_descriptors=dar_exception.error_descriptors,
-                        detailed_error_descriptors=dar_exception.detailed_error_descriptors,
-                        partial_result=partial_bw_result,
-                        exceptions=[dar_exception],
-                    )
-            full_bw_result = reduce_bulk_write_results(bulk_write_results)
-            logger.info(f"finished a bulk write on '{self.name}'")
-            return full_bw_result
-        else:
-            sem = asyncio.Semaphore(_concurrency)
-
-            async def _concurrent_execute_as_either(
-                operation: AsyncBaseOperation, operation_i: int
-            ) -> tuple[BulkWriteResult | None, DataAPIResponseException | None]:
-                async with sem:
-                    try:
-                        ex_result = await operation.execute(
-                            self,
-                            index_in_bulk_write=operation_i,
-                            bulk_write_timeout_ms=timeout_manager.remaining_timeout_ms(),
-                        )
-                        return (ex_result, None)
-                    except DataAPIResponseException as exc:
-                        return (None, exc)
-
-            tasks = [
-                asyncio.create_task(
-                    _concurrent_execute_as_either(operation, operation_i)
-                )
-                for operation_i, operation in enumerate(requests)
-            ]
-            bulk_write_either_results = await asyncio.gather(*tasks)
-            # regroup
-            bulk_write_successes = [bwr for bwr, _ in bulk_write_either_results if bwr]
-            bulk_write_failures = [bwf for _, bwf in bulk_write_either_results if bwf]
-            if bulk_write_failures:
-                # extract and cumulate
-                partial_results_from_failures = [
-                    failure.partial_result.to_bulk_write_result(
-                        index_in_bulk_write=operation_i
-                    )
-                    for failure in bulk_write_failures
-                    if isinstance(failure, CumulativeOperationException)
-                ]
-                partial_bw_result = reduce_bulk_write_results(
-                    bulk_write_successes + partial_results_from_failures
-                )
-                # raise and recast the first exception
-                all_dar_exceptions = [
-                    bw_failure.data_api_response_exception()
-                    for bw_failure in bulk_write_failures
-                ]
-                dar_exception = all_dar_exceptions[0]
-                raise BulkWriteException(
-                    text=dar_exception.text,
-                    error_descriptors=dar_exception.error_descriptors,
-                    detailed_error_descriptors=dar_exception.detailed_error_descriptors,
-                    partial_result=partial_bw_result,
-                    exceptions=all_dar_exceptions,
-                )
-            else:
-                logger.info(f"finished a bulk write on '{self.name}'")
-                return reduce_bulk_write_results(bulk_write_successes)
 
     async def drop(self, *, max_time_ms: int | None = None) -> dict[str, Any]:
         """

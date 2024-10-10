@@ -1,3 +1,24 @@
+v 2.0.0
+=======
+Removal of several deprecated modules/features from previous versions:
+    - 'core' (i.e. pre-1.0) library
+    - 'collection.bulk_write' and the associated result and exception classes
+    - 'vector=', 'vectorize=' and 'vectors=' parameters from collection methods
+    - 'retrieved' (=> `consumed`) and 'collection' (=> `data_source`) for cursors
+    - 'set_caller' method of `DataAPIClient`, `AstraDBAdmin`, `DataAPIDatabaseAdmin`, `AstraDBDatabaseAdmin`, `[Async]Database`, `[Async]Collection`
+    - 'caller_name' and 'caller_version' parameters where `callers` is now expected
+    - 'id' and 'region' to DataAPIClient's 'get_database' (and async version). Use `api_endpoint` which is now the one positional parameter.
+    - 'region' parameter of AstraDBDatabaseAdmin.get[_async]_database (was ignored already in the method)
+    - The 'max_time_ms' parameter in DataAPIClient's 'get_database' method.
+    - Accordingly, the syntax `client[api_endpoint]` also does not accept a database ID anymore.
+    - 'namespace' parameter of several methods of: DataAPIClient, admin objects, Database and Collection (use `keyspace`)
+    - 'namespace' property of CollectionInfo, DatabaseInfo, CollectionNotFoundException, CollectionAlreadyExistsException (use `keyspace`)
+    - 'namespace' property of Databases and Collections (switch to `keyspace`)
+    - 'update_db_namespace' parameter to for admin keyspace CRD methods (use `update_db_keyspace`)
+    - 'use_namespace' for Databases (switch to `use_keyspace`)
+    - 'delete_all' method of Collection and AsyncCollection (use `delete_many({})`)
+Removal of unused imports from toplevel __init__.py (ids, constants, cursors)
+
 v. 1.5.2
 ========
 Bugfix: `Database.get_collection` uses callers inheritance (same for async)

@@ -22,13 +22,6 @@ from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.constants import DocumentType
 from astrapy.cursors import AsyncCursor
 from astrapy.exceptions import DataAPIResponseException
-from astrapy.operations import (
-    AsyncDeleteOne,
-    AsyncInsertMany,
-    AsyncInsertOne,
-    AsyncReplaceOne,
-    AsyncUpdateOne,
-)
 
 
 class TestVectorizeMethodsAsync:
@@ -57,22 +50,19 @@ class TestVectorizeMethodsAsync:
                     "t": "seeds",
                     "$vectorize": "Other plants rely on wind to propagate their seeds.",
                 },
+                {
+                    "t": "dog",
+                    "$vector": [0.01] * service_vector_dimension,
+                },
+                {
+                    "t": "cat_novector",
+                },
+                {
+                    "t": "spider",
+                    "$vectorize": "The eye pattern is a primary criterion to the family.",
+                },
             ],
         )
-        with pytest.warns(DeprecationWarning):
-            await acol.insert_many(
-                [{"t": "dog"}, {"t": "cat_novector"}, {"t": "spider"}],
-                vectorize=[
-                    None,
-                    None,
-                    "The eye pattern is a primary criterion to the family.",
-                ],
-                vectors=[
-                    [0.01] * service_vector_dimension,
-                    None,
-                    None,
-                ],
-            )
 
         doc = await acol.find_one(
             {},
@@ -138,41 +128,6 @@ class TestVectorizeMethodsAsync:
             sort={"$vectorize": "yet another giant construction in this suburb."},
         )
         assert d1res.deleted_count == 1
-
-    @pytest.mark.describe("test of bulk_write with vectorize, async")
-    async def test_collection_bulk_write_vectorize_async(
-        self,
-        async_empty_service_collection: AsyncCollection,
-    ) -> None:
-        acol = async_empty_service_collection
-
-        with pytest.warns(DeprecationWarning):
-            bw_ops = [
-                AsyncInsertOne({"a": 1}, vectorize="The cat is on the table."),
-                AsyncInsertMany(
-                    [{"a": 2}, {"z": 0}],
-                    vectorize=[
-                        "That is a fine spaghetti dish!",
-                        "I am not debating the effectiveness of such approach...",
-                    ],
-                ),
-                AsyncUpdateOne(
-                    {},
-                    {"$set": {"b": 1}},
-                    vectorize="Oh, I love a nice bolognese pasta meal!",
-                ),
-                AsyncReplaceOne({}, {"a": 10}, vectorize="The kitty sits on the desk."),
-                AsyncDeleteOne({}, vectorize="I don't argue with the proposed plan..."),
-            ]
-        with pytest.warns(DeprecationWarning):
-            await acol.bulk_write(bw_ops, ordered=True)
-        found = [
-            {k: v for k, v in doc.items() if k != "_id"}
-            async for doc in acol.find({}, projection=["a", "b"])
-        ]
-        assert len(found) == 2
-        assert {"a": 10} in found
-        assert {"a": 2, "b": 1} in found
 
     @pytest.mark.describe(
         "test of include_sort_vector in collection vectorize find, async"

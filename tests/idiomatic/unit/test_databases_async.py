@@ -24,8 +24,6 @@ from astrapy.exceptions import DevOpsAPIException
 from ..conftest import (
     TEST_COLLECTION_INSTANCE_NAME,
     DataAPICredentials,
-    async_fail_if_not_removed,
-    sync_fail_if_not_removed,
 )
 
 api_ep5643_prod = (
@@ -61,91 +59,6 @@ class TestDatabasesAsync:
         assert db1 == db1._copy()
         assert db1 == db1.with_options()
         assert db1 == db1.to_sync().to_async()
-
-    @async_fail_if_not_removed
-    @pytest.mark.describe("test of caller deprecation in Database rich _copy, async")
-    async def test_caller_deprecation_in_rich_copy_database_async(
-        self,
-    ) -> None:
-        with pytest.warns(DeprecationWarning):
-            db1 = AsyncDatabase(
-                api_endpoint="api_endpoint",
-                token="token",
-                keyspace="keyspace",
-                caller_name="c_n",
-                caller_version="c_v",
-                api_path="api_path",
-                api_version="api_version",
-            )
-        assert db1 == AsyncDatabase(
-            api_endpoint="api_endpoint",
-            token="token",
-            keyspace="keyspace",
-            callers=[("c_n", "c_v")],
-            api_path="api_path",
-            api_version="api_version",
-        )
-        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
-            assert db1 == AsyncDatabase(
-                api_endpoint="api_endpoint",
-                token="token",
-                keyspace="keyspace",
-                callers=[("c_n", "c_v")],
-                caller_name="c_n",
-            )
-        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
-            assert db1 == AsyncDatabase(
-                api_endpoint="api_endpoint",
-                token="token",
-                keyspace="keyspace",
-                callers=[("c_n", "c_v")],
-                caller_version="c_v",
-            )
-        with pytest.warns(DeprecationWarning):
-            assert db1 != db1._copy(caller_name="x", caller_version="x")
-        with pytest.warns(DeprecationWarning):
-            assert db1 != db1._copy(caller_name="x")
-        with pytest.warns(DeprecationWarning):
-            assert db1 != db1._copy(caller_version="x")
-
-        with pytest.warns(DeprecationWarning):
-            db2 = db1._copy(
-                api_endpoint="x",
-                token="x",
-                keyspace="x",
-                caller_name="x_n",
-                caller_version="x_v",
-                api_path="x",
-                api_version="x",
-            )
-        assert db2 != db1
-
-        with pytest.warns(DeprecationWarning):
-            db2.set_caller(
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        db3 = db2._copy(
-            api_endpoint="api_endpoint",
-            token="token",
-            keyspace="keyspace",
-            api_path="api_path",
-            api_version="api_version",
-        )
-        assert db3 == db1
-
-        with pytest.warns(DeprecationWarning):
-            assert db1.with_options(caller_name="x") != db1
-        with pytest.warns(DeprecationWarning):
-            assert db1.with_options(caller_version="x") != db1
-
-        with pytest.warns(DeprecationWarning):
-            assert (
-                db1.with_options(caller_name="x", caller_version="x").with_options(
-                    caller_name="c_n", caller_version="c_v"
-                )
-                == db1
-            )
 
     @pytest.mark.describe("test of Database rich _copy, async")
     async def test_rich_copy_database_async(
@@ -183,54 +96,6 @@ class TestDatabasesAsync:
 
         assert db1.with_options(keyspace="x").with_options(keyspace="keyspace") == db1
         assert db1.with_options(callers=callers1).with_options(callers=callers0) == db1
-
-    @async_fail_if_not_removed
-    @pytest.mark.describe(
-        "test of caller deprecation in Database rich conversions, async"
-    )
-    async def test_caller_deprecation_in_rich_convert_database_async(
-        self,
-    ) -> None:
-        with pytest.warns(DeprecationWarning):
-            db1 = AsyncDatabase(
-                api_endpoint="api_endpoint",
-                token="token",
-                keyspace="keyspace",
-                caller_name="c_n",
-                caller_version="c_v",
-                api_path="api_path",
-                api_version="api_version",
-            )
-        with pytest.warns(DeprecationWarning):
-            assert db1 != db1.to_sync(caller_name="o").to_async()
-        with pytest.warns(DeprecationWarning):
-            assert db1 != db1.to_sync(caller_version="o").to_async()
-
-        with pytest.warns(DeprecationWarning):
-            db2s = db1.to_sync(
-                api_endpoint="x",
-                token="x",
-                keyspace="x",
-                caller_name="x_n",
-                caller_version="x_v",
-                api_path="x",
-                api_version="x",
-            )
-        assert db2s.to_async() != db1
-
-        with pytest.warns(DeprecationWarning):
-            db2s.set_caller(
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        db3 = db2s.to_async(
-            api_endpoint="api_endpoint",
-            token="token",
-            keyspace="keyspace",
-            api_path="api_path",
-            api_version="api_version",
-        )
-        assert db3 == db1
 
     @pytest.mark.describe("test of Database rich conversions, async")
     async def test_rich_convert_database_async(
@@ -273,30 +138,6 @@ class TestDatabasesAsync:
         )
         assert db3 == db1
 
-    @async_fail_if_not_removed
-    @pytest.mark.describe("test of Database set_caller, async")
-    async def test_database_set_caller_async(
-        self,
-        data_api_credentials_kwargs: DataAPICredentials,
-    ) -> None:
-        with pytest.warns(DeprecationWarning):
-            db1 = AsyncDatabase(
-                caller_name="c_n1",
-                caller_version="c_v1",
-                **data_api_credentials_kwargs,
-            )
-        with pytest.warns(DeprecationWarning):
-            db2 = AsyncDatabase(
-                caller_name="c_n2",
-                caller_version="c_v2",
-                **data_api_credentials_kwargs,
-            )
-        db2.set_caller(
-            caller_name="c_n1",
-            caller_version="c_v1",
-        )
-        assert db1 == db2
-
     @pytest.mark.describe("test get_collection method, async")
     async def test_database_get_collection_async(
         self,
@@ -309,39 +150,14 @@ class TestDatabasesAsync:
         assert getattr(async_database, TEST_COLLECTION_INSTANCE_NAME) == collection
         assert async_database[TEST_COLLECTION_INSTANCE_NAME] == collection
 
-        NAMESPACE_2 = "other_keyspace"
+        KEYSPACE_2 = "other_keyspace"
         collection_ks2 = await async_database.get_collection(
-            TEST_COLLECTION_INSTANCE_NAME, keyspace=NAMESPACE_2
+            TEST_COLLECTION_INSTANCE_NAME, keyspace=KEYSPACE_2
         )
         assert collection_ks2 == AsyncCollection(
-            async_database, TEST_COLLECTION_INSTANCE_NAME, keyspace=NAMESPACE_2
+            async_database, TEST_COLLECTION_INSTANCE_NAME, keyspace=KEYSPACE_2
         )
-        assert collection_ks2.database.keyspace == NAMESPACE_2
-
-    @async_fail_if_not_removed
-    @pytest.mark.describe("test database conversions with caller mutableness, async")
-    async def test_database_conversions_caller_mutableness_async(
-        self,
-        data_api_credentials_kwargs: DataAPICredentials,
-    ) -> None:
-        with pytest.warns(DeprecationWarning):
-            db1 = AsyncDatabase(
-                caller_name="c_n1",
-                caller_version="c_v1",
-                **data_api_credentials_kwargs,
-            )
-        db1.set_caller(
-            caller_name="c_n2",
-            caller_version="c_v2",
-        )
-        with pytest.warns(DeprecationWarning):
-            db2 = AsyncDatabase(
-                caller_name="c_n2",
-                caller_version="c_v2",
-                **data_api_credentials_kwargs,
-            )
-        assert db1.to_sync().to_async() == db2
-        assert db1._copy() == db2
+        assert collection_ks2.database.keyspace == KEYSPACE_2
 
     @pytest.mark.describe("test database id, async")
     async def test_database_id_async(self) -> None:
@@ -380,10 +196,6 @@ class TestDatabasesAsync:
         self,
     ) -> None:
         client_a = DataAPIClient(environment=Environment.PROD)
-        db_a_m = client_a.get_async_database(id="id", region="r", keyspace="M")
-        assert db_a_m.keyspace == "M"
-        db_a_n = client_a.get_async_database(id="id", region="r")
-        assert db_a_n.keyspace == DEFAULT_ASTRA_DB_KEYSPACE
         db_a_me = client_a.get_async_database(api_ep5643_prod, keyspace="M")
         assert db_a_me.keyspace == "M"
         db_a_ne = client_a.get_async_database(api_ep5643_prod)
@@ -408,12 +220,9 @@ class TestDatabasesAsync:
         db_n = db_admin.get_async_database()
         assert db_n.keyspace is None
 
-    @sync_fail_if_not_removed
     @pytest.mark.describe("test of database keyspace property, async")
     def test_database_keyspace_property_async(
         self,
         async_database: AsyncDatabase,
     ) -> None:
-        with pytest.warns(DeprecationWarning):
-            async_database.namespace
-        assert async_database.namespace == async_database.keyspace
+        assert isinstance(async_database.keyspace, str)

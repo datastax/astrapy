@@ -30,7 +30,6 @@ def test_namespace() -> None:
     assert str(astrapy.exceptions) != ""
     assert str(astrapy.ids) != ""
     assert str(astrapy.info) != ""
-    assert str(astrapy.operations) != ""
     assert str(astrapy.results) != ""
 
     assert str(astrapy.admin.AstraDBAdmin) != ""
@@ -42,7 +41,6 @@ def test_namespace() -> None:
     assert str(astrapy.exceptions.DevOpsAPIException) != ""
     assert str(astrapy.ids.uuid6) != ""
     assert str(astrapy.info.DatabaseInfo) != ""
-    assert str(astrapy.operations.InsertMany) != ""
     assert str(astrapy.results.DeleteResult) != ""
 
 
@@ -88,7 +86,6 @@ def test_imports() -> None:
     from astrapy.database import AsyncDatabase as AsyncDatabase2  # noqa: F401
     from astrapy.database import Database as Database2  # noqa: F401
     from astrapy.exceptions import (  # noqa: F401
-        BulkWriteException,
         CollectionAlreadyExistsException,
         CollectionNotFoundException,
         CumulativeOperationException,
@@ -138,41 +135,10 @@ def test_imports() -> None:
         EmbeddingProviderToken,
         FindEmbeddingProvidersResult,
     )
-    from astrapy.operations import (  # noqa: F401
-        AsyncBaseOperation,
-        AsyncDeleteMany,
-        AsyncDeleteOne,
-        AsyncInsertMany,
-        AsyncInsertOne,
-        AsyncReplaceOne,
-        AsyncUpdateMany,
-        AsyncUpdateOne,
-        BaseOperation,
-        DeleteMany,
-        DeleteOne,
-        InsertMany,
-        InsertOne,
-        ReplaceOne,
-        UpdateMany,
-        UpdateOne,
-    )
     from astrapy.results import (  # noqa: F401
-        BulkWriteResult,
         DeleteResult,
         InsertManyResult,
         InsertOneResult,
         OperationResult,
         UpdateResult,
     )
-
-
-@pytest.mark.describe("test deprecation of core imports")
-def test_deprecated_core_imports() -> None:
-    """
-    Test that an import of core library raises a deprecation warning.
-
-    Note that this occurs only once during the whole test suite, so this
-    test cannot be made more detailed as is. Not that it is particularly needed.
-    """
-    with pytest.warns(DeprecationWarning):
-        from astrapy.db import AstraDBCollection  # noqa: F401

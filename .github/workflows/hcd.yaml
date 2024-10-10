@@ -11,8 +11,6 @@ on:
 jobs:
   test:
     env:
-      # special setting to not drop any collection (core only)
-      TEST_SKIP_COLLECTION_DELETE: ${{ secrets.TEST_SKIP_COLLECTION_DELETE }}
       # for admin-related testing if enabled
       DO_IDIOMATIC_ADMIN_TESTS: ${{ secrets.DO_IDIOMATIC_ADMIN_TESTS }}
       # hardcoding the target DB

@@ -46,7 +46,7 @@ def sync_database(
     database = client.get_database(
         data_api_credentials_kwargs["api_endpoint"],
         token=data_api_credentials_kwargs["token"],
-        keyspace=data_api_credentials_kwargs["namespace"],
+        keyspace=data_api_credentials_kwargs["keyspace"],
     )
     yield database
 
@@ -94,7 +94,7 @@ def sync_empty_service_collection(
     sync_service_collection: Collection,
 ) -> Iterable[Collection]:
     """Emptied for each test function"""
-    sync_service_collection.delete_all()
+    sync_service_collection.delete_many({})
     yield sync_service_collection
 
 

@@ -39,7 +39,7 @@ docker_compose_filepath = os.path.join(base_dir, "hcd_compose")
 
 IS_ASTRA_DB: bool
 DOCKER_COMPOSE_LOCAL_DATA_API: bool
-SECONDARY_NAMESPACE: str | None = None
+SECONDARY_KEYSPACE: str | None = None
 ASTRA_DB_API_ENDPOINT: str | None = None
 ASTRA_DB_APPLICATION_TOKEN: str | None = None
 ASTRA_DB_KEYSPACE: str | None = None
@@ -64,7 +64,7 @@ if "LOCAL_DATA_API_ENDPOINT" in os.environ:
     LOCAL_DATA_API_ENDPOINT = os.environ["LOCAL_DATA_API_ENDPOINT"]
     LOCAL_DATA_API_KEYSPACE = os.environ.get("LOCAL_DATA_API_KEYSPACE")
     # no reason not to use it
-    SECONDARY_NAMESPACE = os.environ.get(
+    SECONDARY_KEYSPACE = os.environ.get(
         "LOCAL_DATA_API_SECONDARY_KEYSPACE", "alternate_keyspace"
     )
 elif "DOCKER_COMPOSE_LOCAL_DATA_API" in os.environ:
@@ -75,13 +75,13 @@ elif "DOCKER_COMPOSE_LOCAL_DATA_API" in os.environ:
     LOCAL_DATA_API_ENDPOINT = "http://localhost:8181"
     LOCAL_DATA_API_KEYSPACE = os.environ.get("LOCAL_DATA_API_KEYSPACE")
     # no reason not to use it
-    SECONDARY_NAMESPACE = os.environ.get(
+    SECONDARY_KEYSPACE = os.environ.get(
         "LOCAL_DATA_API_SECONDARY_KEYSPACE", "alternate_keyspace"
     )
 elif "ASTRA_DB_API_ENDPOINT" in os.environ:
     IS_ASTRA_DB = True
     DOCKER_COMPOSE_LOCAL_DATA_API = False
-    SECONDARY_NAMESPACE = os.environ.get("ASTRA_DB_SECONDARY_KEYSPACE")
+    SECONDARY_KEYSPACE = os.environ.get("ASTRA_DB_SECONDARY_KEYSPACE")
     ASTRA_DB_API_ENDPOINT = os.environ["ASTRA_DB_API_ENDPOINT"]
     ASTRA_DB_APPLICATION_TOKEN = os.environ["ASTRA_DB_APPLICATION_TOKEN"]
     ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE")
@@ -167,19 +167,3 @@ ADMIN_ENV_VARIABLE_MAP = {
     }
     for admin_env in ADMIN_ENV_LIST
 }
-
-# core-specific (legacy) flags
-TEST_SKIP_COLLECTION_DELETE: bool
-if os.getenv("TEST_SKIP_COLLECTION_DELETE"):
-    TEST_SKIP_COLLECTION_DELETE = int(os.environ["TEST_SKIP_COLLECTION_DELETE"]) != 0
-else:
-    TEST_SKIP_COLLECTION_DELETE = False
-
-ASTRA_DB_OPS_APPLICATION_TOKEN = os.environ.get(
-    "ASTRA_DB_OPS_APPLICATION_TOKEN",
-    ASTRA_DB_APPLICATION_TOKEN or "no_token!",
-)
-ASTRA_DB_ID = os.environ.get("ASTRA_DB_ID", "")
-ASTRA_DB_KEYSPACE = os.environ.get("ASTRA_DB_KEYSPACE")
-ASTRA_DB_REGION = os.environ.get("ASTRA_DB_REGION")
-TEST_ASTRADBOPS = int(os.environ.get("TEST_ASTRADBOPS", "0")) != 0

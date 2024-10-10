@@ -26,11 +26,10 @@ from astrapy.info import CollectionDescriptor, DatabaseInfo
 
 from ..conftest import (
     IS_ASTRA_DB,
-    SECONDARY_NAMESPACE,
+    SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
-    sync_fail_if_not_removed,
 )
 
 
@@ -188,7 +187,7 @@ class TestDDLSync:
     ) -> None:
         assert isinstance(sync_database.id, str)
         assert isinstance(sync_database.name(), str)
-        assert sync_database.keyspace == data_api_credentials_kwargs["namespace"]
+        assert sync_database.keyspace == data_api_credentials_kwargs["keyspace"]
         assert isinstance(sync_database.info(), DatabaseInfo)
         assert isinstance(sync_database.info().raw_info, dict)
 
@@ -220,7 +219,7 @@ class TestDDLSync:
         assert options.vector.dimension == 2
 
     @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
+        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
     )
     @pytest.mark.describe("test of Database list_collections on cross-keyspaces, sync")
     def test_database_list_collections_cross_keyspace_sync(
@@ -230,34 +229,11 @@ class TestDDLSync:
         data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
         assert TEST_COLLECTION_NAME not in sync_database.list_collection_names(
-            keyspace=data_api_credentials_info["secondary_namespace"]
+            keyspace=data_api_credentials_info["secondary_keyspace"]
         )
 
-    @sync_fail_if_not_removed
     @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
-    )
-    @pytest.mark.describe("test of Database use_namespace, sync")
-    def test_database_use_namespace_sync(
-        self,
-        sync_database: Database,
-        sync_collection: Collection,
-        data_api_credentials_kwargs: DataAPICredentials,
-        data_api_credentials_info: DataAPICredentialsInfo,
-    ) -> None:
-        # make a copy to avoid mutating the fixture
-        t_database = sync_database._copy()
-        assert t_database == sync_database
-        assert t_database.keyspace == data_api_credentials_kwargs["namespace"]
-        assert TEST_COLLECTION_NAME in t_database.list_collection_names()
-
-        t_database.use_namespace(data_api_credentials_info["secondary_namespace"])
-        assert t_database != sync_database
-        assert t_database.keyspace == data_api_credentials_info["secondary_namespace"]
-        assert TEST_COLLECTION_NAME not in t_database.list_collection_names()
-
-    @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
+        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
     )
     @pytest.mark.describe("test of Database use_keyspace, sync")
     def test_database_use_keyspace_sync(
@@ -270,16 +246,16 @@ class TestDDLSync:
         # make a copy to avoid mutating the fixture
         t_database = sync_database._copy()
         assert t_database == sync_database
-        assert t_database.keyspace == data_api_credentials_kwargs["namespace"]
+        assert t_database.keyspace == data_api_credentials_kwargs["keyspace"]
         assert TEST_COLLECTION_NAME in t_database.list_collection_names()
 
-        t_database.use_keyspace(data_api_credentials_info["secondary_namespace"])  # type: ignore[arg-type]
+        t_database.use_keyspace(data_api_credentials_info["secondary_keyspace"])  # type: ignore[arg-type]
         assert t_database != sync_database
-        assert t_database.keyspace == data_api_credentials_info["secondary_namespace"]
+        assert t_database.keyspace == data_api_credentials_info["secondary_keyspace"]
         assert TEST_COLLECTION_NAME not in t_database.list_collection_names()
 
     @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
+        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
     )
     @pytest.mark.describe("test of cross-keyspace collection lifecycle, sync")
     def test_collection_keyspace_sync(
@@ -294,15 +270,15 @@ class TestDDLSync:
         database_on_secondary = client.get_database(
             data_api_credentials_kwargs["api_endpoint"],
             token=data_api_credentials_kwargs["token"],
-            keyspace=data_api_credentials_info["secondary_namespace"],
+            keyspace=data_api_credentials_info["secondary_keyspace"],
         )
         sync_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME1,
-            keyspace=data_api_credentials_info["secondary_namespace"],
+            keyspace=data_api_credentials_info["secondary_keyspace"],
         )
         col2_on_secondary = sync_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME2,
-            keyspace=data_api_credentials_info["secondary_namespace"],
+            keyspace=data_api_credentials_info["secondary_keyspace"],
         )
         assert (
             TEST_LOCAL_COLLECTION_NAME1 in database_on_secondary.list_collection_names()
@@ -370,7 +346,7 @@ class TestDDLSync:
         database = client.get_database(
             api_endpoint,
             token=token,
-            keyspace=data_api_credentials_kwargs["namespace"],
+            keyspace=data_api_credentials_kwargs["keyspace"],
         )
         assert isinstance(database.list_collection_names(), list)
 

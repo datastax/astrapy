@@ -25,11 +25,10 @@ from astrapy.info import CollectionDescriptor, DatabaseInfo
 
 from ..conftest import (
     IS_ASTRA_DB,
-    SECONDARY_NAMESPACE,
+    SECONDARY_KEYSPACE,
     TEST_COLLECTION_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
-    async_fail_if_not_removed,
 )
 
 
@@ -189,7 +188,7 @@ class TestDDLAsync:
     ) -> None:
         assert isinstance(async_database.id, str)
         assert isinstance(async_database.name(), str)
-        assert async_database.keyspace == data_api_credentials_kwargs["namespace"]
+        assert async_database.keyspace == data_api_credentials_kwargs["keyspace"]
         assert isinstance(async_database.info(), DatabaseInfo)
         assert isinstance(async_database.info().raw_info, dict)
 
@@ -221,7 +220,7 @@ class TestDDLAsync:
         assert options.vector.dimension == 2
 
     @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
+        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
     )
     @pytest.mark.describe("test of Database list_collections on cross-keyspaces, async")
     async def test_database_list_collections_cross_keyspace_async(
@@ -231,34 +230,11 @@ class TestDDLAsync:
         data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
         assert TEST_COLLECTION_NAME not in await async_database.list_collection_names(
-            keyspace=data_api_credentials_info["secondary_namespace"]
+            keyspace=data_api_credentials_info["secondary_keyspace"]
         )
 
-    @async_fail_if_not_removed
     @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
-    )
-    @pytest.mark.describe("test of Database use_namespace, async")
-    async def test_database_use_namespace_async(
-        self,
-        async_database: AsyncDatabase,
-        async_collection: AsyncCollection,
-        data_api_credentials_kwargs: DataAPICredentials,
-        data_api_credentials_info: DataAPICredentialsInfo,
-    ) -> None:
-        # make a copy to avoid mutating the fixture
-        at_database = async_database._copy()
-        assert at_database == async_database
-        assert at_database.keyspace == data_api_credentials_kwargs["namespace"]
-        assert TEST_COLLECTION_NAME in await at_database.list_collection_names()
-
-        at_database.use_namespace(data_api_credentials_info["secondary_namespace"])
-        assert at_database != async_database
-        assert at_database.keyspace == data_api_credentials_info["secondary_namespace"]
-        assert TEST_COLLECTION_NAME not in await at_database.list_collection_names()
-
-    @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
+        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
     )
     @pytest.mark.describe("test of Database use_keyspace, async")
     async def test_database_use_keyspace_async(
@@ -271,16 +247,16 @@ class TestDDLAsync:
         # make a copy to avoid mutating the fixture
         at_database = async_database._copy()
         assert at_database == async_database
-        assert at_database.keyspace == data_api_credentials_kwargs["namespace"]
+        assert at_database.keyspace == data_api_credentials_kwargs["keyspace"]
         assert TEST_COLLECTION_NAME in await at_database.list_collection_names()
 
-        at_database.use_keyspace(data_api_credentials_info["secondary_namespace"])  # type: ignore[arg-type]
+        at_database.use_keyspace(data_api_credentials_info["secondary_keyspace"])  # type: ignore[arg-type]
         assert at_database != async_database
-        assert at_database.keyspace == data_api_credentials_info["secondary_namespace"]
+        assert at_database.keyspace == data_api_credentials_info["secondary_keyspace"]
         assert TEST_COLLECTION_NAME not in await at_database.list_collection_names()
 
     @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
+        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
     )
     @pytest.mark.describe("test of cross-keyspace collection lifecycle, async")
     async def test_collection_keyspace_async(
@@ -295,15 +271,15 @@ class TestDDLAsync:
         database_on_secondary = client.get_async_database(
             data_api_credentials_kwargs["api_endpoint"],
             token=data_api_credentials_kwargs["token"],
-            keyspace=data_api_credentials_info["secondary_namespace"],
+            keyspace=data_api_credentials_info["secondary_keyspace"],
         )
         await async_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME1,
-            keyspace=data_api_credentials_info["secondary_namespace"],
+            keyspace=data_api_credentials_info["secondary_keyspace"],
         )
         col2_on_secondary = await async_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME2,
-            keyspace=data_api_credentials_info["secondary_namespace"],
+            keyspace=data_api_credentials_info["secondary_keyspace"],
         )
         assert (
             TEST_LOCAL_COLLECTION_NAME1
@@ -372,7 +348,7 @@ class TestDDLAsync:
         a_database = client.get_async_database(
             api_endpoint,
             token=token,
-            keyspace=data_api_credentials_kwargs["namespace"],
+            keyspace=data_api_credentials_kwargs["keyspace"],
         )
         coll_names = await a_database.list_collection_names()
         assert isinstance(coll_names, list)

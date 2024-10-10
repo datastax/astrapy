@@ -20,7 +20,6 @@ import pytest
 
 from astrapy import Collection, Database
 from astrapy.exceptions import DataAPIResponseException
-from astrapy.operations import DeleteOne, InsertMany, InsertOne, ReplaceOne, UpdateOne
 
 
 class TestVectorizeMethodsSync:
@@ -47,22 +46,19 @@ class TestVectorizeMethodsSync:
                     "t": "seeds",
                     "$vectorize": "Other plants rely on wind to propagate their seeds.",
                 },
+                {
+                    "t": "dog",
+                    "$vector": [0.01] * service_vector_dimension,
+                },
+                {
+                    "t": "cat_novector",
+                },
+                {
+                    "t": "spider",
+                    "$vectorize": "The eye pattern is a primary criterion to the family.",
+                },
             ],
         )
-        with pytest.warns(DeprecationWarning):
-            col.insert_many(
-                [{"t": "dog"}, {"t": "cat_novector"}, {"t": "spider"}],
-                vectorize=[
-                    None,
-                    None,
-                    "The eye pattern is a primary criterion to the family.",
-                ],
-                vectors=[
-                    [0.01] * service_vector_dimension,
-                    None,
-                    None,
-                ],
-            )
 
         doc = col.find_one(
             {},
@@ -127,41 +123,6 @@ class TestVectorizeMethodsSync:
             sort={"$vectorize": "yet another giant construction in this suburb."},
         )
         assert d1res.deleted_count == 1
-
-    @pytest.mark.describe("test of bulk_write with vectorize, sync")
-    def test_collection_bulk_write_vectorize_sync(
-        self,
-        sync_empty_service_collection: Collection,
-    ) -> None:
-        col = sync_empty_service_collection
-
-        with pytest.warns(DeprecationWarning):
-            bw_ops = [
-                InsertOne({"a": 1}, vectorize="The cat is on the table."),
-                InsertMany(
-                    [{"a": 2}, {"z": 0}],
-                    vectorize=[
-                        "That is a fine spaghetti dish!",
-                        "I am not debating the effectiveness of such approach...",
-                    ],
-                ),
-                UpdateOne(
-                    {},
-                    {"$set": {"b": 1}},
-                    vectorize="Oh, I love a nice bolognese pasta meal!",
-                ),
-                ReplaceOne({}, {"a": 10}, vectorize="The kitty sits on the desk."),
-                DeleteOne({}, vectorize="I don't argue with the proposed plan..."),
-            ]
-        with pytest.warns(DeprecationWarning):
-            col.bulk_write(bw_ops, ordered=True)
-        found = [
-            {k: v for k, v in doc.items() if k != "_id"}
-            for doc in col.find({}, projection=["a", "b"])
-        ]
-        assert len(found) == 2
-        assert {"a": 10} in found
-        assert {"a": 2, "b": 1} in found
 
     @pytest.mark.describe(
         "test of include_sort_vector in collection vectorize find, sync"

@@ -54,7 +54,6 @@ API_VERSION_ENV_MAP = {
 # Defaults/settings for Data API requests
 DEFAULT_INSERT_MANY_CHUNK_SIZE = 50
 DEFAULT_INSERT_MANY_CONCURRENCY = 20
-DEFAULT_BULK_WRITE_CONCURRENCY = 10
 DEFAULT_REQUEST_TIMEOUT_MS = 30000
 DEFAULT_DATA_API_AUTH_HEADER = "Token"
 EMBEDDING_HEADER_AWS_ACCESS_ID = "X-Embedding-Access-Id"
@@ -98,35 +97,3 @@ DEFAULT_REDACTED_HEADER_NAMES = {
     EMBEDDING_HEADER_AWS_SECRET_ID,
     EMBEDDING_HEADER_API_KEY,
 }
-
-# Deprecation notices for the phasing out of 'namespace'
-NAMESPACE_DEPRECATION_NOTICE_METHOD = (
-    "The term 'namespace' is being replaced by 'keyspace' throughout the Data API and "
-    "the clients. Please adapt method and parameter names consistently (examples: "
-    "`db_admin.findNamespaces` => `db_admin.findKeyspaces`; `collection.namespace` => "
-    "`collection.keyspace`; `database.list_collections(namespace=...)` => `database."
-    "list_collections(keyspace=...)`). See https://docs.datastax.com/en/astra-db-"
-    "serverless/api-reference/client-versions.html#version-1-5 for more information."
-)
-NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_SUBJECT = "Parameter `update_db_namespace`"
-NAMESPACE_DEPRECATION_NOTICE_UPDATEDBNS_DETAILS = (
-    "Please replace the parameter with `update_db_keyspace`. "
-    "See https://docs.datastax.com/en/astra-db-serverless/api-reference/client-"
-    "versions.html#version-1-5 for more information."
-)
-NAMESPACE_DEPRECATION_NOTICE_NS_SUBJECT = "Parameter `namespace`"
-NAMESPACE_DEPRECATION_NOTICE_NS_DETAILS = (
-    "Please replace the parameter with `keyspace`. "
-    "See https://docs.datastax.com/en/astra-db-serverless/api-reference/client-"
-    "versions.html#version-1-5 for more information."
-)
-
-# Other deprecation notices
-SET_CALLER_DEPRECATION_NOTICE = (
-    "Please provide the caller(s) at constructor time through the "
-    "`callers` list parameter."
-)
-CALLER_NAME_VERSION_DEPRECATION_NOTICE_DETAILS = (
-    "Please pass any caller identities as the `callers` constructor parameter: "
-    "`callers=[('cname1', 'cversion1'), ('cname2', 'cversion2'), ...]`."
-)

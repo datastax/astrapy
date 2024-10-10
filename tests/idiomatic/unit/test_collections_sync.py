@@ -19,9 +19,8 @@ import pytest
 from astrapy import Collection, Database
 
 from ..conftest import (
-    SECONDARY_NAMESPACE,
+    SECONDARY_KEYSPACE,
     DataAPICredentialsInfo,
-    sync_fail_if_not_removed,
 )
 
 
@@ -52,84 +51,6 @@ class TestCollectionsSync:
         assert col1 == col1._copy()
         assert col1 == col1.with_options()
         assert col1 == col1.to_async().to_sync()
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe(
-        "test of Collection set_caller and caller_name in rich _copy, sync"
-    )
-    def test_deprecated_caller_in_rich_copy_collection_sync(
-        self,
-        sync_database: Database,
-    ) -> None:
-        with pytest.warns(DeprecationWarning):
-            col1 = Collection(
-                sync_database,
-                "id_test_collection",
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        assert col1 == Collection(
-            sync_database,
-            "id_test_collection",
-            callers=[("c_n", "c_v")],
-        )
-        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
-            Collection(
-                sync_database,
-                "id_test_collection",
-                callers=[("c_n", "c_v")],
-                caller_name="c_n",
-            )
-        with pytest.raises(ValueError, match="`caller_name` and `caller_version`"):
-            Collection(
-                sync_database,
-                "id_test_collection",
-                callers=[("c_n", "c_v")],
-                caller_version="c_v",
-            )
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1._copy(caller_name="o", caller_version="o")
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1._copy(caller_name="o")
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1._copy(caller_version="o")
-
-        with pytest.warns(DeprecationWarning):
-            col2 = col1._copy(
-                database=sync_database._copy(token="x_t"),
-                name="other_name",
-                keyspace="other_keyspace",
-                caller_name="x_n",
-                caller_version="x_v",
-            )
-        assert col2 != col1
-
-        with pytest.warns(DeprecationWarning):
-            col2.set_caller(
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        col3 = col2._copy(
-            database=sync_database,
-            name="id_test_collection",
-            keyspace=sync_database.keyspace,
-        )
-        assert col3 == col1
-
-        with pytest.warns(DeprecationWarning):
-            assert col1.with_options(caller_name="x", caller_version="x") != col1
-        with pytest.warns(DeprecationWarning):
-            assert col1.with_options(caller_name="x") != col1
-        with pytest.warns(DeprecationWarning):
-            assert col1.with_options(caller_version="x") != col1
-
-        with pytest.warns(DeprecationWarning):
-            assert (
-                col1.with_options(caller_name="x", caller_version="x").with_options(
-                    caller_name="c_n", caller_version="c_v"
-                )
-                == col1
-            )
 
     @pytest.mark.describe("test of Collection rich _copy, sync")
     def test_rich_copy_collection_sync(
@@ -165,48 +86,6 @@ class TestCollectionsSync:
         assert (
             col1.with_options(callers=callers1).with_options(callers=callers0) == col1
         )
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe(
-        "test of set_caller and caller_name in Collection rich conversions, sync"
-    )
-    def test_deprecated_caller_in_rich_convert_collection_sync(
-        self,
-        sync_database: Database,
-    ) -> None:
-        with pytest.warns(DeprecationWarning):
-            col1 = Collection(
-                sync_database,
-                "id_test_collection",
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1.to_async(caller_name="o").to_sync()
-        with pytest.warns(DeprecationWarning):
-            assert col1 != col1.to_async(caller_version="o").to_sync()
-
-        with pytest.warns(DeprecationWarning):
-            col2a = col1.to_async(
-                database=sync_database._copy(token="x_t").to_async(),
-                name="other_name",
-                keyspace="other_keyspace",
-                caller_name="x_n",
-                caller_version="x_v",
-            )
-        assert col2a.to_sync() != col1
-
-        with pytest.warns(DeprecationWarning):
-            col2a.set_caller(
-                caller_name="c_n",
-                caller_version="c_v",
-            )
-        col3 = col2a.to_sync(
-            database=sync_database,
-            name="id_test_collection",
-            keyspace=sync_database.keyspace,
-        )
-        assert col3 == col1
 
     @pytest.mark.describe("test of Collection rich conversions, sync")
     def test_rich_convert_collection_sync(
@@ -266,88 +145,8 @@ class TestCollectionsSync:
         col1 = Collection(db1, "coll")
         assert col1.name == "coll"
 
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of Collection set_caller, sync")
-    def test_collection_set_caller_sync(
-        self,
-        sync_database: Database,
-    ) -> None:
-        col1 = Collection(
-            sync_database,
-            "id_test_collection",
-            caller_name="c_n1",
-            caller_version="c_v1",
-        )
-        col2 = Collection(
-            sync_database,
-            "id_test_collection",
-            caller_name="c_n2",
-            caller_version="c_v2",
-        )
-        col2.set_caller(
-            caller_name="c_n1",
-            caller_version="c_v1",
-        )
-        assert col1 == col2
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test collection conversions with caller mutableness, sync")
-    def test_collection_conversions_caller_mutableness_sync(
-        self,
-        sync_database: Database,
-    ) -> None:
-        col1 = Collection(
-            sync_database,
-            "id_test_collection",
-            caller_name="c_n1",
-            caller_version="c_v1",
-        )
-        col1.set_caller(
-            caller_name="c_n2",
-            caller_version="c_v2",
-        )
-        col2 = Collection(
-            sync_database,
-            "id_test_collection",
-            caller_name="c_n2",
-            caller_version="c_v2",
-        )
-        assert col1._copy() == col2
-        assert col1.to_async().to_sync() == col2
-
-    @sync_fail_if_not_removed
     @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary namespace provided"
-    )
-    @pytest.mark.describe("test collection namespace property, sync")
-    def test_collection_namespace_sync(
-        self,
-        sync_database: Database,
-        data_api_credentials_info: DataAPICredentialsInfo,
-    ) -> None:
-        col1 = sync_database.get_collection("id_test_collection")
-        with pytest.warns(DeprecationWarning):
-            col1.namespace
-        assert col1.namespace == sync_database.namespace
-
-        col2 = sync_database.get_collection(
-            "id_test_collection",
-            namespace=data_api_credentials_info["secondary_namespace"],
-        )
-        assert col2.namespace == data_api_credentials_info["secondary_namespace"]
-
-        col3 = Collection(sync_database, "id_test_collection")
-        assert col3.namespace == sync_database.namespace
-
-        col4 = Collection(
-            sync_database,
-            "id_test_collection",
-            namespace=data_api_credentials_info["secondary_namespace"],
-        )
-        assert col4.namespace == data_api_credentials_info["secondary_namespace"]
-
-    @pytest.mark.skipif(
-        SECONDARY_NAMESPACE is None, reason="No secondary keyspace provided"
+        SECONDARY_KEYSPACE is None, reason="No secondary keyspace provided"
     )
     @pytest.mark.describe("test collection keyspace property, sync")
     def test_collection_keyspace_sync(
@@ -360,9 +159,9 @@ class TestCollectionsSync:
 
         col2 = sync_database.get_collection(
             "id_test_collection",
-            namespace=data_api_credentials_info["secondary_namespace"],
+            keyspace=data_api_credentials_info["secondary_keyspace"],
         )
-        assert col2.keyspace == data_api_credentials_info["secondary_namespace"]
+        assert col2.keyspace == data_api_credentials_info["secondary_keyspace"]
 
         col3 = Collection(sync_database, "id_test_collection")
         assert col3.keyspace == sync_database.keyspace
@@ -370,6 +169,8 @@ class TestCollectionsSync:
         col4 = Collection(
             sync_database,
             "id_test_collection",
-            namespace=data_api_credentials_info["secondary_namespace"],
+            keyspace=data_api_credentials_info["secondary_keyspace"],
         )
-        assert col4.keyspace == data_api_credentials_info["secondary_namespace"]
+        assert col4.keyspace == data_api_credentials_info["secondary_keyspace"]
+        assert col1 == col3
+        assert col2 == col4

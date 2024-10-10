@@ -49,10 +49,6 @@ def get_version() -> str:
 __version__: str = get_version()
 
 
-import astrapy.constants  # noqa: E402
-import astrapy.cursors  # noqa: E402
-import astrapy.ids  # noqa: E402
-import astrapy.operations  # noqa: F401, E402
 from astrapy.admin import (  # noqa: E402
     AstraDBAdmin,
     AstraDBDatabaseAdmin,
@@ -78,15 +74,11 @@ __all__ = [
 
 
 __pdoc__ = {
-    "api": False,
     "api_commander": False,
     "api_options": False,
-    "core": False,
-    "db": False,
     "defaults": False,
     "ids": False,
     "meta": False,
-    "ops": False,
     "request_tools": False,
     "transform_payload": False,
     "user_agents": False,

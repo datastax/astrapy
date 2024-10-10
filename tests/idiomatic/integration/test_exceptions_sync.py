@@ -19,7 +19,6 @@ import pytest
 from astrapy import Collection, Database
 from astrapy.cursors import CursorState
 from astrapy.exceptions import (
-    BulkWriteException,
     CollectionAlreadyExistsException,
     CollectionNotFoundException,
     CursorIsStartedException,
@@ -28,9 +27,8 @@ from astrapy.exceptions import (
     InsertManyException,
     TooManyDocumentsToCountException,
 )
-from astrapy.operations import InsertOne
 
-from ..conftest import IS_ASTRA_DB, DataAPICredentials, sync_fail_if_not_removed
+from ..conftest import IS_ASTRA_DB, DataAPICredentials
 
 
 class TestExceptionsSync:
@@ -184,71 +182,6 @@ class TestExceptionsSync:
         with pytest.raises(DataAPIResponseException):
             col.update_one({"a": 1}, {"$set": {"a": -1}})
 
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of exceptions in ordered bulk_write, sync")
-    def test_ordered_bulk_write_failures_sync(
-        self,
-        sync_empty_collection: Collection,
-    ) -> None:
-        i1 = InsertOne({"_id": "a"})
-        i3 = InsertOne({"_id": "z"})
-
-        with pytest.raises(BulkWriteException) as exc:
-            sync_empty_collection.bulk_write([i1, i1, i3], ordered=True)
-        assert set(exc.value.partial_result.bulk_api_results.keys()) == {0}
-        assert exc.value.partial_result.deleted_count == 0
-        assert exc.value.partial_result.inserted_count == 1
-        assert exc.value.partial_result.matched_count == 0
-        assert exc.value.partial_result.modified_count == 0
-        assert exc.value.partial_result.upserted_count == 0
-        assert exc.value.partial_result.upserted_ids == {}
-        assert sync_empty_collection.count_documents({}, upper_bound=10) == 1
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of hard exceptions in ordered bulk_write, sync")
-    def test_ordered_bulk_write_error_sync(
-        self,
-        sync_empty_collection: Collection,
-    ) -> None:
-        i1 = InsertOne({"_id": "a"})
-        i2 = InsertOne({"_id": ValueError("unserializable")})
-
-        with pytest.raises(TypeError):
-            sync_empty_collection.bulk_write([i1, i2])
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of exceptions in unordered bulk_write, sync")
-    def test_unordered_bulk_write_failures_sync(
-        self,
-        sync_empty_collection: Collection,
-    ) -> None:
-        i1 = InsertOne({"_id": "a"})
-        i3 = InsertOne({"_id": "z"})
-
-        with pytest.raises(BulkWriteException) as exc:
-            sync_empty_collection.bulk_write([i1, i1, i3], ordered=False)
-        # whether '0' or '1' succeeds in inserting 'a' is random:
-        assert set(exc.value.partial_result.bulk_api_results.keys()) in [{0, 2}, {1, 2}]
-        assert exc.value.partial_result.deleted_count == 0
-        assert exc.value.partial_result.inserted_count == 2
-        assert exc.value.partial_result.matched_count == 0
-        assert exc.value.partial_result.modified_count == 0
-        assert exc.value.partial_result.upserted_count == 0
-        assert exc.value.partial_result.upserted_ids == {}
-        assert sync_empty_collection.count_documents({}, upper_bound=10) == 2
-
-    @sync_fail_if_not_removed
-    @pytest.mark.describe("test of hard exceptions in unordered bulk_write, sync")
-    def test_unordered_bulk_write_error_sync(
-        self,
-        sync_empty_collection: Collection,
-    ) -> None:
-        i1 = InsertOne({"_id": "a"})
-        i2 = InsertOne({"_id": ValueError("unserializable")})
-
-        with pytest.raises(TypeError):
-            sync_empty_collection.bulk_write([i1, i2], ordered=False)
-
     @pytest.mark.describe("test of check_exists for database create_collection, sync")
     def test_database_create_collection_check_exists_sync(
         self,
@@ -312,7 +245,7 @@ class TestExceptionsSync:
         sync_database: Database,
         data_api_credentials_kwargs: DataAPICredentials,
     ) -> None:
-        hacked_ks = (data_api_credentials_kwargs["namespace"] or "") + "_hacked"
+        hacked_ks = (data_api_credentials_kwargs["keyspace"] or "") + "_hacked"
         with pytest.raises(DevOpsAPIException):
             sync_database._copy(keyspace=hacked_ks).info()
 

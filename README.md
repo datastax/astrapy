@@ -2,8 +2,7 @@
 
 A pythonic client for [DataStax Astra DB](https://astra.datastax.com).
 
-_This README targets AstraPy version **1.0.0+**, which introduces a whole new API.
-Click [here](https://github.com/datastax/astrapy/blob/cd3f5ce8146093e10a095709c0f5c3f8e3f2c7da/README.md) for the pre-existing API (fully compatible with newer versions)._
+_This README targets **AstraPy version 2.0+**. Click [here](https://github.com/datastax/astrapy/blob/4601c5fa749925d961de1f114ca27690d1a71b13/README.md) for v1 and [here](https://github.com/datastax/astrapy/blob/cd3f5ce8146093e10a095709c0f5c3f8e3f2c7da/README.md) for the v0 API (which you should not really be using by now)._
 
 
 ## Quickstart
@@ -253,7 +252,6 @@ Tests are grouped in three _blocks_ (in as many subdirs of `tests/`):
 
 - **idiomatic**: all 1.0+ classes and APIs, except...
 - **vectorize**: ... everything making use of `$vectorize` (within the idiomatic classes)
-- _(core: pre-1.0 classes). Frozen as of v1.5, deprecated for removal in v2.0_
 
 Actually, for convenience, _sub-blocks_ of tests are considered:
 
@@ -262,8 +260,6 @@ Actually, for convenience, _sub-blocks_ of tests are considered:
 - **idiomatic admin nonAstra**: the nonAstra-specific admin operations
 - **vectorize in-depth**: many Data API interactions for a single choice of provider/model. This is mostly test the client
 - **vectorize all-providers**: a slightly more shallow test repeated for all providers, models, auth methods etc. This is mostly testing the API
-- _(core regular: everything except DevOps interactions)_
-- _(core ops: core DevOps operations)_
 
 Tests can be run on three types of Data API _targets_ (with slight differences in what is applicable):
 
@@ -275,7 +271,7 @@ Depending on the (sub-block, target) combination, some environment variables may
 Templates for the environment variables are to be found in `tests/env_templates`.
 
 The general expectation is that idiomatic non-Admin tests, and vectorize in-depth tests, are
-part of the main CI flow; conversely, core, admin and vectorize all-providers are kept as a
+part of the main CI flow; conversely, admin and vectorize all-providers are kept as a
 manual task to run (locally in most cases) when circumstances require it (use your judgement).
 
 #### Required environment variables
@@ -286,13 +282,12 @@ of testing:
 - **DockerCompose**: generally no variables needed, except:
   - **vectorize in-depth**: provide as in `env.vectorize-minimal.template`
   - **vectorize all-providers**: provide as in `env.vectorize.template`
-  - (also note that _core ops_ and _idiomatic admin Astra_ amount to nothing in this case)
+  - (also note that _idiomatic admin Astra_ amounts to nothing in this case)
 - **nonAstra**: all tests require as in `env.local.template`, plus:
   - **vectorize in-depth**: also provide as in `env.vectorize-minimal.template`
   - **vectorize all-providers**: also provide as in `env.vectorize.template`
-  - (also note that _core ops_ and _idiomatic admin Astra_ amount to nothing in this case)
+  - (also note that _idiomatic admin Astra_ amounts to nothing in this case)
 - **Astra**: all tests require as in `env.astra.template`, plus:
-  - **core ops**: the token must have at least "Database Administrator" role (possibly through definition of a separate `ASTRA_DB_OPS_APPLICATION_TOKEN`), and `ASTRA_DB_ID` must also be defined
   - **idiomatic admin Astra**: also provide as in `env.astra.admin.template`
   - **vectorize in-depth**: also provide as in `env.vectorize-minimal.template`
   - **vectorize all-providers**: also provide as in `env.vectorize.template`
@@ -304,20 +299,6 @@ For the **DockerCompose** case, prepend all of the following with `DOCKER_COMPOS
 
 All the usual `pytest` ways of restricting the test selection hold in addition
 (e.g. `poetry run pytest tests/idiomatic/unit` or `[...] -k <test_name_selector>`).
-
-##### _core regular_:
-
-```
-poetry run pytest tests/core
-```
-
-##### _core ops_:
-
-Note the special variable needed to actually run this. You will have to manually clean up afterwards.
-
-```
-TEST_ASTRADBOPS="1" poetry run pytest tests/core/test_ops.py
-```
 
 ##### _idiomatic regular_:
 
@@ -379,12 +360,6 @@ Increase logging level to `DEBUG` (i.e. level `10`):
 poetry run pytest [...] -o log_cli=1 --log-cli-level=10
 ```
 
-Do not drop collections (valid for core):
-
-```
-TEST_SKIP_COLLECTION_DELETE=1 poetry run pytest [...]
-```
-
 
 ## Appendices
 
@@ -433,29 +408,6 @@ from astrapy.ids import (
 )
 ```
 
-Operations (for `bulk_write` collection method):
-
-```python
-from astrapy.operations import (
-    BaseOperation,
-    InsertOne,
-    InsertMany,
-    UpdateOne,
-    UpdateMany,
-    ReplaceOne,
-    DeleteOne,
-    DeleteMany,
-    AsyncBaseOperation,
-    AsyncInsertOne,
-    AsyncInsertMany,
-    AsyncUpdateOne,
-    AsyncUpdateMany,
-    AsyncReplaceOne,
-    AsyncDeleteOne,
-    AsyncDeleteMany,
-)
-```
-
 Result classes:
 
 ```python
@@ -465,7 +417,6 @@ from astrapy.results import (
     InsertOneResult,
     InsertManyResult,
     UpdateResult,
-    BulkWriteResult,
 )
 ```
 
@@ -473,7 +424,6 @@ Exceptions:
 
 ```python
 from astrapy.exceptions import (
-    BulkWriteException,
     CollectionAlreadyExistsException,
     CollectionNotFoundException,
     CumulativeOperationException,
@@ -542,47 +492,10 @@ from astrapy.cursors import (
 ### Appendix B: compatibility with pre-1.0.0 library
 
 If your code still uses the pre-1.0.0 astrapy (i.e. `from astrapy.db import AstraDB, AstraDBCollection` and so on)
-you are strongly advised to migrate to the current API, which has more capabilities and improved interfaces.
+you are strongly advised to migrate to the current API. All of the astrapy pre-1.0 API (later dubbed "core")
+works throughout *astrapy v1*, albeit with a deprecation warning on astrapy v. 1.5.
 
-All of the astrapy pre-1.0 API (now dubbed "core") works throughout *astrapy v1*, albeit with a deprecation warning
-on astrapy v. 1.5.
+Version 2 drops "core" support entirely. In order to use astrapy version 2.0+, you need to migrate your application.
+Check the links at the beginning of this README for the updated documentation and API reference.
 
-Version 1.5 (the first to not wrap internally "core" as the engine of its own "idiomatic" API) introduces
-several deprecation notices (nothing is retired yet), including a submodule-wide deprecation of "core".
-
-**Version 2 of astrapy will finally remove "core" entirely (along with a few other things).**
-
-#### v1 is fully compatible with "core", i.e. with pre-1.0.0
-
-That being said, there are no known breakings of backward compatibility:
-**legacy code would run with astrapy v1 just as well**
-Here is a recap of the minor changes that came _to the old API_ with 1.0.0 (and beyond, up to 1.5):
-
-- added a submodule-wide deprecation warning of the whole "core" library (v 1.5)
-- added 'options' parameter to [Async]AstraDBCollection.update_one (v. 1.4.2+)
-- prefetched find iterators: fix second-thread hangups in some cases (v. 1.4.2+)
-- Added support for null tokens (with the effect of no authentication/token header in requests)
-- Added Content-Type header to all HTTP requests to the API
-- Added methods to `[Async]AstraDBCollection`: `delete_one_filter`, 
-- Paginated find methods (sync/async) type change from Iterable to Generator
-- Bugfix: handling of the mutable caller identity in copy and convert (sync/async) methods
-- Default value of `sort` is `None` and not `{}` for `find` (sync/async)
-- Introduction of `[Async]AstraDBCollection.chunked_delete_many` method
-- Added `projection` parameter to `find_one_and[replace/update]` (sync/async)
-- Bugfix: projection was silently ignored in `vector_find_one_and_[replace/update]` (sync/async)
-- Added `options` to `update_many` (sync/async)
-- `[Async]AstraDBDatabase.chunked_insert_many` does not intercept generic exceptions anymore, only `APIRequestError`
-- Bugfix: `AsyncAstraDBCollection.async chunked_insert_many` stops at the first error when `ordered=True`
-- Added payload info to `DataAPIException`
-- Added `find_one_and_delete` method (sync/async)
-- Added `skip_error_check` parameter to `delete_many` (sync/async)
-- Timeout support throughout the library
-- Added `sort` to `update_one`, `delete_one` and `delete_one_by_predicate` methods (sync/async)
-- Full support for UUID v1,3,4,5,6,7,8 and ObjectID at the collection data I/O level
-- `AstraDBOps.create_database` raises errors in case of failures
-- `AstraDBOps.create_database`, return type corrected
-- Fixed behaviour and return type of `AstraDBOps.create_keyspace` and `AstraDBOps.terminate_db`
-- Added `AstraDBOps.delete_keyspace` method
-- Method `create_collection` of `AstraDB` relaxes checks on passing `dimensions` for vector collections
-- AstraDBOps core class acquired async methods: `async_get_databases`, `async_get_database`, `async_create_database`, `async_terminate_database`, `async_create_keyspace`, `async_delete_keyspace`
-
+Check out previous versions of this README for more on "core": [1.5.2](https://github.com/datastax/astrapy/blob/4601c5fa749925d961de1f114ca27690d1a71b13/README.md) and [pre-1.0](https://github.com/datastax/astrapy/blob/cd3f5ce8146093e10a095709c0f5c3f8e3f2c7da/README.md).
