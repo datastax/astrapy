@@ -1,5 +1,6 @@
 v 2.0.0
 =======
+Rename main branch from 'master' ==> `main`
 Removal of several deprecated modules/features from previous versions:
     - 'core' (i.e. pre-1.0) library
     - 'collection.bulk_write' and the associated result and exception classes
@@ -18,6 +19,7 @@ Removal of several deprecated modules/features from previous versions:
     - 'use_namespace' for Databases (switch to `use_keyspace`)
     - 'delete_all' method of Collection and AsyncCollection (use `delete_many({})`)
 Removal of unused imports from toplevel __init__.py (ids, constants, cursors)
+
 
 v. 1.5.2
 ========
