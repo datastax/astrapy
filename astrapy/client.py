@@ -202,141 +202,11 @@ class DataAPIClient:
             ... )
             >>> my_db2 = my_client.get_database(
             ...     "https://01234567-...us-west1.apps.astra.datastax.com",
-            ...     tolen="AstraCS:...",
+            ...     token="AstraCS:...",
+            ...     keyspace="prod_keyspace",
             ... )
             >>> my_coll = my_db1.create_collection("movies", dimension=2)
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
-
-        Note:
-            This method does not perform any admin-level operation through
-            the DevOps API. For actual creation of a database, see the
-            `create_database` method of class AstraDBAdmin.
-        """
-
-        keyspace_param = check_namespace_keyspace(
-            keyspace=keyspace,
-            namespace=namespace,
-        )
-
-        return self.get_database_by_api_endpoint(
-            api_endpoint=api_endpoint,
-            token=token,
-            keyspace=keyspace_param,
-            api_path=api_path,
-            api_version=api_version,
-        )
-
-    def get_async_database(
-        self,
-        api_endpoint: str,
-        *,
-        token: str | TokenProvider | None = None,
-        keyspace: str | None = None,
-        namespace: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
-    ) -> AsyncDatabase:
-        """
-        Get an AsyncDatabase object from this client, for doing data-related work.
-
-        Args:
-            api_endpoint: the API Endpoint for the target database
-                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
-                The database must exist already for the resulting object
-                to be effectively used; in other words, this invocation
-                does not create the database, just the object instance.
-                Actual admin work can be achieved by using the AstraDBAdmin object.
-            token: if supplied, is passed to the Database instead of the client token.
-                This can be either a literal token string or a subclass of
-                `astrapy.authentication.TokenProvider`.
-            keyspace: if provided, it is passed to the Database; otherwise
-                the Database class will apply an environment-specific default.
-            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
-
-        Returns:
-            a Database object with which to work on Data API collections.
-
-        Example:
-            >>> async def create_use_db(cl: DataAPIClient, api_ep: str) -> None:
-            ...     async_db = cl.get_async_database(api_ep)
-            ...     my_a_coll = await async_db.create_collection("movies", dimension=2)
-            ...     await my_a_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
-            ...
-            >>> asyncio.run(
-            ...   create_use_db(
-            ...       my_client,
-            ...       "https://01234567-...us-west1.apps.astra.datastax.com",
-            ...   )
-            ... )
-
-        Note:
-            This method does not perform any admin-level operation through
-            the DevOps API. For actual creation of a database, see the
-            `create_database` method of class AstraDBAdmin.
-        """
-
-        keyspace_param = check_namespace_keyspace(
-            keyspace=keyspace,
-            namespace=namespace,
-        )
-        return self.get_database(
-            api_endpoint=api_endpoint,
-            token=token,
-            keyspace=keyspace_param,
-            api_path=api_path,
-            api_version=api_version,
-        ).to_async()
-
-    def get_database_by_api_endpoint(
-        self,
-        api_endpoint: str,
-        *,
-        token: str | TokenProvider | None = None,
-        keyspace: str | None = None,
-        namespace: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
-    ) -> Database:
-        """
-        Get a Database object from this client, for doing data-related work.
-        The Database is specified by an API Endpoint instead of the ID and a region.
-
-        Note that using this method is generally equivalent to passing
-        an API Endpoint as parameter to the `get_database` method (see).
-
-        Args:
-            api_endpoint: the full "API Endpoint" string used to reach the Data API.
-                Example: "https://DATABASE_ID-REGION.apps.astra.datastax.com"
-            token: if supplied, is passed to the Database instead of the client token.
-                This can be either a literal token string or a subclass of
-                `astrapy.authentication.TokenProvider`.
-            keyspace: if provided, it is passed to the Database; otherwise
-                the Database class will apply an environment-specific default.
-            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
-
-        Returns:
-            a Database object with which to work on Data API collections.
-
-        Example:
-            >>> my_db0 = my_client.get_database_by_api_endpoint("01234567-...")
-            >>> my_db1 = my_client.get_database_by_api_endpoint(
-            ...     "https://01234567-....apps.astra.datastax.com",
-            ...     token="AstraCS:...",
-            ... )
-            >>> my_db2 = my_client.get_database_by_api_endpoint(
-            ...     "https://01234567-....apps.astra.datastax.com",
-            ...     keyspace="the_other_keyspace",
-            ... )
-            >>> my_coll = my_db0.create_collection("movies", dimension=2)
-            >>> my_coll.insert_one({"title": "The Title", "$vector": [0.5, 0.6]})
 
         Note:
             This method does not perform any admin-level operation through
@@ -392,6 +262,121 @@ class DataAPIClient:
                 msg = generic_api_url_parsing_error_message(api_endpoint)
                 raise ValueError(msg)
 
+    def get_async_database(
+        self,
+        api_endpoint: str,
+        *,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+    ) -> AsyncDatabase:
+        """
+        Get an AsyncDatabase object from this client, for doing data-related work.
+
+        Args:
+            api_endpoint: the API Endpoint for the target database
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+                The database must exist already for the resulting object
+                to be effectively used; in other words, this invocation
+                does not create the database, just the object instance.
+                Actual admin work can be achieved by using the AstraDBAdmin object.
+            token: if supplied, is passed to the Database instead of the client token.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
+            keyspace: if provided, it is passed to the Database; otherwise
+                the Database class will apply an environment-specific default.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
+            api_path: path to append to the API Endpoint. In typical usage, this
+                should be left to its default of "/api/json".
+            api_version: version specifier to append to the API path. In typical
+                usage, this should be left to its default of "v1".
+
+        Returns:
+            an AsyncDatabase object with which to work on Data API collections.
+
+        Example:
+            >>> async def create_use_db(cl: DataAPIClient, api_ep: str) -> None:
+            ...     async_db = cl.get_async_database(api_ep)
+            ...     my_a_coll = await async_db.create_collection("movies", dimension=2)
+            ...     await my_a_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
+            ...
+            >>> asyncio.run(
+            ...   create_use_db(
+            ...       my_client,
+            ...       "https://01234567-...us-west1.apps.astra.datastax.com",
+            ...   )
+            ... )
+
+        Note:
+            This method does not perform any admin-level operation through
+            the DevOps API. For actual creation of a database, see the
+            `create_database` method of class AstraDBAdmin.
+        """
+
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+        return self.get_database(
+            api_endpoint=api_endpoint,
+            token=token,
+            keyspace=keyspace_param,
+            api_path=api_path,
+            api_version=api_version,
+        ).to_async()
+
+    def get_database_by_api_endpoint(
+        self,
+        api_endpoint: str,
+        *,
+        token: str | TokenProvider | None = None,
+        keyspace: str | None = None,
+        namespace: str | None = None,
+        api_path: str | None = None,
+        api_version: str | None = None,
+    ) -> Database:
+        """
+        Get a Database object from this client, for doing data-related work.
+
+        Note: this is an alias for `get_database` (see).
+
+        Args:
+            api_endpoint: the API Endpoint for the target database
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+                The database must exist already for the resulting object
+                to be effectively used; in other words, this invocation
+                does not create the database, just the object instance.
+                Actual admin work can be achieved by using the AstraDBAdmin object.
+            token: if supplied, is passed to the Database instead of the client token.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
+            keyspace: if provided, it is passed to the Database; otherwise
+                the Database class will apply an environment-specific default.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
+            api_path: path to append to the API Endpoint. In typical usage, this
+                should be left to its default of "/api/json".
+            api_version: version specifier to append to the API path. In typical
+                usage, this should be left to its default of "v1".
+
+        Returns:
+            a Database object with which to work on Data API collections.
+        """
+
+        keyspace_param = check_namespace_keyspace(
+            keyspace=keyspace,
+            namespace=namespace,
+        )
+
+        return self.get_database(
+            api_endpoint=api_endpoint,
+            token=token,
+            keyspace=keyspace_param,
+            api_path=api_path,
+            api_version=api_version,
+        )
+
     def get_async_database_by_api_endpoint(
         self,
         api_endpoint: str,
@@ -404,27 +389,43 @@ class DataAPIClient:
     ) -> AsyncDatabase:
         """
         Get an AsyncDatabase object from this client, for doing data-related work.
-        The Database is specified by an API Endpoint instead of the ID and a region.
 
-        Note that using this method is generally equivalent to passing
-        an API Endpoint as parameter to the `get_async_database` method (see).
+        Note: this is an alias for `get_async_database` (see).
 
-        This method has identical behavior and signature as the sync
-        counterpart `get_database_by_api_endpoint`: please see that one
-        for more details.
+        Args:
+            api_endpoint: the API Endpoint for the target database
+                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
+                The database must exist already for the resulting object
+                to be effectively used; in other words, this invocation
+                does not create the database, just the object instance.
+                Actual admin work can be achieved by using the AstraDBAdmin object.
+            token: if supplied, is passed to the Database instead of the client token.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
+            keyspace: if provided, it is passed to the Database; otherwise
+                the Database class will apply an environment-specific default.
+            namespace: an alias for `keyspace`. *DEPRECATED*, removal in 2.0.
+            api_path: path to append to the API Endpoint. In typical usage, this
+                should be left to its default of "/api/json".
+            api_version: version specifier to append to the API path. In typical
+                usage, this should be left to its default of "v1".
+
+        Returns:
+            an AsyncDatabase object with which to work on Data API collections.
         """
 
         keyspace_param = check_namespace_keyspace(
             keyspace=keyspace,
             namespace=namespace,
         )
-        return self.get_database_by_api_endpoint(
+
+        return self.get_async_database(
             api_endpoint=api_endpoint,
             token=token,
             keyspace=keyspace_param,
             api_path=api_path,
             api_version=api_version,
-        ).to_async()
+        )
 
     def get_admin(
         self,
