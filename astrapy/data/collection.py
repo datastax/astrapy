@@ -118,7 +118,7 @@ class Collection:
             collection on the database.
         keyspace: this is the keyspace to which the collection belongs.
             If not specified, the database's working keyspace is used.
-        api_options: An instance of `astrapy.api_options.CollectionAPIOptions`
+        api_options: An instance of `astrapy.utils.api_options.CollectionAPIOptions`
             providing the general settings for interacting with the Data API.
         callers: a list of caller identities, i.e. applications, or frameworks,
             on behalf of which the Data API calls are performed. These end up
@@ -2210,7 +2210,7 @@ class AsyncCollection:
             collection on the database.
         keyspace: this is the keyspace to which the collection belongs.
             If not specified, the database's working keyspace is used.
-        api_options: An instance of `astrapy.api_options.CollectionAPIOptions`
+        api_options: An instance of `astrapy.utils.api_options.CollectionAPIOptions`
             providing the general settings for interacting with the Data API.
         callers: a list of caller identities, i.e. applications, or frameworks,
             on behalf of which the Data API calls are performed. These end up

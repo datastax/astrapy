@@ -369,14 +369,14 @@ Client, data and admin abstractions:
 
 ```python
 from astrapy import (
-    DataAPIClient,
-    Database,
-    AsyncDatabase,
-    Collection,
-    AsyncCollection,
     AstraDBAdmin,
     AstraDBDatabaseAdmin,
+    AsyncCollection,
+    AsyncDatabase,
+    Collection,
+    DataAPIClient,
     DataAPIDatabaseAdmin,
+    Database,
 )
 ```
 
@@ -384,11 +384,11 @@ Constants for data-related use:
 
 ```python
 from astrapy.constants import (
+    DefaultIdType,
+    Environment,
     ReturnDocument,
     SortDocuments,
     VectorMetric,
-    DefaultIdType,
-    Environment,
 )
 ```
 
@@ -396,6 +396,7 @@ ObjectIds and UUIDs:
 
 ```python
 from astrapy.ids import (
+    UUID,
     ObjectId,
     uuid1,
     uuid3,
@@ -404,7 +405,6 @@ from astrapy.ids import (
     uuid6,
     uuid7,
     uuid8,
-    UUID,
 )
 ```
 
@@ -453,27 +453,30 @@ Info/metadata classes:
 ```python
 from astrapy.info import (
     AdminDatabaseInfo,
-    DatabaseInfo,
-    CollectionInfo,
-    CollectionVectorServiceOptions,
     CollectionDefaultIDOptions,
-    CollectionVectorOptions,
-    CollectionOptions,
     CollectionDescriptor,
-    EmbeddingProviderParameter,
-    EmbeddingProviderModel,
-    EmbeddingProviderToken,
-    EmbeddingProviderAuthentication,
+    CollectionInfo,
+    CollectionOptions,
+    CollectionVectorOptions,
+    CollectionVectorServiceOptions,
+    DatabaseInfo,
     EmbeddingProvider,
+    EmbeddingProviderAuthentication,
+    EmbeddingProviderModel,
+    EmbeddingProviderParameter,
+    EmbeddingProviderToken,
     FindEmbeddingProvidersResult,
 )
 ```
 
-Admin-related classes and constants:
+Admin-related classes, functions and constants:
 
 ```python
 from astrapy.admin import (
+    DatabaseAdmin,
     ParsedAPIEndpoint,
+    fetch_database_info,
+    parse_api_endpoint,
 )
 ```
 
@@ -481,10 +484,11 @@ Cursors:
 
 ```python
 from astrapy.cursors import (
-    Cursor,
+    AsyncCommandCursor,
     AsyncCursor,
     CommandCursor,
-    AsyncCommandCursor,
+    Cursor,
+    CursorState,
 )
 ```
 

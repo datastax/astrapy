@@ -1,7 +1,10 @@
 v 2.0.0
 =======
-Major restructuring of the code into directories
-    - BaseCursor not exported by astrapy.cursors
+Major restructuring of the codebase into directories
+    - BaseCursor not exported by astrapy.cursors anymore
+    - some imports (supposedly not used externally) changed slightly
+    - adapted and limited scope of test_imports.py
+Cursors' state described by the `CursorState` enum
 Removal of several deprecated modules/features from previous versions:
     - 'core' (i.e. pre-1.0) library
     - 'collection.bulk_write' and the associated result and exception classes

@@ -1245,9 +1245,3 @@ class AsyncCommandCursor(Generic[T]):
         """
 
         self._alive = False
-
-
-__pdoc__ = {
-    "_LookAheadIterator": False,
-    "_AsyncLookAheadIterator": False,
-}

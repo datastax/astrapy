@@ -57,17 +57,9 @@ def test_imports() -> None:
         DataAPIDatabaseAdmin,
         Database,
     )
-    from astrapy.admin import AstraDBAdmin as AstraDBAdmin2  # noqa: F401
     from astrapy.admin import (  # noqa: F401
-        AstraDBDatabaseAdmin as AstraDBDatabaseAdmin2,
+        AstraDBAdmin as AstraDBAdmin2,
     )
-    from astrapy.admin import (  # noqa: F401
-        DataAPIDatabaseAdmin as DataAPIDatabaseAdmin2,
-    )
-    from astrapy.admin import ParsedAPIEndpoint  # noqa: F401
-    from astrapy.client import DataAPIClient as DataAPIClient2  # noqa: F401
-    from astrapy.collection import AsyncCollection as AsyncCollection2  # noqa: F401
-    from astrapy.collection import Collection as Collection2  # noqa: F401
     from astrapy.constants import (  # noqa: F401
         DefaultIdType,
         Environment,
@@ -80,11 +72,8 @@ def test_imports() -> None:
         AsyncCursor,
         CommandCursor,
         Cursor,
+        CursorState,
     )
-
-    # The import pattern above for database and collection is to be preferred.
-    from astrapy.database import AsyncDatabase as AsyncDatabase2  # noqa: F401
-    from astrapy.database import Database as Database2  # noqa: F401
     from astrapy.exceptions import (  # noqa: F401
         CollectionAlreadyExistsException,
         CollectionNotFoundException,
