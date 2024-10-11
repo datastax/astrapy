@@ -25,6 +25,7 @@ def test_namespace() -> None:
     assert str(astrapy.client) != ""
     assert str(astrapy.collection) != ""
     assert str(astrapy.constants) != ""
+    assert str(astrapy.settings) != ""
     assert str(astrapy.cursors) != ""
     assert str(astrapy.database) != ""
     assert str(astrapy.exceptions) != ""
@@ -36,7 +37,7 @@ def test_namespace() -> None:
     assert str(astrapy.client.DataAPIClient) != ""
     assert str(astrapy.collection.Collection) != ""
     assert str(astrapy.constants.VectorMetric.DOT_PRODUCT) != ""
-    assert str(astrapy.cursors.BaseCursor) != ""
+    assert str(astrapy.cursors.Cursor) != ""
     assert str(astrapy.database.Database) != ""
     assert str(astrapy.exceptions.DevOpsAPIException) != ""
     assert str(astrapy.ids.uuid6) != ""
@@ -77,7 +78,6 @@ def test_imports() -> None:
     from astrapy.cursors import (  # noqa: F401
         AsyncCommandCursor,
         AsyncCursor,
-        BaseCursor,
         CommandCursor,
         Cursor,
     )

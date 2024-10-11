@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, Tuple, Union
 
-from astrapy.defaults import (
+from astrapy.settings.defaults import (
     DATA_API_ENVIRONMENT_CASSANDRA,
     DATA_API_ENVIRONMENT_DEV,
     DATA_API_ENVIRONMENT_DSE,

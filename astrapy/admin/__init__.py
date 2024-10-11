@@ -12,18 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.data.cursors import (
-    AsyncCommandCursor,
-    AsyncCursor,
-    CommandCursor,
-    Cursor,
-    CursorState,
+from __future__ import annotations
+
+from astrapy.admin.admin import (
+    AstraDBAdmin,
+    AstraDBDatabaseAdmin,
+    DataAPIDatabaseAdmin,
+    DatabaseAdmin,
+    ParsedAPIEndpoint,
+    fetch_database_info,
+    parse_api_endpoint,
 )
 
 __all__ = [
-    "AsyncCommandCursor",
-    "AsyncCursor",
-    "CommandCursor",
-    "Cursor",
-    "CursorState",
+    "AstraDBAdmin",
+    "AstraDBDatabaseAdmin",
+    "DataAPIDatabaseAdmin",
+    "DatabaseAdmin",
+    "ParsedAPIEndpoint",
+    "fetch_database_info",
+    "parse_api_endpoint",
 ]

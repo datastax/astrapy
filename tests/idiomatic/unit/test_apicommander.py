@@ -20,7 +20,6 @@ import logging
 import pytest
 from pytest_httpserver import HTTPServer
 
-from astrapy.api_commander import APICommander
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     DataAPIHttpException,
@@ -29,7 +28,8 @@ from astrapy.exceptions import (
     DevOpsAPIHttpException,
     DevOpsAPIResponseException,
 )
-from astrapy.request_tools import HttpMethod
+from astrapy.utils.api_commander import APICommander
+from astrapy.utils.request_tools import HttpMethod
 
 
 class TestAPICommander:

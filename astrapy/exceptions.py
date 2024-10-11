@@ -21,13 +21,13 @@ from typing import TYPE_CHECKING, Any
 import httpx
 
 if TYPE_CHECKING:
-    from astrapy.request_tools import TimeoutInfo
     from astrapy.results import (
         DeleteResult,
         InsertManyResult,
         OperationResult,
         UpdateResult,
     )
+    from astrapy.utils.request_tools import TimeoutInfo
 
 
 class DevOpsAPIException(ValueError):

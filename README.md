@@ -481,7 +481,6 @@ Cursors:
 
 ```python
 from astrapy.cursors import (
-    BaseCursor,
     Cursor,
     AsyncCursor,
     CommandCursor,

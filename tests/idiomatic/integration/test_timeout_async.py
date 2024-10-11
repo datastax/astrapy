@@ -19,7 +19,7 @@ import asyncio
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
-from astrapy.admin import async_fetch_database_info
+from astrapy.admin.admin import async_fetch_database_info
 from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
 
 from ..conftest import IS_ASTRA_DB

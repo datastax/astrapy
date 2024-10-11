@@ -18,12 +18,12 @@ import os
 import sys
 from typing import Any, Iterable
 
-from astrapy.defaults import (
+from astrapy.info import CollectionVectorServiceOptions, EmbeddingProviderParameter
+from astrapy.settings.defaults import (
     EMBEDDING_HEADER_API_KEY,
     EMBEDDING_HEADER_AWS_ACCESS_ID,
     EMBEDDING_HEADER_AWS_SECRET_ID,
 )
-from astrapy.info import CollectionVectorServiceOptions, EmbeddingProviderParameter
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

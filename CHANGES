@@ -1,5 +1,7 @@
 v 2.0.0
 =======
+Major restructuring of the code into directories
+    - BaseCursor not exported by astrapy.cursors
 Removal of several deprecated modules/features from previous versions:
     - 'core' (i.e. pre-1.0) library
     - 'collection.bulk_write' and the associated result and exception classes

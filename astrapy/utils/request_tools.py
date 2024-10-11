@@ -19,7 +19,7 @@ from typing import Any, TypedDict, Union
 
 import httpx
 
-from astrapy.defaults import DEFAULT_REQUEST_TIMEOUT_MS
+from astrapy.settings.defaults import DEFAULT_REQUEST_TIMEOUT_MS
 
 logger = logging.getLogger(__name__)
 

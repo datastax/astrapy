@@ -29,7 +29,7 @@ from astrapy import DataAPIClient
 from astrapy.admin import parse_api_endpoint
 from astrapy.authentication import TokenProvider
 from astrapy.constants import Environment
-from astrapy.defaults import DEFAULT_ASTRA_DB_KEYSPACE
+from astrapy.settings.defaults import DEFAULT_ASTRA_DB_KEYSPACE
 
 from .preprocess_env import (
     ADMIN_ENV_LIST,

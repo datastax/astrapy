@@ -19,7 +19,7 @@ import time
 import pytest
 
 from astrapy import Collection, Database
-from astrapy.admin import fetch_database_info
+from astrapy.admin.admin import fetch_database_info
 from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
 
 from ..conftest import IS_ASTRA_DB
