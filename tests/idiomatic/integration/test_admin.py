@@ -20,7 +20,7 @@ from typing import Any, Awaitable, Callable
 import pytest
 
 from astrapy import AsyncDatabase, DataAPIClient, Database
-from astrapy.defaults import API_ENDPOINT_TEMPLATE_ENV_MAP
+from astrapy.settings.defaults import API_ENDPOINT_TEMPLATE_ENV_MAP
 
 from ..conftest import (
     ADMIN_ENV_LIST,

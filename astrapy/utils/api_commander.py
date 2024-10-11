@@ -22,11 +22,6 @@ from typing import TYPE_CHECKING, Any, Dict, Iterable, Sequence, cast
 import httpx
 
 from astrapy.constants import CallerType
-from astrapy.defaults import (
-    DEFAULT_REDACTED_HEADER_NAMES,
-    DEFAULT_REQUEST_TIMEOUT_MS,
-    HEADER_REDACT_PLACEHOLDER,
-)
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     DataAPIHttpException,
@@ -37,20 +32,25 @@ from astrapy.exceptions import (
     to_dataapi_timeout_exception,
     to_devopsapi_timeout_exception,
 )
-from astrapy.request_tools import (
+from astrapy.settings.defaults import (
+    DEFAULT_REDACTED_HEADER_NAMES,
+    DEFAULT_REQUEST_TIMEOUT_MS,
+    HEADER_REDACT_PLACEHOLDER,
+)
+from astrapy.utils.request_tools import (
     HttpMethod,
     log_httpx_request,
     log_httpx_response,
     to_httpx_timeout,
 )
-from astrapy.transform_payload import normalize_for_api, restore_from_api
-from astrapy.user_agents import (
+from astrapy.utils.transform_payload import normalize_for_api, restore_from_api
+from astrapy.utils.user_agents import (
     compose_full_user_agent,
     detect_astrapy_user_agent,
 )
 
 if TYPE_CHECKING:
-    from astrapy.request_tools import TimeoutInfoWideType
+    from astrapy.utils.request_tools import TimeoutInfoWideType
 
 
 user_agent_astrapy = detect_astrapy_user_agent()

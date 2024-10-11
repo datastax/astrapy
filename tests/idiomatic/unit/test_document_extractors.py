@@ -18,7 +18,7 @@ from typing import Any
 
 import pytest
 
-from astrapy.cursors import _create_document_key_extractor
+from astrapy.data.cursors import _create_document_key_extractor
 
 
 class TestDocumentExtractors:

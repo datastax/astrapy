@@ -11,19 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from astrapy.data.cursors import (
-    AsyncCommandCursor,
-    AsyncCursor,
-    CommandCursor,
-    Cursor,
-    CursorState,
-)
-
-__all__ = [
-    "AsyncCommandCursor",
-    "AsyncCursor",
-    "CommandCursor",
-    "Cursor",
-    "CursorState",
-]

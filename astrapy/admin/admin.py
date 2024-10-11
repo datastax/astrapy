@@ -22,11 +22,17 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Sequence
 
-from astrapy.api_commander import APICommander
 from astrapy.authentication import coerce_token_provider, redact_secret
 from astrapy.constants import CallerType, Environment
 from astrapy.cursors import CommandCursor
-from astrapy.defaults import (
+from astrapy.exceptions import (
+    DataAPIFaultyResponseException,
+    DevOpsAPIException,
+    MultiCallTimeoutManager,
+    base_timeout_info,
+)
+from astrapy.info import AdminDatabaseInfo, DatabaseInfo, FindEmbeddingProvidersResult
+from astrapy.settings.defaults import (
     API_ENDPOINT_TEMPLATE_ENV_MAP,
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
@@ -46,14 +52,8 @@ from astrapy.defaults import (
     DEV_OPS_URL_ENV_MAP,
     DEV_OPS_VERSION_ENV_MAP,
 )
-from astrapy.exceptions import (
-    DataAPIFaultyResponseException,
-    DevOpsAPIException,
-    MultiCallTimeoutManager,
-    base_timeout_info,
-)
-from astrapy.info import AdminDatabaseInfo, DatabaseInfo, FindEmbeddingProvidersResult
-from astrapy.request_tools import HttpMethod
+from astrapy.utils.api_commander import APICommander
+from astrapy.utils.request_tools import HttpMethod
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database

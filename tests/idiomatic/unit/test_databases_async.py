@@ -18,8 +18,8 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase, DataAPIClient
 from astrapy.constants import Environment
-from astrapy.defaults import DEFAULT_ASTRA_DB_KEYSPACE
 from astrapy.exceptions import DevOpsAPIException
+from astrapy.settings.defaults import DEFAULT_ASTRA_DB_KEYSPACE
 
 from ..conftest import (
     TEST_COLLECTION_INSTANCE_NAME,

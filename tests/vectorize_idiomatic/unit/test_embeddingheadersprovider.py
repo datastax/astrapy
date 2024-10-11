@@ -21,7 +21,7 @@ from astrapy.authentication import (
     EmbeddingAPIKeyHeaderProvider,
     coerce_embedding_headers_provider,
 )
-from astrapy.defaults import (
+from astrapy.settings.defaults import (
     EMBEDDING_HEADER_API_KEY,
     EMBEDDING_HEADER_AWS_ACCESS_ID,
     EMBEDDING_HEADER_AWS_SECRET_ID,

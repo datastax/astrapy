@@ -18,7 +18,7 @@ import base64
 from abc import ABC, abstractmethod
 from typing import Any
 
-from astrapy.defaults import (
+from astrapy.settings.defaults import (
     EMBEDDING_HEADER_API_KEY,
     EMBEDDING_HEADER_AWS_ACCESS_ID,
     EMBEDDING_HEADER_AWS_SECRET_ID,

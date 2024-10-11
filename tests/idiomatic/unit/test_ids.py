@@ -23,7 +23,7 @@ import json
 import pytest
 
 from astrapy.ids import UUID, ObjectId
-from astrapy.transform_payload import normalize_for_api, restore_from_api
+from astrapy.utils.transform_payload import normalize_for_api, restore_from_api
 
 
 @pytest.mark.describe("test of serdes for ids")

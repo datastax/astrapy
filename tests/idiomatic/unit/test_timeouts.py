@@ -6,9 +6,9 @@ import pytest
 import werkzeug
 from pytest_httpserver import HTTPServer
 
-from astrapy.api_commander import APICommander
 from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
-from astrapy.request_tools import HttpMethod
+from astrapy.utils.api_commander import APICommander
+from astrapy.utils.request_tools import HttpMethod
 
 SLEEPER_TIME_S = 0.5
 TIMEOUT_PARAM_S = 0.1
