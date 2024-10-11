@@ -4,6 +4,7 @@ Major restructuring of the codebase into directories
     - BaseCursor not exported by astrapy.cursors anymore
     - some imports (supposedly not used externally) changed slightly
     - adapted and limited scope of test_imports.py
+Rename main branch from 'master' ==> `main`
 Cursors' state described by the `CursorState` enum
 Removal of several deprecated modules/features from previous versions:
     - 'core' (i.e. pre-1.0) library
@@ -23,6 +24,7 @@ Removal of several deprecated modules/features from previous versions:
     - 'use_namespace' for Databases (switch to `use_keyspace`)
     - 'delete_all' method of Collection and AsyncCollection (use `delete_many({})`)
 Removal of unused imports from toplevel __init__.py (ids, constants, cursors)
+
 
 v. 1.5.2
 ========

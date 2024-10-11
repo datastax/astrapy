@@ -3,10 +3,10 @@ name: Run idiomatic pytest on Astra DB
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 
 jobs:
   test:
