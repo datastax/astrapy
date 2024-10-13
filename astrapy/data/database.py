@@ -45,7 +45,7 @@ from astrapy.settings.defaults import (
     DEFAULT_DATA_API_AUTH_HEADER,
 )
 from astrapy.utils.api_commander import APICommander
-from astrapy.utils.api_options import CollectionAPIOptions
+from astrapy.utils.leg_api_options import CollectionAPIOptions
 
 if TYPE_CHECKING:
     from astrapy.admin import DatabaseAdmin

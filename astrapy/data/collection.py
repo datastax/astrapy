@@ -56,7 +56,7 @@ from astrapy.settings.defaults import (
     DEFAULT_INSERT_MANY_CONCURRENCY,
 )
 from astrapy.utils.api_commander import APICommander
-from astrapy.utils.api_options import CollectionAPIOptions
+from astrapy.utils.leg_api_options import CollectionAPIOptions
 
 if TYPE_CHECKING:
     from astrapy.authentication import EmbeddingHeadersProvider

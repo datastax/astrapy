@@ -26,11 +26,16 @@ from astrapy.settings.defaults import (
     SECRETS_REDACT_ENDING,
     SECRETS_REDACT_ENDING_LENGTH,
 )
+from astrapy.utils.unset import _UNSET, UnsetType
 
 
-def coerce_token_provider(token: str | TokenProvider | None) -> TokenProvider:
+def coerce_token_provider(
+    token: str | TokenProvider | None | UnsetType,
+) -> TokenProvider | UnsetType:
     if isinstance(token, TokenProvider):
         return token
+    elif isinstance(token, UnsetType):
+        return _UNSET
     else:
         return StaticTokenProvider(token)
 
