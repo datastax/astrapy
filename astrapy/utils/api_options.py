@@ -39,7 +39,7 @@ from astrapy.utils.unset import _UNSET, UnsetType
 class TimeoutOptions:
     request_timeout_ms: int | UnsetType = _UNSET
     data_method_timeout_ms: int | UnsetType = _UNSET
-    schema_method_timeout_ms: int | UnsetType = _UNSET
+    schema_operation_timeout_ms: int | UnsetType = _UNSET
     database_admin_timeout_ms: int | UnsetType = _UNSET
     keyspace_admin_timeout_ms: int | UnsetType = _UNSET
 
@@ -48,7 +48,7 @@ class TimeoutOptions:
 class FullTimeoutOptions(TimeoutOptions):
     request_timeout_ms: int
     data_method_timeout_ms: int
-    schema_method_timeout_ms: int
+    schema_operation_timeout_ms: int
     database_admin_timeout_ms: int
     keyspace_admin_timeout_ms: int
 
@@ -64,10 +64,10 @@ class FullTimeoutOptions(TimeoutOptions):
                 if not isinstance(other.data_method_timeout_ms, UnsetType)
                 else self.data_method_timeout_ms
             ),
-            schema_method_timeout_ms=(
-                other.schema_method_timeout_ms
-                if not isinstance(other.schema_method_timeout_ms, UnsetType)
-                else self.schema_method_timeout_ms
+            schema_operation_timeout_ms=(
+                other.schema_operation_timeout_ms
+                if not isinstance(other.schema_operation_timeout_ms, UnsetType)
+                else self.schema_operation_timeout_ms
             ),
             database_admin_timeout_ms=(
                 other.database_admin_timeout_ms
@@ -131,13 +131,13 @@ class FullDataAPIURLOptions(DataAPIURLOptions):
 
 @dataclass
 class DevOpsAPIURLOptions:
-    dev_ops_url: str | None | UnsetType = _UNSET
+    dev_ops_url: str | UnsetType = _UNSET
     dev_ops_api_version: str | None | UnsetType = _UNSET
 
 
 @dataclass
 class FullDevOpsAPIURLOptions(DevOpsAPIURLOptions):
-    dev_ops_url: str | None
+    dev_ops_url: str
     dev_ops_api_version: str | None
 
     def with_override(self, other: DevOpsAPIURLOptions) -> FullDevOpsAPIURLOptions:
@@ -263,7 +263,7 @@ class FullAPIOptions(APIOptions):
 defaultTimeoutOptions = FullTimeoutOptions(
     request_timeout_ms=DEFAULT_REQUEST_TIMEOUT_MS,
     data_method_timeout_ms=DEFAULT_DATA_METHOD_TIMEOUT_MS,
-    schema_method_timeout_ms=45000,
+    schema_operation_timeout_ms=45000,
     database_admin_timeout_ms=600000,
     keyspace_admin_timeout_ms=20000,
 )
@@ -285,7 +285,7 @@ def defaultAPIOptions(environment: str) -> FullAPIOptions:
         )
     else:
         defaultDevOpsAPIURLOptions = FullDevOpsAPIURLOptions(
-            dev_ops_url=None,
+            dev_ops_url="never used",
             dev_ops_api_version=None,
         )
     return FullAPIOptions(
