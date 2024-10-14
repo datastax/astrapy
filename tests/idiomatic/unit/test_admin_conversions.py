@@ -465,9 +465,3 @@ class TestAdminConversions:
         adb = AsyncDatabase(api_ep)
         db_adm = DataAPIDatabaseAdmin(api_ep, spawner_database=adb)
         assert db_adm.spawner_database is adb
-
-    @pytest.mark.describe("test of from_api_endpoint for AstraDBDatabaseAdmin")
-    def test_fromapiendpoint_astradbdatabaseadmin(self) -> None:
-        api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
-        db_adm = AstraDBDatabaseAdmin.from_api_endpoint(api_ep, token="t")
-        assert db_adm.get_database(keyspace="M").api_endpoint == api_ep

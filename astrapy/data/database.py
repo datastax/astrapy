@@ -125,8 +125,8 @@ class Database:
     objects themselves. This class has a synchronous interface.
 
     This class is not meant for direct instantiation by the user, rather
-    it is usually obtained by invoking methods such as `get_database`
-    of the AstraDBAdmin or similar.
+    it is obtained by invoking methods such as `get_database`
+    of AstraDBClient.
 
     On Astra DB, a Database comes with an "API Endpoint", which implies
     a Database object instance reaches a specific region (relevant point in
@@ -548,8 +548,9 @@ class Database:
             collection_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
-                concernig timeouts; if this is passed together with the named timeout
-                parameters, the latter will take precedence in their respective settings.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             a `Collection` instance, representing the desired collection
@@ -571,7 +572,7 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.collection import Collection
 
-        # this double-override implements the alias on timeout params
+        # this multiple-override implements the alias on timeout params
         resulting_api_options = (
             self.api_options.with_override(
                 collection_api_options,
@@ -696,8 +697,9 @@ class Database:
             collection_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
-                concernig timeouts; if this is passed together with the named timeout
-                parameters, the latter will take precedence in their respective settings.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             a (synchronous) `Collection` instance, representing the
@@ -1053,7 +1055,7 @@ class Database:
 
         arg_api_options = APIOptions(
             token=coerce_possible_token_provider(token),
-            devops_api_url_options=DevOpsAPIURLOptions(
+            dev_ops_api_url_options=DevOpsAPIURLOptions(
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
             ),
@@ -1063,11 +1065,7 @@ class Database:
         if api_options.environment in Environment.astra_db_values:
             return AstraDBDatabaseAdmin(
                 api_endpoint=self.api_endpoint,
-                token=api_options.token,
-                environment=api_options.environment,
-                callers=api_options.callers,
-                dev_ops_url=api_options.devops_api_url_options.dev_ops_url,
-                dev_ops_api_version=api_options.devops_api_url_options.dev_ops_api_version,
+                api_options=api_options,
                 spawner_database=self,
             )
         else:
@@ -1081,11 +1079,7 @@ class Database:
                 )
             return DataAPIDatabaseAdmin(
                 api_endpoint=self.api_endpoint,
-                token=api_options.token,
-                environment=api_options.environment,
-                api_path=api_options.data_api_url_options.api_path,
-                api_version=api_options.data_api_url_options.api_version,
-                callers=api_options.callers,
+                api_options=api_options,
                 spawner_database=self,
             )
 
@@ -1098,7 +1092,7 @@ class AsyncDatabase:
 
     This class is not meant for direct instantiation by the user, rather
     it is usually obtained by invoking methods such as `get_async_database`
-    of the AstraDBAdmin or similar.
+    of AstraDBClient.
 
     On Astra DB, an AsyncDatabase comes with an "API Endpoint", which implies
     an AsyncDatabase object instance reaches a specific region (relevant point in
@@ -1532,8 +1526,9 @@ class AsyncDatabase:
             collection_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
-                concernig timeouts; if this is passed together with the named timeout
-                parameters, the latter will take precedence in their respective settings.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             an `AsyncCollection` instance, representing the desired collection
@@ -1558,7 +1553,7 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.collection import AsyncCollection
 
-        # this double-override implements the alias on timeout params
+        # this multiple-override implements the alias on timeout params
         resulting_api_options = (
             self.api_options.with_override(
                 collection_api_options,
@@ -1682,8 +1677,9 @@ class AsyncDatabase:
             collection_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
-                concernig timeouts; if this is passed together with the named timeout
-                parameters, the latter will take precedence in their respective settings.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             an `AsyncCollection` instance, representing the newly-created collection.
@@ -2049,7 +2045,7 @@ class AsyncDatabase:
 
         arg_api_options = APIOptions(
             token=coerce_possible_token_provider(token),
-            devops_api_url_options=DevOpsAPIURLOptions(
+            dev_ops_api_url_options=DevOpsAPIURLOptions(
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
             ),
@@ -2059,11 +2055,7 @@ class AsyncDatabase:
         if api_options.environment in Environment.astra_db_values:
             return AstraDBDatabaseAdmin(
                 api_endpoint=self.api_endpoint,
-                token=api_options.token,
-                environment=api_options.environment,
-                callers=api_options.callers,
-                dev_ops_url=api_options.devops_api_url_options.dev_ops_url,
-                dev_ops_api_version=api_options.devops_api_url_options.dev_ops_api_version,
+                api_options=api_options,
                 spawner_database=self,
             )
         else:
@@ -2077,10 +2069,6 @@ class AsyncDatabase:
                 )
             return DataAPIDatabaseAdmin(
                 api_endpoint=self.api_endpoint,
-                token=api_options.token,
-                environment=api_options.environment,
-                api_path=api_options.data_api_url_options.api_path,
-                api_version=api_options.data_api_url_options.api_version,
-                callers=api_options.callers,
+                api_options=api_options,
                 spawner_database=self,
             )

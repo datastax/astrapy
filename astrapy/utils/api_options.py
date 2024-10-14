@@ -167,7 +167,7 @@ class APIOptions:
     timeout_options: TimeoutOptions | UnsetType = _UNSET
     payload_transform_options: PayloadTransformOptions | UnsetType = _UNSET
     data_api_url_options: DataAPIURLOptions | UnsetType = _UNSET
-    devops_api_url_options: DevOpsAPIURLOptions | UnsetType = _UNSET
+    dev_ops_api_url_options: DevOpsAPIURLOptions | UnsetType = _UNSET
 
 
 @dataclass
@@ -182,7 +182,7 @@ class FullAPIOptions(APIOptions):
     timeout_options: FullTimeoutOptions
     payload_transform_options: FullPayloadTransformOptions
     data_api_url_options: FullDataAPIURLOptions
-    devops_api_url_options: FullDevOpsAPIURLOptions
+    dev_ops_api_url_options: FullDevOpsAPIURLOptions
 
     def with_override(self, other: APIOptions | None | UnsetType) -> FullAPIOptions:
         if isinstance(other, UnsetType) or other is None:
@@ -194,7 +194,7 @@ class FullAPIOptions(APIOptions):
         timeout_options: FullTimeoutOptions
         payload_transform_options: FullPayloadTransformOptions
         data_api_url_options: FullDataAPIURLOptions
-        devops_api_url_options: FullDevOpsAPIURLOptions
+        dev_ops_api_url_options: FullDevOpsAPIURLOptions
 
         if isinstance(other.database_additional_headers, UnsetType):
             database_additional_headers = self.database_additional_headers
@@ -227,12 +227,12 @@ class FullAPIOptions(APIOptions):
             )
         else:
             data_api_url_options = self.data_api_url_options
-        if isinstance(other.devops_api_url_options, FullDevOpsAPIURLOptions):
-            devops_api_url_options = self.devops_api_url_options.with_override(
-                other.devops_api_url_options
+        if isinstance(other.dev_ops_api_url_options, FullDevOpsAPIURLOptions):
+            dev_ops_api_url_options = self.dev_ops_api_url_options.with_override(
+                other.dev_ops_api_url_options
             )
         else:
-            devops_api_url_options = self.devops_api_url_options
+            dev_ops_api_url_options = self.dev_ops_api_url_options
 
         return FullAPIOptions(
             environment=(
@@ -256,7 +256,7 @@ class FullAPIOptions(APIOptions):
             timeout_options=timeout_options,
             payload_transform_options=payload_transform_options,
             data_api_url_options=data_api_url_options,
-            devops_api_url_options=devops_api_url_options,
+            dev_ops_api_url_options=dev_ops_api_url_options,
         )
 
 
@@ -298,5 +298,5 @@ def defaultAPIOptions(environment: str) -> FullAPIOptions:
         timeout_options=defaultTimeoutOptions,
         payload_transform_options=defaultPayloadTransformOptions,
         data_api_url_options=defaultDataAPIURLOptions,
-        devops_api_url_options=defaultDevOpsAPIURLOptions,
+        dev_ops_api_url_options=defaultDevOpsAPIURLOptions,
     )

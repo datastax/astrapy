@@ -478,21 +478,14 @@ class DataAPIClient:
 
         arg_api_options = APIOptions(
             token=coerce_possible_token_provider(token),
-            devops_api_url_options=DevOpsAPIURLOptions(
+            dev_ops_api_url_options=DevOpsAPIURLOptions(
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
             ),
         )
         api_options = self.api_options.with_override(arg_api_options)
-        # TODO following unpacking will go with Database options-aware
 
         if api_options.environment not in Environment.astra_db_values:
             raise ValueError("Method not supported outside of Astra DB.")
 
-        return AstraDBAdmin(
-            token=api_options.token,
-            environment=api_options.environment,
-            callers=api_options.callers,
-            dev_ops_url=api_options.devops_api_url_options.dev_ops_url,
-            dev_ops_api_version=api_options.devops_api_url_options.dev_ops_api_version,
-        )
+        return AstraDBAdmin(api_options=api_options)
