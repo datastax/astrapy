@@ -51,7 +51,7 @@ class TestTimeoutAsync:
     ) -> None:
         info = await async_fetch_database_info(
             async_database.api_endpoint,
-            token=async_database.token_provider.get_token(),
+            token=async_database.api_options.token.get_token(),
             keyspace=async_database.keyspace,
         )
         assert info is not None
@@ -59,7 +59,7 @@ class TestTimeoutAsync:
         with pytest.raises(DevOpsAPITimeoutException) as exc:
             info = await async_fetch_database_info(
                 async_database.api_endpoint,
-                token=async_database.token_provider.get_token(),
+                token=async_database.api_options.token.get_token(),
                 keyspace=async_database.keyspace,
                 max_time_ms=1,
             )

@@ -24,8 +24,18 @@ from astrapy import (
     DataAPIDatabaseAdmin,
     Database,
 )
-from astrapy.authentication import StaticTokenProvider, UsernamePasswordTokenProvider
+from astrapy.authentication import (
+    StaticTokenProvider,
+    UsernamePasswordTokenProvider,
+    coerce_possible_token_provider,
+)
 from astrapy.constants import Environment
+from astrapy.utils.api_options import (
+    APIOptions,
+    DataAPIURLOptions,
+    DevOpsAPIURLOptions,
+    defaultAPIOptions,
+)
 
 api_ep0123_dev = (
     "https://01234567-89ab-cdef-0123-456789abcdef-region.apps.astra-dev.datastax.com"
@@ -53,19 +63,16 @@ class TestAdminConversions:
             environment="dev",
             callers=callers0,
         )
-        assert dac1 == dac2
 
+        assert dac1 == dac2
         assert dac1 != dac1._copy(token="x")
         assert dac1 != dac1._copy(environment="test")
         assert dac1 != dac1._copy(callers=callers1)
-
         assert dac1 == dac1._copy(token="x")._copy(token="t1")
         assert dac1 == dac1._copy(environment="test")._copy(environment="dev")
         assert dac1 == dac1._copy(callers=callers1)._copy(callers=callers0)
-
         assert dac1 != dac1.with_options(token="x")
         assert dac1 != dac1.with_options(callers=callers1)
-
         assert dac1 == dac1.with_options(token="x").with_options(token="t1")
         assert dac1 == dac1.with_options(callers=callers1).with_options(
             callers=callers0
@@ -76,11 +83,18 @@ class TestAdminConversions:
             ".apps.astra-dev.datastax.com"
         )
         db1 = dac1[a_e_string]
+        opts0 = defaultAPIOptions(environment="dev").with_override(
+            APIOptions(
+                token=coerce_possible_token_provider("t1"),
+                callers=callers0,
+            )
+        )
         expected_db_1 = Database(
             api_endpoint=a_e_string,
-            token="t1",
-            callers=callers0,
+            keyspace=None,
+            api_options=opts0,
         )
+
         assert db1 == expected_db_1
         with pytest.raises(ValueError):
             dac1["abc"]
@@ -91,57 +105,51 @@ class TestAdminConversions:
         database_id = "00000000-1111-2222-3333-444444444444"
         database_region = "the-region"
         endpoint = f"https://{database_id}-{database_region}.apps.astra.datastax.com"
-
         client = DataAPIClient(
             token=token,
             environment=Environment.PROD,
             callers=[("cn", "cv")],
         )
-
         db1 = client.get_database(endpoint)
-        db3 = client.get_database(endpoint)
-
-        assert db1 == db3
+        db2 = client.get_database(endpoint)
+        assert db1 == db2
 
     @pytest.mark.describe("test of AstraDBAdmin conversions and comparison functions")
     def test_astradbadmin_conversions(self) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
         callers1 = [("x", "y")]
-        adm1 = AstraDBAdmin(
-            "t1",
-            environment="dev",
-            callers=callers0,
-            dev_ops_url="dou",
-            dev_ops_api_version="dvv",
+        opts0 = defaultAPIOptions(environment="dev").with_override(
+            APIOptions(
+                token=coerce_possible_token_provider("t1"),
+                environment="dev",
+                callers=callers0,
+                dev_ops_api_url_options=DevOpsAPIURLOptions(
+                    dev_ops_url="dou",
+                    dev_ops_api_version="dvv",
+                ),
+            ),
         )
-        adm2 = AstraDBAdmin(
-            "t1",
-            environment="dev",
-            callers=callers0,
-            dev_ops_url="dou",
-            dev_ops_api_version="dvv",
-        )
-        assert adm1 == adm2
+        adm0 = AstraDBAdmin(api_options=opts0)
+        adm1 = AstraDBAdmin(api_options=opts0)
 
-        assert adm1 != adm1._copy(token="x")
-        assert adm1 != adm1._copy(environment="test")
-        assert adm1 != adm1._copy(callers=callers1)
-        assert adm1 != adm1._copy(dev_ops_url="x")
-        assert adm1 != adm1._copy(dev_ops_api_version="x")
+        assert adm0 == adm1
+        assert adm0 != adm0._copy(token="x")
+        assert adm0 != adm0._copy(environment="test")
+        assert adm0 != adm0._copy(callers=callers1)
+        assert adm0 != adm0._copy(dev_ops_url="x")
+        assert adm0 != adm0._copy(dev_ops_api_version="x")
 
-        assert adm1 == adm1._copy(token="x")._copy(token="t1")
-        assert adm1 == adm1._copy(environment="test")._copy(environment="dev")
-        assert adm1 == adm1._copy(callers=callers1)._copy(callers=callers0)
-        assert adm1 == adm1._copy(dev_ops_url="x")._copy(dev_ops_url="dou")
-        assert adm1 == adm1._copy(dev_ops_api_version="x")._copy(
+        assert adm0 == adm0._copy(token="x")._copy(token="t1")
+        assert adm0 == adm0._copy(environment="test")._copy(environment="dev")
+        assert adm0 == adm0._copy(callers=callers1)._copy(callers=callers0)
+        assert adm0 == adm0._copy(dev_ops_url="x")._copy(dev_ops_url="dou")
+        assert adm0 == adm0._copy(dev_ops_api_version="x")._copy(
             dev_ops_api_version="dvv"
         )
-
-        assert adm1 != adm1.with_options(token="x")
-        assert adm1 != adm1.with_options(callers=callers1)
-
-        assert adm1 == adm1.with_options(token="x").with_options(token="t1")
-        assert adm1 == adm1.with_options(callers=callers1).with_options(
+        assert adm0 != adm0.with_options(token="x")
+        assert adm0 != adm0.with_options(callers=callers1)
+        assert adm0 == adm0.with_options(token="x").with_options(token="t1")
+        assert adm0 == adm0.with_options(callers=callers1).with_options(
             callers=callers0
         )
 
@@ -151,28 +159,31 @@ class TestAdminConversions:
     def test_astradbdatabaseadmin_conversions(self) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
         callers1 = [("x", "y")]
+        opts0 = defaultAPIOptions(environment="dev").with_override(
+            APIOptions(
+                token=coerce_possible_token_provider("t1"),
+                environment="dev",
+                callers=callers0,
+                dev_ops_api_url_options=DevOpsAPIURLOptions(
+                    dev_ops_url="dou",
+                    dev_ops_api_version="dvv",
+                ),
+                data_api_url_options=DataAPIURLOptions(
+                    api_path="appi",
+                    api_version="vX",
+                ),
+            ),
+        )
         adda1 = AstraDBDatabaseAdmin(
-            api_ep0123_dev,
-            token="t1",
-            environment="dev",
-            callers=callers0,
-            dev_ops_url="dou",
-            dev_ops_api_version="dvv",
-            api_path="appi",
-            api_version="vX",
+            api_endpoint=api_ep0123_dev,
+            api_options=opts0,
         )
         adda2 = AstraDBDatabaseAdmin(
-            api_ep0123_dev,
-            token="t1",
-            environment="dev",
-            callers=callers0,
-            dev_ops_url="dou",
-            dev_ops_api_version="dvv",
-            api_path="appi",
-            api_version="vX",
+            api_endpoint=api_ep0123_dev,
+            api_options=opts0,
         )
-        assert adda1 == adda2
 
+        assert adda1 == adda2
         assert adda1 != adda1._copy(api_ep9999_test, environment="test")
         assert adda1 != adda1._copy(token="x")
         assert adda1 != adda1._copy(callers=callers1)
@@ -193,11 +204,13 @@ class TestAdminConversions:
         assert adda1 == adda1._copy(api_path="x")._copy(api_path="appi")
         assert adda1 == adda1._copy(api_version="x")._copy(api_version="vX")
 
-        assert adda1 != adda1.with_options(api_ep7777_dev)
+        assert adda1 != adda1.with_options(api_endpoint=api_ep7777_dev)
         assert adda1 != adda1.with_options(token="x")
         assert adda1 != adda1.with_options(callers=callers1)
 
-        assert adda1 == adda1.with_options(api_ep7777_dev).with_options(api_ep0123_dev)
+        assert adda1 == adda1.with_options(api_endpoint=api_ep7777_dev).with_options(
+            api_endpoint=api_ep0123_dev
+        )
         assert adda1 == adda1.with_options(token="x").with_options(token="t1")
         assert adda1 == adda1.with_options(callers=callers1).with_options(
             callers=callers0
@@ -209,21 +222,24 @@ class TestAdminConversions:
     def test_dataapidatabaseadmin_conversions(self) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
         callers1 = [("x", "y")]
+        opts0 = defaultAPIOptions(environment="hcd").with_override(
+            APIOptions(
+                token=coerce_possible_token_provider("t1"),
+                environment="hcd",
+                callers=callers0,
+                data_api_url_options=DataAPIURLOptions(
+                    api_path="appi",
+                    api_version="v9",
+                ),
+            ),
+        )
         dada1 = DataAPIDatabaseAdmin(
-            "http://a.b.c:1234",
-            token="t1",
-            environment="hcd",
-            api_path="appi",
-            api_version="v9",
-            callers=callers0,
+            api_endpoint="http://a.b.c:1234",
+            api_options=opts0,
         )
         dada2 = DataAPIDatabaseAdmin(
-            "http://a.b.c:1234",
-            token="t1",
-            environment="hcd",
-            api_path="appi",
-            api_version="v9",
-            callers=callers0,
+            api_endpoint="http://a.b.c:1234",
+            api_options=opts0,
         )
         assert dada1 == dada2
 
@@ -285,10 +301,15 @@ class TestAdminConversions:
 
     @pytest.mark.describe("test of token inheritance in spawning from AstraDBAdmin")
     def test_astradbadmin_token_inheritance(self) -> None:
-        admin_t = AstraDBAdmin(token=StaticTokenProvider("static"))
-        admin_0 = AstraDBAdmin()
+        opts_0 = defaultAPIOptions(environment=Environment.PROD)
+        opts_t = opts_0.with_override(
+            APIOptions(token=StaticTokenProvider("static")),
+        )
         token_f = UsernamePasswordTokenProvider(username="u", password="p")
-        admin_f = AstraDBAdmin(token=token_f)
+        opts_f = opts_0.with_override(APIOptions(token=token_f))
+        admin_t = AstraDBAdmin(api_options=opts_t)
+        admin_0 = AstraDBAdmin(api_options=opts_0)
+        admin_f = AstraDBAdmin(api_options=opts_f)
         db_id_string = "01234567-89ab-cdef-0123-456789abcdef"
 
         assert admin_t.get_database(
@@ -302,20 +323,20 @@ class TestAdminConversions:
         "test of token inheritance in spawning from AstraDBDatabaseAdmin"
     )
     def test_astradbdatabaseadmin_token_inheritance(self) -> None:
-        adbadmin_t = AstraDBDatabaseAdmin(
-            api_ep0123_dev,
-            token=StaticTokenProvider("static"),
-            environment=Environment.DEV,
-        )
-        adbadmin_0 = AstraDBDatabaseAdmin(
-            api_ep0123_dev,
-            environment=Environment.DEV,
+        opts_0 = defaultAPIOptions(environment=Environment.DEV)
+        opts_t = opts_0.with_override(
+            APIOptions(token=StaticTokenProvider("static")),
         )
         token_f = UsernamePasswordTokenProvider(username="u", password="p")
+        opts_f = opts_0.with_override(APIOptions(token=token_f))
+        adbadmin_t = AstraDBDatabaseAdmin(
+            api_endpoint=api_ep0123_dev, api_options=opts_t
+        )
+        adbadmin_0 = AstraDBDatabaseAdmin(
+            api_endpoint=api_ep0123_dev, api_options=opts_0
+        )
         adbadmin_f = AstraDBDatabaseAdmin(
-            api_ep0123_dev,
-            token=token_f,
-            environment=Environment.DEV,
+            api_endpoint=api_ep0123_dev, api_options=opts_f
         )
 
         assert adbadmin_t.get_database(
@@ -332,12 +353,17 @@ class TestAdminConversions:
     )
     def test_dataapidatabaseadmin_token_inheritance(self) -> None:
         a_e_string = "http://x.y:123"
-        dadbadmin_t = DataAPIDatabaseAdmin(
-            a_e_string, token=StaticTokenProvider("static")
+        opts_0 = defaultAPIOptions(environment=Environment.PROD)
+        opts_t = opts_0.with_override(
+            APIOptions(token=StaticTokenProvider("static")),
         )
-        dadbadmin_0 = DataAPIDatabaseAdmin(a_e_string)
         token_f = UsernamePasswordTokenProvider(username="u", password="p")
-        dadbadmin_f = DataAPIDatabaseAdmin(a_e_string, token=token_f)
+        opts_f = opts_0.with_override(
+            APIOptions(token=token_f),
+        )
+        dadbadmin_t = DataAPIDatabaseAdmin(api_endpoint=a_e_string, api_options=opts_t)
+        dadbadmin_0 = DataAPIDatabaseAdmin(api_endpoint=a_e_string, api_options=opts_0)
+        dadbadmin_f = DataAPIDatabaseAdmin(api_endpoint=a_e_string, api_options=opts_f)
 
         assert dadbadmin_t.get_database(
             token=token_f, keyspace="n"
@@ -346,27 +372,36 @@ class TestAdminConversions:
             token=token_f, keyspace="n"
         ) == dadbadmin_f.get_database(keyspace="n")
 
-    @pytest.mark.describe("test of token inheritance in spawning from Database")
-    def test_database_token_inheritance(self) -> None:
-        a_e_string = "http://x.y:123"
+    @pytest.mark.describe("test of token inheritance in spawning from Database, Astra")
+    def test_database_token_inheritance_astra(self) -> None:
+        opts_0 = defaultAPIOptions(environment=Environment.TEST)
+        opts_t = opts_0.with_override(
+            APIOptions(token=StaticTokenProvider("static")),
+        )
+        token_f = UsernamePasswordTokenProvider(username="u", password="p")
+        opts_f = opts_0.with_override(
+            APIOptions(token=token_f),
+        )
         database_t = Database(
-            a_e_string,
-            token=StaticTokenProvider("static"),
-            environment=Environment.OTHER,
+            api_endpoint=api_ep9999_test, keyspace="k", api_options=opts_t
         )
         a_database_t = AsyncDatabase(
-            a_e_string,
-            token=StaticTokenProvider("static"),
-            environment=Environment.OTHER,
+            api_endpoint=api_ep9999_test, keyspace="k", api_options=opts_t
         )
-        database_0 = Database(a_e_string, environment=Environment.OTHER)
-        a_database_0 = AsyncDatabase(a_e_string, environment=Environment.OTHER)
-        token_f = UsernamePasswordTokenProvider(username="u", password="p")
-        database_f = Database(a_e_string, token=token_f, environment=Environment.OTHER)
+        database_0 = Database(
+            api_endpoint=api_ep9999_test, keyspace="k", api_options=opts_0
+        )
+        a_database_0 = AsyncDatabase(
+            api_endpoint=api_ep9999_test, keyspace="k", api_options=opts_0
+        )
+        database_f = Database(
+            api_endpoint=api_ep9999_test, keyspace="k", api_options=opts_f
+        )
         a_database_f = AsyncDatabase(
-            a_e_string, token=token_f, environment=Environment.OTHER
+            api_endpoint=api_ep9999_test, keyspace="k", api_options=opts_f
         )
 
+        assert isinstance(a_database_0.get_database_admin(), AstraDBDatabaseAdmin)
         assert (
             database_t.get_database_admin(token=token_f)
             == database_f.get_database_admin()
@@ -375,7 +410,50 @@ class TestAdminConversions:
             database_0.get_database_admin(token=token_f)
             == database_f.get_database_admin()
         )
+        assert (
+            a_database_t.get_database_admin(token=token_f)
+            == a_database_f.get_database_admin()
+        )
+        assert (
+            a_database_0.get_database_admin(token=token_f)
+            == a_database_f.get_database_admin()
+        )
 
+    @pytest.mark.describe(
+        "test of token inheritance in spawning from Database, non-Astra"
+    )
+    def test_database_token_inheritance_nonastra(self) -> None:
+        a_e_string = "http://x.y:123"
+        opts_0 = defaultAPIOptions(environment=Environment.OTHER)
+        opts_t = opts_0.with_override(
+            APIOptions(token=StaticTokenProvider("static")),
+        )
+        token_f = UsernamePasswordTokenProvider(username="u", password="p")
+        opts_f = opts_0.with_override(
+            APIOptions(token=token_f),
+        )
+        database_t = Database(api_endpoint=a_e_string, keyspace="k", api_options=opts_t)
+        a_database_t = AsyncDatabase(
+            api_endpoint=a_e_string, keyspace="k", api_options=opts_t
+        )
+        database_0 = Database(api_endpoint=a_e_string, keyspace="k", api_options=opts_0)
+        a_database_0 = AsyncDatabase(
+            api_endpoint=a_e_string, keyspace="k", api_options=opts_0
+        )
+        database_f = Database(api_endpoint=a_e_string, keyspace="k", api_options=opts_f)
+        a_database_f = AsyncDatabase(
+            api_endpoint=a_e_string, keyspace="k", api_options=opts_f
+        )
+
+        assert isinstance(a_database_0.get_database_admin(), DataAPIDatabaseAdmin)
+        assert (
+            database_t.get_database_admin(token=token_f)
+            == database_f.get_database_admin()
+        )
+        assert (
+            database_0.get_database_admin(token=token_f)
+            == database_f.get_database_admin()
+        )
         assert (
             a_database_t.get_database_admin(token=token_f)
             == a_database_f.get_database_admin()
@@ -393,8 +471,10 @@ class TestAdminConversions:
         api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
         db_id = "01234567-89ab-cdef-0123-456789abcdef"
         db_reg = "the-region"
-
-        adm = AstraDBAdmin("t1")
+        opts = defaultAPIOptions(environment=Environment.PROD).with_override(
+            APIOptions(token=StaticTokenProvider("t1")),
+        )
+        adm = AstraDBAdmin(api_options=opts)
 
         db_adm1 = adm.get_database_admin(db_id, region=db_reg)
         with pytest.raises(ValueError):
@@ -419,7 +499,10 @@ class TestAdminConversions:
     )
     def test_spawnerdatabase_astradbdatabaseadmin_notprovided(self) -> None:
         api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
-        db_adm = AstraDBDatabaseAdmin(api_ep)
+        db_adm = AstraDBDatabaseAdmin(
+            api_endpoint=api_ep,
+            api_options=defaultAPIOptions(environment=Environment.PROD),
+        )
         assert db_adm.spawner_database.api_endpoint == api_ep
 
     @pytest.mark.describe(
@@ -427,7 +510,10 @@ class TestAdminConversions:
     )
     def test_spawnerdatabase_dataapidatabaseadmin_notprovided(self) -> None:
         api_ep = "http://aa"
-        db_adm = DataAPIDatabaseAdmin(api_ep)
+        db_adm = DataAPIDatabaseAdmin(
+            api_endpoint=api_ep,
+            api_options=defaultAPIOptions(environment=Environment.OTHER),
+        )
         assert db_adm.spawner_database.api_endpoint == api_ep
 
     @pytest.mark.describe(
@@ -435,8 +521,16 @@ class TestAdminConversions:
     )
     def test_spawnerdatabase_astradbdatabaseadmin_syncprovided(self) -> None:
         api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
-        db = Database(api_ep, keyspace="M")
-        db_adm = AstraDBDatabaseAdmin(api_ep, spawner_database=db)
+        db = Database(
+            api_endpoint=api_ep,
+            api_options=defaultAPIOptions(environment=Environment.PROD),
+            keyspace="M",
+        )
+        db_adm = AstraDBDatabaseAdmin(
+            api_endpoint=api_ep,
+            api_options=defaultAPIOptions(environment=Environment.PROD),
+            spawner_database=db,
+        )
         assert db_adm.spawner_database is db
 
     @pytest.mark.describe(
@@ -444,8 +538,16 @@ class TestAdminConversions:
     )
     def test_spawnerdatabase_astradbdatabaseadmin_asyncprovided(self) -> None:
         api_ep = "https://01234567-89ab-cdef-0123-456789abcdef-the-region.apps.astra.datastax.com"
-        adb = AsyncDatabase(api_ep, keyspace="M")
-        db_adm = AstraDBDatabaseAdmin(api_ep, spawner_database=adb)
+        adb = AsyncDatabase(
+            api_endpoint=api_ep,
+            api_options=defaultAPIOptions(environment=Environment.PROD),
+            keyspace="M",
+        )
+        db_adm = AstraDBDatabaseAdmin(
+            api_endpoint=api_ep,
+            api_options=defaultAPIOptions(environment=Environment.PROD),
+            spawner_database=adb,
+        )
         assert db_adm.spawner_database is adb
 
     @pytest.mark.describe(
@@ -453,8 +555,16 @@ class TestAdminConversions:
     )
     def test_spawnerdatabase_dataapidatabaseadmin_syncprovided(self) -> None:
         api_ep = "http://aa"
-        db = Database(api_ep)
-        db_adm = DataAPIDatabaseAdmin(api_ep, spawner_database=db)
+        db = Database(
+            api_endpoint=api_ep,
+            api_options=defaultAPIOptions(environment=Environment.OTHER),
+            keyspace="k",
+        )
+        db_adm = DataAPIDatabaseAdmin(
+            api_endpoint=api_ep,
+            api_options=defaultAPIOptions(environment=Environment.OTHER),
+            spawner_database=db,
+        )
         assert db_adm.spawner_database is db
 
     @pytest.mark.describe(
@@ -462,6 +572,14 @@ class TestAdminConversions:
     )
     def test_spawnerdatabase_dataapidatabaseadmin_asyncprovided(self) -> None:
         api_ep = "http://aa"
-        adb = AsyncDatabase(api_ep)
-        db_adm = DataAPIDatabaseAdmin(api_ep, spawner_database=adb)
+        adb = AsyncDatabase(
+            api_endpoint=api_ep,
+            api_options=defaultAPIOptions(environment=Environment.OTHER),
+            keyspace="k",
+        )
+        db_adm = DataAPIDatabaseAdmin(
+            api_endpoint=api_ep,
+            api_options=defaultAPIOptions(environment=Environment.OTHER),
+            spawner_database=adb,
+        )
         assert db_adm.spawner_database is adb

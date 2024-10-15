@@ -552,18 +552,7 @@ class AstraDBAdmin:
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AstraDBAdmin):
-            return all(
-                [
-                    self.api_options.token == other.api_options.token,
-                    self.api_options.environment == other.api_options.environment,
-                    self.api_options.callers == other.api_options.callers,
-                    self.api_options.dev_ops_api_url_options.dev_ops_url
-                    == other.api_options.dev_ops_api_url_options.dev_ops_url,
-                    self.api_options.dev_ops_api_url_options.dev_ops_api_version
-                    == other.api_options.dev_ops_api_url_options.dev_ops_api_version,
-                    self._dev_ops_api_commander == other._dev_ops_api_commander,
-                ]
-            )
+            return all([self.api_options == other.api_options])
         else:
             return False
 
@@ -685,9 +674,10 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         logger.info("getting databases (DevOps API)")
@@ -705,7 +695,7 @@ class AstraDBAdmin:
         response_0 = self._dev_ops_api_commander.request(
             http_method=HttpMethod.GET,
             request_params=request_params_0,
-            timeout_info=base_timeout_info(method_timeout_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if not isinstance(response_0, list):
             raise DevOpsAPIException(
@@ -730,7 +720,7 @@ class AstraDBAdmin:
             response_n = self._dev_ops_api_commander.request(
                 http_method=HttpMethod.GET,
                 request_params=request_params_n,
-                timeout_info=base_timeout_info(method_timeout_ms),
+                timeout_info=base_timeout_info(_request_timeout_ms),
             )
             logger.info(
                 "finished request %s, getting databases (DevOps API)",
@@ -798,9 +788,10 @@ class AstraDBAdmin:
             False
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         logger.info("getting databases (DevOps API), async")
@@ -818,7 +809,7 @@ class AstraDBAdmin:
         response_0 = await self._dev_ops_api_commander.async_request(
             http_method=HttpMethod.GET,
             request_params=request_params_0,
-            timeout_info=base_timeout_info(method_timeout_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if not isinstance(response_0, list):
             raise DevOpsAPIException(
@@ -843,7 +834,7 @@ class AstraDBAdmin:
             response_n = await self._dev_ops_api_commander.async_request(
                 http_method=HttpMethod.GET,
                 request_params=request_params_n,
-                timeout_info=base_timeout_info(method_timeout_ms),
+                timeout_info=base_timeout_info(_request_timeout_ms),
             )
             logger.info(
                 "finished request %s, getting databases (DevOps API), async",
@@ -898,16 +889,17 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         logger.info(f"getting database info for '{id}' (DevOps API)")
         gd_response = self._dev_ops_api_commander.request(
             http_method=HttpMethod.GET,
             additional_path=id,
-            timeout_info=base_timeout_info(method_timeout_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         logger.info(f"finished getting database info for '{id}' (DevOps API)")
         return _recast_as_admin_database_info(
@@ -945,16 +937,17 @@ class AstraDBAdmin:
             True
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         logger.info(f"getting database info for '{id}' (DevOps API), async")
         gd_response = await self._dev_ops_api_commander.async_request(
             http_method=HttpMethod.GET,
             additional_path=id,
-            timeout_info=base_timeout_info(method_timeout_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         logger.info(f"finished getting database info for '{id}' (DevOps API), async")
         return _recast_as_admin_database_info(
@@ -1962,8 +1955,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     def __init__(
         self,
-        api_endpoint: str,
         *,
+        api_endpoint: str,
         api_options: FullAPIOptions,
         spawner_database: Database | AsyncDatabase | None = None,
         spawner_astra_db_admin: AstraDBAdmin | None = None,
@@ -1990,11 +1983,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 "to the class constructor."
             )
         if spawner_database is not None:
-            self._database = spawner_database
+            self.spawner_database = spawner_database
         else:
             # leaving the keyspace to its per-environment default
             # (a task for the Database)
-            self._database = Database(
+            self.spawner_database = Database(
                 api_endpoint=self.api_endpoint,
                 keyspace=None,
                 api_options=self.api_options,
@@ -2043,19 +2036,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             return all(
                 [
                     self.api_endpoint == other.api_endpoint,
-                    self._database == other._database,
-                    self._astra_db_admin == other._astra_db_admin,
-                    self.api_options.token == other.api_options.token,
-                    self.api_options.environment == other.api_options.environment,
-                    self.api_options.callers == other.api_options.callers,
-                    self.api_options.data_api_url_options.api_path
-                    == other.api_options.data_api_url_options.api_path,
-                    self.api_options.data_api_url_options.api_version
-                    == other.api_options.data_api_url_options.api_version,
-                    self.api_options.dev_ops_api_url_options.dev_ops_url
-                    == other.api_options.dev_ops_api_url_options.dev_ops_url,
-                    self.api_options.dev_ops_api_url_options.dev_ops_api_version
-                    == other.api_options.dev_ops_api_url_options.dev_ops_api_version,
+                    self.api_options == other.api_options,
                 ]
             )
         else:
@@ -2138,7 +2119,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         return AstraDBDatabaseAdmin(
             api_endpoint=api_endpoint or self.api_endpoint,
             api_options=api_options,
-            spawner_database=self._database,
+            spawner_database=self.spawner_database,
             spawner_astra_db_admin=self._astra_db_admin,
         )
 
@@ -2277,15 +2258,16 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             'us-east1'
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         logger.info(f"getting info ('{self._database_id}')")
         req_response = self._astra_db_admin.database_info(
             id=self._database_id,
-            max_time_ms=method_timeout_ms,
+            max_time_ms=_request_timeout_ms,
         )
         logger.info(f"finished getting info ('{self._database_id}')")
         return req_response
@@ -2318,15 +2300,16 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             >>> asyncio.run(wait_until_active(admin_for_my_db))
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         logger.info(f"getting info ('{self._database_id}'), async")
         req_response = await self._astra_db_admin.async_database_info(
             id=self._database_id,
-            max_time_ms=method_timeout_ms,
+            max_time_ms=_request_timeout_ms,
         )
         logger.info(f"finished getting info ('{self._database_id}'), async")
         return req_response
@@ -2353,13 +2336,14 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_keyspace']
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         logger.info(f"getting keyspaces ('{self._database_id}')")
-        info = self.info(max_time_ms=method_timeout_ms)
+        info = self.info(max_time_ms=_request_timeout_ms)
         logger.info(f"finished getting keyspaces ('{self._database_id}')")
         if info.raw_info is None:
             raise DevOpsAPIException("Could not get the keyspace list.")
@@ -2397,13 +2381,14 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             True
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         logger.info(f"getting keyspaces ('{self._database_id}'), async")
-        info = await self.async_info(max_time_ms=method_timeout_ms)
+        info = await self.async_info(max_time_ms=_request_timeout_ms)
         logger.info(f"finished getting keyspaces ('{self._database_id}'), async")
         if info.raw_info is None:
             raise DevOpsAPIException("Could not get the keyspace list.")
@@ -2520,7 +2505,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             f"'{self._database_id}' (DevOps API)"
         )
         if update_db_keyspace:
-            self._database.use_keyspace(name)
+            self.spawner_database.use_keyspace(name)
         return {"ok": 1}
 
     async def async_create_keyspace(
@@ -2636,7 +2621,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             f"'{self._database_id}' (DevOps API), async"
         )
         if update_db_keyspace:
-            self._database.use_keyspace(name)
+            self.spawner_database.use_keyspace(name)
         return {"ok": 1}
 
     def drop_keyspace(
@@ -3270,8 +3255,8 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
     def __init__(
         self,
-        api_endpoint: str,
         *,
+        api_endpoint: str,
         api_options: FullAPIOptions,
         spawner_database: Database | AsyncDatabase | None = None,
     ) -> None:
@@ -3282,11 +3267,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self.api_endpoint = api_endpoint
 
         if spawner_database is not None:
-            self._database = spawner_database
+            self.spawner_database = spawner_database
         else:
             # leaving the keyspace to its per-environment default
             # (a task for the Database)
-            self._database = Database(
+            self.spawner_database = Database(
                 api_endpoint=self.api_endpoint,
                 keyspace=None,
                 api_options=self.api_options,
@@ -3313,14 +3298,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             return all(
                 [
                     self.api_endpoint == other.api_endpoint,
-                    self._database == other._database,
-                    self.api_options.token == other.api_options.token,
-                    self.api_options.environment == other.api_options.environment,
-                    self.api_options.callers == other.api_options.callers,
-                    self.api_options.data_api_url_options.api_path
-                    == other.api_options.data_api_url_options.api_path,
-                    self.api_options.data_api_url_options.api_version
-                    == other.api_options.data_api_url_options.api_version,
+                    self.api_options == other.api_options,
                 ]
             )
         else:
@@ -3371,7 +3349,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         return DataAPIDatabaseAdmin(
             api_endpoint=api_endpoint or self.api_endpoint,
             api_options=api_options,
-            spawner_database=self._database,
+            spawner_database=self.spawner_database,
         )
 
     def with_options(
@@ -3432,15 +3410,16 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_keyspace']
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         logger.info("getting list of keyspaces")
         fn_response = self._api_commander.request(
             payload={"findKeyspaces": {}},
-            timeout_info=base_timeout_info(method_timeout_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "keyspaces" not in fn_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -3526,7 +3505,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         else:
             logger.info("finished creating keyspace")
             if update_db_keyspace:
-                self._database.use_keyspace(name)
+                self.spawner_database.use_keyspace(name)
             return {k: v for k, v in cn_response["status"].items() if k == "ok"}
 
     def drop_keyspace(
@@ -3604,15 +3583,16 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_keyspace']
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         logger.info("getting list of keyspaces, async")
         fn_response = await self._api_commander.async_request(
             payload={"findKeyspaces": {}},
-            timeout_info=base_timeout_info(method_timeout_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "keyspaces" not in fn_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -3701,7 +3681,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         else:
             logger.info("finished creating keyspace, async")
             if update_db_keyspace:
-                self._database.use_keyspace(name)
+                self.spawner_database.use_keyspace(name)
             return {k: v for k, v in cn_response["status"].items() if k == "ok"}
 
     async def async_drop_keyspace(

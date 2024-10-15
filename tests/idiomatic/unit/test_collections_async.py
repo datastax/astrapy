@@ -14,14 +14,27 @@
 
 from __future__ import annotations
 
+from typing import Sequence
+
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
+from astrapy.utils.api_options import APIOptions, FullAPIOptions, defaultAPIOptions
+from astrapy.utils.unset import _UNSET, UnsetType
 
 from ..conftest import (
     SECONDARY_KEYSPACE,
     DataAPICredentialsInfo,
 )
+
+
+def _wrapCallers(
+    asrc_database: AsyncDatabase,
+    callers: Sequence[tuple[str | None, str | None]] | UnsetType = _UNSET,
+) -> FullAPIOptions:
+    return defaultAPIOptions(
+        environment=asrc_database.api_options.environment
+    ).with_override(APIOptions(callers=callers))
 
 
 class TestCollectionsAsync:
@@ -31,14 +44,16 @@ class TestCollectionsAsync:
         async_database: AsyncDatabase,
     ) -> None:
         col1 = AsyncCollection(
-            async_database,
-            "id_test_collection",
-            callers=[("cn", "cv")],
+            database=async_database,
+            name="id_test_collection",
+            keyspace=None,
+            api_options=_wrapCallers(async_database, callers=[("cn", "cv")]),
         )
         col2 = AsyncCollection(
-            async_database,
-            "id_test_collection",
-            callers=[("cn", "cv")],
+            database=async_database,
+            name="id_test_collection",
+            keyspace=None,
+            api_options=_wrapCallers(async_database, callers=[("cn", "cv")]),
         )
         assert col1 == col2
 
@@ -48,9 +63,10 @@ class TestCollectionsAsync:
         async_database: AsyncDatabase,
     ) -> None:
         col1 = AsyncCollection(
-            async_database,
-            "id_test_collection",
-            callers=[("cn", "cv")],
+            database=async_database,
+            name="id_test_collection",
+            keyspace=None,
+            api_options=_wrapCallers(async_database, callers=[("cn", "cv")]),
         )
         assert col1 == col1._copy()
         assert col1 == col1.with_options()
@@ -64,9 +80,10 @@ class TestCollectionsAsync:
         callers0 = [("cn", "cv"), ("dn", "dv")]
         callers1 = [("x", "y")]
         col1 = AsyncCollection(
-            async_database,
-            "id_test_collection",
-            callers=callers0,
+            database=async_database,
+            name="id_test_collection",
+            keyspace=None,
+            api_options=_wrapCallers(async_database, callers=callers0),
         )
         assert col1 != col1._copy(database=async_database._copy(token="x_t"))
         assert col1 != col1._copy(name="o")
@@ -99,10 +116,10 @@ class TestCollectionsAsync:
         callers0 = [("cn", "cv"), ("dn", "dv")]
         callers1 = [("x", "y")]
         col1 = AsyncCollection(
-            async_database,
-            "id_test_collection",
+            database=async_database,
+            name="id_test_collection",
             keyspace="the_ks",
-            callers=callers0,
+            api_options=_wrapCallers(async_database, callers=callers0),
         )
         assert (
             col1
@@ -134,10 +151,18 @@ class TestCollectionsAsync:
     async def test_collection_database_property_async(
         self,
     ) -> None:
-        db1 = AsyncDatabase("a", "t", keyspace="ns1")
-        db2 = AsyncDatabase("a", "t", keyspace="ns2")
-        col1 = AsyncCollection(db1, "coll")
-        col2 = AsyncCollection(db1, "coll", keyspace="ns2")
+        opts0 = defaultAPIOptions(environment="other")
+        db1 = AsyncDatabase(api_endpoint="a", keyspace="ns1", api_options=opts0)
+        db2 = AsyncDatabase(api_endpoint="a", keyspace="ns2", api_options=opts0)
+        col1 = AsyncCollection(
+            database=db1,
+            name="coll",
+            keyspace=None,
+            api_options=opts0,
+        )
+        col2 = AsyncCollection(
+            database=db1, name="coll", api_options=opts0, keyspace="ns2"
+        )
         assert col1.database == db1
         assert col2.database == db2
 
@@ -145,8 +170,14 @@ class TestCollectionsAsync:
     async def test_collection_name_property_async(
         self,
     ) -> None:
-        db1 = AsyncDatabase("a", "t", keyspace="ns1")
-        col1 = AsyncCollection(db1, "coll")
+        opts0 = defaultAPIOptions(environment="other")
+        db1 = AsyncDatabase(api_endpoint="a", keyspace="ns1", api_options=opts0)
+        col1 = AsyncCollection(
+            database=db1,
+            name="coll",
+            keyspace=None,
+            api_options=opts0,
+        )
         assert col1.name == "coll"
 
     @pytest.mark.skipif(
@@ -167,13 +198,19 @@ class TestCollectionsAsync:
         )
         assert col2.keyspace == data_api_credentials_info["secondary_keyspace"]
 
-        col3 = AsyncCollection(async_database, "id_test_collection")
+        col3 = AsyncCollection(
+            database=async_database,
+            name="id_test_collection",
+            keyspace=None,
+            api_options=async_database.api_options,
+        )
         assert col3.keyspace == async_database.keyspace
 
         col4 = AsyncCollection(
-            async_database,
-            "id_test_collection",
+            database=async_database,
+            name="id_test_collection",
             keyspace=data_api_credentials_info["secondary_keyspace"],
+            api_options=async_database.api_options,
         )
         assert col4.keyspace == data_api_credentials_info["secondary_keyspace"]
         assert col1 == col3

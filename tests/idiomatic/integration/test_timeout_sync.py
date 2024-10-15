@@ -49,7 +49,7 @@ class TestTimeoutSync:
     ) -> None:
         info = fetch_database_info(
             sync_database.api_endpoint,
-            token=sync_database.token_provider.get_token(),
+            token=sync_database.api_options.token.get_token(),
             keyspace=sync_database.keyspace,
         )
         assert info is not None
@@ -57,7 +57,7 @@ class TestTimeoutSync:
         with pytest.raises(DevOpsAPITimeoutException) as exc:
             info = fetch_database_info(
                 sync_database.api_endpoint,
-                token=sync_database.token_provider.get_token(),
+                token=sync_database.api_options.token.get_token(),
                 keyspace=sync_database.keyspace,
                 max_time_ms=1,
             )

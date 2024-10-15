@@ -250,6 +250,7 @@ class APICommander:
             request_params=request_params,
             redacted_request_headers=self._loggable_headers,
             payload=normalized_payload,
+            timeout_info=timeout_info,
         )
         encoded_payload = self._encode_payload(normalized_payload)
 
@@ -294,6 +295,7 @@ class APICommander:
             request_params=request_params,
             redacted_request_headers=self._loggable_headers,
             payload=normalized_payload,
+            timeout_info=timeout_info,
         )
         encoded_payload = self._encode_payload(normalized_payload)
 

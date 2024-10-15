@@ -160,8 +160,8 @@ class Database:
 
     def __init__(
         self,
-        api_endpoint: str,
         *,
+        api_endpoint: str,
         keyspace: str | None,
         api_options: FullAPIOptions,
     ) -> None:
@@ -210,13 +210,7 @@ class Database:
                 [
                     self.api_endpoint == other.api_endpoint,
                     self.keyspace == other.keyspace,
-                    self.api_commander == other.api_commander,
-                    self.api_options.token == other.api_options.token,
-                    self.api_options.callers == other.api_options.callers,
-                    self.api_options.data_api_url_options.api_path
-                    == other.api_options.data_api_url_options.api_path,
-                    self.api_options.data_api_url_options.api_version
-                    == other.api_options.data_api_url_options.api_version,
+                    self.api_options == other.api_options,
                 ]
             )
         else:
@@ -617,8 +611,8 @@ class Database:
                 "be set, e.g. through the `use_keyspace` method."
             )
         return Collection(
-            self,
-            name,
+            database=self,
+            name=name,
             keyspace=_keyspace,
             api_options=resulting_api_options,
         )
@@ -736,13 +730,15 @@ class Database:
             additional_options=additional_options,
         )
 
-        _schema_operation_timeout_ms = schema_operation_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _schema_operation_timeout_ms
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
             or self.api_options.timeout_options.schema_operation_timeout_ms
         )
 
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=method_timeout_ms)
+        timeout_manager = MultiCallTimeoutManager(
+            overall_max_time_ms=_schema_operation_timeout_ms
+        )
 
         if check_exists is None:
             _check_exists = True
@@ -814,9 +810,9 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.collection import Collection
 
-        _schema_operation_timeout_ms = schema_operation_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _schema_operation_timeout_ms
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
             or self.api_options.timeout_options.schema_operation_timeout_ms
         )
 
@@ -833,7 +829,7 @@ class Database:
         logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = driver_commander.request(
             payload=dc_payload,
-            timeout_info=base_timeout_info(method_timeout_ms),
+            timeout_info=base_timeout_info(_schema_operation_timeout_ms),
         )
         logger.info(f"finished deleteCollection('{_collection_name}')")
         return dc_response.get("status", {})  # type: ignore[no-any-return]
@@ -871,9 +867,10 @@ class Database:
             CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         driver_commander = self._get_driver_commander(keyspace=keyspace)
@@ -881,7 +878,7 @@ class Database:
         logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
-            timeout_info=base_timeout_info(method_timeout_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -924,9 +921,10 @@ class Database:
             ['a_collection', 'another_col']
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         driver_commander = self._get_driver_commander(keyspace=keyspace)
@@ -934,7 +932,7 @@ class Database:
         logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
-            timeout_info=base_timeout_info(method_timeout_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -983,9 +981,10 @@ class Database:
             {'status': {'count': 123}}
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         if collection_name:
@@ -999,7 +998,7 @@ class Database:
             coll_req_response = _database.get_collection(collection_name).command(
                 body=body,
                 raise_api_errors=raise_api_errors,
-                max_time_ms=method_timeout_ms,
+                max_time_ms=_request_timeout_ms,
             )
             logger.info(
                 "finished deferring to collection " f"'{collection_name}' for command."
@@ -1012,7 +1011,7 @@ class Database:
             req_response = driver_commander.request(
                 payload=body,
                 raise_api_errors=raise_api_errors,
-                timeout_info=base_timeout_info(method_timeout_ms),
+                timeout_info=base_timeout_info(_request_timeout_ms),
             )
             logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             return req_response
@@ -1136,16 +1135,19 @@ class AsyncDatabase:
 
     def __init__(
         self,
-        api_endpoint: str,
         *,
-        keyspace: str | None = None,
+        api_endpoint: str,
+        keyspace: str | None,
         api_options: FullAPIOptions,
     ) -> None:
         self.api_options = api_options
         self.api_endpoint = api_endpoint.strip("/")
         # enforce defaults if on Astra DB:
         self._using_keyspace: str | None
-        if keyspace is None and self.environment in Environment.astra_db_values:
+        if (
+            keyspace is None
+            and self.api_options.environment in Environment.astra_db_values
+        ):
             self._using_keyspace = DEFAULT_ASTRA_DB_KEYSPACE
         else:
             self._using_keyspace = keyspace
@@ -1166,7 +1168,7 @@ class AsyncDatabase:
         ep_desc = f'api_endpoint="{self.api_endpoint}"'
         token_desc: str | None
         if self.token_provider:
-            token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
+            token_desc = f'token="{redact_secret(str(self.api_options.token), 15)}"'
         else:
             token_desc = None
         keyspace_desc: str | None
@@ -1181,13 +1183,9 @@ class AsyncDatabase:
         if isinstance(other, AsyncDatabase):
             return all(
                 [
-                    self.token_provider == other.token_provider,
                     self.api_endpoint == other.api_endpoint,
-                    self.api_path == other.api_path,
-                    self.api_version == other.api_version,
                     self.keyspace == other.keyspace,
-                    self.callers == other.callers,
-                    self.api_commander == other.api_commander,
+                    self.api_options == other.api_options,
                 ]
             )
         else:
@@ -1608,8 +1606,8 @@ class AsyncDatabase:
                 "be set, e.g. through the `use_keyspace` method."
             )
         return AsyncCollection(
-            self,
-            name,
+            database=self,
+            name=name,
             keyspace=_keyspace,
             api_options=resulting_api_options,
         )
@@ -1731,13 +1729,15 @@ class AsyncDatabase:
             additional_options=additional_options,
         )
 
-        _schema_operation_timeout_ms = schema_operation_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _schema_operation_timeout_ms
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
             or self.api_options.timeout_options.schema_operation_timeout_ms
         )
 
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=method_timeout_ms)
+        timeout_manager = MultiCallTimeoutManager(
+            overall_max_time_ms=_schema_operation_timeout_ms
+        )
 
         if check_exists is None:
             _check_exists = True
@@ -1809,9 +1809,9 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.collection import AsyncCollection
 
-        _schema_operation_timeout_ms = schema_operation_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _schema_operation_timeout_ms
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
             or self.api_options.timeout_options.schema_operation_timeout_ms
         )
 
@@ -1828,7 +1828,7 @@ class AsyncDatabase:
         logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = await driver_commander.async_request(
             payload=dc_payload,
-            timeout_info=base_timeout_info(method_timeout_ms),
+            timeout_info=base_timeout_info(_schema_operation_timeout_ms),
         )
         logger.info(f"finished deleteCollection('{_collection_name}')")
         return dc_response.get("status", {})  # type: ignore[no-any-return]
@@ -1868,9 +1868,10 @@ class AsyncDatabase:
             * coll: CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         driver_commander = self._get_driver_commander(keyspace=keyspace)
@@ -1878,7 +1879,7 @@ class AsyncDatabase:
         logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
-            timeout_info=base_timeout_info(method_timeout_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -1921,9 +1922,10 @@ class AsyncDatabase:
             ['a_collection', 'another_col']
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         driver_commander = self._get_driver_commander(keyspace=keyspace)
@@ -1931,7 +1933,7 @@ class AsyncDatabase:
         logger.info("findCollections")
         gc_response = await driver_commander.async_request(
             payload=gc_payload,
-            timeout_info=base_timeout_info(method_timeout_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -1983,9 +1985,10 @@ class AsyncDatabase:
             {'status': {'count': 123}}
         """
 
-        _request_timeout_ms = request_timeout_ms or max_time_ms
-        method_timeout_ms = (
-            _request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
 
         if collection_name:
@@ -2000,7 +2003,7 @@ class AsyncDatabase:
             coll_req_response = await _collection.command(
                 body=body,
                 raise_api_errors=raise_api_errors,
-                max_time_ms=method_timeout_ms,
+                max_time_ms=_request_timeout_ms,
             )
             logger.info(
                 "finished deferring to collection " f"'{collection_name}' for command."
@@ -2013,7 +2016,7 @@ class AsyncDatabase:
             req_response = await driver_commander.async_request(
                 payload=body,
                 raise_api_errors=raise_api_errors,
-                timeout_info=base_timeout_info(method_timeout_ms),
+                timeout_info=base_timeout_info(_request_timeout_ms),
             )
             logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             return req_response

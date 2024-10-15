@@ -211,23 +211,23 @@ class FullAPIOptions(APIOptions):
                 **other.admin_additional_headers,
             }
 
-        if isinstance(other.timeout_options, FullTimeoutOptions):
+        if isinstance(other.timeout_options, TimeoutOptions):
             timeout_options = self.timeout_options.with_override(other.timeout_options)
         else:
             timeout_options = self.timeout_options
-        if isinstance(other.payload_transform_options, FullPayloadTransformOptions):
+        if isinstance(other.payload_transform_options, PayloadTransformOptions):
             payload_transform_options = self.payload_transform_options.with_override(
                 other.payload_transform_options
             )
         else:
             payload_transform_options = self.payload_transform_options
-        if isinstance(other.data_api_url_options, FullDataAPIURLOptions):
+        if isinstance(other.data_api_url_options, DataAPIURLOptions):
             data_api_url_options = self.data_api_url_options.with_override(
                 other.data_api_url_options
             )
         else:
             data_api_url_options = self.data_api_url_options
-        if isinstance(other.dev_ops_api_url_options, FullDevOpsAPIURLOptions):
+        if isinstance(other.dev_ops_api_url_options, DevOpsAPIURLOptions):
             dev_ops_api_url_options = self.dev_ops_api_url_options.with_override(
                 other.dev_ops_api_url_options
             )

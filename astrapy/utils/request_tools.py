@@ -30,6 +30,7 @@ def log_httpx_request(
     request_params: dict[str, Any] | None,
     redacted_request_headers: dict[str, str],
     payload: dict[str, Any] | None,
+    timeout_info: TimeoutInfoWideType,
 ) -> None:
     """
     Log the details of an HTTP request for debugging purposes.
@@ -48,6 +49,8 @@ def log_httpx_request(
         logger.debug(f"Request headers: {redacted_request_headers}")
     if payload:
         logger.debug(f"Request payload: {payload}")
+    if timeout_info:
+        logger.debug(f"Timeout info: {timeout_info}")
 
 
 def log_httpx_response(response: httpx.Response) -> None:

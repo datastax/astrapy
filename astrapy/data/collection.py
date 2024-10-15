@@ -147,9 +147,9 @@ class Collection:
 
     def __init__(
         self,
+        *,
         database: Database,
         name: str,
-        *,
         keyspace: str | None,
         api_options: FullAPIOptions,
     ) -> None:
@@ -178,7 +178,6 @@ class Collection:
         if isinstance(other, Collection):
             return all(
                 [
-                    self._api_commander == other._api_commander,
                     self._name == other._name,
                     self._database == other._database,
                     self.api_options == other.api_options,
@@ -1072,7 +1071,9 @@ class Collection:
         """
 
         _request_timeout_ms = (
-            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
         if include_similarity is not None and not _is_vector_sort(sort):
             raise ValueError(
@@ -2464,9 +2465,9 @@ class AsyncCollection:
 
     def __init__(
         self,
+        *,
         database: AsyncDatabase,
         name: str,
-        *,
         keyspace: str | None,
         api_options: FullAPIOptions,
     ) -> None:
@@ -2495,7 +2496,6 @@ class AsyncCollection:
         if isinstance(other, AsyncCollection):
             return all(
                 [
-                    self._api_commander == other._api_commander,
                     self._name == other._name,
                     self._database == other._database,
                     self.api_options == other.api_options,
@@ -3416,7 +3416,9 @@ class AsyncCollection:
         """
 
         _request_timeout_ms = (
-            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
         )
         if include_similarity is not None and not _is_vector_sort(sort):
             raise ValueError(
