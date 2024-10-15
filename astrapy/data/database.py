@@ -50,7 +50,6 @@ from astrapy.utils.api_options import (
     FullAPIOptions,
     TimeoutOptions,
 )
-from astrapy.utils.leg_api_options import CollectionAPIOptions
 from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
@@ -419,13 +418,22 @@ class Database:
         self._using_keyspace = keyspace
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
-    def info(self) -> DatabaseInfo:
+    def info(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> DatabaseInfo:
         """
         Additional information on the database as a DatabaseInfo instance.
 
         Some of the returned properties are dynamic throughout the lifetime
         of the database (such as raw_info["keyspaces"]). For this reason,
         each invocation of this method triggers a new request to the DevOps API.
+
+        Args:
+            request_timeout_ms: a timeout, in milliseconds, for the DevOps API request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Example:
             >>> my_db.info().region
@@ -439,11 +447,17 @@ class Database:
             between the `region` and the `raw_info["region"]` attributes.
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
         logger.info("getting database info")
         database_info = fetch_database_info(
             self.api_endpoint,
             token=self.api_options.token.get_token(),
             keyspace=self.keyspace,
+            max_time_ms=_request_timeout_ms,
         )
         if database_info is not None:
             logger.info("finished getting database info")
@@ -602,16 +616,11 @@ class Database:
                 "No keyspace specified. This operation requires a keyspace to "
                 "be set, e.g. through the `use_keyspace` method."
             )
-        # TODO remove this unpacking from api options here:
         return Collection(
             self,
             name,
             keyspace=_keyspace,
-            api_options=CollectionAPIOptions(
-                embedding_api_key=resulting_api_options.embedding_api_key,
-                max_time_ms=resulting_api_options.timeout_options.request_timeout_ms,
-            ),
-            callers=resulting_api_options.callers,
+            api_options=resulting_api_options,
         )
 
     def create_collection(
@@ -1397,13 +1406,22 @@ class AsyncDatabase:
         self._using_keyspace = keyspace
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
-    def info(self) -> DatabaseInfo:
+    def info(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> DatabaseInfo:
         """
         Additional information on the database as a DatabaseInfo instance.
 
         Some of the returned properties are dynamic throughout the lifetime
         of the database (such as raw_info["keyspaces"]). For this reason,
         each invocation of this method triggers a new request to the DevOps API.
+
+        Args:
+            request_timeout_ms: a timeout, in milliseconds, for the DevOps API request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Example:
             >>> my_async_db.info().region
@@ -1417,11 +1435,17 @@ class AsyncDatabase:
             between the `region` and the `raw_info["region"]` attributes.
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
         logger.info("getting database info")
         database_info = fetch_database_info(
             self.api_endpoint,
             token=self.api_options.token.get_token(),
             keyspace=self.keyspace,
+            max_time_ms=_request_timeout_ms,
         )
         if database_info is not None:
             logger.info("finished getting database info")
@@ -1587,11 +1611,7 @@ class AsyncDatabase:
             self,
             name,
             keyspace=_keyspace,
-            api_options=CollectionAPIOptions(
-                embedding_api_key=resulting_api_options.embedding_api_key,
-                max_time_ms=resulting_api_options.timeout_options.request_timeout_ms,
-            ),
-            callers=resulting_api_options.callers,
+            api_options=resulting_api_options,
         )
 
     async def create_collection(

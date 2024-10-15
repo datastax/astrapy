@@ -27,7 +27,7 @@ from astrapy.constants import Environment
 from astrapy.settings.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
-    DEFAULT_DATA_METHOD_TIMEOUT_MS,
+    DEFAULT_DATA_OPERATION_TIMEOUT_MS,
     DEFAULT_REQUEST_TIMEOUT_MS,
     DEV_OPS_URL_ENV_MAP,
     DEV_OPS_VERSION_ENV_MAP,
@@ -38,7 +38,7 @@ from astrapy.utils.unset import _UNSET, UnsetType
 @dataclass
 class TimeoutOptions:
     request_timeout_ms: int | UnsetType = _UNSET
-    data_method_timeout_ms: int | UnsetType = _UNSET
+    data_operation_timeout_ms: int | UnsetType = _UNSET
     schema_operation_timeout_ms: int | UnsetType = _UNSET
     database_admin_timeout_ms: int | UnsetType = _UNSET
     keyspace_admin_timeout_ms: int | UnsetType = _UNSET
@@ -47,7 +47,7 @@ class TimeoutOptions:
 @dataclass
 class FullTimeoutOptions(TimeoutOptions):
     request_timeout_ms: int
-    data_method_timeout_ms: int
+    data_operation_timeout_ms: int
     schema_operation_timeout_ms: int
     database_admin_timeout_ms: int
     keyspace_admin_timeout_ms: int
@@ -59,10 +59,10 @@ class FullTimeoutOptions(TimeoutOptions):
                 if not isinstance(other.request_timeout_ms, UnsetType)
                 else self.request_timeout_ms
             ),
-            data_method_timeout_ms=(
-                other.data_method_timeout_ms
-                if not isinstance(other.data_method_timeout_ms, UnsetType)
-                else self.data_method_timeout_ms
+            data_operation_timeout_ms=(
+                other.data_operation_timeout_ms
+                if not isinstance(other.data_operation_timeout_ms, UnsetType)
+                else self.data_operation_timeout_ms
             ),
             schema_operation_timeout_ms=(
                 other.schema_operation_timeout_ms
@@ -262,7 +262,7 @@ class FullAPIOptions(APIOptions):
 
 defaultTimeoutOptions = FullTimeoutOptions(
     request_timeout_ms=DEFAULT_REQUEST_TIMEOUT_MS,
-    data_method_timeout_ms=DEFAULT_DATA_METHOD_TIMEOUT_MS,
+    data_operation_timeout_ms=DEFAULT_DATA_OPERATION_TIMEOUT_MS,
     schema_operation_timeout_ms=45000,
     database_admin_timeout_ms=600000,
     keyspace_admin_timeout_ms=20000,

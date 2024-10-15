@@ -2144,8 +2144,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     def with_options(
         self,
-        api_endpoint: str | None = None,
         *,
+        api_endpoint: str | None = None,
         token: str | TokenProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
