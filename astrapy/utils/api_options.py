@@ -27,8 +27,12 @@ from astrapy.constants import Environment
 from astrapy.settings.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
+    DEFAULT_BINARY_ENCODE_VECTORS,
     DEFAULT_DATA_OPERATION_TIMEOUT_MS,
+    DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
+    DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
     DEFAULT_REQUEST_TIMEOUT_MS,
+    DEFAULT_SCHEMA_OPERATION_TIMEOUT_MS,
     DEV_OPS_URL_ENV_MAP,
     DEV_OPS_VERSION_ENV_MAP,
 )
@@ -263,12 +267,12 @@ class FullAPIOptions(APIOptions):
 defaultTimeoutOptions = FullTimeoutOptions(
     request_timeout_ms=DEFAULT_REQUEST_TIMEOUT_MS,
     data_operation_timeout_ms=DEFAULT_DATA_OPERATION_TIMEOUT_MS,
-    schema_operation_timeout_ms=45000,
-    database_admin_timeout_ms=600000,
-    keyspace_admin_timeout_ms=20000,
+    schema_operation_timeout_ms=DEFAULT_SCHEMA_OPERATION_TIMEOUT_MS,
+    database_admin_timeout_ms=DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
+    keyspace_admin_timeout_ms=DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
 )
 defaultPayloadTransformOptions = FullPayloadTransformOptions(
-    binary_encode_vectors=False,
+    binary_encode_vectors=DEFAULT_BINARY_ENCODE_VECTORS,
 )
 
 
