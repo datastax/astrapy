@@ -164,6 +164,7 @@ class Collection:
         self._commander_headers = {
             **{DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token()},
             **self.api_options.embedding_api_key.get_headers(),
+            **self.api_options.database_additional_headers,
         }
         self._api_commander = self._get_api_commander()
 
@@ -223,6 +224,7 @@ class Collection:
             path=base_path,
             headers=self._commander_headers,
             callers=self.api_options.callers,
+            redacted_header_names=self.api_options.redacted_header_names,
         )
         return api_commander
 
@@ -2482,6 +2484,7 @@ class AsyncCollection:
         self._commander_headers = {
             **{DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token()},
             **self.api_options.embedding_api_key.get_headers(),
+            **self.api_options.database_additional_headers,
         }
         self._api_commander = self._get_api_commander()
 
@@ -2541,6 +2544,7 @@ class AsyncCollection:
             path=base_path,
             headers=self._commander_headers,
             callers=self.api_options.callers,
+            redacted_header_names=self.api_options.redacted_header_names,
         )
         return api_commander
 

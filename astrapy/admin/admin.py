@@ -531,9 +531,12 @@ class AstraDBAdmin:
             _token_str = self.api_options.token.get_token()
             self._dev_ops_commander_headers = {
                 DEFAULT_DEV_OPS_AUTH_HEADER: f"{DEFAULT_DEV_OPS_AUTH_PREFIX}{_token_str}",
+                **self.api_options.admin_additional_headers,
             }
         else:
-            self._dev_ops_commander_headers = {}
+            self._dev_ops_commander_headers = {
+                **self.api_options.admin_additional_headers,
+            }
         self._dev_ops_api_commander = self._get_dev_ops_api_commander()
 
     def __repr__(self) -> str:
@@ -577,6 +580,7 @@ class AstraDBAdmin:
             headers=self._dev_ops_commander_headers,
             callers=self.api_options.callers,
             dev_ops_api=True,
+            redacted_header_names=self.api_options.redacted_header_names,
         )
         return dev_ops_commander
 
@@ -738,7 +742,7 @@ class AstraDBAdmin:
             items=[
                 _recast_as_admin_database_info(
                     db_dict,
-                    environment=self.environment,
+                    environment=self.api_options.environment,
                 )
                 for response in responses
                 for db_dict in response
@@ -852,7 +856,7 @@ class AstraDBAdmin:
             items=[
                 _recast_as_admin_database_info(
                     db_dict,
-                    environment=self.environment,
+                    environment=self.api_options.environment,
                 )
                 for response in responses
                 for db_dict in response
@@ -1994,8 +1998,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             )
 
         # API-commander-specific init (for the vectorizeOps invocations)
+        # even if Data API, this is admin and must use the Admin additional headers:
         self._commander_headers = {
             DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token(),
+            **self.api_options.admin_additional_headers,
         }
         self._api_commander = self._get_api_commander()
 
@@ -2005,9 +2011,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             _token = self.api_options.token.get_token()
             self._dev_ops_commander_headers = {
                 DEFAULT_DEV_OPS_AUTH_HEADER: f"{DEFAULT_DEV_OPS_AUTH_PREFIX}{_token}",
+                **self.api_options.admin_additional_headers,
             }
         else:
-            self._dev_ops_commander_headers = {}
+            self._dev_ops_commander_headers = {
+                **self.api_options.admin_additional_headers,
+            }
         self._dev_ops_api_commander = self._get_dev_ops_api_commander()
 
         # this class keeps a reference to the AstraDBAdmin associated to this org:
@@ -2062,6 +2071,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             path=base_path,
             headers=self._commander_headers,
             callers=self.api_options.callers,
+            redacted_header_names=self.api_options.redacted_header_names,
         )
         return api_commander
 
@@ -2087,6 +2097,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             headers=self._dev_ops_commander_headers,
             callers=self.api_options.callers,
             dev_ops_api=True,
+            redacted_header_names=self.api_options.redacted_header_names,
         )
         return dev_ops_commander
 
@@ -3277,8 +3288,10 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 api_options=self.api_options,
             )
 
+        # even if Data API, this is admin and must use the Admin additional headers:
         self._commander_headers = {
             DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token(),
+            **self.api_options.admin_additional_headers,
         }
         self._api_commander = self._get_api_commander()
 
@@ -3323,6 +3336,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             path=base_path,
             headers=self._commander_headers,
             callers=self.api_options.callers,
+            redacted_header_names=self.api_options.redacted_header_names,
         )
         return api_commander
 

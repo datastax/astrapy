@@ -179,6 +179,7 @@ class Database:
 
         self._commander_headers = {
             DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token(),
+            **self.api_options.database_additional_headers,
         }
         self._name: str | None = None
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
@@ -246,6 +247,7 @@ class Database:
                 path=base_path,
                 headers=self._commander_headers,
                 callers=self.api_options.callers,
+                redacted_header_names=self.api_options.redacted_header_names,
             )
             return api_commander
 
@@ -1154,6 +1156,7 @@ class AsyncDatabase:
 
         self._commander_headers = {
             DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token(),
+            **self.api_options.database_additional_headers,
         }
         self._name: str | None = None
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
@@ -1221,6 +1224,7 @@ class AsyncDatabase:
                 path=base_path,
                 headers=self._commander_headers,
                 callers=self.api_options.callers,
+                redacted_header_names=self.api_options.redacted_header_names,
             )
             return api_commander
 

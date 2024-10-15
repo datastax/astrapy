@@ -1,5 +1,6 @@
 v 2.0.0
 =======
+Support for arbitrary 'database' and 'admin' headers throughout the object chain
 Reworked the options system:
     - an APIOptions object inherited at each "spawn" operation, with overrides
     - environment-dependent defaults if nothing supplied

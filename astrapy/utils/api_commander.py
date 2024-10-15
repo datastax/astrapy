@@ -67,7 +67,7 @@ class APICommander:
         path: str,
         headers: dict[str, str | None] = {},
         callers: Sequence[CallerType] = [],
-        redacted_header_names: Iterable[str] = DEFAULT_REDACTED_HEADER_NAMES,
+        redacted_header_names: Iterable[str] | None = None,
         dev_ops_api: bool = False,
     ) -> None:
         self.async_client = httpx.AsyncClient()
@@ -75,7 +75,10 @@ class APICommander:
         self.path = path.lstrip("/")
         self.headers = headers
         self.callers = callers
-        self.redacted_header_names = set(redacted_header_names)
+        self.redacted_header_names = set(redacted_header_names or [])
+        self.full_redacted_header_names = (
+            self.redacted_header_names | DEFAULT_REDACTED_HEADER_NAMES
+        )
         self.dev_ops_api = dev_ops_api
 
         self._faulty_response_exc_class: (
@@ -103,12 +106,21 @@ class APICommander:
             {"User-Agent": full_user_agent_string} if full_user_agent_string else {}
         )
         self.full_headers: dict[str, str] = {
-            **{k: v for k, v in self.headers.items() if v is not None},
-            **self.caller_header,
-            **{"Content-Type": "application/json"},
+            k: v
+            for k, v in {
+                **{
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+                **self.caller_header,
+                **self.headers,
+            }.items()
+            if v is not None
         }
         self._loggable_headers = {
-            k: v if k not in self.redacted_header_names else HEADER_REDACT_PLACEHOLDER
+            k: v
+            if k not in self.full_redacted_header_names
+            else HEADER_REDACT_PLACEHOLDER
             for k, v in self.full_headers.items()
         }
         self.full_path = ("/".join([self.api_endpoint, self.path])).rstrip("/")

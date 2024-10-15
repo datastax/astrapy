@@ -165,6 +165,7 @@ class APIOptions:
     callers: Sequence[tuple[str | None, str | None]] | UnsetType = _UNSET
     database_additional_headers: dict[str, str | None] | UnsetType = _UNSET
     admin_additional_headers: dict[str, str | None] | UnsetType = _UNSET
+    redacted_header_names: set[str] | UnsetType = _UNSET
     token: TokenProvider | UnsetType = _UNSET
     embedding_api_key: EmbeddingHeadersProvider | UnsetType = _UNSET
 
@@ -180,6 +181,7 @@ class FullAPIOptions(APIOptions):
     callers: Sequence[tuple[str | None, str | None]]
     database_additional_headers: dict[str, str | None]
     admin_additional_headers: dict[str, str | None]
+    redacted_header_names: set[str]
     token: TokenProvider
     embedding_api_key: EmbeddingHeadersProvider
 
@@ -194,6 +196,7 @@ class FullAPIOptions(APIOptions):
 
         database_additional_headers: dict[str, str | None]
         admin_additional_headers: dict[str, str | None]
+        redacted_header_names: set[str]
 
         timeout_options: FullTimeoutOptions
         payload_transform_options: FullPayloadTransformOptions
@@ -214,6 +217,12 @@ class FullAPIOptions(APIOptions):
                 **self.admin_additional_headers,
                 **other.admin_additional_headers,
             }
+        if isinstance(other.redacted_header_names, UnsetType):
+            redacted_header_names = self.redacted_header_names
+        else:
+            redacted_header_names = (
+                self.redacted_header_names | other.redacted_header_names
+            )
 
         if isinstance(other.timeout_options, TimeoutOptions):
             timeout_options = self.timeout_options.with_override(other.timeout_options)
@@ -251,6 +260,7 @@ class FullAPIOptions(APIOptions):
             ),
             database_additional_headers=database_additional_headers,
             admin_additional_headers=admin_additional_headers,
+            redacted_header_names=redacted_header_names,
             token=other.token if not isinstance(other.token, UnsetType) else self.token,
             embedding_api_key=(
                 other.embedding_api_key
@@ -297,6 +307,7 @@ def defaultAPIOptions(environment: str) -> FullAPIOptions:
         callers=[],
         database_additional_headers={},
         admin_additional_headers={},
+        redacted_header_names=set(),
         token=StaticTokenProvider(None),
         embedding_api_key=EmbeddingAPIKeyHeaderProvider(None),
         timeout_options=defaultTimeoutOptions,
