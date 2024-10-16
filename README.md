@@ -408,6 +408,18 @@ from astrapy.ids import (
 )
 ```
 
+API Options:
+
+```python
+from astrapy.api_options import (
+    APIOptions,
+    DataAPIURLOptions,
+    DevOpsAPIURLOptions,
+    PayloadTransformOptions,
+    TimeoutOptions,
+)
+```
+
 Result classes:
 
 ```python
