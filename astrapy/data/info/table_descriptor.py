@@ -21,6 +21,17 @@ from typing import Any
 from astrapy.data.info.database_info import DatabaseInfo
 
 
+def warn_residual_keys(
+    klass: type, raw_dict: dict[str, Any], known_keys: set[str]
+) -> None:
+    residual_keys = raw_dict.keys() - known_keys
+    if residual_keys:
+        warnings.warn(
+            "Unexpected key(s) encountered parsing a dictionary into "
+            f"a `{klass.__name__}`: '{','.join(sorted(residual_keys))}'"
+        )
+
+
 @dataclass
 class TableInfo:
     """
@@ -42,22 +53,175 @@ class TableInfo:
 
 
 @dataclass
-class TableOptions:
+class TableColumnTypeDescriptor:
     """
-    A structure expressing the options ("schema") of a table.
+    TODO
+    """
+
+    column_type: str
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.column_type})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            "type": self.column_type,
+        }
+
+    @classmethod
+    def from_dict(cls, raw_dict: dict[str, Any]) -> TableColumnTypeDescriptor:
+        """
+        Create an instance of TableColumnTypeDescriptor from a dictionary
+        such as one from the Data API.
+
+        This method switches to the proper subclass depending on the input.
+        """
+
+        if "keyType" in raw_dict:
+            return TableKeyValuedColumnTypeDescriptor.from_dict(raw_dict)
+        elif "valueType" in raw_dict:
+            return TableValuedColumnTypeDescriptor.from_dict(raw_dict)
+        else:
+            warn_residual_keys(cls, raw_dict, {"type"})
+            return TableColumnTypeDescriptor(
+                column_type=raw_dict["type"],
+            )
+
+
+@dataclass
+class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
+    """
+    TODO
+    """
+
+    value_type: str
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.column_type}<{self.value_type}>)"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            "type": self.column_type,
+            "valueType": self.value_type,
+        }
+
+    @classmethod
+    def from_dict(cls, raw_dict: dict[str, Any]) -> TableValuedColumnTypeDescriptor:
+        """
+        Create an instance of TableValuedColumnTypeDescriptor from a dictionary
+        such as one from the Data API.
+        """
+
+        warn_residual_keys(cls, raw_dict, {"type", "valueType"})
+        return TableValuedColumnTypeDescriptor(
+            column_type=raw_dict["type"],
+            value_type=raw_dict["valueType"],
+        )
+
+
+@dataclass
+class TableKeyValuedColumnTypeDescriptor(TableValuedColumnTypeDescriptor):
+    """
+    TODO
+    """
+
+    key_type: str
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.column_type}<{self.key_type},{self.value_type}>)"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            "type": self.column_type,
+            "keyType": self.key_type,
+            "valueType": self.value_type,
+        }
+
+    @classmethod
+    def from_dict(cls, raw_dict: dict[str, Any]) -> TableKeyValuedColumnTypeDescriptor:
+        """
+        Create an instance of TableKeyValuedColumnTypeDescriptor from a dictionary
+        such as one from the Data API.
+        """
+
+        warn_residual_keys(cls, raw_dict, {"type", "keyType", "valueType"})
+        return TableKeyValuedColumnTypeDescriptor(
+            column_type=raw_dict["type"],
+            key_type=raw_dict["keyType"],
+            value_type=raw_dict["valueType"],
+        )
+
+
+@dataclass
+class TablePrimaryKeyDescriptor:
+    """
+    TODO
+    """
+
+    partition_by: list[str]
+    partition_sort: dict[str, int]
+
+    def __repr__(self) -> str:
+        partition_key_block = ",".join(self.partition_by)
+        clustering_block = ",".join(
+            f"{clu_col_name}:{'a' if clu_col_sort > 0 else 'd'}"
+            for clu_col_name, clu_col_sort in self.partition_sort.items()
+        )
+        pk_block = f"({partition_key_block}){clustering_block}"
+        return f"{self.__class__.__name__}[{pk_block}]"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            k: v
+            for k, v in {
+                "partitionBy": self.partition_by,
+                "partitionSort": dict(self.partition_sort.items()),
+            }.items()
+            if v is not None
+        }
+
+    @classmethod
+    def from_dict(cls, raw_dict: dict[str, Any]) -> TablePrimaryKeyDescriptor:
+        """
+        Create an instance of TablePrimaryKeyDescriptor from a dictionary
+        such as one from the Data API.
+        """
+
+        warn_residual_keys(cls, raw_dict, {"partitionBy", "partitionSort"})
+        return TablePrimaryKeyDescriptor(
+            partition_by=raw_dict["partitionBy"],
+            partition_sort=raw_dict["partitionSort"],
+        )
+
+
+@dataclass
+class TableDefinition:
+    """
+    A structure expressing the definition ("schema") of a table.
     See the Data API specifications for detailed specification and allowed values.
 
     Attributes:
-        raw_options: the raw response from the Data API for the table configuration.
+        columns: a map from column names to their type definition object.
+        primary_key: a specification of the primary key for the table.
     """
 
-    raw_options: dict[str, Any] | None
+    columns: dict[str, TableColumnTypeDescriptor]
+    primary_key: TablePrimaryKeyDescriptor
 
     def __repr__(self) -> str:
         not_null_pieces = [
             pc
             for pc in [
-                None if self.raw_options is None else "raw_options=...",
+                f"columns=[{','.join(self.columns.keys())}]",
+                f"primary_key={self.primary_key}",
             ]
             if pc is not None
         ]
@@ -69,20 +233,28 @@ class TableOptions:
         return {
             k: v
             for k, v in {
-                "temp": "temp"
+                "columns": {
+                    col_n: col_v.as_dict() for col_n, col_v in self.columns.items()
+                },
+                "primaryKey": self.primary_key.as_dict(),
             }.items()
             if v is not None
         }
 
-    @staticmethod
-    def from_dict(raw_dict: dict[str, Any]) -> TableOptions:
+    @classmethod
+    def from_dict(cls, raw_dict: dict[str, Any]) -> TableDefinition:
         """
-        Create an instance of TableOptions from a dictionary
+        Create an instance of TableDefinition from a dictionary
         such as one from the Data API.
         """
 
-        return TableOptions(
-            raw_options=raw_dict,
+        warn_residual_keys(cls, raw_dict, {"columns", "primaryKey"})
+        return TableDefinition(
+            columns={
+                col_n: TableColumnTypeDescriptor.from_dict(col_v)
+                for col_n, col_v in raw_dict["columns"].items()
+            },
+            primary_key=TablePrimaryKeyDescriptor.from_dict(raw_dict["primaryKey"]),
         )
 
 
@@ -90,16 +262,16 @@ class TableOptions:
 class TableDescriptor:
     """
     A structure expressing full description of a table as the Data API
-    returns it, i.e. its name and its `options` sub-structure.
+    returns it, i.e. its name and its `definition` sub-structure.
 
     Attributes:
         name: the name of the table.
-        options: a TableOptions instance.
+        definition: a TableDefinition instance.
         raw_descriptor: the raw response from the Data API.
     """
 
     name: str
-    options: TableOptions
+    definition: TableDefinition
     raw_descriptor: dict[str, Any] | None
 
     def __repr__(self) -> str:
@@ -107,7 +279,7 @@ class TableDescriptor:
             pc
             for pc in [
                 f"name={self.name.__repr__()}",
-                f"options={self.options.__repr__()}",
+                f"definition={self.definition.__repr__()}",
                 None if self.raw_descriptor is None else "raw_descriptor=...",
             ]
             if pc is not None
@@ -117,27 +289,28 @@ class TableDescriptor:
     def as_dict(self) -> dict[str, Any]:
         """
         Recast this object into a dictionary.
-        Empty `options` will not be returned at all.
+        Empty `definition` will not be returned at all.
         """
 
         return {
             k: v
             for k, v in {
                 "name": self.name,
-                "options": self.options.as_dict(),
+                "definition": self.definition.as_dict(),
             }.items()
             if v
         }
 
-    @staticmethod
-    def from_dict(raw_dict: dict[str, Any]) -> TableDescriptor:
+    @classmethod
+    def from_dict(cls, raw_dict: dict[str, Any]) -> TableDescriptor:
         """
         Create an instance of TableDescriptor from a dictionary
         such as one from the Data API.
         """
 
+        warn_residual_keys(cls, raw_dict, {"name", "definition"})
         return TableDescriptor(
             name=raw_dict["name"],
-            options=TableOptions.from_dict(raw_dict.get("options") or {}),
+            definition=TableDefinition.from_dict(raw_dict.get("definition") or {}),
             raw_descriptor=raw_dict,
         )

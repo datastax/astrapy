@@ -946,7 +946,7 @@ class Database:
             logger.info("finished findCollections")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
-### START TABLES sy
+    ### START TABLES sy
 
     def get_Xtable(
         self,
@@ -1327,8 +1327,8 @@ class Database:
             return CommandCursor(
                 address=driver_commander.full_path,
                 items=[
-                    TableDescriptor.from_dict(col_dict)
-                    for col_dict in lt_response["status"]["tables"]
+                    TableDescriptor.from_dict(tab_dict)
+                    for tab_dict in lt_response["status"]["tables"]
                 ],
             )
 
@@ -1379,8 +1379,7 @@ class Database:
             logger.info("finished listTables")
             return lt_response["status"]["tables"]  # type: ignore[no-any-return]
 
-
-### END TABLES sy
+    ### END TABLES sy
 
     def command(
         self,
@@ -2384,7 +2383,69 @@ class AsyncDatabase:
             logger.info("finished findCollections")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
-### START TABLES asy
+    ### START TABLES asy
+
+    def list_tables(
+        self,
+        *,
+        keyspace: str | None = None,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> AsyncCommandCursor[TableDescriptor]:
+        """
+        List all tables in a given keyspace for this database.
+
+        Args:
+            keyspace: the keyspace to be inspected. If not specified,
+                the general setting for this database is assumed.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a `CommandCursor` to iterate over TableDescriptor instances,
+            each corresponding to a table.
+
+        Example:
+            >>> ccur = my_db.list_tables()
+            >>> ccur
+            <astrapy.cursors.CommandCursor object at ...>
+            >>> list(ccur)
+            [TableDescriptor(name='my_table', options=TableOptions())]
+            >>> for table_desc in my_db.list_tables():
+            ...     print(table_desc)
+            ...
+            TableDescriptor(name='my_table', options=TableOptions())
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
+        driver_commander = self._get_driver_commander(keyspace=keyspace)
+        lt_payload = {"listTables": {"options": {"explain": True}}}
+        logger.info("listTables")
+        lt_response = driver_commander.request(
+            payload=lt_payload,
+            timeout_info=base_timeout_info(_request_timeout_ms),
+        )
+        if "tables" not in lt_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from listTables API command.",
+                raw_response=lt_response,
+            )
+        else:
+            # we know this is a list of dicts, to marshal into "descriptors"
+            logger.info("finished listTables")
+            return AsyncCommandCursor(
+                address=driver_commander.full_path,
+                items=[
+                    TableDescriptor.from_dict(tab_dict)
+                    for tab_dict in lt_response["status"]["tables"]
+                ],
+            )
 
     async def list_table_names(
         self,
@@ -2433,7 +2494,7 @@ class AsyncDatabase:
             logger.info("finished listTables")
             return lt_response["status"]["tables"]  # type: ignore[no-any-return]
 
-### END TABLES asy
+    ### END TABLES asy
 
     async def command(
         self,

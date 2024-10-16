@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass
 from typing import Any
 
@@ -185,13 +184,11 @@ class CollectionOptions:
         vector: an optional CollectionVectorOptions object.
         indexing: an optional dictionary with the "indexing" collection properties.
         default_id: an optional CollectionDefaultIDOptions object.
-        raw_options: the raw response from the Data API for the collection configuration.
     """
 
     vector: CollectionVectorOptions | None
     indexing: dict[str, Any] | None
     default_id: CollectionDefaultIDOptions | None
-    raw_options: dict[str, Any] | None
 
     def __repr__(self) -> str:
         not_null_pieces = [
@@ -208,7 +205,6 @@ class CollectionOptions:
                     if self.default_id is None
                     else f"default_id={self.default_id.__repr__()}"
                 ),
-                None if self.raw_options is None else "raw_options=...",
             ]
             if pc is not None
         ]
@@ -280,7 +276,6 @@ class CollectionOptions:
             vector=CollectionVectorOptions.from_dict(raw_dict.get("vector")),
             indexing=raw_dict.get("indexing"),
             default_id=CollectionDefaultIDOptions.from_dict(raw_dict.get("defaultId")),
-            raw_options=raw_dict,
         )
 
 

@@ -28,9 +28,10 @@ from astrapy.data.info.collection_descriptor import (
 )
 from astrapy.data.info.database_info import AdminDatabaseInfo, DatabaseInfo
 from astrapy.data.info.table_descriptor import (
+    TableDefinition,
     TableDescriptor,
-    TableOptions,
 )
+
 
 @dataclass
 class EmbeddingProviderParameter:
@@ -424,6 +425,6 @@ __all__ = [
     "EmbeddingProviderAuthentication",
     "EmbeddingProvider",
     "FindEmbeddingProvidersResult",
+    "TableDefinition",
     "TableDescriptor",
-    "TableOptions",
 ]
