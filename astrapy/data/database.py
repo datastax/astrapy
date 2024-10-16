@@ -37,6 +37,7 @@ from astrapy.info import (
     CollectionDescriptor,
     CollectionVectorServiceOptions,
     DatabaseInfo,
+    TableDescriptor,
 )
 from astrapy.settings.defaults import (
     DEFAULT_ASTRA_DB_KEYSPACE,
@@ -884,7 +885,7 @@ class Database:
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
-                text="Faulty response from get_collections API command.",
+                text="Faulty response from findCollections API command.",
                 raw_response=gc_response,
             )
         else:
@@ -938,13 +939,448 @@ class Database:
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
-                text="Faulty response from get_collections API command.",
+                text="Faulty response from findCollections API command.",
                 raw_response=gc_response,
             )
         else:
-            # we know this is a list of dicts, to marshal into "descriptors"
             logger.info("finished findCollections")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
+
+### START TABLES sy
+
+    def get_Xtable(
+        self,
+        name: str,
+        *,
+        keyspace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        collection_request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> Collection:
+        """
+        Spawn a `Collection` object instance representing a collection
+        on this database.
+
+        Creating a `Collection` instance does not have any effect on the
+        actual state of the database: in other words, for the created
+        `Collection` instance to be used meaningfully, the collection
+        must exist already (for instance, it should have been created
+        previously by calling the `create_collection` method).
+
+        Args:
+            name: the name of the collection.
+            keyspace: the keyspace containing the collection. If no keyspace
+                is specified, the general setting for this database is used.
+            embedding_api_key: optional API key(s) for interacting with the collection.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
+                For some vectorize providers/models, if using header-based
+                authentication, specialized subclasses of
+                `astrapy.authentication.EmbeddingHeadersProvider` should be supplied.
+            collection_request_timeout_ms: a default timeout, in millisecond, for the
+                duration of each request in the collection. For a more fine-grained
+                control of collection timeouts (suggested e.g. with regard to
+                methods involving multiple requests, such as `find`), use of the
+                `collection_api_options` parameter is suggested; alternatively,
+                bear in mind that individual collection methods also accept timeout
+                parameters.
+            collection_max_time_ms: an alias for `collection_request_timeout_ms`.
+            collection_api_options: a specification - complete or partial - of the
+                API Options to override the defaults inherited from the Database.
+                This allows for a deeper configuration of the collection, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
+
+        Returns:
+            a `Collection` instance, representing the desired collection
+                (but without any form of validation).
+
+        Example:
+            >>> my_col = my_db.get_collection("my_collection")
+            >>> my_col.count_documents({}, upper_bound=100)
+            41
+
+        Note:
+            The attribute and indexing syntax forms achieve the same effect
+            as this method. In other words, the following are equivalent:
+                my_db.get_collection("coll_name")
+                my_db.coll_name
+                my_db["coll_name"]
+        """
+
+        # lazy importing here against circular-import error
+        from astrapy.collection import Collection
+
+        # this multiple-override implements the alias on timeout params
+        resulting_api_options = (
+            self.api_options.with_override(
+                collection_api_options,
+            )
+            .with_override(
+                APIOptions(
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=collection_max_time_ms,
+                    )
+                ),
+            )
+            .with_override(
+                APIOptions(
+                    embedding_api_key=coerce_possible_embedding_headers_provider(
+                        embedding_api_key
+                    ),
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=collection_request_timeout_ms,
+                    ),
+                ),
+            )
+        )
+
+        _keyspace = keyspace or self.keyspace
+        if _keyspace is None:
+            raise ValueError(
+                "No keyspace specified. This operation requires a keyspace to "
+                "be set, e.g. through the `use_keyspace` method."
+            )
+        return Collection(
+            database=self,
+            name=name,
+            keyspace=_keyspace,
+            api_options=resulting_api_options,
+        )
+
+    def create_Xtable(
+        self,
+        name: str,
+        *,
+        keyspace: str | None = None,
+        dimension: int | None = None,
+        metric: str | None = None,
+        service: CollectionVectorServiceOptions | dict[str, Any] | None = None,
+        indexing: dict[str, Any] | None = None,
+        default_id_type: str | None = None,
+        additional_options: dict[str, Any] | None = None,
+        check_exists: bool | None = None,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        collection_request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> Collection:
+        """
+        Creates a collection on the database and return the Collection
+        instance that represents it.
+
+        This is a blocking operation: the method returns when the collection
+        is ready to be used. As opposed to the `get_collection` instance,
+        this method triggers causes the collection to be actually created on DB.
+
+        Args:
+            name: the name of the collection.
+            keyspace: the keyspace where the collection is to be created.
+                If not specified, the general setting for this database is used.
+            dimension: for vector collections, the dimension of the vectors
+                (i.e. the number of their components).
+            metric: the similarity metric used for vector searches.
+                Allowed values are `VectorMetric.DOT_PRODUCT`, `VectorMetric.EUCLIDEAN`
+                or `VectorMetric.COSINE` (default).
+            service: a dictionary describing a service for
+                embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
+                Alternatively, a CollectionVectorServiceOptions object to the same effect.
+            indexing: optional specification of the indexing options for
+                the collection, in the form of a dictionary such as
+                    {"deny": [...]}
+                or
+                    {"allow": [...]}
+            default_id_type: this sets what type of IDs the API server will
+                generate when inserting documents that do not specify their
+                `_id` field explicitly. Can be set to any of the values
+                `DefaultIdType.UUID`, `DefaultIdType.OBJECTID`,
+                `DefaultIdType.UUIDV6`, `DefaultIdType.UUIDV7`,
+                `DefaultIdType.DEFAULT`.
+            additional_options: any further set of key-value pairs that will
+                be added to the "options" part of the payload when sending
+                the Data API command to create a collection.
+            check_exists: whether to run an existence check for the collection
+                name before attempting to create the collection:
+                If check_exists is True, an error is raised when creating
+                an existing collection.
+                If it is False, the creation is attempted. In this case, for
+                preexisting collections, the command will succeed or fail
+                depending on whether the options match or not.
+            schema_operation_timeout_ms: a timeout, in milliseconds, for the
+                createCollection HTTP request.
+            max_time_ms: an alias for `schema_operation_timeout_ms`.
+            embedding_api_key: optional API key(s) for interacting with the collection.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
+                For some vectorize providers/models, if using header-based authentication,
+                specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
+                should be supplied.
+            collection_request_timeout_ms: a default timeout, in millisecond, for the
+                duration of each request in the collection. For a more fine-grained
+                control of collection timeouts (suggested e.g. with regard to
+                methods involving multiple requests, such as `find`), use of the
+                `collection_api_options` parameter is suggested; alternatively,
+                bear in mind that individual collection methods also accept timeout
+                parameters.
+            collection_max_time_ms: an alias for `collection_request_timeout_ms`.
+            collection_api_options: a specification - complete or partial - of the
+                API Options to override the defaults inherited from the Database.
+                This allows for a deeper configuration of the collection, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
+
+        Returns:
+            a (synchronous) `Collection` instance, representing the
+            newly-created collection.
+
+        Example:
+            >>> new_col = my_db.create_collection("my_v_col", dimension=3)
+            >>> new_col.insert_one({"name": "the_row", "$vector": [0.4, 0.5, 0.7]})
+            InsertOneResult(raw_results=..., inserted_id='e22dd65e-...-...-...')
+
+        Note:
+            A collection is considered a vector collection if at least one of
+            `dimension` or `service` are provided and not null. In that case,
+            and only in that case, is `metric` an accepted parameter.
+            Note, moreover, that if passing both these parameters, then
+            the dimension must be compatible with the chosen service.
+        """
+
+        cc_options = _normalize_create_collection_options(
+            dimension=dimension,
+            metric=metric,
+            service=service,
+            indexing=indexing,
+            default_id_type=default_id_type,
+            additional_options=additional_options,
+        )
+
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.schema_operation_timeout_ms
+        )
+
+        timeout_manager = MultiCallTimeoutManager(
+            overall_max_time_ms=_schema_operation_timeout_ms
+        )
+
+        if check_exists is None:
+            _check_exists = True
+        else:
+            _check_exists = check_exists
+        if _check_exists:
+            logger.info(f"checking collection existence for '{name}'")
+            existing_names = self.list_collection_names(
+                keyspace=keyspace,
+                max_time_ms=timeout_manager.remaining_timeout_ms(),
+            )
+            if name in existing_names:
+                raise CollectionAlreadyExistsException(
+                    text=f"Collection {name} already exists",
+                    keyspace=keyspace or self.keyspace or "(unspecified)",
+                    collection_name=name,
+                )
+
+        driver_commander = self._get_driver_commander(keyspace=keyspace)
+        cc_payload = {"createCollection": {"name": name, "options": cc_options}}
+        logger.info(f"createCollection('{name}')")
+        driver_commander.request(
+            payload=cc_payload,
+            timeout_info=timeout_manager.remaining_timeout_info(),
+        )
+        logger.info(f"finished createCollection('{name}')")
+        return self.get_collection(
+            name,
+            keyspace=keyspace,
+            embedding_api_key=embedding_api_key,
+            collection_request_timeout_ms=collection_request_timeout_ms,
+            collection_max_time_ms=collection_max_time_ms,
+            collection_api_options=collection_api_options,
+        )
+
+    def drop_Xtable(
+        self,
+        name_or_collection: str | Collection,
+        *,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
+        """
+        Drop a collection from the database, along with all documents therein.
+
+        Args:
+            name_or_collection: either the name of a collection or
+                a `Collection` instance.
+            schema_operation_timeout_ms: a timeout, in milliseconds, for
+                the underlying schema-changing HTTP request.
+            max_time_ms: an alias for `schema_operation_timeout_ms`.
+
+        Returns:
+            a dictionary in the form {"ok": 1} if the command succeeds.
+
+        Example:
+            >>> my_db.list_collection_names()
+            ['a_collection', 'my_v_col', 'another_col']
+            >>> my_db.drop_collection("my_v_col")
+            {'ok': 1}
+            >>> my_db.list_collection_names()
+            ['a_collection', 'another_col']
+
+        Note:
+            when providing a collection name, it is assumed that the collection
+            is to be found in the keyspace that was set at database instance level.
+        """
+
+        # lazy importing here against circular-import error
+        from astrapy.collection import Collection
+
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.schema_operation_timeout_ms
+        )
+
+        _keyspace: str | None
+        _collection_name: str
+        if isinstance(name_or_collection, Collection):
+            _keyspace = name_or_collection.keyspace
+            _collection_name = name_or_collection.name
+        else:
+            _keyspace = self.keyspace
+            _collection_name = name_or_collection
+        driver_commander = self._get_driver_commander(keyspace=_keyspace)
+        dc_payload = {"deleteCollection": {"name": _collection_name}}
+        logger.info(f"deleteCollection('{_collection_name}')")
+        dc_response = driver_commander.request(
+            payload=dc_payload,
+            timeout_info=base_timeout_info(_schema_operation_timeout_ms),
+        )
+        logger.info(f"finished deleteCollection('{_collection_name}')")
+        return dc_response.get("status", {})  # type: ignore[no-any-return]
+
+    def list_tables(
+        self,
+        *,
+        keyspace: str | None = None,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> CommandCursor[TableDescriptor]:
+        """
+        List all tables in a given keyspace for this database.
+
+        Args:
+            keyspace: the keyspace to be inspected. If not specified,
+                the general setting for this database is assumed.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a `CommandCursor` to iterate over TableDescriptor instances,
+            each corresponding to a table.
+
+        Example:
+            >>> ccur = my_db.list_tables()
+            >>> ccur
+            <astrapy.cursors.CommandCursor object at ...>
+            >>> list(ccur)
+            [TableDescriptor(name='my_table', options=TableOptions())]
+            >>> for table_desc in my_db.list_tables():
+            ...     print(table_desc)
+            ...
+            TableDescriptor(name='my_table', options=TableOptions())
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
+        driver_commander = self._get_driver_commander(keyspace=keyspace)
+        lt_payload = {"listTables": {"options": {"explain": True}}}
+        logger.info("listTables")
+        lt_response = driver_commander.request(
+            payload=lt_payload,
+            timeout_info=base_timeout_info(_request_timeout_ms),
+        )
+        if "tables" not in lt_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from listTables API command.",
+                raw_response=lt_response,
+            )
+        else:
+            # we know this is a list of dicts, to marshal into "descriptors"
+            logger.info("finished listTables")
+            return CommandCursor(
+                address=driver_commander.full_path,
+                items=[
+                    TableDescriptor.from_dict(col_dict)
+                    for col_dict in lt_response["status"]["tables"]
+                ],
+            )
+
+    def list_table_names(
+        self,
+        *,
+        keyspace: str | None = None,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> list[str]:
+        """
+        List the names of all tables in a given keyspace of this database.
+
+        Args:
+            keyspace: the keyspace to be inspected. If not specified,
+                the general setting for this database is assumed.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a list of the table names as strings, in no particular order.
+
+        Example:
+            >>> my_db.list_table_names()
+            ['a_table', 'another_table']
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
+        driver_commander = self._get_driver_commander(keyspace=keyspace)
+        lt_payload: dict[str, Any] = {"listTables": {}}
+        logger.info("listTables")
+        lt_response = driver_commander.request(
+            payload=lt_payload,
+            timeout_info=base_timeout_info(_request_timeout_ms),
+        )
+        if "tables" not in lt_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from listTables API command.",
+                raw_response=lt_response,
+            )
+        else:
+            logger.info("finished listTables")
+            return lt_response["status"]["tables"]  # type: ignore[no-any-return]
+
+
+### END TABLES sy
 
     def command(
         self,
@@ -1887,7 +2323,7 @@ class AsyncDatabase:
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
-                text="Faulty response from get_collections API command.",
+                text="Faulty response from findCollections API command.",
                 raw_response=gc_response,
             )
         else:
@@ -1941,13 +2377,63 @@ class AsyncDatabase:
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
-                text="Faulty response from get_collections API command.",
+                text="Faulty response from findCollections API command.",
                 raw_response=gc_response,
             )
         else:
-            # we know this is a list of dicts, to marshal into "descriptors"
             logger.info("finished findCollections")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
+
+### START TABLES asy
+
+    async def list_table_names(
+        self,
+        *,
+        keyspace: str | None = None,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> list[str]:
+        """
+        List the names of all tables in a given keyspace of this database.
+
+        Args:
+            keyspace: the keyspace to be inspected. If not specified,
+                the general setting for this database is assumed.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a list of the table names as strings, in no particular order.
+
+        Example:
+            >>> asyncio.run(my_async_db.list_table_names())
+            ['a_table', 'another_table']
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
+        driver_commander = self._get_driver_commander(keyspace=keyspace)
+        lt_payload: dict[str, Any] = {"listTables": {}}
+        logger.info("listTables")
+        lt_response = await driver_commander.async_request(
+            payload=lt_payload,
+            timeout_info=base_timeout_info(_request_timeout_ms),
+        )
+        if "tables" not in lt_response.get("status", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from listTables API command.",
+                raw_response=lt_response,
+            )
+        else:
+            logger.info("finished listTables")
+            return lt_response["status"]["tables"]  # type: ignore[no-any-return]
+
+### END TABLES asy
 
     async def command(
         self,

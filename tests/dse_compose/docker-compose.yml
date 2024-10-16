@@ -1,0 +1,60 @@
+services:
+
+  # complement with something like:
+  #   docker run -it --rm --network container:dse_compose-coordinator-1 cassandra:latest cqlsh -u cassandra -p cassandra
+
+  # Development mode with latest taf
+  coordinator:
+    image: stargateio/coordinator-dse-next:v2.1.0-BETA-18
+    networks:
+      - stargate
+    ports:
+      - "9042:9042"
+      - "8081:8081"
+      - "8090:8090"
+    mem_limit: 2G
+    environment:
+      - JAVA_OPTS="-Xmx2G"
+      - CLUSTER_NAME=sgv2-cluster
+      - RACK_NAME=rack1
+      - DATACENTER_NAME=datacenter1
+      - ENABLE_AUTH=true
+      - DEVELOPER_MODE=true
+    healthcheck:
+      test: curl -f http://localhost:8084/checker/readiness || exit 1
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  data-api:
+    image: stargateio/data-api:v1.0.18
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    networks:
+      - stargate
+    ports:
+      - "8181:8181"
+    mem_limit: 2G
+    environment:
+      #- QUARKUS_GRPC_CLIENTS_BRIDGE_HOST=coordinator
+      #- QUARKUS_GRPC_CLIENTS_BRIDGE_PORT=8091
+      - STARGATE_DATA_STORE_SAI_ENABLED=true
+      - STARGATE_DATA_STORE_VECTOR_SEARCH_ENABLED=true
+      - STARGATE_JSONAPI_OPERATIONS_VECTORIZE_ENABLED=true
+      - STARGATE_DATA_STORE_IGNORE_BRIDGE=true
+      - STARGATE_JSONAPI_OPERATIONS_DATABASE_CONFIG_CASSANDRA_END_POINTS=coordinator
+      - QUARKUS_HTTP_ACCESS_LOG_ENABLED=FALSE
+      - QUARKUS_LOG_LEVEL=INFO
+      - JAVA_MAX_MEM_RATIO=75
+      - JAVA_INITIAL_MEM_RATIO=50
+      - GC_CONTAINER_OPTIONS=-XX:+UseG1GC
+      - JAVA_OPTS_APPEND=-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager
+    healthcheck:
+      test: curl -f http://localhost:8181/stargate/health || exit 1
+      interval: 5s
+      timeout: 10s
+      retries: 10
+
+networks:
+  stargate:
