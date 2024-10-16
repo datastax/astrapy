@@ -1,9 +1,18 @@
 v 2.0.0
 =======
+Support for arbitrary 'database' and 'admin' headers throughout the object chain
+Reworked the options system:
+    - an APIOptions object inherited at each "spawn" operation, with overrides
+    - environment-dependent defaults if nothing supplied
+    - "spawn" operations expose top-level aliases for selected settings
+    - per-method overrides. For timeouts, `max_time_ms` becomes an alias for more specific timeout types
+    - collection and database's `info` method gets timeout parameters
+    - (not user-facing) classes in the hierarchy other than DataAPIClient have breaking changes in their constructor (now options-first and keyword-arg-only)
 Major restructuring of the codebase into directories
     - BaseCursor not exported by astrapy.cursors anymore
     - some imports (supposedly not used externally) changed slightly
     - adapted and limited scope of test_imports.py
+Removed AstraDBDatabaseAdmin's `from_api_endpoint` static method (reason: unused)
 Rename main branch from 'master' ==> `main`
 Cursors' state described by the `CursorState` enum
 Removal of several deprecated modules/features from previous versions:
@@ -15,6 +24,7 @@ Removal of several deprecated modules/features from previous versions:
     - 'caller_name' and 'caller_version' parameters where `callers` is now expected
     - 'id' and 'region' to DataAPIClient's 'get_database' (and async version). Use `api_endpoint` which is now the one positional parameter.
     - 'region' parameter of AstraDBDatabaseAdmin.get[_async]_database (was ignored already in the method)
+    - 'max_time_ms' parameter in AstraDBDatabaseAdmin's constructor and its `from_astra_db_admin` method (was already ignored in the body)
     - The 'max_time_ms' parameter in DataAPIClient's 'get_database' method.
     - Accordingly, the syntax `client[api_endpoint]` also does not accept a database ID anymore.
     - 'namespace' parameter of several methods of: DataAPIClient, admin objects, Database and Collection (use `keyspace`)

@@ -68,4 +68,3 @@ class TestEmbeddingHeadersProvider:
         assert coerce_embedding_headers_provider(ehp_a) == ehp_a
 
         assert coerce_embedding_headers_provider("x") == ehp_s
-        assert coerce_embedding_headers_provider(None) == ehp_n

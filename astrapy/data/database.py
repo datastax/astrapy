@@ -20,8 +20,8 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from astrapy.admin import fetch_database_info, parse_api_endpoint
 from astrapy.authentication import (
-    coerce_embedding_headers_provider,
-    coerce_token_provider,
+    coerce_possible_embedding_headers_provider,
+    coerce_possible_token_provider,
     redact_secret,
 )
 from astrapy.constants import CallerType, Environment
@@ -39,13 +39,18 @@ from astrapy.info import (
     DatabaseInfo,
 )
 from astrapy.settings.defaults import (
-    API_PATH_ENV_MAP,
-    API_VERSION_ENV_MAP,
     DEFAULT_ASTRA_DB_KEYSPACE,
     DEFAULT_DATA_API_AUTH_HEADER,
 )
 from astrapy.utils.api_commander import APICommander
-from astrapy.utils.api_options import CollectionAPIOptions
+from astrapy.utils.api_options import (
+    APIOptions,
+    DataAPIURLOptions,
+    DevOpsAPIURLOptions,
+    FullAPIOptions,
+    TimeoutOptions,
+)
+from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
     from astrapy.admin import DatabaseAdmin
@@ -93,7 +98,6 @@ def _normalize_create_collection_options(
     full_options0 = {
         k: v
         for k, v in {
-            # **(additional_options or {}),
             **({"indexing": indexing} if indexing else {}),
             **({"defaultId": {"type": default_id_type}} if default_id_type else {}),
             **({"vector": vector_options} if vector_options else {}),
@@ -119,36 +123,27 @@ class Database:
     DML, such as creating/deleting collections, and for obtaining Collection
     objects themselves. This class has a synchronous interface.
 
-    The usual way of obtaining one Database is through the `get_database`
-    method of a `DataAPIClient`.
+    This class is not meant for direct instantiation by the user, rather
+    it is obtained by invoking methods such as `get_database`
+    of AstraDBClient.
 
     On Astra DB, a Database comes with an "API Endpoint", which implies
     a Database object instance reaches a specific region (relevant point in
     case of multi-region databases).
 
+    A Database is also always set with a "working keyspace" on which all
+    data operations are done (unless otherwise specified).
+
     Args:
         api_endpoint: the full "API Endpoint" string used to reach the Data API.
             Example: "https://<database_id>-<region>.apps.astra.datastax.com"
-        token: an Access Token to the database. Example: "AstraCS:xyz..."
-            This can be either a literal token string or a subclass of
-            `astrapy.authentication.TokenProvider`.
         keyspace: this is the keyspace all method calls will target, unless
             one is explicitly specified in the call. If no keyspace is supplied
             when creating a Database, on Astra DB the name "default_keyspace" is set,
             while on other environments the keyspace is left unspecified: in this case,
             most operations are unavailable until a keyspace is set (through an explicit
             `use_keyspace` invocation or equivalent).
-        callers: a list of caller identities, i.e. applications, or frameworks,
-            on behalf of which the Data API calls are performed. These end up
-            in the request user-agent.
-            Each caller identity is a ("caller_name", "caller_version") pair.
-        environment: a string representing the target Data API environment.
-            It can be left unspecified for the default value of `Environment.PROD`;
-            other values include `Environment.OTHER`, `Environment.DSE`.
-        api_path: path to append to the API Endpoint. In typical usage, this
-            should be left to its default (sensibly chosen based on the environment).
-        api_version: version specifier to append to the API path. In typical
-            usage, this should be left to its default of "v1".
+        api_options: a complete specification of the API Options for this instance.
 
     Example:
         >>> from astrapy import DataAPIClient
@@ -165,46 +160,29 @@ class Database:
 
     def __init__(
         self,
-        api_endpoint: str,
-        token: str | TokenProvider | None = None,
         *,
-        keyspace: str | None = None,
-        callers: Sequence[CallerType] = [],
-        environment: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        api_endpoint: str,
+        keyspace: str | None,
+        api_options: FullAPIOptions,
     ) -> None:
-        self.environment = (environment or Environment.PROD).lower()
-        #
-        _api_path: str | None
-        _api_version: str | None
-        if api_path is None:
-            _api_path = API_PATH_ENV_MAP[self.environment]
-        else:
-            _api_path = api_path
-        if api_version is None:
-            _api_version = API_VERSION_ENV_MAP[self.environment]
-        else:
-            _api_version = api_version
-        self.token_provider = coerce_token_provider(token)
+        self.api_options = api_options
         self.api_endpoint = api_endpoint.strip("/")
-        self.api_path = _api_path
-        self.api_version = _api_version
-
         # enforce defaults if on Astra DB:
         self._using_keyspace: str | None
-        if keyspace is None and self.environment in Environment.astra_db_values:
+        if (
+            keyspace is None
+            and self.api_options.environment in Environment.astra_db_values
+        ):
             self._using_keyspace = DEFAULT_ASTRA_DB_KEYSPACE
         else:
             self._using_keyspace = keyspace
 
         self._commander_headers = {
-            DEFAULT_DATA_API_AUTH_HEADER: self.token_provider.get_token(),
+            DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token(),
+            **self.api_options.database_additional_headers,
         }
-
-        self.callers = callers
-        self._api_commander = self._get_api_commander(keyspace=self.keyspace)
         self._name: str | None = None
+        self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
     def __getattr__(self, collection_name: str) -> Collection:
         return self.get_collection(name=collection_name)
@@ -215,8 +193,8 @@ class Database:
     def __repr__(self) -> str:
         ep_desc = f'api_endpoint="{self.api_endpoint}"'
         token_desc: str | None
-        if self.token_provider:
-            token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
+        if self.api_options.token:
+            token_desc = f'token="{redact_secret(str(self.api_options.token), 15)}"'
         else:
             token_desc = None
         keyspace_desc: str | None
@@ -231,13 +209,9 @@ class Database:
         if isinstance(other, Database):
             return all(
                 [
-                    self.token_provider == other.token_provider,
                     self.api_endpoint == other.api_endpoint,
-                    self.api_path == other.api_path,
-                    self.api_version == other.api_version,
                     self.keyspace == other.keyspace,
-                    self.callers == other.callers,
-                    self.api_commander == other.api_commander,
+                    self.api_options == other.api_options,
                 ]
             )
         else:
@@ -257,9 +231,13 @@ class Database:
             base_path_components = [
                 comp
                 for comp in (
-                    self.api_path.strip("/"),
-                    self.api_version.strip("/"),
-                    keyspace,
+                    ncomp.strip("/")
+                    for ncomp in (
+                        self.api_options.data_api_url_options.api_path,
+                        self.api_options.data_api_url_options.api_version,
+                        keyspace,
+                    )
+                    if ncomp is not None
                 )
                 if comp != ""
             ]
@@ -268,7 +246,8 @@ class Database:
                 api_endpoint=self.api_endpoint,
                 path=base_path,
                 headers=self._commander_headers,
-                callers=self.callers,
+                callers=self.api_options.callers,
+                redacted_header_names=self.api_options.redacted_header_names,
             )
             return api_commander
 
@@ -293,28 +272,34 @@ class Database:
         self,
         *,
         api_endpoint: str | None = None,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        callers: Sequence[CallerType] = [],
-        environment: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        environment: str | UnsetType = _UNSET,
+        api_path: str | None | UnsetType = _UNSET,
+        api_version: str | None | UnsetType = _UNSET,
     ) -> Database:
+        arg_api_options = APIOptions(
+            token=coerce_possible_token_provider(token),
+            callers=callers,
+            environment=environment,
+            data_api_url_options=DataAPIURLOptions(
+                api_path=api_path,
+                api_version=api_version,
+            ),
+        )
+        api_options = self.api_options.with_override(arg_api_options)
         return Database(
             api_endpoint=api_endpoint or self.api_endpoint,
-            token=coerce_token_provider(token) or self.token_provider,
             keyspace=keyspace or self.keyspace,
-            callers=callers or self.callers,
-            environment=environment or self.environment,
-            api_path=api_path or self.api_path,
-            api_version=api_version or self.api_version,
+            api_options=api_options,
         )
 
     def with_options(
         self,
         *,
         keyspace: str | None = None,
-        callers: Sequence[CallerType] = [],
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
     ) -> Database:
         """
         Create a clone of this database with some changed attributes.
@@ -347,12 +332,12 @@ class Database:
         self,
         *,
         api_endpoint: str | None = None,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        callers: Sequence[CallerType] = [],
-        environment: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        environment: str | UnsetType = _UNSET,
+        api_path: str | None | UnsetType = _UNSET,
+        api_version: str | None | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Create an AsyncDatabase from this one. Save for the arguments
@@ -388,14 +373,20 @@ class Database:
             >>> asyncio.run(my_async_db.list_collection_names())
         """
 
+        arg_api_options = APIOptions(
+            token=coerce_possible_token_provider(token),
+            callers=callers,
+            environment=environment,
+            data_api_url_options=DataAPIURLOptions(
+                api_path=api_path,
+                api_version=api_version,
+            ),
+        )
+        api_options = self.api_options.with_override(arg_api_options)
         return AsyncDatabase(
             api_endpoint=api_endpoint or self.api_endpoint,
-            token=coerce_token_provider(token) or self.token_provider,
             keyspace=keyspace or self.keyspace,
-            callers=callers or self.callers,
-            environment=environment or self.environment,
-            api_path=api_path or self.api_path,
-            api_version=api_version or self.api_version,
+            api_options=api_options,
         )
 
     def use_keyspace(self, keyspace: str) -> None:
@@ -423,13 +414,22 @@ class Database:
         self._using_keyspace = keyspace
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
-    def info(self) -> DatabaseInfo:
+    def info(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> DatabaseInfo:
         """
         Additional information on the database as a DatabaseInfo instance.
 
         Some of the returned properties are dynamic throughout the lifetime
         of the database (such as raw_info["keyspaces"]). For this reason,
         each invocation of this method triggers a new request to the DevOps API.
+
+        Args:
+            request_timeout_ms: a timeout, in milliseconds, for the DevOps API request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Example:
             >>> my_db.info().region
@@ -443,11 +443,17 @@ class Database:
             between the `region` and the `raw_info["region"]` attributes.
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
         logger.info("getting database info")
         database_info = fetch_database_info(
             self.api_endpoint,
-            token=self.token_provider.get_token(),
+            token=self.api_options.token.get_token(),
             keyspace=self.keyspace,
+            max_time_ms=_request_timeout_ms,
         )
         if database_info is not None:
             logger.info("finished getting database info")
@@ -513,8 +519,10 @@ class Database:
         name: str,
         *,
         keyspace: str | None = None,
-        embedding_api_key: str | EmbeddingHeadersProvider | None = None,
-        collection_max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        collection_request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection:
         """
         Spawn a `Collection` object instance representing a collection
@@ -539,14 +547,20 @@ class Database:
                 For some vectorize providers/models, if using header-based
                 authentication, specialized subclasses of
                 `astrapy.authentication.EmbeddingHeadersProvider` should be supplied.
-            collection_max_time_ms: a default timeout, in millisecond, for the duration
-                of each operation on the collection. Individual timeouts can be
-                provided to each collection method call and will take precedence, with
-                this value being an overall default.
-                Note that for some methods involving multiple API calls (such as `find`,
-                `delete_many`, `insert_many` and so on), it is strongly suggested
-                to provide a specific timeout as the default one likely wouldn't make
-                much sense.
+            collection_request_timeout_ms: a default timeout, in millisecond, for the
+                duration of each request in the collection. For a more fine-grained
+                control of collection timeouts (suggested e.g. with regard to
+                methods involving multiple requests, such as `find`), use of the
+                `collection_api_options` parameter is suggested; alternatively,
+                bear in mind that individual collection methods also accept timeout
+                parameters.
+            collection_max_time_ms: an alias for `collection_request_timeout_ms`.
+            collection_api_options: a specification - complete or partial - of the
+                API Options to override the defaults inherited from the Database.
+                This allows for a deeper configuration of the collection, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             a `Collection` instance, representing the desired collection
@@ -568,6 +582,30 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.collection import Collection
 
+        # this multiple-override implements the alias on timeout params
+        resulting_api_options = (
+            self.api_options.with_override(
+                collection_api_options,
+            )
+            .with_override(
+                APIOptions(
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=collection_max_time_ms,
+                    )
+                ),
+            )
+            .with_override(
+                APIOptions(
+                    embedding_api_key=coerce_possible_embedding_headers_provider(
+                        embedding_api_key
+                    ),
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=collection_request_timeout_ms,
+                    ),
+                ),
+            )
+        )
+
         _keyspace = keyspace or self.keyspace
         if _keyspace is None:
             raise ValueError(
@@ -575,14 +613,10 @@ class Database:
                 "be set, e.g. through the `use_keyspace` method."
             )
         return Collection(
-            self,
-            name,
+            database=self,
+            name=name,
             keyspace=_keyspace,
-            api_options=CollectionAPIOptions(
-                embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
-                max_time_ms=collection_max_time_ms,
-            ),
-            callers=self.callers,
+            api_options=resulting_api_options,
         )
 
     def create_collection(
@@ -597,9 +631,12 @@ class Database:
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
         check_exists: bool | None = None,
+        schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-        embedding_api_key: str | EmbeddingHeadersProvider | None = None,
-        collection_max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        collection_request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection:
         """
         Creates a collection on the database and return the Collection
@@ -642,7 +679,9 @@ class Database:
                 If it is False, the creation is attempted. In this case, for
                 preexisting collections, the command will succeed or fail
                 depending on whether the options match or not.
-            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+            schema_operation_timeout_ms: a timeout, in milliseconds, for the
+                createCollection HTTP request.
+            max_time_ms: an alias for `schema_operation_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -652,14 +691,20 @@ class Database:
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
-            collection_max_time_ms: a default timeout, in millisecond, for the duration of each
-                operation on the collection. Individual timeouts can be provided to
-                each collection method call and will take precedence, with this value
-                being an overall default.
-                Note that for some methods involving multiple API calls (such as
-                `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
-                to provide a specific timeout as the default one likely wouldn't make
-                much sense.
+            collection_request_timeout_ms: a default timeout, in millisecond, for the
+                duration of each request in the collection. For a more fine-grained
+                control of collection timeouts (suggested e.g. with regard to
+                methods involving multiple requests, such as `find`), use of the
+                `collection_api_options` parameter is suggested; alternatively,
+                bear in mind that individual collection methods also accept timeout
+                parameters.
+            collection_max_time_ms: an alias for `collection_request_timeout_ms`.
+            collection_api_options: a specification - complete or partial - of the
+                API Options to override the defaults inherited from the Database.
+                This allows for a deeper configuration of the collection, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             a (synchronous) `Collection` instance, representing the
@@ -687,7 +732,15 @@ class Database:
             additional_options=additional_options,
         )
 
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.schema_operation_timeout_ms
+        )
+
+        timeout_manager = MultiCallTimeoutManager(
+            overall_max_time_ms=_schema_operation_timeout_ms
+        )
 
         if check_exists is None:
             _check_exists = True
@@ -717,14 +770,17 @@ class Database:
         return self.get_collection(
             name,
             keyspace=keyspace,
-            embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
+            embedding_api_key=embedding_api_key,
+            collection_request_timeout_ms=collection_request_timeout_ms,
             collection_max_time_ms=collection_max_time_ms,
+            collection_api_options=collection_api_options,
         )
 
     def drop_collection(
         self,
         name_or_collection: str | Collection,
         *,
+        schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -733,7 +789,9 @@ class Database:
         Args:
             name_or_collection: either the name of a collection or
                 a `Collection` instance.
-            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+            schema_operation_timeout_ms: a timeout, in milliseconds, for
+                the underlying schema-changing HTTP request.
+            max_time_ms: an alias for `schema_operation_timeout_ms`.
 
         Returns:
             a dictionary in the form {"ok": 1} if the command succeeds.
@@ -754,6 +812,12 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.collection import Collection
 
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.schema_operation_timeout_ms
+        )
+
         _keyspace: str | None
         _collection_name: str
         if isinstance(name_or_collection, Collection):
@@ -767,7 +831,7 @@ class Database:
         logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = driver_commander.request(
             payload=dc_payload,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_schema_operation_timeout_ms),
         )
         logger.info(f"finished deleteCollection('{_collection_name}')")
         return dc_response.get("status", {})  # type: ignore[no-any-return]
@@ -776,6 +840,7 @@ class Database:
         self,
         *,
         keyspace: str | None = None,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> CommandCursor[CollectionDescriptor]:
         """
@@ -784,7 +849,9 @@ class Database:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
-            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a `CommandCursor` to iterate over CollectionDescriptor instances,
@@ -802,12 +869,18 @@ class Database:
             CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload = {"findCollections": {"options": {"explain": True}}}
         logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -829,6 +902,7 @@ class Database:
         self,
         *,
         keyspace: str | None = None,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> list[str]:
         """
@@ -837,7 +911,9 @@ class Database:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
-            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a list of the collection names as strings, in no particular order.
@@ -847,12 +923,18 @@ class Database:
             ['a_collection', 'another_col']
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload: dict[str, Any] = {"findCollections": {}}
         logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -871,6 +953,7 @@ class Database:
         keyspace: str | None = None,
         collection_name: str | None = None,
         raise_api_errors: bool = True,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -886,7 +969,9 @@ class Database:
                 arbitrary POST requests as well.
             raise_api_errors: if True, responses with a nonempty 'errors' field
                 result in an astrapy exception being raised.
-            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a dictionary with the response of the HTTP request.
@@ -897,6 +982,12 @@ class Database:
             >>> my_db.command({"countDocuments": {}}, collection_name="my_coll")
             {'status': {'count': 123}}
         """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
 
         if collection_name:
             # if keyspace and collection_name both passed, a new database is needed
@@ -909,7 +1000,7 @@ class Database:
             coll_req_response = _database.get_collection(collection_name).command(
                 body=body,
                 raise_api_errors=raise_api_errors,
-                max_time_ms=max_time_ms,
+                max_time_ms=_request_timeout_ms,
             )
             logger.info(
                 "finished deferring to collection " f"'{collection_name}' for command."
@@ -922,7 +1013,7 @@ class Database:
             req_response = driver_commander.request(
                 payload=body,
                 raise_api_errors=raise_api_errors,
-                timeout_info=base_timeout_info(max_time_ms),
+                timeout_info=base_timeout_info(_request_timeout_ms),
             )
             logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             return req_response
@@ -930,9 +1021,9 @@ class Database:
     def get_database_admin(
         self,
         *,
-        token: str | TokenProvider | None = None,
-        dev_ops_url: str | None = None,
-        dev_ops_api_version: str | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        dev_ops_url: str | UnsetType = _UNSET,
+        dev_ops_api_version: str | None | UnsetType = _UNSET,
     ) -> DatabaseAdmin:
         """
         Return a DatabaseAdmin object corresponding to this database, for
@@ -972,32 +1063,33 @@ class Database:
         # lazy importing here to avoid circular dependency
         from astrapy.admin.admin import AstraDBDatabaseAdmin, DataAPIDatabaseAdmin
 
-        if self.environment in Environment.astra_db_values:
-            return AstraDBDatabaseAdmin(
-                api_endpoint=self.api_endpoint,
-                token=coerce_token_provider(token) or self.token_provider,
-                environment=self.environment,
-                callers=self.callers,
+        arg_api_options = APIOptions(
+            token=coerce_possible_token_provider(token),
+            dev_ops_api_url_options=DevOpsAPIURLOptions(
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
+            ),
+        )
+        api_options = self.api_options.with_override(arg_api_options)
+
+        if api_options.environment in Environment.astra_db_values:
+            return AstraDBDatabaseAdmin(
+                api_endpoint=self.api_endpoint,
+                api_options=api_options,
                 spawner_database=self,
             )
         else:
-            if dev_ops_url is not None:
+            if not isinstance(dev_ops_url, UnsetType):
                 raise ValueError(
                     "Parameter `dev_ops_url` not supported outside of Astra DB."
                 )
-            if dev_ops_api_version is not None:
+            if not isinstance(dev_ops_api_version, UnsetType):
                 raise ValueError(
                     "Parameter `dev_ops_api_version` not supported outside of Astra DB."
                 )
             return DataAPIDatabaseAdmin(
                 api_endpoint=self.api_endpoint,
-                token=coerce_token_provider(token) or self.token_provider,
-                environment=self.environment,
-                api_path=self.api_path,
-                api_version=self.api_version,
-                callers=self.callers,
+                api_options=api_options,
                 spawner_database=self,
             )
 
@@ -1008,36 +1100,27 @@ class AsyncDatabase:
     DML, such as creating/deleting collections, and for obtaining Collection
     objects themselves. This class has an asynchronous interface.
 
-    The usual way of obtaining one AsyncDatabase is through the `get_async_database`
-    method of a `DataAPIClient`.
+    This class is not meant for direct instantiation by the user, rather
+    it is usually obtained by invoking methods such as `get_async_database`
+    of AstraDBClient.
 
     On Astra DB, an AsyncDatabase comes with an "API Endpoint", which implies
     an AsyncDatabase object instance reaches a specific region (relevant point in
     case of multi-region databases).
 
+    An AsyncDatabase is also always set with a "working keyspace" on which all
+    data operations are done (unless otherwise specified).
+
     Args:
         api_endpoint: the full "API Endpoint" string used to reach the Data API.
             Example: "https://<database_id>-<region>.apps.astra.datastax.com"
-        token: an Access Token to the database. Example: "AstraCS:xyz..."
-            This can be either a literal token string or a subclass of
-            `astrapy.authentication.TokenProvider`.
         keyspace: this is the keyspace all method calls will target, unless
             one is explicitly specified in the call. If no keyspace is supplied
             when creating a Database, on Astra DB the name "default_keyspace" is set,
             while on other environments the keyspace is left unspecified: in this case,
             most operations are unavailable until a keyspace is set (through an explicit
             `use_keyspace` invocation or equivalent).
-        callers: a list of caller identities, i.e. applications, or frameworks,
-            on behalf of which the Data API calls are performed. These end up
-            in the request user-agent.
-            Each caller identity is a ("caller_name", "caller_version") pair.
-        environment: a string representing the target Data API environment.
-            It can be left unspecified for the default value of `Environment.PROD`;
-            other values include `Environment.OTHER`, `Environment.DSE`.
-        api_path: path to append to the API Endpoint. In typical usage, this
-            should be left to its default (sensibly chosen based on the environment).
-        api_version: version specifier to append to the API path. In typical
-            usage, this should be left to its default of "v1".
+        api_options: a complete specification of the API Options for this instance.
 
     Example:
         >>> from astrapy import DataAPIClient
@@ -1054,46 +1137,29 @@ class AsyncDatabase:
 
     def __init__(
         self,
-        api_endpoint: str,
-        token: str | TokenProvider | None = None,
         *,
-        keyspace: str | None = None,
-        callers: Sequence[CallerType] = [],
-        environment: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        api_endpoint: str,
+        keyspace: str | None,
+        api_options: FullAPIOptions,
     ) -> None:
-        self.environment = (environment or Environment.PROD).lower()
-        #
-        _api_path: str | None
-        _api_version: str | None
-        if api_path is None:
-            _api_path = API_PATH_ENV_MAP[self.environment]
-        else:
-            _api_path = api_path
-        if api_version is None:
-            _api_version = API_VERSION_ENV_MAP[self.environment]
-        else:
-            _api_version = api_version
-        self.token_provider = coerce_token_provider(token)
+        self.api_options = api_options
         self.api_endpoint = api_endpoint.strip("/")
-        self.api_path = _api_path
-        self.api_version = _api_version
-
         # enforce defaults if on Astra DB:
         self._using_keyspace: str | None
-        if keyspace is None and self.environment in Environment.astra_db_values:
+        if (
+            keyspace is None
+            and self.api_options.environment in Environment.astra_db_values
+        ):
             self._using_keyspace = DEFAULT_ASTRA_DB_KEYSPACE
         else:
             self._using_keyspace = keyspace
 
         self._commander_headers = {
-            DEFAULT_DATA_API_AUTH_HEADER: self.token_provider.get_token(),
+            DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token(),
+            **self.api_options.database_additional_headers,
         }
-
-        self.callers = callers
-        self._api_commander = self._get_api_commander(keyspace=self.keyspace)
         self._name: str | None = None
+        self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
     def __getattr__(self, collection_name: str) -> AsyncCollection:
         return self.to_sync().get_collection(name=collection_name).to_async()
@@ -1105,7 +1171,7 @@ class AsyncDatabase:
         ep_desc = f'api_endpoint="{self.api_endpoint}"'
         token_desc: str | None
         if self.token_provider:
-            token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
+            token_desc = f'token="{redact_secret(str(self.api_options.token), 15)}"'
         else:
             token_desc = None
         keyspace_desc: str | None
@@ -1120,13 +1186,9 @@ class AsyncDatabase:
         if isinstance(other, AsyncDatabase):
             return all(
                 [
-                    self.token_provider == other.token_provider,
                     self.api_endpoint == other.api_endpoint,
-                    self.api_path == other.api_path,
-                    self.api_version == other.api_version,
                     self.keyspace == other.keyspace,
-                    self.callers == other.callers,
-                    self.api_commander == other.api_commander,
+                    self.api_options == other.api_options,
                 ]
             )
         else:
@@ -1146,9 +1208,13 @@ class AsyncDatabase:
             base_path_components = [
                 comp
                 for comp in (
-                    self.api_path.strip("/"),
-                    self.api_version.strip("/"),
-                    keyspace,
+                    ncomp.strip("/")
+                    for ncomp in (
+                        self.api_options.data_api_url_options.api_path,
+                        self.api_options.data_api_url_options.api_version,
+                        keyspace,
+                    )
+                    if ncomp is not None
                 )
                 if comp != ""
             ]
@@ -1157,7 +1223,8 @@ class AsyncDatabase:
                 api_endpoint=self.api_endpoint,
                 path=base_path,
                 headers=self._commander_headers,
-                callers=self.callers,
+                callers=self.api_options.callers,
+                redacted_header_names=self.api_options.redacted_header_names,
             )
             return api_commander
 
@@ -1198,28 +1265,34 @@ class AsyncDatabase:
         self,
         *,
         api_endpoint: str | None = None,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        callers: Sequence[CallerType] = [],
-        environment: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        environment: str | UnsetType = _UNSET,
+        api_path: str | None | UnsetType = _UNSET,
+        api_version: str | None | UnsetType = _UNSET,
     ) -> AsyncDatabase:
+        arg_api_options = APIOptions(
+            token=coerce_possible_token_provider(token),
+            callers=callers,
+            environment=environment,
+            data_api_url_options=DataAPIURLOptions(
+                api_path=api_path,
+                api_version=api_version,
+            ),
+        )
+        api_options = self.api_options.with_override(arg_api_options)
         return AsyncDatabase(
             api_endpoint=api_endpoint or self.api_endpoint,
-            token=coerce_token_provider(token) or self.token_provider,
             keyspace=keyspace or self.keyspace,
-            callers=callers or self.callers,
-            environment=environment or self.environment,
-            api_path=api_path or self.api_path,
-            api_version=api_version or self.api_version,
+            api_options=api_options,
         )
 
     def with_options(
         self,
         *,
         keyspace: str | None = None,
-        callers: Sequence[CallerType] = [],
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Create a clone of this database with some changed attributes.
@@ -1252,12 +1325,12 @@ class AsyncDatabase:
         self,
         *,
         api_endpoint: str | None = None,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        callers: Sequence[CallerType] = [],
-        environment: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        environment: str | UnsetType = _UNSET,
+        api_path: str | None | UnsetType = _UNSET,
+        api_version: str | None | UnsetType = _UNSET,
     ) -> Database:
         """
         Create a (synchronous) Database from this one. Save for the arguments
@@ -1294,14 +1367,20 @@ class AsyncDatabase:
             ['a_collection', 'another_collection']
         """
 
+        arg_api_options = APIOptions(
+            token=coerce_possible_token_provider(token),
+            callers=callers,
+            environment=environment,
+            data_api_url_options=DataAPIURLOptions(
+                api_path=api_path,
+                api_version=api_version,
+            ),
+        )
+        api_options = self.api_options.with_override(arg_api_options)
         return Database(
             api_endpoint=api_endpoint or self.api_endpoint,
-            token=coerce_token_provider(token) or self.token_provider,
             keyspace=keyspace or self.keyspace,
-            callers=callers or self.callers,
-            environment=environment or self.environment,
-            api_path=api_path or self.api_path,
-            api_version=api_version or self.api_version,
+            api_options=api_options,
         )
 
     def use_keyspace(self, keyspace: str) -> None:
@@ -1329,13 +1408,22 @@ class AsyncDatabase:
         self._using_keyspace = keyspace
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
-    def info(self) -> DatabaseInfo:
+    def info(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> DatabaseInfo:
         """
         Additional information on the database as a DatabaseInfo instance.
 
         Some of the returned properties are dynamic throughout the lifetime
         of the database (such as raw_info["keyspaces"]). For this reason,
         each invocation of this method triggers a new request to the DevOps API.
+
+        Args:
+            request_timeout_ms: a timeout, in milliseconds, for the DevOps API request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Example:
             >>> my_async_db.info().region
@@ -1349,11 +1437,17 @@ class AsyncDatabase:
             between the `region` and the `raw_info["region"]` attributes.
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
         logger.info("getting database info")
         database_info = fetch_database_info(
             self.api_endpoint,
-            token=self.token_provider.get_token(),
+            token=self.api_options.token.get_token(),
             keyspace=self.keyspace,
+            max_time_ms=_request_timeout_ms,
         )
         if database_info is not None:
             logger.info("finished getting database info")
@@ -1419,8 +1513,10 @@ class AsyncDatabase:
         name: str,
         *,
         keyspace: str | None = None,
-        embedding_api_key: str | EmbeddingHeadersProvider | None = None,
-        collection_max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        collection_request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection:
         """
         Spawn an `AsyncCollection` object instance representing a collection
@@ -1445,14 +1541,20 @@ class AsyncDatabase:
                 For some vectorize providers/models, if using header-based
                 authentication, specialized subclasses of
                 `astrapy.authentication.EmbeddingHeadersProvider` should be supplied.
-            collection_max_time_ms: a default timeout, in millisecond, for the duration
-                of each operation on the collection. Individual timeouts can be
-                provided to each collection method call and will take precedence, with
-                this value being an overall default.
-                Note that for some methods involving multiple API calls (such as `find`,
-                `delete_many`, `insert_many` and so on), it is strongly suggested
-                to provide a specific timeout as the default one likely wouldn't make
-                much sense.
+            collection_request_timeout_ms: a default timeout, in millisecond, for the
+                duration of each request in the collection. For a more fine-grained
+                control of collection timeouts (suggested e.g. with regard to
+                methods involving multiple requests, such as `find`), use of the
+                `collection_api_options` parameter is suggested; alternatively,
+                bear in mind that individual collection methods also accept timeout
+                parameters.
+            collection_max_time_ms: an alias for `collection_request_timeout_ms`.
+            collection_api_options: a specification - complete or partial - of the
+                API Options to override the defaults inherited from the Database.
+                This allows for a deeper configuration of the collection, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             an `AsyncCollection` instance, representing the desired collection
@@ -1477,6 +1579,30 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.collection import AsyncCollection
 
+        # this multiple-override implements the alias on timeout params
+        resulting_api_options = (
+            self.api_options.with_override(
+                collection_api_options,
+            )
+            .with_override(
+                APIOptions(
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=collection_max_time_ms,
+                    )
+                ),
+            )
+            .with_override(
+                APIOptions(
+                    embedding_api_key=coerce_possible_embedding_headers_provider(
+                        embedding_api_key
+                    ),
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=collection_request_timeout_ms,
+                    ),
+                ),
+            )
+        )
+
         _keyspace = keyspace or self.keyspace
         if _keyspace is None:
             raise ValueError(
@@ -1484,14 +1610,10 @@ class AsyncDatabase:
                 "be set, e.g. through the `use_keyspace` method."
             )
         return AsyncCollection(
-            self,
-            name,
+            database=self,
+            name=name,
             keyspace=_keyspace,
-            api_options=CollectionAPIOptions(
-                embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
-                max_time_ms=collection_max_time_ms,
-            ),
-            callers=self.callers,
+            api_options=resulting_api_options,
         )
 
     async def create_collection(
@@ -1506,9 +1628,12 @@ class AsyncDatabase:
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
         check_exists: bool | None = None,
+        schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-        embedding_api_key: str | EmbeddingHeadersProvider | None = None,
-        collection_max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        collection_request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection:
         """
         Creates a collection on the database and return the AsyncCollection
@@ -1551,7 +1676,9 @@ class AsyncDatabase:
                 If it is False, the creation is attempted. In this case, for
                 preexisting collections, the command will succeed or fail
                 depending on whether the options match or not.
-            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+            schema_operation_timeout_ms: a timeout, in milliseconds, for the
+                createCollection HTTP request.
+            max_time_ms: an alias for `schema_operation_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -1561,14 +1688,20 @@ class AsyncDatabase:
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
-            collection_max_time_ms: a default timeout, in millisecond, for the duration of each
-                operation on the collection. Individual timeouts can be provided to
-                each collection method call and will take precedence, with this value
-                being an overall default.
-                Note that for some methods involving multiple API calls (such as
-                `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
-                to provide a specific timeout as the default one likely wouldn't make
-                much sense.
+            collection_request_timeout_ms: a default timeout, in millisecond, for the
+                duration of each request in the collection. For a more fine-grained
+                control of collection timeouts (suggested e.g. with regard to
+                methods involving multiple requests, such as `find`), use of the
+                `collection_api_options` parameter is suggested; alternatively,
+                bear in mind that individual collection methods also accept timeout
+                parameters.
+            collection_max_time_ms: an alias for `collection_request_timeout_ms`.
+            collection_api_options: a specification - complete or partial - of the
+                API Options to override the defaults inherited from the Database.
+                This allows for a deeper configuration of the collection, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             an `AsyncCollection` instance, representing the newly-created collection.
@@ -1600,7 +1733,15 @@ class AsyncDatabase:
             additional_options=additional_options,
         )
 
-        timeout_manager = MultiCallTimeoutManager(overall_max_time_ms=max_time_ms)
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.schema_operation_timeout_ms
+        )
+
+        timeout_manager = MultiCallTimeoutManager(
+            overall_max_time_ms=_schema_operation_timeout_ms
+        )
 
         if check_exists is None:
             _check_exists = True
@@ -1630,14 +1771,17 @@ class AsyncDatabase:
         return await self.get_collection(
             name,
             keyspace=keyspace,
-            embedding_api_key=coerce_embedding_headers_provider(embedding_api_key),
+            embedding_api_key=embedding_api_key,
+            collection_request_timeout_ms=collection_request_timeout_ms,
             collection_max_time_ms=collection_max_time_ms,
+            collection_api_options=collection_api_options,
         )
 
     async def drop_collection(
         self,
         name_or_collection: str | AsyncCollection,
         *,
+        schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -1646,7 +1790,9 @@ class AsyncDatabase:
         Args:
             name_or_collection: either the name of a collection or
                 an `AsyncCollection` instance.
-            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+            schema_operation_timeout_ms: a timeout, in milliseconds, for
+                the underlying schema-changing HTTP request.
+            max_time_ms: an alias for `schema_operation_timeout_ms`.
 
         Returns:
             a dictionary in the form {"ok": 1} if the command succeeds.
@@ -1667,6 +1813,12 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.collection import AsyncCollection
 
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.schema_operation_timeout_ms
+        )
+
         keyspace: str | None
         _collection_name: str
         if isinstance(name_or_collection, AsyncCollection):
@@ -1680,7 +1832,7 @@ class AsyncDatabase:
         logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = await driver_commander.async_request(
             payload=dc_payload,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_schema_operation_timeout_ms),
         )
         logger.info(f"finished deleteCollection('{_collection_name}')")
         return dc_response.get("status", {})  # type: ignore[no-any-return]
@@ -1689,6 +1841,7 @@ class AsyncDatabase:
         self,
         *,
         keyspace: str | None = None,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> AsyncCommandCursor[CollectionDescriptor]:
         """
@@ -1697,7 +1850,9 @@ class AsyncDatabase:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
-            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             an `AsyncCommandCursor` to iterate over CollectionDescriptor instances,
@@ -1717,12 +1872,18 @@ class AsyncDatabase:
             * coll: CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload = {"findCollections": {"options": {"explain": True}}}
         logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -1744,6 +1905,7 @@ class AsyncDatabase:
         self,
         *,
         keyspace: str | None = None,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> list[str]:
         """
@@ -1752,7 +1914,9 @@ class AsyncDatabase:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
-            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a list of the collection names as strings, in no particular order.
@@ -1762,12 +1926,18 @@ class AsyncDatabase:
             ['a_collection', 'another_col']
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload: dict[str, Any] = {"findCollections": {}}
         logger.info("findCollections")
         gc_response = await driver_commander.async_request(
             payload=gc_payload,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -1786,6 +1956,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         collection_name: str | None = None,
         raise_api_errors: bool = True,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -1801,7 +1972,9 @@ class AsyncDatabase:
                 arbitrary POST requests as well.
             raise_api_errors: if True, responses with a nonempty 'errors' field
                 result in an astrapy exception being raised.
-            max_time_ms: a timeout, in milliseconds, for the underlying HTTP request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a dictionary with the response of the HTTP request.
@@ -1816,6 +1989,12 @@ class AsyncDatabase:
             {'status': {'count': 123}}
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         if collection_name:
             # if keyspace and collection_name both passed, a new database is needed
             _database: AsyncDatabase
@@ -1828,7 +2007,7 @@ class AsyncDatabase:
             coll_req_response = await _collection.command(
                 body=body,
                 raise_api_errors=raise_api_errors,
-                max_time_ms=max_time_ms,
+                max_time_ms=_request_timeout_ms,
             )
             logger.info(
                 "finished deferring to collection " f"'{collection_name}' for command."
@@ -1841,7 +2020,7 @@ class AsyncDatabase:
             req_response = await driver_commander.async_request(
                 payload=body,
                 raise_api_errors=raise_api_errors,
-                timeout_info=base_timeout_info(max_time_ms),
+                timeout_info=base_timeout_info(_request_timeout_ms),
             )
             logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             return req_response
@@ -1849,9 +2028,9 @@ class AsyncDatabase:
     def get_database_admin(
         self,
         *,
-        token: str | TokenProvider | None = None,
-        dev_ops_url: str | None = None,
-        dev_ops_api_version: str | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        dev_ops_url: str | UnsetType = _UNSET,
+        dev_ops_api_version: str | None | UnsetType = _UNSET,
     ) -> DatabaseAdmin:
         """
         Return a DatabaseAdmin object corresponding to this database, for
@@ -1891,31 +2070,32 @@ class AsyncDatabase:
         # lazy importing here to avoid circular dependency
         from astrapy.admin.admin import AstraDBDatabaseAdmin, DataAPIDatabaseAdmin
 
-        if self.environment in Environment.astra_db_values:
-            return AstraDBDatabaseAdmin(
-                api_endpoint=self.api_endpoint,
-                token=coerce_token_provider(token) or self.token_provider,
-                environment=self.environment,
-                callers=self.callers,
+        arg_api_options = APIOptions(
+            token=coerce_possible_token_provider(token),
+            dev_ops_api_url_options=DevOpsAPIURLOptions(
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
+            ),
+        )
+        api_options = self.api_options.with_override(arg_api_options)
+
+        if api_options.environment in Environment.astra_db_values:
+            return AstraDBDatabaseAdmin(
+                api_endpoint=self.api_endpoint,
+                api_options=api_options,
                 spawner_database=self,
             )
         else:
-            if dev_ops_url is not None:
+            if not isinstance(dev_ops_url, UnsetType):
                 raise ValueError(
                     "Parameter `dev_ops_url` not supported outside of Astra DB."
                 )
-            if dev_ops_api_version is not None:
+            if not isinstance(dev_ops_api_version, UnsetType):
                 raise ValueError(
                     "Parameter `dev_ops_api_version` not supported outside of Astra DB."
                 )
             return DataAPIDatabaseAdmin(
                 api_endpoint=self.api_endpoint,
-                token=coerce_token_provider(token) or self.token_provider,
-                environment=self.environment,
-                api_path=self.api_path,
-                api_version=self.api_version,
-                callers=self.callers,
+                api_options=api_options,
                 spawner_database=self,
             )

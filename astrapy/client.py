@@ -23,8 +23,15 @@ from astrapy.admin.admin import (
     parse_api_endpoint,
     parse_generic_api_url,
 )
-from astrapy.authentication import coerce_token_provider, redact_secret
+from astrapy.authentication import coerce_possible_token_provider, redact_secret
 from astrapy.constants import CallerType, Environment
+from astrapy.utils.api_options import (
+    APIOptions,
+    DataAPIURLOptions,
+    DevOpsAPIURLOptions,
+    defaultAPIOptions,
+)
+from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
@@ -37,8 +44,9 @@ logger = logging.getLogger(__name__)
 
 class DataAPIClient:
     """
-    A client for using the Data API. This is the main entry point and sits
-    at the top of the conceptual "client -> database -> collection" hierarchy.
+    A client for using the Data API. This is the entry point, sitting
+    at the top of the conceptual "client -> database -> collection" hierarchy
+    and of the "client -> admin -> database admin" chain as well.
 
     A client is created first, optionally passing it a suitable Access Token.
     Starting from the client, then:
@@ -56,6 +64,11 @@ class DataAPIClient:
             on behalf of which Data API and DevOps API calls are performed.
             These end up in the request user-agent.
             Each caller identity is a ("caller_name", "caller_version") pair.
+        api_options: a specification - complete or partial - of the API Options
+            to override the system defaults. This allows for a deeper configuration
+            than what the named parameters (token, environment, callers) offer.
+            If this is passed alongside these named parameters, those will take
+            precedence.
 
     Example:
         >>> from astrapy import DataAPIClient
@@ -74,30 +87,44 @@ class DataAPIClient:
 
     def __init__(
         self,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         *,
-        environment: str | None = None,
-        callers: Sequence[CallerType] = [],
+        environment: str | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> None:
-        self.token_provider = coerce_token_provider(token)
-        self.environment = (environment or Environment.PROD).lower()
-
-        if self.environment not in Environment.values:
-            raise ValueError(f"Unsupported `environment` value: '{self.environment}'.")
-
-        self.callers = callers
+        # this parameter bootstraps the defaults, has a special treatment:
+        _environment: str
+        if isinstance(environment, UnsetType):
+            _environment = Environment.PROD.lower()
+        else:
+            _environment = environment.lower()
+        if _environment not in Environment.values:
+            raise ValueError(f"Unsupported `environment` value: '{_environment}'.")
+        arg_api_options = APIOptions(
+            environment=_environment,
+            callers=callers,
+            token=coerce_possible_token_provider(token),
+        )
+        self.api_options = (
+            defaultAPIOptions(_environment)
+            .with_override(api_options)
+            .with_override(
+                arg_api_options,
+            )
+        )
 
     def __repr__(self) -> str:
         token_desc: str | None
-        if self.token_provider:
-            token_desc = f'"{redact_secret(str(self.token_provider), 15)}"'
+        if self.api_options.token:
+            token_desc = f'"{redact_secret(str(self.api_options.token), 15)}"'
         else:
             token_desc = None
         env_desc: str | None
-        if self.environment == Environment.PROD:
+        if self.api_options.environment == Environment.PROD:
             env_desc = None
         else:
-            env_desc = f'environment="{self.environment}"'
+            env_desc = f'environment="{self.api_options.environment}"'
         parts = [pt for pt in [token_desc, env_desc] if pt is not None]
         return f"{self.__class__.__name__}({', '.join(parts)})"
 
@@ -105,9 +132,9 @@ class DataAPIClient:
         if isinstance(other, DataAPIClient):
             return all(
                 [
-                    self.token_provider == other.token_provider,
-                    self.environment == other.environment,
-                    self.callers == other.callers,
+                    self.api_options.token == other.api_options.token,
+                    self.api_options.environment == other.api_options.environment,
+                    self.api_options.callers == other.api_options.callers,
                 ]
             )
         else:
@@ -119,21 +146,28 @@ class DataAPIClient:
     def _copy(
         self,
         *,
-        token: str | TokenProvider | None = None,
-        environment: str | None = None,
-        callers: Sequence[CallerType] = [],
+        token: str | TokenProvider | UnsetType = _UNSET,
+        environment: str | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
     ) -> DataAPIClient:
+        _environment: str
+        # this parameter bootstraps the defaults, has a special treatment:
+        if isinstance(environment, UnsetType):
+            _environment = self.api_options.environment
+        else:
+            _environment = environment
         return DataAPIClient(
-            token=coerce_token_provider(token) or self.token_provider,
-            environment=environment or self.environment,
-            callers=callers or self.callers,
+            token=token,
+            environment=_environment,
+            callers=callers,
+            api_options=self.api_options,
         )
 
     def with_options(
         self,
         *,
-        token: str | TokenProvider | None = None,
-        callers: Sequence[CallerType] = [],
+        token: str | TokenProvider | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
     ) -> DataAPIClient:
         """
         Create a clone of this DataAPIClient with some changed attributes.
@@ -165,10 +199,10 @@ class DataAPIClient:
         self,
         api_endpoint: str,
         *,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        api_path: str | None | UnsetType = _UNSET,
+        api_version: str | None | UnsetType = _UNSET,
     ) -> Database:
         """
         Get a Database object from this client, for doing data-related work.
@@ -214,25 +248,29 @@ class DataAPIClient:
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
-        if self.environment in Environment.astra_db_values:
+        arg_api_options = APIOptions(
+            token=coerce_possible_token_provider(token),
+            data_api_url_options=DataAPIURLOptions(
+                api_path=api_path,
+                api_version=api_version,
+            ),
+        )
+        api_options = self.api_options.with_override(arg_api_options)
+
+        if api_options.environment in Environment.astra_db_values:
             parsed_api_endpoint = parse_api_endpoint(api_endpoint)
             if parsed_api_endpoint is not None:
-                if parsed_api_endpoint.environment != self.environment:
+                if parsed_api_endpoint.environment != api_options.environment:
                     raise ValueError(
                         "Environment mismatch between client and provided "
                         "API endpoint. You can try adding "
                         f'`environment="{parsed_api_endpoint.environment}"` '
                         "to the DataAPIClient creation statement."
                     )
-                _token = coerce_token_provider(token) or self.token_provider
                 return Database(
                     api_endpoint=api_endpoint,
-                    token=_token,
                     keyspace=keyspace,
-                    callers=self.callers,
-                    environment=self.environment,
-                    api_path=api_path,
-                    api_version=api_version,
+                    api_options=api_options,
                 )
             else:
                 msg = api_endpoint_parsing_error_message(api_endpoint)
@@ -240,15 +278,10 @@ class DataAPIClient:
         else:
             parsed_generic_api_endpoint = parse_generic_api_url(api_endpoint)
             if parsed_generic_api_endpoint:
-                _token = coerce_token_provider(token) or self.token_provider
                 return Database(
                     api_endpoint=parsed_generic_api_endpoint,
-                    token=_token,
                     keyspace=keyspace,
-                    callers=self.callers,
-                    environment=self.environment,
-                    api_path=api_path,
-                    api_version=api_version,
+                    api_options=api_options,
                 )
             else:
                 msg = generic_api_url_parsing_error_message(api_endpoint)
@@ -258,10 +291,10 @@ class DataAPIClient:
         self,
         api_endpoint: str,
         *,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        api_path: str | None | UnsetType = _UNSET,
+        api_version: str | None | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Get an AsyncDatabase object from this client, for doing data-related work.
@@ -317,10 +350,10 @@ class DataAPIClient:
         self,
         api_endpoint: str,
         *,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        api_path: str | None | UnsetType = _UNSET,
+        api_version: str | None | UnsetType = _UNSET,
     ) -> Database:
         """
         Get a Database object from this client, for doing data-related work.
@@ -360,10 +393,10 @@ class DataAPIClient:
         self,
         api_endpoint: str,
         *,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        api_path: str | None | UnsetType = _UNSET,
+        api_version: str | None | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Get an AsyncDatabase object from this client, for doing data-related work.
@@ -402,9 +435,9 @@ class DataAPIClient:
     def get_admin(
         self,
         *,
-        token: str | TokenProvider | None = None,
-        dev_ops_url: str | None = None,
-        dev_ops_api_version: str | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        dev_ops_url: str | UnsetType = _UNSET,
+        dev_ops_api_version: str | None | UnsetType = _UNSET,
     ) -> AstraDBAdmin:
         """
         Get an AstraDBAdmin instance corresponding to this client, for
@@ -443,13 +476,16 @@ class DataAPIClient:
         # lazy importing here to avoid circular dependency
         from astrapy.admin import AstraDBAdmin
 
-        if self.environment not in Environment.astra_db_values:
+        arg_api_options = APIOptions(
+            token=coerce_possible_token_provider(token),
+            dev_ops_api_url_options=DevOpsAPIURLOptions(
+                dev_ops_url=dev_ops_url,
+                dev_ops_api_version=dev_ops_api_version,
+            ),
+        )
+        api_options = self.api_options.with_override(arg_api_options)
+
+        if api_options.environment not in Environment.astra_db_values:
             raise ValueError("Method not supported outside of Astra DB.")
 
-        return AstraDBAdmin(
-            token=coerce_token_provider(token) or self.token_provider,
-            environment=self.environment,
-            callers=self.callers,
-            dev_ops_url=dev_ops_url,
-            dev_ops_api_version=dev_ops_api_version,
-        )
+        return AstraDBAdmin(api_options=api_options)

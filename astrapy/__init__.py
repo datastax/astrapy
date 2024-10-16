@@ -49,6 +49,7 @@ def get_version() -> str:
 __version__: str = get_version()
 
 
+from astrapy import api_options  # noqa: E402, F401
 from astrapy.admin import (  # noqa: E402
     AstraDBAdmin,
     AstraDBDatabaseAdmin,

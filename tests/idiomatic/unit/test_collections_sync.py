@@ -14,14 +14,27 @@
 
 from __future__ import annotations
 
+from typing import Sequence
+
 import pytest
 
 from astrapy import Collection, Database
+from astrapy.utils.api_options import APIOptions, FullAPIOptions, defaultAPIOptions
+from astrapy.utils.unset import _UNSET, UnsetType
 
 from ..conftest import (
     SECONDARY_KEYSPACE,
     DataAPICredentialsInfo,
 )
+
+
+def _wrapCallers(
+    src_database: Database,
+    callers: Sequence[tuple[str | None, str | None]] | UnsetType = _UNSET,
+) -> FullAPIOptions:
+    return defaultAPIOptions(
+        environment=src_database.api_options.environment
+    ).with_override(APIOptions(callers=callers))
 
 
 class TestCollectionsSync:
@@ -31,14 +44,16 @@ class TestCollectionsSync:
         sync_database: Database,
     ) -> None:
         col1 = Collection(
-            sync_database,
-            "id_test_collection",
-            callers=[("cn", "cv")],
+            database=sync_database,
+            name="id_test_collection",
+            keyspace=None,
+            api_options=_wrapCallers(sync_database, callers=[("cn", "cv")]),
         )
         col2 = Collection(
-            sync_database,
-            "id_test_collection",
-            callers=[("cn", "cv")],
+            database=sync_database,
+            name="id_test_collection",
+            keyspace=None,
+            api_options=_wrapCallers(sync_database, callers=[("cn", "cv")]),
         )
         assert col1 == col2
 
@@ -47,7 +62,12 @@ class TestCollectionsSync:
         self,
         sync_database: Database,
     ) -> None:
-        col1 = Collection(sync_database, "id_test_collection", callers=[("cn", "cv")])
+        col1 = Collection(
+            database=sync_database,
+            name="id_test_collection",
+            keyspace=None,
+            api_options=_wrapCallers(sync_database, callers=[("cn", "cv")]),
+        )
         assert col1 == col1._copy()
         assert col1 == col1.with_options()
         assert col1 == col1.to_async().to_sync()
@@ -60,9 +80,10 @@ class TestCollectionsSync:
         callers0 = [("cn", "cv"), ("dn", "dv")]
         callers1 = [("x", "y")]
         col1 = Collection(
-            sync_database,
-            "id_test_collection",
-            callers=callers0,
+            database=sync_database,
+            name="id_test_collection",
+            keyspace=None,
+            api_options=_wrapCallers(sync_database, callers=callers0),
         )
         assert col1 != col1._copy(database=sync_database._copy(token="x_t"))
         assert col1 != col1._copy(name="o")
@@ -95,10 +116,10 @@ class TestCollectionsSync:
         callers0 = [("cn", "cv"), ("dn", "dv")]
         callers1 = [("x", "y")]
         col1 = Collection(
-            sync_database,
-            "id_test_collection",
+            database=sync_database,
+            name="id_test_collection",
             keyspace="the_ks",
-            callers=callers0,
+            api_options=_wrapCallers(sync_database, callers=callers0),
         )
         assert (
             col1
@@ -130,10 +151,16 @@ class TestCollectionsSync:
     def test_collection_database_property_sync(
         self,
     ) -> None:
-        db1 = Database("a", "t", keyspace="ns1")
-        db2 = Database("a", "t", keyspace="ns2")
-        col1 = Collection(db1, "coll")
-        col2 = Collection(db1, "coll", keyspace="ns2")
+        opts0 = defaultAPIOptions(environment="other")
+        db1 = Database(api_endpoint="a", keyspace="ns1", api_options=opts0)
+        db2 = Database(api_endpoint="a", keyspace="ns2", api_options=opts0)
+        col1 = Collection(
+            database=db1,
+            name="coll",
+            keyspace=None,
+            api_options=opts0,
+        )
+        col2 = Collection(database=db1, name="coll", api_options=opts0, keyspace="ns2")
         assert col1.database == db1
         assert col2.database == db2
 
@@ -141,8 +168,14 @@ class TestCollectionsSync:
     def test_collection_name_property_sync(
         self,
     ) -> None:
-        db1 = Database("a", "t", keyspace="ns1")
-        col1 = Collection(db1, "coll")
+        opts0 = defaultAPIOptions(environment="other")
+        db1 = Database(api_endpoint="a", keyspace="ns1", api_options=opts0)
+        col1 = Collection(
+            database=db1,
+            name="coll",
+            keyspace=None,
+            api_options=opts0,
+        )
         assert col1.name == "coll"
 
     @pytest.mark.skipif(
@@ -163,13 +196,19 @@ class TestCollectionsSync:
         )
         assert col2.keyspace == data_api_credentials_info["secondary_keyspace"]
 
-        col3 = Collection(sync_database, "id_test_collection")
+        col3 = Collection(
+            database=sync_database,
+            name="id_test_collection",
+            keyspace=None,
+            api_options=sync_database.api_options,
+        )
         assert col3.keyspace == sync_database.keyspace
 
         col4 = Collection(
-            sync_database,
-            "id_test_collection",
+            database=sync_database,
+            name="id_test_collection",
             keyspace=data_api_credentials_info["secondary_keyspace"],
+            api_options=sync_database.api_options,
         )
         assert col4.keyspace == data_api_credentials_info["secondary_keyspace"]
         assert col1 == col3

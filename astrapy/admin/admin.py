@@ -22,7 +22,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Sequence
 
-from astrapy.authentication import coerce_token_provider, redact_secret
+from astrapy.authentication import coerce_possible_token_provider, redact_secret
 from astrapy.constants import CallerType, Environment
 from astrapy.cursors import CommandCursor
 from astrapy.exceptions import (
@@ -34,8 +34,6 @@ from astrapy.exceptions import (
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo, FindEmbeddingProvidersResult
 from astrapy.settings.defaults import (
     API_ENDPOINT_TEMPLATE_ENV_MAP,
-    API_PATH_ENV_MAP,
-    API_VERSION_ENV_MAP,
     DEFAULT_DATA_API_AUTH_HEADER,
     DEFAULT_DEV_OPS_AUTH_HEADER,
     DEFAULT_DEV_OPS_AUTH_PREFIX,
@@ -53,7 +51,15 @@ from astrapy.settings.defaults import (
     DEV_OPS_VERSION_ENV_MAP,
 )
 from astrapy.utils.api_commander import APICommander
+from astrapy.utils.api_options import (
+    APIOptions,
+    DataAPIURLOptions,
+    DevOpsAPIURLOptions,
+    FullAPIOptions,
+    TimeoutOptions,
+)
 from astrapy.utils.request_tools import HttpMethod
+from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase, Database
@@ -490,22 +496,12 @@ class AstraDBAdmin:
     An "admin" object, able to perform administrative tasks at the databases
     level, such as creating, listing or dropping databases.
 
+    This class is not meant for direct instantiation by the user, rather
+    it is obtained by invoking methods such as `get_admin`
+    of AstraDBClient.
+
     Args:
-        token: an access token with enough permission to perform admin tasks.
-            This can be either a literal token string or a subclass of
-            `astrapy.authentication.TokenProvider`.
-        environment: a label, whose value is one of Environment.PROD (default),
-            Environment.DEV or Environment.TEST.
-        callers: a list of caller identities, i.e. applications, or frameworks,
-            on behalf of which DevOps API calls are performed. These end up in
-            the request user-agent.
-            Each caller identity is a ("caller_name", "caller_version") pair.
-        dev_ops_url: in case of custom deployments, this can be used to specify
-            the URL to the DevOps API, such as "https://api.astra.datastax.com".
-            Generally it can be omitted. The environment (prod/dev/...) is
-            determined from the API Endpoint.
-        dev_ops_api_version: this can specify a custom version of the DevOps API
-            (such as "v2"). Generally not needed.
+        api_options: a complete specification of the API Options for this instance.
 
     Example:
         >>> from astrapy import DataAPIClient
@@ -523,104 +519,97 @@ class AstraDBAdmin:
 
     def __init__(
         self,
-        token: str | TokenProvider | None = None,
         *,
-        environment: str | None = None,
-        callers: Sequence[CallerType] = [],
-        dev_ops_url: str | None = None,
-        dev_ops_api_version: str | None = None,
+        api_options: FullAPIOptions,
     ) -> None:
-        self.token_provider = coerce_token_provider(token)
-        self.environment = (environment or Environment.PROD).lower()
-        if self.environment not in Environment.astra_db_values:
+        if api_options.environment not in Environment.astra_db_values:
             raise ValueError("Environments outside of Astra DB are not supported.")
-        if dev_ops_url is None:
-            self.dev_ops_url = DEV_OPS_URL_ENV_MAP[self.environment]
-        else:
-            self.dev_ops_url = dev_ops_url
-        self._dev_ops_url = dev_ops_url
-        self._dev_ops_api_version = dev_ops_api_version
 
+        self.api_options = api_options
         self._dev_ops_commander_headers: dict[str, str | None]
-        if self.token_provider:
-            _token = self.token_provider.get_token()
+        if self.api_options.token:
+            _token_str = self.api_options.token.get_token()
             self._dev_ops_commander_headers = {
-                DEFAULT_DEV_OPS_AUTH_HEADER: f"{DEFAULT_DEV_OPS_AUTH_PREFIX}{_token}",
+                DEFAULT_DEV_OPS_AUTH_HEADER: f"{DEFAULT_DEV_OPS_AUTH_PREFIX}{_token_str}",
+                **self.api_options.admin_additional_headers,
             }
         else:
-            self._dev_ops_commander_headers = {}
-
-        self.callers = callers
+            self._dev_ops_commander_headers = {
+                **self.api_options.admin_additional_headers,
+            }
         self._dev_ops_api_commander = self._get_dev_ops_api_commander()
 
     def __repr__(self) -> str:
         token_desc: str | None
-        if self.token_provider:
-            token_desc = f'"{redact_secret(str(self.token_provider), 15)}"'
+        if self.api_options.token:
+            token_desc = f'"{redact_secret(str(self.api_options.token), 15)}"'
         else:
             token_desc = None
         env_desc: str | None
-        if self.environment == Environment.PROD:
+        if self.api_options.environment == Environment.PROD:
             env_desc = None
         else:
-            env_desc = f'environment="{self.environment}"'
+            env_desc = f'environment="{self.api_options.environment}"'
         parts = [pt for pt in [token_desc, env_desc] if pt is not None]
         return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AstraDBAdmin):
-            return all(
-                [
-                    self.token_provider == other.token_provider,
-                    self.environment == other.environment,
-                    self.dev_ops_url == other.dev_ops_url,
-                    self.dev_ops_url == other.dev_ops_url,
-                    self.callers == other.callers,
-                    self._dev_ops_url == other._dev_ops_url,
-                    self._dev_ops_api_version == other._dev_ops_api_version,
-                    self._dev_ops_api_commander == other._dev_ops_api_commander,
-                ]
-            )
+            return all([self.api_options == other.api_options])
         else:
             return False
 
     def _get_dev_ops_api_commander(self) -> APICommander:
         """Instantiate a new APICommander based on the properties of this class."""
-
-        dev_ops_base_path = "/".join(
-            [DEV_OPS_VERSION_ENV_MAP[self.environment], "databases"]
-        )
+        base_path_components = [
+            comp
+            for comp in (
+                ncomp.strip("/")
+                for ncomp in (
+                    self.api_options.dev_ops_api_url_options.dev_ops_api_version,
+                    "databases",
+                )
+                if ncomp is not None
+            )
+            if comp != ""
+        ]
+        dev_ops_base_path = "/".join(base_path_components)
         dev_ops_commander = APICommander(
-            api_endpoint=DEV_OPS_URL_ENV_MAP[self.environment],
+            api_endpoint=self.api_options.dev_ops_api_url_options.dev_ops_url,
             path=dev_ops_base_path,
             headers=self._dev_ops_commander_headers,
-            callers=self.callers,
+            callers=self.api_options.callers,
             dev_ops_api=True,
+            redacted_header_names=self.api_options.redacted_header_names,
         )
         return dev_ops_commander
 
     def _copy(
         self,
         *,
-        token: str | TokenProvider | None = None,
-        environment: str | None = None,
-        callers: Sequence[CallerType] = [],
-        dev_ops_url: str | None = None,
-        dev_ops_api_version: str | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        environment: str | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        dev_ops_url: str | UnsetType = _UNSET,
+        dev_ops_api_version: str | None | UnsetType = _UNSET,
     ) -> AstraDBAdmin:
-        return AstraDBAdmin(
-            token=coerce_token_provider(token) or self.token_provider,
-            environment=environment or self.environment,
-            callers=callers or self.callers,
-            dev_ops_url=dev_ops_url or self._dev_ops_url,
-            dev_ops_api_version=dev_ops_api_version or self._dev_ops_api_version,
+        arg_api_options = APIOptions(
+            token=coerce_possible_token_provider(token),
+            callers=callers,
+            environment=environment,
+            dev_ops_api_url_options=DevOpsAPIURLOptions(
+                dev_ops_url=dev_ops_url,
+                dev_ops_api_version=dev_ops_api_version,
+            ),
         )
+        api_options = self.api_options.with_override(arg_api_options)
+        return AstraDBAdmin(api_options=api_options)
 
     def with_options(
         self,
         *,
-        token: str | TokenProvider | None = None,
-        callers: Sequence[CallerType] = [],
+        token: str | TokenProvider | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
     ) -> AstraDBAdmin:
         """
         Create a clone of this AstraDBAdmin with some changed attributes.
@@ -654,6 +643,7 @@ class AstraDBAdmin:
         include: str | None = None,
         provider: str | None = None,
         page_size: int | None = None,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> CommandCursor[AdminDatabaseInfo]:
         """
@@ -667,7 +657,9 @@ class AstraDBAdmin:
                 As per DevOps API, defaults to "ALL". Pass e.g. "AWS" to
                 restrict the results.
             page_size: number of results per page from the DevOps API. Optional.
-            max_time_ms: a timeout, in milliseconds, for the API request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying API request(s).
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A CommandCursor to iterate over the detected databases,
@@ -686,6 +678,12 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         logger.info("getting databases (DevOps API)")
         request_params_0 = {
             k: v
@@ -701,7 +699,7 @@ class AstraDBAdmin:
         response_0 = self._dev_ops_api_commander.request(
             http_method=HttpMethod.GET,
             request_params=request_params_0,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if not isinstance(response_0, list):
             raise DevOpsAPIException(
@@ -726,7 +724,7 @@ class AstraDBAdmin:
             response_n = self._dev_ops_api_commander.request(
                 http_method=HttpMethod.GET,
                 request_params=request_params_n,
-                timeout_info=base_timeout_info(max_time_ms),
+                timeout_info=base_timeout_info(_request_timeout_ms),
             )
             logger.info(
                 "finished request %s, getting databases (DevOps API)",
@@ -744,7 +742,7 @@ class AstraDBAdmin:
             items=[
                 _recast_as_admin_database_info(
                     db_dict,
-                    environment=self.environment,
+                    environment=self.api_options.environment,
                 )
                 for response in responses
                 for db_dict in response
@@ -757,6 +755,7 @@ class AstraDBAdmin:
         include: str | None = None,
         provider: str | None = None,
         page_size: int | None = None,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> CommandCursor[AdminDatabaseInfo]:
         """
@@ -771,7 +770,9 @@ class AstraDBAdmin:
                 As per DevOps API, defaults to "ALL". Pass e.g. "AWS" to
                 restrict the results.
             page_size: number of results per page from the DevOps API. Optional.
-            max_time_ms: a timeout, in milliseconds, for the API request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying API request(s).
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A CommandCursor to iterate over the detected databases,
@@ -791,6 +792,12 @@ class AstraDBAdmin:
             False
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         logger.info("getting databases (DevOps API), async")
         request_params_0 = {
             k: v
@@ -806,7 +813,7 @@ class AstraDBAdmin:
         response_0 = await self._dev_ops_api_commander.async_request(
             http_method=HttpMethod.GET,
             request_params=request_params_0,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if not isinstance(response_0, list):
             raise DevOpsAPIException(
@@ -831,7 +838,7 @@ class AstraDBAdmin:
             response_n = await self._dev_ops_api_commander.async_request(
                 http_method=HttpMethod.GET,
                 request_params=request_params_n,
-                timeout_info=base_timeout_info(max_time_ms),
+                timeout_info=base_timeout_info(_request_timeout_ms),
             )
             logger.info(
                 "finished request %s, getting databases (DevOps API), async",
@@ -849,7 +856,7 @@ class AstraDBAdmin:
             items=[
                 _recast_as_admin_database_info(
                     db_dict,
-                    environment=self.environment,
+                    environment=self.api_options.environment,
                 )
                 for response in responses
                 for db_dict in response
@@ -857,7 +864,11 @@ class AstraDBAdmin:
         )
 
     def database_info(
-        self, id: str, *, max_time_ms: int | None = None
+        self,
+        id: str,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
     ) -> AdminDatabaseInfo:
         """
         Get the full information on a given database, through a request to the DevOps API.
@@ -865,7 +876,9 @@ class AstraDBAdmin:
         Args:
             id: the ID of the target database, e. g.
                 "01234567-89ab-cdef-0123-456789abcdef".
-            max_time_ms: a timeout, in milliseconds, for the API request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying API request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             An AdminDatabaseInfo object.
@@ -880,20 +893,30 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         logger.info(f"getting database info for '{id}' (DevOps API)")
         gd_response = self._dev_ops_api_commander.request(
             http_method=HttpMethod.GET,
             additional_path=id,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         logger.info(f"finished getting database info for '{id}' (DevOps API)")
         return _recast_as_admin_database_info(
             gd_response,
-            environment=self.environment,
+            environment=self.api_options.environment,
         )
 
     async def async_database_info(
-        self, id: str, *, max_time_ms: int | None = None
+        self,
+        id: str,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
     ) -> AdminDatabaseInfo:
         """
         Get the full information on a given database, through a request to the DevOps API.
@@ -902,7 +925,9 @@ class AstraDBAdmin:
         Args:
             id: the ID of the target database, e. g.
                 "01234567-89ab-cdef-0123-456789abcdef".
-            max_time_ms: a timeout, in milliseconds, for the API request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying API request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             An AdminDatabaseInfo object.
@@ -916,16 +941,22 @@ class AstraDBAdmin:
             True
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         logger.info(f"getting database info for '{id}' (DevOps API), async")
         gd_response = await self._dev_ops_api_commander.async_request(
             http_method=HttpMethod.GET,
             additional_path=id,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         logger.info(f"finished getting database info for '{id}' (DevOps API), async")
         return _recast_as_admin_database_info(
             gd_response,
-            environment=self.environment,
+            environment=self.api_options.environment,
         )
 
     def create_database(
@@ -936,7 +967,10 @@ class AstraDBAdmin:
         region: str,
         keyspace: str | None = None,
         wait_until_active: bool = True,
+        request_timeout_ms: int | None = None,
+        database_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
+        database_admin_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         """
         Create a database as requested, optionally waiting for it to be ready.
@@ -952,13 +986,30 @@ class AstraDBAdmin:
                 usually). If False, it will return right after issuing the
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status before working with it.
-            max_time_ms: a timeout, in milliseconds, for the whole requested
-                operation to complete.
-                Note that a timeout is no guarantee that the creation request
-                has not reached the API server.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
+            database_admin_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation to complete. This is used only
+                if `wait_until_active` is true, i.e. if the method call must
+                wait and keep querying the DevOps API for the status of the
+                newly-created database.
+            max_time_ms: an alias for *both* the `request_timeout_ms` and
+                `database_admin_timeout_ms` timeout parameters. In practice,
+                regardless of `wait_until_active`, this parameter dictates an
+                overall timeout on this method call.
+            database_admin_api_options: : a specification - complete or partial - of the
+                API Options to override the defaults inherited from the AstraDBAdmin.
+                This allows for a deeper configuration of the database admin, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             An AstraDBDatabaseAdmin instance.
+
+        Note: a timeout event is no guarantee at all that the
+        creation request has not reached the API server and is not going
+        to be, in fact, honored.
 
         Example:
             >>> my_new_db_admin = my_astra_db_admin.create_database(
@@ -971,6 +1022,13 @@ class AstraDBAdmin:
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.2]})
         """
 
+        # for timeouts, there's a 3-item chain of fallbacks for both:
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
+        _database_admin_timeout_ms = (
+            database_admin_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.database_admin_timeout_ms
         cd_payload = {
             k: v
             for k, v in {
@@ -985,7 +1043,7 @@ class AstraDBAdmin:
             if v is not None
         }
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, dev_ops_api=True
+            overall_max_time_ms=_database_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(
             f"creating database {name}/({cloud_provider}, {region}) (DevOps API)"
@@ -993,7 +1051,9 @@ class AstraDBAdmin:
         cd_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.POST,
             payload=cd_payload,
-            timeout_info=timeout_manager.remaining_timeout_info(),
+            timeout_info=timeout_manager.remaining_timeout_info(
+                cap_time_ms=_request_timeout_ms
+            ),
         )
         if cd_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_CREATED:
             raise DevOpsAPIException(
@@ -1016,7 +1076,9 @@ class AstraDBAdmin:
                 time.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
                 last_db_info = self.database_info(
                     id=new_database_id,
-                    max_time_ms=timeout_manager.remaining_timeout_ms(),
+                    max_time_ms=timeout_manager.remaining_timeout_ms(
+                        cap_time_ms=_request_timeout_ms
+                    ),
                 )
                 last_status_seen = last_db_info.status
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
@@ -1030,11 +1092,12 @@ class AstraDBAdmin:
         )
         return AstraDBDatabaseAdmin.from_astra_db_admin(
             api_endpoint=build_api_endpoint(
-                environment=self.environment,
+                environment=self.api_options.environment,
                 database_id=new_database_id,
                 region=region,
             ),
             astra_db_admin=self,
+            api_options=database_admin_api_options,
         )
 
     async def async_create_database(
@@ -1045,6 +1108,8 @@ class AstraDBAdmin:
         region: str,
         keyspace: str | None = None,
         wait_until_active: bool = True,
+        request_timeout_ms: int | None = None,
+        database_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> AstraDBDatabaseAdmin:
         """
@@ -1062,13 +1127,24 @@ class AstraDBAdmin:
                 usually). If False, it will return right after issuing the
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status before working with it.
-            max_time_ms: a timeout, in milliseconds, for the whole requested
-                operation to complete.
-                Note that a timeout is no guarantee that the creation request
-                has not reached the API server.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
+            database_admin_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation to complete. This is used only
+                if `wait_until_active` is true, i.e. if the method call must
+                wait and keep querying the DevOps API for the status of the
+                newly-created database.
+            max_time_ms: an alias for *both* the `request_timeout_ms` and
+                `database_admin_timeout_ms` timeout parameters. In practice,
+                regardless of `wait_until_active`, this parameter dictates an
+                overall timeout on this method call.
 
         Returns:
             An AstraDBDatabaseAdmin instance.
+
+        Note: a timeout event is no guarantee at all that the
+        creation request has not reached the API server and is not going
+        to be, in fact, honored.
 
         Example:
             >>> asyncio.run(
@@ -1081,6 +1157,13 @@ class AstraDBAdmin:
             AstraDBDatabaseAdmin(id=...)
         """
 
+        # for timeouts, there's a 3-item chain of fallbacks for both:
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
+        _database_admin_timeout_ms = (
+            database_admin_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.database_admin_timeout_ms
         cd_payload = {
             k: v
             for k, v in {
@@ -1095,7 +1178,7 @@ class AstraDBAdmin:
             if v is not None
         }
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, dev_ops_api=True
+            overall_max_time_ms=_database_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(
             f"creating database {name}/({cloud_provider}, {region}) "
@@ -1104,7 +1187,9 @@ class AstraDBAdmin:
         cd_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.POST,
             payload=cd_payload,
-            timeout_info=timeout_manager.remaining_timeout_info(),
+            timeout_info=timeout_manager.remaining_timeout_info(
+                cap_time_ms=_request_timeout_ms
+            ),
         )
         if cd_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_CREATED:
             raise DevOpsAPIException(
@@ -1129,7 +1214,9 @@ class AstraDBAdmin:
                 await asyncio.sleep(DEV_OPS_DATABASE_POLL_INTERVAL_S)
                 last_db_info = await self.async_database_info(
                     id=new_database_id,
-                    max_time_ms=timeout_manager.remaining_timeout_ms(),
+                    max_time_ms=timeout_manager.remaining_timeout_ms(
+                        cap_time_ms=_request_timeout_ms
+                    ),
                 )
                 last_status_seen = last_db_info.status
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
@@ -1144,7 +1231,7 @@ class AstraDBAdmin:
         )
         return AstraDBDatabaseAdmin.from_astra_db_admin(
             api_endpoint=build_api_endpoint(
-                environment=self.environment,
+                environment=self.api_options.environment,
                 database_id=new_database_id,
                 region=region,
             ),
@@ -1156,6 +1243,8 @@ class AstraDBAdmin:
         id: str,
         *,
         wait_until_active: bool = True,
+        request_timeout_ms: int | None = None,
+        database_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -1170,14 +1259,25 @@ class AstraDBAdmin:
                 drop request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/availability
                 after that, if desired.
-            max_time_ms: a timeout, in milliseconds, for the whole requested
-                operation to complete.
-                Note that a timeout is no guarantee that the deletion request
-                has not reached the API server.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
+            database_admin_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation to complete. This is used only
+                if `wait_until_active` is true, i.e. if the method call must
+                wait and keep querying the DevOps API for the status of the
+                newly-deleted database.
+            max_time_ms: an alias for *both* the `request_timeout_ms` and
+                `database_admin_timeout_ms` timeout parameters. In practice,
+                regardless of `wait_until_active`, this parameter dictates an
+                overall timeout on this method call.
 
         Returns:
             A dictionary of the form {"ok": 1} in case of success.
             Otherwise, an exception is raised.
+
+        Note: a timeout event is no guarantee at all that the
+        deletion request has not reached the API server and is not going
+        to be, in fact, honored.
 
         Example:
             >>> database_list_pre = my_astra_db_admin.list_databases()
@@ -1190,14 +1290,23 @@ class AstraDBAdmin:
             2
         """
 
+        # for timeouts, there's a 3-item chain of fallbacks for both:
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
+        _database_admin_timeout_ms = (
+            database_admin_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.database_admin_timeout_ms
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, dev_ops_api=True
+            overall_max_time_ms=_database_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(f"dropping database '{id}' (DevOps API)")
         te_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.POST,
             additional_path=f"{id}/terminate",
-            timeout_info=timeout_manager.remaining_timeout_info(),
+            timeout_info=timeout_manager.remaining_timeout_info(
+                cap_time_ms=_request_timeout_ms
+            ),
         )
         if te_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_ACCEPTED:
             raise DevOpsAPIException(
@@ -1216,7 +1325,9 @@ class AstraDBAdmin:
                 detected_databases = [
                     a_db_info
                     for a_db_info in self.list_databases(
-                        max_time_ms=timeout_manager.remaining_timeout_ms(),
+                        max_time_ms=timeout_manager.remaining_timeout_ms(
+                            cap_time_ms=_request_timeout_ms
+                        ),
                     )
                     if a_db_info.id == id
                 ]
@@ -1239,6 +1350,8 @@ class AstraDBAdmin:
         id: str,
         *,
         wait_until_active: bool = True,
+        request_timeout_ms: int | None = None,
+        database_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -1254,14 +1367,25 @@ class AstraDBAdmin:
                 drop request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/availability
                 after that, if desired.
-            max_time_ms: a timeout, in milliseconds, for the whole requested
-                operation to complete.
-                Note that a timeout is no guarantee that the deletion request
-                has not reached the API server.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
+            database_admin_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation to complete. This is used only
+                if `wait_until_active` is true, i.e. if the method call must
+                wait and keep querying the DevOps API for the status of the
+                newly-deleted database.
+            max_time_ms: an alias for *both* the `request_timeout_ms` and
+                `database_admin_timeout_ms` timeout parameters. In practice,
+                regardless of `wait_until_active`, this parameter dictates an
+                overall timeout on this method call.
 
         Returns:
             A dictionary of the form {"ok": 1} in case of success.
             Otherwise, an exception is raised.
+
+        Note: a timeout event is no guarantee at all that the
+        deletion request has not reached the API server and is not going
+        to be, in fact, honored.
 
         Example:
             >>> asyncio.run(
@@ -1270,14 +1394,23 @@ class AstraDBAdmin:
             {'ok': 1}
         """
 
+        # for timeouts, there's a 3-item chain of fallbacks for both:
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
+        _database_admin_timeout_ms = (
+            database_admin_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.database_admin_timeout_ms
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, dev_ops_api=True
+            overall_max_time_ms=_database_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(f"dropping database '{id}' (DevOps API), async")
         te_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.POST,
             additional_path=f"{id}/terminate",
-            timeout_info=timeout_manager.remaining_timeout_info(),
+            timeout_info=timeout_manager.remaining_timeout_info(
+                cap_time_ms=_request_timeout_ms
+            ),
         )
         if te_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_ACCEPTED:
             raise DevOpsAPIException(
@@ -1296,7 +1429,9 @@ class AstraDBAdmin:
                 detected_databases = [
                     a_db_info
                     for a_db_info in await self.async_list_databases(
-                        max_time_ms=timeout_manager.remaining_timeout_ms(),
+                        max_time_ms=timeout_manager.remaining_timeout_ms(
+                            cap_time_ms=_request_timeout_ms
+                        ),
                     )
                     if a_db_info.id == id
                 ]
@@ -1321,7 +1456,9 @@ class AstraDBAdmin:
         api_endpoint: str | None = None,
         id: str | None = None,
         region: str | None = None,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
+        database_admin_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         """
         Create an AstraDBDatabaseAdmin object for admin work within a certain database.
@@ -1341,8 +1478,16 @@ class AstraDBAdmin:
                 If this parameter is not passed, and cannot be inferred
                 from the API endpoint, an additional DevOps API request is made
                 to determine the default region and use it subsequently.
-            max_time_ms: a timeout, in milliseconds, for the DevOps API
-                HTTP request should it be necessary (see the `region` argument).
+            request_timeout_ms: a timeout, in milliseconds, for
+                the DevOps API HTTP request, should it be necessary
+                (see the `region` argument).
+            max_time_ms: an alias for `request_timeout_ms`.
+            database_admin_api_options: : a specification - complete or partial - of the
+                API Options to override the defaults inherited from the AstraDBAdmin.
+                This allows for a deeper configuration of the database admin, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             An AstraDBDatabaseAdmin instance representing the requested database.
@@ -1362,6 +1507,9 @@ class AstraDBAdmin:
             `create_database` method.
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
         _api_endpoint_p, _id_p = check_id_endpoint_parg_kwargs(
             p_arg=api_endpoint_or_id, api_endpoint=api_endpoint, id=id
         )
@@ -1371,31 +1519,29 @@ class AstraDBAdmin:
                 raise ValueError(
                     "Parameter `region` not supported with an API endpoint."
                 )
-            # in this case max_time_ms is ignored (no calls take place)
             return AstraDBDatabaseAdmin.from_astra_db_admin(
                 api_endpoint=_api_endpoint_p,
                 astra_db_admin=self,
-                max_time_ms=max_time_ms,
+                api_options=database_admin_api_options,
             )
         else:
             if _id_p is None:
                 raise ValueError("Either `api_endpoint` or `id` must be supplied.")
-
             _region = normalize_region_for_id(
                 database_id=_id_p,
-                token_str=self.token_provider.get_token(),
-                environment=self.environment,
+                token_str=self.api_options.token.get_token(),
+                environment=self.api_options.environment,
                 region_param=region,
-                max_time_ms=max_time_ms,
+                max_time_ms=_request_timeout_ms,
             )
             return AstraDBDatabaseAdmin.from_astra_db_admin(
                 api_endpoint=build_api_endpoint(
-                    environment=self.environment,
+                    environment=self.api_options.environment,
                     database_id=_id_p,
                     region=_region,
                 ),
                 astra_db_admin=self,
-                max_time_ms=max_time_ms,
+                api_options=database_admin_api_options,
             )
 
     def get_database(
@@ -1403,13 +1549,17 @@ class AstraDBAdmin:
         api_endpoint_or_id: str | None = None,
         *,
         api_endpoint: str | None = None,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
         id: str | None = None,
         region: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        api_path: str | UnsetType = _UNSET,
+        api_version: str | UnsetType = _UNSET,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
+        database_request_timeout_ms: int | UnsetType = _UNSET,
+        database_max_time_ms: int | UnsetType = _UNSET,
+        database_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
         Create a Database instance for a specific database, to be used
@@ -1441,9 +1591,24 @@ class AstraDBAdmin:
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
-            max_time_ms: a timeout, in milliseconds, for the DevOps API
-                HTTP request should it be necessary (see the
-                `region` and `keyspace` arguments).
+            request_timeout_ms: a timeout, in milliseconds, for
+                the DevOps API HTTP request, should it be necessary
+                (see the `region` and `keyspace` arguments).
+            max_time_ms: an alias for `request_timeout_ms`.
+            database_request_timeout_ms: a default timeout, in millisecond, for the
+                duration of each request in the database. For a more fine-grained
+                control of database timeouts (suggested e.g. with regard to methods
+                involving schema changes, such as create_collection), use of the
+                `database_api_options` parameter is suggested; alternatively,
+                bear in mind that individual collection methods also accept timeout
+                parameters.
+            database_max_time_ms: an alias for `database_request_timeout_ms`.
+            database_api_options: a specification - complete or partial - of the
+                API Options to override the defaults inherited from the AstraDBAdmin.
+                This allows for a deeper configuration of the database, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             A Database object ready to be used.
@@ -1457,13 +1622,41 @@ class AstraDBAdmin:
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
         _api_endpoint_p, _id_p = check_id_endpoint_parg_kwargs(
             p_arg=api_endpoint_or_id, api_endpoint=api_endpoint, id=id
         )
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
-        _token = coerce_token_provider(token) or self.token_provider
+        # this multiple-override implements the alias on timeout params
+        resulting_api_options = (
+            self.api_options.with_override(
+                database_api_options,
+            )
+            .with_override(
+                APIOptions(
+                    token=coerce_possible_token_provider(token),
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=database_max_time_ms,
+                    ),
+                    data_api_url_options=DataAPIURLOptions(
+                        api_path=api_path,
+                        api_version=api_version,
+                    ),
+                ),
+            )
+            .with_override(
+                APIOptions(
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=database_request_timeout_ms,
+                    ),
+                ),
+            )
+        )
+
         _keyspace: str | None
         # handle the "endpoint passed as id" case first:
         if _api_endpoint_p is not None:
@@ -1480,16 +1673,12 @@ class AstraDBAdmin:
                     raise ValueError(msg)
                 _keyspace = self.database_info(
                     parsed_api_endpoint.database_id,
-                    max_time_ms=max_time_ms,
+                    max_time_ms=_request_timeout_ms,
                 ).info.keyspace
             return Database(
                 api_endpoint=_api_endpoint_p,
-                token=_token,
                 keyspace=_keyspace,
-                callers=self.callers,
-                environment=self.environment,
-                api_path=api_path,
-                api_version=api_version,
+                api_options=resulting_api_options,
             )
         else:
             # the case where an ID is passed:
@@ -1497,29 +1686,25 @@ class AstraDBAdmin:
                 raise ValueError("Either `api_endpoint` or `id` must be supplied.")
             _region = normalize_region_for_id(
                 database_id=_id_p,
-                token_str=self.token_provider.get_token(),
-                environment=self.environment,
+                token_str=self.api_options.token.get_token(),
+                environment=self.api_options.environment,
                 region_param=region,
-                max_time_ms=max_time_ms,
+                max_time_ms=_request_timeout_ms,
             )
             if keyspace:
                 _keyspace = keyspace
             else:
                 _keyspace = self.database_info(
-                    _id_p, max_time_ms=max_time_ms
+                    _id_p, max_time_ms=_request_timeout_ms
                 ).info.keyspace
             return Database(
                 api_endpoint=build_api_endpoint(
-                    environment=self.environment,
+                    environment=self.api_options.environment,
                     database_id=_id_p,
                     region=_region,
                 ),
-                token=_token,
                 keyspace=_keyspace,
-                callers=self.callers,
-                environment=self.environment,
-                api_path=api_path,
-                api_version=api_version,
+                api_options=resulting_api_options,
             )
 
     def get_async_database(
@@ -1527,12 +1712,17 @@ class AstraDBAdmin:
         api_endpoint_or_id: str | None = None,
         *,
         api_endpoint: str | None = None,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
         id: str | None = None,
         region: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        api_path: str | UnsetType = _UNSET,
+        api_version: str | UnsetType = _UNSET,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+        database_request_timeout_ms: int | UnsetType = _UNSET,
+        database_max_time_ms: int | UnsetType = _UNSET,
+        database_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Create an AsyncDatabase instance for a specific database, to be used
@@ -1564,9 +1754,24 @@ class AstraDBAdmin:
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
-            max_time_ms: a timeout, in milliseconds, for the DevOps API
-                HTTP request should it be necessary (see the
-                `region` and `keyspace` arguments).
+            request_timeout_ms: a timeout, in milliseconds, for
+                the DevOps API HTTP request, should it be necessary
+                (see the `region` and `keyspace` arguments).
+            max_time_ms: an alias for `request_timeout_ms`.
+            database_request_timeout_ms: a default timeout, in millisecond, for the
+                duration of each request in the database. For a more fine-grained
+                control of database timeouts (suggested e.g. with regard to methods
+                involving schema changes, such as create_collection), use of the
+                `database_api_options` parameter is suggested; alternatively,
+                bear in mind that individual collection methods also accept timeout
+                parameters.
+            database_max_time_ms: an alias for `database_request_timeout_ms`.
+            database_api_options: a specification - complete or partial - of the
+                API Options to override the defaults inherited from the AstraDBAdmin.
+                This allows for a deeper configuration of the database, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             An AsyncDatabase object ready to be used.
@@ -1603,6 +1808,11 @@ class AstraDBAdmin:
             region=region,
             api_path=api_path,
             api_version=api_version,
+            request_timeout_ms=request_timeout_ms,
+            max_time_ms=max_time_ms,
+            database_request_timeout_ms=database_request_timeout_ms,
+            database_max_time_ms=database_max_time_ms,
+            database_api_options=database_api_options,
         ).to_async()
 
 
@@ -1707,8 +1917,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     (i.e. within a certain database), such as creating/listing/dropping keyspaces.
 
     This is one layer below the AstraDBAdmin concept, in that it is tied to
-    a single database and enables admin work within it. As such, it is generally
-    created by a method call on an AstraDBAdmin.
+    a single database and enables admin work within it.
+
+    This class is not meant for direct instantiation by the user, rather
+    it is obtained by invoking methods such as `get_database_admin`
+    of AstraDBAdmin.
 
     Args:
         api_endpoint: the API Endpoint for the target database
@@ -1716,35 +1929,16 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             The database must exist already for the resulting object
             to be effectively used; in other words, this invocation
             does not create the database, just the object instance.
-        token: an access token with enough permission to perform admin tasks.
-            This can be either a literal token string or a subclass of
-            `astrapy.authentication.TokenProvider`.
-        environment: a label, whose value is one of Environment.PROD (default),
-            Environment.DEV or Environment.TEST.
-        callers: a list of caller identities, i.e. applications, or frameworks,
-            on behalf of which Data API and DevOps API calls are performed.
-            These end up in the request user-agent.
-            Each caller identity is a ("caller_name", "caller_version") pair.
-        dev_ops_url: in case of custom deployments, this can be used to specify
-            the URL to the DevOps API, such as "https://api.astra.datastax.com".
-            Generally it can be omitted. The environment (prod/dev/...) is
-            determined from the API Endpoint.
-        dev_ops_api_version: this can specify a custom version of the DevOps API
-            (such as "v2"). Generally not needed.
-        api_path: path to append to the API Endpoint. In typical usage, this
-            class is created by a method such as `Database.get_database_admin()`,
-            which passes the matching value. Generally to be left to its Astra DB
-            default of "/api/json".
-        api_version: version specifier to append to the API path. In typical
-            usage, this class is created by a method such as
-            `Database.get_database_admin()`, which passes the matching value.
-            Generally to be left to its Astra DB default of "/v1".
+        api_options: a complete specification of the API Options for this instance.
         spawner_database: either a Database or an AsyncDatabase instance. This represents
             the database class which spawns this admin object, so that, if required,
             a keyspace creation can retroactively "use" the new keyspace in the spawner.
-            Used to enable the Async/Database.get_admin_database().create_keyspace() pattern.
-        max_time_ms: a timeout, in milliseconds, for the DevOps API
-            HTTP request should it be necessary (see the `region` argument).
+            Used to enable the Async/Database.get_admin_database().create_keyspace()
+            pattern.
+        spawner_astra_db_admin: an AstraDBAdmin instance. This, if provided, is
+            the instance that spawned this Database Admin and is used to delegate
+            operations such as drop, get_database and so on. If not passed, a new
+            one is created automatically.
 
     Example:
         >>> from astrapy import DataAPIClient
@@ -1765,47 +1959,33 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     def __init__(
         self,
-        api_endpoint: str,
         *,
-        token: str | TokenProvider | None = None,
-        environment: str | None = None,
-        callers: Sequence[CallerType] = [],
-        dev_ops_url: str | None = None,
-        dev_ops_api_version: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        api_endpoint: str,
+        api_options: FullAPIOptions,
         spawner_database: Database | AsyncDatabase | None = None,
-        max_time_ms: int | None = None,
+        spawner_astra_db_admin: AstraDBAdmin | None = None,
     ) -> None:
         # lazy import here to avoid circular dependency
         from astrapy.database import Database
 
-        self.token_provider = coerce_token_provider(token)
-        self.environment = (environment or Environment.PROD).lower()
+        if api_options.environment not in Environment.astra_db_values:
+            raise ValueError("Environments outside of Astra DB are not supported.")
+
+        self.api_options = api_options
         self.api_endpoint = api_endpoint
         parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
         if parsed_api_endpoint is None:
             msg = api_endpoint_parsing_error_message(self.api_endpoint)
             raise ValueError(msg)
-
         self._database_id = parsed_api_endpoint.database_id
         self._region = parsed_api_endpoint.region
-        if parsed_api_endpoint.environment != self.environment:
+        if parsed_api_endpoint.environment != self.api_options.environment:
             raise ValueError(
                 "Environment mismatch between client and provided "
                 "API endpoint. You can try adding "
                 f'`environment="{parsed_api_endpoint.environment}"` '
                 "to the class constructor."
             )
-        self.callers = callers
-        self.api_path = (
-            api_path if api_path is not None else API_PATH_ENV_MAP[self.environment]
-        )
-        self.api_version = (
-            api_version
-            if api_version is not None
-            else API_VERSION_ENV_MAP[self.environment]
-        )
         if spawner_database is not None:
             self.spawner_database = spawner_database
         else:
@@ -1813,62 +1993,50 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             # (a task for the Database)
             self.spawner_database = Database(
                 api_endpoint=self.api_endpoint,
-                token=self.token_provider,
                 keyspace=None,
-                callers=self.callers,
-                environment=self.environment,
-                api_path=self.api_path,
-                api_version=self.api_version,
+                api_options=self.api_options,
             )
 
         # API-commander-specific init (for the vectorizeOps invocations)
+        # even if Data API, this is admin and must use the Admin additional headers:
         self._commander_headers = {
-            DEFAULT_DATA_API_AUTH_HEADER: self.token_provider.get_token(),
+            DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token(),
+            **self.api_options.admin_additional_headers,
         }
         self._api_commander = self._get_api_commander()
 
         # DevOps-API-commander specific init (keyspace CRUD, etc)
-        self.dev_ops_url = (
-            dev_ops_url
-            if dev_ops_url is not None
-            else DEV_OPS_URL_ENV_MAP[self.environment]
-        ).rstrip("/")
-        self.dev_ops_api_version = (
-            dev_ops_api_version
-            if dev_ops_api_version is not None
-            else DEV_OPS_VERSION_ENV_MAP[self.environment]
-        ).strip("/")
         self._dev_ops_commander_headers: dict[str, str | None]
-        if self.token_provider:
-            _token = self.token_provider.get_token()
+        if self.api_options.token:
+            _token = self.api_options.token.get_token()
             self._dev_ops_commander_headers = {
                 DEFAULT_DEV_OPS_AUTH_HEADER: f"{DEFAULT_DEV_OPS_AUTH_PREFIX}{_token}",
+                **self.api_options.admin_additional_headers,
             }
         else:
-            self._dev_ops_commander_headers = {}
+            self._dev_ops_commander_headers = {
+                **self.api_options.admin_additional_headers,
+            }
         self._dev_ops_api_commander = self._get_dev_ops_api_commander()
 
         # this class keeps a reference to the AstraDBAdmin associated to this org:
-        self._astra_db_admin = AstraDBAdmin(
-            token=self.token_provider,
-            environment=self.environment,
-            callers=self.callers,
-            dev_ops_url=self.dev_ops_url,
-            dev_ops_api_version=self.dev_ops_api_version,
-        )
+        if spawner_astra_db_admin is None:
+            self._astra_db_admin = AstraDBAdmin(api_options=self.api_options)
+        else:
+            self._astra_db_admin = spawner_astra_db_admin
 
     def __repr__(self) -> str:
         ep_desc = f'api_endpoint="{self.api_endpoint}"'
         token_desc: str | None
-        if self.token_provider:
-            token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
+        if self.api_options.token:
+            token_desc = f'token="{redact_secret(str(self.api_options.token), 15)}"'
         else:
             token_desc = None
         env_desc: str | None
-        if self.environment == Environment.PROD:
+        if self.api_options.environment == Environment.PROD:
             env_desc = None
         else:
-            env_desc = f'environment="{self.environment}"'
+            env_desc = f'environment="{self.api_options.environment}"'
         parts = [pt for pt in [ep_desc, token_desc, env_desc] if pt is not None]
         return f"{self.__class__.__name__}({', '.join(parts)})"
 
@@ -1876,15 +2044,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         if isinstance(other, AstraDBDatabaseAdmin):
             return all(
                 [
-                    self.token_provider == other.token_provider,
-                    self.environment == other.environment,
                     self.api_endpoint == other.api_endpoint,
-                    self.callers == other.callers,
-                    self.api_path == other.api_path,
-                    self.api_version == other.api_version,
-                    self.spawner_database == other.spawner_database,
-                    self.dev_ops_url == other.dev_ops_url,
-                    self.dev_ops_api_version == other.dev_ops_api_version,
+                    self.api_options == other.api_options,
                 ]
             )
         else:
@@ -1892,31 +2053,51 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     def _get_api_commander(self) -> APICommander:
         """Instantiate a new APICommander for Data API calls."""
-        base_path = "/".join(comp for comp in [self.api_path, self.api_version] if comp)
+        base_path_components = [
+            comp
+            for comp in (
+                ncomp.strip("/")
+                for ncomp in (
+                    self.api_options.data_api_url_options.api_path,
+                    self.api_options.data_api_url_options.api_version,
+                )
+                if ncomp is not None
+            )
+            if comp != ""
+        ]
+        base_path = f"/{'/'.join(base_path_components)}"
         api_commander = APICommander(
             api_endpoint=self.api_endpoint,
             path=base_path,
             headers=self._commander_headers,
-            callers=self.callers,
+            callers=self.api_options.callers,
+            redacted_header_names=self.api_options.redacted_header_names,
         )
         return api_commander
 
     def _get_dev_ops_api_commander(self) -> APICommander:
         """Instantiate a new APICommander for DevOps calls."""
-
-        dev_ops_base_path = "/".join(
-            [
-                self.dev_ops_api_version,
-                "databases",
-                self._database_id,
-            ]
-        )
+        base_path_components = [
+            comp
+            for comp in (
+                ncomp.strip("/")
+                for ncomp in (
+                    self.api_options.dev_ops_api_url_options.dev_ops_api_version,
+                    "databases",
+                    self._database_id,
+                )
+                if ncomp is not None
+            )
+            if comp != ""
+        ]
+        dev_ops_base_path = "/".join(base_path_components)
         dev_ops_commander = APICommander(
-            api_endpoint=self.dev_ops_url,
+            api_endpoint=self.api_options.dev_ops_api_url_options.dev_ops_url,
             path=dev_ops_base_path,
             headers=self._dev_ops_commander_headers,
-            callers=self.callers,
+            callers=self.api_options.callers,
             dev_ops_api=True,
+            redacted_header_names=self.api_options.redacted_header_names,
         )
         return dev_ops_commander
 
@@ -1924,31 +2105,41 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         api_endpoint: str | None = None,
         *,
-        token: str | TokenProvider | None = None,
-        environment: str | None = None,
-        callers: Sequence[CallerType] = [],
-        dev_ops_url: str | None = None,
-        dev_ops_api_version: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        environment: str | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        dev_ops_url: str | UnsetType = _UNSET,
+        dev_ops_api_version: str | None | UnsetType = _UNSET,
+        api_path: str | UnsetType = _UNSET,
+        api_version: str | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
+        arg_api_options = APIOptions(
+            token=coerce_possible_token_provider(token),
+            callers=callers,
+            environment=environment,
+            data_api_url_options=DataAPIURLOptions(
+                api_path=api_path,
+                api_version=api_version,
+            ),
+            dev_ops_api_url_options=DevOpsAPIURLOptions(
+                dev_ops_url=dev_ops_url,
+                dev_ops_api_version=dev_ops_api_version,
+            ),
+        )
+        api_options = self.api_options.with_override(arg_api_options)
         return AstraDBDatabaseAdmin(
             api_endpoint=api_endpoint or self.api_endpoint,
-            token=coerce_token_provider(token) or self.token_provider,
-            environment=environment or self.environment,
-            callers=callers or self.callers,
-            dev_ops_url=dev_ops_url or self.dev_ops_url,
-            dev_ops_api_version=dev_ops_api_version or self.dev_ops_api_version,
-            api_path=api_path or self.api_path,
-            api_version=api_version or self.api_version,
+            api_options=api_options,
+            spawner_database=self.spawner_database,
+            spawner_astra_db_admin=self._astra_db_admin,
         )
 
     def with_options(
         self,
-        api_endpoint: str | None = None,
         *,
-        token: str | TokenProvider | None = None,
-        callers: Sequence[CallerType] = [],
+        api_endpoint: str | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         """
         Create a clone of this AstraDBDatabaseAdmin with some changed attributes.
@@ -2009,7 +2200,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         api_endpoint: str,
         *,
         astra_db_admin: AstraDBAdmin,
-        max_time_ms: int | None = None,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         """
         Create an AstraDBDatabaseAdmin from an AstraDBAdmin and an API Endpoint.
@@ -2022,8 +2213,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 does not create the database, just the object instance.
             astra_db_admin: an AstraDBAdmin object that has visibility over
                 the target database.
-            max_time_ms: a timeout, in milliseconds, for the DevOps API
-                HTTP request should it be necessary (see the `region` argument).
+            database_api_options: a specification - complete or partial - of the
+                API Options to override the defaults inherited from the AstraDBAdmin.
+                This allows for a deeper configuration of the database, e.g.
+                concerning timeouts.
 
         Returns:
             An AstraDBDatabaseAdmin object, for admin work within the database.
@@ -2047,86 +2240,23 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         return AstraDBDatabaseAdmin(
             api_endpoint=api_endpoint,
-            token=astra_db_admin.token_provider,
-            environment=astra_db_admin.environment,
-            callers=astra_db_admin.callers,
-            dev_ops_url=astra_db_admin._dev_ops_url,
-            dev_ops_api_version=astra_db_admin._dev_ops_api_version,
-            max_time_ms=max_time_ms,
+            api_options=astra_db_admin.api_options.with_override(api_options),
+            spawner_astra_db_admin=astra_db_admin,
         )
 
-    @staticmethod
-    def from_api_endpoint(
-        api_endpoint: str,
+    def info(
+        self,
         *,
-        token: str | TokenProvider | None = None,
-        callers: Sequence[CallerType] = [],
-        dev_ops_url: str | None = None,
-        dev_ops_api_version: str | None = None,
-    ) -> AstraDBDatabaseAdmin:
-        """
-        Create an AstraDBDatabaseAdmin from an API Endpoint and optionally a token.
-
-        Args:
-            api_endpoint: the API Endpoint for the target database
-                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
-                The database must exist already for the resulting object
-                to be effectively used; in other words, this invocation
-                does not create the database, just the object instance.
-            token: an access token with enough permissions to do admin work.
-                This can be either a literal token string or a subclass of
-                `astrapy.authentication.TokenProvider`.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which Data API and DevOps API calls are performed.
-                These end up in the request user-agent.
-                Each caller identity is a ("caller_name", "caller_version") pair.
-            dev_ops_url: in case of custom deployments, this can be used to specify
-                the URL to the DevOps API, such as "https://api.astra.datastax.com".
-                Generally it can be omitted. The environment (prod/dev/...) is
-                determined from the API Endpoint.
-            dev_ops_api_version: this can specify a custom version of the DevOps API
-                (such as "v2"). Generally not needed.
-
-        Returns:
-            An AstraDBDatabaseAdmin object, for admin work within the database.
-
-        Example:
-            >>> from astrapy import AstraDBDatabaseAdmin
-            >>> admin_for_my_db = AstraDBDatabaseAdmin.from_api_endpoint(
-            ...     api_endpoint="https://01234567-....apps.astra.datastax.com",
-            ...     token="AstraCS:...",
-            ... )
-            >>> admin_for_my_db.list_keyspaces()
-            ['default_keyspace', 'another_keyspace']
-            >>> admin_for_my_db.info().status
-            'ACTIVE'
-
-        Note:
-            Creating an instance of AstraDBDatabaseAdmin does not trigger actual creation
-            of the database itself, which should exist beforehand. To create databases,
-            see the AstraDBAdmin class.
-        """
-
-        parsed_api_endpoint = parse_api_endpoint(api_endpoint)
-        if parsed_api_endpoint:
-            return AstraDBDatabaseAdmin(
-                api_endpoint=api_endpoint,
-                token=token,
-                environment=parsed_api_endpoint.environment,
-                callers=callers,
-                dev_ops_url=dev_ops_url,
-                dev_ops_api_version=dev_ops_api_version,
-            )
-        else:
-            msg = api_endpoint_parsing_error_message(api_endpoint)
-            raise ValueError(msg)
-
-    def info(self, *, max_time_ms: int | None = None) -> AdminDatabaseInfo:
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> AdminDatabaseInfo:
         """
         Query the DevOps API for the full info on this database.
 
         Args:
-            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying DevOps API HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             An AdminDatabaseInfo object.
@@ -2139,21 +2269,34 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             'us-east1'
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         logger.info(f"getting info ('{self._database_id}')")
         req_response = self._astra_db_admin.database_info(
             id=self._database_id,
-            max_time_ms=max_time_ms,
+            max_time_ms=_request_timeout_ms,
         )
         logger.info(f"finished getting info ('{self._database_id}')")
         return req_response
 
-    async def async_info(self, *, max_time_ms: int | None = None) -> AdminDatabaseInfo:
+    async def async_info(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> AdminDatabaseInfo:
         """
         Query the DevOps API for the full info on this database.
         Async version of the method, for use in an asyncio context.
 
         Args:
-            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying DevOps API HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             An AdminDatabaseInfo object.
@@ -2168,20 +2311,33 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             >>> asyncio.run(wait_until_active(admin_for_my_db))
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         logger.info(f"getting info ('{self._database_id}'), async")
         req_response = await self._astra_db_admin.async_database_info(
             id=self._database_id,
-            max_time_ms=max_time_ms,
+            max_time_ms=_request_timeout_ms,
         )
         logger.info(f"finished getting info ('{self._database_id}'), async")
         return req_response
 
-    def list_keyspaces(self, *, max_time_ms: int | None = None) -> list[str]:
+    def list_keyspaces(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> list[str]:
         """
         Query the DevOps API for a list of the keyspaces in the database.
 
         Args:
-            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying DevOps API HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A list of the keyspaces, each a string, in no particular order.
@@ -2191,8 +2347,14 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_keyspace']
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         logger.info(f"getting keyspaces ('{self._database_id}')")
-        info = self.info(max_time_ms=max_time_ms)
+        info = self.info(max_time_ms=_request_timeout_ms)
         logger.info(f"finished getting keyspaces ('{self._database_id}')")
         if info.raw_info is None:
             raise DevOpsAPIException("Could not get the keyspace list.")
@@ -2200,14 +2362,19 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             return info.raw_info.get("info", {}).get("keyspaces") or []
 
     async def async_list_keyspaces(
-        self, *, max_time_ms: int | None = None
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
     ) -> list[str]:
         """
         Query the DevOps API for a list of the keyspaces in the database.
         Async version of the method, for use in an asyncio context.
 
         Args:
-            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying DevOps API HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A list of the keyspaces, each a string, in no particular order.
@@ -2225,8 +2392,14 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             True
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         logger.info(f"getting keyspaces ('{self._database_id}'), async")
-        info = await self.async_info(max_time_ms=max_time_ms)
+        info = await self.async_info(max_time_ms=_request_timeout_ms)
         logger.info(f"finished getting keyspaces ('{self._database_id}'), async")
         if info.raw_info is None:
             raise DevOpsAPIException("Could not get the keyspace list.")
@@ -2239,6 +2412,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         *,
         wait_until_active: bool = True,
         update_db_keyspace: bool | None = None,
+        request_timeout_ms: int | None = None,
+        keyspace_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -2259,14 +2434,25 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
                 the newly-created keyspace starting when this method returns.
-            max_time_ms: a timeout, in milliseconds, for the whole requested
-                operation to complete.
-                Note that a timeout is no guarantee that the creation request
-                has not reached the API server.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
+            keyspace_admin_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation to complete. This is used only
+                if `wait_until_active` is true, i.e. if the method call must
+                wait and keep querying the DevOps API for the status of the
+                database during keyspace creation.
+            max_time_ms: an alias for *both* the `request_timeout_ms` and
+                `keyspace_admin_timeout_ms` timeout parameters. In practice,
+                regardless of `wait_until_active`, this parameter dictates an
+                overall timeout on this method call.
 
         Returns:
             A dictionary of the form {"ok": 1} in case of success.
             Otherwise, an exception is raised.
+
+        Note: a timeout event is no guarantee at all that the
+        creation request has not reached the API server and is not going
+        to be, in fact, honored.
 
         Example:
             >>> my_db_admin.keyspaces()
@@ -2277,8 +2463,16 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'that_other_one']
         """
 
+        # for timeouts, there's a 3-item chain of fallbacks for both:
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
+        _keyspace_admin_timeout_ms = (
+            keyspace_admin_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.keyspace_admin_timeout_ms
+
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, dev_ops_api=True
+            overall_max_time_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(
             f"creating keyspace '{name}' on " f"'{self._database_id}' (DevOps API)"
@@ -2286,7 +2480,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         cn_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.POST,
             additional_path=f"keyspaces/{name}",
-            timeout_info=timeout_manager.remaining_timeout_info(),
+            timeout_info=timeout_manager.remaining_timeout_info(
+                cap_time_ms=_request_timeout_ms
+            ),
         )
         if cn_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_CREATED:
             raise DevOpsAPIException(
@@ -2304,7 +2500,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 logger.info(f"sleeping to poll for status of '{self._database_id}'")
                 time.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
                 last_status_seen = self.info(
-                    max_time_ms=timeout_manager.remaining_timeout_ms(),
+                    max_time_ms=timeout_manager.remaining_timeout_ms(
+                        cap_time_ms=_request_timeout_ms
+                    ),
                 ).status
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                 raise DevOpsAPIException(
@@ -2327,6 +2525,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         *,
         wait_until_active: bool = True,
         update_db_keyspace: bool | None = None,
+        request_timeout_ms: int | None = None,
+        keyspace_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -2348,14 +2548,25 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
                 the newly-created keyspace starting when this method returns.
-            max_time_ms: a timeout, in milliseconds, for the whole requested
-                operation to complete.
-                Note that a timeout is no guarantee that the creation request
-                has not reached the API server.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
+            keyspace_admin_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation to complete. This is used only
+                if `wait_until_active` is true, i.e. if the method call must
+                wait and keep querying the DevOps API for the status of the
+                database during keyspace creation.
+            max_time_ms: an alias for *both* the `request_timeout_ms` and
+                `keyspace_admin_timeout_ms` timeout parameters. In practice,
+                regardless of `wait_until_active`, this parameter dictates an
+                overall timeout on this method call.
 
         Returns:
             A dictionary of the form {"ok": 1} in case of success.
             Otherwise, an exception is raised.
+
+        Note: a timeout event is no guarantee at all that the
+        creation request has not reached the API server and is not going
+        to be, in fact, honored.
 
         Example:
             >>> asyncio.run(
@@ -2364,8 +2575,16 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             {'ok': 1}
         """
 
+        # for timeouts, there's a 3-item chain of fallbacks for both:
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
+        _keyspace_admin_timeout_ms = (
+            keyspace_admin_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.keyspace_admin_timeout_ms
+
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, dev_ops_api=True
+            overall_max_time_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(
             f"creating keyspace '{name}' on "
@@ -2374,7 +2593,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         cn_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.POST,
             additional_path=f"keyspaces/{name}",
-            timeout_info=timeout_manager.remaining_timeout_info(),
+            timeout_info=timeout_manager.remaining_timeout_info(
+                cap_time_ms=_request_timeout_ms
+            ),
         )
         if cn_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_CREATED:
             raise DevOpsAPIException(
@@ -2394,7 +2615,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 )
                 await asyncio.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
                 last_db_info = await self.async_info(
-                    max_time_ms=timeout_manager.remaining_timeout_ms(),
+                    max_time_ms=timeout_manager.remaining_timeout_ms(
+                        cap_time_ms=_request_timeout_ms
+                    ),
                 )
                 last_status_seen = last_db_info.status
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
@@ -2417,6 +2640,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
+        request_timeout_ms: int | None = None,
+        keyspace_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -2432,14 +2657,25 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 deletion request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/keyspace availability
                 before working with it.
-            max_time_ms: a timeout, in milliseconds, for the whole requested
-                operation to complete.
-                Note that a timeout is no guarantee that the deletion request
-                has not reached the API server.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
+            keyspace_admin_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation to complete. This is used only
+                if `wait_until_active` is true, i.e. if the method call must
+                wait and keep querying the DevOps API for the status of the
+                database during keyspace deletion.
+            max_time_ms: an alias for *both* the `request_timeout_ms` and
+                `keyspace_admin_timeout_ms` timeout parameters. In practice,
+                regardless of `wait_until_active`, this parameter dictates an
+                overall timeout on this method call.
 
         Returns:
             A dictionary of the form {"ok": 1} in case of success.
             Otherwise, an exception is raised.
+
+        Note: a timeout event is no guarantee at all that the
+        deletion request has not reached the API server and is not going
+        to be, in fact, honored.
 
         Example:
             >>> my_db_admin.list_keyspaces()
@@ -2450,8 +2686,16 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace']
         """
 
+        # for timeouts, there's a 3-item chain of fallbacks for both:
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
+        _keyspace_admin_timeout_ms = (
+            keyspace_admin_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.keyspace_admin_timeout_ms
+
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, dev_ops_api=True
+            overall_max_time_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(
             f"dropping keyspace '{name}' on " f"'{self._database_id}' (DevOps API)"
@@ -2459,7 +2703,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         dk_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.DELETE,
             additional_path=f"keyspaces/{name}",
-            timeout_info=timeout_manager.remaining_timeout_info(),
+            timeout_info=timeout_manager.remaining_timeout_info(
+                cap_time_ms=_request_timeout_ms
+            ),
         )
         if dk_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_ACCEPTED:
             raise DevOpsAPIException(
@@ -2477,7 +2723,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 logger.info(f"sleeping to poll for status of '{self._database_id}'")
                 time.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
                 last_status_seen = self.info(
-                    max_time_ms=timeout_manager.remaining_timeout_ms(),
+                    max_time_ms=timeout_manager.remaining_timeout_ms(
+                        cap_time_ms=_request_timeout_ms
+                    ),
                 ).status
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
                 raise DevOpsAPIException(
@@ -2497,6 +2745,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
+        request_timeout_ms: int | None = None,
+        keyspace_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -2513,14 +2763,25 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 deletion request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/keyspace availability
                 before working with it.
-            max_time_ms: a timeout, in milliseconds, for the whole requested
-                operation to complete.
-                Note that a timeout is no guarantee that the deletion request
-                has not reached the API server.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
+            keyspace_admin_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation to complete. This is used only
+                if `wait_until_active` is true, i.e. if the method call must
+                wait and keep querying the DevOps API for the status of the
+                database during keyspace deletion.
+            max_time_ms: an alias for *both* the `request_timeout_ms` and
+                `keyspace_admin_timeout_ms` timeout parameters. In practice,
+                regardless of `wait_until_active`, this parameter dictates an
+                overall timeout on this method call.
 
         Returns:
             A dictionary of the form {"ok": 1} in case of success.
             Otherwise, an exception is raised.
+
+        Note: a timeout event is no guarantee at all that the
+        deletion request has not reached the API server and is not going
+        to be, in fact, honored.
 
         Example:
             >>> asyncio.run(
@@ -2529,8 +2790,16 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             {'ok': 1}
         """
 
+        # for timeouts, there's a 3-item chain of fallbacks for both:
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
+        _keyspace_admin_timeout_ms = (
+            keyspace_admin_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.keyspace_admin_timeout_ms
+
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=max_time_ms, dev_ops_api=True
+            overall_max_time_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(
             f"dropping keyspace '{name}' on "
@@ -2539,7 +2808,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         dk_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.DELETE,
             additional_path=f"keyspaces/{name}",
-            timeout_info=timeout_manager.remaining_timeout_info(),
+            timeout_info=timeout_manager.remaining_timeout_info(
+                cap_time_ms=_request_timeout_ms
+            ),
         )
         if dk_raw_response.status_code != DEV_OPS_RESPONSE_HTTP_ACCEPTED:
             raise DevOpsAPIException(
@@ -2559,7 +2830,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 )
                 await asyncio.sleep(DEV_OPS_KEYSPACE_POLL_INTERVAL_S)
                 last_db_info = await self.async_info(
-                    max_time_ms=timeout_manager.remaining_timeout_ms(),
+                    max_time_ms=timeout_manager.remaining_timeout_ms(
+                        cap_time_ms=_request_timeout_ms
+                    ),
                 )
                 last_status_seen = last_db_info.status
             if last_status_seen != DEV_OPS_DATABASE_STATUS_ACTIVE:
@@ -2579,6 +2852,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         wait_until_active: bool = True,
+        request_timeout_ms: int | None = None,
+        database_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -2594,14 +2869,25 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 drop request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/availability
                 after that, if desired.
-            max_time_ms: a timeout, in milliseconds, for the whole requested
-                operation to complete.
-                Note that a timeout is no guarantee that the deletion request
-                has not reached the API server.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
+            database_admin_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation to complete. This is used only
+                if `wait_until_active` is true, i.e. if the method call must
+                wait and keep querying the DevOps API for the status of the
+                newly-deleted database.
+            max_time_ms: an alias for *both* the `request_timeout_ms` and
+                `database_admin_timeout_ms` timeout parameters. In practice,
+                regardless of `wait_until_active`, this parameter dictates an
+                overall timeout on this method call.
 
         Returns:
             A dictionary of the form {"ok": 1} in case of success.
             Otherwise, an exception is raised.
+
+        Note: a timeout event is no guarantee at all that the
+        deletion request has not reached the API server and is not going
+        to be, in fact, honored.
 
         Example:
             >>> my_db_admin.list_keyspaces()
@@ -2622,6 +2908,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         return self._astra_db_admin.drop_database(
             id=self._database_id,
             wait_until_active=wait_until_active,
+            request_timeout_ms=request_timeout_ms,
+            database_admin_timeout_ms=database_admin_timeout_ms,
             max_time_ms=max_time_ms,
         )
         logger.info(f"finished dropping this database ('{self._database_id}')")
@@ -2630,6 +2918,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         wait_until_active: bool = True,
+        request_timeout_ms: int | None = None,
+        database_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -2646,14 +2936,25 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 drop request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/availability
                 after that, if desired.
-            max_time_ms: a timeout, in milliseconds, for the whole requested
-                operation to complete.
-                Note that a timeout is no guarantee that the deletion request
-                has not reached the API server.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
+            database_admin_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation to complete. This is used only
+                if `wait_until_active` is true, i.e. if the method call must
+                wait and keep querying the DevOps API for the status of the
+                newly-deleted database.
+            max_time_ms: an alias for *both* the `request_timeout_ms` and
+                `database_admin_timeout_ms` timeout parameters. In practice,
+                regardless of `wait_until_active`, this parameter dictates an
+                overall timeout on this method call.
 
         Returns:
             A dictionary of the form {"ok": 1} in case of success.
             Otherwise, an exception is raised.
+
+        Note: a timeout event is no guarantee at all that the
+        deletion request has not reached the API server and is not going
+        to be, in fact, honored.
 
         Example:
             >>> asyncio.run(my_db_admin.async_drop())
@@ -2671,6 +2972,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         return await self._astra_db_admin.async_drop_database(
             id=self._database_id,
             wait_until_active=wait_until_active,
+            request_timeout_ms=request_timeout_ms,
+            database_admin_timeout_ms=database_admin_timeout_ms,
             max_time_ms=max_time_ms,
         )
         logger.info(f"finished dropping this database ('{self._database_id}'), async")
@@ -2678,11 +2981,15 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def get_database(
         self,
         *,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        api_path: str | UnsetType = _UNSET,
+        api_version: str | UnsetType = _UNSET,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
+        database_request_timeout_ms: int | UnsetType = _UNSET,
+        database_max_time_ms: int | UnsetType = _UNSET,
+        database_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
         Create a Database instance from this database admin, for data-related tasks.
@@ -2699,8 +3006,24 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
-            max_time_ms: a timeout, in milliseconds, for the DevOps API
-                HTTP request (see the `get_database` method of AstraDBAdmin).
+            request_timeout_ms: a timeout, in milliseconds, for
+                the DevOps API HTTP request, should it be necessary
+                (see the `region` argument).
+            max_time_ms: an alias for `request_timeout_ms`.
+            database_request_timeout_ms: a default timeout, in millisecond, for the
+                duration of each request in the database. For a more fine-grained
+                control of database timeouts (suggested e.g. with regard to methods
+                involving schema changes, such as create_collection), use of the
+                `database_api_options` parameter is suggested; alternatively,
+                bear in mind that individual collection methods also accept timeout
+                parameters.
+            database_max_time_ms: an alias for `database_request_timeout_ms`.
+            database_api_options: : a specification - complete or partial - of the
+                API Options to override the defaults inherited from the database admin.
+                This allows for a deeper configuration of the database admin, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             A Database object, ready to be used for working with data and collections.
@@ -2722,58 +3045,91 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             keyspace=keyspace,
             api_path=api_path,
             api_version=api_version,
+            request_timeout_ms=request_timeout_ms,
             max_time_ms=max_time_ms,
+            database_request_timeout_ms=database_request_timeout_ms,
+            database_max_time_ms=database_max_time_ms,
+            database_api_options=database_api_options,
         )
 
     def get_async_database(
         self,
         *,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        api_path: str | UnsetType = _UNSET,
+        api_version: str | UnsetType = _UNSET,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
+        database_request_timeout_ms: int | UnsetType = _UNSET,
+        database_max_time_ms: int | UnsetType = _UNSET,
+        database_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Create an AsyncDatabase instance from this database admin,
         for data-related tasks.
 
         Args:
-            token: if supplied, is passed to the Database instead of
+            token: if supplied, is passed to the AsyncDatabase instead of
                 the one set for this object. Useful if one wants to work in
                 a least-privilege manner, limiting the permissions for non-admin work.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            keyspace: an optional keyspace to set in the resulting Database.
+            keyspace: an optional keyspace to set in the resulting AsyncDatabase.
                 The same default logic as for `AstraDBAdmin.get_database` applies.
             api_path: path to append to the API Endpoint. In typical usage, this
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
-            max_time_ms: a timeout, in milliseconds, for the DevOps API
-                HTTP request (see the `get_database` method of AstraDBAdmin).
+            request_timeout_ms: a timeout, in milliseconds, for
+                the DevOps API HTTP request, should it be necessary
+                (see the `region` argument).
+            max_time_ms: an alias for `request_timeout_ms`.
+            database_request_timeout_ms: a default timeout, in millisecond, for the
+                duration of each request in the database. For a more fine-grained
+                control of database timeouts (suggested e.g. with regard to methods
+                involving schema changes, such as create_collection), use of the
+                `database_api_options` parameter is suggested; alternatively,
+                bear in mind that individual collection methods also accept timeout
+                parameters.
+            database_max_time_ms: an alias for `database_request_timeout_ms`.
+            database_api_options: : a specification - complete or partial - of the
+                API Options to override the defaults inherited from the database admin.
+                This allows for a deeper configuration of the database admin, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             An AsyncDatabase object, ready to be used for working with
             data and collections.
         """
 
-        return self.get_database(
+        return self._astra_db_admin.get_database(
+            api_endpoint=self.api_endpoint,
             token=token,
             keyspace=keyspace,
             api_path=api_path,
             api_version=api_version,
+            request_timeout_ms=request_timeout_ms,
             max_time_ms=max_time_ms,
+            database_request_timeout_ms=database_request_timeout_ms,
+            database_max_time_ms=database_max_time_ms,
+            database_api_options=database_api_options,
         ).to_async()
 
     def find_embedding_providers(
-        self, *, max_time_ms: int | None = None
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
     ) -> FindEmbeddingProvidersResult:
         """
         Query the API for the full information on available embedding providers.
 
         Args:
-            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A `FindEmbeddingProvidersResult` object with the complete information
@@ -2795,10 +3151,14 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             }
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
+
         logger.info("findEmbeddingProviders")
         fe_response = self._api_commander.request(
             payload={"findEmbeddingProviders": {}},
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -2810,14 +3170,18 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
 
     async def async_find_embedding_providers(
-        self, *, max_time_ms: int | None = None
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
     ) -> FindEmbeddingProvidersResult:
         """
         Query the API for the full information on available embedding providers.
         Async version of the method, for use in an asyncio context.
 
         Args:
-            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A `FindEmbeddingProvidersResult` object with the complete information
@@ -2839,10 +3203,14 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             }
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
+
         logger.info("findEmbeddingProviders, async")
         fe_response = await self._api_commander.async_request(
             payload={"findEmbeddingProviders": {}},
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -2870,28 +3238,12 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     Args:
         api_endpoint: the full URI to access the Data API,
             e.g. "http://localhost:8181".
-        token: an access token with enough permission to perform admin tasks.
-            This can be either a literal token string or a subclass of
-            `astrapy.authentication.TokenProvider`.
-        environment: a label, whose value is one of Environment.OTHER (default)
-            or other non-Astra environment values in the `Environment` enum.
-        api_path: path to append to the API Endpoint. In typical usage, this
-            class is created by a method such as `Database.get_database_admin()`,
-            which passes the matching value. Defaults to this portion of the path
-            being absent.
-        api_version: version specifier to append to the API path. In typical
-            usage, this class is created by a method such as
-            `Database.get_database_admin()`, which passes the matching value.
-            Defaults to this portion of the path being absent.
-        callers: a list of caller identities, i.e. applications, or frameworks,
-            on behalf of which Data API calls are performed. These end up in the
-            request user-agent.
-            Each caller identity is a ("caller_name", "caller_version") pair.
-        spawner_database: either a Database or an AsyncDatabase instance.
-            This represents the database class which spawns this admin object, so that,
-            if required, a keyspace creation can retroactively "use" the new keyspace
-            in the spawner. Used to enable the
-            Async/Database.get_admin_database().create_keyspace() pattern.
+        api_options: a complete specification of the API Options for this instance.
+        spawner_database: either a Database or an AsyncDatabase instance. This represents
+            the database class which spawns this admin object, so that, if required,
+            a keyspace creation can retroactively "use" the new keyspace in the spawner.
+            Used to enable the Async/Database.get_admin_database().create_keyspace()
+            pattern.
 
     Example:
         >>> from astrapy import DataAPIClient
@@ -2914,28 +3266,16 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
     def __init__(
         self,
-        api_endpoint: str,
         *,
-        token: str | TokenProvider | None = None,
-        environment: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
-        callers: Sequence[CallerType] = [],
+        api_endpoint: str,
+        api_options: FullAPIOptions,
         spawner_database: Database | AsyncDatabase | None = None,
     ) -> None:
         # lazy import here to avoid circular dependency
         from astrapy.database import Database
 
-        self.environment = (environment or Environment.OTHER).lower()
-        self.token_provider = coerce_token_provider(token)
+        self.api_options = api_options
         self.api_endpoint = api_endpoint
-        self.callers = callers
-        self.api_path = api_path if api_path is not None else ""
-        self.api_version = api_version if api_version is not None else ""
-        self._commander_headers = {
-            DEFAULT_DATA_API_AUTH_HEADER: self.token_provider.get_token(),
-        }
-        self._api_commander = self._get_api_commander()
 
         if spawner_database is not None:
             self.spawner_database = spawner_database
@@ -2944,22 +3284,25 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             # (a task for the Database)
             self.spawner_database = Database(
                 api_endpoint=self.api_endpoint,
-                token=self.token_provider,
                 keyspace=None,
-                callers=self.callers,
-                environment=self.environment,
-                api_path=self.api_path,
-                api_version=self.api_version,
+                api_options=self.api_options,
             )
+
+        # even if Data API, this is admin and must use the Admin additional headers:
+        self._commander_headers = {
+            DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token(),
+            **self.api_options.admin_additional_headers,
+        }
+        self._api_commander = self._get_api_commander()
 
     def __repr__(self) -> str:
         ep_desc = f'api_endpoint="{self.api_endpoint}"'
         token_desc: str | None
-        if self.token_provider:
-            token_desc = f'token="{redact_secret(str(self.token_provider), 15)}"'
+        if self.api_options.token:
+            token_desc = f'token="{redact_secret(str(self.api_options.token), 15)}"'
         else:
             token_desc = None
-        env_desc = f'environment="{self.environment}"'
+        env_desc = f'environment="{self.api_options.environment}"'
         parts = [pt for pt in [ep_desc, token_desc, env_desc] if pt is not None]
         return f"{self.__class__.__name__}({', '.join(parts)})"
 
@@ -2967,47 +3310,68 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         if isinstance(other, DataAPIDatabaseAdmin):
             return all(
                 [
-                    self.environment == other.environment,
-                    self._api_commander == other._api_commander,
+                    self.api_endpoint == other.api_endpoint,
+                    self.api_options == other.api_options,
                 ]
             )
         else:
             return False
 
     def _get_api_commander(self) -> APICommander:
-        base_path = "/".join(comp for comp in [self.api_path, self.api_version] if comp)
+        base_path_components = [
+            comp
+            for comp in (
+                ncomp.strip("/")
+                for ncomp in (
+                    self.api_options.data_api_url_options.api_path,
+                    self.api_options.data_api_url_options.api_version,
+                )
+                if ncomp is not None
+            )
+            if comp != ""
+        ]
+        base_path = f"/{'/'.join(base_path_components)}"
         api_commander = APICommander(
             api_endpoint=self.api_endpoint,
             path=base_path,
             headers=self._commander_headers,
-            callers=self.callers,
+            callers=self.api_options.callers,
+            redacted_header_names=self.api_options.redacted_header_names,
         )
         return api_commander
 
     def _copy(
         self,
         api_endpoint: str | None = None,
-        token: str | TokenProvider | None = None,
-        environment: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
-        callers: Sequence[CallerType] = [],
+        *,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        environment: str | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        api_path: str | UnsetType = _UNSET,
+        api_version: str | UnsetType = _UNSET,
     ) -> DataAPIDatabaseAdmin:
+        arg_api_options = APIOptions(
+            token=coerce_possible_token_provider(token),
+            callers=callers,
+            environment=environment,
+            data_api_url_options=DataAPIURLOptions(
+                api_path=api_path,
+                api_version=api_version,
+            ),
+        )
+        api_options = self.api_options.with_override(arg_api_options)
         return DataAPIDatabaseAdmin(
             api_endpoint=api_endpoint or self.api_endpoint,
-            token=coerce_token_provider(token) or self.token_provider,
-            environment=environment or self.environment,
-            api_path=api_path or self.api_path,
-            api_version=api_version or self.api_version,
-            callers=callers or self.callers,
+            api_options=api_options,
+            spawner_database=self.spawner_database,
         )
 
     def with_options(
         self,
         *,
         api_endpoint: str | None = None,
-        token: str | TokenProvider | None = None,
-        callers: Sequence[CallerType] = [],
+        token: str | TokenProvider | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
     ) -> DataAPIDatabaseAdmin:
         """
         Create a clone of this DataAPIDatabaseAdmin with some changed attributes.
@@ -3038,12 +3402,19 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             callers=callers,
         )
 
-    def list_keyspaces(self, *, max_time_ms: int | None = None) -> list[str]:
+    def list_keyspaces(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> list[str]:
         """
         Query the API for a list of the keyspaces in the database.
 
         Args:
-            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying DevOps API HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A list of the keyspaces, each a string, in no particular order.
@@ -3052,10 +3423,17 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_keyspaces()
             ['default_keyspace', 'staging_keyspace']
         """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         logger.info("getting list of keyspaces")
         fn_response = self._api_commander.request(
             payload={"findKeyspaces": {}},
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "keyspaces" not in fn_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -3072,6 +3450,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         *,
         replication_options: dict[str, Any] | None = None,
         update_db_keyspace: bool | None = None,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -3089,14 +3468,17 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
                 the newly-created keyspace starting when this method returns.
-            max_time_ms: a timeout, in milliseconds, for the whole requested
-                operation to complete.
-                Note that a timeout is no guarantee that the creation request
-                has not reached the API server.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A dictionary of the form {"ok": 1} in case of success.
             Otherwise, an exception is raised.
+
+        Note: a timeout event is no guarantee at all that the
+        creation request has not reached the API server and is not going
+        to be, in fact, honored.
 
         Example:
             >>> admin_for_my_db.list_keyspaces()
@@ -3106,6 +3488,10 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_keyspaces()
             ['default_keyspace', 'that_other_one']
         """
+
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
 
         options = {
             k: v
@@ -3123,7 +3509,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         logger.info("creating keyspace")
         cn_response = self._api_commander.request(
             payload=payload,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if (cn_response.get("status") or {}).get("ok") != 1:
             raise DataAPIFaultyResponseException(
@@ -3140,6 +3526,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         name: str,
         *,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -3148,14 +3535,17 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         Args:
             name: the keyspace to delete. If it does not exist in this database,
                 an error is raised.
-            max_time_ms: a timeout, in milliseconds, for the whole requested
-                operation to complete.
-                Note that a timeout is no guarantee that the deletion request
-                has not reached the API server.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A dictionary of the form {"ok": 1} in case of success.
             Otherwise, an exception is raised.
+
+        Note: a timeout event is no guarantee at all that the
+        deletion request has not reached the API server and is not going
+        to be, in fact, honored.
 
         Example:
             >>> admin_for_my_db.list_keyspaces()
@@ -3165,10 +3555,15 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_keyspaces()
             ['default_keyspace']
         """
+
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
+
         logger.info("dropping keyspace")
         dn_response = self._api_commander.request(
             payload={"dropKeyspace": {"name": name}},
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if (dn_response.get("status") or {}).get("ok") != 1:
             raise DataAPIFaultyResponseException(
@@ -3180,14 +3575,19 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             return {k: v for k, v in dn_response["status"].items() if k == "ok"}
 
     async def async_list_keyspaces(
-        self, *, max_time_ms: int | None = None
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
     ) -> list[str]:
         """
         Query the API for a list of the keyspaces in the database.
         Async version of the method, for use in an asyncio context.
 
         Args:
-            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying DevOps API HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A list of the keyspaces, each a string, in no particular order.
@@ -3196,10 +3596,17 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> asyncio.run(admin_for_my_db.async_list_keyspaces())
             ['default_keyspace', 'staging_keyspace']
         """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
         logger.info("getting list of keyspaces, async")
         fn_response = await self._api_commander.async_request(
             payload={"findKeyspaces": {}},
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "keyspaces" not in fn_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -3216,6 +3623,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         *,
         replication_options: dict[str, Any] | None = None,
         update_db_keyspace: bool | None = None,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -3234,14 +3642,17 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
                 the newly-created keyspace starting when this method returns.
-            max_time_ms: a timeout, in milliseconds, for the whole requested
-                operation to complete.
-                Note that a timeout is no guarantee that the creation request
-                has not reached the API server.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A dictionary of the form {"ok": 1} in case of success.
             Otherwise, an exception is raised.
+
+        Note: a timeout event is no guarantee at all that the
+        creation request has not reached the API server and is not going
+        to be, in fact, honored.
 
         Example:
             >>> admin_for_my_db.list_keyspaces()
@@ -3253,6 +3664,10 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_leyspaces()
             ['default_keyspace', 'that_other_one']
         """
+
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
 
         options = {
             k: v
@@ -3270,7 +3685,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         logger.info("creating keyspace, async")
         cn_response = await self._api_commander.async_request(
             payload=payload,
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if (cn_response.get("status") or {}).get("ok") != 1:
             raise DataAPIFaultyResponseException(
@@ -3287,6 +3702,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         name: str,
         *,
+        request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -3296,14 +3712,17 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         Args:
             name: the keyspace to delete. If it does not exist in this database,
                 an error is raised.
-            max_time_ms: a timeout, in milliseconds, for the whole requested
-                operation to complete.
-                Note that a timeout is no guarantee that the deletion request
-                has not reached the API server.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A dictionary of the form {"ok": 1} in case of success.
             Otherwise, an exception is raised.
+
+        Note: a timeout event is no guarantee at all that the
+        deletion request has not reached the API server and is not going
+        to be, in fact, honored.
 
         Example:
             >>> admin_for_my_db.list_keyspaces()
@@ -3315,10 +3734,15 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_keyspaces()
             ['default_keyspace']
         """
+
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
+
         logger.info("dropping keyspace, async")
         dn_response = await self._api_commander.async_request(
             payload={"dropKeyspace": {"name": name}},
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if (dn_response.get("status") or {}).get("ok") != 1:
             raise DataAPIFaultyResponseException(
@@ -3332,13 +3756,17 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     def get_database(
         self,
         *,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        api_path: str | UnsetType = _UNSET,
+        api_version: str | UnsetType = _UNSET,
+        database_request_timeout_ms: int | UnsetType = _UNSET,
+        database_max_time_ms: int | UnsetType = _UNSET,
+        database_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
-        Create a Database instance out of this class for working with the data in it.
+        Create a Database instance for a specific database, to be used
+        when doing data-level work (such as creating/managing collections).
 
         Args:
             token: if supplied, is passed to the Database instead of
@@ -3347,12 +3775,26 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
             keyspace: an optional keyspace to set in the resulting Database.
-                If not provided, no keyspace is set, limiting what the Database
-                can do until setting it with e.g. a `use_keyspace` method call.
+                If not set, the keyspace remains unspecified and must be set later
+                with the `use_keyspace` method.
             api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "".
+                should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
+            database_request_timeout_ms: a default timeout, in millisecond, for the
+                duration of each request in the database. For a more fine-grained
+                control of database timeouts (suggested e.g. with regard to methods
+                involving schema changes, such as create_collection), use of the
+                `database_api_options` parameter is suggested; alternatively,
+                bear in mind that individual collection methods also accept timeout
+                parameters.
+            database_max_time_ms: an alias for `database_request_timeout_ms`.
+            database_api_options: : a specification - complete or partial - of the
+                API Options to override the defaults inherited from the database admin.
+                This allows for a deeper configuration of the database admin, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             A Database object, ready to be used for working with data and collections.
@@ -3370,30 +3812,88 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
+        # this multiple-override implements the alias on timeout params
+        resulting_api_options = (
+            self.api_options.with_override(
+                database_api_options,
+            )
+            .with_override(
+                APIOptions(
+                    token=coerce_possible_token_provider(token),
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=database_max_time_ms,
+                    ),
+                    data_api_url_options=DataAPIURLOptions(
+                        api_path=api_path,
+                        api_version=api_version,
+                    ),
+                ),
+            )
+            .with_override(
+                APIOptions(
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=database_request_timeout_ms,
+                    ),
+                ),
+            )
+        )
+
         return Database(
             api_endpoint=self.api_endpoint,
-            token=coerce_token_provider(token) or self.token_provider,
             keyspace=keyspace,
-            callers=self.callers,
-            environment=self.environment,
-            api_path=api_path,
-            api_version=api_version,
+            api_options=resulting_api_options,
         )
 
     def get_async_database(
         self,
         *,
-        token: str | TokenProvider | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None = None,
-        api_version: str | None = None,
+        api_path: str | UnsetType = _UNSET,
+        api_version: str | UnsetType = _UNSET,
+        database_request_timeout_ms: int | UnsetType = _UNSET,
+        database_max_time_ms: int | UnsetType = _UNSET,
+        database_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
-        Create an AsyncDatabase instance for the database, to be used
+        Create an AsyncDatabase instance for a specific database, to be used
         when doing data-level work (such as creating/managing collections).
 
-        This method has identical behavior and signature as the sync
-        counterpart `get_database`: please see that one for more details.
+        Args:
+            token: if supplied, is passed to the AsyncDatabase instead of
+                the one set for this object. Useful if one wants to work in
+                a least-privilege manner, limiting the permissions for non-admin work.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
+            keyspace: an optional keyspace to set in the resulting AsyncDatabase.
+                If not set, the keyspace remains unspecified and must be set later
+                with the `use_keyspace` method.
+            api_path: path to append to the API Endpoint. In typical usage, this
+                should be left to its default of "/api/json".
+            api_version: version specifier to append to the API path. In typical
+                usage, this should be left to its default of "v1".
+            database_request_timeout_ms: a default timeout, in millisecond, for the
+                duration of each request in the database. For a more fine-grained
+                control of database timeouts (suggested e.g. with regard to methods
+                involving schema changes, such as create_collection), use of the
+                `database_api_options` parameter is suggested; alternatively,
+                bear in mind that individual collection methods also accept timeout
+                parameters.
+            database_max_time_ms: an alias for `database_request_timeout_ms`.
+            database_api_options: : a specification - complete or partial - of the
+                API Options to override the defaults inherited from the database admin.
+                This allows for a deeper configuration of the database admin, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
+
+        Returns:
+            An AsyncDatabase object, ready to be used for working with
+            data and collections.
+
+        Note:
+            creating an instance of AsyncDatabase does not trigger actual creation
+            of the database itself, which should exist beforehand.
         """
 
         return self.get_database(
@@ -3401,16 +3901,23 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             keyspace=keyspace,
             api_path=api_path,
             api_version=api_version,
+            database_request_timeout_ms=database_request_timeout_ms,
+            database_max_time_ms=database_max_time_ms,
+            database_api_options=database_api_options,
         ).to_async()
 
     def find_embedding_providers(
-        self, *, max_time_ms: int | None = None
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
     ) -> FindEmbeddingProvidersResult:
         """
         Query the API for the full information on available embedding providers.
 
         Args:
-            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A `FindEmbeddingProvidersResult` object with the complete information
@@ -3432,10 +3939,14 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             }
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
+
         logger.info("findEmbeddingProviders")
         fe_response = self._api_commander.request(
             payload={"findEmbeddingProviders": {}},
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -3447,14 +3958,18 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
 
     async def async_find_embedding_providers(
-        self, *, max_time_ms: int | None = None
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
     ) -> FindEmbeddingProvidersResult:
         """
         Query the API for the full information on available embedding providers.
         Async version of the method, for use in an asyncio context.
 
         Args:
-            max_time_ms: a timeout, in milliseconds, for the DevOps API request.
+            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A `FindEmbeddingProvidersResult` object with the complete information
@@ -3476,10 +3991,14 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             }
         """
 
+        _request_timeout_ms = (
+            request_timeout_ms or max_time_ms
+        ) or self.api_options.timeout_options.request_timeout_ms
+
         logger.info("findEmbeddingProviders, async")
         fe_response = await self._api_commander.async_request(
             payload={"findEmbeddingProviders": {}},
-            timeout_info=base_timeout_info(max_time_ms),
+            timeout_info=base_timeout_info(_request_timeout_ms),
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
             raise DataAPIFaultyResponseException(

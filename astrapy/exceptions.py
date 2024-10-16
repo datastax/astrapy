@@ -901,17 +901,26 @@ class MultiCallTimeoutManager:
         else:
             self.deadline_ms = None
 
-    def remaining_timeout_ms(self) -> int | None:
+    def remaining_timeout_ms(self, cap_time_ms: int | None = None) -> int | None:
         """
         Ensure the deadline, if any, is not yet in the past.
         If it is, raise an appropriate timeout error.
         If not, return either None (if no timeout) or the remaining milliseconds.
         For use within the multi-call method.
+
+        Args:
+            cap_time_ms: an additional timeout constraint to cap the result of
+                this method. If the remaining timeout from this manager exceeds
+                the provided cap, the cap is returned.
         """
         now_ms = int(time.time() * 1000)
         if self.deadline_ms is not None:
             if now_ms < self.deadline_ms:
-                return self.deadline_ms - now_ms
+                remaining = self.deadline_ms - now_ms
+                if cap_time_ms is None:
+                    return remaining
+                else:
+                    return min(remaining, cap_time_ms)
             else:
                 if not self.dev_ops_api:
                     raise DataAPITimeoutException(
@@ -928,16 +937,28 @@ class MultiCallTimeoutManager:
                         raw_payload=None,
                     )
         else:
-            return None
+            if cap_time_ms is None:
+                return None
+            else:
+                return cap_time_ms
 
-    def remaining_timeout_info(self) -> TimeoutInfo | None:
+    def remaining_timeout_info(
+        self, cap_time_ms: int | None = None
+    ) -> TimeoutInfo | None:
         """
         Ensure the deadline, if any, is not yet in the past.
         If it is, raise an appropriate timeout error.
         It it is not, or there is no deadline, return a suitable TimeoutInfo
         for use within the multi-call method.
+
+        Args:
+            cap_time_ms: an additional timeout constraint to cap the result of
+                this method. If the remaining timeout from this manager exceeds
+                the provided cap, the cap is returned.
         """
-        return base_timeout_info(max_time_ms=self.remaining_timeout_ms())
+        return base_timeout_info(
+            max_time_ms=self.remaining_timeout_ms(cap_time_ms=cap_time_ms)
+        )
 
 
 __pdoc__ = {

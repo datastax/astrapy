@@ -26,22 +26,43 @@ from astrapy.settings.defaults import (
     SECRETS_REDACT_ENDING,
     SECRETS_REDACT_ENDING_LENGTH,
 )
+from astrapy.utils.unset import _UNSET, UnsetType
 
 
-def coerce_token_provider(token: str | TokenProvider | None) -> TokenProvider:
+def coerce_token_provider(
+    token: str | TokenProvider,
+) -> TokenProvider:
     if isinstance(token, TokenProvider):
         return token
     else:
         return StaticTokenProvider(token)
 
 
+def coerce_possible_token_provider(
+    token: str | TokenProvider | UnsetType,
+) -> TokenProvider | UnsetType:
+    if isinstance(token, UnsetType):
+        return _UNSET
+    else:
+        return coerce_token_provider(token)
+
+
 def coerce_embedding_headers_provider(
-    embedding_api_key: str | EmbeddingHeadersProvider | None,
+    embedding_api_key: str | EmbeddingHeadersProvider,
 ) -> EmbeddingHeadersProvider:
     if isinstance(embedding_api_key, EmbeddingHeadersProvider):
         return embedding_api_key
     else:
         return EmbeddingAPIKeyHeaderProvider(embedding_api_key)
+
+
+def coerce_possible_embedding_headers_provider(
+    embedding_api_key: str | EmbeddingHeadersProvider | UnsetType,
+) -> EmbeddingHeadersProvider | UnsetType:
+    if isinstance(embedding_api_key, UnsetType):
+        return _UNSET
+    else:
+        return coerce_embedding_headers_provider(embedding_api_key)
 
 
 def redact_secret(secret: str, max_length: int, hide_if_short: bool = True) -> str:

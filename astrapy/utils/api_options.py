@@ -14,115 +14,304 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import TypeVar
+from dataclasses import dataclass
+from typing import Sequence
 
 from astrapy.authentication import (
     EmbeddingAPIKeyHeaderProvider,
     EmbeddingHeadersProvider,
+    StaticTokenProvider,
+    TokenProvider,
+)
+from astrapy.constants import Environment
+from astrapy.settings.defaults import (
+    API_PATH_ENV_MAP,
+    API_VERSION_ENV_MAP,
+    DEFAULT_BINARY_ENCODE_VECTORS,
+    DEFAULT_DATA_OPERATION_TIMEOUT_MS,
+    DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
+    DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
+    DEFAULT_REQUEST_TIMEOUT_MS,
+    DEFAULT_SCHEMA_OPERATION_TIMEOUT_MS,
+    DEV_OPS_URL_ENV_MAP,
+    DEV_OPS_VERSION_ENV_MAP,
+)
+from astrapy.utils.unset import _UNSET, UnsetType
+
+
+@dataclass
+class TimeoutOptions:
+    request_timeout_ms: int | UnsetType = _UNSET
+    data_operation_timeout_ms: int | UnsetType = _UNSET
+    schema_operation_timeout_ms: int | UnsetType = _UNSET
+    database_admin_timeout_ms: int | UnsetType = _UNSET
+    keyspace_admin_timeout_ms: int | UnsetType = _UNSET
+
+
+@dataclass
+class FullTimeoutOptions(TimeoutOptions):
+    request_timeout_ms: int
+    data_operation_timeout_ms: int
+    schema_operation_timeout_ms: int
+    database_admin_timeout_ms: int
+    keyspace_admin_timeout_ms: int
+
+    def with_override(self, other: TimeoutOptions) -> FullTimeoutOptions:
+        return FullTimeoutOptions(
+            request_timeout_ms=(
+                other.request_timeout_ms
+                if not isinstance(other.request_timeout_ms, UnsetType)
+                else self.request_timeout_ms
+            ),
+            data_operation_timeout_ms=(
+                other.data_operation_timeout_ms
+                if not isinstance(other.data_operation_timeout_ms, UnsetType)
+                else self.data_operation_timeout_ms
+            ),
+            schema_operation_timeout_ms=(
+                other.schema_operation_timeout_ms
+                if not isinstance(other.schema_operation_timeout_ms, UnsetType)
+                else self.schema_operation_timeout_ms
+            ),
+            database_admin_timeout_ms=(
+                other.database_admin_timeout_ms
+                if not isinstance(other.database_admin_timeout_ms, UnsetType)
+                else self.database_admin_timeout_ms
+            ),
+            keyspace_admin_timeout_ms=(
+                other.keyspace_admin_timeout_ms
+                if not isinstance(other.keyspace_admin_timeout_ms, UnsetType)
+                else self.keyspace_admin_timeout_ms
+            ),
+        )
+
+
+@dataclass
+class PayloadTransformOptions:
+    binary_encode_vectors: bool | UnsetType = _UNSET
+
+
+@dataclass
+class FullPayloadTransformOptions(PayloadTransformOptions):
+    binary_encode_vectors: bool
+
+    def with_override(
+        self, other: PayloadTransformOptions
+    ) -> FullPayloadTransformOptions:
+        return FullPayloadTransformOptions(
+            binary_encode_vectors=(
+                other.binary_encode_vectors
+                if not isinstance(other.binary_encode_vectors, UnsetType)
+                else self.binary_encode_vectors
+            ),
+        )
+
+
+@dataclass
+class DataAPIURLOptions:
+    api_path: str | None | UnsetType = _UNSET
+    api_version: str | None | UnsetType = _UNSET
+
+
+@dataclass
+class FullDataAPIURLOptions(DataAPIURLOptions):
+    api_path: str | None
+    api_version: str | None
+
+    def with_override(self, other: DataAPIURLOptions) -> FullDataAPIURLOptions:
+        return FullDataAPIURLOptions(
+            api_path=(
+                other.api_path
+                if not isinstance(other.api_path, UnsetType)
+                else self.api_path
+            ),
+            api_version=(
+                other.api_version
+                if not isinstance(other.api_version, UnsetType)
+                else self.api_version
+            ),
+        )
+
+
+@dataclass
+class DevOpsAPIURLOptions:
+    dev_ops_url: str | UnsetType = _UNSET
+    dev_ops_api_version: str | None | UnsetType = _UNSET
+
+
+@dataclass
+class FullDevOpsAPIURLOptions(DevOpsAPIURLOptions):
+    dev_ops_url: str
+    dev_ops_api_version: str | None
+
+    def with_override(self, other: DevOpsAPIURLOptions) -> FullDevOpsAPIURLOptions:
+        return FullDevOpsAPIURLOptions(
+            dev_ops_url=(
+                other.dev_ops_url
+                if not isinstance(other.dev_ops_url, UnsetType)
+                else self.dev_ops_url
+            ),
+            dev_ops_api_version=(
+                other.dev_ops_api_version
+                if not isinstance(other.dev_ops_api_version, UnsetType)
+                else self.dev_ops_api_version
+            ),
+        )
+
+
+@dataclass
+class APIOptions:
+    environment: str | UnsetType = _UNSET
+    callers: Sequence[tuple[str | None, str | None]] | UnsetType = _UNSET
+    database_additional_headers: dict[str, str | None] | UnsetType = _UNSET
+    admin_additional_headers: dict[str, str | None] | UnsetType = _UNSET
+    redacted_header_names: set[str] | UnsetType = _UNSET
+    token: TokenProvider | UnsetType = _UNSET
+    embedding_api_key: EmbeddingHeadersProvider | UnsetType = _UNSET
+
+    timeout_options: TimeoutOptions | UnsetType = _UNSET
+    payload_transform_options: PayloadTransformOptions | UnsetType = _UNSET
+    data_api_url_options: DataAPIURLOptions | UnsetType = _UNSET
+    dev_ops_api_url_options: DevOpsAPIURLOptions | UnsetType = _UNSET
+
+
+@dataclass
+class FullAPIOptions(APIOptions):
+    environment: str
+    callers: Sequence[tuple[str | None, str | None]]
+    database_additional_headers: dict[str, str | None]
+    admin_additional_headers: dict[str, str | None]
+    redacted_header_names: set[str]
+    token: TokenProvider
+    embedding_api_key: EmbeddingHeadersProvider
+
+    timeout_options: FullTimeoutOptions
+    payload_transform_options: FullPayloadTransformOptions
+    data_api_url_options: FullDataAPIURLOptions
+    dev_ops_api_url_options: FullDevOpsAPIURLOptions
+
+    def with_override(self, other: APIOptions | None | UnsetType) -> FullAPIOptions:
+        if isinstance(other, UnsetType) or other is None:
+            return self
+
+        database_additional_headers: dict[str, str | None]
+        admin_additional_headers: dict[str, str | None]
+        redacted_header_names: set[str]
+
+        timeout_options: FullTimeoutOptions
+        payload_transform_options: FullPayloadTransformOptions
+        data_api_url_options: FullDataAPIURLOptions
+        dev_ops_api_url_options: FullDevOpsAPIURLOptions
+
+        if isinstance(other.database_additional_headers, UnsetType):
+            database_additional_headers = self.database_additional_headers
+        else:
+            database_additional_headers = {
+                **self.database_additional_headers,
+                **other.database_additional_headers,
+            }
+        if isinstance(other.admin_additional_headers, UnsetType):
+            admin_additional_headers = self.admin_additional_headers
+        else:
+            admin_additional_headers = {
+                **self.admin_additional_headers,
+                **other.admin_additional_headers,
+            }
+        if isinstance(other.redacted_header_names, UnsetType):
+            redacted_header_names = self.redacted_header_names
+        else:
+            redacted_header_names = (
+                self.redacted_header_names | other.redacted_header_names
+            )
+
+        if isinstance(other.timeout_options, TimeoutOptions):
+            timeout_options = self.timeout_options.with_override(other.timeout_options)
+        else:
+            timeout_options = self.timeout_options
+        if isinstance(other.payload_transform_options, PayloadTransformOptions):
+            payload_transform_options = self.payload_transform_options.with_override(
+                other.payload_transform_options
+            )
+        else:
+            payload_transform_options = self.payload_transform_options
+        if isinstance(other.data_api_url_options, DataAPIURLOptions):
+            data_api_url_options = self.data_api_url_options.with_override(
+                other.data_api_url_options
+            )
+        else:
+            data_api_url_options = self.data_api_url_options
+        if isinstance(other.dev_ops_api_url_options, DevOpsAPIURLOptions):
+            dev_ops_api_url_options = self.dev_ops_api_url_options.with_override(
+                other.dev_ops_api_url_options
+            )
+        else:
+            dev_ops_api_url_options = self.dev_ops_api_url_options
+
+        return FullAPIOptions(
+            environment=(
+                other.environment
+                if not isinstance(other.environment, UnsetType)
+                else self.environment
+            ),
+            callers=(
+                other.callers
+                if not isinstance(other.callers, UnsetType)
+                else self.callers
+            ),
+            database_additional_headers=database_additional_headers,
+            admin_additional_headers=admin_additional_headers,
+            redacted_header_names=redacted_header_names,
+            token=other.token if not isinstance(other.token, UnsetType) else self.token,
+            embedding_api_key=(
+                other.embedding_api_key
+                if not isinstance(other.embedding_api_key, UnsetType)
+                else self.embedding_api_key
+            ),
+            timeout_options=timeout_options,
+            payload_transform_options=payload_transform_options,
+            data_api_url_options=data_api_url_options,
+            dev_ops_api_url_options=dev_ops_api_url_options,
+        )
+
+
+defaultTimeoutOptions = FullTimeoutOptions(
+    request_timeout_ms=DEFAULT_REQUEST_TIMEOUT_MS,
+    data_operation_timeout_ms=DEFAULT_DATA_OPERATION_TIMEOUT_MS,
+    schema_operation_timeout_ms=DEFAULT_SCHEMA_OPERATION_TIMEOUT_MS,
+    database_admin_timeout_ms=DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
+    keyspace_admin_timeout_ms=DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
+)
+defaultPayloadTransformOptions = FullPayloadTransformOptions(
+    binary_encode_vectors=DEFAULT_BINARY_ENCODE_VECTORS,
 )
 
-AO = TypeVar("AO", bound="BaseAPIOptions")
 
-
-@dataclass
-class BaseAPIOptions:
-    """
-    A description of the options about how to interact with the Data API.
-
-    Attributes:
-        max_time_ms: a default timeout, in millisecond, for the duration of each
-            operation on the collection. Individual timeouts can be provided to
-            each collection method call and will take precedence, with this value
-            being an overall default.
-            Note that for some methods involving multiple API calls (such as
-            `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
-            to provide a specific timeout as the default one likely wouldn't make
-            much sense.
-    """
-
-    max_time_ms: int | None = None
-
-    def with_default(self: AO, default: BaseAPIOptions | None) -> AO:
-        """
-        Return a new instance created by completing this instance with a default
-        API options object.
-
-        In other words, `optA.with_default(optB)` will take fields from optA
-        when possible and draw defaults from optB when optA has them set to anything
-        evaluating to False. (This relies on the __bool__ definition of the values,
-        such as that of the EmbeddingHeadersTokenProvider instances)
-
-        Args:
-            default: an API options instance to draw defaults from.
-
-        Returns:
-            a new instance of this class obtained by merging this one and the default.
-        """
-        if default:
-            default_dict = default.__dict__
-            return self.__class__(
-                **{
-                    k: self_v or default_dict.get(k)
-                    for k, self_v in self.__dict__.items()
-                }
-            )
-        else:
-            return self
-
-    def with_override(self: AO, override: BaseAPIOptions | None) -> AO:
-        """
-        Return a new instance created by overriding the members of this instance
-        with those taken from a supplied "override" API options object.
-
-        In other words, `optA.with_default(optB)` will take fields from optB
-        when possible and fall back to optA when optB has them set to anything
-        evaluating to False. (This relies on the __bool__ definition of the values,
-        such as that of the EmbeddingHeadersTokenProvider instances)
-
-        Args:
-            override: an API options instance to preferentially draw fields from.
-
-        Returns:
-            a new instance of this class obtained by merging the override and this one.
-        """
-        if override:
-            self_dict = self.__dict__
-            return self.__class__(
-                **{
-                    k: override_v or self_dict.get(k)
-                    for k, override_v in override.__dict__.items()
-                }
-            )
-        else:
-            return self
-
-
-@dataclass
-class CollectionAPIOptions(BaseAPIOptions):
-    """
-    A description of the options about how to interact with the Data API
-    regarding a collection.
-    Developers should not instantiate this class directly.
-
-    Attributes:
-        max_time_ms: a default timeout, in millisecond, for the duration of each
-            operation on the collection. Individual timeouts can be provided to
-            each collection method call and will take precedence, with this value
-            being an overall default.
-            Note that for some methods involving multiple API calls (such as
-            `find`, `delete_many`, `insert_many` and so on), it is strongly suggested
-            to provide a specific timeout as the default one likely wouldn't make
-            much sense.
-        embedding_api_key: an `astrapy.authentication.EmbeddingHeadersProvider`
-            object, encoding embedding-related API keys that will be passed
-            as headers when interacting with the collection (on each Data API request).
-            The default value is `EmbeddingAPIKeyHeaderProvider(None)`, i.e.
-            no embedding-specific headers, whereas if the collection is configured
-            with an embedding service other choices for this parameter can be
-            meaningfully supplied. is configured for the collection,
-    """
-
-    embedding_api_key: EmbeddingHeadersProvider = field(
-        default_factory=lambda: EmbeddingAPIKeyHeaderProvider(None)
+def defaultAPIOptions(environment: str) -> FullAPIOptions:
+    defaultDataAPIURLOptions = FullDataAPIURLOptions(
+        api_path=API_PATH_ENV_MAP[environment],
+        api_version=API_VERSION_ENV_MAP[environment],
+    )
+    defaultDevOpsAPIURLOptions: FullDevOpsAPIURLOptions
+    if environment in Environment.astra_db_values:
+        defaultDevOpsAPIURLOptions = FullDevOpsAPIURLOptions(
+            dev_ops_url=DEV_OPS_URL_ENV_MAP[environment],
+            dev_ops_api_version=DEV_OPS_VERSION_ENV_MAP[environment],
+        )
+    else:
+        defaultDevOpsAPIURLOptions = FullDevOpsAPIURLOptions(
+            dev_ops_url="never used",
+            dev_ops_api_version=None,
+        )
+    return FullAPIOptions(
+        environment=environment,
+        callers=[],
+        database_additional_headers={},
+        admin_additional_headers={},
+        redacted_header_names=set(),
+        token=StaticTokenProvider(None),
+        embedding_api_key=EmbeddingAPIKeyHeaderProvider(None),
+        timeout_options=defaultTimeoutOptions,
+        payload_transform_options=defaultPayloadTransformOptions,
+        data_api_url_options=defaultDataAPIURLOptions,
+        dev_ops_api_url_options=defaultDevOpsAPIURLOptions,
     )
