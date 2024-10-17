@@ -35,9 +35,9 @@ from astrapy.exceptions import (
 )
 from astrapy.info import (
     CollectionDescriptor,
-    CollectionVectorServiceOptions,
     DatabaseInfo,
     TableDescriptor,
+    VectorServiceOptions,
 )
 from astrapy.settings.defaults import (
     DEFAULT_ASTRA_DB_KEYSPACE,
@@ -65,7 +65,7 @@ logger = logging.getLogger(__name__)
 def _normalize_create_collection_options(
     dimension: int | None,
     metric: str | None,
-    service: CollectionVectorServiceOptions | dict[str, Any] | None,
+    service: VectorServiceOptions | dict[str, Any] | None,
     indexing: dict[str, Any] | None,
     default_id_type: str | None,
     additional_options: dict[str, Any] | None,
@@ -627,7 +627,7 @@ class Database:
         keyspace: str | None = None,
         dimension: int | None = None,
         metric: str | None = None,
-        service: CollectionVectorServiceOptions | dict[str, Any] | None = None,
+        service: VectorServiceOptions | dict[str, Any] | None = None,
         indexing: dict[str, Any] | None = None,
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
@@ -658,7 +658,7 @@ class Database:
                 or `VectorMetric.COSINE` (default).
             service: a dictionary describing a service for
                 embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
-                Alternatively, a CollectionVectorServiceOptions object to the same effect.
+                Alternatively, a VectorServiceOptions object to the same effect.
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}
@@ -947,18 +947,19 @@ class Database:
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
     ### START TABLES sy
-
-    def get_Xtable(
+    '''
+    def get_table(
         self,
         name: str,
         *,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
-        collection_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Collection:
+        table_request_timeout_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
+        table_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> Table:
         """
+        TODO
         Spawn a `Collection` object instance representing a collection
         on this database.
 
@@ -1052,6 +1053,7 @@ class Database:
             keyspace=_keyspace,
             api_options=resulting_api_options,
         )
+    '''
 
     def create_Xtable(
         self,
@@ -1060,7 +1062,7 @@ class Database:
         keyspace: str | None = None,
         dimension: int | None = None,
         metric: str | None = None,
-        service: CollectionVectorServiceOptions | dict[str, Any] | None = None,
+        service: VectorServiceOptions | dict[str, Any] | None = None,
         indexing: dict[str, Any] | None = None,
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
@@ -1091,7 +1093,7 @@ class Database:
                 or `VectorMetric.COSINE` (default).
             service: a dictionary describing a service for
                 embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
-                Alternatively, a CollectionVectorServiceOptions object to the same effect.
+                Alternatively, a VectorServiceOptions object to the same effect.
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}
@@ -2058,7 +2060,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         dimension: int | None = None,
         metric: str | None = None,
-        service: CollectionVectorServiceOptions | dict[str, Any] | None = None,
+        service: VectorServiceOptions | dict[str, Any] | None = None,
         indexing: dict[str, Any] | None = None,
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
@@ -2089,7 +2091,7 @@ class AsyncDatabase:
                 or `VectorMetric.COSINE` (default).
             service: a dictionary describing a service for
                 embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
-                Alternatively, a CollectionVectorServiceOptions object to the same effect.
+                Alternatively, a VectorServiceOptions object to the same effect.
             indexing: optional specification of the indexing options for
                 the collection, in the form of a dictionary such as
                     {"deny": [...]}

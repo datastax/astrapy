@@ -273,11 +273,11 @@ class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
     Example:
         >>> from astrapy import DataAPIClient
         >>> from astrapy.authentication import (
-            CollectionVectorServiceOptions,
+            VectorServiceOptions,
             EmbeddingAPIKeyHeaderProvider,
         )
         >>> my_emb_api_key = EmbeddingAPIKeyHeaderProvider("abc012...")
-        >>> service_options = CollectionVectorServiceOptions(
+        >>> service_options = VectorServiceOptions(
         ...     provider="a-certain-provider",
         ...     model_name="some-embedding-model",
         ... )
@@ -329,14 +329,14 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
     Example:
         >>> from astrapy import DataAPIClient
         >>> from astrapy.authentication import (
-            CollectionVectorServiceOptions,
+            VectorServiceOptions,
             AWSEmbeddingHeadersProvider,
         )
         >>> my_aws_emb_api_key = AWSEmbeddingHeadersProvider(
             embedding_access_id="my-access-id-012...",
             embedding_secret_id="my-secret-id-abc...",
         )
-        >>> service_options = CollectionVectorServiceOptions(
+        >>> service_options = VectorServiceOptions(
         ...     provider="bedrock",
         ...     model_name="some-aws-bedrock-model",
         ... )

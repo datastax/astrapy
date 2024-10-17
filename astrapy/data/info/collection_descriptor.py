@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from astrapy.data.info.database_info import DatabaseInfo
+from astrapy.data.info.vectorize import VectorServiceOptions
 
 
 @dataclass
@@ -71,60 +72,6 @@ class CollectionDefaultIDOptions:
 
 
 @dataclass
-class CollectionVectorServiceOptions:
-    """
-    The "vector.service" component of the collection options.
-    See the Data API specifications for allowed values.
-
-    Attributes:
-        provider: the name of a service provider for embedding calculation.
-        model_name: the name of a specific model for use by the service.
-        authentication: a key-value dictionary for the "authentication" specification,
-            if any, in the vector service options.
-        parameters: a key-value dictionary for the "parameters" specification, if any,
-            in the vector service options.
-    """
-
-    provider: str | None
-    model_name: str | None
-    authentication: dict[str, Any] | None = None
-    parameters: dict[str, Any] | None = None
-
-    def as_dict(self) -> dict[str, Any]:
-        """Recast this object into a dictionary."""
-
-        return {
-            k: v
-            for k, v in {
-                "provider": self.provider,
-                "modelName": self.model_name,
-                "authentication": self.authentication,
-                "parameters": self.parameters,
-            }.items()
-            if v is not None
-        }
-
-    @staticmethod
-    def from_dict(
-        raw_dict: dict[str, Any] | None,
-    ) -> CollectionVectorServiceOptions | None:
-        """
-        Create an instance of CollectionVectorServiceOptions from a dictionary
-        such as one from the Data API.
-        """
-
-        if raw_dict is not None:
-            return CollectionVectorServiceOptions(
-                provider=raw_dict.get("provider"),
-                model_name=raw_dict.get("modelName"),
-                authentication=raw_dict.get("authentication"),
-                parameters=raw_dict.get("parameters"),
-            )
-        else:
-            return None
-
-
-@dataclass
 class CollectionVectorOptions:
     """
     The "vector" component of the collection options.
@@ -134,13 +81,13 @@ class CollectionVectorOptions:
         dimension: an optional positive integer, the dimensionality of the vector space.
         metric: an optional metric among `VectorMetric.DOT_PRODUCT`,
             `VectorMetric.EUCLIDEAN` and `VectorMetric.COSINE`.
-        service: an optional CollectionVectorServiceOptions object in case a
+        service: an optional VectorServiceOptions object in case a
             service is configured for the collection.
     """
 
     dimension: int | None
     metric: str | None
-    service: CollectionVectorServiceOptions | None
+    service: VectorServiceOptions | None
 
     def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
@@ -166,9 +113,7 @@ class CollectionVectorOptions:
             return CollectionVectorOptions(
                 dimension=raw_dict.get("dimension"),
                 metric=raw_dict.get("metric"),
-                service=CollectionVectorServiceOptions.from_dict(
-                    raw_dict.get("service")
-                ),
+                service=VectorServiceOptions.from_dict(raw_dict.get("service")),
             )
         else:
             return None

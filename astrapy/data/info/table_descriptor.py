@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from astrapy.data.info.database_info import DatabaseInfo
+from astrapy.data.info.vectorize import VectorServiceOptions
 
 
 def warn_residual_keys(
@@ -83,11 +84,63 @@ class TableColumnTypeDescriptor:
             return TableKeyValuedColumnTypeDescriptor.from_dict(raw_dict)
         elif "valueType" in raw_dict:
             return TableValuedColumnTypeDescriptor.from_dict(raw_dict)
+        elif raw_dict["type"] == "vector":
+            return TableVectorColumnTypeDescriptor.from_dict(raw_dict)
         else:
             warn_residual_keys(cls, raw_dict, {"type"})
             return TableColumnTypeDescriptor(
                 column_type=raw_dict["type"],
             )
+
+
+@dataclass
+class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
+    """
+    TODO
+    """
+
+    dimension: int
+    service: VectorServiceOptions | None
+
+    def __repr__(self) -> str:
+        not_null_pieces = [
+            pc
+            for pc in [
+                f"dimension={self.dimension}",
+                None if self.service is None else f"service={self.service}",
+            ]
+            if pc is not None
+        ]
+        inner_desc = ", ".join(not_null_pieces)
+
+        return f"{self.__class__.__name__}({self.column_type}[{inner_desc}])"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            k: v
+            for k, v in {
+                "type": self.column_type,
+                "dimension": self.dimension,
+                "service": None if self.service is None else self.service.as_dict(),
+            }.items()
+            if v is not None
+        }
+
+    @classmethod
+    def from_dict(cls, raw_dict: dict[str, Any]) -> TableVectorColumnTypeDescriptor:
+        """
+        Create an instance of TableVectorColumnTypeDescriptor from a dictionary
+        such as one from the Data API.
+        """
+
+        warn_residual_keys(cls, raw_dict, {"type", "dimension"})
+        return TableVectorColumnTypeDescriptor(
+            column_type=raw_dict["type"],
+            dimension=raw_dict["dimension"],
+            service=VectorServiceOptions.from_dict(raw_dict.get("service")),
+        )
 
 
 @dataclass

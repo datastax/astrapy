@@ -23,7 +23,7 @@ import pytest
 from astrapy import Database
 from astrapy.authentication import AWSEmbeddingHeadersProvider, EmbeddingHeadersProvider
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
-from astrapy.info import CollectionVectorServiceOptions
+from astrapy.info import VectorServiceOptions
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -131,7 +131,7 @@ class TestVectorizeProviders:
                 embedding_api_key=embedding_api_key,
             )
             # this is to cope with the Data API normalizing options
-            expected_service_options = CollectionVectorServiceOptions(
+            expected_service_options = VectorServiceOptions(
                 provider=service_options.provider,
                 model_name=testable_vectorize_model.get(
                     "expected_model_name", service_options.model_name
@@ -218,7 +218,7 @@ class TestVectorizeProviders:
                 service=service_options,
             )
             # this is to cope with the Data API normalizing options
-            expected_service_options = CollectionVectorServiceOptions(
+            expected_service_options = VectorServiceOptions(
                 provider=service_options.provider,
                 model_name=testable_vectorize_model.get(
                     "expected_model_name", service_options.model_name
@@ -291,7 +291,7 @@ class TestVectorizeProviders:
         db = sync_database
         collection_name = f"vec_s_{simple_tag}"
         # to create the collection, prepare a service_options with the auth info
-        service_options = CollectionVectorServiceOptions(
+        service_options = VectorServiceOptions(
             provider=base_service_options.provider,
             model_name=base_service_options.model_name,
             authentication={
@@ -300,7 +300,7 @@ class TestVectorizeProviders:
             parameters=base_service_options.parameters,
         )
         # this is to cope with the Data API normalizing options
-        expected_service_options = CollectionVectorServiceOptions(
+        expected_service_options = VectorServiceOptions(
             provider=base_service_options.provider,
             model_name=testable_vectorize_model.get(
                 "expected_model_name", service_options.model_name

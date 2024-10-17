@@ -470,7 +470,6 @@ from astrapy.info import (
     CollectionInfo,
     CollectionOptions,
     CollectionVectorOptions,
-    CollectionVectorServiceOptions,
     DatabaseInfo,
     EmbeddingProvider,
     EmbeddingProviderAuthentication,
@@ -478,6 +477,7 @@ from astrapy.info import (
     EmbeddingProviderParameter,
     EmbeddingProviderToken,
     FindEmbeddingProvidersResult,
+    VectorServiceOptions,
 )
 ```
 

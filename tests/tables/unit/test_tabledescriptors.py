@@ -20,17 +20,6 @@ from astrapy.info import TableDescriptor
 
 TABLE_DICTS = [
     {
-        "name": "table_composite_pk",
-        "definition": {
-            "columns": {
-                "name": {"type": "text"},
-                "id": {"type": "text"},
-                "age": {"type": "int"},
-            },
-            "primaryKey": {"partitionBy": ["id", "name"], "partitionSort": {}},
-        },
-    },
-    {
         "name": "table_simple",
         "definition": {
             "columns": {
@@ -44,46 +33,36 @@ TABLE_DICTS = [
         },
     },
     {
-        "name": "table_clustering",
+        "name": "with_a_vector",
         "definition": {
             "columns": {
-                "f1": {"type": "text"},
-                "f2": {"type": "int"},
-                "f3": {"type": "text"},
+                "city": {"type": "text"},
+                "name": {"type": "text"},
+                "id": {"type": "text"},
+                "age": {"type": "int"},
+                "somevector": {"type": "vector", "dimension": 123},
             },
-            "primaryKey": {"partitionBy": ["f1"], "partitionSort": {"f2": -1}},
+            "primaryKey": {"partitionBy": ["id"], "partitionSort": {}},
         },
     },
     {
-        "name": "table_types",
+        "name": "with_vectorize",
         "definition": {
             "columns": {
-                "p_ascii": {"type": "ascii"},
-                "p_list": {"type": "list", "valueType": "text"},
-                "p_boolean": {"type": "boolean"},
-                "p_set": {"type": "set", "valueType": "int"},
-                "p_tinyint": {"type": "tinyint"},
-                "p_smallint": {"type": "smallint"},
-                "p_duration": {"type": "duration"},
-                "p_inet": {"type": "inet"},
-                "p_blob": {"type": "blob"},
-                "p_double": {"type": "double"},
-                "p_float": {"type": "float"},
-                "p_varint": {"type": "varint"},
-                "p_decimal": {"type": "decimal"},
-                "p_text": {"type": "text"},
-                "p_time": {"type": "time"},
-                "p_date": {"type": "date"},
-                "p_int": {"type": "int"},
-                "p_bigint": {"type": "bigint"},
-                "p_uuid": {"type": "uuid"},
-                "p_map": {"type": "map", "keyType": "text", "valueType": "text"},
-                "p_timestamp": {"type": "timestamp"},
+                "embeddings": {
+                    "type": "vector",
+                    "dimension": 123,
+                    "service": {
+                        "provider": "openai",
+                        "modelName": "text-embedding-3-small",
+                    },
+                },
+                "city": {"type": "text"},
+                "name": {"type": "text"},
+                "id": {"type": "text"},
+                "age": {"type": "int"},
             },
-            "primaryKey": {
-                "partitionBy": ["p_uuid"],
-                "partitionSort": {"p_text": 1, "p_int": -1},
-            },
+            "primaryKey": {"partitionBy": ["id"], "partitionSort": {}},
         },
     },
 ]

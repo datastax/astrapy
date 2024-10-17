@@ -18,7 +18,7 @@ import os
 import sys
 from typing import Any, Iterable
 
-from astrapy.info import CollectionVectorServiceOptions, EmbeddingProviderParameter
+from astrapy.info import EmbeddingProviderParameter, VectorServiceOptions
 from astrapy.settings.defaults import (
     EMBEDDING_HEADER_API_KEY,
     EMBEDDING_HEADER_AWS_ACCESS_ID,
@@ -297,7 +297,7 @@ def live_test_models() -> Iterable[dict[str, Any]]:
                             "use_insert_one": USE_INSERT_ONE_MAP.get(
                                 (provider_name, model.name), False
                             ),
-                            "service_options": CollectionVectorServiceOptions(
+                            "service_options": VectorServiceOptions(
                                 provider=provider_name,
                                 model_name=model.name,
                                 parameters=model_parameters,
@@ -331,7 +331,7 @@ def live_test_models() -> Iterable[dict[str, Any]]:
                             "simple_tag": _collapse(
                                 "".join(c for c in model_tag_f if c in alphanum)
                             ),
-                            "service_options": CollectionVectorServiceOptions(
+                            "service_options": VectorServiceOptions(
                                 provider=provider_name,
                                 model_name=model.name,
                                 parameters={

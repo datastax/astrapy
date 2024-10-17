@@ -131,7 +131,6 @@ def test_imports() -> None:
         CollectionInfo,
         CollectionOptions,
         CollectionVectorOptions,
-        CollectionVectorServiceOptions,
         DatabaseInfo,
         EmbeddingProvider,
         EmbeddingProviderAuthentication,
@@ -139,6 +138,7 @@ def test_imports() -> None:
         EmbeddingProviderParameter,
         EmbeddingProviderToken,
         FindEmbeddingProvidersResult,
+        VectorServiceOptions,
     )
     from astrapy.results import (  # noqa: F401
         DeleteResult,

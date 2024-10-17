@@ -16,27 +16,25 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy.info import CollectionVectorServiceOptions
+from astrapy.info import VectorServiceOptions
 
 
-class TestCollectionVectorServiceOptions:
-    @pytest.mark.describe("test of CollectionVectorServiceOptions conversions, base")
-    def test_collectionvectorserviceoptions_conversions_base(self) -> None:
+class TestVectorServiceOptions:
+    @pytest.mark.describe("test of VectorServiceOptions conversions, base")
+    def test_VectorServiceOptions_conversions_base(self) -> None:
         dict0 = {
             "provider": "PRO",
             "modelName": "MOD",
         }
-        from_dict0 = CollectionVectorServiceOptions.from_dict(dict0)
-        assert from_dict0 == CollectionVectorServiceOptions(
+        from_dict0 = VectorServiceOptions.from_dict(dict0)
+        assert from_dict0 == VectorServiceOptions(
             provider="PRO",
             model_name="MOD",
         )
         assert from_dict0.as_dict() == dict0
 
-    @pytest.mark.describe(
-        "test of CollectionVectorServiceOptions conversions, with auth"
-    )
-    def test_collectionvectorserviceoptions_conversions_auth(self) -> None:
+    @pytest.mark.describe("test of VectorServiceOptions conversions, with auth")
+    def test_VectorServiceOptions_conversions_auth(self) -> None:
         dict_a = {
             "provider": "PRO",
             "modelName": "MOD",
@@ -45,8 +43,8 @@ class TestCollectionVectorServiceOptions:
                 "field": "value",
             },
         }
-        from_dict_a = CollectionVectorServiceOptions.from_dict(dict_a)
-        assert from_dict_a == CollectionVectorServiceOptions(
+        from_dict_a = VectorServiceOptions.from_dict(dict_a)
+        assert from_dict_a == VectorServiceOptions(
             provider="PRO",
             model_name="MOD",
             authentication={
@@ -56,10 +54,8 @@ class TestCollectionVectorServiceOptions:
         )
         assert from_dict_a.as_dict() == dict_a
 
-    @pytest.mark.describe(
-        "test of CollectionVectorServiceOptions conversions, with params"
-    )
-    def test_collectionvectorserviceoptions_conversions_params(self) -> None:
+    @pytest.mark.describe("test of VectorServiceOptions conversions, with params")
+    def test_VectorServiceOptions_conversions_params(self) -> None:
         dict_p = {
             "provider": "PRO",
             "modelName": "MOD",
@@ -72,8 +68,8 @@ class TestCollectionVectorServiceOptions:
                 "field6": {"a": 1},
             },
         }
-        from_dict_p = CollectionVectorServiceOptions.from_dict(dict_p)
-        assert from_dict_p == CollectionVectorServiceOptions(
+        from_dict_p = VectorServiceOptions.from_dict(dict_p)
+        assert from_dict_p == VectorServiceOptions(
             provider="PRO",
             model_name="MOD",
             parameters={
@@ -88,9 +84,9 @@ class TestCollectionVectorServiceOptions:
         assert from_dict_p.as_dict() == dict_p
 
     @pytest.mark.describe(
-        "test of CollectionVectorServiceOptions conversions, with params and auth"
+        "test of VectorServiceOptions conversions, with params and auth"
     )
-    def test_collectionvectorserviceoptions_conversions_params_auth(self) -> None:
+    def test_VectorServiceOptions_conversions_params_auth(self) -> None:
         dict_ap = {
             "provider": "PRO",
             "modelName": "MOD",
@@ -107,8 +103,8 @@ class TestCollectionVectorServiceOptions:
                 "field6": {"a": 1},
             },
         }
-        from_dict_ap = CollectionVectorServiceOptions.from_dict(dict_ap)
-        assert from_dict_ap == CollectionVectorServiceOptions(
+        from_dict_ap = VectorServiceOptions.from_dict(dict_ap)
+        assert from_dict_ap == VectorServiceOptions(
             provider="PRO",
             model_name="MOD",
             authentication={
