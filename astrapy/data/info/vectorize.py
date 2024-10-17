@@ -72,6 +72,15 @@ class VectorServiceOptions:
         else:
             return None
 
+    @staticmethod
+    def coerce(
+        raw_input: VectorServiceOptions | dict[str, Any] | None,
+    ) -> VectorServiceOptions | None:
+        if isinstance(raw_input, VectorServiceOptions):
+            return raw_input
+        else:
+            return VectorServiceOptions.from_dict(raw_input)
+
 
 @dataclass
 class EmbeddingProviderParameter:

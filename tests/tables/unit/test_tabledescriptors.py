@@ -16,10 +16,12 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy.data.info.table_descriptor import (
+from astrapy.info import (
     TableColumnTypeDescriptor,
+    TableDefinition,
     TableDescriptor,
     TablePrimaryKeyDescriptor,
+    VectorServiceOptions,
 )
 
 TABLE_DICTS = [
@@ -71,6 +73,30 @@ TABLE_DICTS = [
     },
 ]
 
+DICT_DEFINITION = {
+    "columns": {
+        "country": {"type": "text"},
+        "name": {"type": "text"},
+        "human": {"type": "boolean"},
+        "email": {"type": "text"},
+        "age": {"type": "int"},
+    },
+    "primaryKey": {"partitionBy": ["email"], "partitionSort": {}},
+}
+HYBRID_DEFINITION = {
+    "columns": {
+        "country": TableColumnTypeDescriptor(column_type="text"),
+        "name": {"type": "text"},
+        "human": TableColumnTypeDescriptor(column_type="boolean"),
+        "email": {"type": "text"},
+        "age": TableColumnTypeDescriptor(column_type="int"),
+    },
+    "primaryKey": TablePrimaryKeyDescriptor(
+        partition_by=["email"],
+        partition_sort={},
+    ),
+}
+
 SHORT_FORM_COLUMN_TYPE = "int"
 LONG_FORM_COLUMN_TYPE = {"type": "int"}
 
@@ -79,15 +105,19 @@ LONG_FORM_PRIMARY_KEY = {"partitionBy": ["column"], "partitionSort": {}}
 
 
 class TestTableDescriptors:
-    @pytest.mark.describe("test of parsing into and from table descriptors")
-    def test_tabledescriptor_parsing(self) -> None:
-        table_descs = [
-            TableDescriptor.from_dict(table_dict) for table_dict in TABLE_DICTS
-        ]
+    @pytest.mark.describe("test of parsing table descriptors, fully dict")
+    def test_tabledescriptor_parsing_fulldict(self) -> None:
+        table_descs = [TableDescriptor.coerce(table_dict) for table_dict in TABLE_DICTS]
         assert all(
             table_desc.as_dict() == table_dict
             for table_desc, table_dict in zip(table_descs, TABLE_DICTS)
         )
+
+    @pytest.mark.describe("test of parsing table descriptors with hybrid inputs")
+    def test_tabledescriptor_hybrid_parsing(self) -> None:
+        from_dict_def = TableDefinition.coerce(DICT_DEFINITION)
+        from_hyb_def = TableDefinition.coerce(HYBRID_DEFINITION)
+        assert from_dict_def == from_hyb_def
 
     @pytest.mark.describe("test of parsing short forms for column types")
     def test_columntype_short_form(self) -> None:
@@ -100,3 +130,86 @@ class TestTableDescriptors:
         long_pk = TablePrimaryKeyDescriptor.coerce(LONG_FORM_PRIMARY_KEY)
         short_pk = TablePrimaryKeyDescriptor.coerce(SHORT_FORM_PRIMARY_KEY)
         assert long_pk == short_pk
+
+    @pytest.mark.describe("test of fluent interface for table definition")
+    def test_tabledefinition_fluent(self) -> None:
+        # TODO refine this test (assets, etc)
+        def0 = (
+            TableDefinition.zero()
+            .add_column("p_text", "text")
+            .add_column("p_int", "int")
+            .add_column("p_boolean", "boolean")
+            .add_primitive_column("p_float", "float")
+            .add_set_column("p_set", "int")
+            .add_map_column("p_map", "text", "int")
+            .add_vector_column("p_vector", dimension=191)
+            .add_vector_column(
+                "p_vectorize",
+                dimension=1024,
+                service=VectorServiceOptions(
+                    provider="mistral",
+                    model_name="mistral-embed",
+                ),
+            )
+            .add_partition_by(["p_text", "p_int"])
+            .add_partition_sort({"p_boolean": -1, "p_float": 1})
+        )
+        def1 = TableDefinition.coerce(
+            {
+                "columns": {
+                    "p_text": {"type": "text"},
+                    "p_int": {"type": "int"},
+                    "p_boolean": {"type": "boolean"},
+                    "p_float": {"type": "float"},
+                    "p_set": {"type": "set", "valueType": "int"},
+                    "p_map": {"type": "map", "keyType": "text", "valueType": "int"},
+                    "p_vector": {"type": "vector", "dimension": 191},
+                    "p_vectorize": {
+                        "type": "vector",
+                        "dimension": 1024,
+                        "service": {
+                            "provider": "mistral",
+                            "modelName": "mistral-embed",
+                        },
+                    },
+                },
+                "primaryKey": {
+                    "partitionBy": [
+                        "p_text",
+                        "p_int",
+                    ],
+                    "partitionSort": {"p_boolean": -1, "p_float": 1},
+                },
+            }
+        )
+        assert def0 == def1
+
+        adef0 = (
+            TableDefinition.zero()
+            .add_list_column("p_list", "tinyint")
+            .add_vector_column(
+                "p_vectorize",
+                dimension=333,
+                service={
+                    "provider": "mistral",
+                    "modelName": "mistral-embed",
+                },
+            )
+        )
+        adef1 = TableDefinition.coerce(
+            {
+                "columns": {
+                    "p_list": {"type": "list", "valueType": "tinyint"},
+                    "p_vectorize": {
+                        "type": "vector",
+                        "dimension": 333,
+                        "service": {
+                            "provider": "mistral",
+                            "modelName": "mistral-embed",
+                        },
+                    },
+                },
+                "primaryKey": {"partitionBy": [], "partitionSort": {}},
+            }
+        )
+        assert adef0 == adef1

@@ -72,7 +72,7 @@ class TableColumnTypeDescriptor:
         }
 
     @classmethod
-    def from_dict(cls, raw_dict: dict[str, Any]) -> TableColumnTypeDescriptor:
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableColumnTypeDescriptor:
         """
         Create an instance of TableColumnTypeDescriptor from a dictionary
         such as one from the Data API.
@@ -81,11 +81,11 @@ class TableColumnTypeDescriptor:
         """
 
         if "keyType" in raw_dict:
-            return TableKeyValuedColumnTypeDescriptor.from_dict(raw_dict)
+            return TableKeyValuedColumnTypeDescriptor._from_dict(raw_dict)
         elif "valueType" in raw_dict:
-            return TableValuedColumnTypeDescriptor.from_dict(raw_dict)
+            return TableValuedColumnTypeDescriptor._from_dict(raw_dict)
         elif raw_dict["type"] == "vector":
-            return TableVectorColumnTypeDescriptor.from_dict(raw_dict)
+            return TableVectorColumnTypeDescriptor._from_dict(raw_dict)
         else:
             warn_residual_keys(cls, raw_dict, {"type"})
             return TableColumnTypeDescriptor(
@@ -99,9 +99,9 @@ class TableColumnTypeDescriptor:
         if isinstance(raw_input, TableColumnTypeDescriptor):
             return raw_input
         elif isinstance(raw_input, str):
-            return cls.from_dict({"type": raw_input})
+            return cls._from_dict({"type": raw_input})
         else:
-            return cls.from_dict(raw_input)
+            return cls._from_dict(raw_input)
 
 
 @dataclass
@@ -140,7 +140,7 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
         }
 
     @classmethod
-    def from_dict(cls, raw_dict: dict[str, Any]) -> TableVectorColumnTypeDescriptor:
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableVectorColumnTypeDescriptor:
         """
         Create an instance of TableVectorColumnTypeDescriptor from a dictionary
         such as one from the Data API.
@@ -150,7 +150,7 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
         return TableVectorColumnTypeDescriptor(
             column_type=raw_dict["type"],
             dimension=raw_dict["dimension"],
-            service=VectorServiceOptions.from_dict(raw_dict.get("service")),
+            service=VectorServiceOptions.coerce(raw_dict.get("service")),
         )
 
 
@@ -174,7 +174,7 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
         }
 
     @classmethod
-    def from_dict(cls, raw_dict: dict[str, Any]) -> TableValuedColumnTypeDescriptor:
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableValuedColumnTypeDescriptor:
         """
         Create an instance of TableValuedColumnTypeDescriptor from a dictionary
         such as one from the Data API.
@@ -208,7 +208,7 @@ class TableKeyValuedColumnTypeDescriptor(TableValuedColumnTypeDescriptor):
         }
 
     @classmethod
-    def from_dict(cls, raw_dict: dict[str, Any]) -> TableKeyValuedColumnTypeDescriptor:
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableKeyValuedColumnTypeDescriptor:
         """
         Create an instance of TableKeyValuedColumnTypeDescriptor from a dictionary
         such as one from the Data API.
@@ -253,7 +253,7 @@ class TablePrimaryKeyDescriptor:
         }
 
     @classmethod
-    def from_dict(cls, raw_dict: dict[str, Any]) -> TablePrimaryKeyDescriptor:
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TablePrimaryKeyDescriptor:
         """
         Create an instance of TablePrimaryKeyDescriptor from a dictionary
         such as one from the Data API.
@@ -272,9 +272,9 @@ class TablePrimaryKeyDescriptor:
         if isinstance(raw_input, TablePrimaryKeyDescriptor):
             return raw_input
         elif isinstance(raw_input, str):
-            return cls.from_dict({"partitionBy": [raw_input], "partitionSort": {}})
+            return cls._from_dict({"partitionBy": [raw_input], "partitionSort": {}})
         else:
-            return cls.from_dict(raw_input)
+            return cls._from_dict(raw_input)
 
 
 @dataclass
@@ -317,7 +317,7 @@ class TableDefinition:
         }
 
     @classmethod
-    def from_dict(cls, raw_dict: dict[str, Any]) -> TableDefinition:
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableDefinition:
         """
         Create an instance of TableDefinition from a dictionary
         such as one from the Data API.
@@ -326,10 +326,10 @@ class TableDefinition:
         warn_residual_keys(cls, raw_dict, {"columns", "primaryKey"})
         return TableDefinition(
             columns={
-                col_n: TableColumnTypeDescriptor.from_dict(col_v)
+                col_n: TableColumnTypeDescriptor.coerce(col_v)
                 for col_n, col_v in raw_dict["columns"].items()
             },
-            primary_key=TablePrimaryKeyDescriptor.from_dict(raw_dict["primaryKey"]),
+            primary_key=TablePrimaryKeyDescriptor.coerce(raw_dict["primaryKey"]),
         )
 
     @classmethod
@@ -337,7 +337,113 @@ class TableDefinition:
         if isinstance(raw_input, TableDefinition):
             return raw_input
         else:
-            return cls.from_dict(raw_input)
+            return cls._from_dict(raw_input)
+
+    @staticmethod
+    def zero() -> TableDefinition:
+        return TableDefinition(
+            columns={},
+            primary_key=TablePrimaryKeyDescriptor(
+                partition_by=[],
+                partition_sort={},
+            ),
+        )
+
+    def add_primitive_column(
+        self, column_name: str, column_type: str
+    ) -> TableDefinition:
+        return TableDefinition(
+            columns={
+                **self.columns,
+                **{column_name: TableColumnTypeDescriptor(column_type=column_type)},
+            },
+            primary_key=self.primary_key,
+        )
+
+    def add_column(self, column_name: str, column_type: str) -> TableDefinition:
+        return self.add_primitive_column(
+            column_name=column_name, column_type=column_type
+        )
+
+    def add_set_column(self, column_name: str, column_type: str) -> TableDefinition:
+        return TableDefinition(
+            columns={
+                **self.columns,
+                **{
+                    column_name: TableValuedColumnTypeDescriptor(
+                        column_type="set", value_type=column_type
+                    )
+                },
+            },
+            primary_key=self.primary_key,
+        )
+
+    def add_list_column(self, column_name: str, value_type: str) -> TableDefinition:
+        return TableDefinition(
+            columns={
+                **self.columns,
+                **{
+                    column_name: TableValuedColumnTypeDescriptor(
+                        column_type="list", value_type=value_type
+                    )
+                },
+            },
+            primary_key=self.primary_key,
+        )
+
+    def add_map_column(
+        self, column_name: str, key_type: str, value_type: str
+    ) -> TableDefinition:
+        return TableDefinition(
+            columns={
+                **self.columns,
+                **{
+                    column_name: TableKeyValuedColumnTypeDescriptor(
+                        column_type="map", key_type=key_type, value_type=value_type
+                    )
+                },
+            },
+            primary_key=self.primary_key,
+        )
+
+    def add_vector_column(
+        self,
+        column_name: str,
+        *,
+        dimension: int,
+        service: VectorServiceOptions | dict[str, Any] | None = None,
+    ) -> TableDefinition:
+        return TableDefinition(
+            columns={
+                **self.columns,
+                **{
+                    column_name: TableVectorColumnTypeDescriptor(
+                        column_type="vector",
+                        dimension=dimension,
+                        service=VectorServiceOptions.coerce(service),
+                    )
+                },
+            },
+            primary_key=self.primary_key,
+        )
+
+    def add_partition_by(self, partition_columns: list[str]) -> TableDefinition:
+        return TableDefinition(
+            columns=self.columns,
+            primary_key=TablePrimaryKeyDescriptor(
+                partition_by=self.primary_key.partition_by + partition_columns,
+                partition_sort=self.primary_key.partition_sort,
+            ),
+        )
+
+    def add_partition_sort(self, partition_sort: dict[str, int]) -> TableDefinition:
+        return TableDefinition(
+            columns=self.columns,
+            primary_key=TablePrimaryKeyDescriptor(
+                partition_by=self.primary_key.partition_by,
+                partition_sort={**self.primary_key.partition_sort, **partition_sort},
+            ),
+        )
 
 
 @dataclass
@@ -384,7 +490,7 @@ class TableDescriptor:
         }
 
     @classmethod
-    def from_dict(cls, raw_dict: dict[str, Any]) -> TableDescriptor:
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableDescriptor:
         """
         Create an instance of TableDescriptor from a dictionary
         such as one from the Data API.
@@ -393,7 +499,7 @@ class TableDescriptor:
         warn_residual_keys(cls, raw_dict, {"name", "definition"})
         return TableDescriptor(
             name=raw_dict["name"],
-            definition=TableDefinition.from_dict(raw_dict.get("definition") or {}),
+            definition=TableDefinition.coerce(raw_dict.get("definition") or {}),
             raw_descriptor=raw_dict,
         )
 
@@ -402,4 +508,4 @@ class TableDescriptor:
         if isinstance(raw_input, TableDescriptor):
             return raw_input
         else:
-            return cls.from_dict(raw_input)
+            return cls._from_dict(raw_input)

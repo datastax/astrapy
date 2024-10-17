@@ -1050,7 +1050,7 @@ class Database:
         self,
         name: str,
         *,
-        definition: TableDefinition,  # TODO | dict[str, Any],
+        definition: TableDefinition | dict[str, Any],
         keyspace: str | None = None,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
@@ -1064,8 +1064,8 @@ class Database:
         instance that represents it.
 
         This is a blocking operation: the method returns when the table
-        is ready to be used. As opposed to the `get_table` instance,
-        this method triggers causes the table to be actually created on DB.
+        is ready to be used. As opposed to the `get_table` method call,
+        this method causes the table to be actually created on DB.
 
         Args:
             name: the name of the table.
@@ -1111,15 +1111,7 @@ class Database:
 
         """
 
-        # cc_definition = _normalize_create_table_options(
-        #     dimension=dimension,
-        #     metric=metric,
-        #     service=service,
-        #     indexing=indexing,
-        #     default_id_type=default_id_type,
-        #     additional_options=additional_options,
-        # )
-        cc_definition: dict[str, Any] = definition.as_dict()
+        cc_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
 
         _schema_operation_timeout_ms = (
             schema_operation_timeout_ms
@@ -1261,7 +1253,7 @@ class Database:
             return CommandCursor(
                 address=driver_commander.full_path,
                 items=[
-                    TableDescriptor.from_dict(tab_dict)
+                    TableDescriptor.coerce(tab_dict)
                     for tab_dict in lt_response["status"]["tables"]
                 ],
             )
@@ -2315,7 +2307,6 @@ class AsyncDatabase:
             logger.info("finished findCollections")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
-    ### START TABLES asy
     async def get_table(
         self,
         name: str,
@@ -2413,6 +2404,93 @@ class AsyncDatabase:
             name=name,
             keyspace=_keyspace,
             api_options=resulting_api_options,
+        )
+
+    async def create_table(
+        self,
+        name: str,
+        *,
+        definition: TableDefinition | dict[str, Any],
+        keyspace: str | None = None,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        table_request_timeout_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
+        table_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AsyncTable:
+        """
+        Creates a table on the database and return the AsyncTable
+        instance that represents it.
+
+        This is a blocking operation: the method returns when the table
+        is ready to be used. As opposed to the `get_table` method call,
+        this method causes the table to be actually created on DB.
+
+        Args:
+            name: the name of the table.
+            definition: TODO
+            keyspace: the keyspace where the table is to be created.
+                If not specified, the general setting for this database is used.
+            schema_operation_timeout_ms: a timeout, in milliseconds, for the
+                createTable HTTP request.
+            max_time_ms: an alias for `schema_operation_timeout_ms`.
+            embedding_api_key: optional API key(s) for interacting with the table.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
+                For some vectorize providers/models, if using header-based authentication,
+                specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
+                should be supplied.
+            table_request_timeout_ms: a default timeout, in millisecond, for the
+                duration of each request in the table. For a more fine-grained
+                control of table timeouts (suggested e.g. with regard to
+                methods involving multiple requests, such as `find`), use of the
+                `table_api_options` parameter is suggested; alternatively,
+                bear in mind that individual table methods also accept timeout
+                parameters.
+            table_max_time_ms: an alias for `table_request_timeout_ms`.
+            table_api_options: a specification - complete or partial - of the
+                API Options to override the defaults inherited from the Database.
+                This allows for a deeper configuration of the table, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
+
+        Returns:
+            an `AsyncTable` instance, representing the
+            newly-created table.
+
+        Example:
+            TODO
+
+        """
+
+        cc_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
+
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.schema_operation_timeout_ms
+        )
+
+        driver_commander = self._get_driver_commander(keyspace=keyspace)
+        cc_payload = {"createTable": {"name": name, "definition": cc_definition}}
+        logger.info(f"createTable('{name}')")
+        await driver_commander.async_request(
+            payload=cc_payload,
+            timeout_info=_schema_operation_timeout_ms,
+        )
+        logger.info(f"finished createTable('{name}')")
+        return await self.get_table(
+            name,
+            keyspace=keyspace,
+            embedding_api_key=embedding_api_key,
+            table_request_timeout_ms=table_request_timeout_ms,
+            table_max_time_ms=table_max_time_ms,
+            table_api_options=table_api_options,
         )
 
     async def drop_table(
@@ -2533,7 +2611,7 @@ class AsyncDatabase:
             return AsyncCommandCursor(
                 address=driver_commander.full_path,
                 items=[
-                    TableDescriptor.from_dict(tab_dict)
+                    TableDescriptor.coerce(tab_dict)
                     for tab_dict in lt_response["status"]["tables"]
                 ],
             )
