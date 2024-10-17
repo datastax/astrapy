@@ -16,7 +16,11 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy.info import TableDescriptor
+from astrapy.data.info.table_descriptor import (
+    TableColumnTypeDescriptor,
+    TableDescriptor,
+    TablePrimaryKeyDescriptor,
+)
 
 TABLE_DICTS = [
     {
@@ -67,6 +71,12 @@ TABLE_DICTS = [
     },
 ]
 
+SHORT_FORM_COLUMN_TYPE = "int"
+LONG_FORM_COLUMN_TYPE = {"type": "int"}
+
+SHORT_FORM_PRIMARY_KEY = "column"
+LONG_FORM_PRIMARY_KEY = {"partitionBy": ["column"], "partitionSort": {}}
+
 
 class TestTableDescriptors:
     @pytest.mark.describe("test of parsing into and from table descriptors")
@@ -78,3 +88,15 @@ class TestTableDescriptors:
             table_desc.as_dict() == table_dict
             for table_desc, table_dict in zip(table_descs, TABLE_DICTS)
         )
+
+    @pytest.mark.describe("test of parsing short forms for column types")
+    def test_columntype_short_form(self) -> None:
+        long_col = TableColumnTypeDescriptor.coerce(LONG_FORM_COLUMN_TYPE)
+        short_col = TableColumnTypeDescriptor.coerce(SHORT_FORM_COLUMN_TYPE)
+        assert long_col == short_col
+
+    @pytest.mark.describe("test of parsing short forms for primary-key descriptor")
+    def test_primarykey_short_form(self) -> None:
+        long_pk = TablePrimaryKeyDescriptor.coerce(LONG_FORM_PRIMARY_KEY)
+        short_pk = TablePrimaryKeyDescriptor.coerce(SHORT_FORM_PRIMARY_KEY)
+        assert long_pk == short_pk

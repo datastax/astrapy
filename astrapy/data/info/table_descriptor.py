@@ -92,6 +92,17 @@ class TableColumnTypeDescriptor:
                 column_type=raw_dict["type"],
             )
 
+    @classmethod
+    def coerce(
+        cls, raw_input: TableColumnTypeDescriptor | dict[str, Any] | str
+    ) -> TableColumnTypeDescriptor:
+        if isinstance(raw_input, TableColumnTypeDescriptor):
+            return raw_input
+        elif isinstance(raw_input, str):
+            return cls.from_dict({"type": raw_input})
+        else:
+            return cls.from_dict(raw_input)
+
 
 @dataclass
 class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
@@ -135,7 +146,7 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"type", "dimension"})
+        warn_residual_keys(cls, raw_dict, {"type", "dimension", "service"})
         return TableVectorColumnTypeDescriptor(
             column_type=raw_dict["type"],
             dimension=raw_dict["dimension"],
@@ -254,6 +265,17 @@ class TablePrimaryKeyDescriptor:
             partition_sort=raw_dict["partitionSort"],
         )
 
+    @classmethod
+    def coerce(
+        cls, raw_input: TablePrimaryKeyDescriptor | dict[str, Any] | str
+    ) -> TablePrimaryKeyDescriptor:
+        if isinstance(raw_input, TablePrimaryKeyDescriptor):
+            return raw_input
+        elif isinstance(raw_input, str):
+            return cls.from_dict({"partitionBy": [raw_input], "partitionSort": {}})
+        else:
+            return cls.from_dict(raw_input)
+
 
 @dataclass
 class TableDefinition:
@@ -309,6 +331,13 @@ class TableDefinition:
             },
             primary_key=TablePrimaryKeyDescriptor.from_dict(raw_dict["primaryKey"]),
         )
+
+    @classmethod
+    def coerce(cls, raw_input: TableDefinition | dict[str, Any]) -> TableDefinition:
+        if isinstance(raw_input, TableDefinition):
+            return raw_input
+        else:
+            return cls.from_dict(raw_input)
 
 
 @dataclass
@@ -367,3 +396,10 @@ class TableDescriptor:
             definition=TableDefinition.from_dict(raw_dict.get("definition") or {}),
             raw_descriptor=raw_dict,
         )
+
+    @classmethod
+    def coerce(cls, raw_input: TableDescriptor | dict[str, Any]) -> TableDescriptor:
+        if isinstance(raw_input, TableDescriptor):
+            return raw_input
+        else:
+            return cls.from_dict(raw_input)

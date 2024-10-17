@@ -2862,7 +2862,7 @@ class AsyncCollection:
 
         Example:
             >>> my_async_coll.database.name
-            'quicktest'
+            'the_db'
         """
 
         return self._database
@@ -2873,7 +2873,7 @@ class AsyncCollection:
         The keyspace this collection is in.
 
         Example:
-            >>> my_coll.keyspace
+            >>> my_async_coll.keyspace
             'default_keyspace'
         """
 
