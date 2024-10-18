@@ -24,10 +24,14 @@ from astrapy.exceptions import DataAPIException
 from astrapy.info import (
     TableColumnTypeDescriptor,
     TableDefinition,
+    TableIndexDefinition,
+    TableIndexOptions,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
+    TableVectorIndexDefinition,
+    TableVectorIndexOptions,
     VectorServiceOptions,
 )
 
@@ -208,3 +212,70 @@ class TestTableLifecycle:
             database.drop_table(created_table_name)
 
         assert database.list_table_names() == pre_tables
+
+    @pytest.mark.describe("test of table create/delete index")
+    def test_tableindex_basic_crd(self) -> None:
+        # TODO add test of list indexes once endpoint available
+        client = DataAPIClient(
+            environment=Environment.HCD,
+            api_options=APIOptions(
+                database_additional_headers={"Feature-Flag-tables": "true"}
+            ),
+        )
+        database = client.get_database(
+            "http://localhost:8181",
+            token=UsernamePasswordTokenProvider("cassandra", "cassandra"),
+        )
+        database.get_database_admin().create_keyspace(
+            "default_keyspace", update_db_keyspace=True
+        )
+        table = database.create_table(
+            "table_for_indexes",
+            definition=TableDefinition(
+                columns={
+                    "p_key": TableColumnTypeDescriptor(column_type="text"),
+                    "p_text": TableColumnTypeDescriptor(column_type="text"),
+                    "p_int": TableColumnTypeDescriptor(column_type="int"),
+                    "p_vector": TableVectorColumnTypeDescriptor(
+                        column_type="vector", dimension=191, service=None
+                    ),
+                },
+                primary_key=TablePrimaryKeyDescriptor(
+                    partition_by=["p_key"],
+                    partition_sort={},
+                ),
+            ),
+        )
+
+        table.create_index(
+            "tfi_idx_p_text",
+            definition=TableIndexDefinition(
+                column="p_text",
+                options=TableIndexOptions(
+                    ascii=False,
+                    normalize=True,
+                    case_sensitive=False,
+                ),
+            ),
+        )
+        table.create_index(
+            "tfi_idx_p_int",
+            definition=TableIndexDefinition(
+                column="p_int",
+                options=TableIndexOptions(),
+            ),
+        )
+        table.create_vector_index(
+            "tfi_idx_p_vector",
+            definition=TableVectorIndexDefinition(
+                column="p_vector",
+                options=TableVectorIndexOptions(
+                    metric="cosine",
+                ),
+            ),
+        )
+
+        table.drop_index("tfi_idx_p_text")
+        table.drop_index("tfi_idx_p_int")
+        table.drop_index("tfi_idx_p_vector")
+        database.drop_table(table)

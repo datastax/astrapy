@@ -1080,16 +1080,17 @@ class Database:
 
         Args:
             name: the name of the table.
-            definition: a complete table definition for the table. Tis can be an
+            definition: a complete table definition for the table. This can be an
                 instance of `TableDefinition` or an equivalent (nested) dictionary,
                 in which case it will be parsed into a `TableDefinition`.
                 See the `astrapy.info.TableDefinition` class for more details
                 and ways to construct this object.
             keyspace: the keyspace where the table is to be created.
                 If not specified, the general setting for this database is used.
-            if_not_exists: if set to True, the command will succeed if a table
-                with the specified name already exists, and nothing will happen
-                on the database. Defaults to False.
+            if_not_exists: if set to True, the command will succeed even if a table
+                with the specified name already exists (in which case no actual
+                table creation takes place on the database). Defaults to False,
+                i.e. an error is raised by the API in case of table-name collision.
             schema_operation_timeout_ms: a timeout, in milliseconds, for the
                 createTable HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
@@ -1130,12 +1131,13 @@ class Database:
             ... )
             ...
             >>> my_table = my_db.create_table("my_table", definition=table_def)
+            TODO add usage
         """
 
         _if_not_exists = False if if_not_exists is None else if_not_exists
-        cc_options = {"ifNotExists": _if_not_exists}
+        ct_options = {"ifNotExists": _if_not_exists}
 
-        cc_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
+        ct_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
 
         _schema_operation_timeout_ms = (
             schema_operation_timeout_ms
@@ -1147,8 +1149,8 @@ class Database:
         cc_payload = {
             "createTable": {
                 "name": name,
-                "definition": cc_definition,
-                "options": cc_options,
+                "definition": ct_definition,
+                "options": ct_options,
             }
         }
         logger.info(f"createTable('{name}')")
@@ -2479,16 +2481,17 @@ class AsyncDatabase:
 
         Args:
             name: the name of the table.
-            definition: a complete table definition for the table. Tis can be an
+            definition: a complete table definition for the table. This can be an
                 instance of `TableDefinition` or an equivalent (nested) dictionary,
                 in which case it will be parsed into a `TableDefinition`.
                 See the `astrapy.info.TableDefinition` class for more details
                 and ways to construct this object.
             keyspace: the keyspace where the table is to be created.
                 If not specified, the general setting for this database is used.
-            if_not_exists: if set to True, the command will succeed if a table
-                with the specified name already exists, and nothing will happen
-                on the database. Defaults to False.
+            if_not_exists: if set to True, the command will succeed even if a table
+                with the specified name already exists (in which case no actual
+                table creation takes place on the database). Defaults to False,
+                i.e. an error is raised by the API in case of table-name collision.
             schema_operation_timeout_ms: a timeout, in milliseconds, for the
                 createTable HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
@@ -2531,12 +2534,13 @@ class AsyncDatabase:
             >>> async_table = asyncio.run(
             ...     async_db.create_table("my_table", definition=table_def)
             ... )
+            TODO add usage
         """
 
         _if_not_exists = False if if_not_exists is None else if_not_exists
-        cc_options = {"ifNotExists": _if_not_exists}
+        ct_options = {"ifNotExists": _if_not_exists}
 
-        cc_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
+        ct_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
 
         _schema_operation_timeout_ms = (
             schema_operation_timeout_ms
@@ -2548,8 +2552,8 @@ class AsyncDatabase:
         cc_payload = {
             "createTable": {
                 "name": name,
-                "definition": cc_definition,
-                "options": cc_options,
+                "definition": ct_definition,
+                "options": ct_options,
             }
         }
         logger.info(f"createTable('{name}')")
