@@ -21,6 +21,7 @@ from typing import Any
 from astrapy.data.info.database_info import DatabaseInfo
 from astrapy.data.info.vectorize import VectorServiceOptions
 from astrapy.utils.str_enum import StrEnum
+from astrapy.utils.unset import _UNSET, UnsetType
 
 
 def warn_residual_keys(
@@ -623,3 +624,213 @@ class TableDescriptor:
             return raw_input
         else:
             return cls._from_dict(raw_input)
+
+
+@dataclass
+class TableIndexOptions:
+    """
+    TODO
+    """
+
+    ascii: bool | UnsetType = _UNSET
+    normalize: bool | UnsetType = _UNSET
+    case_sensitive: bool | UnsetType = _UNSET
+
+    def __repr__(self) -> str:
+        not_null_pieces = [
+            pc
+            for pc in (
+                None if isinstance(self.ascii, UnsetType) else f"ascii={self.ascii}",
+                None
+                if isinstance(self.ascii, UnsetType)
+                else f"normalize={self.normalize}",
+                None
+                if isinstance(self.ascii, UnsetType)
+                else f"case_sensitive={self.case_sensitive}",
+            )
+            if pc is not None
+        ]
+        inner_desc = ", ".join(not_null_pieces)
+        return f"{self.__class__.__name__}({inner_desc})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            k: v
+            for k, v in {
+                "ascii": None if isinstance(self.ascii, UnsetType) else self.ascii,
+                "normalize": None
+                if isinstance(self.normalize, UnsetType)
+                else self.normalize,
+                "caseSensitive": None
+                if isinstance(self.case_sensitive, UnsetType)
+                else self.case_sensitive,
+            }.items()
+            if v is not None
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableIndexOptions:
+        """
+        Create an instance of TableIndexOptions from a dictionary
+        such as one from the Data API.
+        """
+
+        warn_residual_keys(cls, raw_dict, {"ascii", "normalize", "caseSensitive"})
+        return TableIndexOptions(
+            ascii=raw_dict["ascii"] if raw_dict.get("ascii") is not None else _UNSET,
+            normalize=raw_dict["normalize"]
+            if raw_dict.get("normalize") is not None
+            else _UNSET,
+            case_sensitive=raw_dict["caseSensitive"]
+            if raw_dict.get("caseSensitive") is not None
+            else _UNSET,
+        )
+
+    @classmethod
+    def coerce(cls, raw_input: TableIndexOptions | dict[str, Any]) -> TableIndexOptions:
+        if isinstance(raw_input, TableIndexOptions):
+            return raw_input
+        else:
+            return cls._from_dict(raw_input)
+
+
+@dataclass
+class TableVectorIndexOptions:
+    """
+    TODO
+    """
+
+    metric: str | UnsetType = _UNSET
+
+    def __repr__(self) -> str:
+        not_null_pieces = [
+            pc
+            for pc in (
+                None if isinstance(self.metric, UnsetType) else f"metric={self.metric}",
+            )
+            if pc is not None
+        ]
+        inner_desc = ", ".join(not_null_pieces)
+        return f"{self.__class__.__name__}({inner_desc})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            k: v
+            for k, v in {
+                "metric": None if isinstance(self.metric, UnsetType) else self.metric,
+            }.items()
+            if v is not None
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableVectorIndexOptions:
+        """
+        Create an instance of TableIndexOptions from a dictionary
+        such as one from the Data API.
+        """
+
+        warn_residual_keys(cls, raw_dict, {"metric"})
+        return TableVectorIndexOptions(
+            metric=raw_dict["metric"] if raw_dict.get("metric") is not None else _UNSET,
+        )
+
+    @classmethod
+    def coerce(
+        cls, raw_input: TableVectorIndexOptions | dict[str, Any]
+    ) -> TableVectorIndexOptions:
+        if isinstance(raw_input, TableVectorIndexOptions):
+            return raw_input
+        else:
+            return cls._from_dict(raw_input)
+
+
+@dataclass
+class TableIndexDefinition:
+    """
+    TODO
+    """
+
+    column: str
+    options: TableIndexOptions
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.column}, options={self.options})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            "column": self.column,
+            "options": self.options.as_dict(),
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableIndexDefinition:
+        """
+        Create an instance of TableIndexDefinition from a dictionary
+        such as one from the Data API.
+        """
+
+        warn_residual_keys(cls, raw_dict, {"column", "options"})
+        return TableIndexDefinition(
+            column=raw_dict["column"],
+            options=TableIndexOptions.coerce(raw_dict["options"]),
+        )
+
+    @classmethod
+    def coerce(
+        cls, raw_input: TableIndexDefinition | dict[str, Any]
+    ) -> TableIndexDefinition:
+        if isinstance(raw_input, TableIndexDefinition):
+            return raw_input
+        else:
+            _filled_raw_input = {**{"options": {}}, **raw_input}
+            return cls._from_dict(_filled_raw_input)
+
+
+@dataclass
+class TableVectorIndexDefinition:
+    """
+    TODO
+    """
+
+    column: str
+    options: TableVectorIndexOptions
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.column}, options={self.options})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            "column": self.column,
+            "options": self.options.as_dict(),
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableVectorIndexDefinition:
+        """
+        Create an instance of TableIndexDefinition from a dictionary
+        such as one from the Data API.
+        """
+
+        warn_residual_keys(cls, raw_dict, {"column", "options"})
+        return TableVectorIndexDefinition(
+            column=raw_dict["column"],
+            options=TableVectorIndexOptions.coerce(raw_dict["options"]),
+        )
+
+    @classmethod
+    def coerce(
+        cls, raw_input: TableVectorIndexDefinition | dict[str, Any]
+    ) -> TableVectorIndexDefinition:
+        if isinstance(raw_input, TableVectorIndexDefinition):
+            return raw_input
+        else:
+            _filled_raw_input = {**{"options": {}}, **raw_input}
+            return cls._from_dict(_filled_raw_input)

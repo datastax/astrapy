@@ -20,7 +20,11 @@ from astrapy.info import (
     TableColumnTypeDescriptor,
     TableDefinition,
     TableDescriptor,
+    TableIndexDefinition,
+    TableIndexOptions,
     TablePrimaryKeyDescriptor,
+    TableVectorIndexDefinition,
+    TableVectorIndexOptions,
     VectorServiceOptions,
 )
 
@@ -120,6 +124,56 @@ LONG_FORM_COLUMN_TYPE = {"type": "int"}
 
 SHORT_FORM_PRIMARY_KEY = "column"
 LONG_FORM_PRIMARY_KEY = {"partitionBy": ["column"], "partitionSort": {}}
+
+INDEX_OPTIONS_FULL = TableIndexDefinition(
+    column="the_column",
+    options=TableIndexOptions(
+        ascii=True,
+        normalize=False,
+        case_sensitive=True,
+    ),
+)
+INDEX_OPTIONS_DICT_FULL = {
+    "column": "the_column",
+    "options": {
+        "ascii": True,
+        "normalize": False,
+        "caseSensitive": True,
+    },
+}
+INDEX_OPTIONS_DICT_PARTIAL = {
+    "column": "the_column",
+    "options": {
+        "normalize": True,
+    },
+}
+INDEX_OPTIONS_DICT_MINIMAL = {
+    "column": "the_column",
+    "options": {},
+}
+INDEX_OPTIONS_DICT_COERCEABLE_MINIMAL = {
+    "column": "the_column",
+}
+
+VECTOR_INDEX_OPTIONS_FULL = TableVectorIndexDefinition(
+    column="the_v_column",
+    options=TableVectorIndexOptions(
+        metric="the_metric",
+    ),
+)
+VECTOR_INDEX_OPTIONS_DICT_FULL = {
+    "column": "the_v_column",
+    "options": {
+        "metric": "the_metric",
+    },
+}
+VECTOR_INDEX_OPTIONS_DICT_MINIMAL = {
+    "column": "the_v_column",
+    "options": {},
+}
+VECTOR_INDEX_OPTIONS_DICT_COERCEABLE_MINIMAL = {
+    "column": "the_v_column",
+}
 
 
 class TestTableDescriptors:
@@ -231,3 +285,36 @@ class TestTableDescriptors:
             }
         )
         assert adef0 == adef1
+
+    @pytest.mark.describe("test of parsing of index definitions")
+    def test_indexdefinition_parsing(self) -> None:
+        ti_full = TableIndexDefinition.coerce(INDEX_OPTIONS_DICT_FULL)
+        assert INDEX_OPTIONS_DICT_FULL == ti_full.as_dict()
+        assert ti_full == INDEX_OPTIONS_FULL
+
+        ti_partial = TableIndexDefinition.coerce(INDEX_OPTIONS_DICT_PARTIAL)
+        assert INDEX_OPTIONS_DICT_PARTIAL == ti_partial.as_dict()
+
+        ti_minimal = TableIndexDefinition.coerce(INDEX_OPTIONS_DICT_MINIMAL)
+        assert INDEX_OPTIONS_DICT_MINIMAL == ti_minimal.as_dict()
+
+        ti_coerceable_minimal = TableIndexDefinition.coerce(
+            INDEX_OPTIONS_DICT_COERCEABLE_MINIMAL
+        )
+        assert INDEX_OPTIONS_DICT_MINIMAL == ti_coerceable_minimal.as_dict()
+
+    @pytest.mark.describe("test of parsing of vector index definitions")
+    def test_vectorindexdefinition_parsing(self) -> None:
+        tvi_full = TableVectorIndexDefinition.coerce(VECTOR_INDEX_OPTIONS_DICT_FULL)
+        assert VECTOR_INDEX_OPTIONS_DICT_FULL == tvi_full.as_dict()
+        assert tvi_full == VECTOR_INDEX_OPTIONS_FULL
+
+        tvi_minimal = TableVectorIndexDefinition.coerce(
+            VECTOR_INDEX_OPTIONS_DICT_MINIMAL
+        )
+        assert VECTOR_INDEX_OPTIONS_DICT_MINIMAL == tvi_minimal.as_dict()
+
+        tvi_coerceable_minimal = TableVectorIndexDefinition.coerce(
+            VECTOR_INDEX_OPTIONS_DICT_COERCEABLE_MINIMAL
+        )
+        assert VECTOR_INDEX_OPTIONS_DICT_MINIMAL == tvi_coerceable_minimal.as_dict()
