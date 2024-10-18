@@ -71,6 +71,24 @@ TABLE_DICTS = [
             "primaryKey": {"partitionBy": ["id"], "partitionSort": {}},
         },
     },
+    {
+        "name": "uns_counter",
+        "definition": {
+            "columns": {
+                "p_text": {"type": "text"},
+                "p_counter": {
+                    "type": "UNSUPPORTED",
+                    "apiSupport": {
+                        "createTable": False,
+                        "insert": False,
+                        "read": False,
+                        "cqlDefinition": "counter",
+                    },
+                },
+            },
+            "primaryKey": {"partitionBy": ["p_text"], "partitionSort": {}},
+        },
+    },
 ]
 
 DICT_DEFINITION = {

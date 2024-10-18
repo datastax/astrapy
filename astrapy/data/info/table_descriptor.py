@@ -86,6 +86,8 @@ class TableColumnTypeDescriptor:
             return TableValuedColumnTypeDescriptor._from_dict(raw_dict)
         elif raw_dict["type"] == "vector":
             return TableVectorColumnTypeDescriptor._from_dict(raw_dict)
+        elif raw_dict["type"] == "UNSUPPORTED":
+            return TableUnsupportedColumnTypeDescriptor._from_dict(raw_dict)
         else:
             warn_residual_keys(cls, raw_dict, {"type"})
             return TableColumnTypeDescriptor(
@@ -219,6 +221,94 @@ class TableKeyValuedColumnTypeDescriptor(TableValuedColumnTypeDescriptor):
             column_type=raw_dict["type"],
             key_type=raw_dict["keyType"],
             value_type=raw_dict["valueType"],
+        )
+
+
+@dataclass
+class TableAPISupportDescriptor:
+    """
+    TODO
+    """
+
+    cql_definition: str
+    create_table: bool
+    insert: bool
+    read: bool
+
+    def __repr__(self) -> str:
+        desc = ", ".join(
+            [
+                f'"{self.cql_definition}"',
+                f"create_table={self.create_table}",
+                f"insert={self.insert}",
+                f"read={self.read}",
+            ]
+        )
+        return f"{self.__class__.__name__}({desc})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            "cqlDefinition": self.cql_definition,
+            "createTable": self.create_table,
+            "insert": self.insert,
+            "read": self.read,
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableAPISupportDescriptor:
+        """
+        Create an instance of TableAPISupportDescriptor from a dictionary
+        such as one from the Data API.
+        """
+
+        warn_residual_keys(
+            cls,
+            raw_dict,
+            {"cqlDefinition", "createTable", "insert", "read"},
+        )
+        return TableAPISupportDescriptor(
+            cql_definition=raw_dict["cqlDefinition"],
+            create_table=raw_dict["createTable"],
+            insert=raw_dict["insert"],
+            read=raw_dict["read"],
+        )
+
+
+@dataclass
+class TableUnsupportedColumnTypeDescriptor(TableColumnTypeDescriptor):
+    """
+    TODO
+    This has no coerce since it is always only found in API responses
+    """
+
+    api_support: TableAPISupportDescriptor
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.api_support.cql_definition})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            "type": self.column_type,
+            "apiSupport": self.api_support.as_dict(),
+        }
+
+    @classmethod
+    def _from_dict(
+        cls, raw_dict: dict[str, Any]
+    ) -> TableUnsupportedColumnTypeDescriptor:
+        """
+        Create an instance of TableUnsupportedColumnTypeDescriptor from a dictionary
+        such as one from the Data API.
+        """
+
+        warn_residual_keys(cls, raw_dict, {"type", "apiSupport"})
+        return TableUnsupportedColumnTypeDescriptor(
+            column_type=raw_dict["type"],
+            api_support=TableAPISupportDescriptor._from_dict(raw_dict["apiSupport"]),
         )
 
 

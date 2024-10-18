@@ -23,12 +23,14 @@ from astrapy.data.info.collection_descriptor import (
 )
 from astrapy.data.info.database_info import AdminDatabaseInfo, DatabaseInfo
 from astrapy.data.info.table_descriptor import (
+    TableAPISupportDescriptor,
     TableColumnTypeDescriptor,
     TableDefinition,
     TableDescriptor,
     TableInfo,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
+    TableUnsupportedColumnTypeDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
 )
@@ -57,12 +59,14 @@ __all__ = [
     "EmbeddingProviderAuthentication",
     "EmbeddingProvider",
     "FindEmbeddingProvidersResult",
+    "TableAPISupportDescriptor",
     "TableColumnTypeDescriptor",
     "TableDefinition",
     "TableDescriptor",
     "TableInfo",
     "TableKeyValuedColumnTypeDescriptor",
     "TablePrimaryKeyDescriptor",
+    "TableUnsupportedColumnTypeDescriptor",
     "TableValuedColumnTypeDescriptor",
     "TableVectorColumnTypeDescriptor",
 ]
