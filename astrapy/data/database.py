@@ -765,10 +765,15 @@ class Database:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {"createCollection": {"name": name, "options": cc_options}}
         logger.info(f"createCollection('{name}')")
-        driver_commander.request(
+        cc_response = driver_commander.request(
             payload=cc_payload,
             timeout_info=timeout_manager.remaining_timeout_info(),
         )
+        if cc_response.get("status") != {"ok": 1}:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from createCollection API command.",
+                raw_response=cc_response,
+            )
         logger.info(f"finished createCollection('{name}')")
         return self.get_collection(
             name,
@@ -836,6 +841,11 @@ class Database:
             payload=dc_payload,
             timeout_info=base_timeout_info(_schema_operation_timeout_ms),
         )
+        if dc_response.get("status") != {"ok": 1}:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from deleteCollection API command.",
+                raw_response=dc_response,
+            )
         logger.info(f"finished deleteCollection('{_collection_name}')")
         return dc_response.get("status", {})  # type: ignore[no-any-return]
 
@@ -1070,7 +1080,11 @@ class Database:
 
         Args:
             name: the name of the table.
-            definition: TODO
+            definition: a complete table definition for the table. Tis can be an
+                instance of `TableDefinition` or an equivalent (nested) dictionary,
+                in which case it will be parsed into a `TableDefinition`.
+                See the `astrapy.info.TableDefinition` class for more details
+                and ways to construct this object.
             keyspace: the keyspace where the table is to be created.
                 If not specified, the general setting for this database is used.
             if_not_exists: if set to True, the command will succeed if a table
@@ -1108,11 +1122,14 @@ class Database:
             newly-created table.
 
         Example:
-            TODO
-            >>> new_tab = my_db.create_table("my_v_tab", dimension=3)
-            >>> XXX new_tab.insert_one({"name": "the_row", "$vector": [0.4, 0.5, 0.7]})
-            InsertOneResult(raw_results=..., inserted_id='e22dd65e-...-...-...')
-
+            >>> table_def = (
+            ...     TableDefinition.zero()
+            ...     .add_column("id", "text")
+            ...     .add_column("name", "text")
+            ...     .add_partition_by(["id"])
+            ... )
+            ...
+            >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
         _if_not_exists = False if if_not_exists is None else if_not_exists
@@ -1135,10 +1152,15 @@ class Database:
             }
         }
         logger.info(f"createTable('{name}')")
-        driver_commander.request(
+        ct_response = driver_commander.request(
             payload=cc_payload,
             timeout_info=_schema_operation_timeout_ms,
         )
+        if ct_response.get("status") != {"ok": 1}:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from createTable API command.",
+                raw_response=ct_response,
+            )
         logger.info(f"finished createTable('{name}')")
         return self.get_table(
             name,
@@ -1206,6 +1228,11 @@ class Database:
             payload=dt_payload,
             timeout_info=base_timeout_info(_schema_operation_timeout_ms),
         )
+        if dt_response.get("status") != {"ok": 1}:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from dropTable API command.",
+                raw_response=dt_response,
+            )
         logger.info(f"finished dropTable('{_table_name}')")
         return dt_response.get("status", {})  # type: ignore[no-any-return]
 
@@ -2135,10 +2162,15 @@ class AsyncDatabase:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {"createCollection": {"name": name, "options": cc_options}}
         logger.info(f"createCollection('{name}')")
-        await driver_commander.async_request(
+        cc_response = await driver_commander.async_request(
             payload=cc_payload,
             timeout_info=timeout_manager.remaining_timeout_info(),
         )
+        if cc_response.get("status") != {"ok": 1}:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from createCollection API command.",
+                raw_response=cc_response,
+            )
         logger.info(f"createCollection('{name}')")
         return await self.get_collection(
             name,
@@ -2206,6 +2238,11 @@ class AsyncDatabase:
             payload=dc_payload,
             timeout_info=base_timeout_info(_schema_operation_timeout_ms),
         )
+        if dc_response.get("status") != {"ok": 1}:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from deleteCollection API command.",
+                raw_response=dc_response,
+            )
         logger.info(f"finished deleteCollection('{_collection_name}')")
         return dc_response.get("status", {})  # type: ignore[no-any-return]
 
@@ -2373,9 +2410,8 @@ class AsyncDatabase:
                 (but without any form of validation).
 
         Example:
-            TODO
-            >>> my_tab = my_db.get_table("my_table")
-            >>> my_tab.count_documents({}, upper_bound=100)
+            >>> my_async_tab = my_async_db.get_table("my_table")
+            >>> asyncio.run(my_async_tab.count_documents({}, upper_bound=100))
             41
         """
 
@@ -2443,7 +2479,11 @@ class AsyncDatabase:
 
         Args:
             name: the name of the table.
-            definition: TODO
+            definition: a complete table definition for the table. Tis can be an
+                instance of `TableDefinition` or an equivalent (nested) dictionary,
+                in which case it will be parsed into a `TableDefinition`.
+                See the `astrapy.info.TableDefinition` class for more details
+                and ways to construct this object.
             keyspace: the keyspace where the table is to be created.
                 If not specified, the general setting for this database is used.
             if_not_exists: if set to True, the command will succeed if a table
@@ -2481,8 +2521,16 @@ class AsyncDatabase:
             newly-created table.
 
         Example:
-            TODO
-
+            >>> table_def = (
+            ...     TableDefinition.zero()
+            ...     .add_column("id", "text")
+            ...     .add_column("name", "text")
+            ...     .add_partition_by(["id"])
+            ... )
+            ...
+            >>> async_table = asyncio.run(
+            ...     async_db.create_table("my_table", definition=table_def)
+            ... )
         """
 
         _if_not_exists = False if if_not_exists is None else if_not_exists
@@ -2505,10 +2553,15 @@ class AsyncDatabase:
             }
         }
         logger.info(f"createTable('{name}')")
-        await driver_commander.async_request(
+        ct_response = await driver_commander.async_request(
             payload=cc_payload,
             timeout_info=_schema_operation_timeout_ms,
         )
+        if ct_response.get("status") != {"ok": 1}:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from createTable API command.",
+                raw_response=ct_response,
+            )
         logger.info(f"finished createTable('{name}')")
         return await self.get_table(
             name,
@@ -2540,12 +2593,11 @@ class AsyncDatabase:
             a dictionary in the form {"ok": 1} if the command succeeds.
 
         Example:
-            TODO
             >>> my_db.list_table_names()
             ['a_table', 'my_v_tab', 'another_tab']
-            >>> my_db.drop_collection("my_v_tab")
-            {'ok': 1}
-            >>> my_db.list_collection_names()
+            >>> my_db.drop_table("my_v_tab")
+            {"ok": 1}
+            >>> my_db.list_table_names()
             ['a_table', 'another_tab']
 
         Note:
@@ -2577,6 +2629,11 @@ class AsyncDatabase:
             payload=dt_payload,
             timeout_info=base_timeout_info(_schema_operation_timeout_ms),
         )
+        if dt_response.get("status") != {"ok": 1}:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from dropTable API command.",
+                raw_response=dt_response,
+            )
         logger.info(f"finished dropTable('{_table_name}')")
         return dt_response.get("status", {})  # type: ignore[no-any-return]
 
@@ -2663,8 +2720,14 @@ class AsyncDatabase:
             a list of the table names as strings, in no particular order.
 
         Example:
-            >>> asyncio.run(my_async_db.list_table_names())
-            ['a_table', 'another_table']
+            >>> async def destroy_temp_table(async_db: AsyncDatabase) -> None:
+            ...     print(await async_db.list_table_names())
+            ...     await async_db.drop_table("my_v_tab")
+            ...     print(await async_db.list_table_names())
+            ...
+            >>> asyncio.run(destroy_temp_table(my_async_db))
+            ['a_table', 'my_v_tab', 'another_tab']
+            ['a_table', 'another_tab']
         """
 
         _request_timeout_ms = (

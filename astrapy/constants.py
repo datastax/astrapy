@@ -16,7 +16,6 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, Tuple, Union
 
-from astrapy.data.info.table_descriptor import TableScalarType
 from astrapy.settings.defaults import (
     DATA_API_ENVIRONMENT_CASSANDRA,
     DATA_API_ENVIRONMENT_DEV,
@@ -133,7 +132,6 @@ __all__ = [
     "Environment",
     "ReturnDocument",
     "SortDocuments",
-    "TableScalarType",
     "VectorMetric",
 ]
 

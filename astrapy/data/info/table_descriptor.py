@@ -398,6 +398,8 @@ class TableDefinition:
     Attributes:
         columns: a map from column names to their type definition object.
         primary_key: a specification of the primary key for the table.
+
+    TODO ways to build one, examples (here and throughout)
     """
 
     columns: dict[str, TableColumnTypeDescriptor]
