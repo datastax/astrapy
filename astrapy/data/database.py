@@ -1052,6 +1052,7 @@ class Database:
         *,
         definition: TableDefinition | dict[str, Any],
         keyspace: str | None = None,
+        if_not_exists: bool | None = None,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
@@ -1072,6 +1073,9 @@ class Database:
             definition: TODO
             keyspace: the keyspace where the table is to be created.
                 If not specified, the general setting for this database is used.
+            if_not_exists: if set to True, the command will succeed if a table
+                with the specified name already exists, and nothing will happen
+                on the database. Defaults to False.
             schema_operation_timeout_ms: a timeout, in milliseconds, for the
                 createTable HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
@@ -1111,6 +1115,9 @@ class Database:
 
         """
 
+        _if_not_exists = False if if_not_exists is None else if_not_exists
+        cc_options = {"ifNotExists": _if_not_exists}
+
         cc_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
 
         _schema_operation_timeout_ms = (
@@ -1120,7 +1127,13 @@ class Database:
         )
 
         driver_commander = self._get_driver_commander(keyspace=keyspace)
-        cc_payload = {"createTable": {"name": name, "definition": cc_definition}}
+        cc_payload = {
+            "createTable": {
+                "name": name,
+                "definition": cc_definition,
+                "options": cc_options,
+            }
+        }
         logger.info(f"createTable('{name}')")
         driver_commander.request(
             payload=cc_payload,
@@ -2412,6 +2425,7 @@ class AsyncDatabase:
         *,
         definition: TableDefinition | dict[str, Any],
         keyspace: str | None = None,
+        if_not_exists: bool | None = None,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
@@ -2432,6 +2446,9 @@ class AsyncDatabase:
             definition: TODO
             keyspace: the keyspace where the table is to be created.
                 If not specified, the general setting for this database is used.
+            if_not_exists: if set to True, the command will succeed if a table
+                with the specified name already exists, and nothing will happen
+                on the database. Defaults to False.
             schema_operation_timeout_ms: a timeout, in milliseconds, for the
                 createTable HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
@@ -2468,6 +2485,9 @@ class AsyncDatabase:
 
         """
 
+        _if_not_exists = False if if_not_exists is None else if_not_exists
+        cc_options = {"ifNotExists": _if_not_exists}
+
         cc_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
 
         _schema_operation_timeout_ms = (
@@ -2477,7 +2497,13 @@ class AsyncDatabase:
         )
 
         driver_commander = self._get_driver_commander(keyspace=keyspace)
-        cc_payload = {"createTable": {"name": name, "definition": cc_definition}}
+        cc_payload = {
+            "createTable": {
+                "name": name,
+                "definition": cc_definition,
+                "options": cc_options,
+            }
+        }
         logger.info(f"createTable('{name}')")
         await driver_commander.async_request(
             payload=cc_payload,

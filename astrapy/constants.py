@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, Tuple, Union
 
+from astrapy.data.info.table_descriptor import TableScalarType
 from astrapy.settings.defaults import (
     DATA_API_ENVIRONMENT_CASSANDRA,
     DATA_API_ENVIRONMENT_DEV,
@@ -27,10 +28,6 @@ from astrapy.settings.defaults import (
 )
 
 DocumentType = Dict[str, Any]
-# ["field1", "field2"] allowed, but also:
-# {"field": True/False}
-# {"array_field": {"$slice": n}
-# {"array_field": {"$slice": [n, m]}
 ProjectionType = Union[
     Iterable[str], Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
 ]
@@ -130,6 +127,15 @@ class Environment:
     values = {PROD, DEV, TEST, DSE, HCD, CASSANDRA, OTHER}
     astra_db_values = {PROD, DEV, TEST}
 
+
+__all__ = [
+    "DefaultIdType",
+    "Environment",
+    "ReturnDocument",
+    "SortDocuments",
+    "TableScalarType",
+    "VectorMetric",
+]
 
 __pdoc__ = {
     "normalize_optional_projection": False,

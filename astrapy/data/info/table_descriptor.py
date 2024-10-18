@@ -20,6 +20,7 @@ from typing import Any
 
 from astrapy.data.info.database_info import DatabaseInfo
 from astrapy.data.info.vectorize import VectorServiceOptions
+from astrapy.utils.str_enum import StrEnum
 
 
 def warn_residual_keys(
@@ -31,6 +32,27 @@ def warn_residual_keys(
             "Unexpected key(s) encountered parsing a dictionary into "
             f"a `{klass.__name__}`: '{','.join(sorted(residual_keys))}'"
         )
+
+
+class TableScalarType(StrEnum):
+    ASCII = "ASCII"
+    BIGINT = "BIGINT"
+    BLOB = "BLOB"
+    BOOLEAN = "BOOLEAN"
+    DATE = "DATE"
+    DECIMAL = "DECIMAL"
+    DOUBLE = "DOUBLE"
+    DURATION = "DURATION"
+    FLOAT = "FLOAT"
+    INET = "INET"
+    INT = "INT"
+    SMALLINT = "SMALLINT"
+    TEXT = "TEXT"
+    TIME = "TIME"
+    TIMESTAMP = "TIMESTAMP"
+    TINYINT = "TINYINT"
+    UUID = "UUID"
+    VARINT = "VARINT"
 
 
 @dataclass

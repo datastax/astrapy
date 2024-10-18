@@ -20,6 +20,7 @@ from astrapy import DataAPIClient
 from astrapy.api_options import APIOptions
 from astrapy.authentication import UsernamePasswordTokenProvider
 from astrapy.constants import Environment
+from astrapy.exceptions import DataAPIException
 from astrapy.info import (
     TableColumnTypeDescriptor,
     TableDefinition,
@@ -156,28 +157,40 @@ class TestTableLifecycle:
                 ),
             },
         )
+
+        ct_fluent_definition = (
+            TableDefinition.zero()
+            .add_column("p_text", "text")
+            .add_column("p_int", "int")
+            .add_column("p_boolean", "boolean")
+            .add_primitive_column("p_float", "float")
+            .add_set_column("p_set", "int")
+            .add_map_column("p_map", "text", "int")
+            .add_vector_column("p_vector", dimension=191)
+            .add_vector_column(
+                "p_vectorize",
+                dimension=1024,
+                service=VectorServiceOptions(
+                    provider="mistral",
+                    model_name="mistral-embed",
+                ),
+            )
+            .add_partition_by(["p_text", "p_int"])
+            .add_partition_sort({"p_boolean": -1, "p_float": 1})
+        )
         database.create_table(
             "table_fluent",
-            definition=(
-                TableDefinition.zero()
-                .add_column("p_text", "text")
-                .add_column("p_int", "int")
-                .add_column("p_boolean", "boolean")
-                .add_primitive_column("p_float", "float")
-                .add_set_column("p_set", "int")
-                .add_map_column("p_map", "text", "int")
-                .add_vector_column("p_vector", dimension=191)
-                .add_vector_column(
-                    "p_vectorize",
-                    dimension=1024,
-                    service=VectorServiceOptions(
-                        provider="mistral",
-                        model_name="mistral-embed",
-                    ),
-                )
-                .add_partition_by(["p_text", "p_int"])
-                .add_partition_sort({"p_boolean": -1, "p_float": 1})
-            ),
+            definition=ct_fluent_definition,
+        )
+        with pytest.raises(DataAPIException):
+            database.create_table(
+                "table_fluent",
+                definition=ct_fluent_definition,
+            )
+        database.create_table(
+            "table_fluent",
+            definition=ct_fluent_definition,
+            if_not_exists=True,
         )
 
         assert set(database.list_table_names()) - set(pre_tables) == created_table_names
