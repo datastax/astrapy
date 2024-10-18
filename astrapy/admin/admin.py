@@ -22,7 +22,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Sequence
 
-from astrapy.authentication import coerce_possible_token_provider, redact_secret
+from astrapy.authentication import coerce_possible_token_provider
 from astrapy.constants import CallerType, Environment
 from astrapy.cursors import CommandCursor
 from astrapy.exceptions import (
@@ -540,18 +540,7 @@ class AstraDBAdmin:
         self._dev_ops_api_commander = self._get_dev_ops_api_commander()
 
     def __repr__(self) -> str:
-        token_desc: str | None
-        if self.api_options.token:
-            token_desc = f'"{redact_secret(str(self.api_options.token), 15)}"'
-        else:
-            token_desc = None
-        env_desc: str | None
-        if self.api_options.environment == Environment.PROD:
-            env_desc = None
-        else:
-            env_desc = f'environment="{self.api_options.environment}"'
-        parts = [pt for pt in [token_desc, env_desc] if pt is not None]
-        return f"{self.__class__.__name__}({', '.join(parts)})"
+        return f"{self.__class__.__name__}({self.api_options})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, AstraDBAdmin):
@@ -2026,18 +2015,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             self._astra_db_admin = spawner_astra_db_admin
 
     def __repr__(self) -> str:
-        ep_desc = f'api_endpoint="{self.api_endpoint}"'
-        token_desc: str | None
-        if self.api_options.token:
-            token_desc = f'token="{redact_secret(str(self.api_options.token), 15)}"'
-        else:
-            token_desc = None
-        env_desc: str | None
-        if self.api_options.environment == Environment.PROD:
-            env_desc = None
-        else:
-            env_desc = f'environment="{self.api_options.environment}"'
-        parts = [pt for pt in [ep_desc, token_desc, env_desc] if pt is not None]
+        parts = [
+            f'api_endpoint="{self.api_endpoint}"',
+            f"api_options={self.api_options}",
+        ]
         return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:
@@ -3296,14 +3277,10 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self._api_commander = self._get_api_commander()
 
     def __repr__(self) -> str:
-        ep_desc = f'api_endpoint="{self.api_endpoint}"'
-        token_desc: str | None
-        if self.api_options.token:
-            token_desc = f'token="{redact_secret(str(self.api_options.token), 15)}"'
-        else:
-            token_desc = None
-        env_desc = f'environment="{self.api_options.environment}"'
-        parts = [pt for pt in [ep_desc, token_desc, env_desc] if pt is not None]
+        parts = [
+            f'api_endpoint="{self.api_endpoint}"',
+            f"api_options={self.api_options}",
+        ]
         return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:

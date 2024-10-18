@@ -22,6 +22,7 @@ from astrapy.authentication import (
     EmbeddingHeadersProvider,
     StaticTokenProvider,
     TokenProvider,
+    redact_secret,
 )
 from astrapy.constants import Environment
 from astrapy.settings.defaults import (
@@ -35,6 +36,7 @@ from astrapy.settings.defaults import (
     DEFAULT_SCHEMA_OPERATION_TIMEOUT_MS,
     DEV_OPS_URL_ENV_MAP,
     DEV_OPS_VERSION_ENV_MAP,
+    HEADER_REDACT_PLACEHOLDER,
 )
 from astrapy.utils.unset import _UNSET, UnsetType
 
@@ -174,6 +176,75 @@ class APIOptions:
     data_api_url_options: DataAPIURLOptions | UnsetType = _UNSET
     dev_ops_api_url_options: DevOpsAPIURLOptions | UnsetType = _UNSET
 
+    def __repr__(self) -> str:
+        # special items
+        _admin_additional_headers: dict[str, str | None] | UnsetType
+        _redacted_header_names = (
+            set()
+            if isinstance(self.redacted_header_names, UnsetType)
+            else self.redacted_header_names
+        )
+        if not isinstance(self.admin_additional_headers, UnsetType):
+            _admin_additional_headers = {
+                k: v if k not in _redacted_header_names else HEADER_REDACT_PLACEHOLDER
+                for k, v in self.admin_additional_headers.items()
+            }
+        else:
+            _admin_additional_headers = _UNSET
+        _database_additional_headers: dict[str, str | None] | UnsetType
+        if not isinstance(self.database_additional_headers, UnsetType):
+            _database_additional_headers = {
+                k: v if k not in _redacted_header_names else HEADER_REDACT_PLACEHOLDER
+                for k, v in self.database_additional_headers.items()
+            }
+        else:
+            _database_additional_headers = _UNSET
+        _token_desc: str | None
+        if not isinstance(self.token, UnsetType):
+            _token_desc = f'token="{redact_secret(str(self.token), 15)}"'
+        else:
+            _token_desc = None
+
+        non_unset_pieces = [
+            pc
+            for pc in (
+                None
+                if isinstance(self.environment, UnsetType)
+                else f"environment={self.environment}",
+                None
+                if isinstance(self.callers, UnsetType)
+                else f"callers={self.callers}",
+                None
+                if isinstance(_database_additional_headers, UnsetType)
+                else f"database_additional_headers={_database_additional_headers}",
+                None
+                if isinstance(_admin_additional_headers, UnsetType)
+                else f"admin_additional_headers={_admin_additional_headers}",
+                None
+                if isinstance(self.redacted_header_names, UnsetType)
+                else f"redacted_header_names={self.redacted_header_names}",
+                _token_desc,
+                None
+                if isinstance(self.embedding_api_key, UnsetType)
+                else f"embedding_api_key={self.embedding_api_key}",
+                None
+                if isinstance(self.timeout_options, UnsetType)
+                else f"timeout_options={self.timeout_options}",
+                None
+                if isinstance(self.payload_transform_options, UnsetType)
+                else f"payload_transform_options={self.payload_transform_options}",
+                None
+                if isinstance(self.data_api_url_options, UnsetType)
+                else f"data_api_url_options={self.data_api_url_options}",
+                None
+                if isinstance(self.dev_ops_api_url_options, UnsetType)
+                else f"dev_ops_api_url_options={self.dev_ops_api_url_options}",
+            )
+            if pc is not None
+        ]
+        inner_desc = ", ".join(non_unset_pieces)
+        return f"{self.__class__.__name__}({inner_desc})"
+
 
 @dataclass
 class FullAPIOptions(APIOptions):
@@ -189,6 +260,31 @@ class FullAPIOptions(APIOptions):
     payload_transform_options: FullPayloadTransformOptions
     data_api_url_options: FullDataAPIURLOptions
     dev_ops_api_url_options: FullDevOpsAPIURLOptions
+
+    def __repr__(self) -> str:
+        # special items
+        _token_desc: str | None
+        if self.token:
+            _token_desc = f'token="{redact_secret(str(self.token), 15)}"'
+        else:
+            _token_desc = None
+
+        non_unset_pieces = [
+            pc
+            for pc in (
+                None
+                if self.environment == Environment.PROD
+                else f"environment={self.environment}",
+                _token_desc,
+                f"embedding_api_key={self.embedding_api_key}"
+                if self.embedding_api_key
+                else None,
+                "...",
+            )
+            if pc is not None
+        ]
+        inner_desc = ", ".join(non_unset_pieces)
+        return f"{self.__class__.__name__}({inner_desc})"
 
     def with_override(self, other: APIOptions | None | UnsetType) -> FullAPIOptions:
         if isinstance(other, UnsetType) or other is None:

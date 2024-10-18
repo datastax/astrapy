@@ -22,7 +22,6 @@ from astrapy.admin import fetch_database_info, parse_api_endpoint
 from astrapy.authentication import (
     coerce_possible_embedding_headers_provider,
     coerce_possible_token_provider,
-    redact_secret,
 )
 from astrapy.constants import CallerType, Environment
 from astrapy.cursors import AsyncCommandCursor, CommandCursor
@@ -195,17 +194,15 @@ class Database:
 
     def __repr__(self) -> str:
         ep_desc = f'api_endpoint="{self.api_endpoint}"'
-        token_desc: str | None
-        if self.api_options.token:
-            token_desc = f'token="{redact_secret(str(self.api_options.token), 15)}"'
-        else:
-            token_desc = None
         keyspace_desc: str | None
-        if self.keyspace is None:
+        if self._using_keyspace is None:
             keyspace_desc = "keyspace not set"
         else:
-            keyspace_desc = f'keyspace="{self.keyspace}"'
-        parts = [pt for pt in [ep_desc, token_desc, keyspace_desc] if pt is not None]
+            keyspace_desc = f'keyspace="{self._using_keyspace}"'
+        api_options_desc = f"api_options={self.api_options}"
+        parts = [
+            pt for pt in [ep_desc, keyspace_desc, api_options_desc] if pt is not None
+        ]
         return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:
@@ -1570,17 +1567,15 @@ class AsyncDatabase:
 
     def __repr__(self) -> str:
         ep_desc = f'api_endpoint="{self.api_endpoint}"'
-        token_desc: str | None
-        if self.token_provider:
-            token_desc = f'token="{redact_secret(str(self.api_options.token), 15)}"'
-        else:
-            token_desc = None
         keyspace_desc: str | None
-        if self.keyspace is None:
+        if self._using_keyspace is None:
             keyspace_desc = "keyspace not set"
         else:
-            keyspace_desc = f'keyspace="{self.keyspace}"'
-        parts = [pt for pt in [ep_desc, token_desc, keyspace_desc] if pt is not None]
+            keyspace_desc = f'keyspace="{self._using_keyspace}"'
+        api_options_desc = f"api_options={self.api_options}"
+        parts = [
+            pt for pt in [ep_desc, keyspace_desc, api_options_desc] if pt is not None
+        ]
         return f"{self.__class__.__name__}({', '.join(parts)})"
 
     def __eq__(self, other: Any) -> bool:
