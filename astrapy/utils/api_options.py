@@ -22,7 +22,6 @@ from astrapy.authentication import (
     EmbeddingHeadersProvider,
     StaticTokenProvider,
     TokenProvider,
-    redact_secret,
 )
 from astrapy.constants import Environment
 from astrapy.settings.defaults import (
@@ -36,7 +35,7 @@ from astrapy.settings.defaults import (
     DEFAULT_SCHEMA_OPERATION_TIMEOUT_MS,
     DEV_OPS_URL_ENV_MAP,
     DEV_OPS_VERSION_ENV_MAP,
-    HEADER_REDACT_PLACEHOLDER,
+    FIXED_SECRET_PLACEHOLDER,
 )
 from astrapy.utils.unset import _UNSET, UnsetType
 
@@ -186,7 +185,7 @@ class APIOptions:
         )
         if not isinstance(self.admin_additional_headers, UnsetType):
             _admin_additional_headers = {
-                k: v if k not in _redacted_header_names else HEADER_REDACT_PLACEHOLDER
+                k: v if k not in _redacted_header_names else FIXED_SECRET_PLACEHOLDER
                 for k, v in self.admin_additional_headers.items()
             }
         else:
@@ -194,14 +193,14 @@ class APIOptions:
         _database_additional_headers: dict[str, str | None] | UnsetType
         if not isinstance(self.database_additional_headers, UnsetType):
             _database_additional_headers = {
-                k: v if k not in _redacted_header_names else HEADER_REDACT_PLACEHOLDER
+                k: v if k not in _redacted_header_names else FIXED_SECRET_PLACEHOLDER
                 for k, v in self.database_additional_headers.items()
             }
         else:
             _database_additional_headers = _UNSET
         _token_desc: str | None
-        if not isinstance(self.token, UnsetType):
-            _token_desc = f'token="{redact_secret(str(self.token), 15)}"'
+        if not isinstance(self.token, UnsetType) and self.token:
+            _token_desc = f"token={self.token}"
         else:
             _token_desc = None
 
@@ -265,7 +264,7 @@ class FullAPIOptions(APIOptions):
         # special items
         _token_desc: str | None
         if self.token:
-            _token_desc = f'token="{redact_secret(str(self.token), 15)}"'
+            _token_desc = f"token={self.token}"
         else:
             _token_desc = None
 

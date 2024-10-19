@@ -35,7 +35,7 @@ from astrapy.exceptions import (
 from astrapy.settings.defaults import (
     DEFAULT_REDACTED_HEADER_NAMES,
     DEFAULT_REQUEST_TIMEOUT_MS,
-    HEADER_REDACT_PLACEHOLDER,
+    FIXED_SECRET_PLACEHOLDER,
 )
 from astrapy.utils.request_tools import (
     HttpMethod,
@@ -120,7 +120,7 @@ class APICommander:
         self._loggable_headers = {
             k: v
             if k not in self.full_redacted_header_names
-            else HEADER_REDACT_PLACEHOLDER
+            else FIXED_SECRET_PLACEHOLDER
             for k, v in self.full_headers.items()
         }
         self.full_path = ("/".join([self.api_endpoint, self.path])).rstrip("/")
