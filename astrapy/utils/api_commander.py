@@ -125,6 +125,20 @@ class APICommander:
         }
         self.full_path = ("/".join([self.api_endpoint, self.path])).rstrip("/")
 
+    def __repr__(self) -> str:
+        pieces = [
+            pc
+            for pc in (
+                f"api_endpoint={self.api_endpoint}",
+                f"path={self.path}",
+                f"callers={self.callers}",
+                f"dev_ops_api={self.dev_ops_api}",
+            )
+            if pc is not None
+        ]
+        inner_desc = ", ".join(pieces)
+        return f"{self.__class__.__name__}({inner_desc})"
+
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, APICommander):
             return all(
