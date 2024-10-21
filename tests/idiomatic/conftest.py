@@ -130,9 +130,7 @@ def async_empty_collection(
 __all__ = [
     "DataAPICredentials",
     "DataAPICredentialsInfo",
-    "sync_database",
     "sync_fail_if_not_removed",
-    "async_database",
     "async_fail_if_not_removed",
     "IS_ASTRA_DB",
     "ADMIN_ENV_LIST",

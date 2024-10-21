@@ -18,13 +18,18 @@ import logging
 from typing import TYPE_CHECKING, Any, Sequence
 
 from astrapy.authentication import coerce_possible_embedding_headers_provider
-from astrapy.constants import CallerType
+from astrapy.constants import (
+    CallerType,
+    FilterType,
+    RowType,
+)
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     TableNotFoundException,
 )
 from astrapy.info import TableIndexDefinition, TableInfo, TableVectorIndexDefinition
+from astrapy.results import DeleteResult, InsertOneResult
 from astrapy.settings.defaults import DEFAULT_DATA_API_AUTH_HEADER
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import APIOptions, FullAPIOptions, TimeoutOptions
@@ -563,6 +568,123 @@ class Table:
                 raw_response=di_response,
             )
         logger.info(f"finished dropIndex('{name}')")
+
+    def insert_one(
+        self,
+        row: RowType,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> InsertOneResult:
+        """
+        TODO
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        io_payload = {"insertOne": {"document": row}}
+        logger.info(f"insertOne on '{self.name}'")
+        io_response = self._api_commander.request(
+            payload=io_payload,
+            timeout_info=_request_timeout_ms,
+        )
+        logger.info(f"finished insertOne on '{self.name}'")
+        if "insertedIds" in io_response.get("status", {}):
+            if io_response["status"]["insertedIds"]:
+                inserted_id = io_response["status"]["insertedIds"][0]
+                return InsertOneResult(
+                    raw_results=[io_response],
+                    inserted_id=inserted_id,
+                )
+            else:
+                raise DataAPIFaultyResponseException(
+                    text="Faulty response from insert_one API command.",
+                    raw_response=io_response,
+                )
+        else:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from insert_one API command.",
+                raw_response=io_response,
+            )
+
+    def find_one(
+        self,
+        filter: FilterType | None = None,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> RowType | None:
+        """
+        TODO
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        fo_payload = {"findOne": {"filter": filter}}
+        fo_response = self._api_commander.request(
+            payload=fo_payload,
+            timeout_info=_request_timeout_ms,
+        )
+        # TODO reinstate this once proper response for no-matches
+        # if "document" not in (fo_response.get("data") or {}):
+        #     raise DataAPIFaultyResponseException(
+        #         text="Faulty response from findOne API command.",
+        #         raw_response=fo_response,
+        #     )
+        # TODO replace next line with the one after that:
+        doc_response = fo_response.get("data", {}).get("document")
+        # doc_response = fo_response["data"]["document"]
+        if doc_response is None:
+            return None
+        return fo_response["data"]["document"]  # type: ignore[no-any-return]
+
+    def delete_one(
+        self,
+        filter: FilterType,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> DeleteResult:
+        """
+        TODO
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        do_payload = {
+            "deleteOne": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"deleteOne on '{self.name}'")
+        do_response = self._api_commander.request(
+            payload=do_payload,
+            timeout_info=_request_timeout_ms,
+        )
+        logger.info(f"finished deleteOne on '{self.name}'")
+        if do_response.get("status", {}).get("deletedCount") == -1:
+            return DeleteResult(
+                deleted_count=-1,  # TODO adjust and erase
+                raw_results=[do_response],
+            )
+        else:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from delete_one API command.",
+                raw_response=do_response,
+            )
 
     def drop(
         self,
@@ -1140,6 +1262,121 @@ class AsyncTable:
                 raw_response=di_response,
             )
         logger.info(f"finished dropIndex('{name}')")
+
+    async def insert_one(
+        self,
+        row: RowType,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> InsertOneResult:
+        """
+        TODO
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        io_payload = {"insertOne": {"document": row}}
+        logger.info(f"insertOne on '{self.name}'")
+        io_response = await self._api_commander.async_request(
+            payload=io_payload,
+            timeout_info=_request_timeout_ms,
+        )
+        logger.info(f"finished insertOne on '{self.name}'")
+        if "insertedIds" in io_response.get("status", {}):
+            if io_response["status"]["insertedIds"]:
+                inserted_id = io_response["status"]["insertedIds"][0]
+                return InsertOneResult(
+                    raw_results=[io_response],
+                    inserted_id=inserted_id,
+                )
+            else:
+                raise DataAPIFaultyResponseException(
+                    text="Faulty response from insert_one API command.",
+                    raw_response=io_response,
+                )
+        else:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from insert_one API command.",
+                raw_response=io_response,
+            )
+
+    async def find_one(
+        self,
+        filter: FilterType | None = None,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> RowType | None:
+        """
+        TODO
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        fo_payload = {"findOne": {"filter": filter}}
+        fo_response = await self._api_commander.async_request(
+            payload=fo_payload,
+            timeout_info=_request_timeout_ms,
+        )
+        # TODO reinstate this once proper response for no-matches
+        # if "document" not in (fo_response.get("data") or {}):
+        #     raise DataAPIFaultyResponseException(
+        #         text="Faulty response from findOne API command.",
+        #         raw_response=fo_response,
+        #     )
+        doc_response = fo_response["data"]["document"]
+        if doc_response is None:
+            return None
+        return fo_response["data"]["document"]  # type: ignore[no-any-return]
+
+    async def delete_one(
+        self,
+        filter: FilterType,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> DeleteResult:
+        """
+        TODO
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        do_payload = {
+            "deleteOne": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"deleteOne on '{self.name}'")
+        do_response = await self._api_commander.async_request(
+            payload=do_payload,
+            timeout_info=_request_timeout_ms,
+        )
+        logger.info(f"finished deleteOne on '{self.name}'")
+        if do_response.get("status", {}).get("deletedCount") == -1:
+            return DeleteResult(
+                deleted_count=-1,  # TODO adjust and erase
+                raw_results=[do_response],
+            )
+        else:
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from delete_one API command.",
+                raw_response=do_response,
+            )
 
     async def drop(
         self,

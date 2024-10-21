@@ -27,6 +27,7 @@ from astrapy.settings.defaults import (
 )
 
 DocumentType = Dict[str, Any]
+RowType = Dict[str, Any]
 ProjectionType = Union[
     Iterable[str], Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
 ]

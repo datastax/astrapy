@@ -60,7 +60,7 @@ from astrapy.collection import AsyncCollection, Collection  # noqa: E402
 
 # A circular-import issue requires this to happen at the end of this module:
 from astrapy.database import AsyncDatabase, Database  # noqa: E402
-from astrapy.table import Table  # noqa: E402
+from astrapy.table import AsyncTable, Table  # noqa: E402
 
 __all__ = [
     "AstraDBAdmin",

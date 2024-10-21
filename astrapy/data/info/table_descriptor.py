@@ -743,7 +743,7 @@ class TableVectorIndexOptions:
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"metric"})
+        warn_residual_keys(cls, raw_dict, {"metric", "sourceModel"})
         return TableVectorIndexOptions(
             metric=raw_dict["metric"] if raw_dict.get("metric") is not None else _UNSET,
             source_model=raw_dict["sourceModel"]

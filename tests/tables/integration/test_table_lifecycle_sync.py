@@ -14,12 +14,10 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
-from astrapy import DataAPIClient
-from astrapy.api_options import APIOptions
-from astrapy.authentication import UsernamePasswordTokenProvider
-from astrapy.constants import Environment
 from astrapy.exceptions import DataAPIException
 from astrapy.info import (
     TableColumnTypeDescriptor,
@@ -35,27 +33,17 @@ from astrapy.info import (
     VectorServiceOptions,
 )
 
-# TODO: adapt this whole test module: to fixtures, conftest to target various DBs etc
+if TYPE_CHECKING:
+    from astrapy import Database
 
 
 class TestTableLifecycle:
-    @pytest.mark.describe("test of create/verify/delete tables")
-    def test_table_basic_crd(self) -> None:
-        client = DataAPIClient(
-            environment=Environment.HCD,
-            api_options=APIOptions(
-                database_additional_headers={"Feature-Flag-tables": "true"}
-            ),
-        )
-        database = client.get_database(
-            "http://localhost:8181",
-            token=UsernamePasswordTokenProvider("cassandra", "cassandra"),
-        )
-        database.get_database_admin().create_keyspace(
-            "default_keyspace", update_db_keyspace=True
-        )
-
-        pre_tables = database.list_table_names()
+    @pytest.mark.describe("test of create/verify/delete tables, sync")
+    def test_table_basic_crd_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
+        pre_tables = sync_database.list_table_names()
         created_table_names = {
             "table_whole_obj",
             "table_whole_dict",
@@ -64,7 +52,7 @@ class TestTableLifecycle:
         }
         assert set(pre_tables) & created_table_names == set()
 
-        database.create_table(
+        sync_database.create_table(
             "table_whole_obj",
             definition=TableDefinition(
                 columns={
@@ -99,7 +87,7 @@ class TestTableLifecycle:
                 ),
             ),
         )
-        database.create_table(
+        sync_database.create_table(
             "table_whole_dict",
             definition={
                 "columns": {
@@ -128,7 +116,7 @@ class TestTableLifecycle:
                 },
             },
         )
-        database.create_table(
+        sync_database.create_table(
             "table_hybrid",
             definition={
                 "columns": {
@@ -182,26 +170,29 @@ class TestTableLifecycle:
             .add_partition_by(["p_text", "p_int"])
             .add_partition_sort({"p_boolean": -1, "p_float": 1})
         )
-        database.create_table(
+        sync_database.create_table(
             "table_fluent",
             definition=ct_fluent_definition,
         )
         with pytest.raises(DataAPIException):
-            database.create_table(
+            sync_database.create_table(
                 "table_fluent",
                 definition=ct_fluent_definition,
             )
-        database.create_table(
+        sync_database.create_table(
             "table_fluent",
             definition=ct_fluent_definition,
             if_not_exists=True,
         )
 
-        assert set(database.list_table_names()) - set(pre_tables) == created_table_names
+        assert (
+            set(sync_database.list_table_names()) - set(pre_tables)
+            == created_table_names
+        )
 
         created_table_descs = [
             table_desc
-            for table_desc in database.list_tables()
+            for table_desc in sync_database.list_tables()
             if table_desc.name in created_table_names
         ]
 
@@ -209,27 +200,17 @@ class TestTableLifecycle:
             assert table_desc.definition == created_table_descs[0].definition
 
         for created_table_name in created_table_names:
-            database.drop_table(created_table_name)
+            sync_database.drop_table(created_table_name)
 
-        assert database.list_table_names() == pre_tables
+        assert sync_database.list_table_names() == pre_tables
 
-    @pytest.mark.describe("test of table create/delete index")
-    def test_tableindex_basic_crd(self) -> None:
+    @pytest.mark.describe("test of table create/delete index, sync")
+    def test_tableindex_basic_crd_sync(
+        self,
+        sync_database: Database,
+    ) -> None:
         # TODO add test of list indexes once endpoint available
-        client = DataAPIClient(
-            environment=Environment.HCD,
-            api_options=APIOptions(
-                database_additional_headers={"Feature-Flag-tables": "true"}
-            ),
-        )
-        database = client.get_database(
-            "http://localhost:8181",
-            token=UsernamePasswordTokenProvider("cassandra", "cassandra"),
-        )
-        database.get_database_admin().create_keyspace(
-            "default_keyspace", update_db_keyspace=True
-        )
-        table = database.create_table(
+        table = sync_database.create_table(
             "table_for_indexes",
             definition=TableDefinition(
                 columns={
@@ -291,4 +272,4 @@ class TestTableLifecycle:
         table.drop_index("tfi_idx_p_int")
         table.drop_index("tfi_idx_p_vector")
         table.drop_index("tfi_idx_p_vector_sm")
-        database.drop_table(table)
+        sync_database.drop_table(table)
