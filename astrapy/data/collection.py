@@ -41,7 +41,6 @@ from astrapy.exceptions import (
     MultiCallTimeoutManager,
     TooManyDocumentsToCountException,
     UpdateManyException,
-    base_timeout_info,
 )
 from astrapy.info import CollectionInfo, CollectionOptions
 from astrapy.results import (
@@ -627,7 +626,7 @@ class Collection:
         logger.info(f"insertOne on '{self.name}'")
         io_response = self._api_commander.request(
             payload=io_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished insertOne on '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
@@ -1348,7 +1347,7 @@ class Collection:
         logger.info(f"countDocuments on '{self.name}'")
         cd_response = self._api_commander.request(
             payload=cd_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished countDocuments on '{self.name}'")
         if "count" in cd_response.get("status", {}):
@@ -1404,7 +1403,7 @@ class Collection:
         logger.info(f"estimatedDocumentCount on '{self.name}'")
         ed_response = self._api_commander.request(
             payload=ed_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished estimatedDocumentCount on '{self.name}'")
         if "count" in ed_response.get("status", {}):
@@ -1538,7 +1537,7 @@ class Collection:
         logger.info(f"findOneAndReplace on '{self.name}'")
         fo_response = self._api_commander.request(
             payload=fo_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1629,7 +1628,7 @@ class Collection:
         logger.info(f"findOneAndReplace on '{self.name}'")
         fo_response = self._api_commander.request(
             payload=fo_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1773,7 +1772,7 @@ class Collection:
         logger.info(f"findOneAndUpdate on '{self.name}'")
         fo_response = self._api_commander.request(
             payload=fo_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished findOneAndUpdate on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1868,7 +1867,7 @@ class Collection:
         logger.info(f"updateOne on '{self.name}'")
         uo_response = self._api_commander.request(
             payload=uo_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished updateOne on '{self.name}'")
         if "status" in uo_response:
@@ -2116,7 +2115,7 @@ class Collection:
         logger.info(f"findOneAndDelete on '{self.name}'")
         fo_response = self._api_commander.request(
             payload=fo_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished findOneAndDelete on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -2200,7 +2199,7 @@ class Collection:
         logger.info(f"deleteOne on '{self.name}'")
         do_response = self._api_commander.request(
             payload=do_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished deleteOne on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
@@ -2415,7 +2414,7 @@ class Collection:
         command_result = self._api_commander.request(
             payload=body,
             raise_api_errors=raise_api_errors,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished command={_cmd_desc} on '{self.name}'")
         return command_result
@@ -2966,7 +2965,7 @@ class AsyncCollection:
         logger.info(f"insertOne on '{self.name}'")
         io_response = await self._api_commander.async_request(
             payload=io_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished insertOne on '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
@@ -3724,7 +3723,7 @@ class AsyncCollection:
         logger.info(f"countDocuments on '{self.name}'")
         cd_response = await self._api_commander.async_request(
             payload=cd_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished countDocuments on '{self.name}'")
         if "count" in cd_response.get("status", {}):
@@ -3780,7 +3779,7 @@ class AsyncCollection:
         logger.info(f"estimatedDocumentCount on '{self.name}'")
         ed_response = await self._api_commander.async_request(
             payload=ed_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished estimatedDocumentCount on '{self.name}'")
         if "count" in ed_response.get("status", {}):
@@ -3920,7 +3919,7 @@ class AsyncCollection:
         logger.info(f"findOneAndReplace on '{self.name}'")
         fo_response = await self._api_commander.async_request(
             payload=fo_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -4027,7 +4026,7 @@ class AsyncCollection:
         logger.info(f"findOneAndReplace on '{self.name}'")
         fo_response = await self._api_commander.async_request(
             payload=fo_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -4177,7 +4176,7 @@ class AsyncCollection:
         logger.info(f"findOneAndUpdate on '{self.name}'")
         fo_response = await self._api_commander.async_request(
             payload=fo_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished findOneAndUpdate on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -4287,7 +4286,7 @@ class AsyncCollection:
         logger.info(f"updateOne on '{self.name}'")
         uo_response = await self._api_commander.async_request(
             payload=uo_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished updateOne on '{self.name}'")
         if "status" in uo_response:
@@ -4554,7 +4553,7 @@ class AsyncCollection:
         logger.info(f"findOneAndDelete on '{self.name}'")
         fo_response = await self._api_commander.async_request(
             payload=fo_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished findOneAndDelete on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -4640,7 +4639,7 @@ class AsyncCollection:
         logger.info(f"deleteOne on '{self.name}'")
         do_response = await self._api_commander.async_request(
             payload=do_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished deleteOne on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
@@ -4865,7 +4864,7 @@ class AsyncCollection:
         command_result = await self._api_commander.async_request(
             payload=body,
             raise_api_errors=raise_api_errors,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_info=_request_timeout_ms,
         )
         logger.info(f"finished command={_cmd_desc} on '{self.name}'")
         return command_result

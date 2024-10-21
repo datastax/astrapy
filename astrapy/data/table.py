@@ -15,16 +15,23 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any, Sequence
 
+from astrapy.authentication import coerce_possible_embedding_headers_provider
+from astrapy.constants import CallerType
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
 )
-from astrapy.info import TableIndexDefinition, TableVectorIndexDefinition
+from astrapy.info import TableIndexDefinition, TableInfo, TableVectorIndexDefinition
 from astrapy.settings.defaults import DEFAULT_DATA_API_AUTH_HEADER
 from astrapy.utils.api_commander import APICommander
-from astrapy.utils.api_options import FullAPIOptions
+from astrapy.utils.api_options import APIOptions, FullAPIOptions, TimeoutOptions
+from astrapy.utils.unset import _UNSET, UnsetType
+
+if TYPE_CHECKING:
+    from astrapy.authentication import EmbeddingHeadersProvider
+
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +154,140 @@ class Table:
         )
         return api_commander
 
+    def _copy(
+        self,
+        *,
+        database: Database | None = None,
+        name: str | None = None,
+        keyspace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
+    ) -> Table:
+        # a double override for the timeout aliasing
+        resulting_api_options = (
+            self.api_options.with_override(
+                api_options,
+            )
+            .with_override(
+                APIOptions(
+                    callers=callers,
+                    embedding_api_key=coerce_possible_embedding_headers_provider(
+                        embedding_api_key
+                    ),
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=collection_max_time_ms,
+                    ),
+                )
+            )
+            .with_override(
+                APIOptions(
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=request_timeout_ms,
+                    ),
+                )
+            )
+        )
+        return Table(
+            database=database or self.database,
+            name=name or self.name,
+            keyspace=keyspace or self.keyspace,
+            api_options=resulting_api_options,
+        )
+
+    def with_options(
+        self,
+        *,
+        name: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
+    ) -> Table:
+        """
+        TODO
+        """
+        return self._copy(
+            name=name,
+            embedding_api_key=embedding_api_key,
+            callers=callers,
+            request_timeout_ms=request_timeout_ms,
+            collection_max_time_ms=collection_max_time_ms,
+            api_options=api_options,
+        )
+
+    def to_async(
+        self,
+        *,
+        database: AsyncDatabase | None = None,
+        name: str | None = None,
+        keyspace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AsyncTable:
+        """
+        TODO
+        """
+
+        # a double override for the timeout aliasing
+        resulting_api_options = (
+            self.api_options.with_override(
+                api_options,
+            )
+            .with_override(
+                APIOptions(
+                    callers=callers,
+                    embedding_api_key=coerce_possible_embedding_headers_provider(
+                        embedding_api_key
+                    ),
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=collection_max_time_ms,
+                    ),
+                )
+            )
+            .with_override(
+                APIOptions(
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=request_timeout_ms,
+                    ),
+                )
+            )
+        )
+        return AsyncTable(
+            database=database or self.database.to_async(),
+            name=name or self.name,
+            keyspace=keyspace or self.keyspace,
+            api_options=resulting_api_options,
+        )
+
+    # def options()
+
+    def info(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> TableInfo:
+        """
+        TODO
+        """
+
+        return TableInfo(
+            database_info=self.database.info(
+                request_timeout_ms=request_timeout_ms,
+                max_time_ms=max_time_ms,
+            ),
+            keyspace=self.keyspace,
+            name=self.name,
+            full_name=self.full_name,
+        )
+
     @property
     def database(self) -> Database:
         """
@@ -185,6 +326,14 @@ class Table:
         """
 
         return self._name
+
+    @property
+    def full_name(self) -> str:
+        """
+        TODO
+        """
+
+        return f"{self.keyspace}.{self.name}"
 
     def _create_generic_index(
         self,
@@ -384,6 +533,55 @@ class Table:
             )
         logger.info(f"finished dropIndex('{name}')")
 
+    def drop(
+        self,
+        *,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
+        """
+        TODO
+        """
+
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.schema_operation_timeout_ms
+        )
+        logger.info(f"dropping table '{self.name}' (self)")
+        drop_result = self.database.drop_table(
+            self, schema_operation_timeout_ms=_schema_operation_timeout_ms
+        )
+        logger.info(f"finished dropping table '{self.name}' (self)")
+        return drop_result
+
+    def command(
+        self,
+        body: dict[str, Any],
+        *,
+        raise_api_errors: bool = True,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
+        """
+        TODO
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        _cmd_desc = ",".join(sorted(body.keys()))
+        logger.info(f"command={_cmd_desc} on '{self.name}'")
+        command_result = self._api_commander.request(
+            payload=body,
+            raise_api_errors=raise_api_errors,
+            timeout_info=_request_timeout_ms,
+        )
+        logger.info(f"finished command={_cmd_desc} on '{self.name}'")
+        return command_result
+
 
 class AsyncTable:
     """
@@ -503,6 +701,140 @@ class AsyncTable:
         )
         return api_commander
 
+    def _copy(
+        self,
+        *,
+        database: AsyncDatabase | None = None,
+        name: str | None = None,
+        keyspace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AsyncTable:
+        # a double override for the timeout aliasing
+        resulting_api_options = (
+            self.api_options.with_override(
+                api_options,
+            )
+            .with_override(
+                APIOptions(
+                    callers=callers,
+                    embedding_api_key=coerce_possible_embedding_headers_provider(
+                        embedding_api_key
+                    ),
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=collection_max_time_ms,
+                    ),
+                )
+            )
+            .with_override(
+                APIOptions(
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=request_timeout_ms,
+                    ),
+                )
+            )
+        )
+        return AsyncTable(
+            database=database or self.database,
+            name=name or self.name,
+            keyspace=keyspace or self.keyspace,
+            api_options=resulting_api_options,
+        )
+
+    def with_options(
+        self,
+        *,
+        name: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AsyncTable:
+        """
+        TODO
+        """
+        return self._copy(
+            name=name,
+            embedding_api_key=embedding_api_key,
+            callers=callers,
+            request_timeout_ms=request_timeout_ms,
+            collection_max_time_ms=collection_max_time_ms,
+            api_options=api_options,
+        )
+
+    def to_sync(
+        self,
+        *,
+        database: Database | None = None,
+        name: str | None = None,
+        keyspace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
+    ) -> Table:
+        """
+        TODO
+        """
+
+        # a double override for the timeout aliasing
+        resulting_api_options = (
+            self.api_options.with_override(
+                api_options,
+            )
+            .with_override(
+                APIOptions(
+                    callers=callers,
+                    embedding_api_key=coerce_possible_embedding_headers_provider(
+                        embedding_api_key
+                    ),
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=collection_max_time_ms,
+                    ),
+                )
+            )
+            .with_override(
+                APIOptions(
+                    timeout_options=TimeoutOptions(
+                        request_timeout_ms=request_timeout_ms,
+                    ),
+                )
+            )
+        )
+        return Table(
+            database=database or self.database.to_sync(),
+            name=name or self.name,
+            keyspace=keyspace or self.keyspace,
+            api_options=resulting_api_options,
+        )
+
+    # async def options()
+
+    def info(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> TableInfo:
+        """
+        TODO
+        """
+
+        return TableInfo(
+            database_info=self.database.info(
+                request_timeout_ms=request_timeout_ms,
+                max_time_ms=max_time_ms,
+            ),
+            keyspace=self.keyspace,
+            name=self.name,
+            full_name=self.full_name,
+        )
+
     @property
     def database(self) -> AsyncDatabase:
         """
@@ -541,6 +873,14 @@ class AsyncTable:
         """
 
         return self._name
+
+    @property
+    def full_name(self) -> str:
+        """
+        TODO
+        """
+
+        return f"{self.keyspace}.{self.name}"
 
     async def _create_generic_index(
         self,
@@ -739,3 +1079,52 @@ class AsyncTable:
                 raw_response=di_response,
             )
         logger.info(f"finished dropIndex('{name}')")
+
+    async def drop(
+        self,
+        *,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
+        """
+        TODO
+        """
+
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.schema_operation_timeout_ms
+        )
+        logger.info(f"dropping table '{self.name}' (self)")
+        drop_result = await self.database.drop_table(
+            self, schema_operation_timeout_ms=_schema_operation_timeout_ms
+        )
+        logger.info(f"finished dropping table '{self.name}' (self)")
+        return drop_result
+
+    async def command(
+        self,
+        body: dict[str, Any],
+        *,
+        raise_api_errors: bool = True,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> dict[str, Any]:
+        """
+        TODO
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        _cmd_desc = ",".join(sorted(body.keys()))
+        logger.info(f"command={_cmd_desc} on '{self.name}'")
+        command_result = await self._api_commander.async_request(
+            payload=body,
+            raise_api_errors=raise_api_errors,
+            timeout_info=_request_timeout_ms,
+        )
+        logger.info(f"finished command={_cmd_desc} on '{self.name}'")
+        return command_result
