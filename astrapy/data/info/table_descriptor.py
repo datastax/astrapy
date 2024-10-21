@@ -40,6 +40,7 @@ class TableScalarType(StrEnum):
     BIGINT = "BIGINT"
     BLOB = "BLOB"
     BOOLEAN = "BOOLEAN"
+    COUNTER = "COUNTER"
     DATE = "DATE"
     DECIMAL = "DECIMAL"
     DOUBLE = "DOUBLE"
@@ -51,8 +52,10 @@ class TableScalarType(StrEnum):
     TEXT = "TEXT"
     TIME = "TIME"
     TIMESTAMP = "TIMESTAMP"
+    TIMEUUID = "TIMEUUID"
     TINYINT = "TINYINT"
     UUID = "UUID"
+    VARCHAR = "VARCHAR"
     VARINT = "VARINT"
 
 
