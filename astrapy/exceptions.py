@@ -20,6 +20,10 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 
+from astrapy.data.info.collection_exceptions import CollectionNotFoundException
+from astrapy.data.info.shared_exceptions import DataAPIException
+from astrapy.data.info.table_exceptions import TableNotFoundException
+
 if TYPE_CHECKING:
     from astrapy.results import (
         DeleteResult,
@@ -326,19 +330,6 @@ class DataAPIDetailedErrorDescriptor:
     raw_response: dict[str, Any]
 
 
-class DataAPIException(ValueError):
-    """
-    Any exception occurred while issuing requests to the Data API
-    and specific to it, such as:
-      - a collection is found not to exist when gettings its metadata,
-      - the API return a response with an error,
-    but not, for instance,
-      - a network error while sending an HTTP request to the API.
-    """
-
-    pass
-
-
 @dataclass
 class DataAPIHttpException(DataAPIException, httpx.HTTPStatusError):
     """
@@ -472,35 +463,6 @@ class CursorIsStartedException(DataAPIException):
         super().__init__(text)
         self.text = text
         self.cursor_state = cursor_state
-
-
-@dataclass
-class CollectionNotFoundException(DataAPIException):
-    """
-    A collection is found non-existing and the requested operation
-    cannot be performed.
-
-    Attributes:
-        text: a text message about the exception.
-        keyspace: the keyspace where the collection was supposed to be.
-        collection_name: the name of the expected collection.
-    """
-
-    text: str
-    keyspace: str
-    collection_name: str
-
-    def __init__(
-        self,
-        text: str,
-        *,
-        keyspace: str,
-        collection_name: str,
-    ) -> None:
-        super().__init__(text)
-        self.text = text
-        self.keyspace = keyspace
-        self.collection_name = collection_name
 
 
 @dataclass
@@ -960,6 +922,32 @@ class MultiCallTimeoutManager:
             max_time_ms=self.remaining_timeout_ms(cap_time_ms=cap_time_ms)
         )
 
+
+__all__ = [
+    "CollectionNotFoundException",
+    "TableNotFoundException",
+    "DevOpsAPIException",
+    "DevOpsAPIHttpException",
+    "DevOpsAPITimeoutException",
+    "DevOpsAPIErrorDescriptor",
+    "DevOpsAPIFaultyResponseException",
+    "DevOpsAPIResponseException",
+    "DataAPIErrorDescriptor",
+    "DataAPIDetailedErrorDescriptor",
+    "DataAPIException",
+    "DataAPIHttpException",
+    "DataAPITimeoutException",
+    "CursorIsStartedException",
+    "CollectionAlreadyExistsException",
+    "TooManyDocumentsToCountException",
+    "DataAPIFaultyResponseException",
+    "DataAPIResponseException",
+    "CumulativeOperationException",
+    "InsertManyException",
+    "DeleteManyException",
+    "UpdateManyException",
+    "MultiCallTimeoutManager",
+]
 
 __pdoc__ = {
     "base_timeout_info": False,

@@ -22,6 +22,7 @@ from astrapy.constants import CallerType
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
+    TableNotFoundException,
 )
 from astrapy.info import TableIndexDefinition, TableInfo, TableVectorIndexDefinition
 from astrapy.settings.defaults import DEFAULT_DATA_API_AUTH_HEADER
@@ -31,6 +32,7 @@ from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
     from astrapy.authentication import EmbeddingHeadersProvider
+    from astrapy.info import TableDefinition
 
 
 logger = logging.getLogger(__name__)
@@ -266,7 +268,36 @@ class Table:
             api_options=resulting_api_options,
         )
 
-    # def options()
+    def definition(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> TableDefinition:
+        """
+        TODO
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        logger.info(f"getting tables in search of '{self.name}'")
+        self_descriptors = [
+            table_desc
+            for table_desc in self.database.list_tables(max_time_ms=_request_timeout_ms)
+            if table_desc.name == self.name
+        ]
+        logger.info(f"finished getting tables in search of '{self.name}'")
+        if self_descriptors:
+            return self_descriptors[0].definition
+        else:
+            raise TableNotFoundException(
+                text=f"Table {self.keyspace}.{self.name} not found.",
+                keyspace=self.keyspace,
+                table_name=self.name,
+            )
 
     def info(
         self,
@@ -813,7 +844,38 @@ class AsyncTable:
             api_options=resulting_api_options,
         )
 
-    # async def options()
+    async def definition(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> TableDefinition:
+        """
+        TODO
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        logger.info(f"getting tables in search of '{self.name}'")
+        self_descriptors = [
+            table_desc
+            async for table_desc in self.database.list_tables(
+                max_time_ms=_request_timeout_ms
+            )
+            if table_desc.name == self.name
+        ]
+        logger.info(f"finished getting tables in search of '{self.name}'")
+        if self_descriptors:
+            return self_descriptors[0].definition
+        else:
+            raise TableNotFoundException(
+                text=f"Table {self.keyspace}.{self.name} not found.",
+                keyspace=self.keyspace,
+                table_name=self.name,
+            )
 
     def info(
         self,
