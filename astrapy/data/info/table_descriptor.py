@@ -703,12 +703,16 @@ class TableVectorIndexOptions:
     """
 
     metric: str | UnsetType = _UNSET
+    source_model: str | UnsetType = _UNSET
 
     def __repr__(self) -> str:
         not_null_pieces = [
             pc
             for pc in (
                 None if isinstance(self.metric, UnsetType) else f"metric={self.metric}",
+                None
+                if isinstance(self.source_model, UnsetType)
+                else f"metric={self.source_model}",
             )
             if pc is not None
         ]
@@ -722,6 +726,9 @@ class TableVectorIndexOptions:
             k: v
             for k, v in {
                 "metric": None if isinstance(self.metric, UnsetType) else self.metric,
+                "sourceModel": None
+                if isinstance(self.source_model, UnsetType)
+                else self.source_model,
             }.items()
             if v is not None
         }
@@ -736,6 +743,9 @@ class TableVectorIndexOptions:
         warn_residual_keys(cls, raw_dict, {"metric"})
         return TableVectorIndexOptions(
             metric=raw_dict["metric"] if raw_dict.get("metric") is not None else _UNSET,
+            source_model=raw_dict["sourceModel"]
+            if raw_dict.get("sourceModel") is not None
+            else _UNSET,
         )
 
     @classmethod

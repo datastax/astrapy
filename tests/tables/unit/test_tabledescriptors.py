@@ -159,12 +159,20 @@ VECTOR_INDEX_OPTIONS_FULL = TableVectorIndexDefinition(
     column="the_v_column",
     options=TableVectorIndexOptions(
         metric="the_metric",
+        source_model="the_source_model",
     ),
 )
 VECTOR_INDEX_OPTIONS_DICT_FULL = {
     "column": "the_v_column",
     "options": {
         "metric": "the_metric",
+        "sourceModel": "the_source_model",
+    },
+}
+VECTOR_INDEX_OPTIONS_DICT_PARTIAL = {
+    "column": "the_v_column",
+    "options": {
+        "sourceModel": "the_source_model",
     },
 }
 VECTOR_INDEX_OPTIONS_DICT_MINIMAL = {
@@ -309,6 +317,10 @@ class TestTableDescriptors:
         assert VECTOR_INDEX_OPTIONS_DICT_FULL == tvi_full.as_dict()
         assert tvi_full == VECTOR_INDEX_OPTIONS_FULL
 
+        tvi_partial = TableVectorIndexDefinition.coerce(
+            VECTOR_INDEX_OPTIONS_DICT_PARTIAL
+        )
+        assert VECTOR_INDEX_OPTIONS_DICT_PARTIAL == tvi_partial.as_dict()
         tvi_minimal = TableVectorIndexDefinition.coerce(
             VECTOR_INDEX_OPTIONS_DICT_MINIMAL
         )

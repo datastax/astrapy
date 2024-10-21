@@ -239,6 +239,9 @@ class TestTableLifecycle:
                     "p_vector": TableVectorColumnTypeDescriptor(
                         column_type="vector", dimension=191, service=None
                     ),
+                    "p_vector_sm": TableVectorColumnTypeDescriptor(
+                        column_type="vector", dimension=37, service=None
+                    ),
                 },
                 primary_key=TablePrimaryKeyDescriptor(
                     partition_by=["p_key"],
@@ -268,9 +271,18 @@ class TestTableLifecycle:
         table.create_vector_index(
             "tfi_idx_p_vector",
             definition=TableVectorIndexDefinition(
-                column="p_vector",
+                column="p_vector_sm",
                 options=TableVectorIndexOptions(
                     metric="cosine",
+                ),
+            ),
+        )
+        table.create_vector_index(
+            "tfi_idx_p_vector_sm",
+            definition=TableVectorIndexDefinition(
+                column="p_vector",
+                options=TableVectorIndexOptions(
+                    source_model="openai_v3_large",
                 ),
             ),
         )
@@ -278,4 +290,5 @@ class TestTableLifecycle:
         table.drop_index("tfi_idx_p_text")
         table.drop_index("tfi_idx_p_int")
         table.drop_index("tfi_idx_p_vector")
+        table.drop_index("tfi_idx_p_vector_sm")
         database.drop_table(table)
