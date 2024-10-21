@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Any
 import httpx
 
 from astrapy.data.info.collection_exceptions import CollectionNotFoundException
-from astrapy.data.info.shared_exceptions import DataAPIException
+from astrapy.data.info.common_exceptions import DataAPIException
 from astrapy.data.info.table_exceptions import TableNotFoundException
 
 if TYPE_CHECKING:

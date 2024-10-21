@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from astrapy.data.info.shared_exceptions import DataAPIException
+from astrapy.data.info.common_exceptions import DataAPIException
 
 
 @dataclass

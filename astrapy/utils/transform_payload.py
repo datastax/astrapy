@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import base64
 import datetime
 import time
 from typing import Any, Dict, Iterable, cast
@@ -51,6 +52,10 @@ def convert_to_ejson_date_object(
     return {"$date": int(time.mktime(date_value.timetuple()) * 1000)}
 
 
+def convert_to_ejson_bytes(bytes_value: bytes) -> dict[str, str]:
+    return {"$binary": base64.b64encode(bytes_value).decode()}
+
+
 def convert_to_ejson_uuid_object(uuid_value: UUID) -> dict[str, str]:
     return {"$uuid": str(uuid_value)}
 
@@ -63,6 +68,12 @@ def convert_ejson_date_object_to_datetime(
     date_object: dict[str, int],
 ) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(date_object["$date"] / 1000.0)
+
+
+def convert_ejson_binary_object_to_bytes(
+    binary_object: dict[str, str],
+) -> bytes:
+    return base64.b64decode(binary_object["$binary"])
 
 
 def convert_ejson_uuid_object_to_uuid(uuid_object: dict[str, str]) -> UUID:
@@ -96,6 +107,8 @@ def normalize_payload_value(path: list[str], value: Any) -> Any:
         else:
             if isinstance(value, datetime.datetime) or isinstance(value, datetime.date):
                 return convert_to_ejson_date_object(value)
+            elif isinstance(value, bytes):
+                return convert_to_ejson_bytes(value)
             elif isinstance(value, UUID):
                 return convert_to_ejson_uuid_object(value)
             elif isinstance(value, ObjectId):
@@ -128,15 +141,19 @@ def restore_response_value(path: list[str], value: Any) -> Any:
     The path helps determining special treatments
     """
     if isinstance(value, dict):
-        if len(value) == 1 and "$date" in value:
+        value_keys = set(value.keys())
+        if value_keys == {"$date"}:
             # this is `{"$date": 123456}`, restore to datetime.datetime
             return convert_ejson_date_object_to_datetime(value)
-        elif len(value) == 1 and "$uuid" in value:
+        elif value_keys == {"$uuid"}:
             # this is `{"$uuid": "abc123..."}`, restore to UUID
             return convert_ejson_uuid_object_to_uuid(value)
-        elif len(value) == 1 and "$objectId" in value:
+        elif value_keys == {"$objectId"}:
             # this is `{"$objectId": "123abc..."}`, restore to ObjectId
             return convert_ejson_objectid_object_to_objectid(value)
+        elif value_keys == {"$binary"}:
+            # this is `{"$binary": "xyz=="}`, restore to `bytes`
+            return convert_ejson_binary_object_to_bytes(value)
         else:
             return {k: restore_response_value(path + [k], v) for k, v in value.items()}
     elif isinstance(value, list):
