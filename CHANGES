@@ -1,5 +1,10 @@
 v 2.0.0
 =======
+Signature change from `-> {"ok": 1}` to `-> None` for some admin and schema methods:
+    - AstraDBAdmin: `drop_database` (+ async)
+    - AstraDBDatabaseAdmin, DataAPIDatabaseAdmin: `create_keyspace`, `drop_keyspace`, `drop` (+ async)
+    - Database, AsyncDatabase: `drop_collection`, `drop_table`
+    - Collection, AsyncCollection: `drop`
 Support for arbitrary 'database' and 'admin' headers throughout the object chain
 Rename `CollectionVectorServiceOptions` class to `VectorServiceOptions`
 Removed "raw_options" attribute from CollectionOptions class (redundant w.r.t `CollectionDescriptor.raw_descriptor`)

@@ -1235,7 +1235,7 @@ class AstraDBAdmin:
         request_timeout_ms: int | None = None,
         database_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Drop a database, i.e. delete it completely and permanently with all its data.
 
@@ -1260,10 +1260,6 @@ class AstraDBAdmin:
                 regardless of `wait_until_active`, this parameter dictates an
                 overall timeout on this method call.
 
-        Returns:
-            A dictionary of the form {"ok": 1} in case of success.
-            Otherwise, an exception is raised.
-
         Note: a timeout event is no guarantee at all that the
         deletion request has not reached the API server and is not going
         to be, in fact, honored.
@@ -1273,7 +1269,6 @@ class AstraDBAdmin:
             >>> len(database_list_pre)
             3
             >>> my_astra_db_admin.drop_database("01234567-...")
-            {'ok': 1}
             >>> database_list_post = my_astra_db_admin.list_databases()
             >>> len(database_list_post)
             2
@@ -1332,7 +1327,6 @@ class AstraDBAdmin:
                     f"{last_status_seen} after PENDING"
                 )
         logger.info(f"finished dropping database '{id}' (DevOps API)")
-        return {"ok": 1}
 
     async def async_drop_database(
         self,
@@ -1342,7 +1336,7 @@ class AstraDBAdmin:
         request_timeout_ms: int | None = None,
         database_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Drop a database, i.e. delete it completely and permanently with all its data.
         Async version of the method, for use in an asyncio context.
@@ -1368,10 +1362,6 @@ class AstraDBAdmin:
                 regardless of `wait_until_active`, this parameter dictates an
                 overall timeout on this method call.
 
-        Returns:
-            A dictionary of the form {"ok": 1} in case of success.
-            Otherwise, an exception is raised.
-
         Note: a timeout event is no guarantee at all that the
         deletion request has not reached the API server and is not going
         to be, in fact, honored.
@@ -1380,7 +1370,6 @@ class AstraDBAdmin:
             >>> asyncio.run(
             ...     my_astra_db_admin.async_drop_database("01234567-...")
             ... )
-            {'ok': 1}
         """
 
         # for timeouts, there's a 3-item chain of fallbacks for both:
@@ -1436,7 +1425,6 @@ class AstraDBAdmin:
                     f"{last_status_seen} after PENDING"
                 )
         logger.info(f"finished dropping database '{id}' (DevOps API), async")
-        return {"ok": 1}
 
     def get_database_admin(
         self,
@@ -1486,7 +1474,6 @@ class AstraDBAdmin:
             >>> my_db_admin.list_keyspaces()
             ['default_keyspace']
             >>> my_db_admin.create_keyspace("that_other_one")
-            {'ok': 1}
             >>> my_db_admin.list_keyspaces()
             ['default_keyspace', 'that_other_one']
 
@@ -1827,16 +1814,16 @@ class DatabaseAdmin(ABC):
         *,
         update_db_keyspace: bool | None = None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
-        Create a keyspace in the database, returning {'ok': 1} if successful.
+        Create a keyspace in the database.
         """
         ...
 
     @abstractmethod
-    def drop_keyspace(self, name: str, *pargs: Any, **kwargs: Any) -> dict[str, Any]:
+    def drop_keyspace(self, name: str, *pargs: Any, **kwargs: Any) -> None:
         """
-        Drop (delete) a keyspace from the database, returning {'ok': 1} if successful.
+        Drop (delete) a keyspace from the database.
         """
         ...
 
@@ -1855,19 +1842,17 @@ class DatabaseAdmin(ABC):
         *,
         update_db_keyspace: bool | None = None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
-        Create a keyspace in the database, returning {'ok': 1} if successful.
+        Create a keyspace in the database.
         (Async version of the method.)
         """
         ...
 
     @abstractmethod
-    async def async_drop_keyspace(
-        self, name: str, *pargs: Any, **kwargs: Any
-    ) -> dict[str, Any]:
+    async def async_drop_keyspace(self, name: str, *pargs: Any, **kwargs: Any) -> None:
         """
-        Drop (delete) a keyspace from the database, returning {'ok': 1} if successful.
+        Drop (delete) a keyspace from the database.
         (Async version of the method.)
         """
         ...
@@ -2397,7 +2382,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         keyspace_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Create a keyspace in this database as requested,
         optionally waiting for it to be ready.
@@ -2427,10 +2412,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 regardless of `wait_until_active`, this parameter dictates an
                 overall timeout on this method call.
 
-        Returns:
-            A dictionary of the form {"ok": 1} in case of success.
-            Otherwise, an exception is raised.
-
         Note: a timeout event is no guarantee at all that the
         creation request has not reached the API server and is not going
         to be, in fact, honored.
@@ -2439,7 +2420,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             >>> my_db_admin.keyspaces()
             ['default_keyspace']
             >>> my_db_admin.create_keyspace("that_other_one")
-            {'ok': 1}
             >>> my_db_admin.list_keyspaces()
             ['default_keyspace', 'that_other_one']
         """
@@ -2498,7 +2478,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         )
         if update_db_keyspace:
             self.spawner_database.use_keyspace(name)
-        return {"ok": 1}
 
     async def async_create_keyspace(
         self,
@@ -2510,7 +2489,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         keyspace_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Create a keyspace in this database as requested,
         optionally waiting for it to be ready.
@@ -2541,10 +2520,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 regardless of `wait_until_active`, this parameter dictates an
                 overall timeout on this method call.
 
-        Returns:
-            A dictionary of the form {"ok": 1} in case of success.
-            Otherwise, an exception is raised.
-
         Note: a timeout event is no guarantee at all that the
         creation request has not reached the API server and is not going
         to be, in fact, honored.
@@ -2553,7 +2528,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             >>> asyncio.run(
             ...     my_db_admin.async_create_keyspace("app_keyspace")
             ... )
-            {'ok': 1}
         """
 
         # for timeouts, there's a 3-item chain of fallbacks for both:
@@ -2614,7 +2588,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         )
         if update_db_keyspace:
             self.spawner_database.use_keyspace(name)
-        return {"ok": 1}
 
     def drop_keyspace(
         self,
@@ -2624,7 +2597,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         request_timeout_ms: int | None = None,
         keyspace_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Delete a keyspace from the database, optionally waiting for the database
         to become active again.
@@ -2650,10 +2623,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 regardless of `wait_until_active`, this parameter dictates an
                 overall timeout on this method call.
 
-        Returns:
-            A dictionary of the form {"ok": 1} in case of success.
-            Otherwise, an exception is raised.
-
         Note: a timeout event is no guarantee at all that the
         deletion request has not reached the API server and is not going
         to be, in fact, honored.
@@ -2662,7 +2631,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             >>> my_db_admin.list_keyspaces()
             ['default_keyspace', 'that_other_one']
             >>> my_db_admin.drop_keyspace("that_other_one")
-            {'ok': 1}
             >>> my_db_admin.list_keyspaces()
             ['default_keyspace']
         """
@@ -2719,7 +2687,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             f"finished dropping keyspace '{name}' on "
             f"'{self._database_id}' (DevOps API)"
         )
-        return {"ok": 1}
 
     async def async_drop_keyspace(
         self,
@@ -2729,7 +2696,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         request_timeout_ms: int | None = None,
         keyspace_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Delete a keyspace from the database, optionally waiting for the database
         to become active again.
@@ -2756,10 +2723,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 regardless of `wait_until_active`, this parameter dictates an
                 overall timeout on this method call.
 
-        Returns:
-            A dictionary of the form {"ok": 1} in case of success.
-            Otherwise, an exception is raised.
-
         Note: a timeout event is no guarantee at all that the
         deletion request has not reached the API server and is not going
         to be, in fact, honored.
@@ -2768,7 +2731,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             >>> asyncio.run(
             ...     my_db_admin.async_drop_keyspace("app_keyspace")
             ... )
-            {'ok': 1}
         """
 
         # for timeouts, there's a 3-item chain of fallbacks for both:
@@ -2827,7 +2789,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             f"finished dropping keyspace '{name}' on "
             f"'{self._database_id}' (DevOps API), async"
         )
-        return {"ok": 1}
 
     def drop(
         self,
@@ -2836,7 +2797,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         request_timeout_ms: int | None = None,
         database_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Drop this database, i.e. delete it completely and permanently with all its data.
 
@@ -2862,10 +2823,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 regardless of `wait_until_active`, this parameter dictates an
                 overall timeout on this method call.
 
-        Returns:
-            A dictionary of the form {"ok": 1} in case of success.
-            Otherwise, an exception is raised.
-
         Note: a timeout event is no guarantee at all that the
         deletion request has not reached the API server and is not going
         to be, in fact, honored.
@@ -2874,7 +2831,6 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             >>> my_db_admin.list_keyspaces()
             ['default_keyspace', 'that_other_one']
             >>> my_db_admin.drop()
-            {'ok': 1}
             >>> my_db_admin.list_keyspaces()  # raises a 404 Not Found http error
 
         Note:
@@ -2902,7 +2858,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         request_timeout_ms: int | None = None,
         database_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Drop this database, i.e. delete it completely and permanently with all its data.
         Async version of the method, for use in an asyncio context.
@@ -2929,17 +2885,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 regardless of `wait_until_active`, this parameter dictates an
                 overall timeout on this method call.
 
-        Returns:
-            A dictionary of the form {"ok": 1} in case of success.
-            Otherwise, an exception is raised.
-
         Note: a timeout event is no guarantee at all that the
         deletion request has not reached the API server and is not going
         to be, in fact, honored.
 
         Example:
             >>> asyncio.run(my_db_admin.async_drop())
-            {'ok': 1}
 
         Note:
             Once the method succeeds, methods on this object -- such as `info()`,
@@ -3430,9 +3381,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
-        Create a keyspace in the database, returning {'ok': 1} if successful.
+        Create a keyspace in the database.
 
         Args:
             name: the keyspace name. If supplying a keyspace that exists
@@ -3449,10 +3400,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 each underlying DevOps API HTTP request.
             max_time_ms: an alias for `request_timeout_ms`.
 
-        Returns:
-            A dictionary of the form {"ok": 1} in case of success.
-            Otherwise, an exception is raised.
-
         Note: a timeout event is no guarantee at all that the
         creation request has not reached the API server and is not going
         to be, in fact, honored.
@@ -3461,7 +3408,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_keyspaces()
             ['default_keyspace']
             >>> admin_for_my_db.create_keyspace("that_other_one")
-            {'ok': 1}
             >>> admin_for_my_db.list_keyspaces()
             ['default_keyspace', 'that_other_one']
         """
@@ -3497,7 +3443,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             logger.info("finished creating keyspace")
             if update_db_keyspace:
                 self.spawner_database.use_keyspace(name)
-            return {k: v for k, v in cn_response["status"].items() if k == "ok"}
 
     def drop_keyspace(
         self,
@@ -3505,7 +3450,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Drop (delete) a keyspace from the database.
 
@@ -3516,10 +3461,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 each underlying DevOps API HTTP request.
             max_time_ms: an alias for `request_timeout_ms`.
 
-        Returns:
-            A dictionary of the form {"ok": 1} in case of success.
-            Otherwise, an exception is raised.
-
         Note: a timeout event is no guarantee at all that the
         deletion request has not reached the API server and is not going
         to be, in fact, honored.
@@ -3528,7 +3469,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> admin_for_my_db.list_keyspaces()
             ['default_keyspace', 'that_other_one']
             >>> admin_for_my_db.drop_keyspace("that_other_one")
-            {'ok': 1}
             >>> admin_for_my_db.list_keyspaces()
             ['default_keyspace']
         """
@@ -3549,7 +3489,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished dropping keyspace")
-            return {k: v for k, v in dn_response["status"].items() if k == "ok"}
 
     async def async_list_keyspaces(
         self,
@@ -3603,9 +3542,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         **kwargs: Any,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
-        Create a keyspace in the database, returning {'ok': 1} if successful.
+        Create a keyspace in the database.
         Async version of the method, for use in an asyncio context.
 
         Args:
@@ -3623,10 +3562,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 each underlying DevOps API HTTP request.
             max_time_ms: an alias for `request_timeout_ms`.
 
-        Returns:
-            A dictionary of the form {"ok": 1} in case of success.
-            Otherwise, an exception is raised.
-
         Note: a timeout event is no guarantee at all that the
         creation request has not reached the API server and is not going
         to be, in fact, honored.
@@ -3637,7 +3572,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> asyncio.run(admin_for_my_db.async_create_keyspace(
             ...     "that_other_one"
             ... ))
-            {'ok': 1}
             >>> admin_for_my_db.list_leyspaces()
             ['default_keyspace', 'that_other_one']
         """
@@ -3673,7 +3607,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             logger.info("finished creating keyspace, async")
             if update_db_keyspace:
                 self.spawner_database.use_keyspace(name)
-            return {k: v for k, v in cn_response["status"].items() if k == "ok"}
 
     async def async_drop_keyspace(
         self,
@@ -3681,7 +3614,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Drop (delete) a keyspace from the database.
         Async version of the method, for use in an asyncio context.
@@ -3693,10 +3626,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 each underlying DevOps API HTTP request.
             max_time_ms: an alias for `request_timeout_ms`.
 
-        Returns:
-            A dictionary of the form {"ok": 1} in case of success.
-            Otherwise, an exception is raised.
-
         Note: a timeout event is no guarantee at all that the
         deletion request has not reached the API server and is not going
         to be, in fact, honored.
@@ -3707,7 +3636,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             >>> asyncio.run(admin_for_my_db.async_drop_keyspace(
             ...     "that_other_one"
             ... ))
-            {'ok': 1}
             >>> admin_for_my_db.list_keyspaces()
             ['default_keyspace']
         """
@@ -3728,7 +3656,6 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished dropping keyspace, async")
-            return {k: v for k, v in dn_response["status"].items() if k == "ok"}
 
     def get_database(
         self,

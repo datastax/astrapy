@@ -77,10 +77,8 @@ class TestDDLAsync:
         #
         col2 = await async_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
         assert col1 == col2
-        dc_response = await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
-        assert dc_response == {"ok": 1}
-        dc_response2 = await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
-        assert dc_response2 == {"ok": 1}
+        await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
+        await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
 
     @pytest.mark.describe("test of default_id_type in creating collections, async")
@@ -173,8 +171,7 @@ class TestDDLAsync:
         col = await async_database.create_collection(
             name="async_collection_to_drop", dimension=2
         )
-        del_res = await col.drop()
-        assert del_res["ok"] == 1
+        await col.drop()
         assert "async_collection_to_drop" not in (
             await async_database.list_collection_names()
         )

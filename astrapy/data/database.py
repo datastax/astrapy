@@ -787,7 +787,7 @@ class Database:
         *,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Drop a collection from the database, along with all documents therein.
 
@@ -798,14 +798,10 @@ class Database:
                 the underlying schema-changing HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
 
-        Returns:
-            a dictionary in the form {"ok": 1} if the command succeeds.
-
         Example:
             >>> my_db.list_collection_names()
             ['a_collection', 'my_v_col', 'another_col']
             >>> my_db.drop_collection("my_v_col")
-            {'ok': 1}
             >>> my_db.list_collection_names()
             ['a_collection', 'another_col']
 
@@ -1176,7 +1172,7 @@ class Database:
         *,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Drop a table from the database, along with all documents therein.
 
@@ -1187,14 +1183,10 @@ class Database:
                 the underlying schema-changing HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
 
-        Returns:
-            a dictionary in the form {"ok": 1} if the command succeeds.
-
         Example:
             >>> my_db.list_table_names()
             ['a_table', 'my_v_tab', 'another_tab']
             >>> my_db.drop_collection("my_v_tab")
-            {'ok': 1}
             >>> my_db.list_collection_names()
             ['a_table', 'another_tab']
 
@@ -2195,14 +2187,10 @@ class AsyncDatabase:
                 the underlying schema-changing HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
 
-        Returns:
-            a dictionary in the form {"ok": 1} if the command succeeds.
-
         Example:
             >>> asyncio.run(my_async_db.list_collection_names())
             ['a_collection', 'my_v_col', 'another_col']
             >>> asyncio.run(my_async_db.drop_collection("my_v_col"))
-            {'ok': 1}
             >>> asyncio.run(my_async_db.list_collection_names())
             ['a_collection', 'another_col']
 
@@ -2588,14 +2576,10 @@ class AsyncDatabase:
                 the underlying schema-changing HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
 
-        Returns:
-            a dictionary in the form {"ok": 1} if the command succeeds.
-
         Example:
             >>> my_db.list_table_names()
             ['a_table', 'my_v_tab', 'another_tab']
             >>> my_db.drop_table("my_v_tab")
-            {"ok": 1}
             >>> my_db.list_table_names()
             ['a_table', 'another_tab']
 

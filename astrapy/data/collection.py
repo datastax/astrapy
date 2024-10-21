@@ -2327,7 +2327,7 @@ class Collection:
         *,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Drop the collection, i.e. delete it from the database along with
         all the documents it contains.
@@ -2340,14 +2340,10 @@ class Collection:
                 If not passed, the collection-level setting is used instead.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
 
-        Returns:
-            a dictionary of the form {"ok": 1} to signal successful deletion.
-
         Example:
             >>> my_coll.find_one({})
             {'_id': '...', 'a': 100}
             >>> my_coll.drop()
-            {'ok': 1}
             >>> my_coll.find_one({})
             Traceback (most recent call last):
                 ... ...
@@ -2370,11 +2366,10 @@ class Collection:
             or self.api_options.timeout_options.schema_operation_timeout_ms
         )
         logger.info(f"dropping collection '{self.name}' (self)")
-        drop_result = self.database.drop_collection(
+        self.database.drop_collection(
             self, schema_operation_timeout_ms=_schema_operation_timeout_ms
         )
         logger.info(f"finished dropping collection '{self.name}' (self)")
-        return drop_result
 
     def command(
         self,
@@ -4772,7 +4767,7 @@ class AsyncCollection:
         *,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         Drop the collection, i.e. delete it from the database along with
         all the documents it contains.
@@ -4785,20 +4780,15 @@ class AsyncCollection:
                 timed out us not in fact honored.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
 
-        Returns:
-            a dictionary of the form {"ok": 1} to signal successful deletion.
-
         Example:
             >>> async def drop_and_check(acol: AsyncCollection) -> None:
             ...     doc0 = await acol.find_one({})
             ...     print("doc0", doc0)
-            ...     drop_result = await acol.drop()
-            ...     print("drop_result", drop_result)
+            ...     await acol.drop()
             ...     doc1 = await acol.find_one({})
             ...
             >>> asyncio.run(drop_and_check(my_async_coll))
             doc0 {'_id': '...', 'z': -10}
-            drop_result {'ok': 1}
             Traceback (most recent call last):
                 ... ...
             astrapy.exceptions.DataAPIResponseException: Collection does not exist, collection name: my_collection
@@ -4820,11 +4810,10 @@ class AsyncCollection:
             or self.api_options.timeout_options.schema_operation_timeout_ms
         )
         logger.info(f"dropping collection '{self.name}' (self)")
-        drop_result = await self.database.drop_collection(
+        await self.database.drop_collection(
             self, schema_operation_timeout_ms=_schema_operation_timeout_ms
         )
         logger.info(f"finished dropping collection '{self.name}' (self)")
-        return drop_result
 
     async def command(
         self,

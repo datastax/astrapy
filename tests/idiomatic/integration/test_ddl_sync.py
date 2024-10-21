@@ -78,10 +78,8 @@ class TestDDLSync:
         #
         col2 = sync_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
         assert col1 == col2
-        dc_response = sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
-        assert dc_response == {"ok": 1}
-        dc_response2 = sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
-        assert dc_response2 == {"ok": 1}
+        sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
+        sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         sync_database.drop_collection(TEST_LOCAL_COLLECTION_NAME_B)
 
     @pytest.mark.describe("test of default_id_type in creating collections, sync")
@@ -174,8 +172,7 @@ class TestDDLSync:
         col = sync_database.create_collection(
             name="sync_collection_to_drop", dimension=2
         )
-        del_res = col.drop()
-        assert del_res["ok"] == 1
+        col.drop()
         assert "sync_collection_to_drop" not in sync_database.list_collection_names()
 
     @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")

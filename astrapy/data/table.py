@@ -569,7 +569,7 @@ class Table:
         *,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> dict[str, Any]:
+    ) -> None:
         """
         TODO
         """
@@ -580,11 +580,10 @@ class Table:
             or self.api_options.timeout_options.schema_operation_timeout_ms
         )
         logger.info(f"dropping table '{self.name}' (self)")
-        drop_result = self.database.drop_table(
+        self.database.drop_table(
             self, schema_operation_timeout_ms=_schema_operation_timeout_ms
         )
         logger.info(f"finished dropping table '{self.name}' (self)")
-        return drop_result
 
     def command(
         self,
