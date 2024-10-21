@@ -436,7 +436,6 @@ Exceptions:
 
 ```python
 from astrapy.exceptions import (
-    CollectionAlreadyExistsException,
     CollectionNotFoundException,
     CumulativeOperationException,
     CursorIsStartedException,

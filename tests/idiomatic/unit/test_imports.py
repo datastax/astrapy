@@ -91,7 +91,6 @@ def test_imports() -> None:
         CursorState,
     )
     from astrapy.exceptions import (  # noqa: F401
-        CollectionAlreadyExistsException,
         CollectionNotFoundException,
         CumulativeOperationException,
         CursorIsStartedException,

@@ -26,10 +26,8 @@ from astrapy.authentication import (
 from astrapy.constants import CallerType, Environment
 from astrapy.cursors import AsyncCommandCursor, CommandCursor
 from astrapy.exceptions import (
-    CollectionAlreadyExistsException,
     DataAPIFaultyResponseException,
     DevOpsAPIException,
-    MultiCallTimeoutManager,
     base_timeout_info,
 )
 from astrapy.info import (
@@ -630,7 +628,6 @@ class Database:
         indexing: dict[str, Any] | None = None,
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
-        check_exists: bool | None = None,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
@@ -672,13 +669,6 @@ class Database:
             additional_options: any further set of key-value pairs that will
                 be added to the "options" part of the payload when sending
                 the Data API command to create a collection.
-            check_exists: whether to run an existence check for the collection
-                name before attempting to create the collection:
-                If check_exists is True, an error is raised when creating
-                an existing collection.
-                If it is False, the creation is attempted. In this case, for
-                preexisting collections, the command will succeed or fail
-                depending on whether the options match or not.
             schema_operation_timeout_ms: a timeout, in milliseconds, for the
                 createCollection HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
@@ -738,33 +728,12 @@ class Database:
             or self.api_options.timeout_options.schema_operation_timeout_ms
         )
 
-        timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_schema_operation_timeout_ms
-        )
-
-        if check_exists is None:
-            _check_exists = True
-        else:
-            _check_exists = check_exists
-        if _check_exists:
-            logger.info(f"checking collection existence for '{name}'")
-            existing_names = self.list_collection_names(
-                keyspace=keyspace,
-                max_time_ms=timeout_manager.remaining_timeout_ms(),
-            )
-            if name in existing_names:
-                raise CollectionAlreadyExistsException(
-                    text=f"Collection {name} already exists",
-                    keyspace=keyspace or self.keyspace or "(unspecified)",
-                    collection_name=name,
-                )
-
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {"createCollection": {"name": name, "options": cc_options}}
         logger.info(f"createCollection('{name}')")
         cc_response = driver_commander.request(
             payload=cc_payload,
-            timeout_info=timeout_manager.remaining_timeout_info(),
+            timeout_info=_schema_operation_timeout_ms,
         )
         if cc_response.get("status") != {"ok": 1}:
             raise DataAPIFaultyResponseException(
@@ -2015,7 +1984,6 @@ class AsyncDatabase:
         indexing: dict[str, Any] | None = None,
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
-        check_exists: bool | None = None,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
@@ -2057,13 +2025,6 @@ class AsyncDatabase:
             additional_options: any further set of key-value pairs that will
                 be added to the "options" part of the payload when sending
                 the Data API command to create a collection.
-            check_exists: whether to run an existence check for the collection
-                name before attempting to create the collection:
-                If check_exists is True, an error is raised when creating
-                an existing collection.
-                If it is False, the creation is attempted. In this case, for
-                preexisting collections, the command will succeed or fail
-                depending on whether the options match or not.
             schema_operation_timeout_ms: a timeout, in milliseconds, for the
                 createCollection HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
@@ -2127,33 +2088,12 @@ class AsyncDatabase:
             or self.api_options.timeout_options.schema_operation_timeout_ms
         )
 
-        timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_schema_operation_timeout_ms
-        )
-
-        if check_exists is None:
-            _check_exists = True
-        else:
-            _check_exists = check_exists
-        if _check_exists:
-            logger.info(f"checking collection existence for '{name}'")
-            existing_names = await self.list_collection_names(
-                keyspace=keyspace,
-                max_time_ms=timeout_manager.remaining_timeout_ms(),
-            )
-            if name in existing_names:
-                raise CollectionAlreadyExistsException(
-                    text=f"Collection {name} already exists",
-                    keyspace=keyspace or self.keyspace or "(unspecified)",
-                    collection_name=name,
-                )
-
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {"createCollection": {"name": name, "options": cc_options}}
         logger.info(f"createCollection('{name}')")
         cc_response = await driver_commander.async_request(
             payload=cc_payload,
-            timeout_info=timeout_manager.remaining_timeout_info(),
+            timeout_info=_schema_operation_timeout_ms,
         )
         if cc_response.get("status") != {"ok": 1}:
             raise DataAPIFaultyResponseException(

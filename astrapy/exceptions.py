@@ -466,35 +466,6 @@ class CursorIsStartedException(DataAPIException):
 
 
 @dataclass
-class CollectionAlreadyExistsException(DataAPIException):
-    """
-    An operation expected a collection not to exist, yet it has
-    been detected as pre-existing.
-
-    Attributes:
-        text: a text message about the exception.
-        keyspace: the keyspace where the collection was expected not to exist.
-        collection_name: the name of the collection.
-    """
-
-    text: str
-    keyspace: str
-    collection_name: str
-
-    def __init__(
-        self,
-        text: str,
-        *,
-        keyspace: str,
-        collection_name: str,
-    ) -> None:
-        super().__init__(text)
-        self.text = text
-        self.keyspace = keyspace
-        self.collection_name = collection_name
-
-
-@dataclass
 class TooManyDocumentsToCountException(DataAPIException):
     """
     A `count_documents()` operation failed because the resulting number of documents
@@ -938,7 +909,6 @@ __all__ = [
     "DataAPIHttpException",
     "DataAPITimeoutException",
     "CursorIsStartedException",
-    "CollectionAlreadyExistsException",
     "TooManyDocumentsToCountException",
     "DataAPIFaultyResponseException",
     "DataAPIResponseException",

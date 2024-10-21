@@ -20,7 +20,6 @@ from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.constants import DocumentType
 from astrapy.cursors import AsyncCursor, CursorState
 from astrapy.exceptions import (
-    CollectionAlreadyExistsException,
     CollectionNotFoundException,
     CursorIsStartedException,
     DataAPIResponseException,
@@ -187,41 +186,6 @@ class TestExceptionsAsync:
             await acol.replace_one({"a": 1}, {"a": -1})
         with pytest.raises(DataAPIResponseException):
             await acol.update_one({"a": 1}, {"$set": {"a": -1}})
-
-    @pytest.mark.describe("test of check_exists for database create_collection, async")
-    async def test_database_create_collection_check_exists_async(
-        self,
-        async_database: AsyncDatabase,
-    ) -> None:
-        TEST_LOCAL_COLLECTION_NAME = "test_check_exists"
-        await async_database.create_collection(
-            TEST_LOCAL_COLLECTION_NAME,
-            dimension=3,
-        )
-
-        with pytest.raises(CollectionAlreadyExistsException):
-            await async_database.create_collection(
-                TEST_LOCAL_COLLECTION_NAME,
-                dimension=3,
-            )
-        with pytest.raises(CollectionAlreadyExistsException):
-            await async_database.create_collection(
-                TEST_LOCAL_COLLECTION_NAME,
-                indexing={"deny": ["a"]},
-            )
-        await async_database.create_collection(
-            TEST_LOCAL_COLLECTION_NAME,
-            dimension=3,
-            check_exists=False,
-        )
-        with pytest.raises(DataAPIResponseException):
-            await async_database.create_collection(
-                TEST_LOCAL_COLLECTION_NAME,
-                indexing={"deny": ["a"]},
-                check_exists=False,
-            )
-
-        await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
 
     @pytest.mark.describe("test of database one-request method failures, async")
     async def test_database_method_failures_async(

@@ -1,5 +1,7 @@
 v 2.0.0
 =======
+Remove 'check_exists' from [Async]Database `create_collection` method (always False now)
+Remove `CollectionAlreadyExistsException` class (not used anymore without `check_exists`)
 Signature change from `-> {"ok": 1}` to `-> None` for some admin and schema methods:
     - AstraDBAdmin: `drop_database` (+ async)
     - AstraDBDatabaseAdmin, DataAPIDatabaseAdmin: `create_keyspace`, `drop_keyspace`, `drop` (+ async)
