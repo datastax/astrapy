@@ -115,7 +115,7 @@ class TestCollectionTimeouts:
         httpserver.expect_oneshot_request(
             f"/{BASE_PATH}/{PATH_SUFFIX}",
             method=HttpMethod.POST,
-        ).respond_with_json({"data": {"nextPageState": None, "documents": [{"a": 1}]}})
+        ).respond_with_json({"data": {"document": [{"a": 1}]}})
         await mock_acollection.find_one({})
 
         httpserver.expect_oneshot_request(
@@ -149,7 +149,7 @@ class TestCollectionTimeouts:
         httpserver.expect_oneshot_request(
             f"/{BASE_PATH}/{PATH_SUFFIX}",
             method=HttpMethod.POST,
-        ).respond_with_json({"data": {"nextPageState": None, "documents": [{"a": 1}]}})
+        ).respond_with_json({"data": {"document": [{"a": 1}]}})
         mock_collection.find_one({})
 
         httpserver.expect_oneshot_request(

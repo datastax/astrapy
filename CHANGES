@@ -1,6 +1,7 @@
 v 2.0.0
 =======
-(internal) simplified timeout management classes and representations
+(internal) simplified timeout management classes and representations.
+(internal) Async/Collection's find_one method uses findOne API command.
 Removed the CommandCursor/AsyncCommandCursor classes:
   - AstraDBAdmin's `list_databases`, `async_list_databases` methods return regular lists
   - Database's `list_collections`, `list_tables` methods return regular lists

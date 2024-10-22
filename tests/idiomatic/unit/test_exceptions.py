@@ -120,7 +120,7 @@ def test_dataapihttpexception_raising_500_sync(httpserver: HTTPServer) -> None:
 
     assert isinstance(exc, DataAPIHttpException)
     httpx_payload = json.loads(exc.request.content.decode())
-    assert "find" in httpx_payload
+    assert "findOne" in httpx_payload
     assert SAMPLE_API_MESSAGE in exc.response.text
     assert exc.error_descriptors == [DataAPIErrorDescriptor(SAMPLE_API_ERROR_OBJECT)]
     assert SAMPLE_API_MESSAGE in str(exc)
@@ -156,7 +156,7 @@ def test_dataapihttpexception_raising_404_sync(httpserver: HTTPServer) -> None:
 
     assert isinstance(exc, DataAPIHttpException)
     httpx_payload = json.loads(exc.request.content.decode())
-    assert "find" in httpx_payload
+    assert "findOne" in httpx_payload
     assert "blah" in exc.response.text
     assert exc.error_descriptors == []
     # not parsable into a DataAPIErrorDescriptor -> not in the error str repr
@@ -193,7 +193,7 @@ async def test_dataapihttpexception_raising_500_async(httpserver: HTTPServer) ->
 
     assert isinstance(exc, DataAPIHttpException)
     httpx_payload = json.loads(exc.request.content.decode())
-    assert "find" in httpx_payload
+    assert "findOne" in httpx_payload
     assert SAMPLE_API_MESSAGE in exc.response.text
     assert exc.error_descriptors == [DataAPIErrorDescriptor(SAMPLE_API_ERROR_OBJECT)]
     assert SAMPLE_API_MESSAGE in str(exc)
@@ -229,7 +229,7 @@ async def test_dataapihttpexception_raising_404_async(httpserver: HTTPServer) ->
 
     assert isinstance(exc, DataAPIHttpException)
     httpx_payload = json.loads(exc.request.content.decode())
-    assert "find" in httpx_payload
+    assert "findOne" in httpx_payload
     assert "blah" in exc.response.text
     assert exc.error_descriptors == []
     # not parsable into a DataAPIErrorDescriptor -> not in the error str repr

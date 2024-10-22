@@ -1176,20 +1176,40 @@ class Collection:
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
-        fo_cursor = self.find(
-            filter=filter,
-            projection=projection,
-            skip=None,
-            limit=1,
-            include_similarity=include_similarity,
-            sort=sort,
-            max_time_ms=_request_timeout_ms,
+        if include_similarity is not None and not _is_vector_sort(sort):
+            raise ValueError(
+                "Cannot use `include_similarity` unless for vector search."
+            )
+        fo_options = (
+            None
+            if include_similarity is None
+            else {"includeSimilarity": include_similarity}
         )
-        try:
-            document = fo_cursor.__next__()
-            return document
-        except StopIteration:
+        fo_payload = {
+            "findOne": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "projection": normalize_optional_projection(projection),
+                    "options": fo_options,
+                    "sort": sort,
+                }.items()
+                if v is not None
+            }
+        }
+        fo_response = self._api_commander.request(
+            payload=fo_payload,
+            timeout_ms=_request_timeout_ms,
+        )
+        if "document" not in (fo_response.get("data") or {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findOne API command.",
+                raw_response=fo_response,
+            )
+        doc_response = fo_response["data"]["document"]
+        if doc_response is None:
             return None
+        return fo_response["data"]["document"]  # type: ignore[no-any-return]
 
     def distinct(
         self,
@@ -3534,20 +3554,40 @@ class AsyncCollection:
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
-        fo_cursor = self.find(
-            filter=filter,
-            projection=projection,
-            skip=None,
-            limit=1,
-            include_similarity=include_similarity,
-            sort=sort,
-            max_time_ms=_request_timeout_ms,
+        if include_similarity is not None and not _is_vector_sort(sort):
+            raise ValueError(
+                "Cannot use `include_similarity` unless for vector search."
+            )
+        fo_options = (
+            None
+            if include_similarity is None
+            else {"includeSimilarity": include_similarity}
         )
-        try:
-            document = await fo_cursor.__anext__()
-            return document
-        except StopAsyncIteration:
+        fo_payload = {
+            "findOne": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "projection": normalize_optional_projection(projection),
+                    "options": fo_options,
+                    "sort": sort,
+                }.items()
+                if v is not None
+            }
+        }
+        fo_response = await self._api_commander.async_request(
+            payload=fo_payload,
+            timeout_ms=_request_timeout_ms,
+        )
+        if "document" not in (fo_response.get("data") or {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from findOne API command.",
+                raw_response=fo_response,
+            )
+        doc_response = fo_response["data"]["document"]
+        if doc_response is None:
             return None
+        return fo_response["data"]["document"]  # type: ignore[no-any-return]
 
     async def distinct(
         self,
