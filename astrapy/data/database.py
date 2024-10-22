@@ -23,7 +23,7 @@ from astrapy.authentication import (
     coerce_possible_embedding_headers_provider,
     coerce_possible_token_provider,
 )
-from astrapy.constants import ROW, CallerType, Environment, RowType
+from astrapy.constants import DOC, ROW, CallerType, DocumentType, Environment, RowType
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     DevOpsAPIException,
@@ -182,10 +182,10 @@ class Database:
         self._name: str | None = None
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
-    def __getattr__(self, collection_name: str) -> Collection:
+    def __getattr__(self, collection_name: str) -> Collection[DocumentType]:
         return self.get_collection(name=collection_name)
 
-    def __getitem__(self, collection_name: str) -> Collection:
+    def __getitem__(self, collection_name: str) -> Collection[DocumentType]:
         return self.get_collection(name=collection_name)
 
     def __repr__(self) -> str:
@@ -510,6 +510,7 @@ class Database:
 
         return self._using_keyspace
 
+    @overload
     def get_collection(
         self,
         name: str,
@@ -519,7 +520,32 @@ class Database:
         collection_request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Collection:
+    ) -> Collection[DocumentType]: ...
+
+    @overload
+    def get_collection(
+        self,
+        name: str,
+        *,
+        document_type: type[DOC],
+        keyspace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        collection_request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> Collection[DOC]: ...
+
+    def get_collection(
+        self,
+        name: str,
+        *,
+        document_type: type[Any] = DocumentType,  # type[DOC] | type[DocumentType]
+        keyspace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        collection_request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> Collection[DOC]:
         """
         Spawn a `Collection` object instance representing a collection
         on this database.
@@ -532,6 +558,7 @@ class Database:
 
         Args:
             name: the name of the collection.
+            document_type: TODO
             keyspace: the keyspace containing the collection. If no keyspace
                 is specified, the general setting for this database is used.
             embedding_api_key: optional API key(s) for interacting with the collection.
@@ -615,6 +642,7 @@ class Database:
             api_options=resulting_api_options,
         )
 
+    @overload
     def create_collection(
         self,
         name: str,
@@ -632,7 +660,48 @@ class Database:
         collection_request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Collection:
+    ) -> Collection[DocumentType]: ...
+
+    @overload
+    def create_collection(
+        self,
+        name: str,
+        *,
+        document_type: type[DOC],
+        keyspace: str | None = None,
+        dimension: int | None = None,
+        metric: str | None = None,
+        service: VectorServiceOptions | dict[str, Any] | None = None,
+        indexing: dict[str, Any] | None = None,
+        default_id_type: str | None = None,
+        additional_options: dict[str, Any] | None = None,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        collection_request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> Collection[DOC]: ...
+
+    def create_collection(
+        self,
+        name: str,
+        *,
+        document_type: type[Any] = DocumentType,  # type[DOC] | type[DocumentType]
+        keyspace: str | None = None,
+        dimension: int | None = None,
+        metric: str | None = None,
+        service: VectorServiceOptions | dict[str, Any] | None = None,
+        indexing: dict[str, Any] | None = None,
+        default_id_type: str | None = None,
+        additional_options: dict[str, Any] | None = None,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        collection_request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> Collection[DOC]:
         """
         Creates a collection on the database and return the Collection
         instance that represents it.
@@ -643,6 +712,7 @@ class Database:
 
         Args:
             name: the name of the collection.
+            document_type: TODO
             keyspace: the keyspace where the collection is to be created.
                 If not specified, the general setting for this database is used.
             dimension: for vector collections, the dimension of the vectors
@@ -741,6 +811,7 @@ class Database:
         logger.info(f"finished createCollection('{name}')")
         return self.get_collection(
             name,
+            document_type=document_type,
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
             collection_request_timeout_ms=collection_request_timeout_ms,
@@ -750,7 +821,7 @@ class Database:
 
     def drop_collection(
         self,
-        name_or_collection: str | Collection,
+        name_or_collection: str | Collection[DOC],
         *,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
@@ -1569,10 +1640,10 @@ class AsyncDatabase:
         self._name: str | None = None
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
-    def __getattr__(self, collection_name: str) -> AsyncCollection:
+    def __getattr__(self, collection_name: str) -> AsyncCollection[DocumentType]:
         return self.to_sync().get_collection(name=collection_name).to_async()
 
-    def __getitem__(self, collection_name: str) -> AsyncCollection:
+    def __getitem__(self, collection_name: str) -> AsyncCollection[DocumentType]:
         return self.to_sync().get_collection(name=collection_name).to_async()
 
     def __repr__(self) -> str:
@@ -1914,6 +1985,7 @@ class AsyncDatabase:
 
         return self._using_keyspace
 
+    @overload
     async def get_collection(
         self,
         name: str,
@@ -1923,7 +1995,32 @@ class AsyncDatabase:
         collection_request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> AsyncCollection:
+    ) -> AsyncCollection[DocumentType]: ...
+
+    @overload
+    async def get_collection(
+        self,
+        name: str,
+        *,
+        document_type: type[DOC],
+        keyspace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        collection_request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AsyncCollection[DOC]: ...
+
+    async def get_collection(
+        self,
+        name: str,
+        *,
+        document_type: type[Any] = DocumentType,  # type[DOC] | type[DocumentType]
+        keyspace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        collection_request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AsyncCollection[DOC]:
         """
         Spawn an `AsyncCollection` object instance representing a collection
         on this database.
@@ -1936,6 +2033,7 @@ class AsyncDatabase:
 
         Args:
             name: the name of the collection.
+            document_type: TODO
             keyspace: the keyspace containing the collection. If no keyspace
                 is specified, the setting for this database is used.
             embedding_api_key: optional API key(s) for interacting with the collection.
@@ -2022,6 +2120,7 @@ class AsyncDatabase:
             api_options=resulting_api_options,
         )
 
+    @overload
     async def create_collection(
         self,
         name: str,
@@ -2039,7 +2138,48 @@ class AsyncDatabase:
         collection_request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> AsyncCollection:
+    ) -> AsyncCollection[DocumentType]: ...
+
+    @overload
+    async def create_collection(
+        self,
+        name: str,
+        *,
+        document_type: type[DOC],
+        keyspace: str | None = None,
+        dimension: int | None = None,
+        metric: str | None = None,
+        service: VectorServiceOptions | dict[str, Any] | None = None,
+        indexing: dict[str, Any] | None = None,
+        default_id_type: str | None = None,
+        additional_options: dict[str, Any] | None = None,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        collection_request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AsyncCollection[DOC]: ...
+
+    async def create_collection(
+        self,
+        name: str,
+        *,
+        document_type: type[Any] = DocumentType,  # type[DOC] | type[DocumentType]
+        keyspace: str | None = None,
+        dimension: int | None = None,
+        metric: str | None = None,
+        service: VectorServiceOptions | dict[str, Any] | None = None,
+        indexing: dict[str, Any] | None = None,
+        default_id_type: str | None = None,
+        additional_options: dict[str, Any] | None = None,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        collection_request_timeout_ms: int | UnsetType = _UNSET,
+        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AsyncCollection[DOC]:
         """
         Creates a collection on the database and return the AsyncCollection
         instance that represents it.
@@ -2050,6 +2190,7 @@ class AsyncDatabase:
 
         Args:
             name: the name of the collection.
+            document_type: TODO
             keyspace: the keyspace where the collection is to be created.
                 If not specified, the general setting for this database is used.
             dimension: for vector collections, the dimension of the vectors
@@ -2152,6 +2293,7 @@ class AsyncDatabase:
         logger.info(f"createCollection('{name}')")
         return await self.get_collection(
             name,
+            document_type=document_type,
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
             collection_request_timeout_ms=collection_request_timeout_ms,
@@ -2161,7 +2303,7 @@ class AsyncDatabase:
 
     async def drop_collection(
         self,
-        name_or_collection: str | AsyncCollection,
+        name_or_collection: str | AsyncCollection[DOC],
         *,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,

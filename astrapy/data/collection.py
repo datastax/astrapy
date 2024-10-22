@@ -19,12 +19,12 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Iterable, Sequence
+from typing import TYPE_CHECKING, Any, Generic, Iterable, Sequence
 
 from astrapy.authentication import coerce_possible_embedding_headers_provider
 from astrapy.constants import (
+    DOC,
     CallerType,
-    DocumentType,
     FilterType,
     ProjectionType,
     ReturnDocument,
@@ -32,6 +32,7 @@ from astrapy.constants import (
     normalize_optional_projection,
 )
 
+# RESTOREFIND
 # from astrapy.cursors import AsyncCursor, Cursor
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
@@ -103,7 +104,7 @@ def _is_vector_sort(sort: SortType | None) -> bool:
         return "$vector" in sort or "$vectorize" in sort
 
 
-class Collection:
+class Collection(Generic[DOC]):
     """
     A Data API collection, the main object to interact with the Data API,
     especially for DDL operations.
@@ -229,7 +230,7 @@ class Collection:
         return api_commander
 
     def _copy(
-        self,
+        self: Collection[DOC],
         *,
         database: Database | None = None,
         name: str | None = None,
@@ -239,7 +240,7 @@ class Collection:
         request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Collection:
+    ) -> Collection[DOC]:
         # a double override for the timeout aliasing
         resulting_api_options = (
             self.api_options.with_override(
@@ -272,7 +273,7 @@ class Collection:
         )
 
     def with_options(
-        self,
+        self: Collection[DOC],
         *,
         name: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
@@ -280,7 +281,7 @@ class Collection:
         request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Collection:
+    ) -> Collection[DOC]:
         """
         Create a clone of this collection with some changed attributes.
 
@@ -336,7 +337,7 @@ class Collection:
         )
 
     def to_async(
-        self,
+        self: Collection[DOC],
         *,
         database: AsyncDatabase | None = None,
         name: str | None = None,
@@ -346,7 +347,7 @@ class Collection:
         request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
-    ) -> AsyncCollection:
+    ) -> AsyncCollection[DOC]:
         """
         Create an AsyncCollection from this one. Save for the arguments
         explicitly provided as overrides, everything else is kept identical
@@ -573,7 +574,7 @@ class Collection:
 
     def insert_one(
         self,
-        document: DocumentType,
+        document: DOC,
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
@@ -650,7 +651,7 @@ class Collection:
 
     def insert_many(
         self,
-        documents: Iterable[DocumentType],
+        documents: Iterable[DOC],
         *,
         ordered: bool = False,
         chunk_size: int | None = None,
@@ -1106,7 +1107,7 @@ class Collection:
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DocumentType | None:
+    ) -> DOC | None:
         """
         Run a search, returning the first document in the collection that matches
         provided filters, if any is found.
@@ -1441,7 +1442,7 @@ class Collection:
     def find_one_and_replace(
         self,
         filter: FilterType,
-        replacement: DocumentType,
+        replacement: DOC,
         *,
         projection: ProjectionType | None = None,
         sort: SortType | None = None,
@@ -1449,7 +1450,7 @@ class Collection:
         return_document: str = ReturnDocument.BEFORE,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DocumentType | None:
+    ) -> DOC | None:
         """
         Find a document on the collection and replace it entirely with a new one,
         optionally inserting a new one if no match is found.
@@ -1578,7 +1579,7 @@ class Collection:
     def replace_one(
         self,
         filter: FilterType,
-        replacement: DocumentType,
+        replacement: DOC,
         *,
         sort: SortType | None = None,
         upsert: bool = False,
@@ -1678,7 +1679,7 @@ class Collection:
         return_document: str = ReturnDocument.BEFORE,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DocumentType | None:
+    ) -> DOC | None:
         """
         Find a document on the collection and update it as requested,
         optionally inserting a new one if no match is found.
@@ -2060,7 +2061,7 @@ class Collection:
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DocumentType | None:
+    ) -> DOC | None:
         """
         Find a document in the collection and delete it. The deleted document,
         however, is the return value of the method.
@@ -2438,7 +2439,7 @@ class Collection:
         return command_result
 
 
-class AsyncCollection:
+class AsyncCollection(Generic[DOC]):
     """
     A Data API collection, the main object to interact with the Data API,
     especially for DDL operations.
@@ -2565,7 +2566,7 @@ class AsyncCollection:
         )
         return api_commander
 
-    async def __aenter__(self) -> AsyncCollection:
+    async def __aenter__(self: AsyncCollection[DOC]) -> AsyncCollection[DOC]:
         return self
 
     async def __aexit__(
@@ -2582,7 +2583,7 @@ class AsyncCollection:
             )
 
     def _copy(
-        self,
+        self: AsyncCollection[DOC],
         *,
         database: AsyncDatabase | None = None,
         name: str | None = None,
@@ -2592,7 +2593,7 @@ class AsyncCollection:
         request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
-    ) -> AsyncCollection:
+    ) -> AsyncCollection[DOC]:
         # a double override for the timeout aliasing
         resulting_api_options = (
             self.api_options.with_override(
@@ -2625,7 +2626,7 @@ class AsyncCollection:
         )
 
     def with_options(
-        self,
+        self: AsyncCollection[DOC],
         *,
         name: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
@@ -2633,7 +2634,7 @@ class AsyncCollection:
         request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
-    ) -> AsyncCollection:
+    ) -> AsyncCollection[DOC]:
         """
         Create a clone of this collection with some changed attributes.
 
@@ -2689,7 +2690,7 @@ class AsyncCollection:
         )
 
     def to_sync(
-        self,
+        self: AsyncCollection[DOC],
         *,
         database: Database | None = None,
         name: str | None = None,
@@ -2699,7 +2700,7 @@ class AsyncCollection:
         request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Collection:
+    ) -> Collection[DOC]:
         """
         Create a Collection from this one. Save for the arguments
         explicitly provided as overrides, everything else is kept identical
@@ -2926,7 +2927,7 @@ class AsyncCollection:
 
     async def insert_one(
         self,
-        document: DocumentType,
+        document: DOC,
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
@@ -3006,7 +3007,7 @@ class AsyncCollection:
 
     async def insert_many(
         self,
-        documents: Iterable[DocumentType],
+        documents: Iterable[DOC],
         *,
         ordered: bool = False,
         chunk_size: int | None = None,
@@ -3185,7 +3186,7 @@ class AsyncCollection:
             sem = asyncio.Semaphore(_concurrency)
 
             async def concurrent_insert_chunk(
-                document_chunk: list[DocumentType],
+                document_chunk: list[DOC],
             ) -> dict[str, Any]:
                 async with sem:
                     im_payload = {
@@ -3470,7 +3471,7 @@ class AsyncCollection:
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DocumentType | None:
+    ) -> DOC | None:
         """
         Run a search, returning the first document in the collection that matches
         provided filters, if any is found.
@@ -3834,7 +3835,7 @@ class AsyncCollection:
     async def find_one_and_replace(
         self,
         filter: FilterType,
-        replacement: DocumentType,
+        replacement: DOC,
         *,
         projection: ProjectionType | None = None,
         sort: SortType | None = None,
@@ -3842,7 +3843,7 @@ class AsyncCollection:
         return_document: str = ReturnDocument.BEFORE,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DocumentType | None:
+    ) -> DOC | None:
         """
         Find a document on the collection and replace it entirely with a new one,
         optionally inserting a new one if no match is found.
@@ -3977,7 +3978,7 @@ class AsyncCollection:
     async def replace_one(
         self,
         filter: FilterType,
-        replacement: DocumentType,
+        replacement: DOC,
         *,
         sort: SortType | None = None,
         upsert: bool = False,
@@ -4093,7 +4094,7 @@ class AsyncCollection:
         return_document: str = ReturnDocument.BEFORE,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DocumentType | None:
+    ) -> DOC | None:
         """
         Find a document on the collection and update it as requested,
         optionally inserting a new one if no match is found.
@@ -4507,7 +4508,7 @@ class AsyncCollection:
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DocumentType | None:
+    ) -> DOC | None:
         """
         Find a document in the collection and delete it. The deleted document,
         however, is the return value of the method.

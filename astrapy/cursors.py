@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from astrapy.data.cursors import (
-    AsyncCursor,
-    Cursor,
-    CursorState,
-)
+# RESTOREFIND
+# from astrapy.data.cursors import (
+#     AsyncCursor,
+#     Cursor,
+#     CursorState,
+# )
 
-__all__ = [
-    "AsyncCursor",
-    "Cursor",
-    "CursorState",
-]
+# __all__ = [
+#     "AsyncCursor",
+#     "Cursor",
+#     "CursorState",
+# ]

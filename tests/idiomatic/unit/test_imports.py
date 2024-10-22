@@ -27,7 +27,8 @@ def test_namespace() -> None:
     assert str(astrapy.client) != ""
     assert str(astrapy.collection) != ""
     assert str(astrapy.constants) != ""
-    assert str(astrapy.cursors) != ""
+    # RESTOREFIND
+    # assert str(astrapy.cursors) != ""
     assert str(astrapy.data) != ""
     assert str(astrapy.database) != ""
     assert str(astrapy.exceptions) != ""
@@ -43,7 +44,8 @@ def test_namespace() -> None:
     assert str(astrapy.client.DataAPIClient) != ""
     assert str(astrapy.collection.Collection) != ""
     assert str(astrapy.constants.VectorMetric.DOT_PRODUCT) != ""
-    assert str(astrapy.cursors.Cursor) != ""
+    # RESTOREFIND
+    # assert str(astrapy.cursors.Cursor) != ""
     assert str(astrapy.data.collection) != ""
     assert str(astrapy.database.Database) != ""
     assert str(astrapy.exceptions.DevOpsAPIException) != ""
@@ -83,11 +85,12 @@ def test_imports() -> None:
         SortDocuments,
         VectorMetric,
     )
-    from astrapy.cursors import (  # noqa: F401
-        AsyncCursor,
-        Cursor,
-        CursorState,
-    )
+    # RESTOREFIND
+    # from astrapy.cursors import (  # noqa: F401
+    #     AsyncCursor,
+    #     Cursor,
+    #     CursorState,
+    # )
     from astrapy.exceptions import (  # noqa: F401
         CollectionNotFoundException,
         CumulativeOperationException,

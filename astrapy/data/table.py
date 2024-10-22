@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import logging
+from types import TracebackType
 from typing import TYPE_CHECKING, Any, Generic, Sequence
 
 from astrapy.authentication import coerce_possible_embedding_headers_provider
@@ -703,7 +704,7 @@ class Table(Generic[ROW]):
         )
         logger.info(f"dropping table '{self.name}' (self)")
         self.database.drop_table(
-            self.name, schema_operation_timeout_ms=_schema_operation_timeout_ms
+            self, schema_operation_timeout_ms=_schema_operation_timeout_ms
         )
         logger.info(f"finished dropping table '{self.name}' (self)")
 
@@ -852,6 +853,22 @@ class AsyncTable(Generic[ROW]):
             redacted_header_names=self.api_options.redacted_header_names,
         )
         return api_commander
+
+    async def __aenter__(self: AsyncTable[ROW]) -> AsyncTable[ROW]:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
+    ) -> None:
+        if self._api_commander is not None:
+            await self._api_commander.__aexit__(
+                exc_type=exc_type,
+                exc_value=exc_value,
+                traceback=traceback,
+            )
 
     def _copy(
         self: AsyncTable[ROW],
@@ -1395,7 +1412,7 @@ class AsyncTable(Generic[ROW]):
         )
         logger.info(f"dropping table '{self.name}' (self)")
         drop_result = await self.database.drop_table(
-            self.name, schema_operation_timeout_ms=_schema_operation_timeout_ms
+            self, schema_operation_timeout_ms=_schema_operation_timeout_ms
         )
         logger.info(f"finished dropping table '{self.name}' (self)")
         return drop_result
