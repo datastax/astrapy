@@ -12,24 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# RESTOREFIND
 from __future__ import annotations
 
 import hashlib
 import json
+# RESTOREFIND
 # import logging
 # import time
 # from collections.abc import AsyncIterator
 # from enum import Enum
 from typing import (
+# RESTOREFIND
 #     TYPE_CHECKING,
     Any,
     Callable,
     Iterable,
+# RESTOREFIND
 #     Iterator,
 #     TypeVar,
 )
 
+# RESTOREFIND
 # from astrapy.constants import (
 #     DocumentType,
 #     ProjectionType,
@@ -42,6 +45,7 @@ from typing import (
 # )
 from astrapy.utils.transform_payload import normalize_payload_value
 
+# RESTOREFIND
 # if TYPE_CHECKING:
 #     from astrapy.collection import AsyncCollection, Collection
 
@@ -53,6 +57,7 @@ from astrapy.utils.transform_payload import normalize_payload_value
 IndexPairType = tuple[str, int | None]
 
 
+# RESTOREFIND
 # class CursorState(Enum):
 #     # Iteration over results has not started yet (alive=T, started=F)
 #     IDLE = "idle"
@@ -160,6 +165,7 @@ def _hash_document(document: dict[str, Any]) -> str:
     return _item_hash
 
 
+# RESTOREFIND
 # class _LookAheadIterator:
 #     """
 #     A class that allows to anticipate reading one element to ensure a call
