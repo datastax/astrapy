@@ -16,14 +16,14 @@ from __future__ import annotations
 
 import logging
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence, overload
 
 from astrapy.admin import fetch_database_info, parse_api_endpoint
 from astrapy.authentication import (
     coerce_possible_embedding_headers_provider,
     coerce_possible_token_provider,
 )
-from astrapy.constants import CallerType, Environment
+from astrapy.constants import ROW, CallerType, Environment, RowType
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     DevOpsAPIException,
@@ -912,6 +912,7 @@ class Database:
             logger.info("finished findCollections")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
+    @overload
     def get_table(
         self,
         name: str,
@@ -921,7 +922,32 @@ class Database:
         table_request_timeout_ms: int | UnsetType = _UNSET,
         table_max_time_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Table:
+    ) -> Table[RowType]: ...
+
+    @overload
+    def get_table(
+        self,
+        name: str,
+        *,
+        row_type: type[ROW],
+        keyspace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        table_request_timeout_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
+        table_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> Table[ROW]: ...
+
+    def get_table(
+        self,
+        name: str,
+        *,
+        row_type: type[Any] = RowType,  # type[ROW] | type[RowType]
+        keyspace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        table_request_timeout_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
+        table_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> Table[ROW]:
         """
         Spawn a `Table` object instance representing a table
         on this database.
@@ -934,6 +960,7 @@ class Database:
 
         Args:
             name: the name of the table.
+            row_type: TODO
             keyspace: the keyspace containing the table. If no keyspace
                 is specified, the general setting for this database is used.
             embedding_api_key: optional API key(s) for interacting with the table.
@@ -1003,13 +1030,14 @@ class Database:
                 "No keyspace specified. This operation requires a keyspace to "
                 "be set, e.g. through the `use_keyspace` method."
             )
-        return Table(
+        return Table[ROW](
             database=self,
             name=name,
             keyspace=_keyspace,
             api_options=resulting_api_options,
         )
 
+    @overload
     def create_table(
         self,
         name: str,
@@ -1023,7 +1051,40 @@ class Database:
         table_request_timeout_ms: int | UnsetType = _UNSET,
         table_max_time_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Table:
+    ) -> Table[RowType]: ...
+
+    @overload
+    def create_table(
+        self,
+        name: str,
+        *,
+        definition: TableDefinition | dict[str, Any],
+        row_type: type[ROW],
+        keyspace: str | None = None,
+        if_not_exists: bool | None = None,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        table_request_timeout_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
+        table_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> Table[ROW]: ...
+
+    def create_table(
+        self,
+        name: str,
+        *,
+        definition: TableDefinition | dict[str, Any],
+        row_type: type[Any] = RowType,  # type[ROW] | type[RowType]
+        keyspace: str | None = None,
+        if_not_exists: bool | None = None,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        table_request_timeout_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
+        table_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> Table[ROW]:
         """
         Creates a table on the database and return the Table
         instance that represents it.
@@ -1039,6 +1100,7 @@ class Database:
                 in which case it will be parsed into a `TableDefinition`.
                 See the `astrapy.info.TableDefinition` class for more details
                 and ways to construct this object.
+            row_type: TODO
             keyspace: the keyspace where the table is to be created.
                 If not specified, the general setting for this database is used.
             if_not_exists: if set to True, the command will succeed even if a table
@@ -1120,6 +1182,7 @@ class Database:
         logger.info(f"finished createTable('{name}')")
         return self.get_table(
             name,
+            row_type=row_type,
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
             table_request_timeout_ms=table_request_timeout_ms,
@@ -1129,7 +1192,7 @@ class Database:
 
     def drop_table(
         self,
-        name_or_table: str | Table,
+        name_or_table: str | Table[ROW],
         *,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
@@ -2262,6 +2325,7 @@ class AsyncDatabase:
             logger.info("finished findCollections")
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
+    @overload
     async def get_table(
         self,
         name: str,
@@ -2271,7 +2335,32 @@ class AsyncDatabase:
         table_request_timeout_ms: int | UnsetType = _UNSET,
         table_max_time_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> AsyncTable:
+    ) -> AsyncTable[RowType]: ...
+
+    @overload
+    async def get_table(
+        self,
+        name: str,
+        *,
+        row_type: type[ROW],
+        keyspace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        table_request_timeout_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
+        table_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AsyncTable[ROW]: ...
+
+    async def get_table(
+        self,
+        name: str,
+        *,
+        row_type: type[Any] = RowType,  # type[ROW] | type[RowType]
+        keyspace: str | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        table_request_timeout_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
+        table_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AsyncTable[ROW]:
         """
         Spawn an `AsyncTable` object instance representing a table
         on this database.
@@ -2284,6 +2373,7 @@ class AsyncDatabase:
 
         Args:
             name: the name of the table.
+            row_type: TODO
             keyspace: the keyspace containing the table. If no keyspace
                 is specified, the general setting for this database is used.
             embedding_api_key: optional API key(s) for interacting with the table.
@@ -2353,13 +2443,14 @@ class AsyncDatabase:
                 "No keyspace specified. This operation requires a keyspace to "
                 "be set, e.g. through the `use_keyspace` method."
             )
-        return AsyncTable(
+        return AsyncTable[ROW](
             database=self,
             name=name,
             keyspace=_keyspace,
             api_options=resulting_api_options,
         )
 
+    @overload
     async def create_table(
         self,
         name: str,
@@ -2373,7 +2464,40 @@ class AsyncDatabase:
         table_request_timeout_ms: int | UnsetType = _UNSET,
         table_max_time_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> AsyncTable:
+    ) -> AsyncTable[RowType]: ...
+
+    @overload
+    async def create_table(
+        self,
+        name: str,
+        *,
+        definition: TableDefinition | dict[str, Any],
+        row_type: type[ROW],
+        keyspace: str | None = None,
+        if_not_exists: bool | None = None,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        table_request_timeout_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
+        table_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AsyncTable[ROW]: ...
+
+    async def create_table(
+        self,
+        name: str,
+        *,
+        definition: TableDefinition | dict[str, Any],
+        row_type: type[Any] = RowType,  # type[ROW] | type[RowType]
+        keyspace: str | None = None,
+        if_not_exists: bool | None = None,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        table_request_timeout_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
+        table_api_options: APIOptions | UnsetType = _UNSET,
+    ) -> AsyncTable[ROW]:
         """
         Creates a table on the database and return the AsyncTable
         instance that represents it.
@@ -2389,6 +2513,7 @@ class AsyncDatabase:
                 in which case it will be parsed into a `TableDefinition`.
                 See the `astrapy.info.TableDefinition` class for more details
                 and ways to construct this object.
+            row_type: TODO
             keyspace: the keyspace where the table is to be created.
                 If not specified, the general setting for this database is used.
             if_not_exists: if set to True, the command will succeed even if a table
@@ -2472,6 +2597,7 @@ class AsyncDatabase:
         logger.info(f"finished createTable('{name}')")
         return await self.get_table(
             name,
+            row_type=row_type,
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
             table_request_timeout_ms=table_request_timeout_ms,
@@ -2481,7 +2607,7 @@ class AsyncDatabase:
 
     async def drop_table(
         self,
-        name_or_table: str | AsyncTable,
+        name_or_table: str | AsyncTable[ROW],
         *,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,

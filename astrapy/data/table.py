@@ -15,13 +15,13 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any, Generic, Sequence
 
 from astrapy.authentication import coerce_possible_embedding_headers_provider
 from astrapy.constants import (
+    ROW,
     CallerType,
     FilterType,
-    RowType,
 )
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class Table:
+class Table(Generic[ROW]):
     """
     TODO
     A Data API collection, the main object to interact with the Data API,
@@ -162,7 +162,7 @@ class Table:
         return api_commander
 
     def _copy(
-        self,
+        self: Table[ROW],
         *,
         database: Database | None = None,
         name: str | None = None,
@@ -172,7 +172,7 @@ class Table:
         request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Table:
+    ) -> Table[ROW]:
         # a double override for the timeout aliasing
         resulting_api_options = (
             self.api_options.with_override(
@@ -205,7 +205,7 @@ class Table:
         )
 
     def with_options(
-        self,
+        self: Table[ROW],
         *,
         name: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
@@ -213,7 +213,7 @@ class Table:
         request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Table:
+    ) -> Table[ROW]:
         """
         TODO
         """
@@ -227,7 +227,7 @@ class Table:
         )
 
     def to_async(
-        self,
+        self: Table[ROW],
         *,
         database: AsyncDatabase | None = None,
         name: str | None = None,
@@ -237,7 +237,7 @@ class Table:
         request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
-    ) -> AsyncTable:
+    ) -> AsyncTable[ROW]:
         """
         TODO
         """
@@ -571,7 +571,7 @@ class Table:
 
     def insert_one(
         self,
-        row: RowType,
+        row: ROW,
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
@@ -616,7 +616,7 @@ class Table:
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> RowType | None:
+    ) -> ROW | None:
         """
         TODO
         """
@@ -703,7 +703,7 @@ class Table:
         )
         logger.info(f"dropping table '{self.name}' (self)")
         self.database.drop_table(
-            self, schema_operation_timeout_ms=_schema_operation_timeout_ms
+            self.name, schema_operation_timeout_ms=_schema_operation_timeout_ms
         )
         logger.info(f"finished dropping table '{self.name}' (self)")
 
@@ -735,7 +735,7 @@ class Table:
         return command_result
 
 
-class AsyncTable:
+class AsyncTable(Generic[ROW]):
     """
     TODO
     A Data API collection, the main object to interact with the Data API,
@@ -854,7 +854,7 @@ class AsyncTable:
         return api_commander
 
     def _copy(
-        self,
+        self: AsyncTable[ROW],
         *,
         database: AsyncDatabase | None = None,
         name: str | None = None,
@@ -864,7 +864,7 @@ class AsyncTable:
         request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
-    ) -> AsyncTable:
+    ) -> AsyncTable[ROW]:
         # a double override for the timeout aliasing
         resulting_api_options = (
             self.api_options.with_override(
@@ -897,7 +897,7 @@ class AsyncTable:
         )
 
     def with_options(
-        self,
+        self: AsyncTable[ROW],
         *,
         name: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
@@ -905,7 +905,7 @@ class AsyncTable:
         request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
-    ) -> AsyncTable:
+    ) -> AsyncTable[ROW]:
         """
         TODO
         """
@@ -919,7 +919,7 @@ class AsyncTable:
         )
 
     def to_sync(
-        self,
+        self: AsyncTable[ROW],
         *,
         database: Database | None = None,
         name: str | None = None,
@@ -929,7 +929,7 @@ class AsyncTable:
         request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Table:
+    ) -> Table[ROW]:
         """
         TODO
         """
@@ -1265,7 +1265,7 @@ class AsyncTable:
 
     async def insert_one(
         self,
-        row: RowType,
+        row: ROW,
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
@@ -1310,7 +1310,7 @@ class AsyncTable:
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> RowType | None:
+    ) -> ROW | None:
         """
         TODO
         """
@@ -1395,7 +1395,7 @@ class AsyncTable:
         )
         logger.info(f"dropping table '{self.name}' (self)")
         drop_result = await self.database.drop_table(
-            self, schema_operation_timeout_ms=_schema_operation_timeout_ms
+            self.name, schema_operation_timeout_ms=_schema_operation_timeout_ms
         )
         logger.info(f"finished dropping table '{self.name}' (self)")
         return drop_result
