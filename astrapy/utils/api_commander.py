@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import logging
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Sequence, cast
+from typing import Any, Dict, Iterable, Sequence, cast
 
 import httpx
 
@@ -48,10 +48,6 @@ from astrapy.utils.user_agents import (
     compose_full_user_agent,
     detect_astrapy_user_agent,
 )
-
-if TYPE_CHECKING:
-    from astrapy.utils.request_tools import TimeoutInfoWideType
-
 
 user_agent_astrapy = detect_astrapy_user_agent()
 
@@ -265,9 +261,9 @@ class APICommander:
         additional_path: str | None = None,
         request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
-        timeout_info: TimeoutInfoWideType = None,
+        timeout_ms: int | None = None,
     ) -> httpx.Response:
-        timeout = to_httpx_timeout(timeout_info)
+        timeout = to_httpx_timeout(timeout_ms)
         normalized_payload = normalize_for_api(payload)
         request_url = self._compose_request_url(additional_path)
         log_httpx_request(
@@ -276,7 +272,7 @@ class APICommander:
             request_params=request_params,
             redacted_request_headers=self._loggable_headers,
             payload=normalized_payload,
-            timeout_info=timeout_info,
+            timeout_ms=timeout_ms,
         )
         encoded_payload = self._encode_payload(normalized_payload)
 
@@ -310,9 +306,9 @@ class APICommander:
         additional_path: str | None = None,
         request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
-        timeout_info: TimeoutInfoWideType = None,
+        timeout_ms: int | None = None,
     ) -> httpx.Response:
-        timeout = to_httpx_timeout(timeout_info)
+        timeout = to_httpx_timeout(timeout_ms)
         normalized_payload = normalize_for_api(payload)
         request_url = self._compose_request_url(additional_path)
         log_httpx_request(
@@ -321,7 +317,7 @@ class APICommander:
             request_params=request_params,
             redacted_request_headers=self._loggable_headers,
             payload=normalized_payload,
-            timeout_info=timeout_info,
+            timeout_ms=timeout_ms,
         )
         encoded_payload = self._encode_payload(normalized_payload)
 
@@ -355,7 +351,7 @@ class APICommander:
         additional_path: str | None = None,
         request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
-        timeout_info: TimeoutInfoWideType = None,
+        timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         raw_response = self.raw_request(
             http_method=http_method,
@@ -363,7 +359,7 @@ class APICommander:
             additional_path=additional_path,
             request_params=request_params,
             raise_api_errors=raise_api_errors,
-            timeout_info=timeout_info,
+            timeout_ms=timeout_ms,
         )
         return self._raw_response_to_json(
             raw_response, raise_api_errors=raise_api_errors, payload=payload
@@ -377,7 +373,7 @@ class APICommander:
         additional_path: str | None = None,
         request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
-        timeout_info: TimeoutInfoWideType = None,
+        timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         raw_response = await self.async_raw_request(
             http_method=http_method,
@@ -385,7 +381,7 @@ class APICommander:
             additional_path=additional_path,
             request_params=request_params,
             raise_api_errors=raise_api_errors,
-            timeout_info=timeout_info,
+            timeout_ms=timeout_ms,
         )
         return self._raw_response_to_json(
             raw_response, raise_api_errors=raise_api_errors, payload=payload

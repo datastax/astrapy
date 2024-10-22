@@ -31,7 +31,6 @@ if TYPE_CHECKING:
         OperationResult,
         UpdateResult,
     )
-    from astrapy.utils.request_tools import TimeoutInfo
 
 
 class DevOpsAPIException(ValueError):
@@ -798,13 +797,6 @@ def to_devopsapi_timeout_exception(
     )
 
 
-def base_timeout_info(max_time_ms: int | None) -> TimeoutInfo | None:
-    if max_time_ms is not None:
-        return {"base": max_time_ms / 1000.0}
-    else:
-        return None
-
-
 class MultiCallTimeoutManager:
     """
     A helper class to keep track of timing and timeouts
@@ -875,24 +867,6 @@ class MultiCallTimeoutManager:
             else:
                 return cap_time_ms
 
-    def remaining_timeout_info(
-        self, cap_time_ms: int | None = None
-    ) -> TimeoutInfo | None:
-        """
-        Ensure the deadline, if any, is not yet in the past.
-        If it is, raise an appropriate timeout error.
-        It it is not, or there is no deadline, return a suitable TimeoutInfo
-        for use within the multi-call method.
-
-        Args:
-            cap_time_ms: an additional timeout constraint to cap the result of
-                this method. If the remaining timeout from this manager exceeds
-                the provided cap, the cap is returned.
-        """
-        return base_timeout_info(
-            max_time_ms=self.remaining_timeout_ms(cap_time_ms=cap_time_ms)
-        )
-
 
 __all__ = [
     "CollectionNotFoundException",
@@ -920,7 +894,6 @@ __all__ = [
 ]
 
 __pdoc__ = {
-    "base_timeout_info": False,
     "to_dataapi_timeout_exception": False,
     "MultiCallTimeoutManager": False,
 }

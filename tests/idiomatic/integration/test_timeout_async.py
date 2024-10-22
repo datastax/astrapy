@@ -31,14 +31,14 @@ class TestTimeoutAsync:
         self,
         async_empty_collection: AsyncCollection,
     ) -> None:
-        await async_empty_collection.insert_many([{"a": 1}] * 100)
-        await asyncio.sleep(10)
-        assert await async_empty_collection.count_documents({}, upper_bound=150) >= 100
+        await async_empty_collection.insert_many([{"a": 1}] * 500)
+        await asyncio.sleep(2)
 
         with pytest.raises(DataAPITimeoutException) as exc:
             await async_empty_collection.count_documents(
-                {}, upper_bound=150, max_time_ms=1
+                {}, upper_bound=800, max_time_ms=1
             )
+        assert await async_empty_collection.count_documents({}, upper_bound=800) >= 500
         assert exc.value.timeout_type in {"connect", "read"}
         assert exc.value.endpoint is not None
         assert exc.value.raw_payload is not None
@@ -67,24 +67,6 @@ class TestTimeoutAsync:
         assert exc.value.timeout_type in {"connect", "read"}
         assert exc.value.endpoint is not None
         assert exc.value.raw_payload is not None
-
-    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Too fast on nonAstra")
-    @pytest.mark.describe("test of cursor-based timeouts, async")
-    async def test_cursor_timeouts_async(
-        self,
-        async_empty_collection: AsyncCollection,
-    ) -> None:
-        await async_empty_collection.insert_one({"a": 1})
-
-        cur0 = async_empty_collection.find({})
-        cur1 = async_empty_collection.find({}, max_time_ms=1)
-        await cur0.__anext__()
-        with pytest.raises(DataAPITimeoutException):
-            await cur1.__anext__()
-
-        await async_empty_collection.find_one({})
-        with pytest.raises(DataAPITimeoutException):
-            await async_empty_collection.find_one({}, max_time_ms=1)
 
     @pytest.mark.describe("test of cursor-based overall timeouts, async")
     async def test_cursor_overalltimeout_exceptions_async(

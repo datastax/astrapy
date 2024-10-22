@@ -24,11 +24,9 @@ from astrapy.authentication import (
     coerce_possible_token_provider,
 )
 from astrapy.constants import CallerType, Environment
-from astrapy.cursors import AsyncCommandCursor, CommandCursor
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     DevOpsAPIException,
-    base_timeout_info,
 )
 from astrapy.info import (
     CollectionDescriptor,
@@ -733,7 +731,7 @@ class Database:
         logger.info(f"createCollection('{name}')")
         cc_response = driver_commander.request(
             payload=cc_payload,
-            timeout_info=_schema_operation_timeout_ms,
+            timeout_ms=_schema_operation_timeout_ms,
         )
         if cc_response.get("status") != {"ok": 1}:
             raise DataAPIFaultyResponseException(
@@ -801,7 +799,7 @@ class Database:
         logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = driver_commander.request(
             payload=dc_payload,
-            timeout_info=base_timeout_info(_schema_operation_timeout_ms),
+            timeout_ms=_schema_operation_timeout_ms,
         )
         if dc_response.get("status") != {"ok": 1}:
             raise DataAPIFaultyResponseException(
@@ -817,7 +815,7 @@ class Database:
         keyspace: str | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> CommandCursor[CollectionDescriptor]:
+    ) -> list[CollectionDescriptor]:
         """
         List all collections in a given keyspace for this database.
 
@@ -829,14 +827,11 @@ class Database:
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            a `CommandCursor` to iterate over CollectionDescriptor instances,
-            each corresponding to a collection.
+            a list of CollectionDescriptor instances one for each collection.
 
         Example:
-            >>> ccur = my_db.list_collections()
-            >>> ccur
-            <astrapy.cursors.CommandCursor object at ...>
-            >>> list(ccur)
+            >>> coll_list = my_db.list_collections()
+            >>> coll_list
             [CollectionDescriptor(name='my_v_col', options=CollectionOptions())]
             >>> for coll_dict in my_db.list_collections():
             ...     print(coll_dict)
@@ -855,7 +850,7 @@ class Database:
         logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -865,13 +860,10 @@ class Database:
         else:
             # we know this is a list of dicts, to marshal into "descriptors"
             logger.info("finished findCollections")
-            return CommandCursor(
-                address=driver_commander.full_path,
-                items=[
-                    CollectionDescriptor.from_dict(col_dict)
-                    for col_dict in gc_response["status"]["collections"]
-                ],
-            )
+            return [
+                CollectionDescriptor.from_dict(col_dict)
+                for col_dict in gc_response["status"]["collections"]
+            ]
 
     def list_collection_names(
         self,
@@ -909,7 +901,7 @@ class Database:
         logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -1118,7 +1110,7 @@ class Database:
         logger.info(f"createTable('{name}')")
         ct_response = driver_commander.request(
             payload=cc_payload,
-            timeout_info=_schema_operation_timeout_ms,
+            timeout_ms=_schema_operation_timeout_ms,
         )
         if ct_response.get("status") != {"ok": 1}:
             raise DataAPIFaultyResponseException(
@@ -1186,7 +1178,7 @@ class Database:
         logger.info(f"dropTable('{_table_name}')")
         dt_response = driver_commander.request(
             payload=dt_payload,
-            timeout_info=base_timeout_info(_schema_operation_timeout_ms),
+            timeout_ms=_schema_operation_timeout_ms,
         )
         if dt_response.get("status") != {"ok": 1}:
             raise DataAPIFaultyResponseException(
@@ -1202,7 +1194,7 @@ class Database:
         keyspace: str | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> CommandCursor[TableDescriptor]:
+    ) -> list[TableDescriptor]:
         """
         List all tables in a given keyspace for this database.
 
@@ -1214,14 +1206,11 @@ class Database:
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            a `CommandCursor` to iterate over TableDescriptor instances,
-            each corresponding to a table.
+            a list of TableDescriptor instances, one for each table.
 
         Example:
-            >>> ccur = my_db.list_tables()
-            >>> ccur
-            <astrapy.cursors.CommandCursor object at ...>
-            >>> list(ccur)
+            >>> table_list = my_db.list_tables()
+            >>> table_list
             [TableDescriptor(name='my_table', options=TableOptions())]
             >>> for table_desc in my_db.list_tables():
             ...     print(table_desc)
@@ -1240,7 +1229,7 @@ class Database:
         logger.info("listTables")
         lt_response = driver_commander.request(
             payload=lt_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if "tables" not in lt_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -1250,13 +1239,10 @@ class Database:
         else:
             # we know this is a list of dicts, to marshal into "descriptors"
             logger.info("finished listTables")
-            return CommandCursor(
-                address=driver_commander.full_path,
-                items=[
-                    TableDescriptor.coerce(tab_dict)
-                    for tab_dict in lt_response["status"]["tables"]
-                ],
-            )
+            return [
+                TableDescriptor.coerce(tab_dict)
+                for tab_dict in lt_response["status"]["tables"]
+            ]
 
     def list_table_names(
         self,
@@ -1294,7 +1280,7 @@ class Database:
         logger.info("listTables")
         lt_response = driver_commander.request(
             payload=lt_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if "tables" not in lt_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -1372,7 +1358,7 @@ class Database:
             req_response = driver_commander.request(
                 payload=body,
                 raise_api_errors=raise_api_errors,
-                timeout_info=base_timeout_info(_request_timeout_ms),
+                timeout_ms=_request_timeout_ms,
             )
             logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             return req_response
@@ -2093,7 +2079,7 @@ class AsyncDatabase:
         logger.info(f"createCollection('{name}')")
         cc_response = await driver_commander.async_request(
             payload=cc_payload,
-            timeout_info=_schema_operation_timeout_ms,
+            timeout_ms=_schema_operation_timeout_ms,
         )
         if cc_response.get("status") != {"ok": 1}:
             raise DataAPIFaultyResponseException(
@@ -2161,7 +2147,7 @@ class AsyncDatabase:
         logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = await driver_commander.async_request(
             payload=dc_payload,
-            timeout_info=base_timeout_info(_schema_operation_timeout_ms),
+            timeout_ms=_schema_operation_timeout_ms,
         )
         if dc_response.get("status") != {"ok": 1}:
             raise DataAPIFaultyResponseException(
@@ -2171,13 +2157,13 @@ class AsyncDatabase:
         logger.info(f"finished deleteCollection('{_collection_name}')")
         return dc_response.get("status", {})  # type: ignore[no-any-return]
 
-    def list_collections(
+    async def list_collections(
         self,
         *,
         keyspace: str | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> AsyncCommandCursor[CollectionDescriptor]:
+    ) -> list[CollectionDescriptor]:
         """
         List all collections in a given keyspace for this database.
 
@@ -2189,19 +2175,16 @@ class AsyncDatabase:
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            an `AsyncCommandCursor` to iterate over CollectionDescriptor instances,
-            each corresponding to a collection.
+            a list of CollectionDescriptor instances one for each collection.
 
         Example:
             >>> async def a_list_colls(adb: AsyncDatabase) -> None:
-            ...     a_ccur = adb.list_collections()
-            ...     print("* a_ccur:", a_ccur)
-            ...     print("* list:", [coll async for coll in a_ccur])
-            ...     async for coll in adb.list_collections():
+            ...     a_coll_list = await adb.list_collections()
+            ...     print("* list:", a_coll_list)
+            ...     for coll in await adb.list_collections():
             ...         print("* coll:", coll)
             ...
             >>> asyncio.run(a_list_colls(my_async_db))
-            * a_ccur: <astrapy.cursors.AsyncCommandCursor object at ...>
             * list: [CollectionDescriptor(name='my_v_col', options=CollectionOptions())]
             * coll: CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
@@ -2215,9 +2198,9 @@ class AsyncDatabase:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload = {"findCollections": {"options": {"explain": True}}}
         logger.info("findCollections")
-        gc_response = driver_commander.request(
+        gc_response = await driver_commander.async_request(
             payload=gc_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -2227,13 +2210,10 @@ class AsyncDatabase:
         else:
             # we know this is a list of dicts, to marshal into "descriptors"
             logger.info("finished findCollections")
-            return AsyncCommandCursor(
-                address=driver_commander.full_path,
-                items=[
-                    CollectionDescriptor.from_dict(col_dict)
-                    for col_dict in gc_response["status"]["collections"]
-                ],
-            )
+            return [
+                CollectionDescriptor.from_dict(col_dict)
+                for col_dict in gc_response["status"]["collections"]
+            ]
 
     async def list_collection_names(
         self,
@@ -2271,7 +2251,7 @@ class AsyncDatabase:
         logger.info("findCollections")
         gc_response = await driver_commander.async_request(
             payload=gc_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if "collections" not in gc_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -2482,7 +2462,7 @@ class AsyncDatabase:
         logger.info(f"createTable('{name}')")
         ct_response = await driver_commander.async_request(
             payload=cc_payload,
-            timeout_info=_schema_operation_timeout_ms,
+            timeout_ms=_schema_operation_timeout_ms,
         )
         if ct_response.get("status") != {"ok": 1}:
             raise DataAPIFaultyResponseException(
@@ -2550,7 +2530,7 @@ class AsyncDatabase:
         logger.info(f"dropTable('{_table_name}')")
         dt_response = await driver_commander.async_request(
             payload=dt_payload,
-            timeout_info=base_timeout_info(_schema_operation_timeout_ms),
+            timeout_ms=_schema_operation_timeout_ms,
         )
         if dt_response.get("status") != {"ok": 1}:
             raise DataAPIFaultyResponseException(
@@ -2560,13 +2540,13 @@ class AsyncDatabase:
         logger.info(f"finished dropTable('{_table_name}')")
         return dt_response.get("status", {})  # type: ignore[no-any-return]
 
-    def list_tables(
+    async def list_tables(
         self,
         *,
         keyspace: str | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> AsyncCommandCursor[TableDescriptor]:
+    ) -> list[TableDescriptor]:
         """
         List all tables in a given keyspace for this database.
 
@@ -2578,19 +2558,19 @@ class AsyncDatabase:
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            a `CommandCursor` to iterate over TableDescriptor instances,
-            each corresponding to a table.
+            a list of TableDescriptor instances, one for each table.
 
         Example:
-            >>> ccur = my_db.list_tables()
-            >>> ccur
-            <astrapy.cursors.CommandCursor object at ...>
-            >>> list(ccur)
-            [TableDescriptor(name='my_table', options=TableOptions())]
-            >>> for table_desc in my_db.list_tables():
-            ...     print(table_desc)
+            TODO
+            >>> async def a_list_tables(adb: AsyncDatabase) -> None:
+            ...     a_table_list = await adb.list_tables()
+            ...     print("* list:", a_table_list)
+            ...     for table_desc in await adb.list_tables():
+            ...         print("* table_desc:", table_desc)
             ...
-            TableDescriptor(name='my_table', options=TableOptions())
+            >>> asyncio.run(a_list_tables(my_async_db))
+            * list: [TableDescriptor(name='my_table', options=TableOptions())]
+            * table_desc: TableDescriptor(name='my_table', options=TableOptions())
         """
 
         _request_timeout_ms = (
@@ -2604,7 +2584,7 @@ class AsyncDatabase:
         logger.info("listTables")
         lt_response = driver_commander.request(
             payload=lt_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if "tables" not in lt_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -2614,13 +2594,10 @@ class AsyncDatabase:
         else:
             # we know this is a list of dicts, to marshal into "descriptors"
             logger.info("finished listTables")
-            return AsyncCommandCursor(
-                address=driver_commander.full_path,
-                items=[
-                    TableDescriptor.coerce(tab_dict)
-                    for tab_dict in lt_response["status"]["tables"]
-                ],
-            )
+            return [
+                TableDescriptor.coerce(tab_dict)
+                for tab_dict in lt_response["status"]["tables"]
+            ]
 
     async def list_table_names(
         self,
@@ -2664,7 +2641,7 @@ class AsyncDatabase:
         logger.info("listTables")
         lt_response = await driver_commander.async_request(
             payload=lt_payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if "tables" not in lt_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -2746,7 +2723,7 @@ class AsyncDatabase:
             req_response = await driver_commander.async_request(
                 payload=body,
                 raise_api_errors=raise_api_errors,
-                timeout_info=base_timeout_info(_request_timeout_ms),
+                timeout_ms=_request_timeout_ms,
             )
             logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             return req_response

@@ -397,7 +397,7 @@ class Table:
         logger.info(f"{ci_command}('{i_name}')")
         ci_response = self._api_commander.request(
             payload=ci_payload,
-            timeout_info=_schema_operation_timeout_ms,
+            timeout_ms=_schema_operation_timeout_ms,
         )
         if ci_response.get("status") != {"ok": 1}:
             raise DataAPIFaultyResponseException(
@@ -560,7 +560,7 @@ class Table:
         logger.info(f"dropIndex('{name}')")
         di_response = self._api_commander.request(
             payload=di_payload,
-            timeout_info=_schema_operation_timeout_ms,
+            timeout_ms=_schema_operation_timeout_ms,
         )
         if di_response.get("status") != {"ok": 1}:
             raise DataAPIFaultyResponseException(
@@ -589,7 +589,7 @@ class Table:
         logger.info(f"insertOne on '{self.name}'")
         io_response = self._api_commander.request(
             payload=io_payload,
-            timeout_info=_request_timeout_ms,
+            timeout_ms=_request_timeout_ms,
         )
         logger.info(f"finished insertOne on '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
@@ -629,7 +629,7 @@ class Table:
         fo_payload = {"findOne": {"filter": filter}}
         fo_response = self._api_commander.request(
             payload=fo_payload,
-            timeout_info=_request_timeout_ms,
+            timeout_ms=_request_timeout_ms,
         )
         # TODO reinstate this once proper response for no-matches
         # if "document" not in (fo_response.get("data") or {}):
@@ -672,7 +672,7 @@ class Table:
         logger.info(f"deleteOne on '{self.name}'")
         do_response = self._api_commander.request(
             payload=do_payload,
-            timeout_info=_request_timeout_ms,
+            timeout_ms=_request_timeout_ms,
         )
         logger.info(f"finished deleteOne on '{self.name}'")
         if do_response.get("status", {}).get("deletedCount") == -1:
@@ -729,7 +729,7 @@ class Table:
         command_result = self._api_commander.request(
             payload=body,
             raise_api_errors=raise_api_errors,
-            timeout_info=_request_timeout_ms,
+            timeout_ms=_request_timeout_ms,
         )
         logger.info(f"finished command={_cmd_desc} on '{self.name}'")
         return command_result
@@ -983,7 +983,7 @@ class AsyncTable:
         logger.info(f"getting tables in search of '{self.name}'")
         self_descriptors = [
             table_desc
-            async for table_desc in self.database.list_tables(
+            for table_desc in await self.database.list_tables(
                 max_time_ms=_request_timeout_ms
             )
             if table_desc.name == self.name
@@ -1091,7 +1091,7 @@ class AsyncTable:
         logger.info(f"{ci_command}('{i_name}')")
         ci_response = await self._api_commander.async_request(
             payload=ci_payload,
-            timeout_info=_schema_operation_timeout_ms,
+            timeout_ms=_schema_operation_timeout_ms,
         )
         if ci_response.get("status") != {"ok": 1}:
             raise DataAPIFaultyResponseException(
@@ -1254,7 +1254,7 @@ class AsyncTable:
         logger.info(f"dropIndex('{name}')")
         di_response = await self._api_commander.async_request(
             payload=di_payload,
-            timeout_info=_schema_operation_timeout_ms,
+            timeout_ms=_schema_operation_timeout_ms,
         )
         if di_response.get("status") != {"ok": 1}:
             raise DataAPIFaultyResponseException(
@@ -1283,7 +1283,7 @@ class AsyncTable:
         logger.info(f"insertOne on '{self.name}'")
         io_response = await self._api_commander.async_request(
             payload=io_payload,
-            timeout_info=_request_timeout_ms,
+            timeout_ms=_request_timeout_ms,
         )
         logger.info(f"finished insertOne on '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
@@ -1323,7 +1323,7 @@ class AsyncTable:
         fo_payload = {"findOne": {"filter": filter}}
         fo_response = await self._api_commander.async_request(
             payload=fo_payload,
-            timeout_info=_request_timeout_ms,
+            timeout_ms=_request_timeout_ms,
         )
         # TODO reinstate this once proper response for no-matches
         # if "document" not in (fo_response.get("data") or {}):
@@ -1364,7 +1364,7 @@ class AsyncTable:
         logger.info(f"deleteOne on '{self.name}'")
         do_response = await self._api_commander.async_request(
             payload=do_payload,
-            timeout_info=_request_timeout_ms,
+            timeout_ms=_request_timeout_ms,
         )
         logger.info(f"finished deleteOne on '{self.name}'")
         if do_response.get("status", {}).get("deletedCount") == -1:
@@ -1422,7 +1422,7 @@ class AsyncTable:
         command_result = await self._api_commander.async_request(
             payload=body,
             raise_api_errors=raise_api_errors,
-            timeout_info=_request_timeout_ms,
+            timeout_ms=_request_timeout_ms,
         )
         logger.info(f"finished command={_cmd_desc} on '{self.name}'")
         return command_result

@@ -84,9 +84,7 @@ def test_imports() -> None:
         VectorMetric,
     )
     from astrapy.cursors import (  # noqa: F401
-        AsyncCommandCursor,
         AsyncCursor,
-        CommandCursor,
         Cursor,
         CursorState,
     )

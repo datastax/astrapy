@@ -207,7 +207,7 @@ class TestExceptionsAsync:
         with pytest.raises(DataAPIResponseException):
             [
                 coll
-                async for coll in async_database.list_collections(
+                for coll in await async_database.list_collections(
                     keyspace="nonexisting"
                 )
             ]
@@ -287,17 +287,10 @@ class TestExceptionsAsync:
         with pytest.raises(DataAPIResponseException):
             await awcol.find_one({})
 
-    @pytest.mark.describe("test of exceptions in command-cursors, async")
-    async def test_commandcursor_hard_exceptions_async(
+    @pytest.mark.describe("test of exceptions in list_collections, async")
+    async def test_list_collections_hard_exceptions_async(
         self,
         async_database: AsyncDatabase,
     ) -> None:
         with pytest.raises(DataAPIResponseException):
-            async_database.list_collections(keyspace="nonexisting")
-
-        cur1 = async_database.list_collections()
-        [doc async for doc in cur1]
-        with pytest.raises(CursorIsStartedException) as exc:
-            async for col in cur1:
-                pass
-        assert exc.value.cursor_state == "exhausted"
+            await async_database.list_collections(keyspace="nonexisting")

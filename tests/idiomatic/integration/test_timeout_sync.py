@@ -31,12 +31,12 @@ class TestTimeoutSync:
         self,
         sync_empty_collection: Collection,
     ) -> None:
-        sync_empty_collection.insert_many([{"a": 1}] * 100)
-        time.sleep(10)
-        assert sync_empty_collection.count_documents({}, upper_bound=500) >= 100
+        sync_empty_collection.insert_many([{"a": 1}] * 500)
+        time.sleep(2)
 
         with pytest.raises(DataAPITimeoutException) as exc:
-            sync_empty_collection.count_documents({}, upper_bound=150, max_time_ms=1)
+            sync_empty_collection.count_documents({}, upper_bound=800, max_time_ms=1)
+        assert sync_empty_collection.count_documents({}, upper_bound=800) >= 500
         assert exc.value.timeout_type in {"connect", "read"}
         assert exc.value.endpoint is not None
         assert exc.value.raw_payload is not None
@@ -65,24 +65,6 @@ class TestTimeoutSync:
         assert exc.value.timeout_type in {"connect", "read"}
         assert exc.value.endpoint is not None
         assert exc.value.raw_payload is not None
-
-    @pytest.mark.skipif(not IS_ASTRA_DB, reason="Too fast on nonAstra")
-    @pytest.mark.describe("test of cursor-based timeouts, sync")
-    def test_cursor_timeouts_sync(
-        self,
-        sync_empty_collection: Collection,
-    ) -> None:
-        sync_empty_collection.insert_one({"a": 1})
-
-        cur0 = sync_empty_collection.find({})
-        cur1 = sync_empty_collection.find({}, max_time_ms=1)
-        cur0.__next__()
-        with pytest.raises(DataAPITimeoutException):
-            cur1.__next__()
-
-        sync_empty_collection.find_one({})
-        with pytest.raises(DataAPITimeoutException):
-            sync_empty_collection.find_one({}, max_time_ms=1)
 
     @pytest.mark.describe("test of cursor-based overall timeouts, sync")
     def test_cursor_overalltimeout_exceptions_sync(

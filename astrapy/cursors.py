@@ -13,17 +13,13 @@
 # limitations under the License.
 
 from astrapy.data.cursors import (
-    AsyncCommandCursor,
     AsyncCursor,
-    CommandCursor,
     Cursor,
     CursorState,
 )
 
 __all__ = [
-    "AsyncCommandCursor",
     "AsyncCursor",
-    "CommandCursor",
     "Cursor",
     "CursorState",
 ]

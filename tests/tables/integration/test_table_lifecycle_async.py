@@ -192,7 +192,7 @@ class TestTableLifecycle:
 
         created_table_descs = [
             table_desc
-            async for table_desc in async_database.list_tables()
+            for table_desc in await async_database.list_tables()
             if table_desc.name in created_table_names
         ]
 

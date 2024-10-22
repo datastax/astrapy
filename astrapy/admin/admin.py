@@ -24,12 +24,10 @@ from typing import TYPE_CHECKING, Any, Sequence
 
 from astrapy.authentication import coerce_possible_token_provider
 from astrapy.constants import CallerType, Environment
-from astrapy.cursors import CommandCursor
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     DevOpsAPIException,
     MultiCallTimeoutManager,
-    base_timeout_info,
 )
 from astrapy.info import AdminDatabaseInfo, DatabaseInfo, FindEmbeddingProvidersResult
 from astrapy.settings.defaults import (
@@ -281,7 +279,7 @@ def fetch_raw_database_info_from_id_token(
 
     gd_response = ops_commander.request(
         http_method=HttpMethod.GET,
-        timeout_info=base_timeout_info(max_time_ms),
+        timeout_ms=max_time_ms,
     )
     return gd_response
 
@@ -333,7 +331,7 @@ async def async_fetch_raw_database_info_from_id_token(
 
     gd_response = await ops_commander.async_request(
         http_method=HttpMethod.GET,
-        timeout_info=base_timeout_info(max_time_ms),
+        timeout_ms=max_time_ms,
     )
     return gd_response
 
@@ -634,7 +632,7 @@ class AstraDBAdmin:
         page_size: int | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> CommandCursor[AdminDatabaseInfo]:
+    ) -> list[AdminDatabaseInfo]:
         """
         Get the list of databases, as obtained with a request to the DevOps API.
 
@@ -651,12 +649,10 @@ class AstraDBAdmin:
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            A CommandCursor to iterate over the detected databases,
-            represented as AdminDatabaseInfo objects.
+            A list of AdminDatabaseInfo objects.
 
         Example:
-            >>> database_cursor = my_astra_db_admin.list_databases()
-            >>> database_list = list(database_cursor)
+            >>> database_list = my_astra_db_admin.list_databases()
             >>> len(database_list)
             3
             >>> database_list[2].id
@@ -688,7 +684,7 @@ class AstraDBAdmin:
         response_0 = self._dev_ops_api_commander.request(
             http_method=HttpMethod.GET,
             request_params=request_params_0,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if not isinstance(response_0, list):
             raise DevOpsAPIException(
@@ -713,7 +709,7 @@ class AstraDBAdmin:
             response_n = self._dev_ops_api_commander.request(
                 http_method=HttpMethod.GET,
                 request_params=request_params_n,
-                timeout_info=base_timeout_info(_request_timeout_ms),
+                timeout_ms=_request_timeout_ms,
             )
             logger.info(
                 "finished request %s, getting databases (DevOps API)",
@@ -726,17 +722,14 @@ class AstraDBAdmin:
             responses += [response_n]
 
         logger.info("finished getting databases (DevOps API)")
-        return CommandCursor(
-            address=self._dev_ops_api_commander.full_path,
-            items=[
-                _recast_as_admin_database_info(
-                    db_dict,
-                    environment=self.api_options.environment,
-                )
-                for response in responses
-                for db_dict in response
-            ],
-        )
+        return [
+            _recast_as_admin_database_info(
+                db_dict,
+                environment=self.api_options.environment,
+            )
+            for response in responses
+            for db_dict in response
+        ]
 
     async def async_list_databases(
         self,
@@ -746,7 +739,7 @@ class AstraDBAdmin:
         page_size: int | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> CommandCursor[AdminDatabaseInfo]:
+    ) -> list[AdminDatabaseInfo]:
         """
         Get the list of databases, as obtained with a request to the DevOps API.
         Async version of the method, for use in an asyncio context.
@@ -764,15 +757,11 @@ class AstraDBAdmin:
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            A CommandCursor to iterate over the detected databases,
-            represented as AdminDatabaseInfo objects.
-            Note that the return type is not an awaitable, rather
-            a regular iterable, e.g. for use in ordinary "for" loops.
+            A list of AdminDatabaseInfo objects.
 
         Example:
             >>> async def check_if_db_exists(db_id: str) -> bool:
-            ...     db_cursor = await my_astra_db_admin.async_list_databases()
-            ...     db_list = list(dd_cursor)
+            ...     db_list = await my_astra_db_admin.async_list_databases()
             ...     return db_id in db_list
             ...
             >>> asyncio.run(check_if_db_exists("xyz"))
@@ -802,7 +791,7 @@ class AstraDBAdmin:
         response_0 = await self._dev_ops_api_commander.async_request(
             http_method=HttpMethod.GET,
             request_params=request_params_0,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if not isinstance(response_0, list):
             raise DevOpsAPIException(
@@ -827,7 +816,7 @@ class AstraDBAdmin:
             response_n = await self._dev_ops_api_commander.async_request(
                 http_method=HttpMethod.GET,
                 request_params=request_params_n,
-                timeout_info=base_timeout_info(_request_timeout_ms),
+                timeout_ms=_request_timeout_ms,
             )
             logger.info(
                 "finished request %s, getting databases (DevOps API), async",
@@ -840,17 +829,14 @@ class AstraDBAdmin:
             responses += [response_n]
 
         logger.info("finished getting databases (DevOps API), async")
-        return CommandCursor(
-            address=self._dev_ops_api_commander.full_path,
-            items=[
-                _recast_as_admin_database_info(
-                    db_dict,
-                    environment=self.api_options.environment,
-                )
-                for response in responses
-                for db_dict in response
-            ],
-        )
+        return [
+            _recast_as_admin_database_info(
+                db_dict,
+                environment=self.api_options.environment,
+            )
+            for response in responses
+            for db_dict in response
+        ]
 
     def database_info(
         self,
@@ -892,7 +878,7 @@ class AstraDBAdmin:
         gd_response = self._dev_ops_api_commander.request(
             http_method=HttpMethod.GET,
             additional_path=id,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         logger.info(f"finished getting database info for '{id}' (DevOps API)")
         return _recast_as_admin_database_info(
@@ -940,7 +926,7 @@ class AstraDBAdmin:
         gd_response = await self._dev_ops_api_commander.async_request(
             http_method=HttpMethod.GET,
             additional_path=id,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         logger.info(f"finished getting database info for '{id}' (DevOps API), async")
         return _recast_as_admin_database_info(
@@ -1040,7 +1026,7 @@ class AstraDBAdmin:
         cd_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.POST,
             payload=cd_payload,
-            timeout_info=timeout_manager.remaining_timeout_info(
+            timeout_ms=timeout_manager.remaining_timeout_ms(
                 cap_time_ms=_request_timeout_ms
             ),
         )
@@ -1176,7 +1162,7 @@ class AstraDBAdmin:
         cd_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.POST,
             payload=cd_payload,
-            timeout_info=timeout_manager.remaining_timeout_info(
+            timeout_ms=timeout_manager.remaining_timeout_ms(
                 cap_time_ms=_request_timeout_ms
             ),
         )
@@ -1288,7 +1274,7 @@ class AstraDBAdmin:
         te_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.POST,
             additional_path=f"{id}/terminate",
-            timeout_info=timeout_manager.remaining_timeout_info(
+            timeout_ms=timeout_manager.remaining_timeout_ms(
                 cap_time_ms=_request_timeout_ms
             ),
         )
@@ -1386,7 +1372,7 @@ class AstraDBAdmin:
         te_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.POST,
             additional_path=f"{id}/terminate",
-            timeout_info=timeout_manager.remaining_timeout_info(
+            timeout_ms=timeout_manager.remaining_timeout_ms(
                 cap_time_ms=_request_timeout_ms
             ),
         )
@@ -2441,7 +2427,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         cn_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.POST,
             additional_path=f"keyspaces/{name}",
-            timeout_info=timeout_manager.remaining_timeout_info(
+            timeout_ms=timeout_manager.remaining_timeout_ms(
                 cap_time_ms=_request_timeout_ms
             ),
         )
@@ -2548,7 +2534,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         cn_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.POST,
             additional_path=f"keyspaces/{name}",
-            timeout_info=timeout_manager.remaining_timeout_info(
+            timeout_ms=timeout_manager.remaining_timeout_ms(
                 cap_time_ms=_request_timeout_ms
             ),
         )
@@ -2652,7 +2638,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         dk_raw_response = self._dev_ops_api_commander.raw_request(
             http_method=HttpMethod.DELETE,
             additional_path=f"keyspaces/{name}",
-            timeout_info=timeout_manager.remaining_timeout_info(
+            timeout_ms=timeout_manager.remaining_timeout_ms(
                 cap_time_ms=_request_timeout_ms
             ),
         )
@@ -2751,7 +2737,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         dk_raw_response = await self._dev_ops_api_commander.async_raw_request(
             http_method=HttpMethod.DELETE,
             additional_path=f"keyspaces/{name}",
-            timeout_info=timeout_manager.remaining_timeout_info(
+            timeout_ms=timeout_manager.remaining_timeout_ms(
                 cap_time_ms=_request_timeout_ms
             ),
         )
@@ -3090,7 +3076,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         logger.info("findEmbeddingProviders")
         fe_response = self._api_commander.request(
             payload={"findEmbeddingProviders": {}},
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -3142,7 +3128,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         logger.info("findEmbeddingProviders, async")
         fe_response = await self._api_commander.async_request(
             payload={"findEmbeddingProviders": {}},
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -3361,7 +3347,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         logger.info("getting list of keyspaces")
         fn_response = self._api_commander.request(
             payload={"findKeyspaces": {}},
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if "keyspaces" not in fn_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -3432,7 +3418,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         logger.info("creating keyspace")
         cn_response = self._api_commander.request(
             payload=payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if (cn_response.get("status") or {}).get("ok") != 1:
             raise DataAPIFaultyResponseException(
@@ -3480,7 +3466,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         logger.info("dropping keyspace")
         dn_response = self._api_commander.request(
             payload={"dropKeyspace": {"name": name}},
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if (dn_response.get("status") or {}).get("ok") != 1:
             raise DataAPIFaultyResponseException(
@@ -3522,7 +3508,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         logger.info("getting list of keyspaces, async")
         fn_response = await self._api_commander.async_request(
             payload={"findKeyspaces": {}},
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if "keyspaces" not in fn_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -3596,7 +3582,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         logger.info("creating keyspace, async")
         cn_response = await self._api_commander.async_request(
             payload=payload,
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if (cn_response.get("status") or {}).get("ok") != 1:
             raise DataAPIFaultyResponseException(
@@ -3647,7 +3633,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         logger.info("dropping keyspace, async")
         dn_response = await self._api_commander.async_request(
             payload={"dropKeyspace": {"name": name}},
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if (dn_response.get("status") or {}).get("ok") != 1:
             raise DataAPIFaultyResponseException(
@@ -3850,7 +3836,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         logger.info("findEmbeddingProviders")
         fe_response = self._api_commander.request(
             payload={"findEmbeddingProviders": {}},
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
             raise DataAPIFaultyResponseException(
@@ -3902,7 +3888,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         logger.info("findEmbeddingProviders, async")
         fe_response = await self._api_commander.async_request(
             payload={"findEmbeddingProviders": {}},
-            timeout_info=base_timeout_info(_request_timeout_ms),
+            timeout_ms=_request_timeout_ms,
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
             raise DataAPIFaultyResponseException(

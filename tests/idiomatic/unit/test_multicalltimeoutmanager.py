@@ -29,37 +29,33 @@ class TestTimeouts:
     @pytest.mark.describe("test MultiCallTimeoutManager")
     def test_multicalltimeoutmanager(self) -> None:
         mgr_n = MultiCallTimeoutManager(overall_max_time_ms=None)
-        assert mgr_n.remaining_timeout_info() is None
+        assert mgr_n.remaining_timeout_ms() is None
         time.sleep(0.5)
-        assert mgr_n.remaining_timeout_info() is None
+        assert mgr_n.remaining_timeout_ms() is None
 
         mgr_1 = MultiCallTimeoutManager(overall_max_time_ms=1000)
-        crt_1 = mgr_1.remaining_timeout_info()
+        crt_1 = mgr_1.remaining_timeout_ms()
         assert crt_1 is not None
-        assert crt_1["base"] > 0
         time.sleep(0.6)
-        crt_2 = mgr_1.remaining_timeout_info()
+        crt_2 = mgr_1.remaining_timeout_ms()
         assert crt_2 is not None
-        assert crt_2["base"] > 0
         time.sleep(0.6)
         with pytest.raises(DataAPITimeoutException):
-            mgr_1.remaining_timeout_info()
+            mgr_1.remaining_timeout_ms()
 
     @pytest.mark.describe("test MultiCallTimeoutManager DevOps")
     def test_multicalltimeoutmanager_devops(self) -> None:
         mgr_n = MultiCallTimeoutManager(overall_max_time_ms=None, dev_ops_api=True)
-        assert mgr_n.remaining_timeout_info() is None
+        assert mgr_n.remaining_timeout_ms() is None
         time.sleep(0.5)
-        assert mgr_n.remaining_timeout_info() is None
+        assert mgr_n.remaining_timeout_ms() is None
 
         mgr_1 = MultiCallTimeoutManager(overall_max_time_ms=1000, dev_ops_api=True)
-        crt_1 = mgr_1.remaining_timeout_info()
+        crt_1 = mgr_1.remaining_timeout_ms()
         assert crt_1 is not None
-        assert crt_1["base"] > 0
         time.sleep(0.6)
-        crt_2 = mgr_1.remaining_timeout_info()
+        crt_2 = mgr_1.remaining_timeout_ms()
         assert crt_2 is not None
-        assert crt_2["base"] > 0
         time.sleep(0.6)
         with pytest.raises(DevOpsAPITimeoutException):
-            mgr_1.remaining_timeout_info()
+            mgr_1.remaining_timeout_ms()

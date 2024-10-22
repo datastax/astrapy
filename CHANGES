@@ -1,5 +1,10 @@
 v 2.0.0
 =======
+(internal) simplified timeout management classes and representations
+Removed the CommandCursor/AsyncCommandCursor classes:
+  - AstraDBAdmin's `list_databases`, `async_list_databases` methods return regular lists
+  - Database's `list_collections`, `list_tables` methods return regular lists
+  - AsyncDatabase's `list_collections`, `list_tables` methods have become awaitable and return regular lists
 Remove 'check_exists' from [Async]Database `create_collection` method (always False now)
 Remove `CollectionAlreadyExistsException` class (not used anymore without `check_exists`)
 Signature change from `-> {"ok": 1}` to `-> None` for some admin and schema methods:

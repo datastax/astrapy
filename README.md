@@ -495,9 +495,7 @@ Cursors:
 
 ```python
 from astrapy.cursors import (
-    AsyncCommandCursor,
     AsyncCursor,
-    CommandCursor,
     Cursor,
     CursorState,
 )
