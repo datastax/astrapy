@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Any, Iterable
 
 import pytest
 
@@ -34,6 +34,9 @@ from ..conftest import (
     async_fail_if_not_removed,
     sync_fail_if_not_removed,
 )
+
+DefaultCollection = Collection[dict[str, Any]]
+DefaultAsyncCollection = AsyncCollection[dict[str, Any]]
 
 TEST_COLLECTION_INSTANCE_NAME = "test_coll_instance"
 TEST_COLLECTION_NAME = "id_test_collection"
@@ -74,15 +77,15 @@ def async_database(
 def sync_collection_instance(
     data_api_credentials_kwargs: DataAPICredentials,
     sync_database: Database,
-) -> Iterable[Collection]:
+) -> Iterable[DefaultCollection]:
     """Just an instance of the class, no DB-level stuff."""
     yield sync_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)
 
 
 @pytest.fixture(scope="function")
 def async_collection_instance(
-    sync_collection_instance: Collection,
-) -> Iterable[AsyncCollection]:
+    sync_collection_instance: DefaultCollection,
+) -> Iterable[DefaultAsyncCollection]:
     """Just an instance of the class, no DB-level stuff."""
     yield sync_collection_instance.to_async()
 
@@ -91,7 +94,7 @@ def async_collection_instance(
 def sync_collection(
     data_api_credentials_kwargs: DataAPICredentials,
     sync_database: Database,
-) -> Iterable[Collection]:
+) -> Iterable[DefaultCollection]:
     """An actual collection on DB, in the main keyspace"""
     collection = sync_database.create_collection(
         TEST_COLLECTION_NAME,
@@ -105,7 +108,7 @@ def sync_collection(
 
 
 @pytest.fixture(scope="function")
-def sync_empty_collection(sync_collection: Collection) -> Iterable[Collection]:
+def sync_empty_collection(sync_collection: DefaultCollection) -> Iterable[DefaultCollection]:
     """Emptied for each test function"""
     sync_collection.delete_many({})
     yield sync_collection
@@ -113,16 +116,16 @@ def sync_empty_collection(sync_collection: Collection) -> Iterable[Collection]:
 
 @pytest.fixture(scope="function")
 def async_collection(
-    sync_collection: Collection,
-) -> Iterable[AsyncCollection]:
+    sync_collection: DefaultCollection,
+) -> Iterable[DefaultAsyncCollection]:
     """An actual collection on DB, the same as the sync counterpart"""
     yield sync_collection.to_async()
 
 
 @pytest.fixture(scope="function")
 def async_empty_collection(
-    sync_empty_collection: Collection,
-) -> Iterable[AsyncCollection]:
+    sync_empty_collection: DefaultCollection,
+) -> Iterable[DefaultAsyncCollection]:
     """Emptied for each test function"""
     yield sync_empty_collection.to_async()
 

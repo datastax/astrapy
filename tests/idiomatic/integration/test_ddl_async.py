@@ -29,6 +29,7 @@ from ..conftest import (
     TEST_COLLECTION_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
+    DefaultAsyncCollection,
 )
 
 
@@ -193,7 +194,7 @@ class TestDDLAsync:
     @pytest.mark.describe("test of collection metainformation, async")
     async def test_get_collection_info_async(
         self,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
     ) -> None:
         info = async_collection.info()
         assert info.keyspace == async_collection.keyspace
@@ -203,14 +204,14 @@ class TestDDLAsync:
     async def test_database_list_collections_async(
         self,
         async_database: AsyncDatabase,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
     ) -> None:
         assert TEST_COLLECTION_NAME in await async_database.list_collection_names()
 
     @pytest.mark.describe("test of Collection options, async")
     async def test_collection_options_async(
         self,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
     ) -> None:
         options = await async_collection.options()
         assert options.vector is not None
@@ -223,7 +224,7 @@ class TestDDLAsync:
     async def test_database_list_collections_cross_keyspace_async(
         self,
         async_database: AsyncDatabase,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
         data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
         assert TEST_COLLECTION_NAME not in await async_database.list_collection_names(
@@ -237,7 +238,7 @@ class TestDDLAsync:
     async def test_database_use_keyspace_async(
         self,
         async_database: AsyncDatabase,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
         data_api_credentials_kwargs: DataAPICredentials,
         data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
@@ -297,7 +298,7 @@ class TestDDLAsync:
     async def test_database_command_on_collection_async(
         self,
         async_database: AsyncDatabase,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
     ) -> None:
         cmd1 = await async_database.command(
             {"countDocuments": {}}, collection_name=async_collection.name
@@ -327,7 +328,7 @@ class TestDDLAsync:
     @pytest.mark.describe("test of database command, async")
     async def test_collection_command_async(
         self,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
     ) -> None:
         cmd1 = await async_collection.command({"countDocuments": {}})
         assert isinstance(cmd1, dict)

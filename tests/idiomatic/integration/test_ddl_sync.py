@@ -30,6 +30,7 @@ from ..conftest import (
     TEST_COLLECTION_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
+    DefaultCollection,
 )
 
 
@@ -192,7 +193,7 @@ class TestDDLSync:
     @pytest.mark.describe("test of collection metainformation, sync")
     def test_get_collection_info_sync(
         self,
-        sync_collection: Collection,
+        sync_collection: DefaultCollection,
     ) -> None:
         info = sync_collection.info()
         assert info.keyspace == sync_collection.keyspace
@@ -202,14 +203,14 @@ class TestDDLSync:
     def test_database_list_collections_sync(
         self,
         sync_database: Database,
-        sync_collection: Collection,
+        sync_collection: DefaultCollection,
     ) -> None:
         assert TEST_COLLECTION_NAME in sync_database.list_collection_names()
 
     @pytest.mark.describe("test of Collection options, sync")
     def test_collection_options_sync(
         self,
-        sync_collection: Collection,
+        sync_collection: DefaultCollection,
     ) -> None:
         options = sync_collection.options()
         assert options.vector is not None
@@ -222,7 +223,7 @@ class TestDDLSync:
     def test_database_list_collections_cross_keyspace_sync(
         self,
         sync_database: Database,
-        sync_collection: Collection,
+        sync_collection: DefaultCollection,
         data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
         assert TEST_COLLECTION_NAME not in sync_database.list_collection_names(
@@ -236,7 +237,7 @@ class TestDDLSync:
     def test_database_use_keyspace_sync(
         self,
         sync_database: Database,
-        sync_collection: Collection,
+        sync_collection: DefaultCollection,
         data_api_credentials_kwargs: DataAPICredentials,
         data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
@@ -295,7 +296,7 @@ class TestDDLSync:
     def test_database_command_on_collection_sync(
         self,
         sync_database: Database,
-        sync_collection: Collection,
+        sync_collection: DefaultCollection,
     ) -> None:
         cmd1 = sync_database.command(
             {"countDocuments": {}}, collection_name=sync_collection.name
@@ -325,7 +326,7 @@ class TestDDLSync:
     @pytest.mark.describe("test of database command, sync")
     def test_collection_command_sync(
         self,
-        sync_collection: Collection,
+        sync_collection: DefaultCollection,
     ) -> None:
         cmd1 = sync_collection.command({"countDocuments": {}})
         assert isinstance(cmd1, dict)

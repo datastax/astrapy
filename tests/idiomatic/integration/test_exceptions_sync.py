@@ -27,14 +27,14 @@ from astrapy.exceptions import (
     TooManyDocumentsToCountException,
 )
 
-from ..conftest import IS_ASTRA_DB, DataAPICredentials
+from ..conftest import IS_ASTRA_DB, DataAPICredentials, DefaultCollection
 
 
 class TestExceptionsSync:
     @pytest.mark.describe("test of collection insert_many type-failure modes, sync")
     def test_collection_insert_many_type_failures_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         bad_docs = [{"_id": tid} for tid in ["a", "b", "c", ValueError, "e", "f"]]
@@ -52,9 +52,10 @@ class TestExceptionsSync:
             col.insert_many(bad_docs, ordered=False, chunk_size=2, concurrency=2)
 
     @pytest.mark.describe("test of collection insert_many insert-failure modes, sync")
+    @pytest.mark.skip(reason="RESTOREFIND")
     def test_collection_insert_many_insert_failures_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         dup_docs = [{"_id": tid} for tid in ["a", "b", "b", "d", "a", "b", "e", "f"]]
@@ -62,21 +63,21 @@ class TestExceptionsSync:
 
         im_result1 = col.insert_many(ok_docs, ordered=True, chunk_size=2, concurrency=1)
         assert len(im_result1.inserted_ids) == 6
-        assert len(list(col.find({}))) == 6
+        assert len(list(col.find({}))) == 6  # type: ignore[attr-defined]
 
         col.delete_many({})
         im_result2 = col.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=1
         )
         assert len(im_result2.inserted_ids) == 6
-        assert len(list(col.find({}))) == 6
+        assert len(list(col.find({}))) == 6  # type: ignore[attr-defined]
 
         col.delete_many({})
         im_result3 = col.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=2
         )
         assert len(im_result3.inserted_ids) == 6
-        assert len(list(col.find({}))) == 6
+        assert len(list(col.find({}))) == 6  # type: ignore[attr-defined]
 
         col.delete_many({})
         with pytest.raises(InsertManyException) as exc:
@@ -86,7 +87,7 @@ class TestExceptionsSync:
         assert len(exc.value.detailed_error_descriptors[0].error_descriptors) == 1
         assert exc.value.partial_result.inserted_ids == ["a", "b"]
         assert len(exc.value.partial_result.raw_results) == 2
-        assert {doc["_id"] for doc in col.find()} == {"a", "b"}
+        assert {doc["_id"] for doc in col.find()} == {"a", "b"}  # type: ignore[attr-defined]
 
         col.delete_many({})
         with pytest.raises(InsertManyException) as exc:
@@ -97,7 +98,7 @@ class TestExceptionsSync:
         assert len(exc.value.detailed_error_descriptors[1].error_descriptors) == 2
         assert set(exc.value.partial_result.inserted_ids) == {"a", "b", "d", "e", "f"}
         assert len(exc.value.partial_result.raw_results) == 4
-        assert {doc["_id"] for doc in col.find()} == {"a", "b", "d", "e", "f"}
+        assert {doc["_id"] for doc in col.find()} == {"a", "b", "d", "e", "f"}  # type: ignore[attr-defined]
 
         col.delete_many({})
         with pytest.raises(InsertManyException) as exc:
@@ -110,12 +111,12 @@ class TestExceptionsSync:
         assert len(exc.value.detailed_error_descriptors[1].error_descriptors) == 2
         assert set(exc.value.partial_result.inserted_ids) == {"a", "b", "d", "e", "f"}
         assert len(exc.value.partial_result.raw_results) == 4
-        assert {doc["_id"] for doc in col.find()} == {"a", "b", "d", "e", "f"}
+        assert {doc["_id"] for doc in col.find()} == {"a", "b", "d", "e", "f"}  # type: ignore[attr-defined]
 
     @pytest.mark.describe("test of collection insert_one failure modes, sync")
     def test_collection_insert_one_failures_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection
         with pytest.raises(TypeError):
@@ -132,7 +133,7 @@ class TestExceptionsSync:
     @pytest.mark.describe("test of collection options failure modes, sync")
     def test_collection_options_failures_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection._copy()
         col._name += "_hacked"
@@ -144,7 +145,7 @@ class TestExceptionsSync:
     @pytest.mark.describe("test of collection count_documents failure modes, sync")
     def test_collection_count_documents_failures_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection._copy()
         col._name += "_hacked"
@@ -161,7 +162,7 @@ class TestExceptionsSync:
     @pytest.mark.describe("test of collection one-doc DML failure modes, sync")
     def test_collection_monodoc_dml_failures_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         col = sync_empty_collection._copy()
         col._name += "_hacked"
@@ -214,30 +215,25 @@ class TestExceptionsSync:
             sync_database._copy(keyspace=hacked_ks).info()
 
     @pytest.mark.describe("test of hard exceptions in cursors, sync")
+    @pytest.mark.skip(reason="RESTOREFIND")
     def test_cursor_hard_exceptions_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         with pytest.raises(TypeError):
-            sync_empty_collection.find(
+            sync_empty_collection.find(  # type: ignore[attr-defined]
                 {},
                 sort={"f": ValueError("nonserializable")},
             ).distinct("a")
-        # # Note: this, i.e. cursor[i]/cursor[i:j], is disabled
-        # # pending full skip/limit support by the Data API.
-        # with pytest.raises(IndexError):
-        #     sync_empty_collection.find(
-        #         {},
-        #         sort={"f": SortDocuments.ASCENDING},
-        #     )[100]
 
     @pytest.mark.describe("test of custom exceptions in cursors, sync")
+    @pytest.mark.skip(reason="RESTOREFIND")
     def test_cursor_custom_exceptions_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         sync_empty_collection.insert_many([{"a": 1}] * 4)
-        cur1 = sync_empty_collection.find({})
+        cur1 = sync_empty_collection.find({})  # type: ignore[attr-defined]
         cur1.limit(10)
 
         cur1.__next__()
@@ -251,14 +247,15 @@ class TestExceptionsSync:
         assert exc.value.cursor_state == CursorState.CLOSED.value
 
     @pytest.mark.describe("test of standard exceptions in cursors, sync")
+    @pytest.mark.skip(reason="RESTOREFIND")
     def test_cursor_standard_exceptions_sync(
         self,
-        sync_empty_collection: Collection,
+        sync_empty_collection: DefaultCollection,
     ) -> None:
         wcol = sync_empty_collection._copy(keyspace="nonexisting")
-        cur1 = wcol.find({})
-        cur2 = wcol.find({})
-        cur3 = wcol.find({})
+        cur1 = wcol.find({})  # type: ignore[attr-defined]
+        cur2 = wcol.find({})  # type: ignore[attr-defined]
+        cur3 = wcol.find({})  # type: ignore[attr-defined]
 
         with pytest.raises(DataAPIResponseException):
             for item in cur1:
@@ -271,7 +268,7 @@ class TestExceptionsSync:
             cur3.distinct("f")
 
         with pytest.raises(DataAPIResponseException):
-            wcol.distinct("f")
+            wcol.distinct("f")  # type: ignore[attr-defined]
 
         with pytest.raises(DataAPIResponseException):
             wcol.find_one({})

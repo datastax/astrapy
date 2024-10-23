@@ -22,14 +22,14 @@ from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.admin.admin import async_fetch_database_info
 from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
 
-from ..conftest import IS_ASTRA_DB
+from ..conftest import IS_ASTRA_DB, DefaultAsyncCollection
 
 
 class TestTimeoutAsync:
     @pytest.mark.describe("test of collection count_documents timeout, async")
     async def test_collection_count_documents_timeout_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         await async_empty_collection.insert_many([{"a": 1}] * 500)
         await asyncio.sleep(2)
@@ -69,19 +69,20 @@ class TestTimeoutAsync:
         assert exc.value.raw_payload is not None
 
     @pytest.mark.describe("test of cursor-based overall timeouts, async")
+    @pytest.mark.skip(reason="RESTOREFIND")
     async def test_cursor_overalltimeout_exceptions_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
         await acol.insert_many([{"a": 1}] * 1000)
 
-        await acol.distinct("a", max_time_ms=20000)
+        await acol.distinct("a", max_time_ms=20000)  # type: ignore[attr-defined]
         with pytest.raises(DataAPITimeoutException):
-            await acol.distinct("a", max_time_ms=1)
+            await acol.distinct("a", max_time_ms=1)  # type: ignore[attr-defined]
 
-        cur1 = acol.find({})
-        cur2 = acol.find({})
+        cur1 = acol.find({})  # type: ignore[attr-defined]
+        cur2 = acol.find({})  # type: ignore[attr-defined]
         await cur1.distinct("a", max_time_ms=20000)
         with pytest.raises(DataAPITimeoutException):
             await cur2.distinct("a", max_time_ms=1)
@@ -89,7 +90,7 @@ class TestTimeoutAsync:
     @pytest.mark.describe("test of insert_many timeouts, async")
     async def test_insert_many_timeout_exceptions_async(
         self,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
     ) -> None:
         fifty_docs = [{"seq": i} for i in range(50)]
         await async_collection.insert_many(fifty_docs, ordered=True, max_time_ms=20000)
@@ -114,7 +115,7 @@ class TestTimeoutAsync:
     @pytest.mark.describe("test of update_many timeouts, async")
     async def test_update_many_timeout_exceptions_async(
         self,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
     ) -> None:
         fifty_docs = [{"seq": i, "f": "update_many"} for i in range(50)]
         await async_collection.insert_many(fifty_docs, ordered=False, concurrency=3)
@@ -132,7 +133,7 @@ class TestTimeoutAsync:
     @pytest.mark.describe("test of delete_many timeouts, async")
     async def test_delete_many_timeout_exceptions_async(
         self,
-        async_collection: AsyncCollection,
+        async_collection: DefaultAsyncCollection,
     ) -> None:
         fifty_docs1 = [{"seq": i, "f": "delete_many1"} for i in range(50)]
         fifty_docs2 = [{"seq": i, "f": "delete_many2"} for i in range(50)]

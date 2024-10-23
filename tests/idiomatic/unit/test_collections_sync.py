@@ -25,6 +25,7 @@ from astrapy.utils.unset import _UNSET, UnsetType
 from ..conftest import (
     SECONDARY_KEYSPACE,
     DataAPICredentialsInfo,
+    DefaultCollection,
 )
 
 
@@ -43,13 +44,13 @@ class TestCollectionsSync:
         self,
         sync_database: Database,
     ) -> None:
-        col1 = Collection(
+        col1: DefaultCollection = Collection(
             database=sync_database,
             name="id_test_collection",
             keyspace=None,
             api_options=_wrapCallers(sync_database, callers=[("cn", "cv")]),
         )
-        col2 = Collection(
+        col2: DefaultCollection = Collection(
             database=sync_database,
             name="id_test_collection",
             keyspace=None,
@@ -62,7 +63,7 @@ class TestCollectionsSync:
         self,
         sync_database: Database,
     ) -> None:
-        col1 = Collection(
+        col1: DefaultCollection = Collection(
             database=sync_database,
             name="id_test_collection",
             keyspace=None,
@@ -79,7 +80,7 @@ class TestCollectionsSync:
     ) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
         callers1 = [("x", "y")]
-        col1 = Collection(
+        col1: DefaultCollection = Collection(
             database=sync_database,
             name="id_test_collection",
             keyspace=None,
@@ -115,7 +116,7 @@ class TestCollectionsSync:
     ) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
         callers1 = [("x", "y")]
-        col1 = Collection(
+        col1: DefaultCollection = Collection(
             database=sync_database,
             name="id_test_collection",
             keyspace="the_ks",
@@ -154,13 +155,13 @@ class TestCollectionsSync:
         opts0 = defaultAPIOptions(environment="other")
         db1 = Database(api_endpoint="a", keyspace="ns1", api_options=opts0)
         db2 = Database(api_endpoint="a", keyspace="ns2", api_options=opts0)
-        col1 = Collection(
+        col1: DefaultCollection = Collection(
             database=db1,
             name="coll",
             keyspace=None,
             api_options=opts0,
         )
-        col2 = Collection(database=db1, name="coll", api_options=opts0, keyspace="ns2")
+        col2: DefaultCollection = Collection(database=db1, name="coll", api_options=opts0, keyspace="ns2")
         assert col1.database == db1
         assert col2.database == db2
 
@@ -170,7 +171,7 @@ class TestCollectionsSync:
     ) -> None:
         opts0 = defaultAPIOptions(environment="other")
         db1 = Database(api_endpoint="a", keyspace="ns1", api_options=opts0)
-        col1 = Collection(
+        col1: DefaultCollection = Collection(
             database=db1,
             name="coll",
             keyspace=None,
@@ -196,7 +197,7 @@ class TestCollectionsSync:
         )
         assert col2.keyspace == data_api_credentials_info["secondary_keyspace"]
 
-        col3 = Collection(
+        col3: DefaultCollection = Collection(
             database=sync_database,
             name="id_test_collection",
             keyspace=None,
@@ -204,7 +205,7 @@ class TestCollectionsSync:
         )
         assert col3.keyspace == sync_database.keyspace
 
-        col4 = Collection(
+        col4: DefaultCollection = Collection(
             database=sync_database,
             name="id_test_collection",
             keyspace=data_api_credentials_info["secondary_keyspace"],

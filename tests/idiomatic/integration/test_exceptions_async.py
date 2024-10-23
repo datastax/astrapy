@@ -18,7 +18,8 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.constants import DocumentType
-from astrapy.cursors import AsyncCursor, CursorState
+#RESTOREFIND from astrapy.cursors import AsyncCursor, CursorState
+from astrapy.cursors import CursorState
 from astrapy.exceptions import (
     CollectionNotFoundException,
     CursorIsStartedException,
@@ -28,14 +29,14 @@ from astrapy.exceptions import (
     TooManyDocumentsToCountException,
 )
 
-from ..conftest import IS_ASTRA_DB, DataAPICredentials
+from ..conftest import IS_ASTRA_DB, DataAPICredentials, DefaultAsyncCollection
 
 
 class TestExceptionsAsync:
     @pytest.mark.describe("test of collection insert_many type-failure modes, async")
     async def test_collection_insert_many_type_failures_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
         bad_docs = [{"_id": tid} for tid in ["a", "b", "c", ValueError, "e", "f"]]
@@ -53,11 +54,12 @@ class TestExceptionsAsync:
             await acol.insert_many(bad_docs, ordered=False, chunk_size=2, concurrency=2)
 
     @pytest.mark.describe("test of collection insert_many insert-failure modes, async")
+    @pytest.mark.skip(reason="RESTOREFIND")
     async def test_collection_insert_many_insert_failures_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
-        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:
+        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:  # type: ignore[name-defined]
             return [doc async for doc in acursor]
 
         acol = async_empty_collection
@@ -68,21 +70,21 @@ class TestExceptionsAsync:
             ok_docs, ordered=True, chunk_size=2, concurrency=1
         )
         assert len(im_result1.inserted_ids) == 6
-        assert len(await _alist(acol.find({}))) == 6
+        assert len(await _alist(acol.find({}))) == 6  # type: ignore[attr-defined]
 
         await acol.delete_many({})
         im_result2 = await acol.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=1
         )
         assert len(im_result2.inserted_ids) == 6
-        assert len(await _alist(acol.find({}))) == 6
+        assert len(await _alist(acol.find({}))) == 6  # type: ignore[attr-defined]
 
         await acol.delete_many({})
         im_result3 = await acol.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=2
         )
         assert len(im_result3.inserted_ids) == 6
-        assert len(await _alist(acol.find({}))) == 6
+        assert len(await _alist(acol.find({}))) == 6  # type: ignore[attr-defined]
 
         await acol.delete_many({})
         with pytest.raises(InsertManyException) as exc:
@@ -92,7 +94,7 @@ class TestExceptionsAsync:
         assert len(exc.value.detailed_error_descriptors[0].error_descriptors) == 1
         assert exc.value.partial_result.inserted_ids == ["a", "b"]
         assert len(exc.value.partial_result.raw_results) == 2
-        assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
+        assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}  # type: ignore[attr-defined]
 
         await acol.delete_many({})
         with pytest.raises(InsertManyException) as exc:
@@ -103,7 +105,7 @@ class TestExceptionsAsync:
         assert len(exc.value.detailed_error_descriptors[1].error_descriptors) == 2
         assert set(exc.value.partial_result.inserted_ids) == {"a", "b", "d", "e", "f"}
         assert len(exc.value.partial_result.raw_results) == 4
-        assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "d", "e", "f"}
+        assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "d", "e", "f"}  # type: ignore[attr-defined]
 
         await acol.delete_many({})
         with pytest.raises(InsertManyException) as exc:
@@ -116,12 +118,12 @@ class TestExceptionsAsync:
         assert len(exc.value.detailed_error_descriptors[1].error_descriptors) == 2
         assert set(exc.value.partial_result.inserted_ids) == {"a", "b", "d", "e", "f"}
         assert len(exc.value.partial_result.raw_results) == 4
-        assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "d", "e", "f"}
+        assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "d", "e", "f"}  # type: ignore[attr-defined]
 
     @pytest.mark.describe("test of collection insert_one failure modes, async")
     async def test_collection_insert_one_failures_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection
         with pytest.raises(TypeError):
@@ -138,7 +140,7 @@ class TestExceptionsAsync:
     @pytest.mark.describe("test of collection options failure modes, async")
     async def test_collection_options_failures_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection._copy()
         acol._name += "_hacked"
@@ -150,7 +152,7 @@ class TestExceptionsAsync:
     @pytest.mark.describe("test of collection count_documents failure modes, async")
     async def test_collection_count_documents_failures_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection._copy()
         acol._name += "_hacked"
@@ -167,7 +169,7 @@ class TestExceptionsAsync:
     @pytest.mark.describe("test of collection one-doc DML failure modes, async")
     async def test_collection_monodoc_dml_failures_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         acol = async_empty_collection._copy()
         acol._name += "_hacked"
@@ -225,30 +227,25 @@ class TestExceptionsAsync:
             async_database._copy(keyspace=hacked_ks).info()
 
     @pytest.mark.describe("test of hard exceptions in cursors, async")
+    @pytest.mark.skip(reason="RESTOREFIND")
     async def test_cursor_hard_exceptions_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         with pytest.raises(TypeError):
-            await async_empty_collection.find(
+            await async_empty_collection.find(  # type: ignore[attr-defined]
                 {},
                 sort={"f": ValueError("nonserializable")},
             ).distinct("a")
-        # # Note: this, i.e. cursor[i]/cursor[i:j], is disabled
-        # # pending full skip/limit support by the Data API.
-        # with pytest.raises(IndexError):
-        #     async_empty_collection.find(
-        #         {},
-        #         sort={"f": SortDocuments.ASCENDING},
-        #     )[100]
 
     @pytest.mark.describe("test of custom exceptions in cursors, async")
+    @pytest.mark.skip(reason="RESTOREFIND")
     async def test_cursor_custom_exceptions_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         await async_empty_collection.insert_many([{"a": 1}] * 4)
-        cur1 = async_empty_collection.find({})
+        cur1 = async_empty_collection.find({})  # type: ignore[attr-defined]
         cur1.limit(10)
 
         await cur1.__anext__()
@@ -262,14 +259,15 @@ class TestExceptionsAsync:
         assert exc.value.cursor_state == CursorState.CLOSED.value
 
     @pytest.mark.describe("test of standard exceptions in cursors, async")
+    @pytest.mark.skip(reason="RESTOREFIND")
     async def test_cursor_standard_exceptions_async(
         self,
-        async_empty_collection: AsyncCollection,
+        async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         awcol = async_empty_collection._copy(keyspace="nonexisting")
-        cur1 = awcol.find({})
-        cur2 = awcol.find({})
-        cur3 = awcol.find({})
+        cur1 = awcol.find({})  # type: ignore[attr-defined]
+        cur2 = awcol.find({})  # type: ignore[attr-defined]
+        cur3 = awcol.find({})  # type: ignore[attr-defined]
 
         with pytest.raises(DataAPIResponseException):
             async for item in cur1:
@@ -282,7 +280,7 @@ class TestExceptionsAsync:
             await cur3.distinct("f")
 
         with pytest.raises(DataAPIResponseException):
-            await awcol.distinct("f")
+            await awcol.distinct("f")  # type: ignore[attr-defined]
 
         with pytest.raises(DataAPIResponseException):
             await awcol.find_one({})

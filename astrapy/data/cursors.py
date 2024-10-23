@@ -20,7 +20,7 @@ import json
 # import logging
 # import time
 # from collections.abc import AsyncIterator
-# from enum import Enum
+from enum import Enum
 from typing import (
 # RESTOREFIND
 #     TYPE_CHECKING,
@@ -57,14 +57,13 @@ from astrapy.utils.transform_payload import normalize_payload_value
 IndexPairType = tuple[str, int | None]
 
 
-# RESTOREFIND
-# class CursorState(Enum):
-#     # Iteration over results has not started yet (alive=T, started=F)
-#     IDLE = "idle"
-#     # Iteration has started, *can* still yield results (alive=T, started=T)
-#     STARTED = "started"
-#     # Finished/forcibly stopped. Won't return more documents (alive=F)
-#     CLOSED = "closed"
+class CursorState(Enum):
+    # Iteration over results has not started yet (alive=T, started=F)
+    IDLE = "idle"
+    # Iteration has started, *can* still yield results (alive=T, started=T)
+    STARTED = "started"
+    # Finished/forcibly stopped. Won't return more documents (alive=F)
+    CLOSED = "closed"
 
 
 def _maybe_valid_list_index(key_block: str) -> int | None:

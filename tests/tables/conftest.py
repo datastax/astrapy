@@ -16,7 +16,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Any, Iterable
 
 import pytest
 
@@ -38,6 +38,9 @@ from ..conftest import (
     DataAPICredentials,
     DataAPICredentialsInfo,
 )
+
+DefaultTable = Table[dict[str, Any]]
+DefaultAsyncTable = AsyncTable[dict[str, Any]]
 
 TEST_ALL_RETURNS_TABLE_NAME = "test_table_all_returns"
 TEST_ALL_RETURNS_TABLE_DEFINITION = TableDefinition(
@@ -131,7 +134,7 @@ def async_database(
 def sync_table_all_returns(
     data_api_credentials_kwargs: DataAPICredentials,
     sync_database: Database,
-) -> Iterable[Table]:
+) -> Iterable[DefaultTable]:
     """An actual table on DB, in the main keyspace"""
     table = sync_database.create_table(
         TEST_ALL_RETURNS_TABLE_NAME,
@@ -143,7 +146,7 @@ def sync_table_all_returns(
 
 
 @pytest.fixture(scope="function")
-def sync_empty_table_all_returns(sync_table: Table) -> Iterable[Table]:
+def sync_empty_table_all_returns(sync_table: DefaultTable) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
     # sync_table.delete_many({}) TODO reinstate once available
     yield sync_table
@@ -151,16 +154,16 @@ def sync_empty_table_all_returns(sync_table: Table) -> Iterable[Table]:
 
 @pytest.fixture(scope="function")
 def async_table_all_returns(
-    sync_table: Table,
-) -> Iterable[AsyncTable]:
+    sync_table: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
     """An actual table on DB, the same as the sync counterpart"""
     yield sync_table.to_async()
 
 
 @pytest.fixture(scope="function")
 def async_empty_table_all_returns(
-    sync_empty_table: Table,
-) -> Iterable[AsyncTable]:
+    sync_empty_table: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
     """Emptied for each test function"""
     yield sync_empty_table.to_async()
 

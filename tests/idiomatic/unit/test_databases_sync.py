@@ -31,6 +31,7 @@ from ..conftest import (
     TEST_COLLECTION_INSTANCE_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
+    DefaultCollection,
 )
 
 api_ep5643_prod = (
@@ -180,7 +181,7 @@ class TestDatabasesSync:
     def test_database_get_collection_sync(
         self,
         sync_database: Database,
-        sync_collection_instance: Collection,
+        sync_collection_instance: DefaultCollection,
         data_api_credentials_kwargs: DataAPICredentials,
     ) -> None:
         collection = sync_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)

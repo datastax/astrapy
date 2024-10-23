@@ -25,6 +25,7 @@ from astrapy.utils.unset import _UNSET, UnsetType
 from ..conftest import (
     SECONDARY_KEYSPACE,
     DataAPICredentialsInfo,
+    DefaultAsyncCollection,
 )
 
 
@@ -43,13 +44,13 @@ class TestCollectionsAsync:
         self,
         async_database: AsyncDatabase,
     ) -> None:
-        col1 = AsyncCollection(
+        col1: DefaultAsyncCollection = AsyncCollection(
             database=async_database,
             name="id_test_collection",
             keyspace=None,
             api_options=_wrapCallers(async_database, callers=[("cn", "cv")]),
         )
-        col2 = AsyncCollection(
+        col2: DefaultAsyncCollection = AsyncCollection(
             database=async_database,
             name="id_test_collection",
             keyspace=None,
@@ -62,7 +63,7 @@ class TestCollectionsAsync:
         self,
         async_database: AsyncDatabase,
     ) -> None:
-        col1 = AsyncCollection(
+        col1: DefaultAsyncCollection = AsyncCollection(
             database=async_database,
             name="id_test_collection",
             keyspace=None,
@@ -79,7 +80,7 @@ class TestCollectionsAsync:
     ) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
         callers1 = [("x", "y")]
-        col1 = AsyncCollection(
+        col1: DefaultAsyncCollection = AsyncCollection(
             database=async_database,
             name="id_test_collection",
             keyspace=None,
@@ -115,7 +116,7 @@ class TestCollectionsAsync:
     ) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
         callers1 = [("x", "y")]
-        col1 = AsyncCollection(
+        col1: DefaultAsyncCollection = AsyncCollection(
             database=async_database,
             name="id_test_collection",
             keyspace="the_ks",
@@ -154,13 +155,13 @@ class TestCollectionsAsync:
         opts0 = defaultAPIOptions(environment="other")
         db1 = AsyncDatabase(api_endpoint="a", keyspace="ns1", api_options=opts0)
         db2 = AsyncDatabase(api_endpoint="a", keyspace="ns2", api_options=opts0)
-        col1 = AsyncCollection(
+        col1: DefaultAsyncCollection = AsyncCollection(
             database=db1,
             name="coll",
             keyspace=None,
             api_options=opts0,
         )
-        col2 = AsyncCollection(
+        col2: DefaultAsyncCollection = AsyncCollection(
             database=db1, name="coll", api_options=opts0, keyspace="ns2"
         )
         assert col1.database == db1
@@ -172,7 +173,7 @@ class TestCollectionsAsync:
     ) -> None:
         opts0 = defaultAPIOptions(environment="other")
         db1 = AsyncDatabase(api_endpoint="a", keyspace="ns1", api_options=opts0)
-        col1 = AsyncCollection(
+        col1: DefaultAsyncCollection = AsyncCollection(
             database=db1,
             name="coll",
             keyspace=None,
@@ -198,7 +199,7 @@ class TestCollectionsAsync:
         )
         assert col2.keyspace == data_api_credentials_info["secondary_keyspace"]
 
-        col3 = AsyncCollection(
+        col3: DefaultAsyncCollection = AsyncCollection(
             database=async_database,
             name="id_test_collection",
             keyspace=None,
@@ -206,7 +207,7 @@ class TestCollectionsAsync:
         )
         assert col3.keyspace == async_database.keyspace
 
-        col4 = AsyncCollection(
+        col4: DefaultAsyncCollection = AsyncCollection(
             database=async_database,
             name="id_test_collection",
             keyspace=data_api_credentials_info["secondary_keyspace"],

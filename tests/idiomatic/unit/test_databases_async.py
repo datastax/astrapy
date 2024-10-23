@@ -31,6 +31,7 @@ from ..conftest import (
     TEST_COLLECTION_INSTANCE_NAME,
     DataAPICredentials,
     DataAPICredentialsInfo,
+    DefaultAsyncCollection,
 )
 
 api_ep5643_prod = (
@@ -180,7 +181,7 @@ class TestDatabasesAsync:
     async def test_database_get_collection_async(
         self,
         async_database: AsyncDatabase,
-        async_collection_instance: AsyncCollection,
+        async_collection_instance: DefaultAsyncCollection,
     ) -> None:
         collection = await async_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)
         assert collection == async_collection_instance

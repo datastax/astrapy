@@ -33,6 +33,9 @@ from ..conftest import (
     clean_nulls_from_dict,
 )
 
+DefaultCollection = Collection[dict[str, Any]]
+DefaultAsyncCollection = AsyncCollection[dict[str, Any]]
+
 TEST_SERVICE_COLLECTION_NAME = "test_indepth_vectorize_collection"
 
 
@@ -73,7 +76,7 @@ def sync_service_collection(
     data_api_credentials_kwargs: DataAPICredentials,
     sync_database: Database,
     service_collection_parameters: dict[str, Any],
-) -> Iterable[Collection]:
+) -> Iterable[DefaultCollection]:
     """
     An actual collection on DB, in the main keyspace.
     """
@@ -91,8 +94,8 @@ def sync_service_collection(
 
 @pytest.fixture(scope="function")
 def sync_empty_service_collection(
-    sync_service_collection: Collection,
-) -> Iterable[Collection]:
+    sync_service_collection: DefaultCollection,
+) -> Iterable[DefaultCollection]:
     """Emptied for each test function"""
     sync_service_collection.delete_many({})
     yield sync_service_collection
@@ -100,8 +103,8 @@ def sync_empty_service_collection(
 
 @pytest.fixture(scope="function")
 def async_empty_service_collection(
-    sync_empty_service_collection: Collection,
-) -> Iterable[AsyncCollection]:
+    sync_empty_service_collection: DefaultCollection,
+) -> Iterable[DefaultAsyncCollection]:
     """Emptied for each test function"""
     yield sync_empty_service_collection.to_async()
 

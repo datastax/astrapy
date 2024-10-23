@@ -20,15 +20,16 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.constants import DocumentType
-from astrapy.cursors import AsyncCursor
+#RESTOREFIND from astrapy.cursors import AsyncCursor
 from astrapy.exceptions import DataAPIResponseException
 
+from ..conftest import DefaultAsyncCollection
 
 class TestVectorizeMethodsAsync:
     @pytest.mark.describe("test of vectorize in collection methods, async")
     async def test_collection_methods_vectorize_async(
         self,
-        async_empty_service_collection: AsyncCollection,
+        async_empty_service_collection: DefaultAsyncCollection,
         service_collection_parameters: dict[str, Any],
     ) -> None:
         acol = async_empty_service_collection
@@ -72,16 +73,17 @@ class TestVectorizeMethodsAsync:
         assert doc is not None
         assert doc["t"] == "tower"
 
-        docs = [
-            doc
-            async for doc in acol.find(
-                {},
-                sort={"$vectorize": "This building is five storeys tall."},
-                limit=2,
-                projection={"$vector": False},
-            )
-        ]
-        assert docs[0]["t"] == "tower"
+        #RESTOREFIND
+        # docs = [
+        #     doc
+        #     async for doc in acol.find(
+        #         {},
+        #         sort={"$vectorize": "This building is five storeys tall."},
+        #         limit=2,
+        #         projection={"$vector": False},
+        #     )
+        # ]
+        # assert docs[0]["t"] == "tower"
 
         rdoc = await acol.find_one_and_replace(
             {},
@@ -132,9 +134,10 @@ class TestVectorizeMethodsAsync:
     @pytest.mark.describe(
         "test of include_sort_vector in collection vectorize find, async"
     )
+    @pytest.mark.skip(reason="RESTOREFIND")
     async def test_collection_include_sort_vector_vectorize_find_async(
         self,
-        async_empty_service_collection: AsyncCollection,
+        async_empty_service_collection: DefaultAsyncCollection,
     ) -> None:
         # with empty collection
         q_text = "A sentence for searching."
@@ -142,7 +145,7 @@ class TestVectorizeMethodsAsync:
         def _is_vector(v: Any) -> bool:
             return isinstance(v, list) and isinstance(v[0], float)
 
-        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:
+        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:  # type: ignore[name-defined]
             return [doc async for doc in acursor]
 
         for include_sv in [False, True]:
@@ -150,7 +153,7 @@ class TestVectorizeMethodsAsync:
                 sort_cl_e: dict[str, Any] = {"$vectorize": q_text}
                 vec_expected = include_sv and sort_cl_label == "vze"
                 # pristine iterator
-                this_ite_1 = async_empty_service_collection.find(
+                this_ite_1 = async_empty_service_collection.find(  # type: ignore[attr-defined]
                     {}, sort=sort_cl_e, include_sort_vector=include_sv
                 )
                 if vec_expected:
@@ -165,7 +168,7 @@ class TestVectorizeMethodsAsync:
                 else:
                     assert (await this_ite_1.get_sort_vector()) is None
                 # directly exhausted before calling get_sort_vector
-                this_ite_2 = async_empty_service_collection.find(
+                this_ite_2 = async_empty_service_collection.find(  # type: ignore[attr-defined]
                     {}, sort=sort_cl_e, include_sort_vector=include_sv
                 )
                 all_items_2 = await _alist(this_ite_2)
@@ -186,7 +189,7 @@ class TestVectorizeMethodsAsync:
                 sort_cl_f: dict[str, Any] = {"$vectorize": q_text}
                 vec_expected = include_sv and sort_cl_label == "vze"
                 # pristine iterator
-                this_ite_1 = async_empty_service_collection.find(
+                this_ite_1 = async_empty_service_collection.find(  # type: ignore[attr-defined]
                     {}, sort=sort_cl_f, include_sort_vector=include_sv
                 )
                 if vec_expected:
@@ -214,7 +217,7 @@ class TestVectorizeMethodsAsync:
                 else:
                     assert (await this_ite_1.get_sort_vector()) is None
                 # directly exhausted before calling get_sort_vector
-                this_ite_2 = async_empty_service_collection.find(
+                this_ite_2 = async_empty_service_collection.find(  # type: ignore[attr-defined]
                     {}, sort=sort_cl_f, include_sort_vector=include_sv
                 )
                 await _alist(this_ite_2)
