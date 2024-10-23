@@ -18,9 +18,9 @@ from typing import Any, Iterable, TypedDict
 
 import pytest
 
-from astrapy import Table, Database
+from astrapy import AsyncTable, AsyncDatabase, Table, Database
 
-from ..conftest import DefaultTable
+from ..conftest import DefaultAsyncTable, DefaultTable
 
 class TestDoc(TypedDict):
   p_bigint: int
@@ -44,7 +44,7 @@ FIND_FILTER = {"p_ascii": "abc", "p_bigint": 10000}
 
 
 @pytest.fixture(scope="module")
-def typing_test_table(sync_database: Database) -> Iterable[DefaultTable]:
+def sync_typing_test_table(sync_database: Database) -> Iterable[DefaultTable]:
     table = sync_database.create_table(
         TYPING_TABLE_NAME,
         definition=TYPING_TABLE_DEFINITION,
@@ -54,12 +54,19 @@ def typing_test_table(sync_database: Database) -> Iterable[DefaultTable]:
 
     table.drop()
 
-class TestTableDMLSync:
+@pytest.fixture
+def async_typing_test_table(
+    sync_typing_test_table: DefaultTable,
+) -> DefaultAsyncTable:
+    return sync_typing_test_table.to_async()
+
+
+class TestTableTyping:
     @pytest.mark.describe("test of typing create_table, sync")
     def test_create_table_typing_sync(
         self,
         sync_database: Database,
-        typing_test_table: DefaultTable,
+        sync_typing_test_table: DefaultTable,
     ) -> None:
         """Test of creating typed tables with generics (and not), sync."""
 
@@ -110,7 +117,7 @@ class TestTableDMLSync:
     def test_get_table_typing_sync(
         self,
         sync_database: Database,
-        typing_test_table: DefaultTable,
+        sync_typing_test_table: DefaultTable,
     ) -> None:
         """Test of getting typed tables with generics (and not), sync."""
 
@@ -135,6 +142,99 @@ class TestTableDMLSync:
         g_tb_typed: Table[TestDoc] = sync_database.get_table(TYPING_TABLE_NAME, row_type=TestDoc)
         g_tb_typed.insert_one(TYPED_ROW)
         gt_doc = g_tb_typed.find_one(FIND_FILTER)
+        assert gt_doc is not None
+        gt_a: str
+        gt_b: int
+        gt_a = gt_doc["p_ascii"]
+        gt_b = gt_doc["p_bigint"]
+        assert set(gt_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
+        # these two SHOULD NOT typecheck (i.e. require the ignore directive)
+        gt_x: int
+        gt_y: float
+        gt_x = gt_doc["p_ascii"]  # type: ignore[assignment]
+        with pytest.raises(KeyError):
+            gt_y = gt_doc["c"]  # type: ignore[typeddict-item]
+
+    @pytest.mark.describe("test of typing create_table, async")
+    async def test_create_table_typing_async(
+        self,
+        async_database: AsyncDatabase,
+        async_typing_test_table: DefaultAsyncTable,
+    ) -> None:
+        """Test of creating typed tables with generics (and not), async."""
+
+        # Untyped baseline
+        ac_tb_untyped = await async_database.create_table(
+            TYPING_TABLE_NAME,
+            definition=TYPING_TABLE_DEFINITION,
+            if_not_exists=True,
+        )
+        await ac_tb_untyped.insert_one(ROW)
+        cu_doc = await ac_tb_untyped.find_one(FIND_FILTER)
+        assert cu_doc is not None
+        cu_a: str
+        cu_b: int
+        cu_a = cu_doc["p_ascii"]
+        cu_b = cu_doc["p_bigint"]
+        assert set(cu_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
+        # untyped, these are all ok:
+        cu_x: int
+        cu_y: float
+        cu_x = cu_doc["p_ascii"]
+        with pytest.raises(KeyError):
+            cu_y = cu_doc["c"]
+
+        # Typed
+        ac_tb_typed: AsyncTable[TestDoc] = await async_database.create_table(
+            TYPING_TABLE_NAME,
+            definition=TYPING_TABLE_DEFINITION,
+            if_not_exists=True,
+            row_type=TestDoc,
+        )
+        await ac_tb_typed.insert_one(TYPED_ROW)
+        ct_doc = await ac_tb_typed.find_one(FIND_FILTER)
+        assert ct_doc is not None
+        ct_a: str
+        ct_b: int
+        ct_a = ct_doc["p_ascii"]
+        ct_b = ct_doc["p_bigint"]
+        assert set(ct_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
+        # these two SHOULD NOT typecheck (i.e. require the ignore directive)
+        ct_x: int
+        ct_y: float
+        ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]
+        with pytest.raises(KeyError):
+            ct_y = ct_doc["c"]  # type: ignore[typeddict-item]
+
+    @pytest.mark.describe("test of typing get_table, async")
+    async def test_get_table_typing_async(
+        self,
+        async_database: AsyncDatabase,
+        async_typing_test_table: DefaultAsyncTable,
+    ) -> None:
+        """Test of getting typed tables with generics (and not), async."""
+
+        # Untyped baseline
+        ag_tb_untyped = await async_database.get_table(TYPING_TABLE_NAME)
+        await ag_tb_untyped.insert_one(ROW)
+        gu_doc = await ag_tb_untyped.find_one(FIND_FILTER)
+        assert gu_doc is not None
+        gu_a: str
+        gu_b: int
+        gu_a = gu_doc["p_ascii"]
+        gu_b = gu_doc["p_bigint"]
+        assert set(gu_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
+        # untyped, these are all ok:
+        gu_x: int
+        gu_y: float
+        gu_x = gu_doc["p_ascii"]
+        with pytest.raises(KeyError):
+            gu_y = gu_doc["c"]
+
+        # Typed
+        ag_tb_typed: AsyncTable[TestDoc] = await async_database.get_table(TYPING_TABLE_NAME, row_type=TestDoc)
+        await ag_tb_typed.insert_one(TYPED_ROW)
+        gt_doc = await ag_tb_typed.find_one(FIND_FILTER)
         assert gt_doc is not None
         gt_a: str
         gt_b: int
