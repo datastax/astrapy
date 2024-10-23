@@ -453,7 +453,6 @@ class TestDMLAsync:
         cursor1.rewind()
 
         # address, cursor_id, collection
-        assert cursor1.address == async_empty_collection._api_commander.full_path
         assert isinstance(cursor1.cursor_id, int)
         assert cursor1.data_source == async_empty_collection
 

@@ -1,5 +1,11 @@
 v 2.0.0
 =======
+Collections are optionally typed:
+    - `get_collection` and `create_collection` get a `document_type` parameter to go with the type hint `Collection[MyType]`
+    - if unspecified fall back to `DefaultCollection = Collection[DefaultDocumentType]` (where `DefaultDocumentType = dict[str, Any]`)
+Cursors are similarly typed and are rewritten entirely:
+    - `cursor.state` return values in `CursorState` enum (take `cursor.state.value` for a string)
+    - `cursor.address` is removed from the API
 (internal) simplified timeout management classes and representations.
 (internal) Async/Collection's find_one method uses findOne API command.
 Removed the CommandCursor/AsyncCommandCursor classes:
