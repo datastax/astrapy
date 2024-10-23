@@ -14,12 +14,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import pytest
 
-if TYPE_CHECKING:
-    from astrapy import Table
+from ..conftest import DefaultTable
 
 DOC_PK_0 = {
     "p_ascii": "abc",
@@ -37,7 +34,7 @@ class TestTableDMLSync:
     @pytest.mark.describe("test of table insert_one, sync")
     def test_table_insert_one_sync(
         self,
-        sync_table_all_returns: Table,
+        sync_table_all_returns: DefaultTable,
     ) -> None:
         # TODO enlarge the test with all values + a partial row
         # TODO check returned is sparse

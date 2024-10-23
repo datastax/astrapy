@@ -20,7 +20,7 @@ from typing import Any
 import pytest
 
 from astrapy import AsyncCollection
-from astrapy.constants import DocumentType, ReturnDocument, SortDocuments
+from astrapy.constants import DefaultDocumentType, ReturnDocument, SortDocuments
 #RESTOREFIND from astrapy.cursors import AsyncCursor
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.ids import UUID, ObjectId
@@ -226,7 +226,7 @@ class TestDMLAsync:
         Nsor = {"seq": SortDocuments.DESCENDING}
         Nfil = {"seq": {"$exists": True}}
 
-        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:  # type: ignore[name-defined]
+        async def _alist(acursor: AsyncCursor) -> list[DefaultDocumentType]:  # type: ignore[name-defined]
             return [doc async for doc in acursor]
 
         # case 0000 of find-pattern matrix
@@ -439,7 +439,7 @@ class TestDMLAsync:
 
         assert cursor0b.data_source == async_empty_collection
 
-        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:  # type: ignore[name-defined]
+        async def _alist(acursor: AsyncCursor) -> list[DefaultDocumentType]:  # type: ignore[name-defined]
             return [doc async for doc in acursor]
 
         # rewinding, slicing and retrieved
@@ -656,7 +656,7 @@ class TestDMLAsync:
     ) -> None:
         q_vector = [10, 9]
 
-        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:  # type: ignore[name-defined]
+        async def _alist(acursor: AsyncCursor) -> list[DefaultDocumentType]:  # type: ignore[name-defined]
             return [doc async for doc in acursor]
 
         # with empty collection

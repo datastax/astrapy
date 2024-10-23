@@ -26,8 +26,8 @@ from astrapy.settings.defaults import (
     DATA_API_ENVIRONMENT_TEST,
 )
 
-DocumentType = Dict[str, Any]
-RowType = Dict[str, Any]
+DefaultDocumentType = Dict[str, Any]
+DefaultRowType = Dict[str, Any]
 ProjectionType = Union[
     Iterable[str], Dict[str, Union[bool, Dict[str, Union[int, Iterable[int]]]]]
 ]

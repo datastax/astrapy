@@ -19,7 +19,7 @@ from typing import Any
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
-from astrapy.constants import DocumentType
+from astrapy.constants import DefaultDocumentType
 #RESTOREFIND from astrapy.cursors import AsyncCursor
 from astrapy.exceptions import DataAPIResponseException
 
@@ -145,7 +145,7 @@ class TestVectorizeMethodsAsync:
         def _is_vector(v: Any) -> bool:
             return isinstance(v, list) and isinstance(v[0], float)
 
-        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:  # type: ignore[name-defined]
+        async def _alist(acursor: AsyncCursor) -> list[DefaultDocumentType]:  # type: ignore[name-defined]
             return [doc async for doc in acursor]
 
         for include_sv in [False, True]:

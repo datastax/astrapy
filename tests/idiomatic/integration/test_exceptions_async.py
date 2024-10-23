@@ -17,7 +17,7 @@ from __future__ import annotations
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
-from astrapy.constants import DocumentType
+from astrapy.constants import DefaultDocumentType
 #RESTOREFIND from astrapy.cursors import AsyncCursor, CursorState
 from astrapy.cursors import CursorState
 from astrapy.exceptions import (
@@ -59,7 +59,7 @@ class TestExceptionsAsync:
         self,
         async_empty_collection: DefaultAsyncCollection,
     ) -> None:
-        async def _alist(acursor: AsyncCursor) -> list[DocumentType]:  # type: ignore[name-defined]
+        async def _alist(acursor: AsyncCursor) -> list[DefaultDocumentType]:  # type: ignore[name-defined]
             return [doc async for doc in acursor]
 
         acol = async_empty_collection

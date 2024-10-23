@@ -1348,7 +1348,9 @@ class AsyncTable(Generic[ROW]):
         #         text="Faulty response from findOne API command.",
         #         raw_response=fo_response,
         #     )
-        doc_response = fo_response["data"]["document"]
+        # TODO replace next line with the one after that:
+        doc_response = fo_response.get("data", {}).get("document")
+        # doc_response = fo_response["data"]["document"]
         if doc_response is None:
             return None
         return fo_response["data"]["document"]  # type: ignore[no-any-return]

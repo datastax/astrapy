@@ -146,26 +146,26 @@ def sync_table_all_returns(
 
 
 @pytest.fixture(scope="function")
-def sync_empty_table_all_returns(sync_table: DefaultTable) -> Iterable[DefaultTable]:
+def sync_empty_table_all_returns(sync_table_all_returns: DefaultTable) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    # sync_table.delete_many({}) TODO reinstate once available
-    yield sync_table
+    # sync_table_all_returns.delete_many({}) TODO reinstate once available
+    yield sync_table_all_returns
 
 
 @pytest.fixture(scope="function")
 def async_table_all_returns(
-    sync_table: DefaultTable,
+    sync_table_all_returns: DefaultTable,
 ) -> Iterable[DefaultAsyncTable]:
     """An actual table on DB, the same as the sync counterpart"""
-    yield sync_table.to_async()
+    yield sync_table_all_returns.to_async()
 
 
 @pytest.fixture(scope="function")
 def async_empty_table_all_returns(
-    sync_empty_table: DefaultTable,
+    sync_empty_table_all_returns: DefaultTable,
 ) -> Iterable[DefaultAsyncTable]:
     """Emptied for each test function"""
-    yield sync_empty_table.to_async()
+    yield sync_empty_table_all_returns.to_async()
 
 
 __all__ = [

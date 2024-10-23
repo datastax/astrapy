@@ -23,7 +23,7 @@ from astrapy.authentication import (
     coerce_possible_embedding_headers_provider,
     coerce_possible_token_provider,
 )
-from astrapy.constants import DOC, ROW, CallerType, DocumentType, Environment, RowType
+from astrapy.constants import DOC, ROW, CallerType, DefaultDocumentType, Environment, DefaultRowType
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     DevOpsAPIException,
@@ -182,10 +182,10 @@ class Database:
         self._name: str | None = None
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
-    def __getattr__(self, collection_name: str) -> Collection[DocumentType]:
+    def __getattr__(self, collection_name: str) -> Collection[DefaultDocumentType]:
         return self.get_collection(name=collection_name)
 
-    def __getitem__(self, collection_name: str) -> Collection[DocumentType]:
+    def __getitem__(self, collection_name: str) -> Collection[DefaultDocumentType]:
         return self.get_collection(name=collection_name)
 
     def __repr__(self) -> str:
@@ -520,7 +520,7 @@ class Database:
         collection_request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Collection[DocumentType]: ...
+    ) -> Collection[DefaultDocumentType]: ...
 
     @overload
     def get_collection(
@@ -539,7 +539,7 @@ class Database:
         self,
         name: str,
         *,
-        document_type: type[Any] = DocumentType,  # type[DOC] | type[DocumentType]
+        document_type: type[Any] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
@@ -660,7 +660,7 @@ class Database:
         collection_request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Collection[DocumentType]: ...
+    ) -> Collection[DefaultDocumentType]: ...
 
     @overload
     def create_collection(
@@ -687,7 +687,7 @@ class Database:
         self,
         name: str,
         *,
-        document_type: type[Any] = DocumentType,  # type[DOC] | type[DocumentType]
+        document_type: type[Any] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
         keyspace: str | None = None,
         dimension: int | None = None,
         metric: str | None = None,
@@ -993,7 +993,7 @@ class Database:
         table_request_timeout_ms: int | UnsetType = _UNSET,
         table_max_time_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Table[RowType]: ...
+    ) -> Table[DefaultRowType]: ...
 
     @overload
     def get_table(
@@ -1012,7 +1012,7 @@ class Database:
         self,
         name: str,
         *,
-        row_type: type[Any] = RowType,  # type[ROW] | type[RowType]
+        row_type: type[Any] = DefaultRowType,  # type[ROW] | type[DefaultRowType]
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -1122,7 +1122,7 @@ class Database:
         table_request_timeout_ms: int | UnsetType = _UNSET,
         table_max_time_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> Table[RowType]: ...
+    ) -> Table[DefaultRowType]: ...
 
     @overload
     def create_table(
@@ -1146,7 +1146,7 @@ class Database:
         name: str,
         *,
         definition: TableDefinition | dict[str, Any],
-        row_type: type[Any] = RowType,  # type[ROW] | type[RowType]
+        row_type: type[Any] = DefaultRowType,  # type[ROW] | type[DefaultRowType]
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         schema_operation_timeout_ms: int | None = None,
@@ -1640,10 +1640,10 @@ class AsyncDatabase:
         self._name: str | None = None
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
-    def __getattr__(self, collection_name: str) -> AsyncCollection[DocumentType]:
+    def __getattr__(self, collection_name: str) -> AsyncCollection[DefaultDocumentType]:
         return self.to_sync().get_collection(name=collection_name).to_async()
 
-    def __getitem__(self, collection_name: str) -> AsyncCollection[DocumentType]:
+    def __getitem__(self, collection_name: str) -> AsyncCollection[DefaultDocumentType]:
         return self.to_sync().get_collection(name=collection_name).to_async()
 
     def __repr__(self) -> str:
@@ -1995,7 +1995,7 @@ class AsyncDatabase:
         collection_request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> AsyncCollection[DocumentType]: ...
+    ) -> AsyncCollection[DefaultDocumentType]: ...
 
     @overload
     async def get_collection(
@@ -2014,7 +2014,7 @@ class AsyncDatabase:
         self,
         name: str,
         *,
-        document_type: type[Any] = DocumentType,  # type[DOC] | type[DocumentType]
+        document_type: type[Any] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
@@ -2138,7 +2138,7 @@ class AsyncDatabase:
         collection_request_timeout_ms: int | UnsetType = _UNSET,
         collection_max_time_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> AsyncCollection[DocumentType]: ...
+    ) -> AsyncCollection[DefaultDocumentType]: ...
 
     @overload
     async def create_collection(
@@ -2165,7 +2165,7 @@ class AsyncDatabase:
         self,
         name: str,
         *,
-        document_type: type[Any] = DocumentType,  # type[DOC] | type[DocumentType]
+        document_type: type[Any] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
         keyspace: str | None = None,
         dimension: int | None = None,
         metric: str | None = None,
@@ -2477,7 +2477,7 @@ class AsyncDatabase:
         table_request_timeout_ms: int | UnsetType = _UNSET,
         table_max_time_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> AsyncTable[RowType]: ...
+    ) -> AsyncTable[DefaultRowType]: ...
 
     @overload
     async def get_table(
@@ -2496,7 +2496,7 @@ class AsyncDatabase:
         self,
         name: str,
         *,
-        row_type: type[Any] = RowType,  # type[ROW] | type[RowType]
+        row_type: type[Any] = DefaultRowType,  # type[ROW] | type[DefaultRowType]
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -2606,7 +2606,7 @@ class AsyncDatabase:
         table_request_timeout_ms: int | UnsetType = _UNSET,
         table_max_time_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
-    ) -> AsyncTable[RowType]: ...
+    ) -> AsyncTable[DefaultRowType]: ...
 
     @overload
     async def create_table(
@@ -2630,7 +2630,7 @@ class AsyncDatabase:
         name: str,
         *,
         definition: TableDefinition | dict[str, Any],
-        row_type: type[Any] = RowType,  # type[ROW] | type[RowType]
+        row_type: type[Any] = DefaultRowType,  # type[ROW] | type[DefaultRowType]
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         schema_operation_timeout_ms: int | None = None,

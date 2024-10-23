@@ -19,7 +19,7 @@ import datetime
 import time
 from typing import Any, Dict, Iterable, cast
 
-from astrapy.constants import DocumentType
+from astrapy.constants import DefaultDocumentType
 from astrapy.ids import UUID, ObjectId
 
 
@@ -162,10 +162,10 @@ def restore_response_value(path: list[str], value: Any) -> Any:
         return value
 
 
-def restore_from_api(response: DocumentType) -> DocumentType:
+def restore_from_api(response: DefaultDocumentType) -> DefaultDocumentType:
     """
     Process a dictionary just returned from the API.
     This is the place where e.g. `{"$date": 123}` is
     converted back into a datetime object.
     """
-    return cast(DocumentType, restore_response_value([], response))
+    return cast(DefaultDocumentType, restore_response_value([], response))

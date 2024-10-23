@@ -34,7 +34,7 @@ from typing import (
 
 # RESTOREFIND
 # from astrapy.constants import (
-#     DocumentType,
+#     DefaultDocumentType,
 #     ProjectionType,
 #     normalize_optional_projection,
 # )
@@ -171,16 +171,16 @@ def _hash_document(document: dict[str, Any]) -> str:
 #     is made and 'global' (find-wide) properties are read off the first response.
 #     """
 
-#     def __init__(self, iterator: Iterator[DocumentType]):
+#     def __init__(self, iterator: Iterator[DefaultDocumentType]):
 #         self.iterator = iterator
-#         self.preread_item: DocumentType | None = None
+#         self.preread_item: DefaultDocumentType | None = None
 #         self.has_preread = False
 #         self.preread_exhausted = False
 
-#     def __iter__(self) -> Iterator[DocumentType]:
+#     def __iter__(self) -> Iterator[DefaultDocumentType]:
 #         return self
 
-#     def __next__(self) -> DocumentType:
+#     def __next__(self) -> DefaultDocumentType:
 #         if self.has_preread:
 #             self.has_preread = False
 #             if self.preread_exhausted:
@@ -207,16 +207,16 @@ def _hash_document(document: dict[str, Any]) -> str:
 #     is made and 'global' (find-wide) properties are read off the first response.
 #     """
 
-#     def __init__(self, async_iterator: AsyncIterator[DocumentType]):
+#     def __init__(self, async_iterator: AsyncIterator[DefaultDocumentType]):
 #         self.async_iterator = async_iterator
-#         self.preread_item: DocumentType | None = None
+#         self.preread_item: DefaultDocumentType | None = None
 #         self.has_preread = False
 #         self.preread_exhausted = False
 
-#     def __aiter__(self) -> AsyncIterator[DocumentType]:
+#     def __aiter__(self) -> AsyncIterator[DefaultDocumentType]:
 #         return self
 
-#     async def __anext__(self) -> DocumentType:
+#     async def __anext__(self) -> DefaultDocumentType:
 #         if self.has_preread:
 #             self.has_preread = False
 #             if self.preread_exhausted:
@@ -278,7 +278,7 @@ def _hash_document(document: dict[str, Any]) -> str:
 #             f"consumed so far: {self.consumed})"
 #         )
 
-#     def _item_at_index(self, index: int) -> DocumentType:
+#     def _item_at_index(self, index: int) -> DefaultDocumentType:
 #         # deferred to subclasses
 #         raise NotImplementedError
 
@@ -577,7 +577,7 @@ def _hash_document(document: dict[str, Any]) -> str:
 #             self._state = CursorState.STARTED
 #         return self
 
-#     def __next__(self) -> DocumentType:
+#     def __next__(self) -> DefaultDocumentType:
 #         if not self.alive:
 #             # keep raising once exhausted:
 #             raise StopIteration
@@ -621,7 +621,7 @@ def _hash_document(document: dict[str, Any]) -> str:
 #         else:
 #             return None
 
-#     def _item_at_index(self, index: int) -> DocumentType:
+#     def _item_at_index(self, index: int) -> DefaultDocumentType:
 #         finder_cursor = self._copy().skip(index).limit(1)
 #         items = list(finder_cursor)
 #         if items:
@@ -658,7 +658,7 @@ def _hash_document(document: dict[str, Any]) -> str:
 #             }
 #         }
 
-#         def _find_iterator() -> Iterator[DocumentType]:
+#         def _find_iterator() -> Iterator[DefaultDocumentType]:
 #             next_page_state: str | None = None
 #             #
 #             resp_0 = self._collection.command(
@@ -854,7 +854,7 @@ def _hash_document(document: dict[str, Any]) -> str:
 #             self._state = CursorState.STARTED
 #         return self
 
-#     async def __anext__(self) -> DocumentType:
+#     async def __anext__(self) -> DefaultDocumentType:
 #         if not self.alive:
 #             # keep raising once exhausted:
 #             raise StopAsyncIteration
@@ -898,7 +898,7 @@ def _hash_document(document: dict[str, Any]) -> str:
 #         else:
 #             return None
 
-#     def _item_at_index(self, index: int) -> DocumentType:
+#     def _item_at_index(self, index: int) -> DefaultDocumentType:
 #         finder_cursor = self._to_sync().skip(index).limit(1)
 #         items = list(finder_cursor)
 #         if items:
@@ -935,7 +935,7 @@ def _hash_document(document: dict[str, Any]) -> str:
 #             }
 #         }
 
-#         async def _find_iterator() -> AsyncIterator[DocumentType]:
+#         async def _find_iterator() -> AsyncIterator[DefaultDocumentType]:
 #             resp_0 = await self._collection.command(
 #                 body=f0_payload,
 #                 max_time_ms=self._max_time_ms,

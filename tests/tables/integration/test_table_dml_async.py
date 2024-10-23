@@ -14,12 +14,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import pytest
 
-if TYPE_CHECKING:
-    from astrapy import Table
+from ..conftest import DefaultAsyncTable
 
 DOC_PK_0 = {
     "p_ascii": "abc",
@@ -34,23 +31,23 @@ DOC_0 = {
 
 
 class TestTableDMLSync:
-    @pytest.mark.describe("test of table insert_one, sync")
-    def test_table_insert_one_sync(
+    @pytest.mark.describe("test of table insert_one, async")
+    async def test_table_insert_one_async(
         self,
-        sync_table_all_returns: Table,
+        async_table_all_returns: DefaultAsyncTable,
     ) -> None:
         # TODO enlarge the test with all values + a partial row
         # TODO check returned is sparse
         # TODO rearrange docs as fixtures/constants together with table def
         # TODO cross check with CQL direct (!), astra only
-        no_doc_0a = sync_table_all_returns.find_one(filter=DOC_PK_0)
+        no_doc_0a = await async_table_all_returns.find_one(filter=DOC_PK_0)
         assert no_doc_0a is None
-        sync_table_all_returns.insert_one(row=DOC_0)
-        doc_0 = sync_table_all_returns.find_one(filter=DOC_PK_0)
+        await async_table_all_returns.insert_one(row=DOC_0)
+        doc_0 = await async_table_all_returns.find_one(filter=DOC_PK_0)
         assert doc_0 is not None
         # TODO restore following match once sparse. For now, next line:
         # assert doc_0 == DOC_0
         assert {doc_0[k] == v for k, v in DOC_0.items()}
-        sync_table_all_returns.delete_one(filter=DOC_PK_0)
-        no_doc_0b = sync_table_all_returns.find_one(filter=DOC_PK_0)
+        await async_table_all_returns.delete_one(filter=DOC_PK_0)
+        no_doc_0b = await async_table_all_returns.find_one(filter=DOC_PK_0)
         assert no_doc_0b is None
