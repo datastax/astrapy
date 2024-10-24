@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Any, TypedDict
 
 import pytest
 
@@ -137,6 +137,125 @@ class TestCollectionTyping:
             gt_y = gt_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
         g_co_typed.delete_many({})
 
+    @pytest.mark.describe("test of typing collection cursors, sync")
+    def test_collection_cursors_typing_sync(
+        self,
+        sync_database: Database,
+        sync_empty_collection: DefaultCollection,
+    ) -> None:
+        """Test of getting typed collections with generics (and not), sync."""
+
+        g_co_untyped = sync_database.get_collection(sync_empty_collection.name)
+        g_co_typed: Collection[TestDoc] = sync_database.get_collection(
+            sync_empty_collection.name,
+            document_type=TestDoc,
+        )
+        g_co_untyped.insert_many([DOCUMENT] * 30)
+
+        # base cursors, read from them (un/typed)
+        u_cur0 = g_co_untyped.find()
+        t_cur0 = g_co_typed.find()
+        gu_doc = next(u_cur0)
+        gt_doc = next(t_cur0)
+        assert gu_doc is not None
+        assert gt_doc is not None
+        gu_a: str
+        gu_x: int
+        gu_a = gu_doc["p_ascii"]  # noqa: F841
+        gu_x = gu_doc["p_ascii"]  # noqa: F841
+        gt_a: str
+        gt_x: int
+        gt_y: float
+        gt_a = gt_doc["p_ascii"]  # noqa: F841
+        gt_x = gt_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
+        with pytest.raises(KeyError):
+            gt_y = gt_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
+        # mapping
+
+        def u_mapper(doc: dict[str, Any]) -> str:
+            return f"{doc['p_bigint'] % 100}"
+
+        def t_mapper(doc: TestDoc) -> str:
+            return f"{doc['p_bigint'] % 100}"
+
+        u_cur_1m = g_co_untyped.find().map(u_mapper)
+        t_cur_1m = g_co_typed.find().map(t_mapper)
+        gmu = next(u_cur_1m)
+        gmt = next(t_cur_1m)
+        assert gmu is not None
+        assert gmt is not None
+        gmu_a: str
+        gmu_x: int
+        gmu_a = gmu  # noqa: F841
+        gmu_x = gmu  # type: ignore[assignment]  # noqa: F841
+        gmt_a: str
+        gmt_x: int
+        gmt_a = gmu  # noqa: F841
+        gmt_x = gmt  # type: ignore[assignment]  # noqa: F841
+
+        # mapping composition
+
+        def mapper_2(strint: str) -> float:
+            return float(strint) / 10.0
+
+        u_cur_2m = g_co_untyped.find().map(u_mapper).map(mapper_2)
+        t_cur_2m = g_co_typed.find().map(t_mapper).map(mapper_2)
+        gmu2 = next(u_cur_2m)
+        gmt2 = next(t_cur_2m)
+        assert gmu2 is not None
+        assert gmt2 is not None
+        gmu_a2: float
+        gmu_x2: str
+        gmu_a2 = gmu2  # noqa: F841
+        gmu_x2 = gmu2  # type: ignore[assignment]  # noqa: F841
+        gmt_a2: float
+        gmt_x2: str
+        gmt_a2 = gmu2  # noqa: F841
+        gmt_x2 = gmt2  # type: ignore[assignment]  # noqa: F841
+
+        # cloning a cursor
+        u_cur_3c = g_co_untyped.find().map(u_mapper).clone()
+        t_cur_3c = g_co_typed.find().map(t_mapper).clone()
+        gu_doc3 = next(u_cur_3c)
+        gt_doc3 = next(t_cur_3c)
+        assert gu_doc3 is not None
+        assert gt_doc3 is not None
+        gu_a3: str
+        gu_x3: int
+        gu_a3 = gu_doc3["p_ascii"]  # noqa: F841
+        gu_x3 = gu_doc3["p_ascii"]  # noqa: F841
+        gt_a3: str
+        gt_x3: int
+        gt_y3: float
+        gt_a3 = gt_doc3["p_ascii"]  # noqa: F841
+        gt_x3 = gt_doc3["p_ascii"]  # type: ignore[assignment]  # noqa: F841
+        with pytest.raises(KeyError):
+            gt_y3 = gt_doc3["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
+        # reading the buffer
+        u_cur_4rb = g_co_untyped.find().map(u_mapper)
+        t_cur_4rb = g_co_typed.find().map(t_mapper)
+        next(u_cur_4rb)
+        next(t_cur_4rb)
+        u_doc_rbuf4 = u_cur_4rb.consume_buffer(3)[0]
+        t_doc_rbuf4 = t_cur_4rb.consume_buffer(3)[0]
+        assert u_doc_rbuf4 is not None
+        assert t_doc_rbuf4 is not None
+        gu_rbuf_a: str
+        gu_rbuf_x: int
+        gu_rbuf_a = u_doc_rbuf4["p_ascii"]  # noqa: F841
+        gu_rbuf_x = u_doc_rbuf4["p_ascii"]  # noqa: F841
+        gt_rbuf_a: str
+        gt_rbuf_x: int
+        gt_rbuf_y: float
+        gt_rbuf_a = t_doc_rbuf4["p_ascii"]  # noqa: F841
+        gt_rbuf_x = t_doc_rbuf4["p_ascii"]  # type: ignore[assignment]  # noqa: F841
+        with pytest.raises(KeyError):
+            gt_rbuf_y = t_doc_rbuf4["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
+        g_co_typed.delete_many({})
+
     @pytest.mark.describe("test of typing create_collection, async")
     async def test_create_collection_typing_async(
         self,
@@ -237,4 +356,123 @@ class TestCollectionTyping:
         gt_x = gt_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
             gt_y = gt_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+        await ag_co_typed.delete_many({})
+
+    @pytest.mark.describe("test of typing collection cursors, async")
+    async def test_collection_cursors_typing_async(
+        self,
+        async_database: AsyncDatabase,
+        async_empty_collection: DefaultAsyncCollection,
+    ) -> None:
+        """Test of getting typed collections with generics (and not), sync."""
+
+        ag_co_untyped = await async_database.get_collection(async_empty_collection.name)
+        ag_co_typed: AsyncCollection[TestDoc] = await async_database.get_collection(
+            async_empty_collection.name,
+            document_type=TestDoc,
+        )
+        await ag_co_untyped.insert_many([DOCUMENT] * 30)
+
+        # base cursors, read from them (un/typed)
+        u_cur0 = ag_co_untyped.find()
+        t_cur0 = ag_co_typed.find()
+        gu_doc = await u_cur0.__anext__()
+        gt_doc = await t_cur0.__anext__()
+        assert gu_doc is not None
+        assert gt_doc is not None
+        gu_a: str
+        gu_x: int
+        gu_a = gu_doc["p_ascii"]  # noqa: F841
+        gu_x = gu_doc["p_ascii"]  # noqa: F841
+        gt_a: str
+        gt_x: int
+        gt_y: float
+        gt_a = gt_doc["p_ascii"]  # noqa: F841
+        gt_x = gt_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
+        with pytest.raises(KeyError):
+            gt_y = gt_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
+        # mapping
+
+        def u_mapper(doc: dict[str, Any]) -> str:
+            return f"{doc['p_bigint'] % 100}"
+
+        def t_mapper(doc: TestDoc) -> str:
+            return f"{doc['p_bigint'] % 100}"
+
+        u_cur_1m = ag_co_untyped.find().map(u_mapper)
+        t_cur_1m = ag_co_typed.find().map(t_mapper)
+        gmu = await u_cur_1m.__anext__()
+        gmt = await t_cur_1m.__anext__()
+        assert gmu is not None
+        assert gmt is not None
+        gmu_a: str
+        gmu_x: int
+        gmu_a = gmu  # noqa: F841
+        gmu_x = gmu  # type: ignore[assignment]  # noqa: F841
+        gmt_a: str
+        gmt_x: int
+        gmt_a = gmu  # noqa: F841
+        gmt_x = gmt  # type: ignore[assignment]  # noqa: F841
+
+        # mapping composition
+
+        def mapper_2(strint: str) -> float:
+            return float(strint) / 10.0
+
+        u_cur_2m = ag_co_untyped.find().map(u_mapper).map(mapper_2)
+        t_cur_2m = ag_co_typed.find().map(t_mapper).map(mapper_2)
+        gmu2 = await u_cur_2m.__anext__()
+        gmt2 = await t_cur_2m.__anext__()
+        assert gmu2 is not None
+        assert gmt2 is not None
+        gmu_a2: float
+        gmu_x2: str
+        gmu_a2 = gmu2  # noqa: F841
+        gmu_x2 = gmu2  # type: ignore[assignment]  # noqa: F841
+        gmt_a2: float
+        gmt_x2: str
+        gmt_a2 = gmu2  # noqa: F841
+        gmt_x2 = gmt2  # type: ignore[assignment]  # noqa: F841
+
+        # cloning a cursor
+        u_cur_3c = ag_co_untyped.find().map(u_mapper).clone()
+        t_cur_3c = ag_co_typed.find().map(t_mapper).clone()
+        gu_doc3 = await u_cur_3c.__anext__()
+        gt_doc3 = await t_cur_3c.__anext__()
+        assert gu_doc3 is not None
+        assert gt_doc3 is not None
+        gu_a3: str
+        gu_x3: int
+        gu_a3 = gu_doc3["p_ascii"]  # noqa: F841
+        gu_x3 = gu_doc3["p_ascii"]  # noqa: F841
+        gt_a3: str
+        gt_x3: int
+        gt_y3: float
+        gt_a3 = gt_doc3["p_ascii"]  # noqa: F841
+        gt_x3 = gt_doc3["p_ascii"]  # type: ignore[assignment]  # noqa: F841
+        with pytest.raises(KeyError):
+            gt_y3 = gt_doc3["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
+        # reading the buffer
+        u_cur_4rb = ag_co_untyped.find().map(u_mapper)
+        t_cur_4rb = ag_co_typed.find().map(t_mapper)
+        await u_cur_4rb.__anext__()
+        await t_cur_4rb.__anext__()
+        u_doc_rbuf4 = u_cur_4rb.consume_buffer(3)[0]
+        t_doc_rbuf4 = t_cur_4rb.consume_buffer(3)[0]
+        assert u_doc_rbuf4 is not None
+        assert t_doc_rbuf4 is not None
+        gu_rbuf_a: str
+        gu_rbuf_x: int
+        gu_rbuf_a = u_doc_rbuf4["p_ascii"]  # noqa: F841
+        gu_rbuf_x = u_doc_rbuf4["p_ascii"]  # noqa: F841
+        gt_rbuf_a: str
+        gt_rbuf_x: int
+        gt_rbuf_y: float
+        gt_rbuf_a = t_doc_rbuf4["p_ascii"]  # noqa: F841
+        gt_rbuf_x = t_doc_rbuf4["p_ascii"]  # type: ignore[assignment]  # noqa: F841
+        with pytest.raises(KeyError):
+            gt_rbuf_y = t_doc_rbuf4["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
         await ag_co_typed.delete_many({})
