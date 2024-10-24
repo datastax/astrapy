@@ -767,7 +767,7 @@ class Collection(Generic[DOC]):
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_data_operation_timeout_ms
+            overall_timeout_ms=_data_operation_timeout_ms
         )
         if ordered:
             options = {"ordered": True}
@@ -914,7 +914,7 @@ class Collection(Generic[DOC]):
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> CollectionCursor[DOC]:
+    ) -> CollectionCursor[DOC, DOC]:
         """
         Find documents on the collection, matching a certain provided filter.
 
@@ -1092,7 +1092,7 @@ class Collection(Generic[DOC]):
             CollectionCursor(
                 collection=self,
                 request_timeout_ms=_request_timeout_ms,
-                overall_max_time_ms=None,
+                overall_timeout_ms=None,
             )
             .filter(filter)
             .project(projection)
@@ -1314,11 +1314,11 @@ class Collection(Generic[DOC]):
                 "or start with a list index."
             )
         # relaxing the type hint (limited to within this method body)
-        f_cursor: CollectionCursor[dict[str, Any]] = (
+        f_cursor: CollectionCursor[dict[str, Any], dict[str, Any]] = (
             CollectionCursor(
                 collection=self,
                 request_timeout_ms=_request_timeout_ms,
-                overall_max_time_ms=_data_operation_timeout_ms,
+                overall_timeout_ms=_data_operation_timeout_ms,
             )  # type: ignore[assignment]
             .filter(filter)
             .project({_key: True})
@@ -2021,7 +2021,7 @@ class Collection(Generic[DOC]):
         must_proceed = True
         logger.info(f"starting update_many on '{self.name}'")
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_data_operation_timeout_ms
+            overall_timeout_ms=_data_operation_timeout_ms
         )
         while must_proceed:
             options = {**api_options, **page_state_options}
@@ -2332,7 +2332,7 @@ class Collection(Generic[DOC]):
         deleted_count = 0
         must_proceed = True
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_data_operation_timeout_ms
+            overall_timeout_ms=_data_operation_timeout_ms
         )
         this_dm_payload = {"deleteMany": {"filter": filter}}
         logger.info(f"starting delete_many on '{self.name}'")
@@ -3159,7 +3159,7 @@ class AsyncCollection(Generic[DOC]):
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_data_operation_timeout_ms
+            overall_timeout_ms=_data_operation_timeout_ms
         )
         if ordered:
             options = {"ordered": True}
@@ -3294,7 +3294,7 @@ class AsyncCollection(Generic[DOC]):
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> AsyncCollectionCursor[DOC]:
+    ) -> AsyncCollectionCursor[DOC, DOC]:
         """
         Find documents on the collection, matching a certain provided filter.
 
@@ -3482,7 +3482,7 @@ class AsyncCollection(Generic[DOC]):
             AsyncCollectionCursor(
                 collection=self,
                 request_timeout_ms=_request_timeout_ms,
-                overall_max_time_ms=None,
+                overall_timeout_ms=None,
             )
             .filter(filter)
             .project(projection)
@@ -3728,11 +3728,11 @@ class AsyncCollection(Generic[DOC]):
                 "or start with a list index."
             )
         # relaxing the type hint (limited to within this method body)
-        f_cursor: AsyncCollectionCursor[dict[str, Any]] = (
+        f_cursor: AsyncCollectionCursor[dict[str, Any], dict[str, Any]] = (
             AsyncCollectionCursor(
                 collection=self,
                 request_timeout_ms=_request_timeout_ms,
-                overall_max_time_ms=_data_operation_timeout_ms,
+                overall_timeout_ms=_data_operation_timeout_ms,
             )  # type: ignore[assignment]
             .filter(filter)
             .project({_key: True})
@@ -4494,7 +4494,7 @@ class AsyncCollection(Generic[DOC]):
         must_proceed = True
         logger.info(f"starting update_many on '{self.name}'")
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_data_operation_timeout_ms
+            overall_timeout_ms=_data_operation_timeout_ms
         )
         while must_proceed:
             options = {**api_options, **page_state_options}
@@ -4820,7 +4820,7 @@ class AsyncCollection(Generic[DOC]):
         deleted_count = 0
         must_proceed = True
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_data_operation_timeout_ms
+            overall_timeout_ms=_data_operation_timeout_ms
         )
         this_dm_payload = {"deleteMany": {"filter": filter}}
         logger.info(f"starting delete_many on '{self.name}'")

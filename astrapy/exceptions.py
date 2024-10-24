@@ -803,26 +803,26 @@ class MultiCallTimeoutManager:
     in a multi-call method context.
 
     Args:
-        overall_max_time_ms: an optional max duration to track (milliseconds)
+        overall_timeout_ms: an optional max duration to track (milliseconds)
 
     Attributes:
-        overall_max_time_ms: an optional max duration to track (milliseconds)
+        overall_timeout_ms: an optional max duration to track (milliseconds)
         started_ms: timestamp of the instance construction (milliseconds)
         deadline_ms: optional deadline in milliseconds (computed by the class).
     """
 
-    overall_max_time_ms: int | None
+    overall_timeout_ms: int | None
     started_ms: int = -1
     deadline_ms: int | None
 
     def __init__(
-        self, overall_max_time_ms: int | None, dev_ops_api: bool = False
+        self, overall_timeout_ms: int | None, dev_ops_api: bool = False
     ) -> None:
         self.started_ms = int(time.time() * 1000)
-        self.overall_max_time_ms = overall_max_time_ms
+        self.overall_timeout_ms = overall_timeout_ms
         self.dev_ops_api = dev_ops_api
-        if self.overall_max_time_ms is not None:
-            self.deadline_ms = self.started_ms + self.overall_max_time_ms
+        if self.overall_timeout_ms is not None:
+            self.deadline_ms = self.started_ms + self.overall_timeout_ms
         else:
             self.deadline_ms = None
 

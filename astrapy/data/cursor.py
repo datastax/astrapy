@@ -17,7 +17,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import Any, Callable, Generic, TypeVar, cast
 
 from typing_extensions import override
 
@@ -34,7 +34,11 @@ from astrapy.exceptions import (
 )
 from astrapy.utils.unset import _UNSET, UnsetType
 
+# A cursor reads TRAW from DB and maps them to T if any mapping.
+# A new cursor returned by .map will map to TNEW
 TRAW = TypeVar("TRAW")
+T = TypeVar("T")
+TNEW = TypeVar("TNEW")
 
 
 class CursorState(Enum):
@@ -140,6 +144,7 @@ class _QueryEngine(ABC, Generic[TRAW]):
     @abstractmethod
     def fetch_page(
         self,
+        *,
         page_state: str | None,
         request_timeout_ms: int | None,
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
@@ -149,6 +154,7 @@ class _QueryEngine(ABC, Generic[TRAW]):
     @abstractmethod
     async def async_fetch_page(
         self,
+        *,
         page_state: str | None,
         request_timeout_ms: int | None,
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
@@ -200,6 +206,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
     @override
     def fetch_page(
         self,
+        *,
         page_state: str | None,
         request_timeout_ms: int | None,
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
@@ -231,6 +238,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
     @override
     async def async_fetch_page(
         self,
+        *,
         page_state: str | None,
         request_timeout_ms: int | None,
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
@@ -260,10 +268,10 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         return (p_documents, n_p_state, p_r_status)
 
 
-class CollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
+class CollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
     _query_engine: _CollectionQueryEngine[TRAW]
-    _request_timeout_ms: int
-    _overall_max_time_ms: int | None
+    _request_timeout_ms: int | None | None
+    _overall_timeout_ms: int | None
     _timeout_manager: MultiCallTimeoutManager
     _filter: FilterType | None
     _projection: ProjectionType | None
@@ -272,13 +280,14 @@ class CollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _skip: int | None
+    _mapper: Callable[[TRAW], T]
 
     def __init__(
         self,
         *,
         collection: Collection[TRAW],
-        request_timeout_ms: int,
-        overall_max_time_ms: int | None,
+        request_timeout_ms: int | None,
+        overall_timeout_ms: int | None,
         filter: FilterType | None = None,
         projection: ProjectionType | None = None,
         sort: dict[str, Any] | None = None,
@@ -286,6 +295,7 @@ class CollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         skip: int | None = None,
+        mapper: Callable[[TRAW], T] | None = None,
     ) -> None:
         self._filter = deepcopy(filter)
         self._projection = projection
@@ -294,8 +304,16 @@ class CollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
         self._skip = skip
+        if mapper is None:
+
+            def _identity(document: TRAW) -> T:
+                return cast(T, document)
+
+            self._mapper = _identity
+        else:
+            self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
-        self._overall_max_time_ms = overall_max_time_ms
+        self._overall_timeout_ms = overall_timeout_ms
         self._query_engine = _CollectionQueryEngine(
             collection=collection,
             async_collection=None,
@@ -309,12 +327,14 @@ class CollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
         )
         _BufferedCursor.__init__(self)
         self._timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=self._overall_max_time_ms,
+            overall_timeout_ms=self._overall_timeout_ms,
         )
 
     def _copy(
-        self: CollectionCursor[TRAW],
+        self: CollectionCursor[TRAW, T],
         *,
+        request_timeout_ms: int | None | UnsetType = _UNSET,
+        overall_timeout_ms: int | None | UnsetType = _UNSET,
         filter: FilterType | None | UnsetType = _UNSET,
         projection: ProjectionType | None | UnsetType = _UNSET,
         sort: dict[str, Any] | None | UnsetType = _UNSET,
@@ -322,13 +342,17 @@ class CollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
         include_similarity: bool | None | UnsetType = _UNSET,
         include_sort_vector: bool | None | UnsetType = _UNSET,
         skip: int | None | UnsetType = _UNSET,
-    ) -> CollectionCursor[TRAW]:
+    ) -> CollectionCursor[TRAW, T]:
         if self._query_engine.collection is None:
             raise ValueError("Query engine has no collection.")
         return CollectionCursor(
             collection=self._query_engine.collection,
-            request_timeout_ms=self._request_timeout_ms,
-            overall_max_time_ms=self._overall_max_time_ms,
+            request_timeout_ms=self._request_timeout_ms
+            if isinstance(request_timeout_ms, UnsetType)
+            else request_timeout_ms,
+            overall_timeout_ms=self._overall_timeout_ms
+            if isinstance(overall_timeout_ms, UnsetType)
+            else overall_timeout_ms,
             filter=self._filter if isinstance(filter, UnsetType) else filter,
             projection=self._projection
             if isinstance(projection, UnsetType)
@@ -342,6 +366,7 @@ class CollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
             if isinstance(include_sort_vector, UnsetType)
             else include_sort_vector,
             skip=self._skip if isinstance(skip, UnsetType) else skip,
+            mapper=self._mapper,
         )
 
     def _try_ensure_fill_buffer(self) -> None:
@@ -374,11 +399,11 @@ class CollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
             f"consumed so far: {self.consumed})"
         )
 
-    def __iter__(self: CollectionCursor[TRAW]) -> CollectionCursor[TRAW]:
+    def __iter__(self: CollectionCursor[TRAW, T]) -> CollectionCursor[TRAW, T]:
         self._ensure_alive()
         return self
 
-    def __next__(self) -> TRAW:
+    def __next__(self) -> T:
         if not self.alive:
             raise StopIteration
         self._try_ensure_fill_buffer()
@@ -390,7 +415,7 @@ class CollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
         traw0, rest_buffer = self._buffer[0], self._buffer[1:]
         self._buffer = rest_buffer
         self._consumed += 1
-        return traw0
+        return self._mapper(traw0)
 
     @property
     def data_source(self) -> Collection[TRAW]:
@@ -402,56 +427,111 @@ class CollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
     def keyspace(self) -> str:
         return self.data_source.keyspace
 
-    def clone(self: CollectionCursor[TRAW]) -> CollectionCursor[TRAW]:
-        # must strip the mapping (and it resets the cursor)
-        return self._copy()
+    def clone(self) -> CollectionCursor[TRAW, TRAW]:
+        """TODO. A new rewound cursor. Also: strips away any mapping."""
+        if self._query_engine.collection is None:
+            raise ValueError("Query engine has no collection.")
+        return CollectionCursor(
+            collection=self._query_engine.collection,
+            request_timeout_ms=self._request_timeout_ms,
+            overall_timeout_ms=self._overall_timeout_ms,
+            filter=self._filter,
+            projection=self._projection,
+            sort=self._sort,
+            limit=self._limit,
+            include_similarity=self._include_similarity,
+            include_sort_vector=self._include_sort_vector,
+            skip=self._skip,
+            mapper=None,
+        )
 
-    def filter(
-        self: CollectionCursor[TRAW], filter: FilterType | None
-    ) -> CollectionCursor[TRAW]:
+    def filter(self, filter: FilterType | None) -> CollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
         return self._copy(filter=filter)
 
-    def project(
-        self: CollectionCursor[TRAW], projection: ProjectionType | None
-    ) -> CollectionCursor[TRAW]:
+    def project(self, projection: ProjectionType | None) -> CollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
         return self._copy(projection=projection)
 
-    def sort(
-        self: CollectionCursor[TRAW], sort: dict[str, Any] | None
-    ) -> CollectionCursor[TRAW]:
+    def sort(self, sort: dict[str, Any] | None) -> CollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
         return self._copy(sort=sort)
 
-    def limit(
-        self: CollectionCursor[TRAW], limit: int | None
-    ) -> CollectionCursor[TRAW]:
+    def limit(self, limit: int | None) -> CollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
         return self._copy(limit=limit)
 
     def include_similarity(
-        self: CollectionCursor[TRAW], include_similarity: bool | None
-    ) -> CollectionCursor[TRAW]:
+        self, include_similarity: bool | None
+    ) -> CollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
         return self._copy(include_similarity=include_similarity)
 
     def include_sort_vector(
-        self: CollectionCursor[TRAW], include_sort_vector: bool | None
-    ) -> CollectionCursor[TRAW]:
+        self, include_sort_vector: bool | None
+    ) -> CollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
         return self._copy(include_sort_vector=include_sort_vector)
 
-    def skip(self: CollectionCursor[TRAW], skip: int | None) -> CollectionCursor[TRAW]:
+    def skip(self, skip: int | None) -> CollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
         return self._copy(skip=skip)
+
+    def map(self, mapper: Callable[[T], TNEW]) -> CollectionCursor[TRAW, TNEW]:
+        # cannot happen once started consuming
+        self._ensure_idle()
+        if self._query_engine.collection is None:
+            raise ValueError("Query engine has no collection.")
+        composite_mapper: Callable[[TRAW], TNEW]
+        if self._mapper is not None:
+
+            def _composite(document: TRAW) -> TNEW:
+                return mapper(self._mapper(document))
+
+            composite_mapper = _composite
+        else:
+            composite_mapper = mapper
+        return CollectionCursor(
+            collection=self._query_engine.collection,
+            request_timeout_ms=self._request_timeout_ms,
+            overall_timeout_ms=self._overall_timeout_ms,
+            filter=self._filter,
+            projection=self._projection,
+            sort=self._sort,
+            limit=self._limit,
+            include_similarity=self._include_similarity,
+            include_sort_vector=self._include_sort_vector,
+            skip=self._skip,
+            mapper=composite_mapper,
+        )
+
+    def for_each(
+        self,
+        function: Callable[[T], Any],
+        *,
+        overall_timeout_ms: int | None = None,
+    ) -> None:
+        _cursor = self._copy(overall_timeout_ms=overall_timeout_ms)
+        for document in _cursor:
+            function(document)
+        self.close()
+
+    def to_list(
+        self,
+        *,
+        overall_timeout_ms: int | None = None,
+    ) -> list[T]:
+        _cursor = self._copy(overall_timeout_ms=overall_timeout_ms)
+        documents = [document for document in _cursor]
+        self.close()
+        return documents
 
     def has_next(self) -> bool:
         if self._state == CursorState.IDLE:
@@ -481,10 +561,10 @@ class CollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
             return None
 
 
-class AsyncCollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
+class AsyncCollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
     _query_engine: _CollectionQueryEngine[TRAW]
-    _request_timeout_ms: int
-    _overall_max_time_ms: int | None
+    _request_timeout_ms: int | None
+    _overall_timeout_ms: int | None
     _timeout_manager: MultiCallTimeoutManager
     _filter: FilterType | None
     _projection: ProjectionType | None
@@ -493,13 +573,14 @@ class AsyncCollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _skip: int | None
+    _mapper: Callable[[TRAW], T]
 
     def __init__(
         self,
         *,
         collection: AsyncCollection[TRAW],
-        request_timeout_ms: int,
-        overall_max_time_ms: int | None,
+        request_timeout_ms: int | None,
+        overall_timeout_ms: int | None,
         filter: FilterType | None = None,
         projection: ProjectionType | None = None,
         sort: dict[str, Any] | None = None,
@@ -507,6 +588,7 @@ class AsyncCollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
         include_similarity: bool | None = None,
         include_sort_vector: bool | None = None,
         skip: int | None = None,
+        mapper: Callable[[TRAW], T] | None = None,
     ) -> None:
         self._filter = deepcopy(filter)
         self._projection = projection
@@ -515,8 +597,16 @@ class AsyncCollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
         self._skip = skip
+        if mapper is None:
+
+            def _identity(document: TRAW) -> T:
+                return cast(T, document)
+
+            self._mapper = _identity
+        else:
+            self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
-        self._overall_max_time_ms = overall_max_time_ms
+        self._overall_timeout_ms = overall_timeout_ms
         self._query_engine = _CollectionQueryEngine(
             collection=None,
             async_collection=collection,
@@ -530,12 +620,14 @@ class AsyncCollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
         )
         _BufferedCursor.__init__(self)
         self._timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=self._overall_max_time_ms,
+            overall_timeout_ms=self._overall_timeout_ms,
         )
 
     def _copy(
-        self: AsyncCollectionCursor[TRAW],
+        self: AsyncCollectionCursor[TRAW, T],
         *,
+        request_timeout_ms: int | None | UnsetType = _UNSET,
+        overall_timeout_ms: int | None | UnsetType = _UNSET,
         filter: FilterType | None | UnsetType = _UNSET,
         projection: ProjectionType | None | UnsetType = _UNSET,
         sort: dict[str, Any] | None | UnsetType = _UNSET,
@@ -543,13 +635,17 @@ class AsyncCollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
         include_similarity: bool | None | UnsetType = _UNSET,
         include_sort_vector: bool | None | UnsetType = _UNSET,
         skip: int | None | UnsetType = _UNSET,
-    ) -> AsyncCollectionCursor[TRAW]:
+    ) -> AsyncCollectionCursor[TRAW, T]:
         if self._query_engine.async_collection is None:
             raise ValueError("Query engine has no async collection.")
         return AsyncCollectionCursor(
             collection=self._query_engine.async_collection,
-            request_timeout_ms=self._request_timeout_ms,
-            overall_max_time_ms=self._overall_max_time_ms,
+            request_timeout_ms=self._request_timeout_ms
+            if isinstance(request_timeout_ms, UnsetType)
+            else request_timeout_ms,
+            overall_timeout_ms=self._overall_timeout_ms
+            if isinstance(overall_timeout_ms, UnsetType)
+            else overall_timeout_ms,
             filter=self._filter if isinstance(filter, UnsetType) else filter,
             projection=self._projection
             if isinstance(projection, UnsetType)
@@ -597,11 +693,13 @@ class AsyncCollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
             f"consumed so far: {self.consumed})"
         )
 
-    def __aiter__(self: AsyncCollectionCursor[TRAW]) -> AsyncCollectionCursor[TRAW]:
+    def __aiter__(
+        self: AsyncCollectionCursor[TRAW, T],
+    ) -> AsyncCollectionCursor[TRAW, T]:
         self._ensure_alive()
         return self
 
-    async def __anext__(self) -> TRAW:
+    async def __anext__(self) -> T:
         if not self.alive:
             raise StopAsyncIteration
         await self._try_ensure_fill_buffer()
@@ -613,7 +711,7 @@ class AsyncCollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
         traw0, rest_buffer = self._buffer[0], self._buffer[1:]
         self._buffer = rest_buffer
         self._consumed += 1
-        return traw0
+        return self._mapper(traw0)
 
     @property
     def data_source(self) -> AsyncCollection[TRAW]:
@@ -625,58 +723,113 @@ class AsyncCollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
     def keyspace(self) -> str:
         return self.data_source.keyspace
 
-    def clone(self: AsyncCollectionCursor[TRAW]) -> AsyncCollectionCursor[TRAW]:
-        # must strip the mapping (and it resets the cursor)
-        return self._copy()
+    def clone(self) -> AsyncCollectionCursor[TRAW, TRAW]:
+        """TODO. A new rewound cursor. Also: strips away any mapping."""
+        if self._query_engine.async_collection is None:
+            raise ValueError("Query engine has no async collection.")
+        return AsyncCollectionCursor(
+            collection=self._query_engine.async_collection,
+            request_timeout_ms=self._request_timeout_ms,
+            overall_timeout_ms=self._overall_timeout_ms,
+            filter=self._filter,
+            projection=self._projection,
+            sort=self._sort,
+            limit=self._limit,
+            include_similarity=self._include_similarity,
+            include_sort_vector=self._include_sort_vector,
+            skip=self._skip,
+            mapper=None,
+        )
 
-    def filter(
-        self: AsyncCollectionCursor[TRAW], filter: FilterType | None
-    ) -> AsyncCollectionCursor[TRAW]:
+    def filter(self, filter: FilterType | None) -> AsyncCollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
         return self._copy(filter=filter)
 
     def project(
-        self: AsyncCollectionCursor[TRAW], projection: ProjectionType | None
-    ) -> AsyncCollectionCursor[TRAW]:
+        self, projection: ProjectionType | None
+    ) -> AsyncCollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
         return self._copy(projection=projection)
 
-    def sort(
-        self: AsyncCollectionCursor[TRAW], sort: dict[str, Any] | None
-    ) -> AsyncCollectionCursor[TRAW]:
+    def sort(self, sort: dict[str, Any] | None) -> AsyncCollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
         return self._copy(sort=sort)
 
-    def limit(
-        self: AsyncCollectionCursor[TRAW], limit: int | None
-    ) -> AsyncCollectionCursor[TRAW]:
+    def limit(self, limit: int | None) -> AsyncCollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
         return self._copy(limit=limit)
 
     def include_similarity(
-        self: AsyncCollectionCursor[TRAW], include_similarity: bool | None
-    ) -> AsyncCollectionCursor[TRAW]:
+        self, include_similarity: bool | None
+    ) -> AsyncCollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
         return self._copy(include_similarity=include_similarity)
 
     def include_sort_vector(
-        self: AsyncCollectionCursor[TRAW], include_sort_vector: bool | None
-    ) -> AsyncCollectionCursor[TRAW]:
+        self, include_sort_vector: bool | None
+    ) -> AsyncCollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
         return self._copy(include_sort_vector=include_sort_vector)
 
-    def skip(
-        self: AsyncCollectionCursor[TRAW], skip: int | None
-    ) -> AsyncCollectionCursor[TRAW]:
+    def skip(self, skip: int | None) -> AsyncCollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
         return self._copy(skip=skip)
+
+    def map(self, mapper: Callable[[T], TNEW]) -> AsyncCollectionCursor[TRAW, TNEW]:
+        # cannot happen once started consuming
+        self._ensure_idle()
+        if self._query_engine.async_collection is None:
+            raise ValueError("Query engine has no async collection.")
+        composite_mapper: Callable[[TRAW], TNEW]
+        if self._mapper is not None:
+
+            def _composite(document: TRAW) -> TNEW:
+                return mapper(self._mapper(document))
+
+            composite_mapper = _composite
+        else:
+            composite_mapper = mapper
+        return AsyncCollectionCursor(
+            collection=self._query_engine.async_collection,
+            request_timeout_ms=self._request_timeout_ms,
+            overall_timeout_ms=self._overall_timeout_ms,
+            filter=self._filter,
+            projection=self._projection,
+            sort=self._sort,
+            limit=self._limit,
+            include_similarity=self._include_similarity,
+            include_sort_vector=self._include_sort_vector,
+            skip=self._skip,
+            mapper=composite_mapper,
+        )
+
+    async def for_each(
+        self,
+        function: Callable[[T], Any],
+        *,
+        overall_timeout_ms: int | None = None,
+    ) -> None:
+        _cursor = self._copy(overall_timeout_ms=overall_timeout_ms)
+        async for document in _cursor:
+            function(document)
+        self.close()
+
+    async def to_list(
+        self,
+        *,
+        overall_timeout_ms: int | None = None,
+    ) -> list[T]:
+        _cursor = self._copy(overall_timeout_ms=overall_timeout_ms)
+        documents = [document async for document in _cursor]
+        self.close()
+        return documents
 
     async def has_next(self) -> bool:
         if self._state == CursorState.IDLE:

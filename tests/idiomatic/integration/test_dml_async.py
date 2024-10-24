@@ -28,6 +28,12 @@ from astrapy.results import DeleteResult, InsertOneResult
 from ..conftest import DefaultAsyncCollection
 
 
+async def _alist(
+    acursor: AsyncCollectionCursor[DefaultDocumentType, Any],
+) -> list[Any]:
+    return [doc async for doc in acursor]
+
+
 class TestDMLAsync:
     @pytest.mark.describe("test of collection count_documents, async")
     async def test_collection_count_documents_async(
@@ -223,11 +229,6 @@ class TestDMLAsync:
         Nlim = 28
         Nsor = {"seq": SortDocuments.DESCENDING}
         Nfil = {"seq": {"$exists": True}}
-
-        async def _alist(
-            acursor: AsyncCollectionCursor[DefaultDocumentType],
-        ) -> list[DefaultDocumentType]:
-            return [doc async for doc in acursor]
 
         # case 0000 of find-pattern matrix
         assert (
@@ -438,11 +439,6 @@ class TestDMLAsync:
 
         assert cursor0b.data_source == async_empty_collection
 
-        async def _alist(
-            acursor: AsyncCollectionCursor[DefaultDocumentType],
-        ) -> list[DefaultDocumentType]:
-            return [doc async for doc in acursor]
-
         # rewinding, slicing and retrieved
         cursor1 = async_empty_collection.find(sort={"seq": 1})
         await cursor1.__anext__()
@@ -481,6 +477,76 @@ class TestDMLAsync:
         # distinct from collections
         assert set(await async_empty_collection.distinct("ternary")) == {0, 1, 2}
         assert set(await async_empty_collection.distinct("nonfield")) == set()
+
+    @pytest.mark.describe(
+        "test of collective and mappings on cursors from collection.find, async"
+    )
+    async def test_collection_cursors_collective_maps_async(
+        self,
+        async_empty_collection: DefaultAsyncCollection,
+    ) -> None:
+        """
+        Functionalities of cursors from find: map, tolist, foreach.
+        """
+        await async_empty_collection.insert_many(
+            [{"seq": i, "ternary": (i % 3)} for i in range(75)]
+        )
+
+        cur0 = async_empty_collection.find(filter={"seq": {"$gte": 10}})
+        assert len(await _alist(cur0)) == 65
+
+        # map
+        def mapper(doc: DefaultDocumentType) -> tuple[int, str]:
+            return (doc["seq"], f"T{doc['ternary']}")
+
+        cur1_map = async_empty_collection.find(filter={"seq": {"$gte": 10}}).map(mapper)
+        items1_map = await _alist(cur1_map)
+        assert len(items1_map) == 65
+        assert (20, "T2") in items1_map
+        assert all(isinstance(tup[0], int) for tup in items1_map)
+        assert all(isinstance(tup[1], str) for tup in items1_map)
+
+        # map composition
+
+        def mapper_2(tup: tuple[int, str]) -> str:
+            return f"{tup[1]}/{tup[0]}"
+
+        cur2_maps = (
+            async_empty_collection.find(filter={"seq": {"$gte": 10}})
+            .map(mapper)
+            .map(mapper_2)
+        )
+        items2_maps = await _alist(cur2_maps)
+        assert len(items2_maps) == 65
+        assert "T2/20" in items2_maps
+        assert all(isinstance(itm, str) for itm in items2_maps)
+
+        # clone (map-stripping, rewinding)
+        cloned_2 = cur2_maps.clone()
+        from_cl = await cloned_2.__anext__()
+        assert isinstance(from_cl, dict)
+        assert "seq" in from_cl
+        assert "ternary" in from_cl
+
+        # for each
+        accum: list[int] = []
+
+        def ingest(doc: DefaultDocumentType, acc: list[int] = accum) -> str:
+            acc += [doc["ternary"]]
+            return "done."
+
+        await async_empty_collection.find(filter={"seq": {"$gte": 10}}).for_each(ingest)
+        assert len(accum) == 65
+        assert set(accum) == {0, 1, 2}
+
+        # to list
+        cur3_tl = async_empty_collection.find(
+            filter={"seq": {"$gte": 10}},
+            projection={"_id": False},
+        )
+        items3_tl = await cur3_tl.to_list()
+        assert len(items3_tl) == 65
+        assert {"seq": 50, "ternary": 2} in items3_tl
 
     @pytest.mark.describe("test of distinct with non-hashable items, async")
     async def test_collection_distinct_nonhashable_async(
@@ -614,11 +680,6 @@ class TestDMLAsync:
         async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         q_vector = [10, 9]
-
-        async def _alist(
-            acursor: AsyncCollectionCursor[DefaultDocumentType],
-        ) -> list[DefaultDocumentType]:
-            return [doc async for doc in acursor]
 
         # with empty collection
         for include_sv in [False, True]:

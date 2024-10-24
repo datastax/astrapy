@@ -28,12 +28,12 @@ from astrapy.exceptions import (
 class TestTimeouts:
     @pytest.mark.describe("test MultiCallTimeoutManager")
     def test_multicalltimeoutmanager(self) -> None:
-        mgr_n = MultiCallTimeoutManager(overall_max_time_ms=None)
+        mgr_n = MultiCallTimeoutManager(overall_timeout_ms=None)
         assert mgr_n.remaining_timeout_ms() is None
         time.sleep(0.5)
         assert mgr_n.remaining_timeout_ms() is None
 
-        mgr_1 = MultiCallTimeoutManager(overall_max_time_ms=1000)
+        mgr_1 = MultiCallTimeoutManager(overall_timeout_ms=1000)
         crt_1 = mgr_1.remaining_timeout_ms()
         assert crt_1 is not None
         time.sleep(0.6)
@@ -45,12 +45,12 @@ class TestTimeouts:
 
     @pytest.mark.describe("test MultiCallTimeoutManager DevOps")
     def test_multicalltimeoutmanager_devops(self) -> None:
-        mgr_n = MultiCallTimeoutManager(overall_max_time_ms=None, dev_ops_api=True)
+        mgr_n = MultiCallTimeoutManager(overall_timeout_ms=None, dev_ops_api=True)
         assert mgr_n.remaining_timeout_ms() is None
         time.sleep(0.5)
         assert mgr_n.remaining_timeout_ms() is None
 
-        mgr_1 = MultiCallTimeoutManager(overall_max_time_ms=1000, dev_ops_api=True)
+        mgr_1 = MultiCallTimeoutManager(overall_timeout_ms=1000, dev_ops_api=True)
         crt_1 = mgr_1.remaining_timeout_ms()
         assert crt_1 is not None
         time.sleep(0.6)

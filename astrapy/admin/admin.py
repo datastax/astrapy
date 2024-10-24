@@ -1018,7 +1018,7 @@ class AstraDBAdmin:
             if v is not None
         }
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_database_admin_timeout_ms, dev_ops_api=True
+            overall_timeout_ms=_database_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(
             f"creating database {name}/({cloud_provider}, {region}) (DevOps API)"
@@ -1153,7 +1153,7 @@ class AstraDBAdmin:
             if v is not None
         }
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_database_admin_timeout_ms, dev_ops_api=True
+            overall_timeout_ms=_database_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(
             f"creating database {name}/({cloud_provider}, {region}) "
@@ -1268,7 +1268,7 @@ class AstraDBAdmin:
             database_admin_timeout_ms or max_time_ms
         ) or self.api_options.timeout_options.database_admin_timeout_ms
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_database_admin_timeout_ms, dev_ops_api=True
+            overall_timeout_ms=_database_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(f"dropping database '{id}' (DevOps API)")
         te_raw_response = self._dev_ops_api_commander.raw_request(
@@ -1366,7 +1366,7 @@ class AstraDBAdmin:
             database_admin_timeout_ms or max_time_ms
         ) or self.api_options.timeout_options.database_admin_timeout_ms
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_database_admin_timeout_ms, dev_ops_api=True
+            overall_timeout_ms=_database_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(f"dropping database '{id}' (DevOps API), async")
         te_raw_response = await self._dev_ops_api_commander.async_raw_request(
@@ -2419,7 +2419,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         ) or self.api_options.timeout_options.keyspace_admin_timeout_ms
 
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
+            overall_timeout_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(
             f"creating keyspace '{name}' on " f"'{self._database_id}' (DevOps API)"
@@ -2525,7 +2525,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         ) or self.api_options.timeout_options.keyspace_admin_timeout_ms
 
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
+            overall_timeout_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(
             f"creating keyspace '{name}' on "
@@ -2630,7 +2630,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         ) or self.api_options.timeout_options.keyspace_admin_timeout_ms
 
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
+            overall_timeout_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(
             f"dropping keyspace '{name}' on " f"'{self._database_id}' (DevOps API)"
@@ -2728,7 +2728,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         ) or self.api_options.timeout_options.keyspace_admin_timeout_ms
 
         timeout_manager = MultiCallTimeoutManager(
-            overall_max_time_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
+            overall_timeout_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
         )
         logger.info(
             f"dropping keyspace '{name}' on "
