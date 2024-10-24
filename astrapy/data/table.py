@@ -23,6 +23,13 @@ from astrapy.constants import (
     ROW,
     CallerType,
     FilterType,
+    ProjectionType,
+    SortType,
+)
+from astrapy.data.utils.distinct_extractors import (
+    _create_document_key_extractor,
+    _hash_document,
+    _reduce_distinct_key_to_safe,
 )
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
@@ -38,6 +45,7 @@ from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
     from astrapy.authentication import EmbeddingHeadersProvider
+    from astrapy.cursors import AsyncTableCursor, TableCursor
     from astrapy.info import TableDefinition
 
 
@@ -171,7 +179,7 @@ class Table(Generic[ROW]):
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         # a double override for the timeout aliasing
@@ -186,7 +194,7 @@ class Table(Generic[ROW]):
                         embedding_api_key
                     ),
                     timeout_options=TimeoutOptions(
-                        request_timeout_ms=collection_max_time_ms,
+                        request_timeout_ms=table_max_time_ms,
                     ),
                 )
             )
@@ -212,7 +220,7 @@ class Table(Generic[ROW]):
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
@@ -223,7 +231,7 @@ class Table(Generic[ROW]):
             embedding_api_key=embedding_api_key,
             callers=callers,
             request_timeout_ms=request_timeout_ms,
-            collection_max_time_ms=collection_max_time_ms,
+            table_max_time_ms=table_max_time_ms,
             api_options=api_options,
         )
 
@@ -236,7 +244,7 @@ class Table(Generic[ROW]):
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
@@ -255,7 +263,7 @@ class Table(Generic[ROW]):
                         embedding_api_key
                     ),
                     timeout_options=TimeoutOptions(
-                        request_timeout_ms=collection_max_time_ms,
+                        request_timeout_ms=table_max_time_ms,
                     ),
                 )
             )
@@ -611,6 +619,51 @@ class Table(Generic[ROW]):
                 raw_response=io_response,
             )
 
+    def find(
+        self,
+        filter: FilterType | None = None,
+        *,
+        projection: ProjectionType | None = None,
+        skip: int | None = None,
+        limit: int | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        sort: SortType | None = None,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> TableCursor[ROW, ROW]:
+        """
+        TODO
+        """
+
+        # lazy-import here to avoid circular import issues
+        from astrapy.cursors import TableCursor
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        # TODO reinstate vectors
+        # if include_similarity is not None and not _is_vector_sort(sort):
+        #     raise ValueError(
+        #         "Cannot use `include_similarity` unless for vector search."
+        #     )
+        return (
+            TableCursor(
+                table=self,
+                request_timeout_ms=_request_timeout_ms,
+                overall_timeout_ms=None,
+            )
+            .filter(filter)
+            .project(projection)
+            .skip(skip)
+            .limit(limit)
+            .sort(sort)
+            .include_similarity(include_similarity)
+            .include_sort_vector(include_sort_vector)
+        )
+
     def find_one(
         self,
         filter: FilterType | None = None,
@@ -644,6 +697,61 @@ class Table(Generic[ROW]):
         if doc_response is None:
             return None
         return fo_response["data"]["document"]  # type: ignore[no-any-return]
+
+    def distinct(
+        self,
+        key: str,
+        *,
+        filter: FilterType | None = None,
+        request_timeout_ms: int | None = None,
+        data_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> list[Any]:
+        """
+        TODO
+        """
+
+        # lazy-import here to avoid circular import issues
+        from astrapy.cursors import TableCursor
+
+        _request_timeout_ms = (
+            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        )
+        _data_operation_timeout_ms = (
+            data_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.data_operation_timeout_ms
+        )
+        # preparing cursor:
+        _extractor = _create_document_key_extractor(key)
+        _key = _reduce_distinct_key_to_safe(key)
+        if _key == "":
+            raise ValueError(
+                "The 'key' parameter for distinct cannot be empty "
+                "or start with a list index."
+            )
+        # relaxing the type hint (limited to within this method body)
+        f_cursor: TableCursor[dict[str, Any], dict[str, Any]] = (
+            TableCursor(
+                table=self,
+                request_timeout_ms=_request_timeout_ms,
+                overall_timeout_ms=_data_operation_timeout_ms,
+            )  # type: ignore[assignment]
+            .filter(filter)
+            .project({_key: True})
+        )
+        # consuming it:
+        _item_hashes = set()
+        distinct_items: list[Any] = []
+        logger.info(f"running distinct() on '{self.name}'")
+        for document in f_cursor:
+            for item in _extractor(document):
+                _item_hash = _hash_document(item)
+                if _item_hash not in _item_hashes:
+                    _item_hashes.add(_item_hash)
+                    distinct_items.append(item)
+        logger.info(f"finished running distinct() on '{self.name}'")
+        return distinct_items
 
     def delete_one(
         self,
@@ -739,44 +847,6 @@ class Table(Generic[ROW]):
 class AsyncTable(Generic[ROW]):
     """
     TODO
-    A Data API collection, the main object to interact with the Data API,
-    especially for DDL operations.
-    This class has a synchronous interface.
-
-    This class is not meant for direct instantiation by the user, rather
-    it is obtained by invoking methods such as `get_collection` of Database,
-    wherefrom the Collection inherits its API options such as authentication
-    token and API endpoint.
-
-    Args:
-        database: a Database object, instantiated earlier. This represents
-            the database the collection belongs to.
-        name: the collection name. This parameter should match an existing
-            collection on the database.
-        keyspace: this is the keyspace to which the collection belongs.
-            If nothing is specified, the database's working keyspace is used.
-        api_options: a complete specification of the API Options for this instance.
-
-    Examples:
-        >>> from astrapy import DataAPIClient, Collection
-        >>> my_client = astrapy.DataAPIClient("AstraCS:...")
-        >>> my_db = my_client.get_database(
-        ...    "https://01234567-....apps.astra.datastax.com"
-        ... )
-        >>> my_coll_1 = Collection(database=my_db, name="my_collection")
-        >>> my_coll_2 = my_db.create_collection(
-        ...     "my_v_collection",
-        ...     dimension=3,
-        ...     metric="cosine",
-        ... )
-        >>> my_coll_3a = my_db.get_collection("my_already_existing_collection")
-        >>> my_coll_3b = my_db.my_already_existing_collection
-        >>> my_coll_3c = my_db["my_already_existing_collection"]
-
-    Note:
-        creating an instance of Collection does not trigger actual creation
-        of the collection on the database. The latter should have been created
-        beforehand, e.g. through the `create_collection` method of a Database.
     """
 
     def __init__(
@@ -879,7 +949,7 @@ class AsyncTable(Generic[ROW]):
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         # a double override for the timeout aliasing
@@ -894,7 +964,7 @@ class AsyncTable(Generic[ROW]):
                         embedding_api_key
                     ),
                     timeout_options=TimeoutOptions(
-                        request_timeout_ms=collection_max_time_ms,
+                        request_timeout_ms=table_max_time_ms,
                     ),
                 )
             )
@@ -920,7 +990,7 @@ class AsyncTable(Generic[ROW]):
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
@@ -931,7 +1001,7 @@ class AsyncTable(Generic[ROW]):
             embedding_api_key=embedding_api_key,
             callers=callers,
             request_timeout_ms=request_timeout_ms,
-            collection_max_time_ms=collection_max_time_ms,
+            table_max_time_ms=table_max_time_ms,
             api_options=api_options,
         )
 
@@ -944,7 +1014,7 @@ class AsyncTable(Generic[ROW]):
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        table_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
@@ -963,7 +1033,7 @@ class AsyncTable(Generic[ROW]):
                         embedding_api_key
                     ),
                     timeout_options=TimeoutOptions(
-                        request_timeout_ms=collection_max_time_ms,
+                        request_timeout_ms=table_max_time_ms,
                     ),
                 )
             )
@@ -1321,6 +1391,51 @@ class AsyncTable(Generic[ROW]):
                 raw_response=io_response,
             )
 
+    def find(
+        self,
+        filter: FilterType | None = None,
+        *,
+        projection: ProjectionType | None = None,
+        skip: int | None = None,
+        limit: int | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        sort: SortType | None = None,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> AsyncTableCursor[ROW, ROW]:
+        """
+        TODO
+        """
+
+        # lazy-import here to avoid circular import issues
+        from astrapy.cursors import AsyncTableCursor
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        # TODO reinstate vectors
+        # if include_similarity is not None and not _is_vector_sort(sort):
+        #     raise ValueError(
+        #         "Cannot use `include_similarity` unless for vector search."
+        #     )
+        return (
+            AsyncTableCursor(
+                table=self,
+                request_timeout_ms=_request_timeout_ms,
+                overall_timeout_ms=None,
+            )
+            .filter(filter)
+            .project(projection)
+            .skip(skip)
+            .limit(limit)
+            .sort(sort)
+            .include_similarity(include_similarity)
+            .include_sort_vector(include_sort_vector)
+        )
+
     async def find_one(
         self,
         filter: FilterType | None = None,
@@ -1354,6 +1469,61 @@ class AsyncTable(Generic[ROW]):
         if doc_response is None:
             return None
         return fo_response["data"]["document"]  # type: ignore[no-any-return]
+
+    async def distinct(
+        self,
+        key: str,
+        *,
+        filter: FilterType | None = None,
+        request_timeout_ms: int | None = None,
+        data_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> list[Any]:
+        """
+        TODO
+        """
+
+        # lazy-import here to avoid circular import issues
+        from astrapy.cursors import AsyncTableCursor
+
+        _request_timeout_ms = (
+            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        )
+        _data_operation_timeout_ms = (
+            data_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.data_operation_timeout_ms
+        )
+        # preparing cursor:
+        _extractor = _create_document_key_extractor(key)
+        _key = _reduce_distinct_key_to_safe(key)
+        if _key == "":
+            raise ValueError(
+                "The 'key' parameter for distinct cannot be empty "
+                "or start with a list index."
+            )
+        # relaxing the type hint (limited to within this method body)
+        f_cursor: AsyncTableCursor[dict[str, Any], dict[str, Any]] = (
+            AsyncTableCursor(
+                table=self,
+                request_timeout_ms=_request_timeout_ms,
+                overall_timeout_ms=_data_operation_timeout_ms,
+            )  # type: ignore[assignment]
+            .filter(filter)
+            .project({_key: True})
+        )
+        # consuming it:
+        _item_hashes = set()
+        distinct_items: list[Any] = []
+        logger.info(f"running distinct() on '{self.name}'")
+        async for document in f_cursor:
+            for item in _extractor(document):
+                _item_hash = _hash_document(item)
+                if _item_hash not in _item_hashes:
+                    _item_hashes.add(_item_hash)
+                    distinct_items.append(item)
+        logger.info(f"finished running distinct() on '{self.name}'")
+        return distinct_items
 
     async def delete_one(
         self,

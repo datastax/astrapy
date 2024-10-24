@@ -14,12 +14,16 @@
 
 from astrapy.data.cursor import (
     AsyncCollectionCursor,
+    AsyncTableCursor,
     CollectionCursor,
     CursorState,
+    TableCursor,
 )
 
 __all__ = [
     "AsyncCollectionCursor",
+    "AsyncTableCursor",
     "CollectionCursor",
     "CursorState",
+    "TableCursor",
 ]
