@@ -14,17 +14,19 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable, TypedDict
+from typing import Iterable, TypedDict
 
 import pytest
 
-from astrapy import AsyncTable, AsyncDatabase, Table, Database
+from astrapy import AsyncDatabase, AsyncTable, Database, Table
 
 from ..conftest import DefaultAsyncTable, DefaultTable
 
+
 class TestDoc(TypedDict):
-  p_bigint: int
-  p_ascii: str
+    p_bigint: int
+    p_ascii: str
+
 
 TYPING_TABLE_NAME = "test_typing_table"
 TYPING_TABLE_DEFINITION = {
@@ -54,6 +56,7 @@ def sync_typing_test_table(sync_database: Database) -> Iterable[DefaultTable]:
 
     table.drop()
 
+
 @pytest.fixture
 def async_typing_test_table(
     sync_typing_test_table: DefaultTable,
@@ -81,15 +84,15 @@ class TestTableTyping:
         assert cu_doc is not None
         cu_a: str
         cu_b: int
-        cu_a = cu_doc["p_ascii"]
-        cu_b = cu_doc["p_bigint"]
+        cu_a = cu_doc["p_ascii"]  # noqa: F841
+        cu_b = cu_doc["p_bigint"]  # noqa: F841
         assert set(cu_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
         # untyped, these are all ok:
         cu_x: int
         cu_y: float
-        cu_x = cu_doc["p_ascii"]
+        cu_x = cu_doc["p_ascii"]  # noqa: F841
         with pytest.raises(KeyError):
-            cu_y = cu_doc["c"]
+            cu_y = cu_doc["c"]  # noqa: F841
 
         # Typed
         c_tb_typed: Table[TestDoc] = sync_database.create_table(
@@ -103,15 +106,15 @@ class TestTableTyping:
         assert ct_doc is not None
         ct_a: str
         ct_b: int
-        ct_a = ct_doc["p_ascii"]
-        ct_b = ct_doc["p_bigint"]
+        ct_a = ct_doc["p_ascii"]  # noqa: F841
+        ct_b = ct_doc["p_bigint"]  # noqa: F841
         assert set(ct_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
         # these two SHOULD NOT typecheck (i.e. require the ignore directive)
         ct_x: int
         ct_y: float
-        ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]
+        ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
-            ct_y = ct_doc["c"]  # type: ignore[typeddict-item]
+            ct_y = ct_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
     @pytest.mark.describe("test of typing get_table, sync")
     def test_get_table_typing_sync(
@@ -128,32 +131,34 @@ class TestTableTyping:
         assert gu_doc is not None
         gu_a: str
         gu_b: int
-        gu_a = gu_doc["p_ascii"]
-        gu_b = gu_doc["p_bigint"]
+        gu_a = gu_doc["p_ascii"]  # noqa: F841
+        gu_b = gu_doc["p_bigint"]  # noqa: F841
         assert set(gu_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
         # untyped, these are all ok:
         gu_x: int
         gu_y: float
-        gu_x = gu_doc["p_ascii"]
+        gu_x = gu_doc["p_ascii"]  # noqa: F841
         with pytest.raises(KeyError):
-            gu_y = gu_doc["c"]
+            gu_y = gu_doc["c"]  # noqa: F841
 
         # Typed
-        g_tb_typed: Table[TestDoc] = sync_database.get_table(TYPING_TABLE_NAME, row_type=TestDoc)
+        g_tb_typed: Table[TestDoc] = sync_database.get_table(
+            TYPING_TABLE_NAME, row_type=TestDoc
+        )
         g_tb_typed.insert_one(TYPED_ROW)
         gt_doc = g_tb_typed.find_one(FIND_FILTER)
         assert gt_doc is not None
         gt_a: str
         gt_b: int
-        gt_a = gt_doc["p_ascii"]
-        gt_b = gt_doc["p_bigint"]
+        gt_a = gt_doc["p_ascii"]  # noqa: F841
+        gt_b = gt_doc["p_bigint"]  # noqa: F841
         assert set(gt_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
         # these two SHOULD NOT typecheck (i.e. require the ignore directive)
         gt_x: int
         gt_y: float
-        gt_x = gt_doc["p_ascii"]  # type: ignore[assignment]
+        gt_x = gt_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
-            gt_y = gt_doc["c"]  # type: ignore[typeddict-item]
+            gt_y = gt_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
     @pytest.mark.describe("test of typing create_table, async")
     async def test_create_table_typing_async(
@@ -174,15 +179,15 @@ class TestTableTyping:
         assert cu_doc is not None
         cu_a: str
         cu_b: int
-        cu_a = cu_doc["p_ascii"]
-        cu_b = cu_doc["p_bigint"]
+        cu_a = cu_doc["p_ascii"]  # noqa: F841
+        cu_b = cu_doc["p_bigint"]  # noqa: F841
         assert set(cu_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
         # untyped, these are all ok:
         cu_x: int
         cu_y: float
-        cu_x = cu_doc["p_ascii"]
+        cu_x = cu_doc["p_ascii"]  # noqa: F841
         with pytest.raises(KeyError):
-            cu_y = cu_doc["c"]
+            cu_y = cu_doc["c"]  # noqa: F841
 
         # Typed
         ac_tb_typed: AsyncTable[TestDoc] = await async_database.create_table(
@@ -196,15 +201,15 @@ class TestTableTyping:
         assert ct_doc is not None
         ct_a: str
         ct_b: int
-        ct_a = ct_doc["p_ascii"]
-        ct_b = ct_doc["p_bigint"]
+        ct_a = ct_doc["p_ascii"]  # noqa: F841
+        ct_b = ct_doc["p_bigint"]  # noqa: F841
         assert set(ct_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
         # these two SHOULD NOT typecheck (i.e. require the ignore directive)
         ct_x: int
         ct_y: float
-        ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]
+        ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
-            ct_y = ct_doc["c"]  # type: ignore[typeddict-item]
+            ct_y = ct_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
 
     @pytest.mark.describe("test of typing get_table, async")
     async def test_get_table_typing_async(
@@ -221,29 +226,31 @@ class TestTableTyping:
         assert gu_doc is not None
         gu_a: str
         gu_b: int
-        gu_a = gu_doc["p_ascii"]
-        gu_b = gu_doc["p_bigint"]
+        gu_a = gu_doc["p_ascii"]  # noqa: F841
+        gu_b = gu_doc["p_bigint"]  # noqa: F841
         assert set(gu_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
         # untyped, these are all ok:
         gu_x: int
         gu_y: float
-        gu_x = gu_doc["p_ascii"]
+        gu_x = gu_doc["p_ascii"]  # noqa: F841
         with pytest.raises(KeyError):
-            gu_y = gu_doc["c"]
+            gu_y = gu_doc["c"]  # noqa: F841
 
         # Typed
-        ag_tb_typed: AsyncTable[TestDoc] = await async_database.get_table(TYPING_TABLE_NAME, row_type=TestDoc)
+        ag_tb_typed: AsyncTable[TestDoc] = await async_database.get_table(
+            TYPING_TABLE_NAME, row_type=TestDoc
+        )
         await ag_tb_typed.insert_one(TYPED_ROW)
         gt_doc = await ag_tb_typed.find_one(FIND_FILTER)
         assert gt_doc is not None
         gt_a: str
         gt_b: int
-        gt_a = gt_doc["p_ascii"]
-        gt_b = gt_doc["p_bigint"]
+        gt_a = gt_doc["p_ascii"]  # noqa: F841
+        gt_b = gt_doc["p_bigint"]  # noqa: F841
         assert set(gt_doc.keys()) == {"p_ascii", "p_bigint", "p_float"}
         # these two SHOULD NOT typecheck (i.e. require the ignore directive)
         gt_x: int
         gt_y: float
-        gt_x = gt_doc["p_ascii"]  # type: ignore[assignment]
+        gt_x = gt_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
-            gt_y = gt_doc["c"]  # type: ignore[typeddict-item]
+            gt_y = gt_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841

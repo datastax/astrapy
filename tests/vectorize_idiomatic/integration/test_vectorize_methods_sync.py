@@ -18,7 +18,7 @@ from typing import Any
 
 import pytest
 
-from astrapy import Collection, Database
+from astrapy import Database
 from astrapy.exceptions import DataAPIResponseException
 
 from ..conftest import DefaultCollection
@@ -144,7 +144,7 @@ class TestVectorizeMethodsSync:
                 sort_cl_e: dict[str, Any] = {"$vectorize": q_text}
                 vec_expected = include_sv and sort_cl_label == "vze"
                 # pristine iterator
-                this_ite_1 = sync_empty_service_collection.find(  # type: ignore[attr-defined]
+                this_ite_1 = sync_empty_service_collection.find(
                     {}, sort=sort_cl_e, include_sort_vector=include_sv
                 )
                 if vec_expected:
@@ -159,7 +159,7 @@ class TestVectorizeMethodsSync:
                 else:
                     assert this_ite_1.get_sort_vector() is None
                 # directly exhausted before calling get_sort_vector
-                this_ite_2 = sync_empty_service_collection.find(  # type: ignore[attr-defined]
+                this_ite_2 = sync_empty_service_collection.find(
                     {}, sort=sort_cl_e, include_sort_vector=include_sv
                 )
                 all_items_2 = list(this_ite_2)
@@ -180,7 +180,7 @@ class TestVectorizeMethodsSync:
                 sort_cl_f: dict[str, Any] = {"$vectorize": q_text}
                 vec_expected = include_sv and sort_cl_label == "vze"
                 # pristine iterator
-                this_ite_1 = sync_empty_service_collection.find(  # type: ignore[attr-defined]
+                this_ite_1 = sync_empty_service_collection.find(
                     {}, sort=sort_cl_f, include_sort_vector=include_sv
                 )
                 if vec_expected:
@@ -204,7 +204,7 @@ class TestVectorizeMethodsSync:
                 else:
                     assert this_ite_1.get_sort_vector() is None
                 # directly exhausted before calling get_sort_vector
-                this_ite_2 = sync_empty_service_collection.find(  # type: ignore[attr-defined]
+                this_ite_2 = sync_empty_service_collection.find(
                     {}, sort=sort_cl_f, include_sort_vector=include_sv
                 )
                 list(this_ite_2)

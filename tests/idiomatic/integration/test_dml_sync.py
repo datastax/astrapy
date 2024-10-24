@@ -19,13 +19,13 @@ from typing import Any
 
 import pytest
 
-from astrapy import Collection
 from astrapy.constants import ReturnDocument, SortDocuments
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import DeleteResult, InsertOneResult
 
 from ..conftest import DefaultCollection
+
 
 class TestDMLSync:
     @pytest.mark.describe("test of collection count_documents, sync")
@@ -124,8 +124,7 @@ class TestDMLSync:
         # test of sort
         sync_empty_collection.insert_many([{"ts": 1, "seq": i} for i in [2, 0, 1]])
         sync_empty_collection.delete_one({"ts": 1}, sort={"seq": 1})
-        #RESTOREFIND
-        # assert set(sync_empty_collection.distinct("seq", filter={"ts": 1})) == {1, 2}
+        assert set(sync_empty_collection.distinct("seq", filter={"ts": 1})) == {1, 2}
 
     @pytest.mark.describe("test of collection delete_many, sync")
     def test_collection_delete_many_sync(
@@ -175,7 +174,7 @@ class TestDMLSync:
         assert (
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=None, limit=None, sort=None, filter=None
                     )
                 )
@@ -187,7 +186,7 @@ class TestDMLSync:
         assert (
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=None, limit=None, sort=None, filter=Nfil
                     )
                 )
@@ -199,7 +198,7 @@ class TestDMLSync:
         assert (
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=None, limit=None, sort=Nsor, filter=None
                     )
                 )
@@ -211,7 +210,7 @@ class TestDMLSync:
         assert (
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=None, limit=None, sort=Nsor, filter=Nfil
                     )
                 )
@@ -223,7 +222,7 @@ class TestDMLSync:
         assert (
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=None, limit=Nlim, sort=None, filter=None
                     )
                 )
@@ -235,7 +234,7 @@ class TestDMLSync:
         assert (
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=None, limit=Nlim, sort=None, filter=Nfil
                     )
                 )
@@ -247,7 +246,7 @@ class TestDMLSync:
         assert (
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=None, limit=Nlim, sort=Nsor, filter=None
                     )
                 )
@@ -259,7 +258,7 @@ class TestDMLSync:
         assert (
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=None, limit=Nlim, sort=Nsor, filter=Nfil
                     )
                 )
@@ -271,7 +270,7 @@ class TestDMLSync:
         with pytest.raises(DataAPIResponseException):
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=Nski, limit=None, sort=None, filter=None
                     )
                 )
@@ -281,7 +280,7 @@ class TestDMLSync:
         with pytest.raises(DataAPIResponseException):
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=Nski, limit=None, sort=None, filter=Nfil
                     )
                 )
@@ -291,7 +290,7 @@ class TestDMLSync:
         assert (
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=Nski, limit=None, sort=Nsor, filter=None
                     )
                 )
@@ -303,7 +302,7 @@ class TestDMLSync:
         assert (
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=Nski, limit=None, sort=Nsor, filter=Nfil
                     )
                 )
@@ -315,7 +314,7 @@ class TestDMLSync:
         with pytest.raises(DataAPIResponseException):
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=Nski, limit=Nlim, sort=None, filter=None
                     )
                 )
@@ -325,7 +324,7 @@ class TestDMLSync:
         with pytest.raises(DataAPIResponseException):
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=Nski, limit=Nlim, sort=None, filter=Nfil
                     )
                 )
@@ -335,7 +334,7 @@ class TestDMLSync:
         assert (
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=Nski, limit=Nlim, sort=Nsor, filter=None
                     )
                 )
@@ -347,7 +346,7 @@ class TestDMLSync:
         assert (
             len(
                 list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         skip=Nski, limit=Nlim, sort=Nsor, filter=Nfil
                     )
                 )
@@ -369,26 +368,24 @@ class TestDMLSync:
         )
 
         # projection
-        cursor0 = sync_empty_collection.find(projection={"ternary": False})  # type: ignore[attr-defined]
+        cursor0 = sync_empty_collection.find(projection={"ternary": False})
         assert cursor0.consumed == 0
         document0 = cursor0.__next__()
         assert cursor0.consumed == 1
         assert "ternary" not in document0
-        cursor0b = sync_empty_collection.find(projection={"ternary": True})  # type: ignore[attr-defined]
+        cursor0b = sync_empty_collection.find(projection={"ternary": True})
         document0b = cursor0b.__next__()
         assert "ternary" in document0b
 
         assert cursor0b.data_source == sync_empty_collection
 
         # rewinding, slicing and retrieved
-        cursor1 = sync_empty_collection.find(sort={"seq": 1})  # type: ignore[attr-defined]
+        cursor1 = sync_empty_collection.find(sort={"seq": 1})
         cursor1.__next__()
         cursor1.__next__()
         items1 = list(cursor1)[:2]  # noqa: F841
         cursor1.rewind()
-        assert list(cursor1) == list(
-            sync_empty_collection.find(sort={"seq": 1})  # type: ignore[attr-defined]
-        )
+        assert list(cursor1) == list(sync_empty_collection.find(sort={"seq": 1}))
         cursor1.rewind()
 
         # address, cursor_id, collection
@@ -396,7 +393,7 @@ class TestDMLSync:
         assert cursor1.data_source == sync_empty_collection
 
         # clone, alive
-        cursor2 = sync_empty_collection.find()  # type: ignore[attr-defined]
+        cursor2 = sync_empty_collection.find()
         assert cursor2.alive is True
         for _ in range(8):
             cursor2.__next__()
@@ -415,26 +412,11 @@ class TestDMLSync:
         with pytest.raises(StopIteration):
             cursor4.__next__()
 
-        # distinct
-        # RESTOREFIND
-        # cursor5 = sync_empty_collection.find()
-        # dist5 = cursor5.distinct("ternary")
-        # assert (len(list(cursor5))) == 10
-        # assert set(dist5) == {0, 1, 2}
-        # cursor6 = sync_empty_collection.find()
-        # for _ in range(9):
-        #     cursor6.__next__()
-        # dist6 = cursor6.distinct("ternary")
-        # assert (len(list(cursor6))) == 1
-        # assert set(dist6) == {0, 1, 2}
-
         # distinct from collections
-        # RESTOREFIND
-        # assert set(sync_empty_collection.distinct("ternary")) == {0, 1, 2}
-        # assert set(sync_empty_collection.distinct("nonfield")) == set()
+        assert set(sync_empty_collection.distinct("ternary")) == {0, 1, 2}
+        assert set(sync_empty_collection.distinct("nonfield")) == set()
 
     @pytest.mark.describe("test of distinct with non-hashable items, sync")
-    @pytest.mark.skip(reason="RESTOREFIND")
     def test_collection_distinct_nonhashable_sync(
         self,
         sync_empty_collection: DefaultCollection,
@@ -454,7 +436,7 @@ class TestDMLSync:
         ]
         col.insert_many(documents * 2)
 
-        d_items = col.distinct("f")  # type: ignore[attr-defined]
+        d_items = col.distinct("f")
         expected = [
             1,
             "a",
@@ -475,7 +457,6 @@ class TestDMLSync:
                     assert doc["f"] in d_items
 
     @pytest.mark.describe("test of usage of projection in distinct, sync")
-    @pytest.mark.skip(reason="RESTOREFIND")
     def test_collection_projections_distinct_sync(
         self,
         sync_empty_collection: DefaultCollection,
@@ -483,26 +464,25 @@ class TestDMLSync:
         col = sync_empty_collection
         col.insert_one({"x": [{"y": "Y", "0": "ZERO"}]})
 
-        assert col.distinct("x.y") == ["Y"]  # type: ignore[attr-defined]
+        assert col.distinct("x.y") == ["Y"]
         # the one below shows that if index-in-list, then browse-whole-list is off
-        assert col.distinct("x.0") == [{"y": "Y", "0": "ZERO"}]  # type: ignore[attr-defined]
-        assert col.distinct("x.0.y") == ["Y"]  # type: ignore[attr-defined]
-        assert col.distinct("x.0.0") == ["ZERO"]  # type: ignore[attr-defined]
+        assert col.distinct("x.0") == [{"y": "Y", "0": "ZERO"}]
+        assert col.distinct("x.0.y") == ["Y"]
+        assert col.distinct("x.0.0") == ["ZERO"]
 
     @pytest.mark.describe("test of unacceptable paths for distinct, sync")
-    @pytest.mark.skip(reason="RESTOREFIND")
     def test_collection_wrong_paths_distinct_sync(
         self,
         sync_empty_collection: DefaultCollection,
     ) -> None:
         with pytest.raises(ValueError):
-            sync_empty_collection.distinct("root.1..subf")  # type: ignore[attr-defined]
+            sync_empty_collection.distinct("root.1..subf")
         with pytest.raises(ValueError):
-            sync_empty_collection.distinct("root..1.subf")  # type: ignore[attr-defined]
+            sync_empty_collection.distinct("root..1.subf")
         with pytest.raises(ValueError):
-            sync_empty_collection.distinct("root..subf.subsubf")  # type: ignore[attr-defined]
+            sync_empty_collection.distinct("root..subf.subsubf")
         with pytest.raises(ValueError):
-            sync_empty_collection.distinct("root.subf..subsubf")  # type: ignore[attr-defined]
+            sync_empty_collection.distinct("root.subf..subsubf")
 
     @pytest.mark.describe("test of collection find, find_one with vectors, sync")
     def test_collection_find_find_one_vectors_sync(
@@ -521,7 +501,7 @@ class TestDMLSync:
         )
 
         hits = list(
-            sync_empty_collection.find(  # type: ignore[attr-defined]
+            sync_empty_collection.find(
                 {},
                 sort={"$vector": q_vector},
                 projection=["tag"],
@@ -532,7 +512,7 @@ class TestDMLSync:
 
         with pytest.raises(ValueError):
             list(
-                sync_empty_collection.find(  # type: ignore[attr-defined]
+                sync_empty_collection.find(
                     {},
                     projection=["tag"],
                     sort={"$vector": q_vector, "tag": SortDocuments.DESCENDING},
@@ -544,10 +524,10 @@ class TestDMLSync:
         assert top_doc is not None
         assert top_doc["tag"] == "D"
 
-        fdoc_no_s = sync_empty_collection.find(  # type: ignore[attr-defined]
+        fdoc_no_s = sync_empty_collection.find(
             {}, sort={"$vector": [1, 1]}, include_similarity=False
         ).__next__()
-        fdoc_wi_s = sync_empty_collection.find(  # type: ignore[attr-defined]
+        fdoc_wi_s = sync_empty_collection.find(
             {}, sort={"$vector": [1, 1]}, include_similarity=True
         ).__next__()
         assert fdoc_no_s is not None
@@ -569,7 +549,7 @@ class TestDMLSync:
         assert f1doc_wi_s["$similarity"] > 0.0
 
         with pytest.raises(ValueError):
-            sync_empty_collection.find({}, include_similarity=True)  # type: ignore[attr-defined]
+            sync_empty_collection.find({}, include_similarity=True)
 
         with pytest.raises(ValueError):
             sync_empty_collection.find_one({}, include_similarity=True)
@@ -588,7 +568,7 @@ class TestDMLSync:
                 )
                 vec_expected = include_sv and sort_cl_label == "vec"
                 # pristine iterator
-                this_ite_1 = sync_empty_collection.find(  # type: ignore[attr-defined]
+                this_ite_1 = sync_empty_collection.find(
                     {}, sort=sort_cl_e, include_sort_vector=include_sv
                 )
                 if vec_expected:
@@ -603,7 +583,7 @@ class TestDMLSync:
                 else:
                     assert this_ite_1.get_sort_vector() is None
                 # directly exhausted before calling get_sort_vector
-                this_ite_2 = sync_empty_collection.find(  # type: ignore[attr-defined]
+                this_ite_2 = sync_empty_collection.find(
                     {}, sort=sort_cl_e, include_sort_vector=include_sv
                 )
                 all_items_2 = list(this_ite_2)
@@ -623,7 +603,7 @@ class TestDMLSync:
                 )
                 vec_expected = include_sv and sort_cl_label == "vec"
                 # pristine iterator
-                this_ite_1 = sync_empty_collection.find(  # type: ignore[attr-defined]
+                this_ite_1 = sync_empty_collection.find(
                     {}, sort=sort_cl_f, include_sort_vector=include_sv
                 )
                 if vec_expected:
@@ -647,7 +627,7 @@ class TestDMLSync:
                 else:
                     assert this_ite_1.get_sort_vector() is None
                 # directly exhausted before calling get_sort_vector
-                this_ite_2 = sync_empty_collection.find(  # type: ignore[attr-defined]
+                this_ite_2 = sync_empty_collection.find(
                     {}, sort=sort_cl_f, include_sort_vector=include_sv
                 )
                 list(this_ite_2)
@@ -692,7 +672,7 @@ class TestDMLSync:
         for include_similarity in [True, False]:
             for req_projection, exp_fields0 in zip(req_projections, exp_fieldsets):
                 vdocs = list(
-                    sync_empty_collection.find(  # type: ignore[attr-defined]
+                    sync_empty_collection.find(
                         sort={"$vector": [11, 21]},
                         limit=1,
                         projection=req_projection,
@@ -998,8 +978,7 @@ class TestDMLSync:
         sync_empty_collection.replace_one(
             {"ts": 1}, {"ts": 1, "R": True}, sort={"seq": 1}
         )
-        #RESTOREFIND
-        # assert set(sync_empty_collection.distinct("seq", filter={"ts": 1})) == {1, 2}
+        assert set(sync_empty_collection.distinct("seq", filter={"ts": 1})) == {1, 2}
 
     @pytest.mark.describe("test of replace_one with vectors, sync")
     def test_collection_replace_one_vector_sync(

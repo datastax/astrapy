@@ -23,7 +23,14 @@ from astrapy.authentication import (
     coerce_possible_embedding_headers_provider,
     coerce_possible_token_provider,
 )
-from astrapy.constants import DOC, ROW, CallerType, DefaultDocumentType, Environment, DefaultRowType
+from astrapy.constants import (
+    DOC,
+    ROW,
+    CallerType,
+    DefaultDocumentType,
+    DefaultRowType,
+    Environment,
+)
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     DevOpsAPIException,
@@ -539,7 +546,9 @@ class Database:
         self,
         name: str,
         *,
-        document_type: type[Any] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
+        document_type: type[
+            Any
+        ] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
@@ -687,7 +696,9 @@ class Database:
         self,
         name: str,
         *,
-        document_type: type[Any] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
+        document_type: type[
+            Any
+        ] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
         keyspace: str | None = None,
         dimension: int | None = None,
         metric: str | None = None,
@@ -2014,7 +2025,9 @@ class AsyncDatabase:
         self,
         name: str,
         *,
-        document_type: type[Any] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
+        document_type: type[
+            Any
+        ] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
@@ -2165,7 +2178,9 @@ class AsyncDatabase:
         self,
         name: str,
         *,
-        document_type: type[Any] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
+        document_type: type[
+            Any
+        ] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
         keyspace: str | None = None,
         dimension: int | None = None,
         metric: str | None = None,

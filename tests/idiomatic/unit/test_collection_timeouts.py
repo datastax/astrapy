@@ -6,12 +6,12 @@ import pytest
 import werkzeug
 from pytest_httpserver import HTTPServer
 
-from astrapy import AsyncCollection, Collection, Database
+from astrapy import Collection, Database
 from astrapy.exceptions import DataAPITimeoutException
 from astrapy.utils.api_options import defaultAPIOptions
 from astrapy.utils.request_tools import HttpMethod
 
-from ..conftest import DefaultCollection, DefaultAsyncCollection
+from ..conftest import DefaultAsyncCollection, DefaultCollection
 
 SLEEPER_TIME_MS = 100
 TIMEOUT_PARAM_MS = 1
@@ -103,10 +103,10 @@ class TestCollectionTimeouts:
             f"/{BASE_PATH}/{PATH_SUFFIX}",
             method=HttpMethod.POST,
         ).respond_with_json({"data": {"nextPageState": None, "documents": [{"a": 1}]}})
-        cur0 = mock_acollection.find({})  # type: ignore[attr-defined]
+        cur0 = mock_acollection.find({})
         await cur0.__anext__()
 
-        cur1 = mock_acollection.find({}, max_time_ms=1)  # type: ignore[attr-defined]
+        cur1 = mock_acollection.find({}, max_time_ms=1)
         httpserver.expect_oneshot_request(
             f"/{BASE_PATH}/{PATH_SUFFIX}",
             method=HttpMethod.POST,
@@ -137,10 +137,10 @@ class TestCollectionTimeouts:
             f"/{BASE_PATH}/{PATH_SUFFIX}",
             method=HttpMethod.POST,
         ).respond_with_json({"data": {"nextPageState": None, "documents": [{"a": 1}]}})
-        cur0 = mock_collection.find({})  # type: ignore[attr-defined]
+        cur0 = mock_collection.find({})
         cur0.__next__()
 
-        cur1 = mock_collection.find({}, max_time_ms=1)  # type: ignore[attr-defined]
+        cur1 = mock_collection.find({}, max_time_ms=1)
         httpserver.expect_oneshot_request(
             f"/{BASE_PATH}/{PATH_SUFFIX}",
             method=HttpMethod.POST,

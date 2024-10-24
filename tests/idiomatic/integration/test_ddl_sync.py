@@ -18,7 +18,7 @@ import time
 
 import pytest
 
-from astrapy import Collection, DataAPIClient, Database
+from astrapy import DataAPIClient, Database
 from astrapy.admin import parse_api_endpoint
 from astrapy.constants import DefaultIdType, VectorMetric
 from astrapy.ids import UUID, ObjectId

@@ -18,7 +18,7 @@ import time
 
 import pytest
 
-from astrapy import Collection, Database
+from astrapy import Database
 from astrapy.admin.admin import fetch_database_info
 from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
 
@@ -67,7 +67,6 @@ class TestTimeoutSync:
         assert exc.value.raw_payload is not None
 
     @pytest.mark.describe("test of cursor-based overall timeouts, sync")
-    @pytest.mark.skip(reason="RESTOREFIND")
     def test_cursor_overalltimeout_exceptions_sync(
         self,
         sync_empty_collection: DefaultCollection,
@@ -75,15 +74,13 @@ class TestTimeoutSync:
         col = sync_empty_collection
         col.insert_many([{"a": 1}] * 1000)
 
-        col.distinct("a", max_time_ms=20000)  # type: ignore[attr-defined]
+        col.distinct("a", max_time_ms=20000)
         with pytest.raises(DataAPITimeoutException):
-            col.distinct("a", max_time_ms=1)  # type: ignore[attr-defined]
+            col.distinct("a", max_time_ms=1)
 
-        cur1 = col.find({})  # type: ignore[attr-defined]
-        cur2 = col.find({})  # type: ignore[attr-defined]
-        cur1.distinct("a", max_time_ms=20000)
+        col.distinct("a", max_time_ms=20000)
         with pytest.raises(DataAPITimeoutException):
-            cur2.distinct("a", max_time_ms=1)
+            col.distinct("a", max_time_ms=1)
 
     @pytest.mark.describe("test of insert_many timeouts, sync")
     def test_insert_many_timeout_exceptions_sync(

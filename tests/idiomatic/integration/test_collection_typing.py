@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable, TypedDict
+from typing import TypedDict
 
 import pytest
 
@@ -23,13 +23,16 @@ from astrapy.constants import VectorMetric
 
 from ..conftest import DefaultAsyncCollection, DefaultCollection
 
+
 class TestDoc(TypedDict):
-  p_bigint: int
-  p_ascii: str
+    p_bigint: int
+    p_ascii: str
+
 
 DOCUMENT = {"p_ascii": "abc", "p_bigint": 10000, "p_float": 0.123}
 TYPED_DOCUMENT: TestDoc = {"p_ascii": "abc", "p_bigint": 10000}
 FIND_FILTER = {"p_ascii": "abc", "p_bigint": 10000}
+
 
 class TestCollectionTyping:
     @pytest.mark.describe("test of typing create_collection, sync")
@@ -52,15 +55,15 @@ class TestCollectionTyping:
         assert cu_doc is not None
         cu_a: str
         cu_b: int
-        cu_a = cu_doc["p_ascii"]
-        cu_b = cu_doc["p_bigint"]
+        cu_a = cu_doc["p_ascii"]  # noqa: F841
+        cu_b = cu_doc["p_bigint"]  # noqa: F841
         assert set(cu_doc.keys()) == {"_id", "p_ascii", "p_bigint", "p_float"}
         # untyped, these are all ok:
         cu_x: int
         cu_y: float
-        cu_x = cu_doc["p_ascii"]
+        cu_x = cu_doc["p_ascii"]  # noqa: F841
         with pytest.raises(KeyError):
-            cu_y = cu_doc["c"]
+            cu_y = cu_doc["c"]  # noqa: F841
         c_co_untyped.delete_many({})
 
         # Typed
@@ -76,15 +79,15 @@ class TestCollectionTyping:
         assert ct_doc is not None
         ct_a: str
         ct_b: int
-        ct_a = ct_doc["p_ascii"]
-        ct_b = ct_doc["p_bigint"]
+        ct_a = ct_doc["p_ascii"]  # noqa: F841
+        ct_b = ct_doc["p_bigint"]  # noqa: F841
         assert set(ct_doc.keys()) == {"_id", "p_ascii", "p_bigint"}
         # these two SHOULD NOT typecheck (i.e. require the ignore directive)
         ct_x: int
         ct_y: float
-        ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]
+        ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
-            ct_y = ct_doc["c"]  # type: ignore[typeddict-item]
+            ct_y = ct_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
         c_co_typed.delete_many({})
 
     @pytest.mark.describe("test of typing get_collection, sync")
@@ -102,15 +105,15 @@ class TestCollectionTyping:
         assert gu_doc is not None
         gu_a: str
         gu_b: int
-        gu_a = gu_doc["p_ascii"]
-        gu_b = gu_doc["p_bigint"]
+        gu_a = gu_doc["p_ascii"]  # noqa: F841
+        gu_b = gu_doc["p_bigint"]  # noqa: F841
         assert set(gu_doc.keys()) == {"_id", "p_ascii", "p_bigint", "p_float"}
         # untyped, these are all ok:
         gu_x: int
         gu_y: float
-        gu_x = gu_doc["p_ascii"]
+        gu_x = gu_doc["p_ascii"]  # noqa: F841
         with pytest.raises(KeyError):
-            gu_y = gu_doc["c"]
+            gu_y = gu_doc["c"]  # noqa: F841
         g_co_untyped.delete_many({})
 
         # Typed
@@ -123,15 +126,15 @@ class TestCollectionTyping:
         assert gt_doc is not None
         gt_a: str
         gt_b: int
-        gt_a = gt_doc["p_ascii"]
-        gt_b = gt_doc["p_bigint"]
+        gt_a = gt_doc["p_ascii"]  # noqa: F841
+        gt_b = gt_doc["p_bigint"]  # noqa: F841
         assert set(gt_doc.keys()) == {"_id", "p_ascii", "p_bigint"}
         # these two SHOULD NOT typecheck (i.e. require the ignore directive)
         gt_x: int
         gt_y: float
-        gt_x = gt_doc["p_ascii"]  # type: ignore[assignment]
+        gt_x = gt_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
-            gt_y = gt_doc["c"]  # type: ignore[typeddict-item]
+            gt_y = gt_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
         g_co_typed.delete_many({})
 
     @pytest.mark.describe("test of typing create_collection, async")
@@ -154,15 +157,15 @@ class TestCollectionTyping:
         assert cu_doc is not None
         cu_a: str
         cu_b: int
-        cu_a = cu_doc["p_ascii"]
-        cu_b = cu_doc["p_bigint"]
+        cu_a = cu_doc["p_ascii"]  # noqa: F841
+        cu_b = cu_doc["p_bigint"]  # noqa: F841
         assert set(cu_doc.keys()) == {"_id", "p_ascii", "p_bigint", "p_float"}
         # untyped, these are all ok:
         cu_x: int
         cu_y: float
-        cu_x = cu_doc["p_ascii"]
+        cu_x = cu_doc["p_ascii"]  # noqa: F841
         with pytest.raises(KeyError):
-            cu_y = cu_doc["c"]
+            cu_y = cu_doc["c"]  # noqa: F841
         await ac_co_untyped.delete_many({})
 
         # Typed
@@ -178,15 +181,15 @@ class TestCollectionTyping:
         assert ct_doc is not None
         ct_a: str
         ct_b: int
-        ct_a = ct_doc["p_ascii"]
-        ct_b = ct_doc["p_bigint"]
+        ct_a = ct_doc["p_ascii"]  # noqa: F841
+        ct_b = ct_doc["p_bigint"]  # noqa: F841
         assert set(ct_doc.keys()) == {"_id", "p_ascii", "p_bigint"}
         # these two SHOULD NOT typecheck (i.e. require the ignore directive)
         ct_x: int
         ct_y: float
-        ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]
+        ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
-            ct_y = ct_doc["c"]  # type: ignore[typeddict-item]
+            ct_y = ct_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
         await ac_co_typed.delete_many({})
 
     @pytest.mark.describe("test of typing get_collection, async")
@@ -204,15 +207,15 @@ class TestCollectionTyping:
         assert gu_doc is not None
         gu_a: str
         gu_b: int
-        gu_a = gu_doc["p_ascii"]
-        gu_b = gu_doc["p_bigint"]
+        gu_a = gu_doc["p_ascii"]  # noqa: F841
+        gu_b = gu_doc["p_bigint"]  # noqa: F841
         assert set(gu_doc.keys()) == {"_id", "p_ascii", "p_bigint", "p_float"}
         # untyped, these are all ok:
         gu_x: int
         gu_y: float
-        gu_x = gu_doc["p_ascii"]
+        gu_x = gu_doc["p_ascii"]  # noqa: F841
         with pytest.raises(KeyError):
-            gu_y = gu_doc["c"]
+            gu_y = gu_doc["c"]  # noqa: F841
         await ag_co_untyped.delete_many({})
 
         # Typed
@@ -225,13 +228,13 @@ class TestCollectionTyping:
         assert gt_doc is not None
         gt_a: str
         gt_b: int
-        gt_a = gt_doc["p_ascii"]
-        gt_b = gt_doc["p_bigint"]
+        gt_a = gt_doc["p_ascii"]  # noqa: F841
+        gt_b = gt_doc["p_bigint"]  # noqa: F841
         assert set(gt_doc.keys()) == {"_id", "p_ascii", "p_bigint"}
         # these two SHOULD NOT typecheck (i.e. require the ignore directive)
         gt_x: int
         gt_y: float
-        gt_x = gt_doc["p_ascii"]  # type: ignore[assignment]
+        gt_x = gt_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
-            gt_y = gt_doc["c"]  # type: ignore[typeddict-item]
+            gt_y = gt_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
         await ag_co_typed.delete_many({})

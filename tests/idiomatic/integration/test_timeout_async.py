@@ -18,7 +18,7 @@ import asyncio
 
 import pytest
 
-from astrapy import AsyncCollection, AsyncDatabase
+from astrapy import AsyncDatabase
 from astrapy.admin.admin import async_fetch_database_info
 from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
 
@@ -69,7 +69,6 @@ class TestTimeoutAsync:
         assert exc.value.raw_payload is not None
 
     @pytest.mark.describe("test of cursor-based overall timeouts, async")
-    @pytest.mark.skip(reason="RESTOREFIND")
     async def test_cursor_overalltimeout_exceptions_async(
         self,
         async_empty_collection: DefaultAsyncCollection,
@@ -77,15 +76,13 @@ class TestTimeoutAsync:
         acol = async_empty_collection
         await acol.insert_many([{"a": 1}] * 1000)
 
-        await acol.distinct("a", max_time_ms=20000)  # type: ignore[attr-defined]
+        await acol.distinct("a", max_time_ms=20000)
         with pytest.raises(DataAPITimeoutException):
-            await acol.distinct("a", max_time_ms=1)  # type: ignore[attr-defined]
+            await acol.distinct("a", max_time_ms=1)
 
-        cur1 = acol.find({})  # type: ignore[attr-defined]
-        cur2 = acol.find({})  # type: ignore[attr-defined]
-        await cur1.distinct("a", max_time_ms=20000)
+        await acol.distinct("a", max_time_ms=20000)
         with pytest.raises(DataAPITimeoutException):
-            await cur2.distinct("a", max_time_ms=1)
+            await acol.distinct("a", max_time_ms=1)
 
     @pytest.mark.describe("test of insert_many timeouts, async")
     async def test_insert_many_timeout_exceptions_async(

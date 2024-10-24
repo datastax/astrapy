@@ -161,7 +161,9 @@ class TestCollectionsSync:
             keyspace=None,
             api_options=opts0,
         )
-        col2: DefaultCollection = Collection(database=db1, name="coll", api_options=opts0, keyspace="ns2")
+        col2: DefaultCollection = Collection(
+            database=db1, name="coll", api_options=opts0, keyspace="ns2"
+        )
         assert col1.database == db1
         assert col2.database == db2
 

@@ -146,7 +146,9 @@ def sync_table_all_returns(
 
 
 @pytest.fixture(scope="function")
-def sync_empty_table_all_returns(sync_table_all_returns: DefaultTable) -> Iterable[DefaultTable]:
+def sync_empty_table_all_returns(
+    sync_table_all_returns: DefaultTable,
+) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
     # sync_table_all_returns.delete_many({}) TODO reinstate once available
     yield sync_table_all_returns

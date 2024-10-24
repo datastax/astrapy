@@ -16,8 +16,7 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy import Collection, Database
-from astrapy.cursors import CursorState
+from astrapy import Database
 from astrapy.exceptions import (
     CollectionNotFoundException,
     DataAPIResponseException,
@@ -61,21 +60,21 @@ class TestExceptionsSync:
 
         im_result1 = col.insert_many(ok_docs, ordered=True, chunk_size=2, concurrency=1)
         assert len(im_result1.inserted_ids) == 6
-        assert len(list(col.find({}))) == 6  # type: ignore[attr-defined]
+        assert len(list(col.find({}))) == 6
 
         col.delete_many({})
         im_result2 = col.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=1
         )
         assert len(im_result2.inserted_ids) == 6
-        assert len(list(col.find({}))) == 6  # type: ignore[attr-defined]
+        assert len(list(col.find({}))) == 6
 
         col.delete_many({})
         im_result3 = col.insert_many(
             ok_docs, ordered=False, chunk_size=2, concurrency=2
         )
         assert len(im_result3.inserted_ids) == 6
-        assert len(list(col.find({}))) == 6  # type: ignore[attr-defined]
+        assert len(list(col.find({}))) == 6
 
         col.delete_many({})
         with pytest.raises(InsertManyException) as exc:
@@ -85,7 +84,7 @@ class TestExceptionsSync:
         assert len(exc.value.detailed_error_descriptors[0].error_descriptors) == 1
         assert exc.value.partial_result.inserted_ids == ["a", "b"]
         assert len(exc.value.partial_result.raw_results) == 2
-        assert {doc["_id"] for doc in col.find()} == {"a", "b"}  # type: ignore[attr-defined]
+        assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
         col.delete_many({})
         with pytest.raises(InsertManyException) as exc:
@@ -96,7 +95,7 @@ class TestExceptionsSync:
         assert len(exc.value.detailed_error_descriptors[1].error_descriptors) == 2
         assert set(exc.value.partial_result.inserted_ids) == {"a", "b", "d", "e", "f"}
         assert len(exc.value.partial_result.raw_results) == 4
-        assert {doc["_id"] for doc in col.find()} == {"a", "b", "d", "e", "f"}  # type: ignore[attr-defined]
+        assert {doc["_id"] for doc in col.find()} == {"a", "b", "d", "e", "f"}
 
         col.delete_many({})
         with pytest.raises(InsertManyException) as exc:
@@ -109,7 +108,7 @@ class TestExceptionsSync:
         assert len(exc.value.detailed_error_descriptors[1].error_descriptors) == 2
         assert set(exc.value.partial_result.inserted_ids) == {"a", "b", "d", "e", "f"}
         assert len(exc.value.partial_result.raw_results) == 4
-        assert {doc["_id"] for doc in col.find()} == {"a", "b", "d", "e", "f"}  # type: ignore[attr-defined]
+        assert {doc["_id"] for doc in col.find()} == {"a", "b", "d", "e", "f"}
 
     @pytest.mark.describe("test of collection insert_one failure modes, sync")
     def test_collection_insert_one_failures_sync(
@@ -213,16 +212,15 @@ class TestExceptionsSync:
             sync_database._copy(keyspace=hacked_ks).info()
 
     @pytest.mark.describe("test of hard exceptions in cursors, sync")
-    @pytest.mark.skip(reason="RESTOREFIND")
     def test_cursor_hard_exceptions_sync(
         self,
         sync_empty_collection: DefaultCollection,
     ) -> None:
         with pytest.raises(TypeError):
-            sync_empty_collection.find(  # type: ignore[attr-defined]
-                {},
-                sort={"f": ValueError("nonserializable")},
-            ).distinct("a")
+            sync_empty_collection.distinct(
+                "a",
+                filter={"f": ValueError("nonserializable")},
+            )
 
     @pytest.mark.describe("test of custom exceptions in cursors, sync")
     def test_cursor_custom_exceptions_sync(
@@ -230,17 +228,17 @@ class TestExceptionsSync:
         sync_empty_collection: DefaultCollection,
     ) -> None:
         sync_empty_collection.insert_many([{"a": 1}] * 4)
-        cur1 = sync_empty_collection.find({})  # type: ignore[attr-defined]
+        cur1 = sync_empty_collection.find({})
         cur1.limit(10)
 
         cur1.__next__()
-        with pytest.raises(ValueError) as exc:
+        with pytest.raises(ValueError) as exc:  # noqa: F841
             cur1.limit(1)
         # TODO depending on the cursor exceptions:
         # assert exc.value.cursor_state == CursorState.STARTED.value
 
         list(cur1)
-        with pytest.raises(ValueError) as exc:
+        with pytest.raises(ValueError) as exc:  # noqa: F841
             cur1.limit(1)
         # TODO depending on the cursor exceptions:
         # assert exc.value.cursor_state == CursorState.CLOSED.value
@@ -251,9 +249,8 @@ class TestExceptionsSync:
         sync_empty_collection: DefaultCollection,
     ) -> None:
         wcol = sync_empty_collection._copy(keyspace="nonexisting")
-        cur1 = wcol.find({})  # type: ignore[attr-defined]
-        cur2 = wcol.find({})  # type: ignore[attr-defined]
-        cur3 = wcol.find({})  # type: ignore[attr-defined]
+        cur1 = wcol.find({})
+        cur2 = wcol.find({})
 
         with pytest.raises(DataAPIResponseException):
             for item in cur1:
@@ -262,13 +259,8 @@ class TestExceptionsSync:
         with pytest.raises(DataAPIResponseException):
             cur2.__next__()
 
-        # RESTOREFIND
-        # with pytest.raises(DataAPIResponseException):
-        #     cur3.distinct("f")
-
-        # RESTOREFIND
-        # with pytest.raises(DataAPIResponseException):
-        #     wcol.distinct("f")  # type: ignore[attr-defined]
+        with pytest.raises(DataAPIResponseException):
+            wcol.distinct("f")
 
         with pytest.raises(DataAPIResponseException):
             wcol.find_one({})

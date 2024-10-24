@@ -31,9 +31,11 @@ from astrapy.constants import (
     SortType,
     normalize_optional_projection,
 )
-
-# RESTOREFIND
-# from astrapy.cursors import AsyncCursor, Cursor
+from astrapy.data.utils.distinct_extractors import (
+    _create_document_key_extractor,
+    _hash_document,
+    _reduce_distinct_key_to_safe,
+)
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
     CollectionNotFoundException,
@@ -975,7 +977,7 @@ class Collection(Generic[DOC]):
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `data_operation_timeout_ms`.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a Cursor object representing iterations over the matching documents
@@ -1087,10 +1089,11 @@ class Collection(Generic[DOC]):
                 "Cannot use `include_similarity` unless for vector search."
             )
         return (
-            CollectionCursor(collection=self)
-            # RESTOREFIND
-            # max_time_ms=_request_timeout_ms,
-            # overall_max_time_ms=None,
+            CollectionCursor(
+                collection=self,
+                request_timeout_ms=_request_timeout_ms,
+                overall_max_time_ms=None,
+            )
             .filter(filter)
             .project(projection)
             .skip(skip)
@@ -1216,98 +1219,122 @@ class Collection(Generic[DOC]):
             return None
         return fo_response["data"]["document"]  # type: ignore[no-any-return]
 
-    # RESTOREFIND
-    # def distinct(
-    #     self,
-    #     key: str,
-    #     *,
-    #     filter: FilterType | None = None,
-    #     request_timeout_ms: int | None = None,
-    #     data_operation_timeout_ms: int | None = None,
-    #     max_time_ms: int | None = None,
-    # ) -> list[Any]:
-    #     """
-    #     Return a list of the unique values of `key` across the documents
-    #     in the collection that match the provided filter.
+    def distinct(
+        self,
+        key: str,
+        *,
+        filter: FilterType | None = None,
+        request_timeout_ms: int | None = None,
+        data_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> list[Any]:
+        """
+        Return a list of the unique values of `key` across the documents
+        in the collection that match the provided filter.
 
-    #     Args:
-    #         key: the name of the field whose value is inspected across documents.
-    #             Keys can use dot-notation to descend to deeper document levels.
-    #             Example of acceptable `key` values:
-    #                 "field"
-    #                 "field.subfield"
-    #                 "field.3"
-    #                 "field.3.subfield"
-    #             If lists are encountered and no numeric index is specified,
-    #             all items in the list are visited.
-    #         filter: a predicate expressed as a dictionary according to the
-    #             Data API filter syntax. Examples are:
-    #                 {}
-    #                 {"name": "John"}
-    #                 {"price": {"$lt": 100}}
-    #                 {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
-    #             See the Data API documentation for the full set of operators.
-    #         request_timeout_ms: a timeout, in milliseconds, for each API request.
-    #         data_operation_timeout_ms: a timeout, in milliseconds, for the whole
-    #             requested operation (which may involve multiple API requests).
-    #             This method, being based on `find` (see) may entail successive HTTP API
-    #             requests, depending on the amount of involved documents.
-    #         max_time_ms: an alias for `data_operation_timeout_ms`.
+        Args:
+            key: the name of the field whose value is inspected across documents.
+                Keys can use dot-notation to descend to deeper document levels.
+                Example of acceptable `key` values:
+                    "field"
+                    "field.subfield"
+                    "field.3"
+                    "field.3.subfield"
+                If lists are encountered and no numeric index is specified,
+                all items in the list are visited.
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
+                See the Data API documentation for the full set of operators.
+            request_timeout_ms: a timeout, in milliseconds, for each API request.
+            data_operation_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation (which may involve multiple API requests).
+                This method, being based on `find` (see) may entail successive HTTP API
+                requests, depending on the amount of involved documents.
+            max_time_ms: an alias for `data_operation_timeout_ms`.
 
-    #     Returns:
-    #         a list of all different values for `key` found across the documents
-    #         that match the filter. The result list has no repeated items.
+        Returns:
+            a list of all different values for `key` found across the documents
+            that match the filter. The result list has no repeated items.
 
-    #     Example:
-    #         >>> my_coll.insert_many(
-    #         ...     [
-    #         ...         {"name": "Marco", "food": ["apple", "orange"], "city": "Helsinki"},
-    #         ...         {"name": "Emma", "food": {"likes_fruit": True, "allergies": []}},
-    #         ...     ]
-    #         ... )
-    #         InsertManyResult(raw_results=..., inserted_ids=['c5b99f37-...', 'd6416321-...'])
-    #         >>> my_coll.distinct("name")
-    #         ['Marco', 'Emma']
-    #         >>> my_coll.distinct("city")
-    #         ['Helsinki']
-    #         >>> my_coll.distinct("food")
-    #         ['apple', 'orange', {'likes_fruit': True, 'allergies': []}]
-    #         >>> my_coll.distinct("food.1")
-    #         ['orange']
-    #         >>> my_coll.distinct("food.allergies")
-    #         []
-    #         >>> my_coll.distinct("food.likes_fruit")
-    #         [True]
+        Example:
+            >>> my_coll.insert_many(
+            ...     [
+            ...         {"name": "Marco", "food": ["apple", "orange"], "city": "Helsinki"},
+            ...         {"name": "Emma", "food": {"likes_fruit": True, "allergies": []}},
+            ...     ]
+            ... )
+            InsertManyResult(raw_results=..., inserted_ids=['c5b99f37-...', 'd6416321-...'])
+            >>> my_coll.distinct("name")
+            ['Marco', 'Emma']
+            >>> my_coll.distinct("city")
+            ['Helsinki']
+            >>> my_coll.distinct("food")
+            ['apple', 'orange', {'likes_fruit': True, 'allergies': []}]
+            >>> my_coll.distinct("food.1")
+            ['orange']
+            >>> my_coll.distinct("food.allergies")
+            []
+            >>> my_coll.distinct("food.likes_fruit")
+            [True]
 
-    #     Note:
-    #         It must be kept in mind that `distinct` is a client-side operation,
-    #         which effectively browses all required documents using the logic
-    #         of the `find` method and collects the unique values found for `key`.
-    #         As such, there may be performance, latency and ultimately
-    #         billing implications if the amount of matching documents is large.
+        Note:
+            It must be kept in mind that `distinct` is a client-side operation,
+            which effectively browses all required documents using the logic
+            of the `find` method and collects the unique values found for `key`.
+            As such, there may be performance, latency and ultimately
+            billing implications if the amount of matching documents is large.
 
-    #     Note:
-    #         For details on the behaviour of "distinct" in conjunction with
-    #         real-time changes in the collection contents, see the
-    #         Note of the `find` command.
-    #     """
+        Note:
+            For details on the behaviour of "distinct" in conjunction with
+            real-time changes in the collection contents, see the
+            Note of the `find` command.
+        """
 
-    #     _request_timeout_ms = (
-    #         request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
-    #     )
-    #     _data_operation_timeout_ms = (
-    #         data_operation_timeout_ms
-    #         or max_time_ms
-    #         or self.api_options.timeout_options.data_operation_timeout_ms
-    #     )
-    #     f_cursor = Cursor(
-    #         collection=self,
-    #         filter=filter,
-    #         projection={key: True},
-    #         max_time_ms=_request_timeout_ms,
-    #         overall_max_time_ms=_data_operation_timeout_ms,
-    #     )
-    #     return f_cursor.distinct(key)
+        # lazy-import here to avoid circular import issues
+        from astrapy.cursors import CollectionCursor
+
+        _request_timeout_ms = (
+            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        )
+        _data_operation_timeout_ms = (
+            data_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.data_operation_timeout_ms
+        )
+        # preparing cursor:
+        _extractor = _create_document_key_extractor(key)
+        _key = _reduce_distinct_key_to_safe(key)
+        if _key == "":
+            raise ValueError(
+                "The 'key' parameter for distinct cannot be empty "
+                "or start with a list index."
+            )
+        # relaxing the type hint (limited to within this method body)
+        f_cursor: CollectionCursor[dict[str, Any]] = (
+            CollectionCursor(
+                collection=self,
+                request_timeout_ms=_request_timeout_ms,
+                overall_max_time_ms=_data_operation_timeout_ms,
+            )  # type: ignore[assignment]
+            .filter(filter)
+            .project({_key: True})
+        )
+        # consuming it:
+        _item_hashes = set()
+        distinct_items: list[Any] = []
+        logger.info(f"running distinct() on '{self.name}'")
+        for document in f_cursor:
+            for item in _extractor(document):
+                _item_hash = _hash_document(item)
+                if _item_hash not in _item_hashes:
+                    _item_hashes.add(_item_hash)
+                    distinct_items.append(item)
+        logger.info(f"finished running distinct() on '{self.name}'")
+        return distinct_items
 
     def count_documents(
         self,
@@ -3330,7 +3357,7 @@ class AsyncCollection(Generic[DOC]):
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `data_operation_timeout_ms`.
+            max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
             an AsyncCursor object representing iterations over the matching documents
@@ -3452,10 +3479,11 @@ class AsyncCollection(Generic[DOC]):
                 "Cannot use `include_similarity` unless for vector search."
             )
         return (
-            AsyncCollectionCursor(collection=self)
-            # RESTOREFIND
-            # max_time_ms=_request_timeout_ms,
-            # overall_max_time_ms=None,
+            AsyncCollectionCursor(
+                collection=self,
+                request_timeout_ms=_request_timeout_ms,
+                overall_max_time_ms=None,
+            )
             .filter(filter)
             .project(projection)
             .skip(skip)
@@ -3597,106 +3625,130 @@ class AsyncCollection(Generic[DOC]):
             return None
         return fo_response["data"]["document"]  # type: ignore[no-any-return]
 
-    # RESTOREFIND
-    # async def distinct(
-    #     self,
-    #     key: str,
-    #     *,
-    #     filter: FilterType | None = None,
-    #     request_timeout_ms: int | None = None,
-    #     data_operation_timeout_ms: int | None = None,
-    #     max_time_ms: int | None = None,
-    # ) -> list[Any]:
-    #     """
-    #     Return a list of the unique values of `key` across the documents
-    #     in the collection that match the provided filter.
+    async def distinct(
+        self,
+        key: str,
+        *,
+        filter: FilterType | None = None,
+        request_timeout_ms: int | None = None,
+        data_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> list[Any]:
+        """
+        Return a list of the unique values of `key` across the documents
+        in the collection that match the provided filter.
 
-    #     Args:
-    #         key: the name of the field whose value is inspected across documents.
-    #             Keys can use dot-notation to descend to deeper document levels.
-    #             Example of acceptable `key` values:
-    #                 "field"
-    #                 "field.subfield"
-    #                 "field.3"
-    #                 "field.3.subfield"
-    #             If lists are encountered and no numeric index is specified,
-    #             all items in the list are visited.
-    #         filter: a predicate expressed as a dictionary according to the
-    #             Data API filter syntax. Examples are:
-    #                 {}
-    #                 {"name": "John"}
-    #                 {"price": {"$lt": 100}}
-    #                 {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
-    #             See the Data API documentation for the full set of operators.
-    #         request_timeout_ms: a timeout, in milliseconds, for each API request.
-    #         data_operation_timeout_ms: a timeout, in milliseconds, for the whole
-    #             requested operation (which may involve multiple API requests).
-    #             This method, being based on `find` (see) may entail successive HTTP API
-    #             requests, depending on the amount of involved documents.
-    #         max_time_ms: an alias for `data_operation_timeout_ms`.
+        Args:
+            key: the name of the field whose value is inspected across documents.
+                Keys can use dot-notation to descend to deeper document levels.
+                Example of acceptable `key` values:
+                    "field"
+                    "field.subfield"
+                    "field.3"
+                    "field.3.subfield"
+                If lists are encountered and no numeric index is specified,
+                all items in the list are visited.
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
+                See the Data API documentation for the full set of operators.
+            request_timeout_ms: a timeout, in milliseconds, for each API request.
+            data_operation_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation (which may involve multiple API requests).
+                This method, being based on `find` (see) may entail successive HTTP API
+                requests, depending on the amount of involved documents.
+            max_time_ms: an alias for `data_operation_timeout_ms`.
 
-    #     Returns:
-    #         a list of all different values for `key` found across the documents
-    #         that match the filter. The result list has no repeated items.
+        Returns:
+            a list of all different values for `key` found across the documents
+            that match the filter. The result list has no repeated items.
 
-    #     Example:
-    #         >>> async def run_distinct(acol: AsyncCollection) -> None:
-    #         ...     await acol.insert_many(
-    #         ...         [
-    #         ...             {"name": "Marco", "food": ["apple", "orange"], "city": "Helsinki"},
-    #         ...             {"name": "Emma", "food": {"likes_fruit": True, "allergies": []}},
-    #         ...         ]
-    #         ...     )
-    #         ...     distinct0 = await acol.distinct("name")
-    #         ...     print("distinct('name')", distinct0)
-    #         ...     distinct1 = await acol.distinct("city")
-    #         ...     print("distinct('city')", distinct1)
-    #         ...     distinct2 = await acol.distinct("food")
-    #         ...     print("distinct('food')", distinct2)
-    #         ...     distinct3 = await acol.distinct("food.1")
-    #         ...     print("distinct('food.1')", distinct3)
-    #         ...     distinct4 = await acol.distinct("food.allergies")
-    #         ...     print("distinct('food.allergies')", distinct4)
-    #         ...     distinct5 = await acol.distinct("food.likes_fruit")
-    #         ...     print("distinct('food.likes_fruit')", distinct5)
-    #         ...
-    #         >>> asyncio.run(run_distinct(my_async_coll))
-    #         distinct('name') ['Emma', 'Marco']
-    #         distinct('city') ['Helsinki']
-    #         distinct('food') [{'likes_fruit': True, 'allergies': []}, 'apple', 'orange']
-    #         distinct('food.1') ['orange']
-    #         distinct('food.allergies') []
-    #         distinct('food.likes_fruit') [True]
+        Example:
+            >>> async def run_distinct(acol: AsyncCollection) -> None:
+            ...     await acol.insert_many(
+            ...         [
+            ...             {"name": "Marco", "food": ["apple", "orange"], "city": "Helsinki"},
+            ...             {"name": "Emma", "food": {"likes_fruit": True, "allergies": []}},
+            ...         ]
+            ...     )
+            ...     distinct0 = await acol.distinct("name")
+            ...     print("distinct('name')", distinct0)
+            ...     distinct1 = await acol.distinct("city")
+            ...     print("distinct('city')", distinct1)
+            ...     distinct2 = await acol.distinct("food")
+            ...     print("distinct('food')", distinct2)
+            ...     distinct3 = await acol.distinct("food.1")
+            ...     print("distinct('food.1')", distinct3)
+            ...     distinct4 = await acol.distinct("food.allergies")
+            ...     print("distinct('food.allergies')", distinct4)
+            ...     distinct5 = await acol.distinct("food.likes_fruit")
+            ...     print("distinct('food.likes_fruit')", distinct5)
+            ...
+            >>> asyncio.run(run_distinct(my_async_coll))
+            distinct('name') ['Emma', 'Marco']
+            distinct('city') ['Helsinki']
+            distinct('food') [{'likes_fruit': True, 'allergies': []}, 'apple', 'orange']
+            distinct('food.1') ['orange']
+            distinct('food.allergies') []
+            distinct('food.likes_fruit') [True]
 
-    #     Note:
-    #         It must be kept in mind that `distinct` is a client-side operation,
-    #         which effectively browses all required documents using the logic
-    #         of the `find` method and collects the unique values found for `key`.
-    #         As such, there may be performance, latency and ultimately
-    #         billing implications if the amount of matching documents is large.
+        Note:
+            It must be kept in mind that `distinct` is a client-side operation,
+            which effectively browses all required documents using the logic
+            of the `find` method and collects the unique values found for `key`.
+            As such, there may be performance, latency and ultimately
+            billing implications if the amount of matching documents is large.
 
-    #     Note:
-    #         For details on the behaviour of "distinct" in conjunction with
-    #         real-time changes in the collection contents, see the
-    #         Note of the `find` command.
-    #     """
+        Note:
+            For details on the behaviour of "distinct" in conjunction with
+            real-time changes in the collection contents, see the
+            Note of the `find` command.
+        """
 
-    #     _request_timeout_ms = (
-    #         request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
-    #     )
-    #     _data_operation_timeout_ms = (
-    #         data_operation_timeout_ms
-    #         or max_time_ms
-    #         or self.api_options.timeout_options.data_operation_timeout_ms
-    #     )
-    #     f_cursor = AsyncCursor(
-    #         collection=self,
-    #         filter=filter,
-    #         projection={key: True},
-    #         max_time_ms=_request_timeout_ms,
-    #         overall_max_time_ms=_data_operation_timeout_ms,
-    #     )
-    #     return await f_cursor.distinct(key)
+        # lazy-import here to avoid circular import issues
+        from astrapy.cursors import AsyncCollectionCursor
+
+        _request_timeout_ms = (
+            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        )
+        _data_operation_timeout_ms = (
+            data_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.data_operation_timeout_ms
+        )
+        # preparing cursor:
+        _extractor = _create_document_key_extractor(key)
+        _key = _reduce_distinct_key_to_safe(key)
+        if _key == "":
+            raise ValueError(
+                "The 'key' parameter for distinct cannot be empty "
+                "or start with a list index."
+            )
+        # relaxing the type hint (limited to within this method body)
+        f_cursor: AsyncCollectionCursor[dict[str, Any]] = (
+            AsyncCollectionCursor(
+                collection=self,
+                request_timeout_ms=_request_timeout_ms,
+                overall_max_time_ms=_data_operation_timeout_ms,
+            )  # type: ignore[assignment]
+            .filter(filter)
+            .project({_key: True})
+        )
+        # consuming it:
+        _item_hashes = set()
+        distinct_items: list[Any] = []
+        logger.info(f"running distinct() on '{self.name}'")
+        async for document in f_cursor:
+            for item in _extractor(document):
+                _item_hash = _hash_document(item)
+                if _item_hash not in _item_hashes:
+                    _item_hashes.add(_item_hash)
+                    distinct_items.append(item)
+        logger.info(f"finished running distinct() on '{self.name}'")
+        return distinct_items
 
     async def count_documents(
         self,
