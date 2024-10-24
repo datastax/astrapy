@@ -70,16 +70,15 @@ class TestVectorizeMethodsSync:
         assert doc is not None
         assert doc["t"] == "tower"
 
-        #RESTOREFIND
-        # docs = list(
-        #     col.find(
-        #         {},
-        #         sort={"$vectorize": "This building is five storeys tall."},
-        #         limit=2,
-        #         projection={"$vector": False},
-        #     )
-        # )
-        # assert docs[0]["t"] == "tower"
+        docs = list(
+            col.find(
+                {},
+                sort={"$vectorize": "This building is five storeys tall."},
+                limit=2,
+                projection={"$vector": False},
+            )
+        )
+        assert docs[0]["t"] == "tower"
 
         rdoc = col.find_one_and_replace(
             {},
@@ -130,7 +129,6 @@ class TestVectorizeMethodsSync:
     @pytest.mark.describe(
         "test of include_sort_vector in collection vectorize find, sync"
     )
-    @pytest.mark.skip(reason="RESTOREFIND")
     def test_collection_include_sort_vector_vectorize_find_sync(
         self,
         sync_empty_service_collection: DefaultCollection,

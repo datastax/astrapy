@@ -18,11 +18,10 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.constants import DefaultDocumentType
-#RESTOREFIND from astrapy.cursors import AsyncCursor, CursorState
+from astrapy.cursors import AsyncCollectionCursor, CursorState
 from astrapy.cursors import CursorState
 from astrapy.exceptions import (
     CollectionNotFoundException,
-    CursorIsStartedException,
     DataAPIResponseException,
     DevOpsAPIException,
     InsertManyException,
@@ -54,12 +53,11 @@ class TestExceptionsAsync:
             await acol.insert_many(bad_docs, ordered=False, chunk_size=2, concurrency=2)
 
     @pytest.mark.describe("test of collection insert_many insert-failure modes, async")
-    @pytest.mark.skip(reason="RESTOREFIND")
     async def test_collection_insert_many_insert_failures_async(
         self,
         async_empty_collection: DefaultAsyncCollection,
     ) -> None:
-        async def _alist(acursor: AsyncCursor) -> list[DefaultDocumentType]:  # type: ignore[name-defined]
+        async def _alist(acursor: AsyncCollectionCursor) -> list[DefaultDocumentType]:  # type: ignore[name-defined]
             return [doc async for doc in acursor]
 
         acol = async_empty_collection
@@ -239,7 +237,6 @@ class TestExceptionsAsync:
             ).distinct("a")
 
     @pytest.mark.describe("test of custom exceptions in cursors, async")
-    @pytest.mark.skip(reason="RESTOREFIND")
     async def test_cursor_custom_exceptions_async(
         self,
         async_empty_collection: DefaultAsyncCollection,
@@ -249,17 +246,18 @@ class TestExceptionsAsync:
         cur1.limit(10)
 
         await cur1.__anext__()
-        with pytest.raises(CursorIsStartedException) as exc:
+        with pytest.raises(ValueError) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == CursorState.STARTED.value
+        # TODO depending on the cursor exceptions:
+        # assert exc.value.cursor_state == CursorState.STARTED.value
 
         [doc async for doc in cur1]
-        with pytest.raises(CursorIsStartedException) as exc:
+        with pytest.raises(ValueError) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == CursorState.CLOSED.value
+        # TODO depending on the cursor exceptions:
+        # assert exc.value.cursor_state == CursorState.CLOSED.value
 
     @pytest.mark.describe("test of standard exceptions in cursors, async")
-    @pytest.mark.skip(reason="RESTOREFIND")
     async def test_cursor_standard_exceptions_async(
         self,
         async_empty_collection: DefaultAsyncCollection,
@@ -276,11 +274,13 @@ class TestExceptionsAsync:
         with pytest.raises(DataAPIResponseException):
             await cur2.__anext__()
 
-        with pytest.raises(DataAPIResponseException):
-            await cur3.distinct("f")
+        # RESTOREFIND
+        # with pytest.raises(DataAPIResponseException):
+        #     await cur3.distinct("f")
 
-        with pytest.raises(DataAPIResponseException):
-            await awcol.distinct("f")  # type: ignore[attr-defined]
+        # RESTOREFIND
+        # with pytest.raises(DataAPIResponseException):
+        #     await awcol.distinct("f")  # type: ignore[attr-defined]
 
         with pytest.raises(DataAPIResponseException):
             await awcol.find_one({})

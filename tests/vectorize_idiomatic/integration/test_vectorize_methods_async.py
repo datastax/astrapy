@@ -20,7 +20,7 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
 from astrapy.constants import DefaultDocumentType
-#RESTOREFIND from astrapy.cursors import AsyncCursor
+from astrapy.cursors import AsyncCollectionCursor
 from astrapy.exceptions import DataAPIResponseException
 
 from ..conftest import DefaultAsyncCollection
@@ -73,17 +73,16 @@ class TestVectorizeMethodsAsync:
         assert doc is not None
         assert doc["t"] == "tower"
 
-        #RESTOREFIND
-        # docs = [
-        #     doc
-        #     async for doc in acol.find(
-        #         {},
-        #         sort={"$vectorize": "This building is five storeys tall."},
-        #         limit=2,
-        #         projection={"$vector": False},
-        #     )
-        # ]
-        # assert docs[0]["t"] == "tower"
+        docs = [
+            doc
+            async for doc in acol.find(
+                {},
+                sort={"$vectorize": "This building is five storeys tall."},
+                limit=2,
+                projection={"$vector": False},
+            )
+        ]
+        assert docs[0]["t"] == "tower"
 
         rdoc = await acol.find_one_and_replace(
             {},
@@ -134,7 +133,6 @@ class TestVectorizeMethodsAsync:
     @pytest.mark.describe(
         "test of include_sort_vector in collection vectorize find, async"
     )
-    @pytest.mark.skip(reason="RESTOREFIND")
     async def test_collection_include_sort_vector_vectorize_find_async(
         self,
         async_empty_service_collection: DefaultAsyncCollection,
@@ -145,7 +143,7 @@ class TestVectorizeMethodsAsync:
         def _is_vector(v: Any) -> bool:
             return isinstance(v, list) and isinstance(v[0], float)
 
-        async def _alist(acursor: AsyncCursor) -> list[DefaultDocumentType]:  # type: ignore[name-defined]
+        async def _alist(acursor: AsyncCollectionCursor) -> list[DefaultDocumentType]:  # type: ignore[name-defined]
             return [doc async for doc in acursor]
 
         for include_sv in [False, True]:

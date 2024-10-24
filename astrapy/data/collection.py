@@ -62,6 +62,7 @@ from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
     from astrapy.authentication import EmbeddingHeadersProvider
+    from astrapy.cursors import AsyncCollectionCursor, CollectionCursor
 
 
 logger = logging.getLogger(__name__)
@@ -899,204 +900,205 @@ class Collection(Generic[DOC]):
             )
             return full_result
 
-    # RESTOREFIND
-    # def find(
-    #     self,
-    #     filter: FilterType | None = None,
-    #     *,
-    #     projection: ProjectionType | None = None,
-    #     skip: int | None = None,
-    #     limit: int | None = None,
-    #     include_similarity: bool | None = None,
-    #     include_sort_vector: bool | None = None,
-    #     sort: SortType | None = None,
-    #     request_timeout_ms: int | None = None,
-    #     max_time_ms: int | None = None,
-    # ) -> Cursor:
-    #     """
-    #     Find documents on the collection, matching a certain provided filter.
+    def find(
+        self,
+        filter: FilterType | None = None,
+        *,
+        projection: ProjectionType | None = None,
+        skip: int | None = None,
+        limit: int | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        sort: SortType | None = None,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> CollectionCursor[DOC]:
+        """
+        Find documents on the collection, matching a certain provided filter.
 
-    #     The method returns a Cursor that can then be iterated over. Depending
-    #     on the method call pattern, the iteration over all documents can reflect
-    #     collection mutations occurred since the `find` method was called, or not.
-    #     In cases where the cursor reflects mutations in real-time, it will iterate
-    #     over cursors in an approximate way (i.e. exhibiting occasional skipped
-    #     or duplicate documents). This happens when making use of the `sort`
-    #     option in a non-vector-search manner.
+        The method returns a Cursor that can then be iterated over. Depending
+        on the method call pattern, the iteration over all documents can reflect
+        collection mutations occurred since the `find` method was called, or not.
+        In cases where the cursor reflects mutations in real-time, it will iterate
+        over cursors in an approximate way (i.e. exhibiting occasional skipped
+        or duplicate documents). This happens when making use of the `sort`
+        option in a non-vector-search manner.
 
-    #     Args:
-    #         filter: a predicate expressed as a dictionary according to the
-    #             Data API filter syntax. Examples are:
-    #                 {}
-    #                 {"name": "John"}
-    #                 {"price": {"$lt": 100}}
-    #                 {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
-    #             See the Data API documentation for the full set of operators.
-    #         projection: it controls which parts of the document are returned.
-    #             It can be an allow-list: `{"f1": True, "f2": True}`,
-    #             or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
-    #             (except for the `_id` and other special fields, which can be
-    #             associated to both True or False independently of the rest
-    #             of the specification).
-    #             The special star-projections `{"*": True}` and `{"*": False}`
-    #             have the effect of returning the whole document and `{}` respectively.
-    #             For lists in documents, slice directives can be passed to select
-    #             portions of the list: for instance, `{"array": {"$slice": 2}}`,
-    #             `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
-    #             `{"array": {"$slice": [-4, 2]}}`.
-    #             An iterable over strings will be treated implicitly as an allow-list.
-    #             The default projection (used if this parameter is not passed) does not
-    #             necessarily include "special" fields such as `$vector` or `$vectorize`.
-    #             See the Data API documentation for more on projections.
-    #         skip: with this integer parameter, what would be the first `skip`
-    #             documents returned by the query are discarded, and the results
-    #             start from the (skip+1)-th document.
-    #             This parameter can be used only in conjunction with an explicit
-    #             `sort` criterion of the ascending/descending type (i.e. it cannot
-    #             be used when not sorting, nor with vector-based ANN search).
-    #         limit: this (integer) parameter sets a limit over how many documents
-    #             are returned. Once `limit` is reached (or the cursor is exhausted
-    #             for lack of matching documents), nothing more is returned.
-    #         include_similarity: a boolean to request the numeric value of the
-    #             similarity to be returned as an added "$similarity" key in each
-    #             returned document. Can only be used for vector ANN search, i.e.
-    #             when either `vector` is supplied or the `sort` parameter has the
-    #             shape {"$vector": ...}.
-    #         include_sort_vector: a boolean to request query vector used in this search.
-    #             If set to True (and if the invocation is a vector search), calling
-    #             the `get_sort_vector` method on the returned cursor will yield
-    #             the vector used for the ANN search.
-    #         sort: with this dictionary parameter one can control the order
-    #             the documents are returned. See the Note about sorting, as well as
-    #             the one about upper bounds, for details.
-    #             Vector-based ANN sorting is achieved by providing a "$vector"
-    #             or a "$vectorize" key in `sort`.
-    #         request_timeout_ms: a timeout, in milliseconds, for each single one
-    #             of the underlying HTTP requests used to fetch documents as the
-    #             cursor is iterated over.
-    #             If not passed, the collection-level setting is used instead.
-    #         max_time_ms: an alias for `data_operation_timeout_ms`.
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
+                See the Data API documentation for the full set of operators.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection (used if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
+            skip: with this integer parameter, what would be the first `skip`
+                documents returned by the query are discarded, and the results
+                start from the (skip+1)-th document.
+                This parameter can be used only in conjunction with an explicit
+                `sort` criterion of the ascending/descending type (i.e. it cannot
+                be used when not sorting, nor with vector-based ANN search).
+            limit: this (integer) parameter sets a limit over how many documents
+                are returned. Once `limit` is reached (or the cursor is exhausted
+                for lack of matching documents), nothing more is returned.
+            include_similarity: a boolean to request the numeric value of the
+                similarity to be returned as an added "$similarity" key in each
+                returned document. Can only be used for vector ANN search, i.e.
+                when either `vector` is supplied or the `sort` parameter has the
+                shape {"$vector": ...}.
+            include_sort_vector: a boolean to request query vector used in this search.
+                If set to True (and if the invocation is a vector search), calling
+                the `get_sort_vector` method on the returned cursor will yield
+                the vector used for the ANN search.
+            sort: with this dictionary parameter one can control the order
+                the documents are returned. See the Note about sorting, as well as
+                the one about upper bounds, for details.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
+            request_timeout_ms: a timeout, in milliseconds, for each single one
+                of the underlying HTTP requests used to fetch documents as the
+                cursor is iterated over.
+                If not passed, the collection-level setting is used instead.
+            max_time_ms: an alias for `data_operation_timeout_ms`.
 
-    #     Returns:
-    #         a Cursor object representing iterations over the matching documents
-    #         (see the Cursor object for how to use it. The simplest thing is to
-    #         run a for loop: `for document in collection.sort(...):`).
+        Returns:
+            a Cursor object representing iterations over the matching documents
+            (see the Cursor object for how to use it. The simplest thing is to
+            run a for loop: `for document in collection.sort(...):`).
 
-    #     Examples:
-    #         >>> filter = {"seq": {"$exists": True}}
-    #         >>> for doc in my_coll.find(filter, projection={"seq": True}, limit=5):
-    #         ...     print(doc["seq"])
-    #         ...
-    #         37
-    #         35
-    #         10
-    #         36
-    #         27
-    #         >>> cursor1 = my_coll.find(
-    #         ...     {},
-    #         ...     limit=4,
-    #         ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
-    #         ... )
-    #         >>> [doc["_id"] for doc in cursor1]
-    #         ['97e85f81-...', '1581efe4-...', '...', '...']
-    #         >>> cursor2 = my_coll.find({}, limit=3)
-    #         >>> cursor2.distinct("seq")
-    #         [37, 35, 10]
+        Examples:
+            >>> filter = {"seq": {"$exists": True}}
+            >>> for doc in my_coll.find(filter, projection={"seq": True}, limit=5):
+            ...     print(doc["seq"])
+            ...
+            37
+            35
+            10
+            36
+            27
+            >>> cursor1 = my_coll.find(
+            ...     {},
+            ...     limit=4,
+            ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
+            ... )
+            >>> [doc["_id"] for doc in cursor1]
+            ['97e85f81-...', '1581efe4-...', '...', '...']
+            >>> cursor2 = my_coll.find({}, limit=3)
+            >>> cursor2.distinct("seq")
+            [37, 35, 10]
 
-    #         >>> my_coll.insert_many([
-    #         ...     {"tag": "A", "$vector": [4, 5]},
-    #         ...     {"tag": "B", "$vector": [3, 4]},
-    #         ...     {"tag": "C", "$vector": [3, 2]},
-    #         ...     {"tag": "D", "$vector": [4, 1]},
-    #         ...     {"tag": "E", "$vector": [2, 5]},
-    #         ... ])
-    #         >>> ann_tags = [
-    #         ...     document["tag"]
-    #         ...     for document in my_coll.find(
-    #         ...         {},
-    #         ...         sort={"$vector": [3, 3]},
-    #         ...         limit=3,
-    #         ...     )
-    #         ... ]
-    #         >>> ann_tags
-    #         ['A', 'B', 'C']
-    #         >>> # (assuming the collection has metric VectorMetric.COSINE)
+            >>> my_coll.insert_many([
+            ...     {"tag": "A", "$vector": [4, 5]},
+            ...     {"tag": "B", "$vector": [3, 4]},
+            ...     {"tag": "C", "$vector": [3, 2]},
+            ...     {"tag": "D", "$vector": [4, 1]},
+            ...     {"tag": "E", "$vector": [2, 5]},
+            ... ])
+            >>> ann_tags = [
+            ...     document["tag"]
+            ...     for document in my_coll.find(
+            ...         {},
+            ...         sort={"$vector": [3, 3]},
+            ...         limit=3,
+            ...     )
+            ... ]
+            >>> ann_tags
+            ['A', 'B', 'C']
+            >>> # (assuming the collection has metric VectorMetric.COSINE)
 
-    #         >>> cursor = my_coll.find(
-    #         ...     sort={"$vector": [3, 3]},
-    #         ...     limit=3,
-    #         ...     include_sort_vector=True,
-    #         ... )
-    #         >>> cursor.get_sort_vector()
-    #         [3.0, 3.0]
-    #         >>> matches = list(cursor)
-    #         >>> cursor.get_sort_vector()
-    #         [3.0, 3.0]
+            >>> cursor = my_coll.find(
+            ...     sort={"$vector": [3, 3]},
+            ...     limit=3,
+            ...     include_sort_vector=True,
+            ... )
+            >>> cursor.get_sort_vector()
+            [3.0, 3.0]
+            >>> matches = list(cursor)
+            >>> cursor.get_sort_vector()
+            [3.0, 3.0]
 
-    #     Note:
-    #         The following are example values for the `sort` parameter.
-    #         When no particular order is required:
-    #             sort={}  # (default when parameter not provided)
-    #         When sorting by a certain value in ascending/descending order:
-    #             sort={"field": SortDocuments.ASCENDING}
-    #             sort={"field": SortDocuments.DESCENDING}
-    #         When sorting first by "field" and then by "subfield"
-    #         (while modern Python versions preserve the order of dictionaries,
-    #         it is suggested for clarity to employ a `collections.OrderedDict`
-    #         in these cases):
-    #             sort={
-    #                 "field": SortDocuments.ASCENDING,
-    #                 "subfield": SortDocuments.ASCENDING,
-    #             }
-    #         When running a vector similarity (ANN) search:
-    #             sort={"$vector": [0.4, 0.15, -0.5]}
+        Note:
+            The following are example values for the `sort` parameter.
+            When no particular order is required:
+                sort={}  # (default when parameter not provided)
+            When sorting by a certain value in ascending/descending order:
+                sort={"field": SortDocuments.ASCENDING}
+                sort={"field": SortDocuments.DESCENDING}
+            When sorting first by "field" and then by "subfield"
+            (while modern Python versions preserve the order of dictionaries,
+            it is suggested for clarity to employ a `collections.OrderedDict`
+            in these cases):
+                sort={
+                    "field": SortDocuments.ASCENDING,
+                    "subfield": SortDocuments.ASCENDING,
+                }
+            When running a vector similarity (ANN) search:
+                sort={"$vector": [0.4, 0.15, -0.5]}
 
-    #     Note:
-    #         Some combinations of arguments impose an implicit upper bound on the
-    #         number of documents that are returned by the Data API. More specifically:
-    #         (a) Vector ANN searches cannot return more than a number of documents
-    #         that at the time of writing is set to 1000 items.
-    #         (b) When using a sort criterion of the ascending/descending type,
-    #         the Data API will return a smaller number of documents, set to 20
-    #         at the time of writing, and stop there. The returned documents are
-    #         the top results across the whole collection according to the requested
-    #         criterion.
-    #         These provisions should be kept in mind even when subsequently running
-    #         a command such as `.distinct()` on a cursor.
+        Note:
+            Some combinations of arguments impose an implicit upper bound on the
+            number of documents that are returned by the Data API. More specifically:
+            (a) Vector ANN searches cannot return more than a number of documents
+            that at the time of writing is set to 1000 items.
+            (b) When using a sort criterion of the ascending/descending type,
+            the Data API will return a smaller number of documents, set to 20
+            at the time of writing, and stop there. The returned documents are
+            the top results across the whole collection according to the requested
+            criterion.
+            These provisions should be kept in mind even when subsequently running
+            a command such as `.distinct()` on a cursor.
 
-    #     Note:
-    #         When not specifying sorting criteria at all (by vector or otherwise),
-    #         the cursor can scroll through an arbitrary number of documents as
-    #         the Data API and the client periodically exchange new chunks of documents.
-    #         It should be noted that the behavior of the cursor in the case documents
-    #         have been added/removed after the `find` was started depends on database
-    #         internals and it is not guaranteed, nor excluded, that such "real-time"
-    #         changes in the data would be picked up by the cursor.
-    #     """
+        Note:
+            When not specifying sorting criteria at all (by vector or otherwise),
+            the cursor can scroll through an arbitrary number of documents as
+            the Data API and the client periodically exchange new chunks of documents.
+            It should be noted that the behavior of the cursor in the case documents
+            have been added/removed after the `find` was started depends on database
+            internals and it is not guaranteed, nor excluded, that such "real-time"
+            changes in the data would be picked up by the cursor.
+        """
 
-    #     _request_timeout_ms = (
-    #         request_timeout_ms
-    #         or max_time_ms
-    #         or self.api_options.timeout_options.request_timeout_ms
-    #     )
-    #     if include_similarity is not None and not _is_vector_sort(sort):
-    #         raise ValueError(
-    #             "Cannot use `include_similarity` unless for vector search."
-    #         )
-    #     return (
-    #         Cursor(
-    #             collection=self,
-    #             filter=filter,
-    #             projection=projection,
-    #             max_time_ms=_request_timeout_ms,
-    #             overall_max_time_ms=None,
-    #         )
-    #         .skip(skip)
-    #         .limit(limit)
-    #         .sort(sort)
-    #         .include_similarity(include_similarity)
-    #         .include_sort_vector(include_sort_vector)
-    #     )
+        # lazy-import here to avoid circular import issues
+        from astrapy.cursors import CollectionCursor
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        if include_similarity is not None and not _is_vector_sort(sort):
+            raise ValueError(
+                "Cannot use `include_similarity` unless for vector search."
+            )
+        return (
+            CollectionCursor(collection=self)
+            # RESTOREFIND
+            # max_time_ms=_request_timeout_ms,
+            # overall_max_time_ms=None,
+            .filter(filter)
+            .project(projection)
+            .skip(skip)
+            .limit(limit)
+            .sort(sort)
+            .include_similarity(include_similarity)
+            .include_sort_vector(include_sort_vector)
+        )
 
     def find_one(
         self,
@@ -3253,214 +3255,215 @@ class AsyncCollection(Generic[DOC]):
             )
             return full_result
 
-    # RESTOREFIND
-    # def find(
-    #     self,
-    #     filter: FilterType | None = None,
-    #     *,
-    #     projection: ProjectionType | None = None,
-    #     skip: int | None = None,
-    #     limit: int | None = None,
-    #     include_similarity: bool | None = None,
-    #     include_sort_vector: bool | None = None,
-    #     sort: SortType | None = None,
-    #     request_timeout_ms: int | None = None,
-    #     max_time_ms: int | None = None,
-    # ) -> AsyncCursor:
-    #     """
-    #     Find documents on the collection, matching a certain provided filter.
+    def find(
+        self,
+        filter: FilterType | None = None,
+        *,
+        projection: ProjectionType | None = None,
+        skip: int | None = None,
+        limit: int | None = None,
+        include_similarity: bool | None = None,
+        include_sort_vector: bool | None = None,
+        sort: SortType | None = None,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> AsyncCollectionCursor[DOC]:
+        """
+        Find documents on the collection, matching a certain provided filter.
 
-    #     The method returns a Cursor that can then be iterated over. Depending
-    #     on the method call pattern, the iteration over all documents can reflect
-    #     collection mutations occurred since the `find` method was called, or not.
-    #     In cases where the cursor reflects mutations in real-time, it will iterate
-    #     over cursors in an approximate way (i.e. exhibiting occasional skipped
-    #     or duplicate documents). This happens when making use of the `sort`
-    #     option in a non-vector-search manner.
+        The method returns a Cursor that can then be iterated over. Depending
+        on the method call pattern, the iteration over all documents can reflect
+        collection mutations occurred since the `find` method was called, or not.
+        In cases where the cursor reflects mutations in real-time, it will iterate
+        over cursors in an approximate way (i.e. exhibiting occasional skipped
+        or duplicate documents). This happens when making use of the `sort`
+        option in a non-vector-search manner.
 
-    #     Args:
-    #         filter: a predicate expressed as a dictionary according to the
-    #             Data API filter syntax. Examples are:
-    #                 {}
-    #                 {"name": "John"}
-    #                 {"price": {"$lt": 100}}
-    #                 {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
-    #             See the Data API documentation for the full set of operators.
-    #         projection: it controls which parts of the document are returned.
-    #             It can be an allow-list: `{"f1": True, "f2": True}`,
-    #             or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
-    #             (except for the `_id` and other special fields, which can be
-    #             associated to both True or False independently of the rest
-    #             of the specification).
-    #             The special star-projections `{"*": True}` and `{"*": False}`
-    #             have the effect of returning the whole document and `{}` respectively.
-    #             For lists in documents, slice directives can be passed to select
-    #             portions of the list: for instance, `{"array": {"$slice": 2}}`,
-    #             `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
-    #             `{"array": {"$slice": [-4, 2]}}`.
-    #             An iterable over strings will be treated implicitly as an allow-list.
-    #             The default projection (used if this parameter is not passed) does not
-    #             necessarily include "special" fields such as `$vector` or `$vectorize`.
-    #             See the Data API documentation for more on projections.
-    #         skip: with this integer parameter, what would be the first `skip`
-    #             documents returned by the query are discarded, and the results
-    #             start from the (skip+1)-th document.
-    #             This parameter can be used only in conjunction with an explicit
-    #             `sort` criterion of the ascending/descending type (i.e. it cannot
-    #             be used when not sorting, nor with vector-based ANN search).
-    #         limit: this (integer) parameter sets a limit over how many documents
-    #             are returned. Once `limit` is reached (or the cursor is exhausted
-    #             for lack of matching documents), nothing more is returned.
-    #         include_similarity: a boolean to request the numeric value of the
-    #             similarity to be returned as an added "$similarity" key in each
-    #             returned document. Can only be used for vector ANN search, i.e.
-    #             when either `vector` is supplied or the `sort` parameter has the
-    #             shape {"$vector": ...}.
-    #         include_sort_vector: a boolean to request query vector used in this search.
-    #             If set to True (and if the invocation is a vector search), calling
-    #             the `get_sort_vector` method on the returned cursor will yield
-    #             the vector used for the ANN search.
-    #         sort: with this dictionary parameter one can control the order
-    #             the documents are returned. See the Note about sorting, as well as
-    #             the one about upper bounds, for details.
-    #             Vector-based ANN sorting is achieved by providing a "$vector"
-    #             or a "$vectorize" key in `sort`.
-    #         request_timeout_ms: a timeout, in milliseconds, for each single one
-    #             of the underlying HTTP requests used to fetch documents as the
-    #             cursor is iterated over.
-    #             If not passed, the collection-level setting is used instead.
-    #         max_time_ms: an alias for `data_operation_timeout_ms`.
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"price": {"$lt": 100}}
+                    {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
+                See the Data API documentation for the full set of operators.
+            projection: it controls which parts of the document are returned.
+                It can be an allow-list: `{"f1": True, "f2": True}`,
+                or a deny-list: `{"fx": False, "fy": False}`, but not a mixture
+                (except for the `_id` and other special fields, which can be
+                associated to both True or False independently of the rest
+                of the specification).
+                The special star-projections `{"*": True}` and `{"*": False}`
+                have the effect of returning the whole document and `{}` respectively.
+                For lists in documents, slice directives can be passed to select
+                portions of the list: for instance, `{"array": {"$slice": 2}}`,
+                `{"array": {"$slice": -2}}`, `{"array": {"$slice": [4, 2]}}` or
+                `{"array": {"$slice": [-4, 2]}}`.
+                An iterable over strings will be treated implicitly as an allow-list.
+                The default projection (used if this parameter is not passed) does not
+                necessarily include "special" fields such as `$vector` or `$vectorize`.
+                See the Data API documentation for more on projections.
+            skip: with this integer parameter, what would be the first `skip`
+                documents returned by the query are discarded, and the results
+                start from the (skip+1)-th document.
+                This parameter can be used only in conjunction with an explicit
+                `sort` criterion of the ascending/descending type (i.e. it cannot
+                be used when not sorting, nor with vector-based ANN search).
+            limit: this (integer) parameter sets a limit over how many documents
+                are returned. Once `limit` is reached (or the cursor is exhausted
+                for lack of matching documents), nothing more is returned.
+            include_similarity: a boolean to request the numeric value of the
+                similarity to be returned as an added "$similarity" key in each
+                returned document. Can only be used for vector ANN search, i.e.
+                when either `vector` is supplied or the `sort` parameter has the
+                shape {"$vector": ...}.
+            include_sort_vector: a boolean to request query vector used in this search.
+                If set to True (and if the invocation is a vector search), calling
+                the `get_sort_vector` method on the returned cursor will yield
+                the vector used for the ANN search.
+            sort: with this dictionary parameter one can control the order
+                the documents are returned. See the Note about sorting, as well as
+                the one about upper bounds, for details.
+                Vector-based ANN sorting is achieved by providing a "$vector"
+                or a "$vectorize" key in `sort`.
+            request_timeout_ms: a timeout, in milliseconds, for each single one
+                of the underlying HTTP requests used to fetch documents as the
+                cursor is iterated over.
+                If not passed, the collection-level setting is used instead.
+            max_time_ms: an alias for `data_operation_timeout_ms`.
 
-    #     Returns:
-    #         an AsyncCursor object representing iterations over the matching documents
-    #         (see the AsyncCursor object for how to use it. The simplest thing is to
-    #         run a for loop: `for document in collection.sort(...):`).
+        Returns:
+            an AsyncCursor object representing iterations over the matching documents
+            (see the AsyncCursor object for how to use it. The simplest thing is to
+            run a for loop: `for document in collection.sort(...):`).
 
-    #     Examples:
-    #         >>> async def run_finds(acol: AsyncCollection) -> None:
-    #         ...             filter = {"seq": {"$exists": True}}
-    #         ...             print("find results 1:")
-    #         ...             async for doc in acol.find(filter, projection={"seq": True}, limit=5):
-    #         ...                 print(doc["seq"])
-    #         ...             async_cursor1 = acol.find(
-    #         ...                 {},
-    #         ...                 limit=4,
-    #         ...                 sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
-    #         ...             )
-    #         ...             ids = [doc["_id"] async for doc in async_cursor1]
-    #         ...             print("find results 2:", ids)
-    #         ...             async_cursor2 = acol.find({}, limit=3)
-    #         ...             seqs = await async_cursor2.distinct("seq")
-    #         ...             print("distinct results 3:", seqs)
-    #         ...
-    #         >>> asyncio.run(run_finds(my_async_coll))
-    #         find results 1:
-    #         48
-    #         35
-    #         7
-    #         11
-    #         13
-    #         find results 2: ['d656cd9d-...', '479c7ce8-...', '96dc87fd-...', '83f0a21f-...']
-    #         distinct results 3: [48, 35, 7]
+        Examples:
+            >>> async def run_finds(acol: AsyncCollection) -> None:
+            ...             filter = {"seq": {"$exists": True}}
+            ...             print("find results 1:")
+            ...             async for doc in acol.find(filter, projection={"seq": True}, limit=5):
+            ...                 print(doc["seq"])
+            ...             async_cursor1 = acol.find(
+            ...                 {},
+            ...                 limit=4,
+            ...                 sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
+            ...             )
+            ...             ids = [doc["_id"] async for doc in async_cursor1]
+            ...             print("find results 2:", ids)
+            ...             async_cursor2 = acol.find({}, limit=3)
+            ...             seqs = await async_cursor2.distinct("seq")
+            ...             print("distinct results 3:", seqs)
+            ...
+            >>> asyncio.run(run_finds(my_async_coll))
+            find results 1:
+            48
+            35
+            7
+            11
+            13
+            find results 2: ['d656cd9d-...', '479c7ce8-...', '96dc87fd-...', '83f0a21f-...']
+            distinct results 3: [48, 35, 7]
 
-    #         >>> async def run_vector_finds(acol: AsyncCollection) -> None:
-    #         ...     await acol.insert_many([
-    #         ...         {"tag": "A", "$vector": [4, 5]},
-    #         ...         {"tag": "B", "$vector": [3, 4]},
-    #         ...         {"tag": "C", "$vector": [3, 2]},
-    #         ...         {"tag": "D", "$vector": [4, 1]},
-    #         ...         {"tag": "E", "$vector": [2, 5]},
-    #         ...     ])
-    #         ...     ann_tags = [
-    #         ...         document["tag"]
-    #         ...         async for document in acol.find(
-    #         ...             {},
-    #         ...             sort={"$vector": [3, 3]},
-    #         ...             limit=3,
-    #         ...         )
-    #         ...     ]
-    #         ...     return ann_tags
-    #         ...
-    #         >>> asyncio.run(run_vector_finds(my_async_coll))
-    #         ['A', 'B', 'C']
-    #         >>> # (assuming the collection has metric VectorMetric.COSINE)
+            >>> async def run_vector_finds(acol: AsyncCollection) -> None:
+            ...     await acol.insert_many([
+            ...         {"tag": "A", "$vector": [4, 5]},
+            ...         {"tag": "B", "$vector": [3, 4]},
+            ...         {"tag": "C", "$vector": [3, 2]},
+            ...         {"tag": "D", "$vector": [4, 1]},
+            ...         {"tag": "E", "$vector": [2, 5]},
+            ...     ])
+            ...     ann_tags = [
+            ...         document["tag"]
+            ...         async for document in acol.find(
+            ...             {},
+            ...             sort={"$vector": [3, 3]},
+            ...             limit=3,
+            ...         )
+            ...     ]
+            ...     return ann_tags
+            ...
+            >>> asyncio.run(run_vector_finds(my_async_coll))
+            ['A', 'B', 'C']
+            >>> # (assuming the collection has metric VectorMetric.COSINE)
 
-    #         >>> async_cursor = my_async_coll.find(
-    #         ...     sort={"$vector": [3, 3]},
-    #         ...     limit=3,
-    #         ...     include_sort_vector=True,
-    #         ... )
-    #         >>> asyncio.run(async_cursor.get_sort_vector())
-    #         [3.0, 3.0]
-    #         >>> asyncio.run(async_cursor.__anext__())
-    #         {'_id': 'b13ce177-738e-47ec-bce1-77738ee7ec93', 'tag': 'A'}
-    #         >>> asyncio.run(async_cursor.get_sort_vector())
-    #         [3.0, 3.0]
+            >>> async_cursor = my_async_coll.find(
+            ...     sort={"$vector": [3, 3]},
+            ...     limit=3,
+            ...     include_sort_vector=True,
+            ... )
+            >>> asyncio.run(async_cursor.get_sort_vector())
+            [3.0, 3.0]
+            >>> asyncio.run(async_cursor.__anext__())
+            {'_id': 'b13ce177-738e-47ec-bce1-77738ee7ec93', 'tag': 'A'}
+            >>> asyncio.run(async_cursor.get_sort_vector())
+            [3.0, 3.0]
 
-    #     Note:
-    #         The following are example values for the `sort` parameter.
-    #         When no particular order is required:
-    #             sort={}
-    #         When sorting by a certain value in ascending/descending order:
-    #             sort={"field": SortDocuments.ASCENDING}
-    #             sort={"field": SortDocuments.DESCENDING}
-    #         When sorting first by "field" and then by "subfield"
-    #         (while modern Python versions preserve the order of dictionaries,
-    #         it is suggested for clarity to employ a `collections.OrderedDict`
-    #         in these cases):
-    #             sort={
-    #                 "field": SortDocuments.ASCENDING,
-    #                 "subfield": SortDocuments.ASCENDING,
-    #             }
-    #         When running a vector similarity (ANN) search:
-    #             sort={"$vector": [0.4, 0.15, -0.5]}
+        Note:
+            The following are example values for the `sort` parameter.
+            When no particular order is required:
+                sort={}
+            When sorting by a certain value in ascending/descending order:
+                sort={"field": SortDocuments.ASCENDING}
+                sort={"field": SortDocuments.DESCENDING}
+            When sorting first by "field" and then by "subfield"
+            (while modern Python versions preserve the order of dictionaries,
+            it is suggested for clarity to employ a `collections.OrderedDict`
+            in these cases):
+                sort={
+                    "field": SortDocuments.ASCENDING,
+                    "subfield": SortDocuments.ASCENDING,
+                }
+            When running a vector similarity (ANN) search:
+                sort={"$vector": [0.4, 0.15, -0.5]}
 
-    #     Note:
-    #         Some combinations of arguments impose an implicit upper bound on the
-    #         number of documents that are returned by the Data API. More specifically:
-    #         (a) Vector ANN searches cannot return more than a number of documents
-    #         that at the time of writing is set to 1000 items.
-    #         (b) When using a sort criterion of the ascending/descending type,
-    #         the Data API will return a smaller number of documents, set to 20
-    #         at the time of writing, and stop there. The returned documents are
-    #         the top results across the whole collection according to the requested
-    #         criterion.
-    #         These provisions should be kept in mind even when subsequently running
-    #         a command such as `.distinct()` on a cursor.
+        Note:
+            Some combinations of arguments impose an implicit upper bound on the
+            number of documents that are returned by the Data API. More specifically:
+            (a) Vector ANN searches cannot return more than a number of documents
+            that at the time of writing is set to 1000 items.
+            (b) When using a sort criterion of the ascending/descending type,
+            the Data API will return a smaller number of documents, set to 20
+            at the time of writing, and stop there. The returned documents are
+            the top results across the whole collection according to the requested
+            criterion.
+            These provisions should be kept in mind even when subsequently running
+            a command such as `.distinct()` on a cursor.
 
-    #     Note:
-    #         When not specifying sorting criteria at all (by vector or otherwise),
-    #         the cursor can scroll through an arbitrary number of documents as
-    #         the Data API and the client periodically exchange new chunks of documents.
-    #         It should be noted that the behavior of the cursor in the case documents
-    #         have been added/removed after the `find` was started depends on database
-    #         internals and it is not guaranteed, nor excluded, that such "real-time"
-    #         changes in the data would be picked up by the cursor.
-    #     """
+        Note:
+            When not specifying sorting criteria at all (by vector or otherwise),
+            the cursor can scroll through an arbitrary number of documents as
+            the Data API and the client periodically exchange new chunks of documents.
+            It should be noted that the behavior of the cursor in the case documents
+            have been added/removed after the `find` was started depends on database
+            internals and it is not guaranteed, nor excluded, that such "real-time"
+            changes in the data would be picked up by the cursor.
+        """
 
-    #     _request_timeout_ms = (
-    #         request_timeout_ms
-    #         or max_time_ms
-    #         or self.api_options.timeout_options.request_timeout_ms
-    #     )
-    #     if include_similarity is not None and not _is_vector_sort(sort):
-    #         raise ValueError(
-    #             "Cannot use `include_similarity` unless for vector search."
-    #         )
-    #     return (
-    #         AsyncCursor(
-    #             collection=self,
-    #             filter=filter,
-    #             projection=projection,
-    #             max_time_ms=_request_timeout_ms,
-    #             overall_max_time_ms=None,
-    #         )
-    #         .skip(skip)
-    #         .limit(limit)
-    #         .sort(sort)
-    #         .include_similarity(include_similarity)
-    #         .include_sort_vector(include_sort_vector)
-    #     )
+        # lazy-import here to avoid circular import issues
+        from astrapy.cursors import AsyncCollectionCursor
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        if include_similarity is not None and not _is_vector_sort(sort):
+            raise ValueError(
+                "Cannot use `include_similarity` unless for vector search."
+            )
+        return (
+            AsyncCollectionCursor(collection=self)
+            # RESTOREFIND
+            # max_time_ms=_request_timeout_ms,
+            # overall_max_time_ms=None,
+            .filter(filter)
+            .project(projection)
+            .skip(skip)
+            .limit(limit)
+            .sort(sort)
+            .include_similarity(include_similarity)
+            .include_sort_vector(include_sort_vector)
+        )
 
     async def find_one(
         self,

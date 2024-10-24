@@ -20,7 +20,6 @@ from astrapy import Collection, Database
 from astrapy.cursors import CursorState
 from astrapy.exceptions import (
     CollectionNotFoundException,
-    CursorIsStartedException,
     DataAPIResponseException,
     DevOpsAPIException,
     InsertManyException,
@@ -52,7 +51,6 @@ class TestExceptionsSync:
             col.insert_many(bad_docs, ordered=False, chunk_size=2, concurrency=2)
 
     @pytest.mark.describe("test of collection insert_many insert-failure modes, sync")
-    @pytest.mark.skip(reason="RESTOREFIND")
     def test_collection_insert_many_insert_failures_sync(
         self,
         sync_empty_collection: DefaultCollection,
@@ -227,7 +225,6 @@ class TestExceptionsSync:
             ).distinct("a")
 
     @pytest.mark.describe("test of custom exceptions in cursors, sync")
-    @pytest.mark.skip(reason="RESTOREFIND")
     def test_cursor_custom_exceptions_sync(
         self,
         sync_empty_collection: DefaultCollection,
@@ -237,17 +234,18 @@ class TestExceptionsSync:
         cur1.limit(10)
 
         cur1.__next__()
-        with pytest.raises(CursorIsStartedException) as exc:
+        with pytest.raises(ValueError) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == CursorState.STARTED.value
+        # TODO depending on the cursor exceptions:
+        # assert exc.value.cursor_state == CursorState.STARTED.value
 
         list(cur1)
-        with pytest.raises(CursorIsStartedException) as exc:
+        with pytest.raises(ValueError) as exc:
             cur1.limit(1)
-        assert exc.value.cursor_state == CursorState.CLOSED.value
+        # TODO depending on the cursor exceptions:
+        # assert exc.value.cursor_state == CursorState.CLOSED.value
 
     @pytest.mark.describe("test of standard exceptions in cursors, sync")
-    @pytest.mark.skip(reason="RESTOREFIND")
     def test_cursor_standard_exceptions_sync(
         self,
         sync_empty_collection: DefaultCollection,
@@ -264,11 +262,13 @@ class TestExceptionsSync:
         with pytest.raises(DataAPIResponseException):
             cur2.__next__()
 
-        with pytest.raises(DataAPIResponseException):
-            cur3.distinct("f")
+        # RESTOREFIND
+        # with pytest.raises(DataAPIResponseException):
+        #     cur3.distinct("f")
 
-        with pytest.raises(DataAPIResponseException):
-            wcol.distinct("f")  # type: ignore[attr-defined]
+        # RESTOREFIND
+        # with pytest.raises(DataAPIResponseException):
+        #     wcol.distinct("f")  # type: ignore[attr-defined]
 
         with pytest.raises(DataAPIResponseException):
             wcol.find_one({})

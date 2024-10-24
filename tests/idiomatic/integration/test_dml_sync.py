@@ -161,7 +161,6 @@ class TestDMLSync:
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 10
 
     @pytest.mark.describe("test of collection find, sync")
-    @pytest.mark.skip(reason="RESTOREFIND")
     def test_collection_find_sync(
         self,
         sync_empty_collection: DefaultCollection,
@@ -357,7 +356,6 @@ class TestDMLSync:
         )  # NONPAGINATED
 
     @pytest.mark.describe("test of cursors from collection.find, sync")
-    @pytest.mark.skip(reason="RESTOREFIND")
     def test_collection_cursors_sync(
         self,
         sync_empty_collection: DefaultCollection,
@@ -387,7 +385,8 @@ class TestDMLSync:
         cursor1.__next__()
         cursor1.__next__()
         items1 = list(cursor1)[:2]  # noqa: F841
-        assert list(cursor1.rewind()) == list(
+        cursor1.rewind()
+        assert list(cursor1) == list(
             sync_empty_collection.find(sort={"seq": 1})  # type: ignore[attr-defined]
         )
         cursor1.rewind()
@@ -417,20 +416,22 @@ class TestDMLSync:
             cursor4.__next__()
 
         # distinct
-        cursor5 = sync_empty_collection.find()
-        dist5 = cursor5.distinct("ternary")
-        assert (len(list(cursor5))) == 10
-        assert set(dist5) == {0, 1, 2}
-        cursor6 = sync_empty_collection.find()
-        for _ in range(9):
-            cursor6.__next__()
-        dist6 = cursor6.distinct("ternary")
-        assert (len(list(cursor6))) == 1
-        assert set(dist6) == {0, 1, 2}
+        # RESTOREFIND
+        # cursor5 = sync_empty_collection.find()
+        # dist5 = cursor5.distinct("ternary")
+        # assert (len(list(cursor5))) == 10
+        # assert set(dist5) == {0, 1, 2}
+        # cursor6 = sync_empty_collection.find()
+        # for _ in range(9):
+        #     cursor6.__next__()
+        # dist6 = cursor6.distinct("ternary")
+        # assert (len(list(cursor6))) == 1
+        # assert set(dist6) == {0, 1, 2}
 
         # distinct from collections
-        assert set(sync_empty_collection.distinct("ternary")) == {0, 1, 2}
-        assert set(sync_empty_collection.distinct("nonfield")) == set()
+        # RESTOREFIND
+        # assert set(sync_empty_collection.distinct("ternary")) == {0, 1, 2}
+        # assert set(sync_empty_collection.distinct("nonfield")) == set()
 
     @pytest.mark.describe("test of distinct with non-hashable items, sync")
     @pytest.mark.skip(reason="RESTOREFIND")
@@ -504,7 +505,6 @@ class TestDMLSync:
             sync_empty_collection.distinct("root.subf..subsubf")  # type: ignore[attr-defined]
 
     @pytest.mark.describe("test of collection find, find_one with vectors, sync")
-    @pytest.mark.skip(reason="RESTOREFIND")
     def test_collection_find_find_one_vectors_sync(
         self,
         sync_empty_collection: DefaultCollection,
@@ -575,7 +575,6 @@ class TestDMLSync:
             sync_empty_collection.find_one({}, include_similarity=True)
 
     @pytest.mark.describe("test of include_sort_vector in collection find, sync")
-    @pytest.mark.skip(reason="RESTOREFIND")
     def test_collection_include_sort_vector_find_sync(
         self,
         sync_empty_collection: DefaultCollection,
@@ -658,7 +657,6 @@ class TestDMLSync:
                     assert this_ite_2.get_sort_vector() is None
 
     @pytest.mark.describe("test of projections in collection find with vectors, sync")
-    @pytest.mark.skip(reason="RESTOREFIND")
     def test_collection_find_projections_vectors_sync(
         self,
         sync_empty_collection: DefaultCollection,
@@ -733,26 +731,22 @@ class TestDMLSync:
 
         ins_result1 = col.insert_many([{"_id": "a"}, {"_id": "b"}], ordered=True)
         assert set(ins_result1.inserted_ids) == {"a", "b"}
-        #RESTOREFIND
-        # assert {doc["_id"] for doc in col.find()} == {"a", "b"}
+        assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
         with pytest.raises(InsertManyException):
             col.insert_many([{"_id": "a"}, {"_id": "c"}], ordered=True)
-        #RESTOREFIND
-        # assert {doc["_id"] for doc in col.find()} == {"a", "b"}
+        assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
         with pytest.raises(InsertManyException):
             col.insert_many([{"_id": "c"}, {"_id": "a"}, {"_id": "d"}], ordered=True)
-        #RESTOREFIND
-        # assert {doc["_id"] for doc in col.find()} == {"a", "b", "c"}
+        assert {doc["_id"] for doc in col.find()} == {"a", "b", "c"}
 
         with pytest.raises(InsertManyException):
             col.insert_many(
                 [{"_id": "c"}, {"_id": "d"}, {"_id": "e"}],
                 ordered=False,
             )
-        #RESTOREFIND
-        # assert {doc["_id"] for doc in col.find()} == {"a", "b", "c", "d", "e"}
+        assert {doc["_id"] for doc in col.find()} == {"a", "b", "c", "d", "e"}
 
     @pytest.mark.describe("test of collection insert_many with vectors, sync")
     def test_collection_insert_many_vectors_sync(
@@ -769,10 +763,9 @@ class TestDMLSync:
             ]
         )
 
-        #RESTOREFIND
-        # assert all(
-        #     len(doc["$vector"]) == 2 for doc in col.find({}, projection={"*": 1})
-        # )
+        assert all(
+            len(doc["$vector"]) == 2 for doc in col.find({}, projection={"*": 1})
+        )
 
     @pytest.mark.describe("test of collection find_one, sync")
     def test_collection_find_one_sync(

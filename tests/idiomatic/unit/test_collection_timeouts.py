@@ -93,7 +93,6 @@ class TestCollectionTimeouts:
                 {}, upper_bound=800, max_time_ms=TIMEOUT_PARAM_MS
             )
 
-    @pytest.mark.skip(reason="RESTOREFIND")
     @pytest.mark.describe("test of collection cursor-based timeouts, async")
     async def test_collection_cursor_timeouts_async(
         self,
@@ -128,7 +127,6 @@ class TestCollectionTimeouts:
         with pytest.raises(DataAPITimeoutException):
             await mock_acollection.find_one({}, max_time_ms=1)
 
-    @pytest.mark.skip(reason="RESTOREFIND")
     @pytest.mark.describe("test of collection cursor-based timeouts, sync")
     def test_collection_cursor_timeouts_sync(
         self,
