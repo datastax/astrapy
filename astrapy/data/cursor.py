@@ -516,9 +516,9 @@ class CollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         self,
         function: Callable[[T], Any],
         *,
-        overall_timeout_ms: int | None = None,
+        data_operation_timeout_ms: int | None = None,
     ) -> None:
-        _cursor = self._copy(overall_timeout_ms=overall_timeout_ms)
+        _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
         for document in _cursor:
             function(document)
         self.close()
@@ -526,9 +526,9 @@ class CollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
     def to_list(
         self,
         *,
-        overall_timeout_ms: int | None = None,
+        data_operation_timeout_ms: int | None = None,
     ) -> list[T]:
-        _cursor = self._copy(overall_timeout_ms=overall_timeout_ms)
+        _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
         documents = [document for document in _cursor]
         self.close()
         return documents
@@ -814,9 +814,9 @@ class AsyncCollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         self,
         function: Callable[[T], Any],
         *,
-        overall_timeout_ms: int | None = None,
+        data_operation_timeout_ms: int | None = None,
     ) -> None:
-        _cursor = self._copy(overall_timeout_ms=overall_timeout_ms)
+        _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
         async for document in _cursor:
             function(document)
         self.close()
@@ -824,9 +824,9 @@ class AsyncCollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
     async def to_list(
         self,
         *,
-        overall_timeout_ms: int | None = None,
+        data_operation_timeout_ms: int | None = None,
     ) -> list[T]:
-        _cursor = self._copy(overall_timeout_ms=overall_timeout_ms)
+        _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
         documents = [document async for document in _cursor]
         self.close()
         return documents

@@ -143,3 +143,22 @@ class TestTimeoutSync:
         sync_collection.delete_many({"f": "delete_many2"}, max_time_ms=20000)
         with pytest.raises(DataAPITimeoutException):
             sync_collection.delete_many({"f": "delete_many3"}, max_time_ms=2)
+
+    @pytest.mark.describe("test of collection find-with-collective timeout, sync")
+    def test_collection_find_with_collective_timeout_sync(
+        self,
+        sync_empty_collection: DefaultCollection,
+    ) -> None:
+        sync_empty_collection.insert_many([{"a": 1}] * 55)
+        time.sleep(1)
+
+        with pytest.raises(DataAPITimeoutException):
+            sync_empty_collection.distinct("a", data_operation_timeout_ms=1)
+
+        cur_tl = sync_empty_collection.find()
+        with pytest.raises(DataAPITimeoutException):
+            cur_tl.to_list(data_operation_timeout_ms=1)
+
+        cur_fe = sync_empty_collection.find()
+        with pytest.raises(DataAPITimeoutException):
+            cur_fe.for_each(lambda doc: doc, data_operation_timeout_ms=1)

@@ -145,3 +145,22 @@ class TestTimeoutAsync:
         await async_collection.delete_many({"f": "delete_many2"}, max_time_ms=20000)
         with pytest.raises(DataAPITimeoutException):
             await async_collection.delete_many({"f": "delete_many3"}, max_time_ms=2)
+
+    @pytest.mark.describe("test of collection find-with-collective timeout, async")
+    async def test_collection_find_with_collective_timeout_async(
+        self,
+        async_empty_collection: DefaultAsyncCollection,
+    ) -> None:
+        await async_empty_collection.insert_many([{"a": 1}] * 55)
+        await asyncio.sleep(1)
+
+        with pytest.raises(DataAPITimeoutException):
+            await async_empty_collection.distinct("a", data_operation_timeout_ms=1)
+
+        cur_tl = async_empty_collection.find()
+        with pytest.raises(DataAPITimeoutException):
+            await cur_tl.to_list(data_operation_timeout_ms=1)
+
+        cur_fe = async_empty_collection.find()
+        with pytest.raises(DataAPITimeoutException):
+            await cur_fe.for_each(lambda doc: doc, data_operation_timeout_ms=1)
