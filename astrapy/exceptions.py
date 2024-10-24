@@ -439,7 +439,7 @@ class DataAPITimeoutException(DataAPIException):
 
 
 @dataclass
-class CursorIsStartedException(DataAPIException):
+class CursorException(DataAPIException):
     """
     The cursor operation cannot be invoked if a cursor is not in its pristine
     state (i.e. is already being consumed or is exhausted altogether).
@@ -882,7 +882,7 @@ __all__ = [
     "DataAPIException",
     "DataAPIHttpException",
     "DataAPITimeoutException",
-    "CursorIsStartedException",
+    "CursorException",
     "TooManyDocumentsToCountException",
     "DataAPIFaultyResponseException",
     "DataAPIResponseException",

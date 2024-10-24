@@ -17,8 +17,10 @@ from __future__ import annotations
 import pytest
 
 from astrapy import Database
+from astrapy.cursors import CursorState
 from astrapy.exceptions import (
     CollectionNotFoundException,
+    CursorException,
     DataAPIResponseException,
     DevOpsAPIException,
     InsertManyException,
@@ -232,16 +234,14 @@ class TestExceptionsSync:
         cur1.limit(10)
 
         cur1.__next__()
-        with pytest.raises(ValueError) as exc:  # noqa: F841
+        with pytest.raises(CursorException) as exc:
             cur1.limit(1)
-        # TODO depending on the cursor exceptions:
-        # assert exc.value.cursor_state == CursorState.STARTED.value
+        assert exc.value.cursor_state == CursorState.STARTED.value
 
         list(cur1)
-        with pytest.raises(ValueError) as exc:  # noqa: F841
+        with pytest.raises(CursorException) as exc:
             cur1.limit(1)
-        # TODO depending on the cursor exceptions:
-        # assert exc.value.cursor_state == CursorState.CLOSED.value
+        assert exc.value.cursor_state == CursorState.CLOSED.value
 
     @pytest.mark.describe("test of standard exceptions in cursors, sync")
     def test_cursor_standard_exceptions_sync(

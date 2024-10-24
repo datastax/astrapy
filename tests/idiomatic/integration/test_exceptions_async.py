@@ -18,9 +18,10 @@ import pytest
 
 from astrapy import AsyncDatabase
 from astrapy.constants import DefaultDocumentType
-from astrapy.cursors import AsyncCollectionCursor
+from astrapy.cursors import AsyncCollectionCursor, CursorState
 from astrapy.exceptions import (
     CollectionNotFoundException,
+    CursorException,
     DataAPIResponseException,
     DevOpsAPIException,
     InsertManyException,
@@ -246,16 +247,14 @@ class TestExceptionsAsync:
         cur1.limit(10)
 
         await cur1.__anext__()
-        with pytest.raises(ValueError) as exc:  # noqa: F841
+        with pytest.raises(CursorException) as exc:
             cur1.limit(1)
-        # TODO depending on the cursor exceptions:
-        # assert exc.value.cursor_state == CursorState.STARTED.value
+        assert exc.value.cursor_state == CursorState.STARTED.value
 
         [doc async for doc in cur1]
-        with pytest.raises(ValueError) as exc:  # noqa: F841
+        with pytest.raises(CursorException) as exc:
             cur1.limit(1)
-        # TODO depending on the cursor exceptions:
-        # assert exc.value.cursor_state == CursorState.CLOSED.value
+        assert exc.value.cursor_state == CursorState.CLOSED.value
 
     @pytest.mark.describe("test of standard exceptions in cursors, async")
     async def test_cursor_standard_exceptions_async(

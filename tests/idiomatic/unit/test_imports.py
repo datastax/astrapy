@@ -91,7 +91,7 @@ def test_imports() -> None:
     from astrapy.exceptions import (  # noqa: F401
         CollectionNotFoundException,
         CumulativeOperationException,
-        CursorIsStartedException,
+        CursorException,
         DataAPIDetailedErrorDescriptor,
         DataAPIErrorDescriptor,
         DataAPIException,

@@ -28,7 +28,8 @@ from astrapy.constants import (
     normalize_optional_projection,
 )
 from astrapy.exceptions import (
-    CursorIsStartedException,
+    CursorException,
+    DataAPIFaultyResponseException,
     MultiCallTimeoutManager,
 )
 from astrapy.utils.unset import _UNSET, UnsetType
@@ -58,14 +59,17 @@ class _BufferedCursor(Generic[TRAW]):
 
     def _ensure_alive(self) -> None:
         if not self.alive:
-            raise CursorIsStartedException(
-                text="Cursor not alive.",
+            raise CursorException(
+                text="Cursor is stopped.",
                 cursor_state=self._state.value,
             )
 
     def _ensure_idle(self) -> None:
         if self._state != CursorState.IDLE:
-            raise ValueError("Cursor is not idle anymore.")
+            raise CursorException(
+                text="Cursor is not idle anymore.",
+                cursor_state=self._state.value,
+            )
 
     @property
     def state(self) -> CursorState:
@@ -214,11 +218,11 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
             body=f_payload,
             request_timeout_ms=request_timeout_ms,
         )
-        # if "documents" not in resp_n.get("data", {}):
-        #     raise DataAPIFaultyResponseException(
-        #         text="Faulty response from find API command (no 'documents').",
-        #         raw_response=resp_n,
-        #     )
+        if "documents" not in f_response.get("data", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find API command (no 'documents').",
+                raw_response=f_response,
+            )
         p_documents = f_response["data"]["documents"]
         n_p_state = f_response["data"]["nextPageState"]
         p_r_status = f_response.get("status")
@@ -245,11 +249,11 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
             body=f_payload,
             request_timeout_ms=request_timeout_ms,
         )
-        # if "documents" not in resp_n.get("data", {}):
-        #     raise DataAPIFaultyResponseException(
-        #         text="Faulty response from find API command (no 'documents').",
-        #         raw_response=resp_n,
-        #     )
+        if "documents" not in f_response.get("data", {}):
+            raise DataAPIFaultyResponseException(
+                text="Faulty response from find API command (no 'documents').",
+                raw_response=f_response,
+            )
         p_documents = f_response["data"]["documents"]
         n_p_state = f_response["data"]["nextPageState"]
         p_r_status = f_response.get("status")
@@ -451,7 +455,10 @@ class CollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
 
     def has_next(self) -> bool:
         if self._state == CursorState.IDLE:
-            raise ValueError("Cannot call has_next on an idle cursor.")
+            raise CursorException(
+                text="Cannot call has_next on an idle cursor.",
+                cursor_state=self._state.value,
+            )
         if self._state == CursorState.CLOSED:
             return False
         self._try_ensure_fill_buffer()
@@ -672,6 +679,11 @@ class AsyncCollectionCursor(Generic[TRAW], _BufferedCursor[TRAW]):
         return self._copy(skip=skip)
 
     async def has_next(self) -> bool:
+        if self._state == CursorState.IDLE:
+            raise CursorException(
+                text="Cannot call has_next on an idle cursor.",
+                cursor_state=self._state.value,
+            )
         if self._state == CursorState.CLOSED:
             return False
         await self._try_ensure_fill_buffer()

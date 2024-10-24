@@ -438,7 +438,7 @@ Exceptions:
 from astrapy.exceptions import (
     CollectionNotFoundException,
     CumulativeOperationException,
-    CursorIsStartedException,
+    CursorException,
     DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
     DataAPIException,
