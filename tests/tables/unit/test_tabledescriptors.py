@@ -17,12 +17,12 @@ from __future__ import annotations
 import pytest
 
 from astrapy.info import (
-    TableColumnTypeDescriptor,
     TableDefinition,
     TableDescriptor,
     TableIndexDefinition,
     TableIndexOptions,
     TablePrimaryKeyDescriptor,
+    TableScalarColumnTypeDescriptor,
     TableVectorIndexDefinition,
     TableVectorIndexOptions,
     VectorServiceOptions,
@@ -107,11 +107,11 @@ DICT_DEFINITION = {
 }
 HYBRID_DEFINITION = {
     "columns": {
-        "country": TableColumnTypeDescriptor(column_type="text"),
+        "country": TableScalarColumnTypeDescriptor(column_type="text"),
         "name": {"type": "text"},
-        "human": TableColumnTypeDescriptor(column_type="boolean"),
+        "human": TableScalarColumnTypeDescriptor(column_type="boolean"),
         "email": {"type": "text"},
-        "age": TableColumnTypeDescriptor(column_type="int"),
+        "age": TableScalarColumnTypeDescriptor(column_type="int"),
     },
     "primaryKey": TablePrimaryKeyDescriptor(
         partition_by=["email"],
@@ -201,8 +201,8 @@ class TestTableDescriptors:
 
     @pytest.mark.describe("test of parsing short forms for column types")
     def test_columntype_short_form(self) -> None:
-        long_col = TableColumnTypeDescriptor.coerce(LONG_FORM_COLUMN_TYPE)
-        short_col = TableColumnTypeDescriptor.coerce(SHORT_FORM_COLUMN_TYPE)
+        long_col = TableScalarColumnTypeDescriptor.coerce(LONG_FORM_COLUMN_TYPE)
+        short_col = TableScalarColumnTypeDescriptor.coerce(SHORT_FORM_COLUMN_TYPE)
         assert long_col == short_col
 
     @pytest.mark.describe("test of parsing short forms for primary-key descriptor")

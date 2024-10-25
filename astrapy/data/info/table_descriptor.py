@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import warnings
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
@@ -35,28 +36,45 @@ def warn_residual_keys(
         )
 
 
-class TableScalarType(StrEnum):
-    ASCII = "ASCII"
-    BIGINT = "BIGINT"
-    BLOB = "BLOB"
-    BOOLEAN = "BOOLEAN"
-    COUNTER = "COUNTER"
-    DATE = "DATE"
-    DECIMAL = "DECIMAL"
-    DOUBLE = "DOUBLE"
-    DURATION = "DURATION"
-    FLOAT = "FLOAT"
-    INET = "INET"
-    INT = "INT"
-    SMALLINT = "SMALLINT"
-    TEXT = "TEXT"
-    TIME = "TIME"
-    TIMESTAMP = "TIMESTAMP"
-    TIMEUUID = "TIMEUUID"
-    TINYINT = "TINYINT"
-    UUID = "UUID"
-    VARCHAR = "VARCHAR"
-    VARINT = "VARINT"
+class TableScalarColumnType(StrEnum):
+    ASCII = "ascii"
+    BIGINT = "bigint"
+    BLOB = "blob"
+    BOOLEAN = "boolean"
+    COUNTER = "counter"
+    DATE = "date"
+    DECIMAL = "decimal"
+    DOUBLE = "double"
+    DURATION = "duration"
+    FLOAT = "float"
+    INET = "inet"
+    INT = "int"
+    SMALLINT = "smallint"
+    TEXT = "text"
+    TIME = "time"
+    TIMESTAMP = "timestamp"
+    TIMEUUID = "timeuuid"
+    TINYINT = "tinyint"
+    UUID = "uuid"
+    VARCHAR = "varchar"
+    VARINT = "varint"
+
+
+class TableValuedColumnType(StrEnum):
+    LIST = "list"
+    SET = "set"
+
+
+class TableKeyValuedColumnType(StrEnum):
+    MAP = "map"
+
+
+class TableVectorColumnType(StrEnum):
+    VECTOR = "vector"
+
+
+class TableUnsupportedColumnType(StrEnum):
+    UNSUPPORTED = "UNSUPPORTED"
 
 
 @dataclass
@@ -80,22 +98,21 @@ class TableInfo:
 
 
 @dataclass
-class TableColumnTypeDescriptor:
+class TableColumnTypeDescriptor(ABC):
     """
     TODO
     """
 
-    column_type: str
+    column_type: (
+        TableScalarColumnType
+        | TableValuedColumnType
+        | TableKeyValuedColumnType
+        | TableVectorColumnType
+        | TableUnsupportedColumnType
+    )
 
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}({self.column_type})"
-
-    def as_dict(self) -> dict[str, Any]:
-        """Recast this object into a dictionary."""
-
-        return {
-            "type": self.column_type,
-        }
+    @abstractmethod
+    def as_dict(self) -> dict[str, Any]: ...
 
     @classmethod
     def _from_dict(cls, raw_dict: dict[str, Any]) -> TableColumnTypeDescriptor:
@@ -116,7 +133,7 @@ class TableColumnTypeDescriptor:
             return TableUnsupportedColumnTypeDescriptor._from_dict(raw_dict)
         else:
             warn_residual_keys(cls, raw_dict, {"type"})
-            return TableColumnTypeDescriptor(
+            return TableScalarColumnTypeDescriptor(
                 column_type=raw_dict["type"],
             )
 
@@ -133,13 +150,58 @@ class TableColumnTypeDescriptor:
 
 
 @dataclass
+class TableScalarColumnTypeDescriptor(TableColumnTypeDescriptor):
+    """
+    TODO
+    """
+
+    column_type: TableScalarColumnType
+
+    def __init__(self, *, column_type: str | TableScalarColumnType) -> None:
+        self.column_type = TableScalarColumnType.coerce(column_type)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.column_type})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            "type": self.column_type.value,
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableScalarColumnTypeDescriptor:
+        """
+        TODO
+        """
+
+        warn_residual_keys(cls, raw_dict, {"type"})
+        return TableScalarColumnTypeDescriptor(
+            column_type=raw_dict["type"],
+        )
+
+
+@dataclass
 class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
     """
     TODO
     """
 
+    column_type: TableVectorColumnType
     dimension: int
     service: VectorServiceOptions | None
+
+    def __init__(
+        self,
+        *,
+        column_type: str | TableVectorColumnType,
+        dimension: int,
+        service: VectorServiceOptions | None,
+    ) -> None:
+        self.dimension = dimension
+        self.service = service
+        super().__init__(column_type=TableVectorColumnType.coerce(column_type))
 
     def __repr__(self) -> str:
         not_null_pieces = [
@@ -160,7 +222,7 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
         return {
             k: v
             for k, v in {
-                "type": self.column_type,
+                "type": self.column_type.value,
                 "dimension": self.dimension,
                 "service": None if self.service is None else self.service.as_dict(),
             }.items()
@@ -188,7 +250,17 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
     TODO
     """
 
-    value_type: str
+    column_type: TableValuedColumnType
+    value_type: TableScalarColumnType
+
+    def __init__(
+        self,
+        *,
+        column_type: str | TableValuedColumnType,
+        value_type: str | TableScalarColumnType,
+    ) -> None:
+        self.value_type = TableScalarColumnType.coerce(value_type)
+        super().__init__(column_type=TableValuedColumnType.coerce(column_type))
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.column_type}<{self.value_type}>)"
@@ -197,8 +269,8 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
         """Recast this object into a dictionary."""
 
         return {
-            "type": self.column_type,
-            "valueType": self.value_type,
+            "type": self.column_type.value,
+            "valueType": self.value_type.value,
         }
 
     @classmethod
@@ -216,12 +288,25 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
 
 
 @dataclass
-class TableKeyValuedColumnTypeDescriptor(TableValuedColumnTypeDescriptor):
+class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
     """
     TODO
     """
 
-    key_type: str
+    column_type: TableKeyValuedColumnType
+    key_type: TableScalarColumnType
+    value_type: TableScalarColumnType
+
+    def __init__(
+        self,
+        *,
+        column_type: str | TableKeyValuedColumnType,
+        value_type: str | TableScalarColumnType,
+        key_type: str | TableScalarColumnType,
+    ) -> None:
+        self.key_type = TableScalarColumnType.coerce(key_type)
+        self.value_type = TableScalarColumnType.coerce(value_type)
+        super().__init__(column_type=TableKeyValuedColumnType.coerce(column_type))
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.column_type}<{self.key_type},{self.value_type}>)"
@@ -230,9 +315,9 @@ class TableKeyValuedColumnTypeDescriptor(TableValuedColumnTypeDescriptor):
         """Recast this object into a dictionary."""
 
         return {
-            "type": self.column_type,
-            "keyType": self.key_type,
-            "valueType": self.value_type,
+            "type": self.column_type.value,
+            "keyType": self.key_type.value,
+            "valueType": self.value_type.value,
         }
 
     @classmethod
@@ -309,7 +394,17 @@ class TableUnsupportedColumnTypeDescriptor(TableColumnTypeDescriptor):
     This has no coerce since it is always only found in API responses
     """
 
+    column_type: TableUnsupportedColumnType
     api_support: TableAPISupportDescriptor
+
+    def __main__(
+        self,
+        *,
+        column_type: TableUnsupportedColumnType | str,
+        api_support: TableAPISupportDescriptor,
+    ) -> None:
+        self.api_support = api_support
+        super().__init__(column_type=TableUnsupportedColumnType.coerce(column_type))
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.api_support.cql_definition})"
@@ -473,7 +568,11 @@ class TableDefinition:
         return TableDefinition(
             columns={
                 **self.columns,
-                **{column_name: TableColumnTypeDescriptor(column_type=column_type)},
+                **{
+                    column_name: TableScalarColumnTypeDescriptor(
+                        column_type=TableScalarColumnType.coerce(column_type)
+                    )
+                },
             },
             primary_key=self.primary_key,
         )

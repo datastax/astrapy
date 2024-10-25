@@ -20,12 +20,12 @@ import pytest
 
 from astrapy.exceptions import DataAPIException
 from astrapy.info import (
-    TableColumnTypeDescriptor,
     TableDefinition,
     TableIndexDefinition,
     TableIndexOptions,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
+    TableScalarColumnTypeDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
     TableVectorIndexDefinition,
@@ -56,10 +56,10 @@ class TestTableLifecycle:
             "table_whole_obj",
             definition=TableDefinition(
                 columns={
-                    "p_text": TableColumnTypeDescriptor(column_type="text"),
-                    "p_int": TableColumnTypeDescriptor(column_type="int"),
-                    "p_boolean": TableColumnTypeDescriptor(column_type="boolean"),
-                    "p_float": TableColumnTypeDescriptor(column_type="float"),
+                    "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
+                    "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
+                    "p_boolean": TableScalarColumnTypeDescriptor(column_type="boolean"),
+                    "p_float": TableScalarColumnTypeDescriptor(column_type="float"),
                     "p_set": TableValuedColumnTypeDescriptor(
                         column_type="set", value_type="int"
                     ),
@@ -120,9 +120,9 @@ class TestTableLifecycle:
             "table_hybrid",
             definition={
                 "columns": {
-                    "p_text": TableColumnTypeDescriptor(column_type="text"),
+                    "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
                     "p_int": {"type": "int"},
-                    "p_boolean": TableColumnTypeDescriptor(column_type="boolean"),
+                    "p_boolean": TableScalarColumnTypeDescriptor(column_type="boolean"),
                     "p_float": {"type": "float"},
                     "p_set": TableValuedColumnTypeDescriptor(
                         column_type="set", value_type="int"
@@ -214,9 +214,9 @@ class TestTableLifecycle:
             "table_for_indexes",
             definition=TableDefinition(
                 columns={
-                    "p_key": TableColumnTypeDescriptor(column_type="text"),
-                    "p_text": TableColumnTypeDescriptor(column_type="text"),
-                    "p_int": TableColumnTypeDescriptor(column_type="int"),
+                    "p_key": TableScalarColumnTypeDescriptor(column_type="text"),
+                    "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
+                    "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
                     "p_vector": TableVectorColumnTypeDescriptor(
                         column_type="vector", dimension=191, service=None
                     ),

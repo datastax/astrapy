@@ -34,7 +34,7 @@ my_collection.insert_one(
     },
 )
 
-cursor = my_collection.find(  # type: ignore[attr-defined]
+cursor = my_collection.find(
     {},
     sort={"$vector": [0, 0.2, 0.4, 0.6, 0.8]},
     limit=2,

@@ -58,7 +58,7 @@ class TestExceptionsAsync:
         async_empty_collection: DefaultAsyncCollection,
     ) -> None:
         async def _alist(
-            acursor: AsyncCollectionCursor[DefaultDocumentType],
+            acursor: AsyncCollectionCursor[DefaultDocumentType, DefaultDocumentType],
         ) -> list[DefaultDocumentType]:
             return [doc async for doc in acursor]
 

@@ -145,7 +145,7 @@ class TestVectorizeMethodsAsync:
             return isinstance(v, list) and isinstance(v[0], float)
 
         async def _alist(
-            acursor: AsyncCollectionCursor[DefaultDocumentType],
+            acursor: AsyncCollectionCursor[DefaultDocumentType, DefaultDocumentType],
         ) -> list[DefaultDocumentType]:
             return [doc async for doc in acursor]
 
