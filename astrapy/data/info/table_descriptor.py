@@ -21,7 +21,13 @@ from typing import Any
 
 from astrapy.data.info.database_info import DatabaseInfo
 from astrapy.data.info.vectorize import VectorServiceOptions
-from astrapy.utils.str_enum import StrEnum
+from astrapy.data.utils.table_types import (
+    TableKeyValuedColumnType,
+    TableScalarColumnType,
+    TableUnsupportedColumnType,
+    TableValuedColumnType,
+    TableVectorColumnType,
+)
 from astrapy.utils.unset import _UNSET, UnsetType
 
 
@@ -34,47 +40,6 @@ def warn_residual_keys(
             "Unexpected key(s) encountered parsing a dictionary into "
             f"a `{klass.__name__}`: '{','.join(sorted(residual_keys))}'"
         )
-
-
-class TableScalarColumnType(StrEnum):
-    ASCII = "ascii"
-    BIGINT = "bigint"
-    BLOB = "blob"
-    BOOLEAN = "boolean"
-    COUNTER = "counter"
-    DATE = "date"
-    DECIMAL = "decimal"
-    DOUBLE = "double"
-    DURATION = "duration"
-    FLOAT = "float"
-    INET = "inet"
-    INT = "int"
-    SMALLINT = "smallint"
-    TEXT = "text"
-    TIME = "time"
-    TIMESTAMP = "timestamp"
-    TIMEUUID = "timeuuid"
-    TINYINT = "tinyint"
-    UUID = "uuid"
-    VARCHAR = "varchar"
-    VARINT = "varint"
-
-
-class TableValuedColumnType(StrEnum):
-    LIST = "list"
-    SET = "set"
-
-
-class TableKeyValuedColumnType(StrEnum):
-    MAP = "map"
-
-
-class TableVectorColumnType(StrEnum):
-    VECTOR = "vector"
-
-
-class TableUnsupportedColumnType(StrEnum):
-    UNSUPPORTED = "UNSUPPORTED"
 
 
 @dataclass
@@ -397,7 +362,7 @@ class TableUnsupportedColumnTypeDescriptor(TableColumnTypeDescriptor):
     column_type: TableUnsupportedColumnType
     api_support: TableAPISupportDescriptor
 
-    def __main__(
+    def __init__(
         self,
         *,
         column_type: TableUnsupportedColumnType | str,
@@ -413,7 +378,7 @@ class TableUnsupportedColumnTypeDescriptor(TableColumnTypeDescriptor):
         """Recast this object into a dictionary."""
 
         return {
-            "type": self.column_type,
+            "type": self.column_type.value,
             "apiSupport": self.api_support.as_dict(),
         }
 
