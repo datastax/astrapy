@@ -22,7 +22,7 @@ from typing import Any
 import pytest
 
 from astrapy.data.utils.table_converters import create_row_converter
-from astrapy.data_types import InetAddress
+from astrapy.data_types import InetAddress, TableSet
 from astrapy.ids import UUID
 from astrapy.info import TableDescriptor
 
@@ -109,7 +109,7 @@ FULL_RESPONSE_ROW = {
     "p_varchar": "the_varchar",
     "p_timeuuid": "0de779c0-92e3-11ef-96a4-a745ae2c0a0b",
     "p_list_int": [99, 100, 101],
-    "p_set_ascii": {"a", "b", "c"},
+    "p_set_ascii": ["a", "b", "c"],
     "p_map_text_float": {"a": 0.1, "b": 0.2},
     "somevector": [0.1, -0.2, 0.3],
     "embeddings": [1.2, 3.4],
@@ -133,7 +133,7 @@ FULL_EXPECTED_ROW = {
     "p_varchar": "the_varchar",
     "p_timeuuid": UUID("0de779c0-92e3-11ef-96a4-a745ae2c0a0b"),
     "p_list_int": [99, 100, 101],
-    "p_set_ascii": {"a", "b", "c"},
+    "p_set_ascii": TableSet(["a", "b", "c"]),
     "p_map_text_float": {"a": 0.1, "b": 0.2},
     "somevector": [0.1, -0.2, 0.3],
     "embeddings": [1.2, 3.4],

@@ -33,7 +33,7 @@ from astrapy.data.utils.table_types import (
     TableValuedColumnType,
     TableVectorColumnType,
 )
-from astrapy.data_types import InetAddress
+from astrapy.data_types import InetAddress, TableSet
 from astrapy.ids import UUID
 
 # TODO this will be replaced by a specific parser with its own class
@@ -194,10 +194,10 @@ def _create_column_converter(
         elif TableValuedColumnType.SET:
             value_converter = _create_scalar_converter(col_def.value_type)
 
-            def _converter_set(raw_items: set[Any] | None) -> set[Any] | None:
+            def _converter_set(raw_items: set[Any] | None) -> TableSet[Any] | None:
                 if raw_items is None:
                     return None
-                return {value_converter(item) for item in raw_items}
+                return TableSet(value_converter(item) for item in raw_items)
 
             return _converter_set
 
