@@ -31,6 +31,7 @@ from astrapy.settings.defaults import (
     DEFAULT_DATA_OPERATION_TIMEOUT_MS,
     DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
     DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
+    DEFAULT_LOSSLESS_CUSTOM_CLASSES,
     DEFAULT_REQUEST_TIMEOUT_MS,
     DEFAULT_SCHEMA_OPERATION_TIMEOUT_MS,
     DEV_OPS_URL_ENV_MAP,
@@ -90,11 +91,13 @@ class FullTimeoutOptions(TimeoutOptions):
 @dataclass
 class PayloadTransformOptions:
     binary_encode_vectors: bool | UnsetType = _UNSET
+    lossless_custom_classes: bool | UnsetType = _UNSET
 
 
 @dataclass
 class FullPayloadTransformOptions(PayloadTransformOptions):
     binary_encode_vectors: bool
+    lossless_custom_classes: bool
 
     def with_override(
         self, other: PayloadTransformOptions
@@ -104,6 +107,11 @@ class FullPayloadTransformOptions(PayloadTransformOptions):
                 other.binary_encode_vectors
                 if not isinstance(other.binary_encode_vectors, UnsetType)
                 else self.binary_encode_vectors
+            ),
+            lossless_custom_classes=(
+                other.lossless_custom_classes
+                if not isinstance(other.lossless_custom_classes, UnsetType)
+                else self.lossless_custom_classes
             ),
         )
 
@@ -378,6 +386,7 @@ defaultTimeoutOptions = FullTimeoutOptions(
 )
 defaultPayloadTransformOptions = FullPayloadTransformOptions(
     binary_encode_vectors=DEFAULT_BINARY_ENCODE_VECTORS,
+    lossless_custom_classes=DEFAULT_LOSSLESS_CUSTOM_CLASSES,
 )
 
 

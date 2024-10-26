@@ -37,6 +37,7 @@ from astrapy.settings.defaults import (
     DEFAULT_REQUEST_TIMEOUT_MS,
     FIXED_SECRET_PLACEHOLDER,
 )
+from astrapy.utils.api_options import FullPayloadTransformOptions
 from astrapy.utils.request_tools import (
     HttpMethod,
     log_httpx_request,
@@ -59,8 +60,10 @@ class APICommander:
 
     def __init__(
         self,
+        *,
         api_endpoint: str,
         path: str,
+        payload_transform_options: FullPayloadTransformOptions,
         headers: dict[str, str | None] = {},
         callers: Sequence[CallerType] = [],
         redacted_header_names: Iterable[str] | None = None,
@@ -69,6 +72,7 @@ class APICommander:
         self.async_client = httpx.AsyncClient()
         self.api_endpoint = api_endpoint.rstrip("/")
         self.path = path.lstrip("/")
+        self.payload_transform_options = payload_transform_options
         self.headers = headers
         self.callers = callers
         self.redacted_header_names = set(redacted_header_names or [])
@@ -165,6 +169,7 @@ class APICommander:
         self,
         api_endpoint: str | None = None,
         path: str | None = None,
+        payload_transform_options: FullPayloadTransformOptions | None = None,
         headers: dict[str, str | None] | None = None,
         callers: Sequence[CallerType] | None = None,
         redacted_header_names: list[str] | None = None,
@@ -176,6 +181,11 @@ class APICommander:
                 api_endpoint if api_endpoint is not None else self.api_endpoint
             ),
             path=path if path is not None else self.path,
+            payload_transform_options=(
+                payload_transform_options
+                if payload_transform_options is not None
+                else self.payload_transform_options
+            ),
             headers=headers if headers is not None else self.headers,
             callers=callers if callers is not None else self.callers,
             redacted_header_names=(
@@ -232,7 +242,9 @@ class APICommander:
                     logger.warning(full_warning)
 
         # further processing
-        response_json = restore_from_api(raw_response_json)
+        response_json = restore_from_api(
+            raw_response_json, options=self.payload_transform_options
+        )
         return response_json
 
     def _compose_request_url(self, additional_path: str | None) -> str:
@@ -264,7 +276,9 @@ class APICommander:
         timeout_ms: int | None = None,
     ) -> httpx.Response:
         timeout = to_httpx_timeout(timeout_ms)
-        normalized_payload = normalize_for_api(payload)
+        normalized_payload = normalize_for_api(
+            payload, options=self.payload_transform_options
+        )
         request_url = self._compose_request_url(additional_path)
         log_httpx_request(
             http_method=http_method,
@@ -309,7 +323,9 @@ class APICommander:
         timeout_ms: int | None = None,
     ) -> httpx.Response:
         timeout = to_httpx_timeout(timeout_ms)
-        normalized_payload = normalize_for_api(payload)
+        normalized_payload = normalize_for_api(
+            payload, options=self.payload_transform_options
+        )
         request_url = self._compose_request_url(additional_path)
         log_httpx_request(
             http_method=http_method,

@@ -20,9 +20,11 @@ from typing import Any
 import pytest
 
 from astrapy.constants import DefaultDocumentType, ReturnDocument, SortDocuments
+from astrapy.data_types import APITimestamp
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import DeleteResult, InsertOneResult
+from astrapy.utils.api_options import APIOptions, PayloadTransformOptions
 
 from ..conftest import DefaultCollection
 
@@ -862,6 +864,77 @@ class TestDMLSync:
         doc_proj = col.find_one(sort=Nsor, filter=Nfil, projection={"kind": True})
         assert doc_proj == {"_id": "a", "kind": "letter"}
         assert doc_full == {"_id": "a", "seq": 1, "kind": "letter"}
+
+    @pytest.mark.describe("test of lossless_custom_classes APIOptions setting, sync")
+    def test_lossless_custom_classes_sync(
+        self,
+        sync_empty_collection: DefaultCollection,
+    ) -> None:
+        col_lossy = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                payload_transform_options=PayloadTransformOptions(
+                    lossless_custom_classes=False,
+                ),
+            ),
+        )
+        col_lossless = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                payload_transform_options=PayloadTransformOptions(
+                    lossless_custom_classes=True,
+                ),
+            ),
+        )
+        the_dtime = datetime.datetime(2000, 1, 1, 10, 11, 12, 123000)
+        the_date = datetime.date(1998, 12, 31)
+
+        # read path
+        sync_empty_collection.insert_one(
+            {
+                "_id": "t0",
+                "the_dtime": the_dtime,
+                "the_date": the_date,
+            },
+        )
+        doc_lossy = col_lossy.find_one({"_id": "t0"})
+        doc_lossless = col_lossless.find_one({"_id": "t0"})
+
+        assert doc_lossy is not None
+        assert doc_lossless is not None
+        dtime_lossy = doc_lossy["the_dtime"]
+        dtime_lossless = doc_lossless["the_dtime"]
+        date_lossy = doc_lossy["the_date"]
+        date_lossless = doc_lossless["the_date"]
+
+        assert isinstance(dtime_lossy, datetime.datetime)
+        assert isinstance(dtime_lossless, APITimestamp)
+        assert APITimestamp.from_datetime(dtime_lossy) == dtime_lossless
+        assert dtime_lossless.to_datetime() == dtime_lossy
+        assert isinstance(date_lossy, datetime.datetime)
+        assert isinstance(date_lossless, APITimestamp)
+        assert APITimestamp.from_datetime(date_lossy) == date_lossless
+        assert date_lossless.to_datetime() == date_lossy
+
+        # write path
+        sync_empty_collection.delete_one({"_id": "t0"})
+        col_lossy.insert_one({"_id": "lossy_dt", "the_dtime": the_dtime})
+        with pytest.raises(TypeError):
+            col_lossy.insert_one(
+                {
+                    "_id": "lossy_ats",
+                    "the_dtime": APITimestamp.from_datetime(the_dtime),
+                }
+            )
+        col_lossless.insert_one({"_id": "lossless_dt", "the_dtime": the_dtime})
+        col_lossless.insert_one(
+            {
+                "_id": "lossless_ats",
+                "the_dtime": APITimestamp.from_datetime(the_dtime),
+            }
+        )
+
+        all_dates = [doc["the_dtime"] for doc in sync_empty_collection.find({})]
+        assert len(all_dates) == 3
+        assert len(set(all_dates)) == 1
 
     @pytest.mark.describe("test of find_one_and_replace, sync")
     def test_collection_find_one_and_replace_sync(

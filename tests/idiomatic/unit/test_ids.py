@@ -23,6 +23,7 @@ import json
 import pytest
 
 from astrapy.ids import UUID, ObjectId
+from astrapy.utils.api_options import FullPayloadTransformOptions
 from astrapy.utils.transform_payload import normalize_for_api, restore_from_api
 
 
@@ -48,8 +49,18 @@ def test_ids_serdes() -> None:
         "f_oi": f_oi,
     }
 
-    normalized = normalize_for_api(full_structure)
+    normalized = normalize_for_api(
+        full_structure,
+        options=FullPayloadTransformOptions(
+            binary_encode_vectors=True, lossless_custom_classes=True
+        ),
+    )
     json.dumps(normalized)
     assert normalized is not None
-    restored = restore_from_api(normalized)
+    restored = restore_from_api(
+        normalized,
+        options=FullPayloadTransformOptions(
+            binary_encode_vectors=True, lossless_custom_classes=True
+        ),
+    )
     assert restored == full_structure

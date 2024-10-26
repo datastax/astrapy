@@ -26,6 +26,7 @@ from pytest_httpserver import HTTPServer
 
 from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
 from astrapy.utils.api_commander import APICommander
+from astrapy.utils.api_options import FullPayloadTransformOptions
 from astrapy.utils.request_tools import HttpMethod
 
 SLEEPER_TIME_MS = 500
@@ -45,6 +46,9 @@ class TestTimeouts:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
+            payload_transform_options=FullPayloadTransformOptions(
+                binary_encode_vectors=True, lossless_custom_classes=True
+            ),
         )
 
         httpserver.expect_oneshot_request(
@@ -61,6 +65,9 @@ class TestTimeouts:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
+            payload_transform_options=FullPayloadTransformOptions(
+                binary_encode_vectors=True, lossless_custom_classes=True
+            ),
         )
 
         httpserver.expect_oneshot_request(
@@ -77,6 +84,9 @@ class TestTimeouts:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
+            payload_transform_options=FullPayloadTransformOptions(
+                binary_encode_vectors=True, lossless_custom_classes=True
+            ),
             dev_ops_api=True,
         )
 
@@ -96,6 +106,9 @@ class TestTimeouts:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
+            payload_transform_options=FullPayloadTransformOptions(
+                binary_encode_vectors=True, lossless_custom_classes=True
+            ),
             dev_ops_api=True,
         )
 

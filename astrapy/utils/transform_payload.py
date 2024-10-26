@@ -20,7 +20,9 @@ import time
 from typing import Any, Dict, Iterable, cast
 
 from astrapy.constants import DefaultDocumentType
+from astrapy.data_types import APITimestamp
 from astrapy.ids import UUID, ObjectId
+from astrapy.utils.api_options import FullPayloadTransformOptions
 
 
 def convert_vector_to_floats(vector: Iterable[Any]) -> list[float]:
@@ -49,7 +51,15 @@ def is_list_of_floats(vector: Iterable[Any]) -> bool:
 def convert_to_ejson_date_object(
     date_value: datetime.date | datetime.datetime,
 ) -> dict[str, int]:
+    if isinstance(date_value, datetime.datetime):
+        return {"$date": int(date_value.timestamp() * 1000)}
     return {"$date": int(time.mktime(date_value.timetuple()) * 1000)}
+
+
+def convert_to_ejson_apitimestamp_object(
+    date_value: APITimestamp,
+) -> dict[str, int]:
+    return {"$date": date_value.timestamp_ms}
 
 
 def convert_to_ejson_bytes(bytes_value: bytes) -> dict[str, str]:
@@ -70,6 +80,12 @@ def convert_ejson_date_object_to_datetime(
     return datetime.datetime.fromtimestamp(date_object["$date"] / 1000.0)
 
 
+def convert_ejson_date_object_to_apitimestamp(
+    date_object: dict[str, int],
+) -> APITimestamp:
+    return APITimestamp(date_object["$date"])
+
+
 def convert_ejson_binary_object_to_bytes(
     binary_object: dict[str, str],
 ) -> bytes:
@@ -86,7 +102,9 @@ def convert_ejson_objectid_object_to_objectid(
     return ObjectId(objectid_object["$objectId"])
 
 
-def normalize_payload_value(path: list[str], value: Any) -> Any:
+def normalize_payload_value(
+    path: list[str], value: Any, options: FullPayloadTransformOptions
+) -> Any:
     """
     The path helps determining special treatments
     """
@@ -99,10 +117,14 @@ def normalize_payload_value(path: list[str], value: Any) -> Any:
             return value
     else:
         if isinstance(value, dict):
-            return {k: normalize_payload_value(path + [k], v) for k, v in value.items()}
+            return {
+                k: normalize_payload_value(path + [k], v, options=options)
+                for k, v in value.items()
+            }
         elif isinstance(value, list):
             return [
-                normalize_payload_value(path + [""], list_item) for list_item in value
+                normalize_payload_value(path + [""], list_item, options=options)
+                for list_item in value
             ]
         else:
             if isinstance(value, datetime.datetime) or isinstance(value, datetime.date):
@@ -113,11 +135,18 @@ def normalize_payload_value(path: list[str], value: Any) -> Any:
                 return convert_to_ejson_uuid_object(value)
             elif isinstance(value, ObjectId):
                 return convert_to_ejson_objectid_object(value)
+            elif isinstance(value, APITimestamp):
+                if options.lossless_custom_classes:
+                    return convert_to_ejson_apitimestamp_object(value)
+                else:
+                    raise TypeError("Unexpected APITimestamp object in payload.")
             else:
                 return value
 
 
-def normalize_for_api(payload: dict[str, Any] | None) -> dict[str, Any] | None:
+def normalize_for_api(
+    payload: dict[str, Any] | None, options: FullPayloadTransformOptions
+) -> dict[str, Any] | None:
     """
     Normalize a payload for API calls.
     This includes e.g. ensuring values for "$vector" key
@@ -131,20 +160,29 @@ def normalize_for_api(payload: dict[str, Any] | None) -> dict[str, Any] | None:
     """
 
     if payload:
-        return cast(Dict[str, Any], normalize_payload_value([], payload))
+        return cast(
+            Dict[str, Any],
+            normalize_payload_value([], payload, options=options),
+        )
     else:
         return payload
 
 
-def restore_response_value(path: list[str], value: Any) -> Any:
+def restore_response_value(
+    path: list[str], value: Any, options: FullPayloadTransformOptions
+) -> Any:
     """
     The path helps determining special treatments
     """
     if isinstance(value, dict):
         value_keys = set(value.keys())
         if value_keys == {"$date"}:
-            # this is `{"$date": 123456}`, restore to datetime.datetime
-            return convert_ejson_date_object_to_datetime(value)
+            # this is `{"$date": 123456}`.
+            # Restore to the appropriate APIOptions-required object
+            if options.lossless_custom_classes:
+                return convert_ejson_date_object_to_apitimestamp(value)
+            else:
+                return convert_ejson_date_object_to_datetime(value)
         elif value_keys == {"$uuid"}:
             # this is `{"$uuid": "abc123..."}`, restore to UUID
             return convert_ejson_uuid_object_to_uuid(value)
@@ -155,17 +193,28 @@ def restore_response_value(path: list[str], value: Any) -> Any:
             # this is `{"$binary": "xyz=="}`, restore to `bytes`
             return convert_ejson_binary_object_to_bytes(value)
         else:
-            return {k: restore_response_value(path + [k], v) for k, v in value.items()}
+            return {
+                k: restore_response_value(path + [k], v, options=options)
+                for k, v in value.items()
+            }
     elif isinstance(value, list):
-        return [restore_response_value(path + [""], list_item) for list_item in value]
+        return [
+            restore_response_value(path + [""], list_item, options=options)
+            for list_item in value
+        ]
     else:
         return value
 
 
-def restore_from_api(response: DefaultDocumentType) -> DefaultDocumentType:
+def restore_from_api(
+    response: DefaultDocumentType, options: FullPayloadTransformOptions
+) -> DefaultDocumentType:
     """
     Process a dictionary just returned from the API.
     This is the place where e.g. `{"$date": 123}` is
     converted back into a datetime object.
     """
-    return cast(DefaultDocumentType, restore_response_value([], response))
+    return cast(
+        DefaultDocumentType,
+        restore_response_value([], response, options=options),
+    )
