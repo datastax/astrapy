@@ -25,7 +25,7 @@ class TestTableSet:
         ts0: TableSet[int] = TableSet()
         assert ts0 == TableSet()
         assert set(ts0) == set()
-        # conversions
+        # identity/equality
         ts1 = TableSet([1, 2, 3])
         assert ts1 == TableSet([1, 2, 3])
         assert ts1 == TableSet([1, 2, 3, 2])
@@ -43,7 +43,7 @@ class TestTableSet:
     def test_tableset_nonhashables(self) -> None:
         ts0: TableSet[list[int]] = TableSet()
         assert ts0 == TableSet()
-        # conversions
+        # identity/equality
         ts1 = TableSet([[1], [2], [3]])
         assert ts1 == TableSet([[1], [2], [3]])
         assert ts1 == TableSet([[1], [2], [3], [2]])

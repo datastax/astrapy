@@ -31,7 +31,7 @@ def _accumulate(destination: list[T], source: Iterable[T]) -> list[T]:
 class TableSet(Generic[T], Set[T]):
     """
     An immutable 'set-like' class that preserves the order and can store
-    non-hashable entries. Not designed for performance.
+    non-hashable entries (which must support __eq__). Not designed for performance.
     """
 
     _items: list[T]

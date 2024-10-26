@@ -33,7 +33,7 @@ from astrapy.data.utils.table_types import (
     TableValuedColumnType,
     TableVectorColumnType,
 )
-from astrapy.data_types import InetAddress, TableSet
+from astrapy.data_types import InetAddress, TableMap, TableSet
 from astrapy.ids import UUID
 
 # TODO this will be replaced by a specific parser with its own class
@@ -212,12 +212,12 @@ def _create_column_converter(
 
             def _converter_map(
                 raw_items: dict[Any, Any] | None,
-            ) -> dict[Any, Any] | None:
+            ) -> TableMap[Any, Any] | None:
                 if raw_items is None:
                     return None
-                return {
-                    key_converter(k): value_converter(v) for k, v in raw_items.items()
-                }
+                return TableMap(
+                    (key_converter(k), value_converter(v)) for k, v in raw_items.items()
+                )
 
             return _converter_map
 
