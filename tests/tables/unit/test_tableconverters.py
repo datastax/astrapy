@@ -22,7 +22,7 @@ from typing import Any
 import pytest
 
 from astrapy.data.utils.table_converters import create_row_converter
-from astrapy.data_types import InetAddress, TableMap, TableSet
+from astrapy.data_types import InetAddress, TableDuration, TableMap, TableSet
 from astrapy.ids import UUID
 from astrapy.info import TableDescriptor
 
@@ -40,6 +40,7 @@ TABLE_DESCRIPTION = {
             "p_blob": {"type": "blob"},
             "p_uuid": {"type": "uuid"},
             "p_decimal": {"type": "decimal"},
+            "p_duration": {"type": "duration"},
             "p_inet": {"type": "inet"},
             "p_timestamp": {"type": "timestamp"},
             # "p_timestamp_var2": {"type": "timestamp"},
@@ -103,6 +104,7 @@ FULL_RESPONSE_ROW = {
     "p_uuid": "9c5b94b1-35ad-49bb-b118-8e8fc24abf80",
     "p_inet": "10.1.1.2",
     "p_decimal": 123.456,
+    "p_duration": "1mo1d1m1ns",
     "p_timestamp": "2015-05-03T13:30:54.234Z",
     # "p_timestamp_var2": "1970-04-03T13:13:04.123456+1:00",  # TODO make this work (and others)
     "p_counter": 100,
@@ -127,6 +129,7 @@ FULL_EXPECTED_ROW = {
     "p_uuid": UUID("9c5b94b1-35ad-49bb-b118-8e8fc24abf80"),
     "p_inet": InetAddress("10.1.1.2"),
     "p_decimal": decimal.Decimal("123.456"),
+    "p_duration": TableDuration(months=1, days=1, nanoseconds=60000000001),
     "p_timestamp": datetime.datetime(2015, 5, 3, 13, 30, 54, 234000),
     # "p_timestamp_var2": "1970-04-03T13:13:04.123456+1:00",  # TODO make this work (and others)
     "p_counter": 100,

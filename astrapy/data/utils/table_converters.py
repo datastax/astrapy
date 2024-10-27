@@ -33,7 +33,7 @@ from astrapy.data.utils.table_types import (
     TableValuedColumnType,
     TableVectorColumnType,
 )
-from astrapy.data_types import InetAddress, TableMap, TableSet
+from astrapy.data_types import InetAddress, TableDuration, TableMap, TableSet
 from astrapy.ids import UUID
 
 # TODO this will be replaced by a specific parser with its own class
@@ -106,6 +106,15 @@ def _create_scalar_converter(
             return UUID(raw_value)
 
         return _converter_uuid
+
+    elif column_type == TableScalarColumnType.DURATION:
+
+        def _converter_duration(raw_value: Any) -> TableDuration | None:
+            if raw_value is None:
+                return None
+            return TableDuration.from_string(raw_value)
+
+        return _converter_duration
 
     elif column_type == TableScalarColumnType.INET:
 

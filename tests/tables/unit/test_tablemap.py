@@ -19,7 +19,7 @@ import pytest
 from astrapy.data_types import TableMap
 
 
-class TestTableSet:
+class TestTableMap:
     @pytest.mark.describe("test of table map usage with hashables")
     def test_tablemap_hashables(self) -> None:
         mp0: TableMap[int, int] = TableMap()
