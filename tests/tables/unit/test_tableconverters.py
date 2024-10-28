@@ -23,7 +23,7 @@ from typing import Any
 import pytest
 
 from astrapy.data.utils.table_converters import create_row_converter
-from astrapy.data_types import TableDate, TableDuration, TableMap, TableSet
+from astrapy.data_types import TableDate, TableDuration, TableMap, TableSet, TableTime
 from astrapy.ids import UUID
 from astrapy.info import TableDescriptor
 
@@ -31,19 +31,20 @@ TABLE_DESCRIPTION = {
     "name": "table_simple",
     "definition": {
         "columns": {
-            "country": {"type": "text"},
-            "human": {"type": "boolean"},
-            "age": {"type": "int"},
-            "height": {"type": "float"},
-            "height_nan": {"type": "float"},
-            "height_pinf": {"type": "float"},
-            "height_minf": {"type": "float"},
+            "p_text": {"type": "text"},
+            "p_boolean": {"type": "boolean"},
+            "p_int": {"type": "int"},
+            "p_float": {"type": "float"},
+            "p_float_nan": {"type": "float"},
+            "p_float_pinf": {"type": "float"},
+            "p_float_minf": {"type": "float"},
             "p_blob": {"type": "blob"},
             "p_uuid": {"type": "uuid"},
             "p_decimal": {"type": "decimal"},
             "p_date": {"type": "date"},
             "p_duration": {"type": "duration"},
             "p_inet": {"type": "inet"},
+            "p_time": {"type": "time"},
             "p_timestamp": {"type": "timestamp"},
             # "p_timestamp_var2": {"type": "timestamp"},
             "p_list_int": {"type": "list", "valueType": "int"},
@@ -95,55 +96,57 @@ TABLE_DESCRIPTION = {
 }
 
 FULL_RESPONSE_ROW = {
-    "country": "italy",
-    "human": True,
-    "age": 123,
-    "height": 1.2,
-    "height_nan": "NaN",
-    "height_pinf": "Infinity",
-    "height_minf": "-Infinity",
+    "p_text": "italy",
+    "p_boolean": True,
+    "p_int": 123,
+    "p_float": 1.2,
+    "p_float_nan": "NaN",
+    "p_float_pinf": "Infinity",
+    "p_float_minf": "-Infinity",
     "p_blob": b"xyz",
     "p_uuid": "9c5b94b1-35ad-49bb-b118-8e8fc24abf80",
-    "p_inet": "10.1.1.2",
     "p_decimal": 123.456,
     "p_date": "11111-09-30",
     "p_duration": "1mo1d1m1ns",
+    "p_inet": "10.1.1.2",
+    "p_time": "12:34:56.78912",
     "p_timestamp": "2015-05-03T13:30:54.234Z",
     # "p_timestamp_var2": "1970-04-03T13:13:04.123456+1:00",  # TODO make this work (and others)
-    "p_counter": 100,
-    "p_varchar": "the_varchar",
-    "p_timeuuid": "0de779c0-92e3-11ef-96a4-a745ae2c0a0b",
     "p_list_int": [99, 100, 101],
     "p_set_ascii": ["a", "b", "c"],
     "p_map_text_float": {"a": 0.1, "b": 0.2},
     "somevector": [0.1, -0.2, 0.3],
     "embeddings": [1.2, 3.4],
+    "p_counter": 100,
+    "p_varchar": "the_varchar",
+    "p_timeuuid": "0de779c0-92e3-11ef-96a4-a745ae2c0a0b",
 }
 
 FULL_EXPECTED_ROW = {
-    "country": "italy",
-    "human": True,
-    "age": 123,
-    "height": 1.2,
-    "height_nan": float("NaN"),
-    "height_pinf": float("Infinity"),
-    "height_minf": float("-Infinity"),
+    "p_text": "italy",
+    "p_boolean": True,
+    "p_int": 123,
+    "p_float": 1.2,
+    "p_float_nan": float("NaN"),
+    "p_float_pinf": float("Infinity"),
+    "p_float_minf": float("-Infinity"),
     "p_blob": b"xyz",
     "p_uuid": UUID("9c5b94b1-35ad-49bb-b118-8e8fc24abf80"),
-    "p_inet": ipaddress.ip_address("10.1.1.2"),
     "p_decimal": decimal.Decimal("123.456"),
     "p_date": TableDate.from_string("11111-09-30"),
     "p_duration": TableDuration(months=1, days=1, nanoseconds=60000000001),
+    "p_inet": ipaddress.ip_address("10.1.1.2"),
+    "p_time": TableTime(12, 34, 56, 789120000),
     "p_timestamp": datetime.datetime(2015, 5, 3, 13, 30, 54, 234000),
     # "p_timestamp_var2": "1970-04-03T13:13:04.123456+1:00",  # TODO make this work (and others)
-    "p_counter": 100,
-    "p_varchar": "the_varchar",
-    "p_timeuuid": UUID("0de779c0-92e3-11ef-96a4-a745ae2c0a0b"),
     "p_list_int": [99, 100, 101],
     "p_set_ascii": TableSet(["a", "b", "c"]),
     "p_map_text_float": TableMap({"a": 0.1, "b": 0.2}),
     "somevector": [0.1, -0.2, 0.3],
     "embeddings": [1.2, 3.4],
+    "p_counter": 100,
+    "p_varchar": "the_varchar",
+    "p_timeuuid": UUID("0de779c0-92e3-11ef-96a4-a745ae2c0a0b"),
 }
 
 

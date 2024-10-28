@@ -19,7 +19,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-PARSE_PATTERN = re.compile(r"^(-?\d+)-(\d+)-(\d+)$")
+DATE_PARSE_PATTERN = re.compile(r"^(-?\d+)-(\d+)-(\d+)$")
 MAX_DAY_PER_MONTH_LEAP = {2: 29}
 MAX_DAY_PER_MONTH = {
     1: 31,
@@ -53,7 +53,7 @@ class TableDate:
     month: int
     day: int
 
-    def __init__(self, *, year: int, month: int, day: int):
+    def __init__(self, year: int, month: int, day: int):
         _fail_reason = self._validate_date(
             year=year,
             month=month,
@@ -94,24 +94,32 @@ class TableDate:
     def __le__(self, other: Any) -> bool:
         if isinstance(other, TableDate):
             return self._to_tuple() <= other._to_tuple()
+        elif isinstance(other, datetime.date):
+            return self.__le__(TableDate.from_date(other))
         else:
             return NotImplemented
 
     def __lt__(self, other: Any) -> bool:
         if isinstance(other, TableDate):
             return self._to_tuple() < other._to_tuple()
+        elif isinstance(other, datetime.date):
+            return self.__lt__(TableDate.from_date(other))
         else:
             return NotImplemented
 
     def __ge__(self, other: Any) -> bool:
         if isinstance(other, TableDate):
             return self._to_tuple() >= other._to_tuple()
+        elif isinstance(other, datetime.date):
+            return self.__ge__(TableDate.from_date(other))
         else:
             return NotImplemented
 
     def __gt__(self, other: Any) -> bool:
         if isinstance(other, TableDate):
             return self._to_tuple() > other._to_tuple()
+        elif isinstance(other, datetime.date):
+            return self.__gt__(TableDate.from_date(other))
         else:
             return NotImplemented
 
@@ -146,7 +154,7 @@ class TableDate:
 
     @staticmethod
     def from_string(date_string: str) -> TableDate:
-        match = PARSE_PATTERN.match(date_string)
+        match = DATE_PARSE_PATTERN.match(date_string)
         if match:
             year = int(match[1])
             month = int(match[2])

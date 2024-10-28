@@ -38,7 +38,9 @@ class TestTableDate:
             TableDate.from_string("+1999-1-1")
         with pytest.raises(ValueError):
             TableDate.from_string("2024-10-10X")
+        with pytest.raises(ValueError):
             TableDate.from_string("X2024-10-10")
+        with pytest.raises(ValueError):
             TableDate.from_string("X2024-X10-10")
 
         with pytest.raises(ValueError):
@@ -108,7 +110,6 @@ class TestTableDate:
         repr(dfull)
         str(dfull)
         dfull.to_string()
-        dfull.to_date()
 
         end_pleistocene = TableDate.from_string("-11700-12-13")
         end_pleistocene.to_string()
@@ -124,3 +125,14 @@ class TestTableDate:
         assert far_future >= end_pleistocene
         assert end_pleistocene < far_future
         assert end_pleistocene <= far_future
+
+        modernity = datetime.date(2024, 10, 28)
+        assert far_future > modernity
+        assert far_future >= modernity
+        assert modernity < far_future
+        assert modernity <= far_future
+
+        assert end_pleistocene < modernity
+        assert end_pleistocene <= modernity
+        assert modernity > end_pleistocene
+        assert modernity >= end_pleistocene

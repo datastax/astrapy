@@ -19,6 +19,7 @@ from astrapy.data_types.table_date import TableDate
 from astrapy.data_types.table_duration import TableDuration
 from astrapy.data_types.table_map import TableMap
 from astrapy.data_types.table_set import TableSet
+from astrapy.data_types.table_time import TableTime
 
 __all__ = [
     "APITimestamp",
@@ -26,4 +27,5 @@ __all__ = [
     "TableDuration",
     "TableMap",
     "TableSet",
+    "TableTime",
 ]

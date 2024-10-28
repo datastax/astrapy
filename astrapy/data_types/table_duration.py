@@ -48,8 +48,8 @@ NANOSECOND_MULTIPLIER = {
 }
 
 # Note: "ms" and "mo" MUST come before "m" here (otherwise a wrong "m" is found first).
-V_PATTERN = re.compile(r"^(\d+(y|ms|mo|w|d|h|m|s|us|ns))+$")
-I_PATTERN = re.compile(r"(\d+)(y|ms|mo|w|d|h|m|s|us|ns)")
+DURATION_V_PATTERN = re.compile(r"^(\d+(y|ms|mo|w|d|h|m|s|us|ns))+$")
+DURATION_I_PATTERN = re.compile(r"(\d+)(y|ms|mo|w|d|h|m|s|us|ns)")
 
 DURATION_FORMAT_DESC = (
     "Durations must be a non-empty sequence of '<quantity><unit>', without "
@@ -61,10 +61,10 @@ DURATION_FORMAT_DESC = (
 
 def _parse_duration(duration_string: str) -> TableDuration:
     _norm_string = duration_string.lower().replace("µs", "us")
-    if V_PATTERN.fullmatch(_norm_string):
+    if DURATION_V_PATTERN.fullmatch(_norm_string):
         qunits = [
             (match.group(1), match.group(2))
-            for match in I_PATTERN.finditer(_norm_string)
+            for match in DURATION_I_PATTERN.finditer(_norm_string)
         ]
         # validate sorting and duplicates
         if qunits:

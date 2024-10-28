@@ -34,7 +34,7 @@ from astrapy.data.utils.table_types import (
     TableValuedColumnType,
     TableVectorColumnType,
 )
-from astrapy.data_types import TableDate, TableDuration, TableMap, TableSet
+from astrapy.data_types import TableDate, TableDuration, TableMap, TableSet, TableTime
 from astrapy.ids import UUID
 
 # TODO this will be replaced by a specific parser with its own class
@@ -116,6 +116,15 @@ def _create_scalar_converter(
             return TableDate.from_string(raw_value)
 
         return _converter_date
+
+    elif column_type == TableScalarColumnType.TIME:
+
+        def _converter_time(raw_value: Any) -> TableTime | None:
+            if raw_value is None:
+                return None
+            return TableTime.from_string(raw_value)
+
+        return _converter_time
 
     elif column_type == TableScalarColumnType.DURATION:
 
