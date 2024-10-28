@@ -134,9 +134,12 @@ class TableDuration:
         return f"{self.__class__.__name__}({inner_desc})"
 
     def __str__(self) -> str:
-        return self.as_string()
+        return self.to_string()
 
-    def as_string(self) -> str:
+    def __reduce__(self) -> tuple[type, tuple[int, int, int]]:
+        return self.__class__, (self.months, self.days, self.nanoseconds)
+
+    def to_string(self) -> str:
         _month_string: str | None = None
         _day_string: str | None = None
         _nanosecond_string: str | None = None

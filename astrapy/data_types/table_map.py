@@ -87,3 +87,6 @@ class TableMap(Generic[T, U], Mapping[T, U]):
     def __str__(self) -> str:
         _map_repr = ", ".join(f"({k}, {v})" for k, v in zip(self._keys, self._values))
         return f"{_map_repr}"
+
+    def __reduce__(self) -> tuple[type, tuple[Iterable[tuple[T, U]]]]:
+        return self.__class__, (list(zip(self._keys, self._values)),)

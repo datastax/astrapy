@@ -54,8 +54,8 @@ class TableSet(Generic[T], Set[T]):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self._items})"
 
-    def __reduce__(self) -> tuple[type, tuple[Iterable[T]], None, Iterable[T]]:
-        return self.__class__, (self._items,), None, self._items
+    def __reduce__(self) -> tuple[type, tuple[Iterable[T]]]:
+        return self.__class__, (self._items,)
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, self.__class__):
