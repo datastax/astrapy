@@ -19,6 +19,10 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from astrapy.utils.date_utils import (
+    _validate_time,
+)
+
 TIME_PARSE_PATTERN = re.compile(r"^(\d+):(\d+):(\d+)(\.\d+)?$")
 
 TIME_FORMAT_DESC = (
@@ -42,7 +46,7 @@ class TableTime:
     def __init__(
         self, hour: int, minute: int = 0, second: int = 0, nanosecond: int = 0
     ):
-        _fail_reason = self._validate_time(
+        _fail_reason = _validate_time(
             hour=hour,
             minute=minute,
             second=second,
@@ -54,21 +58,6 @@ class TableTime:
         self.minute = minute
         self.second = second
         self.nanosecond = nanosecond
-
-    @staticmethod
-    def _validate_time(
-        *, hour: int, minute: int, second: int, nanosecond: int
-    ) -> str | None:
-        # None if valid date, reason otherwise
-        if hour < 0 or hour > 23:
-            return "illegal hour"
-        if minute < 0 or minute > 59:
-            return "illegal minute"
-        if second < 0 or second > 59:
-            return "illegal second"
-        if nanosecond < 0 or nanosecond >= 1000000000:
-            return "illegal nanosecond"
-        return None
 
     def __repr__(self) -> str:
         return (
@@ -164,11 +153,12 @@ class TableTime:
             hour = int(match[1])
             minute = int(match[2])
             second = int(match[3])
+            nanosecond: int
             if match[4]:
                 nanosecond = int(float(match[4]) * 1000000000)
             else:
                 nanosecond = 0
-            _fail_reason = TableTime._validate_time(
+            _fail_reason = _validate_time(
                 hour=hour,
                 minute=minute,
                 second=second,

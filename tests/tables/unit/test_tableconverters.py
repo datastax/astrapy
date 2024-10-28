@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import datetime
 import decimal
 import ipaddress
 import math
@@ -23,7 +22,14 @@ from typing import Any
 import pytest
 
 from astrapy.data.utils.table_converters import create_row_converter
-from astrapy.data_types import TableDate, TableDuration, TableMap, TableSet, TableTime
+from astrapy.data_types import (
+    DataAPITimestamp,
+    TableDate,
+    TableDuration,
+    TableMap,
+    TableSet,
+    TableTime,
+)
 from astrapy.ids import UUID
 from astrapy.info import TableDescriptor
 
@@ -46,7 +52,7 @@ TABLE_DESCRIPTION = {
             "p_inet": {"type": "inet"},
             "p_time": {"type": "time"},
             "p_timestamp": {"type": "timestamp"},
-            # "p_timestamp_var2": {"type": "timestamp"},
+            "p_timestamp_out_offset": {"type": "timestamp"},
             "p_list_int": {"type": "list", "valueType": "int"},
             "p_set_ascii": {"type": "set", "valueType": "ascii"},
             "p_map_text_float": {
@@ -111,7 +117,7 @@ FULL_RESPONSE_ROW = {
     "p_inet": "10.1.1.2",
     "p_time": "12:34:56.78912",
     "p_timestamp": "2015-05-03T13:30:54.234Z",
-    # "p_timestamp_var2": "1970-04-03T13:13:04.123456+1:00",  # TODO make this work (and others)
+    "p_timestamp_out_offset": "-123-04-03T13:13:04.123+1:00",
     "p_list_int": [99, 100, 101],
     "p_set_ascii": ["a", "b", "c"],
     "p_map_text_float": {"a": 0.1, "b": 0.2},
@@ -137,8 +143,10 @@ FULL_EXPECTED_ROW = {
     "p_duration": TableDuration(months=1, days=1, nanoseconds=60000000001),
     "p_inet": ipaddress.ip_address("10.1.1.2"),
     "p_time": TableTime(12, 34, 56, 789120000),
-    "p_timestamp": datetime.datetime(2015, 5, 3, 13, 30, 54, 234000),
-    # "p_timestamp_var2": "1970-04-03T13:13:04.123456+1:00",  # TODO make this work (and others)
+    "p_timestamp": DataAPITimestamp.from_string("2015-05-03T13:30:54.234Z"),
+    "p_timestamp_out_offset": DataAPITimestamp.from_string(
+        "-123-04-03T13:13:04.123+1:00"
+    ),
     "p_list_int": [99, 100, 101],
     "p_set_ascii": TableSet(["a", "b", "c"]),
     "p_map_text_float": TableMap({"a": 0.1, "b": 0.2}),

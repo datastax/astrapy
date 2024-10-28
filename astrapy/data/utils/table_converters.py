@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import datetime
 import decimal
 import ipaddress
 from typing import Any, Callable
@@ -34,15 +33,15 @@ from astrapy.data.utils.table_types import (
     TableValuedColumnType,
     TableVectorColumnType,
 )
-from astrapy.data_types import TableDate, TableDuration, TableMap, TableSet, TableTime
+from astrapy.data_types import (
+    DataAPITimestamp,
+    TableDate,
+    TableDuration,
+    TableMap,
+    TableSet,
+    TableTime,
+)
 from astrapy.ids import UUID
-
-# TODO this will be replaced by a specific parser with its own class
-TIMESTAMP_DATETIME_FORMATS = [
-    "%Y-%m-%dT%H:%M:%S.%fZ",
-    # TODO additional formats (and the parsing troubles)
-    # "%Y-%m-%dT%H:%M:%S.%f%:z",
-]
 
 
 def _create_scalar_converter(
@@ -157,20 +156,10 @@ def _create_scalar_converter(
 
     elif column_type == TableScalarColumnType.TIMESTAMP:
 
-        def _converter_timestamp(raw_value: Any) -> datetime.datetime | None:
+        def _converter_timestamp(raw_value: Any) -> DataAPITimestamp | None:
             if raw_value is None:
                 return None
-            for dt_format in TIMESTAMP_DATETIME_FORMATS:
-                try:
-                    return datetime.datetime.strptime(raw_value, dt_format)
-                except ValueError:
-                    pass
-            raise ValueError(
-                "Unparsable date string according to available formats for reads: "
-                + ", ".join(
-                    f'"{dt_format}"' for dt_format in TIMESTAMP_DATETIME_FORMATS
-                )
-            )
+            return DataAPITimestamp.from_string(raw_value)
 
         return _converter_timestamp
 

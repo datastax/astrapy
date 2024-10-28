@@ -19,6 +19,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from astrapy.utils.date_utils import _validate_date
+
 DATE_PARSE_PATTERN = re.compile(r"^(-?\d+)-(\d+)-(\d+)$")
 MAX_DAY_PER_MONTH_LEAP = {2: 29}
 MAX_DAY_PER_MONTH = {
@@ -54,7 +56,7 @@ class TableDate:
     day: int
 
     def __init__(self, year: int, month: int, day: int):
-        _fail_reason = self._validate_date(
+        _fail_reason = _validate_date(
             year=year,
             month=month,
             day=day,
@@ -64,23 +66,6 @@ class TableDate:
         self.year = year
         self.month = month
         self.day = day
-
-    @staticmethod
-    def _validate_date(*, year: int, month: int, day: int) -> str | None:
-        # None if valid date, reason otherwise
-        if month <= 0 or month > 12:
-            return "illegal month"
-        is_leap = TableDate._is_leap_year(year)
-        if month == 2 and is_leap:
-            if day <= 0 or day > MAX_DAY_PER_MONTH_LEAP[month]:
-                return "illegal monthday, leap-year case"
-        if month == 2 and not is_leap:
-            if day <= 0 or day > MAX_DAY_PER_MONTH[month]:
-                return "illegal monthday, nonleap-year case"
-        if month != 2:
-            if day <= 0 or day > MAX_DAY_PER_MONTH[month]:
-                return "illegal monthday"
-        return None
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.year}, {self.month}, {self.day})"
@@ -126,16 +111,6 @@ class TableDate:
     def _to_tuple(self) -> tuple[int, int, int]:
         return (self.year, self.month, self.day)
 
-    @staticmethod
-    def _is_leap_year(year: int) -> bool:
-        if year % 4 != 0:
-            return False
-        if year % 20 == 0:
-            if year % 400 != 0:
-                return False
-            return True
-        return True
-
     def to_string(self) -> str:
         if self.year < 0:
             return f"{self.year:05}-{self.month:02}-{self.day:02}"
@@ -159,7 +134,7 @@ class TableDate:
             year = int(match[1])
             month = int(match[2])
             day = int(match[3])
-            _fail_reason = TableDate._validate_date(year=year, month=month, day=day)
+            _fail_reason = _validate_date(year=year, month=month, day=day)
             if _fail_reason:
                 raise ValueError(
                     f"Cannot parse '{date_string}' into a valid date: "

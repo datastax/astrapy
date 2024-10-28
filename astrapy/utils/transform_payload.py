@@ -20,7 +20,7 @@ import time
 from typing import Any, Dict, Iterable, cast
 
 from astrapy.constants import DefaultDocumentType
-from astrapy.data_types import APITimestamp
+from astrapy.data_types import DataAPITimestamp
 from astrapy.ids import UUID, ObjectId
 from astrapy.utils.api_options import FullPayloadTransformOptions
 
@@ -57,7 +57,7 @@ def convert_to_ejson_date_object(
 
 
 def convert_to_ejson_apitimestamp_object(
-    date_value: APITimestamp,
+    date_value: DataAPITimestamp,
 ) -> dict[str, int]:
     return {"$date": date_value.timestamp_ms}
 
@@ -82,8 +82,8 @@ def convert_ejson_date_object_to_datetime(
 
 def convert_ejson_date_object_to_apitimestamp(
     date_object: dict[str, int],
-) -> APITimestamp:
-    return APITimestamp(date_object["$date"])
+) -> DataAPITimestamp:
+    return DataAPITimestamp(date_object["$date"])
 
 
 def convert_ejson_binary_object_to_bytes(
@@ -135,11 +135,11 @@ def normalize_payload_value(
                 return convert_to_ejson_uuid_object(value)
             elif isinstance(value, ObjectId):
                 return convert_to_ejson_objectid_object(value)
-            elif isinstance(value, APITimestamp):
+            elif isinstance(value, DataAPITimestamp):
                 if options.lossless_custom_classes:
                     return convert_to_ejson_apitimestamp_object(value)
                 else:
-                    raise TypeError("Unexpected APITimestamp object in payload.")
+                    raise TypeError("Unexpected DataAPITimestamp object in payload.")
             else:
                 return value
 

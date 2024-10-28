@@ -21,7 +21,7 @@ import pytest
 
 from astrapy.constants import DefaultDocumentType, ReturnDocument, SortDocuments
 from astrapy.cursors import AsyncCollectionCursor
-from astrapy.data_types import APITimestamp
+from astrapy.data_types import DataAPITimestamp
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import DeleteResult, InsertOneResult
@@ -963,12 +963,12 @@ class TestDMLAsync:
         date_lossless = doc_lossless["the_date"]
 
         assert isinstance(dtime_lossy, datetime.datetime)
-        assert isinstance(dtime_lossless, APITimestamp)
-        assert APITimestamp.from_datetime(dtime_lossy) == dtime_lossless
+        assert isinstance(dtime_lossless, DataAPITimestamp)
+        assert DataAPITimestamp.from_datetime(dtime_lossy) == dtime_lossless
         assert dtime_lossless.to_datetime() == dtime_lossy
         assert isinstance(date_lossy, datetime.datetime)
-        assert isinstance(date_lossless, APITimestamp)
-        assert APITimestamp.from_datetime(date_lossy) == date_lossless
+        assert isinstance(date_lossless, DataAPITimestamp)
+        assert DataAPITimestamp.from_datetime(date_lossy) == date_lossless
         assert date_lossless.to_datetime() == date_lossy
 
         # write path
@@ -978,14 +978,14 @@ class TestDMLAsync:
             await acol_lossy.insert_one(
                 {
                     "_id": "lossy_ats",
-                    "the_dtime": APITimestamp.from_datetime(the_dtime),
+                    "the_dtime": DataAPITimestamp.from_datetime(the_dtime),
                 }
             )
         await acol_lossless.insert_one({"_id": "lossless_dt", "the_dtime": the_dtime})
         await acol_lossless.insert_one(
             {
                 "_id": "lossless_ats",
-                "the_dtime": APITimestamp.from_datetime(the_dtime),
+                "the_dtime": DataAPITimestamp.from_datetime(the_dtime),
             }
         )
 
