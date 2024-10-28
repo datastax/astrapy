@@ -134,6 +134,9 @@ class TableDuration:
         return f"{self.__class__.__name__}({inner_desc})"
 
     def __str__(self) -> str:
+        return self.as_string()
+
+    def as_string(self) -> str:
         _month_string: str | None = None
         _day_string: str | None = None
         _nanosecond_string: str | None = None

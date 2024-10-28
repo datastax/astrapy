@@ -15,14 +15,12 @@
 from __future__ import annotations
 
 from astrapy.data_types.api_timestamp import APITimestamp
-from astrapy.data_types.inet_address import InetAddress
 from astrapy.data_types.table_duration import TableDuration
 from astrapy.data_types.table_map import TableMap
 from astrapy.data_types.table_set import TableSet
 
 __all__ = [
     "APITimestamp",
-    "InetAddress",
     "TableDuration",
     "TableMap",
     "TableSet",

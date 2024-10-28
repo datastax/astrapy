@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import datetime
 import decimal
+import ipaddress
 from typing import Any, Callable
 
 from astrapy.data.info.table_descriptor import (
@@ -33,7 +34,7 @@ from astrapy.data.utils.table_types import (
     TableValuedColumnType,
     TableVectorColumnType,
 )
-from astrapy.data_types import InetAddress, TableDuration, TableMap, TableSet
+from astrapy.data_types import TableDuration, TableMap, TableSet
 from astrapy.ids import UUID
 
 # TODO this will be replaced by a specific parser with its own class
@@ -118,10 +119,12 @@ def _create_scalar_converter(
 
     elif column_type == TableScalarColumnType.INET:
 
-        def _converter_inet(raw_value: Any) -> InetAddress | None:
+        def _converter_inet(
+            raw_value: Any,
+        ) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
             if raw_value is None:
                 return None
-            return InetAddress(raw_value)
+            return ipaddress.ip_address(raw_value)
 
         return _converter_inet
 

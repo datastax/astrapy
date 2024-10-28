@@ -16,13 +16,14 @@ from __future__ import annotations
 
 import datetime
 import decimal
+import ipaddress
 import math
 from typing import Any
 
 import pytest
 
 from astrapy.data.utils.table_converters import create_row_converter
-from astrapy.data_types import InetAddress, TableDuration, TableMap, TableSet
+from astrapy.data_types import TableDuration, TableMap, TableSet
 from astrapy.ids import UUID
 from astrapy.info import TableDescriptor
 
@@ -127,7 +128,7 @@ FULL_EXPECTED_ROW = {
     "height_minf": float("-Infinity"),
     "p_blob": b"xyz",
     "p_uuid": UUID("9c5b94b1-35ad-49bb-b118-8e8fc24abf80"),
-    "p_inet": InetAddress("10.1.1.2"),
+    "p_inet": ipaddress.ip_address("10.1.1.2"),
     "p_decimal": decimal.Decimal("123.456"),
     "p_duration": TableDuration(months=1, days=1, nanoseconds=60000000001),
     "p_timestamp": datetime.datetime(2015, 5, 3, 13, 30, 54, 234000),
