@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 from astrapy.data_types.data_api_timestamp import DataAPITimestamp
+from astrapy.data_types.data_api_vector import DataAPIVector
 from astrapy.data_types.table_date import TableDate
 from astrapy.data_types.table_duration import TableDuration
 from astrapy.data_types.table_map import TableMap
@@ -23,6 +24,7 @@ from astrapy.data_types.table_time import TableTime
 
 __all__ = [
     "DataAPITimestamp",
+    "DataAPIVector",
     "TableDate",
     "TableDuration",
     "TableMap",
