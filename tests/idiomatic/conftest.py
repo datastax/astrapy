@@ -106,7 +106,7 @@ def sync_collection(
             wire_format_options=WireFormatOptions(
                 coerce_iterables_to_vectors=True,
             ),
-        )
+        ),
     )
     yield collection
 

@@ -1042,13 +1042,13 @@ class TestDMLSync:
         col_standard_dtypes.insert_one(
             {"_id": "default_dtype_dt", "the_dtime": the_dtime}
         )
-        with pytest.raises(TypeError):
-            col_standard_dtypes.insert_one(
-                {
-                    "_id": "default_dtype_ats",
-                    "the_dtime": DataAPITimestamp.from_datetime(the_dtime),
-                }
-            )
+        # in write path, custom classes still accepted
+        col_standard_dtypes.insert_one(
+            {
+                "_id": "default_dtype_ats",
+                "the_dtime": DataAPITimestamp.from_datetime(the_dtime),
+            }
+        )
         col_custom_dtypes.insert_one({"_id": "custom_dtype_dt", "the_dtime": the_dtime})
         col_custom_dtypes.insert_one(
             {
@@ -1058,7 +1058,7 @@ class TestDMLSync:
         )
 
         all_dates = [doc["the_dtime"] for doc in sync_empty_collection.find({})]
-        assert len(all_dates) == 3
+        assert len(all_dates) == 4
         assert len(set(all_dates)) == 1
 
     @pytest.mark.describe("test of find_one_and_replace, sync")
