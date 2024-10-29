@@ -21,7 +21,7 @@ import pytest
 
 from astrapy.constants import DefaultDocumentType, ReturnDocument, SortDocuments
 from astrapy.cursors import AsyncCollectionCursor
-from astrapy.data_types import DataAPITimestamp
+from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import DeleteResult, InsertOneResult
@@ -137,6 +137,129 @@ class TestDMLAsync:
         )
         assert retrieved2 is not None
         assert retrieved2["$vector"] == [-3, -4]
+
+    @pytest.mark.describe("test of collection vector insertion options, async")
+    async def test_collection_vector_insertion_options_async(
+        self,
+        async_empty_collection: DefaultAsyncCollection,
+    ) -> None:
+        acollection_Yb_Yc = async_empty_collection.with_options(
+            api_options=APIOptions(
+                payload_transform_options=PayloadTransformOptions(
+                    binary_encode_vectors=True,
+                    coerce_iterables_to_vectors=True,
+                ),
+            ),
+        )
+        acollection_Nb_Yc = async_empty_collection.with_options(
+            api_options=APIOptions(
+                payload_transform_options=PayloadTransformOptions(
+                    binary_encode_vectors=False,
+                    coerce_iterables_to_vectors=True,
+                ),
+            ),
+        )
+        acollection_Yb_Nc = async_empty_collection.with_options(
+            api_options=APIOptions(
+                payload_transform_options=PayloadTransformOptions(
+                    binary_encode_vectors=True,
+                    coerce_iterables_to_vectors=False,
+                ),
+            ),
+        )
+        acollection_Nb_Nc = async_empty_collection.with_options(
+            api_options=APIOptions(
+                payload_transform_options=PayloadTransformOptions(
+                    binary_encode_vectors=False,
+                    coerce_iterables_to_vectors=False,
+                ),
+            ),
+        )
+
+        # writes w.r.t. options
+        await acollection_Yb_Yc.insert_one(
+            {"_id": "Yb_Yc_()", "$vector": (i for i in [0.1, 0.2])}
+        )
+        await acollection_Yb_Yc.insert_one({"_id": "Yb_Yc_[]", "$vector": [0.3, 0.4]})
+        await acollection_Yb_Yc.insert_one(
+            {"_id": "Yb_Yc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        await acollection_Nb_Yc.insert_one(
+            {"_id": "Nb_Yc_()", "$vector": (i for i in [0.1, 0.2])}
+        )
+        await acollection_Nb_Yc.insert_one({"_id": "Nb_Yc_[]", "$vector": [0.3, 0.4]})
+        await acollection_Nb_Yc.insert_one(
+            {"_id": "Nb_Yc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        with pytest.raises(TypeError):
+            await acollection_Yb_Nc.insert_one(
+                {"_id": "Yb_Nc_()", "$vector": (i for i in [0.1, 0.2])}
+            )
+        await acollection_Yb_Nc.insert_one({"_id": "Yb_Nc_[]", "$vector": [0.3, 0.4]})
+        await acollection_Yb_Nc.insert_one(
+            {"_id": "Yb_Nc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        with pytest.raises(TypeError):
+            await acollection_Nb_Nc.insert_one(
+                {"_id": "Nb_Nc_()", "$vector": (i for i in [0.1, 0.2])}
+            )
+        await acollection_Nb_Nc.insert_one({"_id": "Nb_Nc_[]", "$vector": [0.3, 0.4]})
+        await acollection_Nb_Nc.insert_one(
+            {"_id": "Nb_Nc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        # check how the documents are stored
+        expect_binaries = {
+            "Yb_Yc_()": True,
+            "Yb_Yc_[]": True,
+            "Yb_Yc_DV": True,
+            "Nb_Yc_()": False,
+            "Nb_Yc_[]": False,
+            "Nb_Yc_DV": True,
+            #
+            "Yb_Nc_[]": True,
+            "Yb_Nc_DV": True,
+            #
+            "Nb_Nc_[]": False,
+            "Nb_Nc_DV": True,
+        }
+        # TODO use command() when command gets cleaned of the postprocessing
+        raw_find_response = (
+            await async_empty_collection._api_commander.async_raw_request(
+                payload={"find": {"projection": {"_id": True, "$vector": True}}},
+            )
+        ).json()
+        raw_docs = raw_find_response["data"]["documents"]
+        for raw_doc in raw_docs:
+            expect_binary = expect_binaries[raw_doc["_id"]]
+            has_binary = "$binary" in raw_doc["$vector"]
+            assert expect_binary is has_binary
+
+        acollection_Ycc = async_empty_collection.with_options(
+            api_options=APIOptions(
+                payload_transform_options=PayloadTransformOptions(
+                    lossless_custom_classes=True,
+                ),
+            ),
+        )
+        acollection_Ncc = async_empty_collection.with_options(
+            api_options=APIOptions(
+                payload_transform_options=PayloadTransformOptions(
+                    lossless_custom_classes=False,
+                ),
+            ),
+        )
+        docs_Ycc = [
+            doc async for doc in acollection_Ycc.find(projection={"$vector": True})
+        ]
+        docs_Ncc = [
+            doc async for doc in acollection_Ncc.find(projection={"$vector": True})
+        ]
+        assert all(isinstance(doc["$vector"], DataAPIVector) for doc in docs_Ycc)
+        assert all(not isinstance(doc["$vector"], DataAPIVector) for doc in docs_Ncc)
 
     @pytest.mark.describe("test of collection delete_one, async")
     async def test_collection_delete_one_async(

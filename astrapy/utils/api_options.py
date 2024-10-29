@@ -28,6 +28,7 @@ from astrapy.settings.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
     DEFAULT_BINARY_ENCODE_VECTORS,
+    DEFAULT_COERCE_ITERABLES_TO_VECTORS,
     DEFAULT_DATA_OPERATION_TIMEOUT_MS,
     DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
     DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
@@ -92,12 +93,14 @@ class FullTimeoutOptions(TimeoutOptions):
 class PayloadTransformOptions:
     binary_encode_vectors: bool | UnsetType = _UNSET
     lossless_custom_classes: bool | UnsetType = _UNSET
+    coerce_iterables_to_vectors: bool | UnsetType = _UNSET
 
 
 @dataclass
 class FullPayloadTransformOptions(PayloadTransformOptions):
     binary_encode_vectors: bool
     lossless_custom_classes: bool
+    coerce_iterables_to_vectors: bool
 
     def with_override(
         self, other: PayloadTransformOptions
@@ -112,6 +115,11 @@ class FullPayloadTransformOptions(PayloadTransformOptions):
                 other.lossless_custom_classes
                 if not isinstance(other.lossless_custom_classes, UnsetType)
                 else self.lossless_custom_classes
+            ),
+            coerce_iterables_to_vectors=(
+                other.coerce_iterables_to_vectors
+                if not isinstance(other.coerce_iterables_to_vectors, UnsetType)
+                else self.coerce_iterables_to_vectors
             ),
         )
 
@@ -387,6 +395,7 @@ defaultTimeoutOptions = FullTimeoutOptions(
 defaultPayloadTransformOptions = FullPayloadTransformOptions(
     binary_encode_vectors=DEFAULT_BINARY_ENCODE_VECTORS,
     lossless_custom_classes=DEFAULT_LOSSLESS_CUSTOM_CLASSES,
+    coerce_iterables_to_vectors=DEFAULT_COERCE_ITERABLES_TO_VECTORS,
 )
 
 

@@ -20,7 +20,7 @@ import time
 from typing import Any, Dict, Iterable, cast
 
 from astrapy.constants import DefaultDocumentType
-from astrapy.data_types import DataAPITimestamp
+from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.ids import UUID, ObjectId
 from astrapy.utils.api_options import FullPayloadTransformOptions
 
@@ -110,38 +110,47 @@ def normalize_payload_value(
     """
     _l2 = ".".join(path[-2:])
     _l1 = ".".join(path[-1:])
+    ACCEPT_BROAD_LISTLIKE_FOR_VECTORS = options.coerce_iterables_to_vectors
+
+    # vector-related pre-processing and coercion
+    _value = value
+    # is this value in the place for vectors?
     if _l1 == "$vector" and _l2 != "projection.$vector":
-        if not is_list_of_floats(value):
-            return convert_vector_to_floats(value)
+        # must coerce list-likes broadly, and is it the case to do it?
+        if ACCEPT_BROAD_LISTLIKE_FOR_VECTORS and not (
+            is_list_of_floats(_value) or isinstance(_value, DataAPIVector)
+        ):
+            _value = convert_vector_to_floats(_value)
+        # now _value is either a list or a DataAPIVector.
+        if isinstance(_value, DataAPIVector):
+            return convert_to_ejson_bytes(_value.to_bytes())
         else:
-            return value
-    else:
-        if isinstance(value, dict):
-            return {
-                k: normalize_payload_value(path + [k], v, options=options)
-                for k, v in value.items()
-            }
-        elif isinstance(value, list):
-            return [
-                normalize_payload_value(path + [""], list_item, options=options)
-                for list_item in value
-            ]
-        else:
-            if isinstance(value, datetime.datetime) or isinstance(value, datetime.date):
-                return convert_to_ejson_date_object(value)
-            elif isinstance(value, bytes):
-                return convert_to_ejson_bytes(value)
-            elif isinstance(value, UUID):
-                return convert_to_ejson_uuid_object(value)
-            elif isinstance(value, ObjectId):
-                return convert_to_ejson_objectid_object(value)
-            elif isinstance(value, DataAPITimestamp):
-                if options.lossless_custom_classes:
-                    return convert_to_ejson_apitimestamp_object(value)
-                else:
-                    raise TypeError("Unexpected DataAPITimestamp object in payload.")
+            if options.binary_encode_vectors:
+                return convert_to_ejson_bytes(DataAPIVector(_value).to_bytes())
             else:
-                return value
+                return _value
+    if isinstance(_value, dict):
+        return {
+            k: normalize_payload_value(path + [k], v, options=options)
+            for k, v in _value.items()
+        }
+    elif isinstance(_value, list):
+        return [
+            normalize_payload_value(path + [""], list_item, options=options)
+            for list_item in _value
+        ]
+    elif isinstance(_value, datetime.datetime) or isinstance(_value, datetime.date):
+        return convert_to_ejson_date_object(_value)
+    elif isinstance(_value, bytes):
+        return convert_to_ejson_bytes(_value)
+    elif isinstance(_value, UUID):
+        return convert_to_ejson_uuid_object(_value)
+    elif isinstance(_value, ObjectId):
+        return convert_to_ejson_objectid_object(_value)
+    elif isinstance(_value, DataAPITimestamp):
+        return convert_to_ejson_apitimestamp_object(_value)
+    else:
+        return _value
 
 
 def normalize_for_api(
@@ -174,6 +183,26 @@ def restore_response_value(
     """
     The path helps determining special treatments
     """
+    _l2 = ".".join(path[-2:])
+    _l1 = ".".join(path[-1:])
+
+    if _l1 == "$vector" and _l2 != "projection.$vector":
+        # custom faster handling for the $vector path:
+        if isinstance(value, list):
+            if options.lossless_custom_classes:
+                return DataAPIVector(value)
+            else:
+                return value
+        elif isinstance(value, dict):
+            _bytes = convert_ejson_binary_object_to_bytes(value)
+            if options.lossless_custom_classes:
+                return DataAPIVector.from_bytes(_bytes)
+            else:
+                return DataAPIVector.from_bytes(_bytes).data
+        else:
+            raise ValueError(
+                f"Response parsing failed: unexpected data type found under $vector: {type(value)}"
+            )
     if isinstance(value, dict):
         value_keys = set(value.keys())
         if value_keys == {"$date"}:

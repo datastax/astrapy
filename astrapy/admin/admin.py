@@ -278,6 +278,7 @@ def fetch_raw_database_info_from_id_token(
             # TODO restore the caller's options when arranged
             binary_encode_vectors=True,
             lossless_custom_classes=True,
+            coerce_iterables_to_vectors=False,
         ),
         headers=ops_headers,
         dev_ops_api=True,
@@ -335,6 +336,7 @@ async def async_fetch_raw_database_info_from_id_token(
             # TODO restore the caller's options when arranged
             binary_encode_vectors=True,
             lossless_custom_classes=True,
+            coerce_iterables_to_vectors=False,
         ),
         headers=ops_headers,
         dev_ops_api=True,

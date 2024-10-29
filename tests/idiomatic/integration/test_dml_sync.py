@@ -20,7 +20,7 @@ from typing import Any
 import pytest
 
 from astrapy.constants import DefaultDocumentType, ReturnDocument, SortDocuments
-from astrapy.data_types import DataAPITimestamp
+from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import DeleteResult, InsertOneResult
@@ -108,6 +108,123 @@ class TestDMLSync:
         retrieved2 = sync_empty_collection.find_one({"tag": "v2"}, projection={"*": 1})
         assert retrieved2 is not None
         assert retrieved2["$vector"] == [-3, -4]
+
+    @pytest.mark.describe("test of collection vector insertion options, sync")
+    def test_collection_vector_insertion_options_sync(
+        self,
+        sync_empty_collection: DefaultCollection,
+    ) -> None:
+        collection_Yb_Yc = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                payload_transform_options=PayloadTransformOptions(
+                    binary_encode_vectors=True,
+                    coerce_iterables_to_vectors=True,
+                ),
+            ),
+        )
+        collection_Nb_Yc = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                payload_transform_options=PayloadTransformOptions(
+                    binary_encode_vectors=False,
+                    coerce_iterables_to_vectors=True,
+                ),
+            ),
+        )
+        collection_Yb_Nc = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                payload_transform_options=PayloadTransformOptions(
+                    binary_encode_vectors=True,
+                    coerce_iterables_to_vectors=False,
+                ),
+            ),
+        )
+        collection_Nb_Nc = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                payload_transform_options=PayloadTransformOptions(
+                    binary_encode_vectors=False,
+                    coerce_iterables_to_vectors=False,
+                ),
+            ),
+        )
+
+        # writes w.r.t. options
+        collection_Yb_Yc.insert_one(
+            {"_id": "Yb_Yc_()", "$vector": (i for i in [0.1, 0.2])}
+        )
+        collection_Yb_Yc.insert_one({"_id": "Yb_Yc_[]", "$vector": [0.3, 0.4]})
+        collection_Yb_Yc.insert_one(
+            {"_id": "Yb_Yc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        collection_Nb_Yc.insert_one(
+            {"_id": "Nb_Yc_()", "$vector": (i for i in [0.1, 0.2])}
+        )
+        collection_Nb_Yc.insert_one({"_id": "Nb_Yc_[]", "$vector": [0.3, 0.4]})
+        collection_Nb_Yc.insert_one(
+            {"_id": "Nb_Yc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        with pytest.raises(TypeError):
+            collection_Yb_Nc.insert_one(
+                {"_id": "Yb_Nc_()", "$vector": (i for i in [0.1, 0.2])}
+            )
+        collection_Yb_Nc.insert_one({"_id": "Yb_Nc_[]", "$vector": [0.3, 0.4]})
+        collection_Yb_Nc.insert_one(
+            {"_id": "Yb_Nc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        with pytest.raises(TypeError):
+            collection_Nb_Nc.insert_one(
+                {"_id": "Nb_Nc_()", "$vector": (i for i in [0.1, 0.2])}
+            )
+        collection_Nb_Nc.insert_one({"_id": "Nb_Nc_[]", "$vector": [0.3, 0.4]})
+        collection_Nb_Nc.insert_one(
+            {"_id": "Nb_Nc_DV", "$vector": DataAPIVector([0.5, 0.6])}
+        )
+
+        # check how the documents are stored
+        expect_binaries = {
+            "Yb_Yc_()": True,
+            "Yb_Yc_[]": True,
+            "Yb_Yc_DV": True,
+            "Nb_Yc_()": False,
+            "Nb_Yc_[]": False,
+            "Nb_Yc_DV": True,
+            #
+            "Yb_Nc_[]": True,
+            "Yb_Nc_DV": True,
+            #
+            "Nb_Nc_[]": False,
+            "Nb_Nc_DV": True,
+        }
+        # TODO use command() when command gets cleaned of the postprocessing
+        raw_find_response = sync_empty_collection._api_commander.raw_request(
+            payload={"find": {"projection": {"_id": True, "$vector": True}}},
+        ).json()
+        raw_docs = raw_find_response["data"]["documents"]
+        for raw_doc in raw_docs:
+            expect_binary = expect_binaries[raw_doc["_id"]]
+            has_binary = "$binary" in raw_doc["$vector"]
+            assert expect_binary is has_binary
+
+        collection_Ycc = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                payload_transform_options=PayloadTransformOptions(
+                    lossless_custom_classes=True,
+                ),
+            ),
+        )
+        collection_Ncc = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                payload_transform_options=PayloadTransformOptions(
+                    lossless_custom_classes=False,
+                ),
+            ),
+        )
+        docs_Ycc = list(collection_Ycc.find(projection={"$vector": True}))
+        docs_Ncc = list(collection_Ncc.find(projection={"$vector": True}))
+        assert all(isinstance(doc["$vector"], DataAPIVector) for doc in docs_Ycc)
+        assert all(not isinstance(doc["$vector"], DataAPIVector) for doc in docs_Ncc)
 
     @pytest.mark.describe("test of collection delete_one, sync")
     def test_collection_delete_one_sync(
