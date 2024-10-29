@@ -22,6 +22,7 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase, Collection, DataAPIClient, Database
 from astrapy.constants import VectorMetric
+from astrapy.utils.api_options import APIOptions, WireFormatOptions
 
 from ..conftest import (
     ADMIN_ENV_LIST,
@@ -101,6 +102,11 @@ def sync_collection(
         dimension=2,
         metric=VectorMetric.COSINE,
         indexing={"deny": ["not_indexed"]},
+        collection_api_options=APIOptions(
+            wire_format_options=WireFormatOptions(
+                coerce_iterables_to_vectors=True,
+            ),
+        )
     )
     yield collection
 

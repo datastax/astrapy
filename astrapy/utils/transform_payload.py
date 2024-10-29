@@ -108,24 +108,34 @@ def normalize_payload_value(
     """
     The path helps determining special treatments
     """
+    # TODO improve this flow once rewriting this path-dependent logic
+
     _l2 = ".".join(path[-2:])
     _l1 = ".".join(path[-1:])
-    ACCEPT_BROAD_LISTLIKE_FOR_VECTORS = options.coerce_iterables_to_vectors
 
     # vector-related pre-processing and coercion
     _value = value
     # is this value in the place for vectors?
-    if _l1 == "$vector" and _l2 != "projection.$vector":
+    if _l1 == "$vector" and _l2 != "projection.$vector":  # TODO improve this
         # must coerce list-likes broadly, and is it the case to do it?
-        if ACCEPT_BROAD_LISTLIKE_FOR_VECTORS and not (
+        if options.coerce_iterables_to_vectors and not (
             is_list_of_floats(_value) or isinstance(_value, DataAPIVector)
         ):
             _value = convert_vector_to_floats(_value)
         # now _value is either a list or a DataAPIVector.
+        # can/should it be binary-encoded?
+        can_bin_encode = path[0] in {"insertOne", "insertMany"}
+        # will it be bin-encoded?
         if isinstance(_value, DataAPIVector):
-            return convert_to_ejson_bytes(_value.to_bytes())
+            # if I can, I will
+            if can_bin_encode:
+                return convert_to_ejson_bytes(_value.to_bytes())
+            else:
+                # back to a regular list
+                return _value.data
         else:
-            if options.binary_encode_vectors:
+            # this is a list. Encode if set as default wire mode
+            if can_bin_encode and options.binary_encode_vectors:
                 return convert_to_ejson_bytes(DataAPIVector(_value).to_bytes())
             else:
                 return _value
@@ -183,10 +193,12 @@ def restore_response_value(
     """
     The path helps determining special treatments
     """
-    _l2 = ".".join(path[-2:])
+    # TODO improve the response postprocessing once rewriting this logic
+
     _l1 = ".".join(path[-1:])
 
-    if _l1 == "$vector" and _l2 != "projection.$vector":
+    # for reads, everywhere there's a $vector it can be treated as such
+    if _l1 == "$vector":
         # custom faster handling for the $vector path:
         if isinstance(value, list):
             if options.custom_datatypes_in_reading:
