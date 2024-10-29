@@ -24,7 +24,7 @@ from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import DeleteResult, InsertOneResult
-from astrapy.utils.api_options import APIOptions, PayloadTransformOptions
+from astrapy.utils.api_options import APIOptions, WireFormatOptions
 
 from ..conftest import DefaultCollection
 
@@ -116,7 +116,7 @@ class TestDMLSync:
     ) -> None:
         collection_Yb_Yc = sync_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
+                wire_format_options=WireFormatOptions(
                     binary_encode_vectors=True,
                     coerce_iterables_to_vectors=True,
                 ),
@@ -124,7 +124,7 @@ class TestDMLSync:
         )
         collection_Nb_Yc = sync_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
+                wire_format_options=WireFormatOptions(
                     binary_encode_vectors=False,
                     coerce_iterables_to_vectors=True,
                 ),
@@ -132,7 +132,7 @@ class TestDMLSync:
         )
         collection_Yb_Nc = sync_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
+                wire_format_options=WireFormatOptions(
                     binary_encode_vectors=True,
                     coerce_iterables_to_vectors=False,
                 ),
@@ -140,7 +140,7 @@ class TestDMLSync:
         )
         collection_Nb_Nc = sync_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
+                wire_format_options=WireFormatOptions(
                     binary_encode_vectors=False,
                     coerce_iterables_to_vectors=False,
                 ),
@@ -209,15 +209,15 @@ class TestDMLSync:
 
         collection_Ycc = sync_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
-                    lossless_custom_classes=True,
+                wire_format_options=WireFormatOptions(
+                    custom_datatypes_in_reading=True,
                 ),
             ),
         )
         collection_Ncc = sync_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
-                    lossless_custom_classes=False,
+                wire_format_options=WireFormatOptions(
+                    custom_datatypes_in_reading=False,
                 ),
             ),
         )
@@ -982,22 +982,24 @@ class TestDMLSync:
         assert doc_proj == {"_id": "a", "kind": "letter"}
         assert doc_full == {"_id": "a", "seq": 1, "kind": "letter"}
 
-    @pytest.mark.describe("test of lossless_custom_classes APIOptions setting, sync")
-    def test_lossless_custom_classes_sync(
+    @pytest.mark.describe(
+        "test of custom_datatypes_in_reading APIOptions setting, sync"
+    )
+    def test_custom_datatypes_in_reading_sync(
         self,
         sync_empty_collection: DefaultCollection,
     ) -> None:
-        col_lossy = sync_empty_collection.with_options(
+        col_standard_dtypes = sync_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
-                    lossless_custom_classes=False,
+                wire_format_options=WireFormatOptions(
+                    custom_datatypes_in_reading=False,
                 ),
             ),
         )
-        col_lossless = sync_empty_collection.with_options(
+        col_custom_dtypes = sync_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
-                    lossless_custom_classes=True,
+                wire_format_options=WireFormatOptions(
+                    custom_datatypes_in_reading=True,
                 ),
             ),
         )
@@ -1012,39 +1014,45 @@ class TestDMLSync:
                 "the_date": the_date,
             },
         )
-        doc_lossy = col_lossy.find_one({"_id": "t0"})
-        doc_lossless = col_lossless.find_one({"_id": "t0"})
+        doc_standard_dtypes = col_standard_dtypes.find_one({"_id": "t0"})
+        doc_custom_dtypes = col_custom_dtypes.find_one({"_id": "t0"})
 
-        assert doc_lossy is not None
-        assert doc_lossless is not None
-        dtime_lossy = doc_lossy["the_dtime"]
-        dtime_lossless = doc_lossless["the_dtime"]
-        date_lossy = doc_lossy["the_date"]
-        date_lossless = doc_lossless["the_date"]
+        assert doc_standard_dtypes is not None
+        assert doc_custom_dtypes is not None
+        dtime_standard_dtypes = doc_standard_dtypes["the_dtime"]
+        dtime_custom_dtypes = doc_custom_dtypes["the_dtime"]
+        date_standard_dtypes = doc_standard_dtypes["the_date"]
+        date_custom_dtypes = doc_custom_dtypes["the_date"]
 
-        assert isinstance(dtime_lossy, datetime.datetime)
-        assert isinstance(dtime_lossless, DataAPITimestamp)
-        assert DataAPITimestamp.from_datetime(dtime_lossy) == dtime_lossless
-        assert dtime_lossless.to_datetime() == dtime_lossy
-        assert isinstance(date_lossy, datetime.datetime)
-        assert isinstance(date_lossless, DataAPITimestamp)
-        assert DataAPITimestamp.from_datetime(date_lossy) == date_lossless
-        assert date_lossless.to_datetime() == date_lossy
+        assert isinstance(dtime_standard_dtypes, datetime.datetime)
+        assert isinstance(dtime_custom_dtypes, DataAPITimestamp)
+        assert (
+            DataAPITimestamp.from_datetime(dtime_standard_dtypes) == dtime_custom_dtypes
+        )
+        assert dtime_custom_dtypes.to_datetime() == dtime_standard_dtypes
+        assert isinstance(date_standard_dtypes, datetime.datetime)
+        assert isinstance(date_custom_dtypes, DataAPITimestamp)
+        assert (
+            DataAPITimestamp.from_datetime(date_standard_dtypes) == date_custom_dtypes
+        )
+        assert date_custom_dtypes.to_datetime() == date_standard_dtypes
 
         # write path
         sync_empty_collection.delete_one({"_id": "t0"})
-        col_lossy.insert_one({"_id": "lossy_dt", "the_dtime": the_dtime})
+        col_standard_dtypes.insert_one(
+            {"_id": "default_dtype_dt", "the_dtime": the_dtime}
+        )
         with pytest.raises(TypeError):
-            col_lossy.insert_one(
+            col_standard_dtypes.insert_one(
                 {
-                    "_id": "lossy_ats",
+                    "_id": "default_dtype_ats",
                     "the_dtime": DataAPITimestamp.from_datetime(the_dtime),
                 }
             )
-        col_lossless.insert_one({"_id": "lossless_dt", "the_dtime": the_dtime})
-        col_lossless.insert_one(
+        col_custom_dtypes.insert_one({"_id": "custom_dtype_dt", "the_dtime": the_dtime})
+        col_custom_dtypes.insert_one(
             {
-                "_id": "lossless_ats",
+                "_id": "custom_dtype_ats",
                 "the_dtime": DataAPITimestamp.from_datetime(the_dtime),
             }
         )

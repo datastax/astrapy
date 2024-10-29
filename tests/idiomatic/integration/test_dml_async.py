@@ -25,7 +25,7 @@ from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import DeleteResult, InsertOneResult
-from astrapy.utils.api_options import APIOptions, PayloadTransformOptions
+from astrapy.utils.api_options import APIOptions, WireFormatOptions
 
 from ..conftest import DefaultAsyncCollection
 
@@ -145,7 +145,7 @@ class TestDMLAsync:
     ) -> None:
         acollection_Yb_Yc = async_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
+                wire_format_options=WireFormatOptions(
                     binary_encode_vectors=True,
                     coerce_iterables_to_vectors=True,
                 ),
@@ -153,7 +153,7 @@ class TestDMLAsync:
         )
         acollection_Nb_Yc = async_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
+                wire_format_options=WireFormatOptions(
                     binary_encode_vectors=False,
                     coerce_iterables_to_vectors=True,
                 ),
@@ -161,7 +161,7 @@ class TestDMLAsync:
         )
         acollection_Yb_Nc = async_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
+                wire_format_options=WireFormatOptions(
                     binary_encode_vectors=True,
                     coerce_iterables_to_vectors=False,
                 ),
@@ -169,7 +169,7 @@ class TestDMLAsync:
         )
         acollection_Nb_Nc = async_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
+                wire_format_options=WireFormatOptions(
                     binary_encode_vectors=False,
                     coerce_iterables_to_vectors=False,
                 ),
@@ -240,15 +240,15 @@ class TestDMLAsync:
 
         acollection_Ycc = async_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
-                    lossless_custom_classes=True,
+                wire_format_options=WireFormatOptions(
+                    custom_datatypes_in_reading=True,
                 ),
             ),
         )
         acollection_Ncc = async_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
-                    lossless_custom_classes=False,
+                wire_format_options=WireFormatOptions(
+                    custom_datatypes_in_reading=False,
                 ),
             ),
         )
@@ -1045,22 +1045,24 @@ class TestDMLAsync:
         assert doc_proj == {"_id": "a", "kind": "letter"}
         assert doc_full == {"_id": "a", "seq": 1, "kind": "letter"}
 
-    @pytest.mark.describe("test of lossless_custom_classes APIOptions setting, async")
-    async def test_lossless_custom_classes_async(
+    @pytest.mark.describe(
+        "test of custom_datatypes_in_reading APIOptions setting, async"
+    )
+    async def test_custom_datatypes_in_reading_async(
         self,
         async_empty_collection: DefaultAsyncCollection,
     ) -> None:
-        acol_lossy = async_empty_collection.with_options(
+        acol_standard_dtypes = async_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
-                    lossless_custom_classes=False,
+                wire_format_options=WireFormatOptions(
+                    custom_datatypes_in_reading=False,
                 ),
             ),
         )
-        acol_lossless = async_empty_collection.with_options(
+        acol_custom_dtypes = async_empty_collection.with_options(
             api_options=APIOptions(
-                payload_transform_options=PayloadTransformOptions(
-                    lossless_custom_classes=True,
+                wire_format_options=WireFormatOptions(
+                    custom_datatypes_in_reading=True,
                 ),
             ),
         )
@@ -1075,39 +1077,47 @@ class TestDMLAsync:
                 "the_date": the_date,
             },
         )
-        doc_lossy = await acol_lossy.find_one({"_id": "t0"})
-        doc_lossless = await acol_lossless.find_one({"_id": "t0"})
+        doc_standard_dtypes = await acol_standard_dtypes.find_one({"_id": "t0"})
+        doc_custom_dtypes = await acol_custom_dtypes.find_one({"_id": "t0"})
 
-        assert doc_lossy is not None
-        assert doc_lossless is not None
-        dtime_lossy = doc_lossy["the_dtime"]
-        dtime_lossless = doc_lossless["the_dtime"]
-        date_lossy = doc_lossy["the_date"]
-        date_lossless = doc_lossless["the_date"]
+        assert doc_standard_dtypes is not None
+        assert doc_custom_dtypes is not None
+        dtime_standard_dtypes = doc_standard_dtypes["the_dtime"]
+        dtime_custom_dtypes = doc_custom_dtypes["the_dtime"]
+        date_standard_dtypes = doc_standard_dtypes["the_date"]
+        date_custom_dtypes = doc_custom_dtypes["the_date"]
 
-        assert isinstance(dtime_lossy, datetime.datetime)
-        assert isinstance(dtime_lossless, DataAPITimestamp)
-        assert DataAPITimestamp.from_datetime(dtime_lossy) == dtime_lossless
-        assert dtime_lossless.to_datetime() == dtime_lossy
-        assert isinstance(date_lossy, datetime.datetime)
-        assert isinstance(date_lossless, DataAPITimestamp)
-        assert DataAPITimestamp.from_datetime(date_lossy) == date_lossless
-        assert date_lossless.to_datetime() == date_lossy
+        assert isinstance(dtime_standard_dtypes, datetime.datetime)
+        assert isinstance(dtime_custom_dtypes, DataAPITimestamp)
+        assert (
+            DataAPITimestamp.from_datetime(dtime_standard_dtypes) == dtime_custom_dtypes
+        )
+        assert dtime_custom_dtypes.to_datetime() == dtime_standard_dtypes
+        assert isinstance(date_standard_dtypes, datetime.datetime)
+        assert isinstance(date_custom_dtypes, DataAPITimestamp)
+        assert (
+            DataAPITimestamp.from_datetime(date_standard_dtypes) == date_custom_dtypes
+        )
+        assert date_custom_dtypes.to_datetime() == date_standard_dtypes
 
         # write path
         await async_empty_collection.delete_one({"_id": "t0"})
-        await acol_lossy.insert_one({"_id": "lossy_dt", "the_dtime": the_dtime})
+        await acol_standard_dtypes.insert_one(
+            {"_id": "default_dtype_dt", "the_dtime": the_dtime}
+        )
         with pytest.raises(TypeError):
-            await acol_lossy.insert_one(
+            await acol_standard_dtypes.insert_one(
                 {
-                    "_id": "lossy_ats",
+                    "_id": "default_dtype_ats",
                     "the_dtime": DataAPITimestamp.from_datetime(the_dtime),
                 }
             )
-        await acol_lossless.insert_one({"_id": "lossless_dt", "the_dtime": the_dtime})
-        await acol_lossless.insert_one(
+        await acol_custom_dtypes.insert_one(
+            {"_id": "custom_dtype_dt", "the_dtime": the_dtime}
+        )
+        await acol_custom_dtypes.insert_one(
             {
-                "_id": "lossless_ats",
+                "_id": "custom_dtype_ats",
                 "the_dtime": DataAPITimestamp.from_datetime(the_dtime),
             }
         )

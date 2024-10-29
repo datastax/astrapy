@@ -248,7 +248,7 @@ class Database:
             api_commander = APICommander(
                 api_endpoint=self.api_endpoint,
                 path=base_path,
-                payload_transform_options=self.api_options.payload_transform_options,
+                wire_format_options=self.api_options.wire_format_options,
                 headers=self._commander_headers,
                 callers=self.api_options.callers,
                 redacted_header_names=self.api_options.redacted_header_names,
@@ -1711,7 +1711,7 @@ class AsyncDatabase:
             api_commander = APICommander(
                 api_endpoint=self.api_endpoint,
                 path=base_path,
-                payload_transform_options=self.api_options.payload_transform_options,
+                wire_format_options=self.api_options.wire_format_options,
                 headers=self._commander_headers,
                 callers=self.api_options.callers,
                 redacted_header_names=self.api_options.redacted_header_names,

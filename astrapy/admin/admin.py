@@ -54,7 +54,7 @@ from astrapy.utils.api_options import (
     DataAPIURLOptions,
     DevOpsAPIURLOptions,
     FullAPIOptions,
-    FullPayloadTransformOptions,
+    FullWireFormatOptions,
     TimeoutOptions,
 )
 from astrapy.utils.request_tools import HttpMethod
@@ -274,10 +274,10 @@ def fetch_raw_database_info_from_id_token(
     ops_commander = APICommander(
         api_endpoint=DEV_OPS_URL_ENV_MAP[environment],
         path=full_path,
-        payload_transform_options=FullPayloadTransformOptions(
+        wire_format_options=FullWireFormatOptions(
             # TODO restore the caller's options when arranged
             binary_encode_vectors=True,
-            lossless_custom_classes=True,
+            custom_datatypes_in_reading=True,
             coerce_iterables_to_vectors=False,
         ),
         headers=ops_headers,
@@ -332,10 +332,10 @@ async def async_fetch_raw_database_info_from_id_token(
     ops_commander = APICommander(
         api_endpoint=DEV_OPS_URL_ENV_MAP[environment],
         path=full_path,
-        payload_transform_options=FullPayloadTransformOptions(
+        wire_format_options=FullWireFormatOptions(
             # TODO restore the caller's options when arranged
             binary_encode_vectors=True,
-            lossless_custom_classes=True,
+            custom_datatypes_in_reading=True,
             coerce_iterables_to_vectors=False,
         ),
         headers=ops_headers,
@@ -577,7 +577,7 @@ class AstraDBAdmin:
         dev_ops_commander = APICommander(
             api_endpoint=self.api_options.dev_ops_api_url_options.dev_ops_url,
             path=dev_ops_base_path,
-            payload_transform_options=self.api_options.payload_transform_options,
+            wire_format_options=self.api_options.wire_format_options,
             headers=self._dev_ops_commander_headers,
             callers=self.api_options.callers,
             dev_ops_api=True,
@@ -2035,7 +2035,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         api_commander = APICommander(
             api_endpoint=self.api_endpoint,
             path=base_path,
-            payload_transform_options=self.api_options.payload_transform_options,
+            wire_format_options=self.api_options.wire_format_options,
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
@@ -2061,7 +2061,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         dev_ops_commander = APICommander(
             api_endpoint=self.api_options.dev_ops_api_url_options.dev_ops_url,
             path=dev_ops_base_path,
-            payload_transform_options=self.api_options.payload_transform_options,
+            wire_format_options=self.api_options.wire_format_options,
             headers=self._dev_ops_commander_headers,
             callers=self.api_options.callers,
             dev_ops_api=True,
@@ -3264,7 +3264,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         api_commander = APICommander(
             api_endpoint=self.api_endpoint,
             path=base_path,
-            payload_transform_options=self.api_options.payload_transform_options,
+            wire_format_options=self.api_options.wire_format_options,
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,

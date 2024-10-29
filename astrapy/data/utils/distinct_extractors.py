@@ -22,7 +22,7 @@ from typing import (
     Iterable,
 )
 
-from astrapy.utils.api_options import FullPayloadTransformOptions
+from astrapy.utils.api_options import FullWireFormatOptions
 from astrapy.utils.transform_payload import normalize_payload_value
 
 IndexPairType = tuple[str, int | None]
@@ -117,9 +117,7 @@ def _reduce_distinct_key_to_safe(distinct_key: str) -> str:
     return ".".join(valid_portion)
 
 
-def _hash_document(
-    document: dict[str, Any], options: FullPayloadTransformOptions
-) -> str:
+def _hash_document(document: dict[str, Any], options: FullWireFormatOptions) -> str:
     _normalized_item = normalize_payload_value(path=[], value=document, options=options)
     _normalized_json = json.dumps(
         _normalized_item, sort_keys=True, separators=(",", ":")

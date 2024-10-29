@@ -29,10 +29,10 @@ from astrapy.settings.defaults import (
     API_VERSION_ENV_MAP,
     DEFAULT_BINARY_ENCODE_VECTORS,
     DEFAULT_COERCE_ITERABLES_TO_VECTORS,
+    DEFAULT_CUSTOM_DATATYPES_IN_READING,
     DEFAULT_DATA_OPERATION_TIMEOUT_MS,
     DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
     DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
-    DEFAULT_LOSSLESS_CUSTOM_CLASSES,
     DEFAULT_REQUEST_TIMEOUT_MS,
     DEFAULT_SCHEMA_OPERATION_TIMEOUT_MS,
     DEV_OPS_URL_ENV_MAP,
@@ -90,31 +90,29 @@ class FullTimeoutOptions(TimeoutOptions):
 
 
 @dataclass
-class PayloadTransformOptions:
+class WireFormatOptions:
     binary_encode_vectors: bool | UnsetType = _UNSET
-    lossless_custom_classes: bool | UnsetType = _UNSET
+    custom_datatypes_in_reading: bool | UnsetType = _UNSET
     coerce_iterables_to_vectors: bool | UnsetType = _UNSET
 
 
 @dataclass
-class FullPayloadTransformOptions(PayloadTransformOptions):
+class FullWireFormatOptions(WireFormatOptions):
     binary_encode_vectors: bool
-    lossless_custom_classes: bool
+    custom_datatypes_in_reading: bool
     coerce_iterables_to_vectors: bool
 
-    def with_override(
-        self, other: PayloadTransformOptions
-    ) -> FullPayloadTransformOptions:
-        return FullPayloadTransformOptions(
+    def with_override(self, other: WireFormatOptions) -> FullWireFormatOptions:
+        return FullWireFormatOptions(
             binary_encode_vectors=(
                 other.binary_encode_vectors
                 if not isinstance(other.binary_encode_vectors, UnsetType)
                 else self.binary_encode_vectors
             ),
-            lossless_custom_classes=(
-                other.lossless_custom_classes
-                if not isinstance(other.lossless_custom_classes, UnsetType)
-                else self.lossless_custom_classes
+            custom_datatypes_in_reading=(
+                other.custom_datatypes_in_reading
+                if not isinstance(other.custom_datatypes_in_reading, UnsetType)
+                else self.custom_datatypes_in_reading
             ),
             coerce_iterables_to_vectors=(
                 other.coerce_iterables_to_vectors
@@ -187,7 +185,7 @@ class APIOptions:
     embedding_api_key: EmbeddingHeadersProvider | UnsetType = _UNSET
 
     timeout_options: TimeoutOptions | UnsetType = _UNSET
-    payload_transform_options: PayloadTransformOptions | UnsetType = _UNSET
+    wire_format_options: WireFormatOptions | UnsetType = _UNSET
     data_api_url_options: DataAPIURLOptions | UnsetType = _UNSET
     dev_ops_api_url_options: DevOpsAPIURLOptions | UnsetType = _UNSET
 
@@ -246,8 +244,8 @@ class APIOptions:
                 if isinstance(self.timeout_options, UnsetType)
                 else f"timeout_options={self.timeout_options}",
                 None
-                if isinstance(self.payload_transform_options, UnsetType)
-                else f"payload_transform_options={self.payload_transform_options}",
+                if isinstance(self.wire_format_options, UnsetType)
+                else f"wire_format_options={self.wire_format_options}",
                 None
                 if isinstance(self.data_api_url_options, UnsetType)
                 else f"data_api_url_options={self.data_api_url_options}",
@@ -272,7 +270,7 @@ class FullAPIOptions(APIOptions):
     embedding_api_key: EmbeddingHeadersProvider
 
     timeout_options: FullTimeoutOptions
-    payload_transform_options: FullPayloadTransformOptions
+    wire_format_options: FullWireFormatOptions
     data_api_url_options: FullDataAPIURLOptions
     dev_ops_api_url_options: FullDevOpsAPIURLOptions
 
@@ -310,7 +308,7 @@ class FullAPIOptions(APIOptions):
         redacted_header_names: set[str]
 
         timeout_options: FullTimeoutOptions
-        payload_transform_options: FullPayloadTransformOptions
+        wire_format_options: FullWireFormatOptions
         data_api_url_options: FullDataAPIURLOptions
         dev_ops_api_url_options: FullDevOpsAPIURLOptions
 
@@ -339,12 +337,12 @@ class FullAPIOptions(APIOptions):
             timeout_options = self.timeout_options.with_override(other.timeout_options)
         else:
             timeout_options = self.timeout_options
-        if isinstance(other.payload_transform_options, PayloadTransformOptions):
-            payload_transform_options = self.payload_transform_options.with_override(
-                other.payload_transform_options
+        if isinstance(other.wire_format_options, WireFormatOptions):
+            wire_format_options = self.wire_format_options.with_override(
+                other.wire_format_options
             )
         else:
-            payload_transform_options = self.payload_transform_options
+            wire_format_options = self.wire_format_options
         if isinstance(other.data_api_url_options, DataAPIURLOptions):
             data_api_url_options = self.data_api_url_options.with_override(
                 other.data_api_url_options
@@ -379,7 +377,7 @@ class FullAPIOptions(APIOptions):
                 else self.embedding_api_key
             ),
             timeout_options=timeout_options,
-            payload_transform_options=payload_transform_options,
+            wire_format_options=wire_format_options,
             data_api_url_options=data_api_url_options,
             dev_ops_api_url_options=dev_ops_api_url_options,
         )
@@ -392,9 +390,9 @@ defaultTimeoutOptions = FullTimeoutOptions(
     database_admin_timeout_ms=DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
     keyspace_admin_timeout_ms=DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
 )
-defaultPayloadTransformOptions = FullPayloadTransformOptions(
+defaultWireFormatOptions = FullWireFormatOptions(
     binary_encode_vectors=DEFAULT_BINARY_ENCODE_VECTORS,
-    lossless_custom_classes=DEFAULT_LOSSLESS_CUSTOM_CLASSES,
+    custom_datatypes_in_reading=DEFAULT_CUSTOM_DATATYPES_IN_READING,
     coerce_iterables_to_vectors=DEFAULT_COERCE_ITERABLES_TO_VECTORS,
 )
 
@@ -424,7 +422,7 @@ def defaultAPIOptions(environment: str) -> FullAPIOptions:
         token=StaticTokenProvider(None),
         embedding_api_key=EmbeddingAPIKeyHeaderProvider(None),
         timeout_options=defaultTimeoutOptions,
-        payload_transform_options=defaultPayloadTransformOptions,
+        wire_format_options=defaultWireFormatOptions,
         data_api_url_options=defaultDataAPIURLOptions,
         dev_ops_api_url_options=defaultDevOpsAPIURLOptions,
     )

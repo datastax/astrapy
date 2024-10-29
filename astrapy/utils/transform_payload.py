@@ -22,7 +22,7 @@ from typing import Any, Dict, Iterable, cast
 from astrapy.constants import DefaultDocumentType
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.ids import UUID, ObjectId
-from astrapy.utils.api_options import FullPayloadTransformOptions
+from astrapy.utils.api_options import FullWireFormatOptions
 
 
 def convert_vector_to_floats(vector: Iterable[Any]) -> list[float]:
@@ -103,7 +103,7 @@ def convert_ejson_objectid_object_to_objectid(
 
 
 def normalize_payload_value(
-    path: list[str], value: Any, options: FullPayloadTransformOptions
+    path: list[str], value: Any, options: FullWireFormatOptions
 ) -> Any:
     """
     The path helps determining special treatments
@@ -154,7 +154,7 @@ def normalize_payload_value(
 
 
 def normalize_for_api(
-    payload: dict[str, Any] | None, options: FullPayloadTransformOptions
+    payload: dict[str, Any] | None, options: FullWireFormatOptions
 ) -> dict[str, Any] | None:
     """
     Normalize a payload for API calls.
@@ -178,7 +178,7 @@ def normalize_for_api(
 
 
 def restore_response_value(
-    path: list[str], value: Any, options: FullPayloadTransformOptions
+    path: list[str], value: Any, options: FullWireFormatOptions
 ) -> Any:
     """
     The path helps determining special treatments
@@ -189,13 +189,13 @@ def restore_response_value(
     if _l1 == "$vector" and _l2 != "projection.$vector":
         # custom faster handling for the $vector path:
         if isinstance(value, list):
-            if options.lossless_custom_classes:
+            if options.custom_datatypes_in_reading:
                 return DataAPIVector(value)
             else:
                 return value
         elif isinstance(value, dict):
             _bytes = convert_ejson_binary_object_to_bytes(value)
-            if options.lossless_custom_classes:
+            if options.custom_datatypes_in_reading:
                 return DataAPIVector.from_bytes(_bytes)
             else:
                 return DataAPIVector.from_bytes(_bytes).data
@@ -208,7 +208,7 @@ def restore_response_value(
         if value_keys == {"$date"}:
             # this is `{"$date": 123456}`.
             # Restore to the appropriate APIOptions-required object
-            if options.lossless_custom_classes:
+            if options.custom_datatypes_in_reading:
                 return convert_ejson_date_object_to_apitimestamp(value)
             else:
                 return convert_ejson_date_object_to_datetime(value)
@@ -236,7 +236,7 @@ def restore_response_value(
 
 
 def restore_from_api(
-    response: DefaultDocumentType, options: FullPayloadTransformOptions
+    response: DefaultDocumentType, options: FullWireFormatOptions
 ) -> DefaultDocumentType:
     """
     Process a dictionary just returned from the API.

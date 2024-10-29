@@ -164,7 +164,7 @@ class Table(Generic[ROW]):
         api_commander = APICommander(
             api_endpoint=self._database.api_endpoint,
             path=base_path,
-            payload_transform_options=self.api_options.payload_transform_options,
+            wire_format_options=self.api_options.wire_format_options,
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
@@ -748,7 +748,7 @@ class Table(Generic[ROW]):
         for document in f_cursor:
             for item in _extractor(document):
                 _item_hash = _hash_document(
-                    item, options=self.api_options.payload_transform_options
+                    item, options=self.api_options.wire_format_options
                 )
                 if _item_hash not in _item_hashes:
                     _item_hashes.add(_item_hash)
@@ -921,7 +921,7 @@ class AsyncTable(Generic[ROW]):
         api_commander = APICommander(
             api_endpoint=self._database.api_endpoint,
             path=base_path,
-            payload_transform_options=self.api_options.payload_transform_options,
+            wire_format_options=self.api_options.wire_format_options,
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
@@ -1523,7 +1523,7 @@ class AsyncTable(Generic[ROW]):
         async for document in f_cursor:
             for item in _extractor(document):
                 _item_hash = _hash_document(
-                    item, options=self.api_options.payload_transform_options
+                    item, options=self.api_options.wire_format_options
                 )
                 if _item_hash not in _item_hashes:
                     _item_hashes.add(_item_hash)

@@ -26,7 +26,7 @@ from pytest_httpserver import HTTPServer
 
 from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
 from astrapy.utils.api_commander import APICommander
-from astrapy.utils.api_options import FullPayloadTransformOptions
+from astrapy.utils.api_options import FullWireFormatOptions
 from astrapy.utils.request_tools import HttpMethod
 
 SLEEPER_TIME_MS = 500
@@ -46,8 +46,10 @@ class TestTimeouts:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
-            payload_transform_options=FullPayloadTransformOptions(
-                binary_encode_vectors=True, lossless_custom_classes=True
+            wire_format_options=FullWireFormatOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=True,
+                coerce_iterables_to_vectors=True,
             ),
         )
 
@@ -65,8 +67,10 @@ class TestTimeouts:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
-            payload_transform_options=FullPayloadTransformOptions(
-                binary_encode_vectors=True, lossless_custom_classes=True
+            wire_format_options=FullWireFormatOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=True,
+                coerce_iterables_to_vectors=True,
             ),
         )
 
@@ -84,8 +88,10 @@ class TestTimeouts:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
-            payload_transform_options=FullPayloadTransformOptions(
-                binary_encode_vectors=True, lossless_custom_classes=True
+            wire_format_options=FullWireFormatOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=True,
+                coerce_iterables_to_vectors=True,
             ),
             dev_ops_api=True,
         )
@@ -106,8 +112,10 @@ class TestTimeouts:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
-            payload_transform_options=FullPayloadTransformOptions(
-                binary_encode_vectors=True, lossless_custom_classes=True
+            wire_format_options=FullWireFormatOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=True,
+                coerce_iterables_to_vectors=True,
             ),
             dev_ops_api=True,
         )
