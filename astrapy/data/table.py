@@ -164,7 +164,6 @@ class Table(Generic[ROW]):
         api_commander = APICommander(
             api_endpoint=self._database.api_endpoint,
             path=base_path,
-            wire_format_options=self.api_options.wire_format_options,
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
@@ -921,7 +920,6 @@ class AsyncTable(Generic[ROW]):
         api_commander = APICommander(
             api_endpoint=self._database.api_endpoint,
             path=base_path,
-            wire_format_options=self.api_options.wire_format_options,
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,

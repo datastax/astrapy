@@ -31,6 +31,10 @@ from astrapy.constants import (
     SortType,
     normalize_optional_projection,
 )
+from astrapy.data.utils.collection_converters import (
+    postprocess_collection_response,
+    preprocess_collection_payload,
+)
 from astrapy.data.utils.distinct_extractors import (
     _create_document_key_extractor,
     _hash_document,
@@ -60,6 +64,7 @@ from astrapy.settings.defaults import (
 )
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import APIOptions, FullAPIOptions, TimeoutOptions
+from astrapy.utils.request_tools import HttpMethod
 from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
@@ -226,12 +231,37 @@ class Collection(Generic[DOC]):
         api_commander = APICommander(
             api_endpoint=self._database.api_endpoint,
             path=base_path,
-            wire_format_options=self.api_options.wire_format_options,
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
         )
         return api_commander
+
+    def _converted_request(
+        self,
+        *,
+        http_method: str = HttpMethod.POST,
+        payload: dict[str, Any] | None = None,
+        additional_path: str | None = None,
+        request_params: dict[str, Any] = {},
+        raise_api_errors: bool = True,
+        timeout_ms: int | None = None,
+    ) -> dict[str, Any]:
+        converted_payload = preprocess_collection_payload(
+            payload, options=self.api_options.wire_format_options
+        )
+        raw_response_json = self._api_commander.request(
+            http_method=http_method,
+            payload=converted_payload,
+            additional_path=additional_path,
+            request_params=request_params,
+            raise_api_errors=raise_api_errors,
+            timeout_ms=timeout_ms,
+        )
+        response_json = postprocess_collection_response(
+            raw_response_json, options=self.api_options.wire_format_options
+        )
+        return response_json
 
     def _copy(
         self: Collection[DOC],
@@ -630,7 +660,7 @@ class Collection(Generic[DOC]):
         )
         io_payload = {"insertOne": {"document": document}}
         logger.info(f"insertOne on '{self.name}'")
-        io_response = self._api_commander.request(
+        io_response = self._converted_request(
             payload=io_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -781,7 +811,7 @@ class Collection(Generic[DOC]):
                     },
                 }
                 logger.info(f"insertMany on '{self.name}'")
-                chunk_response = self._api_commander.request(
+                chunk_response = self._converted_request(
                     payload=im_payload,
                     raise_api_errors=False,
                     timeout_ms=timeout_manager.remaining_timeout_ms(
@@ -833,7 +863,7 @@ class Collection(Generic[DOC]):
                             },
                         }
                         logger.info(f"insertMany(chunk) on '{self.name}'")
-                        im_response = self._api_commander.request(
+                        im_response = self._converted_request(
                             payload=im_payload,
                             raise_api_errors=False,
                             timeout_ms=timeout_manager.remaining_timeout_ms(
@@ -861,7 +891,7 @@ class Collection(Generic[DOC]):
                         },
                     }
                     logger.info(f"insertMany(chunk) on '{self.name}'")
-                    im_response = self._api_commander.request(
+                    im_response = self._converted_request(
                         payload=im_payload,
                         raise_api_errors=False,
                         timeout_ms=timeout_manager.remaining_timeout_ms(
@@ -1206,7 +1236,7 @@ class Collection(Generic[DOC]):
                 if v is not None
             }
         }
-        fo_response = self._api_commander.request(
+        fo_response = self._converted_request(
             payload=fo_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -1401,7 +1431,7 @@ class Collection(Generic[DOC]):
         )
         cd_payload = {"countDocuments": {"filter": filter}}
         logger.info(f"countDocuments on '{self.name}'")
-        cd_response = self._api_commander.request(
+        cd_response = self._converted_request(
             payload=cd_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -1457,7 +1487,7 @@ class Collection(Generic[DOC]):
         )
         ed_payload: dict[str, Any] = {"estimatedDocumentCount": {}}
         logger.info(f"estimatedDocumentCount on '{self.name}'")
-        ed_response = self._api_commander.request(
+        ed_response = self._converted_request(
             payload=ed_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -1591,7 +1621,7 @@ class Collection(Generic[DOC]):
             }
         }
         logger.info(f"findOneAndReplace on '{self.name}'")
-        fo_response = self._api_commander.request(
+        fo_response = self._converted_request(
             payload=fo_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -1682,7 +1712,7 @@ class Collection(Generic[DOC]):
             }
         }
         logger.info(f"findOneAndReplace on '{self.name}'")
-        fo_response = self._api_commander.request(
+        fo_response = self._converted_request(
             payload=fo_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -1826,7 +1856,7 @@ class Collection(Generic[DOC]):
             }
         }
         logger.info(f"findOneAndUpdate on '{self.name}'")
-        fo_response = self._api_commander.request(
+        fo_response = self._converted_request(
             payload=fo_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -1921,7 +1951,7 @@ class Collection(Generic[DOC]):
             }
         }
         logger.info(f"updateOne on '{self.name}'")
-        uo_response = self._api_commander.request(
+        uo_response = self._converted_request(
             payload=uo_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -2040,7 +2070,7 @@ class Collection(Generic[DOC]):
                 }
             }
             logger.info(f"updateMany on '{self.name}'")
-            this_um_response = self._api_commander.request(
+            this_um_response = self._converted_request(
                 payload=this_um_payload,
                 timeout_ms=timeout_manager.remaining_timeout_ms(
                     cap_time_ms=_request_timeout_ms
@@ -2169,7 +2199,7 @@ class Collection(Generic[DOC]):
             }
         }
         logger.info(f"findOneAndDelete on '{self.name}'")
-        fo_response = self._api_commander.request(
+        fo_response = self._converted_request(
             payload=fo_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -2253,7 +2283,7 @@ class Collection(Generic[DOC]):
             }
         }
         logger.info(f"deleteOne on '{self.name}'")
-        do_response = self._api_commander.request(
+        do_response = self._converted_request(
             payload=do_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -2341,7 +2371,7 @@ class Collection(Generic[DOC]):
         logger.info(f"starting delete_many on '{self.name}'")
         while must_proceed:
             logger.info(f"deleteMany on '{self.name}'")
-            this_dm_response = self._api_commander.request(
+            this_dm_response = self._converted_request(
                 payload=this_dm_payload,
                 raise_api_errors=False,
                 timeout_ms=timeout_manager.remaining_timeout_ms(
@@ -2429,7 +2459,7 @@ class Collection(Generic[DOC]):
 
     def command(
         self,
-        body: dict[str, Any],
+        body: dict[str, Any] | None,
         *,
         raise_api_errors: bool = True,
         request_timeout_ms: int | None = None,
@@ -2438,6 +2468,7 @@ class Collection(Generic[DOC]):
         """
         Send a POST request to the Data API for this collection with
         an arbitrary, caller-provided payload.
+        No transformations or type conversions are made on the provided payload.
 
         Args:
             body: a JSON-serializable dictionary, the payload of the request.
@@ -2460,7 +2491,7 @@ class Collection(Generic[DOC]):
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
-        _cmd_desc = ",".join(sorted(body.keys()))
+        _cmd_desc = ",".join(sorted((body or {}).keys()))
         logger.info(f"command={_cmd_desc} on '{self.name}'")
         command_result = self._api_commander.request(
             payload=body,
@@ -2592,7 +2623,6 @@ class AsyncCollection(Generic[DOC]):
         api_commander = APICommander(
             api_endpoint=self._database.api_endpoint,
             path=base_path,
-            wire_format_options=self.api_options.wire_format_options,
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
@@ -2614,6 +2644,32 @@ class AsyncCollection(Generic[DOC]):
                 exc_value=exc_value,
                 traceback=traceback,
             )
+
+    async def _converted_request(
+        self,
+        *,
+        http_method: str = HttpMethod.POST,
+        payload: dict[str, Any] | None = None,
+        additional_path: str | None = None,
+        request_params: dict[str, Any] = {},
+        raise_api_errors: bool = True,
+        timeout_ms: int | None = None,
+    ) -> dict[str, Any]:
+        converted_payload = preprocess_collection_payload(
+            payload, options=self.api_options.wire_format_options
+        )
+        raw_response_json = await self._api_commander.async_request(
+            http_method=http_method,
+            payload=converted_payload,
+            additional_path=additional_path,
+            request_params=request_params,
+            raise_api_errors=raise_api_errors,
+            timeout_ms=timeout_ms,
+        )
+        response_json = postprocess_collection_response(
+            raw_response_json, options=self.api_options.wire_format_options
+        )
+        return response_json
 
     def _copy(
         self: AsyncCollection[DOC],
@@ -3015,7 +3071,7 @@ class AsyncCollection(Generic[DOC]):
         )
         io_payload = {"insertOne": {"document": document}}
         logger.info(f"insertOne on '{self.name}'")
-        io_response = await self._api_commander.async_request(
+        io_response = await self._converted_request(
             payload=io_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -3176,7 +3232,7 @@ class AsyncCollection(Generic[DOC]):
                     },
                 }
                 logger.info(f"insertMany on '{self.name}'")
-                chunk_response = await self._api_commander.async_request(
+                chunk_response = await self._converted_request(
                     payload=im_payload,
                     raise_api_errors=False,
                     timeout_ms=timeout_manager.remaining_timeout_ms(
@@ -3229,7 +3285,7 @@ class AsyncCollection(Generic[DOC]):
                         },
                     }
                     logger.info(f"insertMany(chunk) on '{self.name}'")
-                    im_response = await self._api_commander.async_request(
+                    im_response = await self._converted_request(
                         payload=im_payload,
                         raise_api_errors=False,
                         timeout_ms=timeout_manager.remaining_timeout_ms(
@@ -3615,7 +3671,7 @@ class AsyncCollection(Generic[DOC]):
                 if v is not None
             }
         }
-        fo_response = await self._api_commander.async_request(
+        fo_response = await self._converted_request(
             payload=fo_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -3823,7 +3879,7 @@ class AsyncCollection(Generic[DOC]):
         )
         cd_payload = {"countDocuments": {"filter": filter}}
         logger.info(f"countDocuments on '{self.name}'")
-        cd_response = await self._api_commander.async_request(
+        cd_response = await self._converted_request(
             payload=cd_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -3879,7 +3935,7 @@ class AsyncCollection(Generic[DOC]):
         )
         ed_payload: dict[str, Any] = {"estimatedDocumentCount": {}}
         logger.info(f"estimatedDocumentCount on '{self.name}'")
-        ed_response = await self._api_commander.async_request(
+        ed_response = await self._converted_request(
             payload=ed_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -4019,7 +4075,7 @@ class AsyncCollection(Generic[DOC]):
             }
         }
         logger.info(f"findOneAndReplace on '{self.name}'")
-        fo_response = await self._api_commander.async_request(
+        fo_response = await self._converted_request(
             payload=fo_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -4126,7 +4182,7 @@ class AsyncCollection(Generic[DOC]):
             }
         }
         logger.info(f"findOneAndReplace on '{self.name}'")
-        fo_response = await self._api_commander.async_request(
+        fo_response = await self._converted_request(
             payload=fo_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -4276,7 +4332,7 @@ class AsyncCollection(Generic[DOC]):
             }
         }
         logger.info(f"findOneAndUpdate on '{self.name}'")
-        fo_response = await self._api_commander.async_request(
+        fo_response = await self._converted_request(
             payload=fo_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -4386,7 +4442,7 @@ class AsyncCollection(Generic[DOC]):
             }
         }
         logger.info(f"updateOne on '{self.name}'")
-        uo_response = await self._api_commander.async_request(
+        uo_response = await self._converted_request(
             payload=uo_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -4516,7 +4572,7 @@ class AsyncCollection(Generic[DOC]):
                 }
             }
             logger.info(f"updateMany on '{self.name}'")
-            this_um_response = await self._api_commander.async_request(
+            this_um_response = await self._converted_request(
                 payload=this_um_payload,
                 timeout_ms=timeout_manager.remaining_timeout_ms(
                     cap_time_ms=_request_timeout_ms
@@ -4653,7 +4709,7 @@ class AsyncCollection(Generic[DOC]):
             }
         }
         logger.info(f"findOneAndDelete on '{self.name}'")
-        fo_response = await self._api_commander.async_request(
+        fo_response = await self._converted_request(
             payload=fo_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -4739,7 +4795,7 @@ class AsyncCollection(Generic[DOC]):
             }
         }
         logger.info(f"deleteOne on '{self.name}'")
-        do_response = await self._api_commander.async_request(
+        do_response = await self._converted_request(
             payload=do_payload,
             timeout_ms=_request_timeout_ms,
         )
@@ -4832,7 +4888,7 @@ class AsyncCollection(Generic[DOC]):
         logger.info(f"starting delete_many on '{self.name}'")
         while must_proceed:
             logger.info(f"deleteMany on '{self.name}'")
-            this_dm_response = await self._api_commander.async_request(
+            this_dm_response = await self._converted_request(
                 payload=this_dm_payload,
                 raise_api_errors=False,
                 timeout_ms=timeout_manager.remaining_timeout_ms(
@@ -4924,7 +4980,7 @@ class AsyncCollection(Generic[DOC]):
 
     async def command(
         self,
-        body: dict[str, Any],
+        body: dict[str, Any] | None,
         *,
         raise_api_errors: bool = True,
         request_timeout_ms: int | None = None,
@@ -4933,6 +4989,7 @@ class AsyncCollection(Generic[DOC]):
         """
         Send a POST request to the Data API for this collection with
         an arbitrary, caller-provided payload.
+        No transformations or type conversions are made on the provided payload.
 
         Args:
             body: a JSON-serializable dictionary, the payload of the request.
@@ -4955,7 +5012,7 @@ class AsyncCollection(Generic[DOC]):
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
-        _cmd_desc = ",".join(sorted(body.keys()))
+        _cmd_desc = ",".join(sorted((body or ({} or {})).keys()))
         logger.info(f"command={_cmd_desc} on '{self.name}'")
         command_result = await self._api_commander.async_request(
             payload=body,

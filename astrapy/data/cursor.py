@@ -27,6 +27,10 @@ from astrapy.constants import (
     ProjectionType,
     normalize_optional_projection,
 )
+from astrapy.data.utils.collection_converters import (
+    postprocess_collection_response,
+    preprocess_collection_payload,
+)
 from astrapy.exceptions import (
     CursorException,
     DataAPIFaultyResponseException,
@@ -221,9 +225,15 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
                 },
             },
         }
-        f_response = self.collection.command(
-            body=f_payload,
+        converted_f_payload = preprocess_collection_payload(
+            f_payload, options=self.collection.api_options.wire_format_options
+        )
+        raw_f_response = self.collection.command(
+            body=converted_f_payload,
             request_timeout_ms=request_timeout_ms,
+        )
+        f_response = postprocess_collection_response(
+            raw_f_response, options=self.collection.api_options.wire_format_options
         )
         if "documents" not in f_response.get("data", {}):
             raise DataAPIFaultyResponseException(
@@ -253,9 +263,16 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
                 },
             },
         }
-        f_response = await self.async_collection.command(
-            body=f_payload,
+        converted_f_payload = preprocess_collection_payload(
+            f_payload, options=self.async_collection.api_options.wire_format_options
+        )
+        raw_f_response = await self.async_collection.command(
+            body=converted_f_payload,
             request_timeout_ms=request_timeout_ms,
+        )
+        f_response = postprocess_collection_response(
+            raw_f_response,
+            options=self.async_collection.api_options.wire_format_options,
         )
         if "documents" not in f_response.get("data", {}):
             raise DataAPIFaultyResponseException(
@@ -327,6 +344,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
                 },
             },
         }
+        # TODO pre/post process here
         f_response = self.table.command(
             body=f_payload,
             request_timeout_ms=request_timeout_ms,
@@ -359,6 +377,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
                 },
             },
         }
+        # TODO pre/post process here
         f_response = await self.async_table.command(
             body=f_payload,
             request_timeout_ms=request_timeout_ms,

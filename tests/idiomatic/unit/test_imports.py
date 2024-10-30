@@ -27,7 +27,6 @@ def test_namespace() -> None:
     assert str(astrapy.client) != ""
     assert str(astrapy.collection) != ""
     assert str(astrapy.constants) != ""
-    assert str(astrapy.cursors) != ""
     assert str(astrapy.data) != ""
     assert str(astrapy.database) != ""
     assert str(astrapy.exceptions) != ""
@@ -43,12 +42,11 @@ def test_namespace() -> None:
     assert str(astrapy.client.DataAPIClient) != ""
     assert str(astrapy.collection.Collection) != ""
     assert str(astrapy.constants.VectorMetric.DOT_PRODUCT) != ""
-    assert str(astrapy.cursors.CollectionCursor) != ""
     assert str(astrapy.data.collection) != ""
     assert str(astrapy.database.Database) != ""
     assert str(astrapy.exceptions.DevOpsAPIException) != ""
     assert str(astrapy.ids.uuid6) != ""
-    assert str(astrapy.info.DatabaseInfo) != ""
+    assert str(astrapy.info.AstraDBDatabaseInfo) != ""
     assert str(astrapy.results.DeleteResult) != ""
     assert str(astrapy.settings.defaults) != ""
     assert str(astrapy.utils.request_tools) != ""
@@ -67,7 +65,8 @@ def test_imports() -> None:
         Database,
     )
     from astrapy.admin import (  # noqa: F401
-        AstraDBAdmin as AstraDBAdmin2,
+        ParsedAPIEndpoint,
+        parse_api_endpoint,
     )
     from astrapy.api_options import (  # noqa: F401
         APIOptions,
@@ -122,13 +121,13 @@ def test_imports() -> None:
         uuid8,
     )
     from astrapy.info import (  # noqa: F401
-        AdminDatabaseInfo,
+        AstraDBAdminDatabaseInfo,
+        AstraDBDatabaseInfo,
         CollectionDefaultIDOptions,
         CollectionDescriptor,
         CollectionInfo,
         CollectionOptions,
         CollectionVectorOptions,
-        DatabaseInfo,
         EmbeddingProvider,
         EmbeddingProviderAuthentication,
         EmbeddingProviderModel,

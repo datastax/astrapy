@@ -13,7 +13,7 @@ from astrapy.utils.request_tools import HttpMethod
 
 from ..conftest import DefaultAsyncCollection, DefaultCollection
 
-SLEEPER_TIME_MS = 100
+SLEEPER_TIME_MS = 500
 TIMEOUT_PARAM_MS = 1
 
 BASE_PATH = "v1"

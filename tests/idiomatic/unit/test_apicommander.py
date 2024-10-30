@@ -29,7 +29,6 @@ from astrapy.exceptions import (
     DevOpsAPIResponseException,
 )
 from astrapy.utils.api_commander import APICommander
-from astrapy.utils.api_options import FullWireFormatOptions
 from astrapy.utils.request_tools import HttpMethod
 
 
@@ -39,11 +38,6 @@ class TestAPICommander:
         cmd1 = APICommander(
             api_endpoint="api_endpoint1",
             path="path1",
-            wire_format_options=FullWireFormatOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                coerce_iterables_to_vectors=True,
-            ),
             headers={"h": "headers1"},
             callers=[("c", "v")],
             redacted_header_names=["redacted_header_names1"],
@@ -52,11 +46,6 @@ class TestAPICommander:
         cmd2 = APICommander(
             api_endpoint="api_endpoint1",
             path="path1",
-            wire_format_options=FullWireFormatOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                coerce_iterables_to_vectors=True,
-            ),
             headers={"h": "headers1"},
             callers=[("c", "v")],
             redacted_header_names=["redacted_header_names1"],
@@ -88,11 +77,6 @@ class TestAPICommander:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
-            wire_format_options=FullWireFormatOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                coerce_iterables_to_vectors=True,
-            ),
             headers={"h": "v"},
             callers=[("cn0", "cv0"), ("cn1", "cv1")],
         )
@@ -141,11 +125,6 @@ class TestAPICommander:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
-            wire_format_options=FullWireFormatOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                coerce_iterables_to_vectors=True,
-            ),
             headers={"h": "v"},
             callers=[("cn0", "cv0"), ("cn1", "cv1")],
         )
@@ -193,11 +172,6 @@ class TestAPICommander:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
-            wire_format_options=FullWireFormatOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                coerce_iterables_to_vectors=True,
-            ),
             dev_ops_api=False,
         )
 
@@ -256,11 +230,6 @@ class TestAPICommander:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
-            wire_format_options=FullWireFormatOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                coerce_iterables_to_vectors=True,
-            ),
             dev_ops_api=False,
         )
 
@@ -319,11 +288,6 @@ class TestAPICommander:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
-            wire_format_options=FullWireFormatOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                coerce_iterables_to_vectors=True,
-            ),
             dev_ops_api=True,
         )
 
@@ -384,11 +348,6 @@ class TestAPICommander:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
-            wire_format_options=FullWireFormatOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                coerce_iterables_to_vectors=True,
-            ),
             dev_ops_api=True,
         )
 
@@ -451,11 +410,6 @@ class TestAPICommander:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
-            wire_format_options=FullWireFormatOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                coerce_iterables_to_vectors=True,
-            ),
             dev_ops_api=False,
         )
         httpserver.expect_oneshot_request(
@@ -477,11 +431,6 @@ class TestAPICommander:
         devops_cmd = APICommander(
             api_endpoint=base_endpoint,
             path=ops_base_path,
-            wire_format_options=FullWireFormatOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                coerce_iterables_to_vectors=True,
-            ),
             dev_ops_api=True,
         )
         httpserver.expect_oneshot_request(
@@ -510,11 +459,6 @@ class TestAPICommander:
         cmd = APICommander(
             api_endpoint=base_endpoint,
             path=base_path,
-            wire_format_options=FullWireFormatOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                coerce_iterables_to_vectors=True,
-            ),
             dev_ops_api=False,
         )
         httpserver.expect_oneshot_request(
@@ -536,11 +480,6 @@ class TestAPICommander:
         devops_cmd = APICommander(
             api_endpoint=base_endpoint,
             path=ops_base_path,
-            wire_format_options=FullWireFormatOptions(
-                binary_encode_vectors=True,
-                custom_datatypes_in_reading=True,
-                coerce_iterables_to_vectors=True,
-            ),
             dev_ops_api=True,
         )
         httpserver.expect_oneshot_request(
