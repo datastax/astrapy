@@ -201,14 +201,15 @@ class TestDatabasesAsync:
         )
         assert collection_ks2.database.keyspace == KEYSPACE_2
 
-    @pytest.mark.describe("test database id, async")
-    async def test_database_id_async(self) -> None:
+    @pytest.mark.describe("test database id and region, async")
+    async def test_database_id_region_async(self) -> None:
         db1 = AsyncDatabase(
             api_endpoint="https://a1234567-89ab-cdef-0123-456789abcdef-us-central1.apps.astra-dev.datastax.com",
             keyspace="k",
             api_options=defaultAPIOptions(environment="dev"),
         )
         assert db1.id == "a1234567-89ab-cdef-0123-456789abcdef"
+        assert db1.region == "us-central1"
 
         db2 = AsyncDatabase(
             api_endpoint="http://localhost:12345",
@@ -217,6 +218,8 @@ class TestDatabasesAsync:
         )
         with pytest.raises(DevOpsAPIException):
             db2.id
+        with pytest.raises(DevOpsAPIException):
+            db2.region
 
     @pytest.mark.describe("test database default keyspace per environment, async")
     async def test_database_default_keyspace_per_environment_async(self) -> None:

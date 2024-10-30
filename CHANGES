@@ -1,5 +1,6 @@
 v 2.0.0
 =======
+Database (and AsyncDatabase): added a `.region` property
 Database info: changed class name and attributes of `AstraDBAdminDatabaseInfo` (former 'AdminDatabaseInfo') and `AstraDBDatabaseInfo` (former 'DatabaseInfo')
 Introduced `DataAPIVector` class (Iterable, Sequence): this also offers better control over vector binary serialization
 Collections are optionally typed:

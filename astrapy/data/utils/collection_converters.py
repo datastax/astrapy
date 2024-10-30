@@ -45,15 +45,12 @@ def preprocess_collection_payload_value(
     """
     The path helps determining special treatments
     """
-    # TODO improve this flow once rewriting this path-dependent logic
-
-    _l2 = ".".join(path[-2:])
-    _l1 = ".".join(path[-1:])
+    # TODO improve this flow, rewriting the path-dependent choices
 
     # vector-related pre-processing and coercion
     _value = value
     # is this value in the place for vectors?
-    if _l1 == "$vector" and _l2 != "projection.$vector":  # TODO improve this
+    if path[-1:] == ["$vector"] and path[-2:] != ["projection", "$vector"]:
         # must coerce list-likes broadly, and is it the case to do it?
         if options.coerce_iterables_to_vectors and not (
             is_list_of_floats(_value) or isinstance(_value, DataAPIVector)
@@ -130,12 +127,10 @@ def postprocess_collection_response_value(
     """
     The path helps determining special treatments
     """
-    # TODO improve the response postprocessing once rewriting this logic
+    # TODO improve the response postprocessing once rewriting this logic (path mgmt)
 
-    _l1 = ".".join(path[-1:])
-
-    # for reads, everywhere there's a $vector it can be treated as such
-    if _l1 == "$vector":
+    # for reads, everywhere there's a $vector it can be treated as such and reconverted
+    if path[-1:] == ["$vector"]:
         # custom faster handling for the $vector path:
         if isinstance(value, list):
             if options.custom_datatypes_in_reading:

@@ -22,7 +22,7 @@ from astrapy import DataAPIClient, Database
 from astrapy.admin import parse_api_endpoint
 from astrapy.constants import DefaultIdType, VectorMetric
 from astrapy.ids import UUID, ObjectId
-from astrapy.info import CollectionDescriptor, DatabaseInfo
+from astrapy.info import AstraDBDatabaseInfo, CollectionDescriptor
 
 from ..conftest import (
     IS_ASTRA_DB,
@@ -186,8 +186,8 @@ class TestDDLSync:
         assert isinstance(sync_database.id, str)
         assert isinstance(sync_database.name(), str)
         assert sync_database.keyspace == data_api_credentials_kwargs["keyspace"]
-        assert isinstance(sync_database.info(), DatabaseInfo)
-        assert isinstance(sync_database.info().raw_info, dict)
+        assert isinstance(sync_database.info(), AstraDBDatabaseInfo)
+        assert isinstance(sync_database.info().raw, dict)
 
     @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.describe("test of collection metainformation, sync")

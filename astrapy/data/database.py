@@ -485,6 +485,28 @@ class Database:
                 "Database is not in a supported environment for this operation."
             )
 
+    @property
+    def region(self) -> str:
+        """
+        The region where this database is located.
+
+        The region is still well defined in case of multi-region databases,
+        since a Database instance connects to exactly one of the regions
+        (as specified by the API Endpoint).
+
+        Example:
+            >>> my_db.region
+            'us-west-2'
+        """
+
+        parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
+        if parsed_api_endpoint is not None:
+            return parsed_api_endpoint.region
+        else:
+            raise DevOpsAPIException(
+                "Database is not in a supported environment for this operation."
+            )
+
     def name(self) -> str:
         """
         The name of this database. Note that this bears no unicity guarantees.
@@ -1960,6 +1982,28 @@ class AsyncDatabase:
         parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
         if parsed_api_endpoint is not None:
             return parsed_api_endpoint.database_id
+        else:
+            raise DevOpsAPIException(
+                "Database is not in a supported environment for this operation."
+            )
+
+    @property
+    def region(self) -> str:
+        """
+        The region where this database is located.
+
+        The region is still well defined in case of multi-region databases,
+        since a Database instance connects to exactly one of the regions
+        (as specified by the API Endpoint).
+
+        Example:
+            >>> my_db.region
+            'us-west-2'
+        """
+
+        parsed_api_endpoint = parse_api_endpoint(self.api_endpoint)
+        if parsed_api_endpoint is not None:
+            return parsed_api_endpoint.region
         else:
             raise DevOpsAPIException(
                 "Database is not in a supported environment for this operation."

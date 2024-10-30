@@ -21,7 +21,7 @@ import pytest
 from astrapy import AsyncDatabase, DataAPIClient
 from astrapy.constants import DefaultIdType, VectorMetric
 from astrapy.ids import UUID, ObjectId
-from astrapy.info import CollectionDescriptor, DatabaseInfo
+from astrapy.info import AstraDBDatabaseInfo, CollectionDescriptor
 
 from ..conftest import (
     IS_ASTRA_DB,
@@ -187,8 +187,8 @@ class TestDDLAsync:
         assert isinstance(async_database.id, str)
         assert isinstance(async_database.name(), str)
         assert async_database.keyspace == data_api_credentials_kwargs["keyspace"]
-        assert isinstance(async_database.info(), DatabaseInfo)
-        assert isinstance(async_database.info().raw_info, dict)
+        assert isinstance(async_database.info(), AstraDBDatabaseInfo)
+        assert isinstance(async_database.info().raw, dict)
 
     @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.describe("test of collection metainformation, async")

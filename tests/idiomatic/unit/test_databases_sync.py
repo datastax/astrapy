@@ -202,14 +202,15 @@ class TestDatabasesSync:
         )
         assert collection_ks2.database.keyspace == KEYSPACE_2
 
-    @pytest.mark.describe("test database id, sync")
-    def test_database_id_sync(self) -> None:
+    @pytest.mark.describe("test database id and region, sync")
+    def test_database_id_region_sync(self) -> None:
         db1 = Database(
             api_endpoint="https://a1234567-89ab-cdef-0123-456789abcdef-us-central1.apps.astra-dev.datastax.com",
             keyspace="k",
             api_options=defaultAPIOptions(environment="dev"),
         )
         assert db1.id == "a1234567-89ab-cdef-0123-456789abcdef"
+        assert db1.region == "us-central1"
 
         db2 = Database(
             api_endpoint="http://localhost:12345",
@@ -218,6 +219,8 @@ class TestDatabasesSync:
         )
         with pytest.raises(DevOpsAPIException):
             db2.id
+        with pytest.raises(DevOpsAPIException):
+            db2.region
 
     @pytest.mark.describe("test database default keyspace per environment, sync")
     def test_database_default_keyspace_per_environment_sync(self) -> None:
