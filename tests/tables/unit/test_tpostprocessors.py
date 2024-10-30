@@ -21,7 +21,7 @@ from typing import Any
 
 import pytest
 
-from astrapy.data.utils.table_converters import create_row_converter
+from astrapy.data.utils.table_converters import create_row_tpostprocessor
 from astrapy.data_types import (
     DataAPITimestamp,
     TableDate,
@@ -54,11 +54,18 @@ TABLE_DESCRIPTION = {
             "p_timestamp": {"type": "timestamp"},
             "p_timestamp_out_offset": {"type": "timestamp"},
             "p_list_int": {"type": "list", "valueType": "int"},
+            "p_list_double": {"type": "list", "valueType": "double"},
             "p_set_ascii": {"type": "set", "valueType": "ascii"},
+            "p_set_float": {"type": "set", "valueType": "float"},
             "p_map_text_float": {
                 "type": "map",
                 "valueType": "float",
                 "keyType": "text",
+            },
+            "p_map_float_text": {
+                "type": "map",
+                "valueType": "text",
+                "keyType": "float",
             },
             "somevector": {"type": "vector", "dimension": 3},
             "embeddings": {
@@ -109,7 +116,7 @@ FULL_RESPONSE_ROW = {
     "p_float_nan": "NaN",
     "p_float_pinf": "Infinity",
     "p_float_minf": "-Infinity",
-    "p_blob": b"xyz",
+    "p_blob": {"$binary": "YWJjMTIz"},  # b"abc123",
     "p_uuid": "9c5b94b1-35ad-49bb-b118-8e8fc24abf80",
     "p_decimal": 123.456,
     "p_date": "11111-09-30",
@@ -119,8 +126,11 @@ FULL_RESPONSE_ROW = {
     "p_timestamp": "2015-05-03T13:30:54.234Z",
     "p_timestamp_out_offset": "-123-04-03T13:13:04.123+1:00",
     "p_list_int": [99, 100, 101],
+    "p_list_double": [1.1, 2.2, "NaN", "Infinity", "-Infinity", 9.9],
     "p_set_ascii": ["a", "b", "c"],
+    "p_set_float": [1.1, "NaN", "-Infinity", 9.9],
     "p_map_text_float": {"a": 0.1, "b": 0.2},
+    "p_map_float_text": {1.1: "1-1", "NaN": "NANNN!"},
     "somevector": [0.1, -0.2, 0.3],
     "embeddings": [1.2, 3.4],
     "p_counter": 100,
@@ -136,7 +146,7 @@ FULL_EXPECTED_ROW = {
     "p_float_nan": float("NaN"),
     "p_float_pinf": float("Infinity"),
     "p_float_minf": float("-Infinity"),
-    "p_blob": b"xyz",
+    "p_blob": b"abc123",
     "p_uuid": UUID("9c5b94b1-35ad-49bb-b118-8e8fc24abf80"),
     "p_decimal": decimal.Decimal("123.456"),
     "p_date": TableDate.from_string("11111-09-30"),
@@ -148,8 +158,18 @@ FULL_EXPECTED_ROW = {
         "-123-04-03T13:13:04.123+1:00"
     ),
     "p_list_int": [99, 100, 101],
+    "p_list_double": [
+        1.1,
+        2.2,
+        float("NaN"),
+        float("Infinity"),
+        float("-Infinity"),
+        9.9,
+    ],
     "p_set_ascii": TableSet(["a", "b", "c"]),
+    "p_set_float": TableSet([1.1, float("NaN"), float("-Infinity"), 9.9]),
     "p_map_text_float": TableMap({"a": 0.1, "b": 0.2}),
+    "p_map_float_text": TableMap({1.1: "1-1", float("NaN"): "NANNN!"}),
     "somevector": [0.1, -0.2, 0.3],
     "embeddings": [1.2, 3.4],
     "p_counter": 100,
@@ -161,25 +181,33 @@ FULL_EXPECTED_ROW = {
 _NaN = object()
 
 
-def _replace_NaNs(row: dict[str, Any]) -> dict[str, Any]:
-    return {
-        k: v if not isinstance(v, float) or not math.isnan(v) else _NaN
-        for k, v in row.items()
-    }
+def _repaint_NaNs(val: Any) -> Any:
+    if isinstance(val, float) and math.isnan(val):
+        return _NaN
+    elif isinstance(val, dict):
+        return {_repaint_NaNs(k): _repaint_NaNs(v) for k, v in val.items()}
+    elif isinstance(val, list):
+        return [_repaint_NaNs(x) for x in val]
+    elif isinstance(val, TableSet):
+        return TableSet(_repaint_NaNs(v) for v in val)
+    elif isinstance(val, TableMap):
+        return TableMap((_repaint_NaNs(k), _repaint_NaNs(v)) for k, v in val.items())
+    else:
+        return val
 
 
 class TestTableConverters:
     @pytest.mark.describe("test of table converters based on schema")
     def test_tableconverters_schema_based(self) -> None:
         col_desc = TableDescriptor.coerce(TABLE_DESCRIPTION)
-        converter = create_row_converter(col_desc.definition.columns)
+        tpostprocessor = create_row_tpostprocessor(col_desc.definition.columns)
 
-        converted_column = converter(FULL_RESPONSE_ROW)
-        assert _replace_NaNs(converted_column) == _replace_NaNs(FULL_EXPECTED_ROW)
+        converted_column = tpostprocessor(FULL_RESPONSE_ROW)
+        assert _repaint_NaNs(converted_column) == _repaint_NaNs(FULL_EXPECTED_ROW)
 
         all_nulls = {k: None for k in FULL_RESPONSE_ROW.keys()}
-        converted_empty = converter({})
+        converted_empty = tpostprocessor({})
         assert converted_empty == all_nulls
 
-        converted_nulls = converter(all_nulls)
+        converted_nulls = tpostprocessor(all_nulls)
         assert converted_nulls == all_nulls

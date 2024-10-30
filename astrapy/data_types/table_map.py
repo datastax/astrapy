@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from typing import Generic, Iterable, Iterator, TypeVar
 
@@ -55,10 +56,16 @@ class TableMap(Generic[T, U], Mapping[T, U]):
             )
 
     def __getitem__(self, key: T) -> U:
-        for idx, k in enumerate(self._keys):
-            if k == key:
-                return self._values[idx]
-        raise KeyError(str(key))
+        if isinstance(key, float) and math.isnan(key):
+            for idx, k in enumerate(self._keys):
+                if isinstance(k, float) and math.isnan(k):
+                    return self._values[idx]
+            raise KeyError(str(key))
+        else:
+            for idx, k in enumerate(self._keys):
+                if k == key:
+                    return self._values[idx]
+            raise KeyError(str(key))
 
     def __iter__(self) -> Iterator[T]:
         return iter(self._keys)
