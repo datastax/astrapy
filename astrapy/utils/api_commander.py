@@ -22,6 +22,10 @@ from typing import Any, Dict, Iterable, Sequence, cast
 import httpx
 
 from astrapy.constants import CallerType
+from astrapy.data.utils.collection_converters import (
+    postprocess_collection_response,
+    preprocess_collection_payload,
+)
 from astrapy.exceptions import (
     DataAPIFaultyResponseException,
     DataAPIHttpException,
@@ -44,7 +48,6 @@ from astrapy.utils.request_tools import (
     log_httpx_response,
     to_httpx_timeout,
 )
-from astrapy.utils.transform_payload import normalize_for_api, restore_from_api
 from astrapy.utils.user_agents import (
     compose_full_user_agent,
     detect_astrapy_user_agent,
@@ -242,7 +245,7 @@ class APICommander:
                     logger.warning(full_warning)
 
         # further processing
-        response_json = restore_from_api(
+        response_json = postprocess_collection_response(
             raw_response_json, options=self.wire_format_options
         )
         return response_json
@@ -276,7 +279,7 @@ class APICommander:
         timeout_ms: int | None = None,
     ) -> httpx.Response:
         timeout = to_httpx_timeout(timeout_ms)
-        normalized_payload = normalize_for_api(
+        normalized_payload = preprocess_collection_payload(
             payload, options=self.wire_format_options
         )
         request_url = self._compose_request_url(additional_path)
@@ -323,7 +326,7 @@ class APICommander:
         timeout_ms: int | None = None,
     ) -> httpx.Response:
         timeout = to_httpx_timeout(timeout_ms)
-        normalized_payload = normalize_for_api(
+        normalized_payload = preprocess_collection_payload(
             payload, options=self.wire_format_options
         )
         request_url = self._compose_request_url(additional_path)

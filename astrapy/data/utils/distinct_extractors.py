@@ -22,8 +22,9 @@ from typing import (
     Iterable,
 )
 
+# TODO review using this function in this context
+from astrapy.data.utils.collection_converters import preprocess_collection_payload_value
 from astrapy.utils.api_options import FullWireFormatOptions
-from astrapy.utils.transform_payload import normalize_payload_value
 
 IndexPairType = tuple[str, int | None]
 
@@ -118,7 +119,9 @@ def _reduce_distinct_key_to_safe(distinct_key: str) -> str:
 
 
 def _hash_document(document: dict[str, Any], options: FullWireFormatOptions) -> str:
-    _normalized_item = normalize_payload_value(path=[], value=document, options=options)
+    _normalized_item = preprocess_collection_payload_value(
+        path=[], value=document, options=options
+    )
     _normalized_json = json.dumps(
         _normalized_item, sort_keys=True, separators=(",", ":")
     )

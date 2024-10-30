@@ -16,12 +16,12 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy.data_types import DataAPIVector
-from astrapy.data_types.data_api_vector import bytes_to_floats, floats_to_bytes
-from astrapy.utils.transform_payload import (
+from astrapy.data.utils.extended_json_converters import (
     convert_ejson_binary_object_to_bytes,
     convert_to_ejson_bytes,
 )
+from astrapy.data_types import DataAPIVector
+from astrapy.data_types.data_api_vector import bytes_to_floats, floats_to_bytes
 
 COMPARE_EPSILON = 0.00001
 

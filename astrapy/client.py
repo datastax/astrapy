@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any, Sequence
 
-from astrapy.admin.admin import (
+from astrapy.admin.endpoints import (
     api_endpoint_parsing_error_message,
     generic_api_url_parsing_error_message,
     parse_api_endpoint,

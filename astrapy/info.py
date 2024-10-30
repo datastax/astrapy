@@ -21,7 +21,10 @@ from astrapy.data.info.collection_descriptor import (
     CollectionOptions,
     CollectionVectorOptions,
 )
-from astrapy.data.info.database_info import AdminDatabaseInfo, DatabaseInfo
+from astrapy.data.info.database_info import (
+    AstraDBAdminDatabaseInfo,
+    AstraDBDatabaseInfo,
+)
 from astrapy.data.info.table_descriptor import (
     TableAPISupportDescriptor,
     TableDefinition,
@@ -49,14 +52,14 @@ from astrapy.data.info.vectorize import (
 )
 
 __all__ = [
-    "AdminDatabaseInfo",
+    "AstraDBAdminDatabaseInfo",
     "CollectionDefaultIDOptions",
     "CollectionDescriptor",
     "CollectionInfo",
     "CollectionOptions",
     "CollectionVectorOptions",
     "VectorServiceOptions",
-    "DatabaseInfo",
+    "AstraDBDatabaseInfo",
     "EmbeddingProviderParameter",
     "EmbeddingProviderModel",
     "EmbeddingProviderToken",

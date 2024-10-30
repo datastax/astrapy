@@ -14,95 +14,32 @@
 
 from __future__ import annotations
 
-import base64
 import datetime
-import time
-from typing import Any, Dict, Iterable, cast
+from typing import Any, cast
 
 from astrapy.constants import DefaultDocumentType
+from astrapy.data.utils.extended_json_converters import (
+    convert_ejson_binary_object_to_bytes,
+    convert_ejson_date_object_to_apitimestamp,
+    convert_ejson_date_object_to_datetime,
+    convert_ejson_objectid_object_to_objectid,
+    convert_ejson_uuid_object_to_uuid,
+    convert_to_ejson_apitimestamp_object,
+    convert_to_ejson_bytes,
+    convert_to_ejson_date_object,
+    convert_to_ejson_objectid_object,
+    convert_to_ejson_uuid_object,
+)
+from astrapy.data.utils.vector_coercion import (
+    convert_vector_to_floats,
+    is_list_of_floats,
+)
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.ids import UUID, ObjectId
 from astrapy.utils.api_options import FullWireFormatOptions
 
 
-def convert_vector_to_floats(vector: Iterable[Any]) -> list[float]:
-    """
-    Convert a vector of strings to a vector of floats.
-
-    Args:
-        vector (list): A vector of objects.
-
-    Returns:
-        list: A vector of floats.
-    """
-    return [float(value) for value in vector]
-
-
-def is_list_of_floats(vector: Iterable[Any]) -> bool:
-    """
-    Safely determine if it's a list of floats.
-    Assumption: if list, and first item is float, then all items are.
-    """
-    return isinstance(vector, list) and (
-        len(vector) == 0 or isinstance(vector[0], float) or isinstance(vector[0], int)
-    )
-
-
-def convert_to_ejson_date_object(
-    date_value: datetime.date | datetime.datetime,
-) -> dict[str, int]:
-    if isinstance(date_value, datetime.datetime):
-        return {"$date": int(date_value.timestamp() * 1000)}
-    return {"$date": int(time.mktime(date_value.timetuple()) * 1000)}
-
-
-def convert_to_ejson_apitimestamp_object(
-    date_value: DataAPITimestamp,
-) -> dict[str, int]:
-    return {"$date": date_value.timestamp_ms}
-
-
-def convert_to_ejson_bytes(bytes_value: bytes) -> dict[str, str]:
-    return {"$binary": base64.b64encode(bytes_value).decode()}
-
-
-def convert_to_ejson_uuid_object(uuid_value: UUID) -> dict[str, str]:
-    return {"$uuid": str(uuid_value)}
-
-
-def convert_to_ejson_objectid_object(objectid_value: ObjectId) -> dict[str, str]:
-    return {"$objectId": str(objectid_value)}
-
-
-def convert_ejson_date_object_to_datetime(
-    date_object: dict[str, int],
-) -> datetime.datetime:
-    return datetime.datetime.fromtimestamp(date_object["$date"] / 1000.0)
-
-
-def convert_ejson_date_object_to_apitimestamp(
-    date_object: dict[str, int],
-) -> DataAPITimestamp:
-    return DataAPITimestamp(date_object["$date"])
-
-
-def convert_ejson_binary_object_to_bytes(
-    binary_object: dict[str, str],
-) -> bytes:
-    return base64.b64decode(binary_object["$binary"])
-
-
-def convert_ejson_uuid_object_to_uuid(uuid_object: dict[str, str]) -> UUID:
-    return UUID(uuid_object["$uuid"])
-
-
-def convert_ejson_objectid_object_to_objectid(
-    objectid_object: dict[str, str],
-) -> ObjectId:
-    return ObjectId(objectid_object["$objectId"])
-
-
-def normalize_payload_value(
+def preprocess_collection_payload_value(
     path: list[str], value: Any, options: FullWireFormatOptions
 ) -> Any:
     """
@@ -141,12 +78,12 @@ def normalize_payload_value(
                 return _value
     if isinstance(_value, dict):
         return {
-            k: normalize_payload_value(path + [k], v, options=options)
+            k: preprocess_collection_payload_value(path + [k], v, options=options)
             for k, v in _value.items()
         }
     elif isinstance(_value, list):
         return [
-            normalize_payload_value(path + [""], list_item, options=options)
+            preprocess_collection_payload_value(path + [""], list_item, options=options)
             for list_item in _value
         ]
     elif isinstance(_value, datetime.datetime) or isinstance(_value, datetime.date):
@@ -163,7 +100,7 @@ def normalize_payload_value(
         return _value
 
 
-def normalize_for_api(
+def preprocess_collection_payload(
     payload: dict[str, Any] | None, options: FullWireFormatOptions
 ) -> dict[str, Any] | None:
     """
@@ -172,22 +109,22 @@ def normalize_for_api(
     are made into plain lists of floats.
 
     Args:
-        payload (Dict[str, Any]): A dict expressing a payload for an API call
+        payload (dict[str, Any]): A dict expressing a payload for an API call
 
     Returns:
-        Dict[str, Any]: a "normalized" payload dict
+        dict[str, Any]: a "normalized" payload dict
     """
 
     if payload:
         return cast(
-            Dict[str, Any],
-            normalize_payload_value([], payload, options=options),
+            dict[str, Any],
+            preprocess_collection_payload_value([], payload, options=options),
         )
     else:
         return payload
 
 
-def restore_response_value(
+def postprocess_collection_response_value(
     path: list[str], value: Any, options: FullWireFormatOptions
 ) -> Any:
     """
@@ -235,19 +172,21 @@ def restore_response_value(
             return convert_ejson_binary_object_to_bytes(value)
         else:
             return {
-                k: restore_response_value(path + [k], v, options=options)
+                k: postprocess_collection_response_value(path + [k], v, options=options)
                 for k, v in value.items()
             }
     elif isinstance(value, list):
         return [
-            restore_response_value(path + [""], list_item, options=options)
+            postprocess_collection_response_value(
+                path + [""], list_item, options=options
+            )
             for list_item in value
         ]
     else:
         return value
 
 
-def restore_from_api(
+def postprocess_collection_response(
     response: DefaultDocumentType, options: FullWireFormatOptions
 ) -> DefaultDocumentType:
     """
@@ -257,5 +196,5 @@ def restore_from_api(
     """
     return cast(
         DefaultDocumentType,
-        restore_response_value([], response, options=options),
+        postprocess_collection_response_value([], response, options=options),
     )

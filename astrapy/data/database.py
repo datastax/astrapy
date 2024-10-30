@@ -36,8 +36,8 @@ from astrapy.exceptions import (
     DevOpsAPIException,
 )
 from astrapy.info import (
+    AstraDBDatabaseInfo,
     CollectionDescriptor,
-    DatabaseInfo,
     TableDefinition,
     TableDescriptor,
     VectorServiceOptions,
@@ -423,9 +423,9 @@ class Database:
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DatabaseInfo:
+    ) -> AstraDBDatabaseInfo:
         """
-        Additional information on the database as a DatabaseInfo instance.
+        Additional information on the database as an AstraDBDatabaseInfo instance.
 
         Some of the returned properties are dynamic throughout the lifetime
         of the database (such as raw_info["keyspaces"]). For this reason,
@@ -443,8 +443,8 @@ class Database:
             '2023-01-30T12:34:56Z'
 
         Note:
-            see the DatabaseInfo documentation for a caveat about the difference
-            between the `region` and the `raw_info["region"]` attributes.
+            see the AstraDBDatabaseInfo documentation for a caveat about the difference
+            between the `region` and the `raw["region"]` attributes.
         """
 
         _request_timeout_ms = (
@@ -1903,9 +1903,9 @@ class AsyncDatabase:
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DatabaseInfo:
+    ) -> AstraDBDatabaseInfo:
         """
-        Additional information on the database as a DatabaseInfo instance.
+        Additional information on the database as a AstraDBDatabaseInfo instance.
 
         Some of the returned properties are dynamic throughout the lifetime
         of the database (such as raw_info["keyspaces"]). For this reason,
@@ -1923,8 +1923,8 @@ class AsyncDatabase:
             '2023-01-30T12:34:56Z'
 
         Note:
-            see the DatabaseInfo documentation for a caveat about the difference
-            between the `region` and the `raw_info["region"]` attributes.
+            see the AstraDBDatabaseInfo documentation for a caveat about the difference
+            between the `region` and the `raw["region"]` attributes.
         """
 
         _request_timeout_ms = (

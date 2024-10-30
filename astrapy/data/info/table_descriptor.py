@@ -19,7 +19,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
-from astrapy.data.info.database_info import DatabaseInfo
+from astrapy.data.info.database_info import AstraDBDatabaseInfo
 from astrapy.data.info.vectorize import VectorServiceOptions
 from astrapy.data.utils.table_types import (
     TableKeyValuedColumnType,
@@ -49,14 +49,14 @@ class TableInfo:
     including the information about the database the table belongs to.
 
     Attributes:
-        database_info: a DatabaseInfo instance for the underlying database.
+        database_info: an AstraDBDatabaseInfo instance for the underlying database.
         keyspace: the keyspace where the table is located.
         name: table name. Unique within a keyspace (across tables/collections).
         full_name: identifier for the table within the database,
             in the form "keyspace.table_name".
     """
 
-    database_info: DatabaseInfo
+    database_info: AstraDBDatabaseInfo
     keyspace: str
     name: str
     full_name: str

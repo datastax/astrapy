@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from astrapy.data.info.database_info import DatabaseInfo
+from astrapy.data.info.database_info import AstraDBDatabaseInfo
 from astrapy.data.info.vectorize import VectorServiceOptions
 
 
@@ -28,14 +28,14 @@ class CollectionInfo:
     including the information about the database the collection belongs to.
 
     Attributes:
-        database_info: a DatabaseInfo instance for the underlying database.
+        database_info: an AstraDBDatabaseInfo instance for the underlying database.
         keyspace: the keyspace where the collection is located.
         name: collection name. Unique within a keyspace (across tables/collections).
         full_name: identifier for the collection within the database,
             in the form "keyspace.collection_name".
     """
 
-    database_info: DatabaseInfo
+    database_info: AstraDBDatabaseInfo
     keyspace: str
     name: str
     full_name: str

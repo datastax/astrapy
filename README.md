@@ -463,13 +463,13 @@ Info/metadata classes:
 
 ```python
 from astrapy.info import (
-    AdminDatabaseInfo,
+    AstraDBAdminDatabaseInfo,
     CollectionDefaultIDOptions,
     CollectionDescriptor,
     CollectionInfo,
     CollectionOptions,
     CollectionVectorOptions,
-    DatabaseInfo,
+    AstraDBDatabaseInfo,
     EmbeddingProvider,
     EmbeddingProviderAuthentication,
     EmbeddingProviderModel,
