@@ -106,14 +106,13 @@ def preprocess_collection_payload(
 ) -> dict[str, Any] | None:
     """
     Normalize a payload for API calls.
-    This includes e.g. ensuring values for "$vector" key
-    are made into plain lists of floats.
+    This includes e.g. ensuring values for "$vector" key are properly coerced.
 
     Args:
         payload (dict[str, Any]): A dict expressing a payload for an API call
 
     Returns:
-        dict[str, Any]: a "normalized" payload dict
+        dict[str, Any]: a payload dict, pre-processed, ready for HTTP requests.
     """
 
     if payload:

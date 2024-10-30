@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import datetime
+
 MAX_DAY_PER_MONTH_LEAP = {2: 29}
 MAX_DAY_PER_MONTH = {
     1: 31,
@@ -92,3 +94,13 @@ def _year_to_unix_timestamp_ms(year: int) -> int:
     if year >= 1970:
         return _year_to_unix_timestamp_ms_forward(year)
     return _year_to_unix_timestamp_ms_backward(year)
+
+
+def _get_datetime_offset(dt: datetime.datetime) -> tuple[int, int] | None:
+    # if not naive, return the (possibly) nontrivial offset as (hours, minutes)
+    offset = dt.utcoffset()
+    if offset is None:
+        return offset
+    offset_hours = offset.seconds // 3600 + offset.days * 24
+    offset_minutes = (offset.seconds // 60) % 60
+    return (offset_hours, offset_minutes)

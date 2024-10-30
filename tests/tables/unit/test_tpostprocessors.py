@@ -21,7 +21,11 @@ from typing import Any
 
 import pytest
 
-from astrapy.data.utils.table_converters import create_row_tpostprocessor
+from astrapy.data.info.table_descriptor import TableColumnTypeDescriptor
+from astrapy.data.utils.table_converters import (
+    create_key_ktpostprocessor,
+    create_row_tpostprocessor,
+)
 from astrapy.data_types import (
     DataAPITimestamp,
     TableDate,
@@ -177,6 +181,19 @@ FULL_EXPECTED_ROW = {
     "p_timeuuid": UUID("0de779c0-92e3-11ef-96a4-a745ae2c0a0b"),
 }
 
+PRIMARY_KEY_SCHEMA = {
+    "p_text": {"type": "text"},
+    "p_boolean": {"type": "boolean"},
+    "p_int": {"type": "int"},
+    "p_blob": {"type": "blob"},
+}
+PRIMARY_KEY_LIST = ["txt", True, 123, "YWJjMTIz"]
+EXPECTED_PRIMARY_KEY = {
+    "p_text": "txt",
+    "p_boolean": True,
+    "p_int": 123,
+    "p_blob": b"abc123",
+}
 
 _NaN = object()
 
@@ -197,8 +214,8 @@ def _repaint_NaNs(val: Any) -> Any:
 
 
 class TestTableConverters:
-    @pytest.mark.describe("test of table converters based on schema")
-    def test_tableconverters_schema_based(self) -> None:
+    @pytest.mark.describe("test of row postprocessors from schema")
+    def test_row_postprocessors_from_schema(self) -> None:
         col_desc = TableDescriptor.coerce(TABLE_DESCRIPTION)
         tpostprocessor = create_row_tpostprocessor(col_desc.definition.columns)
 
@@ -211,3 +228,19 @@ class TestTableConverters:
 
         converted_nulls = tpostprocessor(all_nulls)
         assert converted_nulls == all_nulls
+
+        with pytest.raises(ValueError):
+            tpostprocessor({"bippy": 123})
+
+    @pytest.mark.describe("test of primary-key postprocessors based on pk-schema")
+    def test_pk_postprocessors_from_schema(self) -> None:
+        pk_schema = {
+            pk_col_name: TableColumnTypeDescriptor.coerce(pk_col_dict)
+            for pk_col_name, pk_col_dict in PRIMARY_KEY_SCHEMA.items()
+        }
+        ktpostprocessor = create_key_ktpostprocessor(pk_schema)
+
+        assert ktpostprocessor(PRIMARY_KEY_LIST) == EXPECTED_PRIMARY_KEY
+
+        with pytest.raises(ValueError):
+            ktpostprocessor(["bippy", 123])
