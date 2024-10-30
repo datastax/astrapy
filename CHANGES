@@ -37,7 +37,7 @@ Reworked the options system:
     - (not user-facing) classes in the hierarchy other than DataAPIClient have breaking changes in their constructor (now options-first and keyword-arg-only)
     - introduced `wire_format_options.custom_datatypes_in_reading`, also controlling datetime management in Collections
     - introduced `wire_format_options.binary_encode_vectors`, affecting read/writes wire format for collections
-    - introduced `wire_format_options..coerce_iterables_to_vectors` to make the write path tolerant w.r.t. lazy iterables, numpy etc in writing vectors
+    - introduced `wire_format_options..unroll_iterables_to_lists` to make the write path tolerant w.r.t. lazy iterables, numpy etc in writing vectors/lists
 Major restructuring of the codebase into directories
     - BaseCursor not exported by astrapy.cursors anymore
     - some imports (supposedly not used externally) changed slightly

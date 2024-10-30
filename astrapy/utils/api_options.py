@@ -28,13 +28,13 @@ from astrapy.settings.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
     DEFAULT_BINARY_ENCODE_VECTORS,
-    DEFAULT_COERCE_ITERABLES_TO_VECTORS,
     DEFAULT_CUSTOM_DATATYPES_IN_READING,
     DEFAULT_DATA_OPERATION_TIMEOUT_MS,
     DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
     DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
     DEFAULT_REQUEST_TIMEOUT_MS,
     DEFAULT_SCHEMA_OPERATION_TIMEOUT_MS,
+    DEFAULT_UNROLL_ITERABLES_TO_LISTS,
     DEV_OPS_URL_ENV_MAP,
     DEV_OPS_VERSION_ENV_MAP,
     FIXED_SECRET_PLACEHOLDER,
@@ -93,14 +93,14 @@ class FullTimeoutOptions(TimeoutOptions):
 class WireFormatOptions:
     binary_encode_vectors: bool | UnsetType = _UNSET
     custom_datatypes_in_reading: bool | UnsetType = _UNSET
-    coerce_iterables_to_vectors: bool | UnsetType = _UNSET
+    unroll_iterables_to_lists: bool | UnsetType = _UNSET
 
 
 @dataclass
 class FullWireFormatOptions(WireFormatOptions):
     binary_encode_vectors: bool
     custom_datatypes_in_reading: bool
-    coerce_iterables_to_vectors: bool
+    unroll_iterables_to_lists: bool
 
     def with_override(self, other: WireFormatOptions) -> FullWireFormatOptions:
         return FullWireFormatOptions(
@@ -114,10 +114,10 @@ class FullWireFormatOptions(WireFormatOptions):
                 if not isinstance(other.custom_datatypes_in_reading, UnsetType)
                 else self.custom_datatypes_in_reading
             ),
-            coerce_iterables_to_vectors=(
-                other.coerce_iterables_to_vectors
-                if not isinstance(other.coerce_iterables_to_vectors, UnsetType)
-                else self.coerce_iterables_to_vectors
+            unroll_iterables_to_lists=(
+                other.unroll_iterables_to_lists
+                if not isinstance(other.unroll_iterables_to_lists, UnsetType)
+                else self.unroll_iterables_to_lists
             ),
         )
 
@@ -393,7 +393,7 @@ defaultTimeoutOptions = FullTimeoutOptions(
 defaultWireFormatOptions = FullWireFormatOptions(
     binary_encode_vectors=DEFAULT_BINARY_ENCODE_VECTORS,
     custom_datatypes_in_reading=DEFAULT_CUSTOM_DATATYPES_IN_READING,
-    coerce_iterables_to_vectors=DEFAULT_COERCE_ITERABLES_TO_VECTORS,
+    unroll_iterables_to_lists=DEFAULT_UNROLL_ITERABLES_TO_LISTS,
 )
 
 

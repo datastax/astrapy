@@ -147,7 +147,7 @@ class TestDMLAsync:
             api_options=APIOptions(
                 wire_format_options=WireFormatOptions(
                     binary_encode_vectors=True,
-                    coerce_iterables_to_vectors=True,
+                    unroll_iterables_to_lists=True,
                 ),
             ),
         )
@@ -155,7 +155,7 @@ class TestDMLAsync:
             api_options=APIOptions(
                 wire_format_options=WireFormatOptions(
                     binary_encode_vectors=False,
-                    coerce_iterables_to_vectors=True,
+                    unroll_iterables_to_lists=True,
                 ),
             ),
         )
@@ -163,7 +163,7 @@ class TestDMLAsync:
             api_options=APIOptions(
                 wire_format_options=WireFormatOptions(
                     binary_encode_vectors=True,
-                    coerce_iterables_to_vectors=False,
+                    unroll_iterables_to_lists=False,
                 ),
             ),
         )
@@ -171,7 +171,7 @@ class TestDMLAsync:
             api_options=APIOptions(
                 wire_format_options=WireFormatOptions(
                     binary_encode_vectors=False,
-                    coerce_iterables_to_vectors=False,
+                    unroll_iterables_to_lists=False,
                 ),
             ),
         )

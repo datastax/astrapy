@@ -57,7 +57,7 @@ def test_ids_serdes() -> None:
         options=FullWireFormatOptions(
             binary_encode_vectors=True,
             custom_datatypes_in_reading=True,
-            coerce_iterables_to_vectors=True,
+            unroll_iterables_to_lists=True,
         ),
     )
     json.dumps(normalized)
@@ -67,7 +67,7 @@ def test_ids_serdes() -> None:
         options=FullWireFormatOptions(
             binary_encode_vectors=True,
             custom_datatypes_in_reading=True,
-            coerce_iterables_to_vectors=True,
+            unroll_iterables_to_lists=True,
         ),
     )
     assert restored == full_structure

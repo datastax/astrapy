@@ -104,7 +104,7 @@ def sync_collection(
         indexing={"deny": ["not_indexed"]},
         collection_api_options=APIOptions(
             wire_format_options=WireFormatOptions(
-                coerce_iterables_to_vectors=True,
+                unroll_iterables_to_lists=True,
             ),
         ),
     )

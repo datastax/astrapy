@@ -32,6 +32,7 @@ from astrapy.data.utils.extended_json_converters import (
 )
 from astrapy.data.utils.vector_coercion import (
     convert_vector_to_floats,
+    ensure_unrolled_if_iterable,
     is_list_of_floats,
 )
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
@@ -52,7 +53,7 @@ def preprocess_collection_payload_value(
     # is this value in the place for vectors?
     if path[-1:] == ["$vector"] and path[-2:] != ["projection", "$vector"]:
         # must coerce list-likes broadly, and is it the case to do it?
-        if options.coerce_iterables_to_vectors and not (
+        if options.unroll_iterables_to_lists and not (
             is_list_of_floats(_value) or isinstance(_value, DataAPIVector)
         ):
             _value = convert_vector_to_floats(_value)
@@ -73,6 +74,9 @@ def preprocess_collection_payload_value(
                 return convert_to_ejson_bytes(DataAPIVector(_value).to_bytes())
             else:
                 return _value
+
+    if options.unroll_iterables_to_lists:
+        _value = ensure_unrolled_if_iterable(_value)
     if isinstance(_value, dict):
         return {
             k: preprocess_collection_payload_value(path + [k], v, options=options)

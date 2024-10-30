@@ -16,6 +16,16 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+from astrapy.data_types import DataAPIVector, TableMap, TableSet
+
+ITERABLES_TO_NOT_UNROLL = list, str, bytes, dict, DataAPIVector, TableMap, TableSet
+
+
+def ensure_unrolled_if_iterable(value: Any) -> Any:
+    if isinstance(value, Iterable) and not isinstance(value, (ITERABLES_TO_NOT_UNROLL)):
+        return list(value)
+    return value
+
 
 def convert_vector_to_floats(vector: Iterable[Any]) -> list[float]:
     """
