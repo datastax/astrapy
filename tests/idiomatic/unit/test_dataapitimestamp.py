@@ -20,6 +20,8 @@ import pytest
 
 from astrapy.data_types import DataAPITimestamp
 from astrapy.utils.date_utils import (
+    AVERAGE_YEAR_MS,
+    EPOCH_YEAR,
     _year_to_unix_timestamp_ms,
     _year_to_unix_timestamp_ms_backward,
     _year_to_unix_timestamp_ms_forward,
@@ -44,7 +46,9 @@ class TestDataAPITimestamp:
         assert DataAPITimestamp.from_datetime(ts_y10000.to_datetime()) == ts_y10000
 
         # (not: DataAPITimestamp is not supposed to respect sub-millisecond precision.)
-        dt1 = datetime.datetime(2024, 10, 27, 11, 22, 33, 831000)
+        dt1 = datetime.datetime(
+            2024, 10, 27, 11, 22, 33, 831000, tzinfo=datetime.timezone.utc
+        )
         assert dt1 == DataAPITimestamp.from_datetime(dt1).to_datetime()
 
         # out-of-ranges
@@ -158,3 +162,104 @@ class TestDataAPITimestamp:
                             ts_string
                         ).timestamp_ms
                         assert py_ts_ms == util_ts_ms
+
+    @pytest.mark.describe(
+        "test of DataAPITimestamp, back to tuple and string, with datetimes"
+    )
+    def test_dataapitimestamp_back_to_tuple_string_wdatetimes(self) -> None:
+        """
+        Test of various string/tuple-powered conversions and their consistency.
+        In range covered by 'datetime'.
+
+        Plan:
+                                                    --> datetime[4]
+                                                   /
+        datetime[0] --> timestamp --> DataAPITS[1] ---> tuple[2]
+                                                   \
+                                                    --> string --> DataAPITS[3]
+                
+        followed by checks that:
+            [0] == [2]
+            [1] == [3]
+            [0] == [4]
+        """
+
+        for test_y in [
+            1,
+            8,
+            100,
+            1604,
+            1969,
+            1970,
+            1971,
+            1972,
+            2024,
+            2100,
+            2777,
+            5432,
+            7776,
+            9999,
+        ]:
+            for test_mo in [1, 2, 7, 10, 12]:
+                for test_h in [0, 1, 17, 23]:
+                    for test_m in [0, 59]:
+                        for test_s in [0, 59]:
+                            for test_us in [0, 654000, 999000]:
+                                test_dt = datetime.datetime(
+                                    test_y,
+                                    test_mo,
+                                    28,
+                                    test_h,
+                                    test_m,
+                                    test_s,
+                                    test_us,
+                                    tzinfo=datetime.timezone.utc,
+                                )
+                                dapi_ts = DataAPITimestamp.from_datetime(test_dt)
+                                dapi_tuple = dapi_ts.timetuple()
+                                # [0] == [2]
+                                assert test_dt.timetuple()[:6] == dapi_tuple[:6]
+                                # allow for 1 ms fluctuations (from rounding and the like):
+                                assert (
+                                    abs(test_dt.microsecond // 1000 - dapi_tuple[6])
+                                    <= 1
+                                )
+
+                                # [1] == [3]
+                                dapi_str = dapi_ts.to_string()
+                                assert dapi_ts == DataAPITimestamp.from_string(dapi_str)
+
+                                # [0] == [4]
+                                # allow for 1 ms fluctuations (from rounding and the like):
+                                assert (
+                                    abs(
+                                        (
+                                            dapi_ts.to_datetime() - test_dt
+                                        ).total_seconds()
+                                    )
+                                    <= 0.001
+                                )
+
+    @pytest.mark.describe(
+        "test of DataAPITimestamp, back to tuple and string, no datetimes"
+    )
+    def test_dataapitimestamp_back_to_tuple_string_nodatetimes(self) -> None:
+        """
+        Test of various string/tuple-powered conversions and their consistency.
+
+        In range NOT covered by 'datetime':
+        spanning a wider year range, loop by timestamp
+
+            timestamp -> DataAPITS[0] -> strin -> DataAPITS[1]
+
+        checking that [0] == [1] between 50000 BC and 50000 AD.
+        """
+
+        min_ts = AVERAGE_YEAR_MS * (-50000 - EPOCH_YEAR)
+        max_ts = AVERAGE_YEAR_MS * (50000 - EPOCH_YEAR)
+        num_steps = 200
+        step_ms = (max_ts - min_ts) // num_steps
+        for test_ms in range(min_ts, max_ts, step_ms):
+            dapi_ts = DataAPITimestamp(test_ms)
+            dapi_ts2 = DataAPITimestamp.from_string(dapi_ts.to_string())
+            assert dapi_ts == dapi_ts2

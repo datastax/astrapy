@@ -91,6 +91,41 @@ class FullTimeoutOptions(TimeoutOptions):
 
 @dataclass
 class WireFormatOptions:
+    """
+    TODO
+
+    On the choice of `custom_datatypes_in_reading`.
+    Depending on the values being returned, besides possible loss
+    of accuracy, the application might raise an exception.
+    For instance, if the
+    application never deals with dates far away from the present, one might be
+    ok with the standard `datetime` library.
+    This is a list, type by type, of what standard alternative types
+    are used when `custom_datatypes_in_reading` is set to False.
+        DataAPITimestamp  => datetime.datetime:
+            shorter year range (1AD-9999AD); lossy storage of timestamp if
+            year is way in the past
+        DataAPIVector     => list[float:
+            in write path, the list does not result in binary encoding on the
+            wire (slower and more bytes in transit)
+        TableDate         => datetime.date:
+            same year range limitations as datetime.datetime
+        TableDuration     => datetime.timedelta:
+            does not do months, also imprecise as days can be 23-24-25 hours
+            and different math applies! (also nanoseconds are lost)
+        TableTime         => datetime.time:
+            loss of nanoseconds as the stdlib has microseconds
+        TableMap          => dict:
+            does not allow non-hashable items as keys
+        TableSet          => set:
+            does not guarantee order (the underlying storage does)
+
+    On the choice of `unroll_iterables_to_lists`: besides slight performance
+    degradation on the write path, setting this to True also might incur
+    cause in-place mutation of passed inputs as generators are consumed
+    when preparing the payload for the API.
+    """
+
     binary_encode_vectors: bool | UnsetType = _UNSET
     custom_datatypes_in_reading: bool | UnsetType = _UNSET
     unroll_iterables_to_lists: bool | UnsetType = _UNSET

@@ -220,11 +220,16 @@ def _create_column_tpostprocessor(
             )
 
             def _tpostprocessor_vector(
-                raw_items: list[float] | None,
-            ) -> list[float] | None:
+                raw_items: list[float] | dict[str, str] | None,
+            ) -> DataAPIVector | None:
                 if raw_items is None:
                     return None
-                return [value_tpostprocessor(item) for item in raw_items]
+                elif isinstance(raw_items, dict):
+                    # {"$binary": ...}
+                    return DataAPIVector.from_bytes(
+                        convert_ejson_binary_object_to_bytes(raw_items)
+                    )
+                return DataAPIVector([value_tpostprocessor(item) for item in raw_items])
 
             return _tpostprocessor_vector
         else:
@@ -388,8 +393,7 @@ def preprocess_table_payload_value(
                 for fval in value.data
             ]
     elif isinstance(value, DataAPITimestamp):
-        # TODO encode
-        return "NOT_YET"
+        return value.to_string()
     elif isinstance(value, TableDate):
         return value.to_string()
     elif isinstance(value, TableTime):
@@ -412,7 +416,10 @@ def preprocess_table_payload_value(
     elif isinstance(value, datetime.time):
         return value.strftime(DATETIME_TIME_FORMAT)
     elif isinstance(value, decimal.Decimal):
-        return str(value)  # TODO finalize handling (check latest encoding choices)
+        # TODO finalize handling (check latest encoding choices)
+        # For now it's a cascade of make-float -> treat as float
+        fvalue = float(value)
+        return preprocess_table_payload_value(path=path, value=fvalue, options=options)
     elif isinstance(value, TableDuration):
         return value.to_string()
     elif isinstance(value, UUID):
@@ -420,10 +427,7 @@ def preprocess_table_payload_value(
     elif isinstance(value, (ipaddress.IPv4Address, ipaddress.IPv6Address)):
         return str(value)
     elif isinstance(value, datetime.timedelta):
-        raise ValueError(
-            "Instances of `datetime.timedelta` not allowed. Please refer to the "
-            "`TableDuration` class for the idiomatic way of expressing durations."
-        )
+        return TableDuration.from_timedelta(value).to_string()
     elif isinstance(value, ObjectId):
         raise ValueError(
             "Values of type ObjectId are not supported. Consider switching to "

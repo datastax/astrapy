@@ -32,8 +32,11 @@ MAX_DAY_PER_MONTH = {
     12: 31,
 }
 
+EPOCH_YEAR = 1970
 DAY_MS = 24 * 3600 * 1000
 BASE_YEAR_MS = 365 * DAY_MS
+# a 400-year span has exactly 97 leap years
+AVERAGE_YEAR_MS = int((365 + 97 / 400) * DAY_MS)
 
 
 def _is_leap_year(year: int) -> bool:
@@ -74,26 +77,66 @@ def _validate_time(
 
 def _year_to_unix_timestamp_ms_forward(year: int) -> int:
     # leap years 1970 to 'year'
-    num_leap_years = sum([1 if _is_leap_year(y) else 0 for y in range(1970, year)])
+    num_leap_years = sum(
+        [1 if _is_leap_year(y) else 0 for y in range(EPOCH_YEAR, year)]
+    )
     # total milliseconds from epoch
-    y_since_epoch = year - 1970
+    y_since_epoch = year - EPOCH_YEAR
     elapsed_ms = y_since_epoch * BASE_YEAR_MS + num_leap_years * DAY_MS
     return elapsed_ms
 
 
 def _year_to_unix_timestamp_ms_backward(year: int) -> int:
     # leap years 'year' to 1970
-    num_leap_years = sum([1 if _is_leap_year(y) else 0 for y in range(year, 1970)])
+    num_leap_years = sum(
+        [1 if _is_leap_year(y) else 0 for y in range(year, EPOCH_YEAR)]
+    )
     # total milliseconds to epoch
-    y_until_epoch = 1970 - year
+    y_until_epoch = EPOCH_YEAR - year
     elapsed_ms = y_until_epoch * BASE_YEAR_MS + num_leap_years * DAY_MS
     return -elapsed_ms
 
 
 def _year_to_unix_timestamp_ms(year: int) -> int:
-    if year >= 1970:
+    if year >= EPOCH_YEAR:
         return _year_to_unix_timestamp_ms_forward(year)
     return _year_to_unix_timestamp_ms_backward(year)
+
+
+def _unix_timestamp_ms_to_timetuple(
+    timestamp_ms: int,
+) -> tuple[int, int, int, int, int, int, int]:
+    # return (year, month, day, hour, minute, second, millisecond). UTC time tuples.
+    year_guess = int(EPOCH_YEAR + (timestamp_ms / AVERAGE_YEAR_MS))
+    # this is mostly correct but not necessarily. Walk by +/-1 if needed
+    year_start_ms = _year_to_unix_timestamp_ms(year_guess)
+    next_year_start_ms = _year_to_unix_timestamp_ms(year_guess + 1)
+    while (timestamp_ms < year_start_ms) or (timestamp_ms >= next_year_start_ms):
+        # shift and recalc
+        if timestamp_ms < year_start_ms:
+            year_guess -= 1
+            next_year_start_ms = year_start_ms
+            year_start_ms = _year_to_unix_timestamp_ms(year_guess)
+        else:
+            year_guess += 1
+            year_start_ms = next_year_start_ms
+            next_year_start_ms = _year_to_unix_timestamp_ms(year_guess + 1)
+    # now, year_guess is correct. Deal with the remainder part
+    year = year_guess
+    y_remainder_ms = timestamp_ms - year_start_ms
+    ref_year = 1972 if _is_leap_year(year) else 1971
+    ref_dt = datetime.datetime(ref_year, 1, 1) + datetime.timedelta(
+        milliseconds=y_remainder_ms
+    )
+    if ref_dt.year != ref_year:
+        raise ValueError(f"Could not map timestamp ({timestamp_ms} ms) to a date.")
+    month = ref_dt.month
+    day = ref_dt.day
+    hour = ref_dt.hour
+    minute = ref_dt.minute
+    second = ref_dt.second
+    millisecond = int(ref_dt.microsecond / 1000.0)
+    return (year, month, day, hour, minute, second, millisecond)
 
 
 def _get_datetime_offset(dt: datetime.datetime) -> tuple[int, int] | None:

@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import datetime
 import re
 from dataclasses import dataclass
 
@@ -48,14 +49,14 @@ NANOSECOND_MULTIPLIER = {
 }
 
 # Note: "ms" and "mo" MUST come before "m" here (otherwise a wrong "m" is found first).
-DURATION_V_PATTERN = re.compile(r"^(\d+(y|ms|mo|w|d|h|m|s|us|ns))+$")
-DURATION_I_PATTERN = re.compile(r"(\d+)(y|ms|mo|w|d|h|m|s|us|ns)")
+DURATION_V_PATTERN = re.compile(r"^(-?\d+(y|ms|mo|w|d|h|m|s|us|ns))+$")
+DURATION_I_PATTERN = re.compile(r"(-?\d+)(y|ms|mo|w|d|h|m|s|us|ns)")
 
 DURATION_FORMAT_DESC = (
     "Durations must be a non-empty sequence of '<quantity><unit>', without "
-    "repetitions and in strict decreasing order. Quantities are unsigned integers, "
-    "and units take value among: 'y', 'mo', 'w', 'd', 'h', 'm', 's', 'ms', 'us' "
-    "(or 'µs'), 'ns', in this order."
+    "repetitions and in strict decreasing order. Quantities are integers, possibly "
+    "with a leading minus sign, and units take value among: 'y', 'mo', 'w', 'd', "
+    "'h', 'm', 's', 'ms', 'us' (or 'µs'), 'ns', in this order."
 )
 
 
@@ -123,10 +124,6 @@ class TableDuration:
     days: int
     nanoseconds: int
 
-    @staticmethod
-    def from_string(duration_string: str) -> TableDuration:
-        return _parse_duration(duration_string)
-
     def __repr__(self) -> str:
         inner_desc = (
             f"months={self.months}, days={self.days}, nanoseconds={self.nanoseconds}"
@@ -138,6 +135,16 @@ class TableDuration:
 
     def __reduce__(self) -> tuple[type, tuple[int, int, int]]:
         return self.__class__, (self.months, self.days, self.nanoseconds)
+
+    @staticmethod
+    def from_string(duration_string: str) -> TableDuration:
+        if duration_string == "":
+            return TableDuration(
+                months=0,
+                days=0,
+                nanoseconds=0,
+            )
+        return _parse_duration(duration_string)
 
     def to_string(self) -> str:
         _month_string: str | None = None
@@ -163,4 +170,18 @@ class TableDuration:
                     _residual_nanoseconds -= u_qty * div
         return "".join(
             b for b in (_month_string, _day_string, _nanosecond_string) if b is not None
+        )
+
+    @staticmethod
+    def from_timedelta(td: datetime.timedelta) -> TableDuration:
+        return TableDuration.from_string(f"{td.days}d{td.seconds}s{td.microseconds}us")
+
+    def to_timedelta(self) -> datetime.timedelta:
+        if self.months != 0:
+            raise ValueError(
+                "Cannot convert a TableDuration with nonzero months into a timedelta."
+            )
+        return datetime.timedelta(
+            days=self.days,
+            microseconds=self.nanoseconds // 1000,
         )

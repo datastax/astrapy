@@ -21,6 +21,7 @@ from typing import Any
 
 from astrapy.utils.date_utils import (
     _is_leap_year,
+    _unix_timestamp_ms_to_timetuple,
     _validate_date,
     _validate_time,
     _year_to_unix_timestamp_ms,
@@ -86,8 +87,10 @@ class DataAPITimestamp:
         else:
             return NotImplemented
 
-    def to_datetime(self) -> datetime.datetime:
-        return datetime.datetime.fromtimestamp(self.timestamp_ms / 1000.0)
+    def to_datetime(
+        self, *, tz: datetime.timezone = datetime.timezone.utc
+    ) -> datetime.datetime:
+        return datetime.datetime.fromtimestamp(self.timestamp_ms / 1000.0, tz=tz)
 
     @staticmethod
     def from_datetime(dt: datetime.datetime) -> DataAPITimestamp:
@@ -179,3 +182,20 @@ class DataAPITimestamp:
                 f"Cannot parse '{datetime_string}' into a valid timestamp "
                 f"(unrecognized format). {TIMESTAMP_FORMAT_DESC}"
             )
+
+    def timetuple(self) -> tuple[int, int, int, int, int, int, int]:
+        """
+        Return (UTC, i.e. offset +00:00) a tuple
+            (year, month, day, hour, minute, second, millisecond)
+        Note the last entry is millisecond for internal consistency.
+        """
+        return _unix_timestamp_ms_to_timetuple(self.timestamp_ms)
+
+    def to_string(self) -> str:
+        """
+        The output format is fixed to:
+            "<y>-<mo>-<d>T<h>:<m>:<s>.<ms>Z"
+        Use `.timetuple()` for achieving custom string formatting.
+        """
+        y, mo, d, h, m, s, ms = self.timetuple()
+        return f"{y:04}-{mo:02}-{d:02}T{h:02}:{m:02}:{s:02}.{ms:03}Z"

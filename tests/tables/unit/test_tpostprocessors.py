@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import datetime
 import decimal
 import ipaddress
 import math
@@ -21,21 +22,27 @@ from typing import Any
 
 import pytest
 
-from astrapy.data.info.table_descriptor import TableColumnTypeDescriptor
+from astrapy.data.utils.extended_json_converters import (
+    convert_ejson_binary_object_to_bytes,
+)
 from astrapy.data.utils.table_converters import (
     create_key_ktpostprocessor,
     create_row_tpostprocessor,
+    preprocess_table_payload,
 )
+from astrapy.data.utils.table_types import TableScalarColumnType
 from astrapy.data_types import (
     DataAPITimestamp,
+    DataAPIVector,
     TableDate,
     TableDuration,
     TableMap,
     TableSet,
     TableTime,
 )
-from astrapy.ids import UUID
-from astrapy.info import TableDescriptor
+from astrapy.ids import UUID, ObjectId
+from astrapy.info import TableDescriptor, TableScalarColumnTypeDescriptor
+from astrapy.utils.api_options import FullWireFormatOptions
 
 TABLE_DESCRIPTION = {
     "name": "table_simple",
@@ -112,7 +119,7 @@ TABLE_DESCRIPTION = {
     },
 }
 
-FULL_RESPONSE_ROW = {
+OUTPUT_ROW_TO_POSTPROCESS = {
     "p_text": "italy",
     "p_boolean": True,
     "p_int": 123,
@@ -135,14 +142,14 @@ FULL_RESPONSE_ROW = {
     "p_set_float": [1.1, "NaN", "-Infinity", 9.9],
     "p_map_text_float": {"a": 0.1, "b": 0.2},
     "p_map_float_text": {1.1: "1-1", "NaN": "NANNN!"},
-    "somevector": [0.1, -0.2, 0.3],
-    "embeddings": [1.2, 3.4],
+    "somevector": {"$binary": "PczMzb5MzM0+mZma"},  # [0.1, -0.2, 0.3] but not bit-wise
+    "embeddings": [0.1, -0.2, 0.3],
     "p_counter": 100,
     "p_varchar": "the_varchar",
     "p_timeuuid": "0de779c0-92e3-11ef-96a4-a745ae2c0a0b",
 }
 
-FULL_EXPECTED_ROW = {
+EXPECTED_POSTPROCESSED_ROW = {
     "p_text": "italy",
     "p_boolean": True,
     "p_int": 123,
@@ -174,25 +181,91 @@ FULL_EXPECTED_ROW = {
     "p_set_float": TableSet([1.1, float("NaN"), float("-Infinity"), 9.9]),
     "p_map_text_float": TableMap({"a": 0.1, "b": 0.2}),
     "p_map_float_text": TableMap({1.1: "1-1", float("NaN"): "NANNN!"}),
-    "somevector": [0.1, -0.2, 0.3],
-    "embeddings": [1.2, 3.4],
+    "somevector": DataAPIVector.from_bytes(
+        convert_ejson_binary_object_to_bytes({"$binary": "PczMzb5MzM0+mZma"})
+    ),
+    "embeddings": DataAPIVector([0.1, -0.2, 0.3]),
     "p_counter": 100,
     "p_varchar": "the_varchar",
     "p_timeuuid": UUID("0de779c0-92e3-11ef-96a4-a745ae2c0a0b"),
 }
 
-PRIMARY_KEY_SCHEMA = {
-    "p_text": {"type": "text"},
-    "p_boolean": {"type": "boolean"},
-    "p_int": {"type": "int"},
-    "p_blob": {"type": "blob"},
+INPUT_ROW_TO_PREPROCESS = {
+    "none": None,
+    "str": "the str",
+    "int": 987,
+    "bool": True,
+    "float": 123.4,
+    "float_nan": float("NaN"),
+    "float_pinf": float("Infinity"),
+    "float_minf": float("-Infinity"),
+    "bytes": b"\xcd\xcc\xcc={\x00\x00\x00",  # {'$binary': 'zczMPXsAAAA='}
+    "DataAPITimestamp": DataAPITimestamp(-65403045296110),  # "-103-06-17T07:25:03.890Z"
+    "TableDate": TableDate(1724, 4, 22),  # Kant's date of birth
+    "TableTime": TableTime(4, 5, 6, 789000000),
+    "d.datetime": datetime.datetime(
+        1724, 4, 22, 4, 5, 6, 789000, tzinfo=datetime.timezone.utc
+    ),
+    "d.date": datetime.date(1724, 4, 22),
+    "d.time": datetime.time(4, 5, 6, 789000),
+    "Decimal": decimal.Decimal("123.456"),
+    "Decimal_nan": decimal.Decimal("NaN"),
+    "Decimal_pinf": decimal.Decimal("Infinity"),
+    "Decimal_ninf": decimal.Decimal("-Infinity"),
+    #
+    "DataAPIVector": DataAPIVector([0.1, -0.2, 0.3]),
+    "TableMap_f": TableMap(
+        [
+            (float("NaN"), 1.0),
+            ("k2", float("NaN")),
+            ("k3", "v3"),
+        ],
+    ),
+    "dict_f": {
+        float("NaN"): 1.0,
+        "k2": float("NaN"),
+        "k3": "v3",
+    },
+    "list_f": [0.1, float("Infinity"), 0.3],
+    "TableSet_f": TableSet([0.1, float("Infinity"), 0.3]),
+    "set_f": {float("Infinity")},  # 1-item, because of regular sets being unordered
 }
-PRIMARY_KEY_LIST = ["txt", True, 123, "YWJjMTIz"]
-EXPECTED_PRIMARY_KEY = {
-    "p_text": "txt",
-    "p_boolean": True,
-    "p_int": 123,
-    "p_blob": b"abc123",
+
+EXPECTED_PREPROCESSED_ROW = {
+    "none": None,
+    "str": "the str",
+    "int": 987,
+    "bool": True,
+    "float": 123.4,
+    "float_nan": "NaN",
+    "float_pinf": "Infinity",
+    "float_minf": "-Infinity",
+    "bytes": {"$binary": "zczMPXsAAAA="},
+    "DataAPITimestamp": "-103-06-17T07:25:03.890Z",
+    "TableDate": "1724-04-22",
+    "TableTime": "04:05:06.789",
+    "d.datetime": "1724-04-22T04:05:06.789000+00:00",
+    "d.date": "1724-04-22",
+    "d.time": "04:05:06.789000",
+    "Decimal": 123.456,
+    "Decimal_nan": "NaN",
+    "Decimal_pinf": "Infinity",
+    "Decimal_ninf": "-Infinity",
+    #
+    "DataAPIVector": {"$binary": "PczMzb5MzM0+mZma"},  # [0.1, -0.2, 0.3],
+    "TableMap_f": {
+        "NaN": 1.0,
+        "k2": "NaN",
+        "k3": "v3",
+    },
+    "dict_f": {
+        "NaN": 1.0,
+        "k2": "NaN",
+        "k3": "v3",
+    },
+    "list_f": [0.1, "Infinity", 0.3],
+    "TableSet_f": [0.1, "Infinity", 0.3],
+    "set_f": ["Infinity"],
 }
 
 _NaN = object()
@@ -219,10 +292,12 @@ class TestTableConverters:
         col_desc = TableDescriptor.coerce(TABLE_DESCRIPTION)
         tpostprocessor = create_row_tpostprocessor(col_desc.definition.columns)
 
-        converted_column = tpostprocessor(FULL_RESPONSE_ROW)
-        assert _repaint_NaNs(converted_column) == _repaint_NaNs(FULL_EXPECTED_ROW)
+        converted_column = tpostprocessor(OUTPUT_ROW_TO_POSTPROCESS)
+        assert _repaint_NaNs(converted_column) == _repaint_NaNs(
+            EXPECTED_POSTPROCESSED_ROW
+        )
 
-        all_nulls = {k: None for k in FULL_RESPONSE_ROW.keys()}
+        all_nulls = {k: None for k in OUTPUT_ROW_TO_POSTPROCESS.keys()}
         converted_empty = tpostprocessor({})
         assert converted_empty == all_nulls
 
@@ -234,13 +309,86 @@ class TestTableConverters:
 
     @pytest.mark.describe("test of primary-key postprocessors based on pk-schema")
     def test_pk_postprocessors_from_schema(self) -> None:
-        pk_schema = {
-            pk_col_name: TableColumnTypeDescriptor.coerce(pk_col_dict)
-            for pk_col_name, pk_col_dict in PRIMARY_KEY_SCHEMA.items()
+        # constructing a fake "primary key list" and associated test assets
+        # from the full 'row' for the row-postprocess test.
+        # Careful in the different input format for blobs
+        primary_key_schema = {
+            col_name: col_dict
+            for col_name, col_dict in TableDescriptor.coerce(
+                TABLE_DESCRIPTION
+            ).definition.columns.items()
         }
-        ktpostprocessor = create_key_ktpostprocessor(pk_schema)
+        primary_key_list = [
+            (
+                OUTPUT_ROW_TO_POSTPROCESS[col_name]["$binary"]  # type: ignore[index]
+                if isinstance(col_desc, TableScalarColumnTypeDescriptor)
+                and col_desc.column_type == TableScalarColumnType.BLOB
+                else OUTPUT_ROW_TO_POSTPROCESS[col_name]
+            )
+            for col_name, col_desc in primary_key_schema.items()
+        ]
+        expected_primary_key = EXPECTED_POSTPROCESSED_ROW
 
-        assert ktpostprocessor(PRIMARY_KEY_LIST) == EXPECTED_PRIMARY_KEY
+        ktpostprocessor = create_key_ktpostprocessor(primary_key_schema)
+
+        assert _repaint_NaNs(ktpostprocessor(primary_key_list)) == _repaint_NaNs(
+            expected_primary_key
+        )
 
         with pytest.raises(ValueError):
             ktpostprocessor(["bippy", 123])
+
+    @pytest.mark.descripte("test of type-based row preprocessor")
+    def test_row_preprocessors_from_types(self) -> None:
+        ptp_opts = FullWireFormatOptions(
+            binary_encode_vectors=True,
+            custom_datatypes_in_reading=True,
+            unroll_iterables_to_lists=True,
+        )
+        preprocessed_row = preprocess_table_payload(
+            INPUT_ROW_TO_PREPROCESS,
+            options=ptp_opts,
+        )
+        assert preprocessed_row == EXPECTED_PREPROCESSED_ROW
+
+        # unroll-iterables option
+        gen_row_0 = {"gen_col": (i for i in range(5))}
+        preprocessed_gen_0 = preprocess_table_payload(
+            gen_row_0,
+            options=ptp_opts,
+        )
+        assert preprocessed_gen_0 == {"gen_col": [0, 1, 2, 3, 4]}
+        gen_row_1 = {"gen_col": (i for i in range(5))}
+        preprocessed_gen_1 = preprocess_table_payload(
+            gen_row_1,
+            options=FullWireFormatOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=True,
+                unroll_iterables_to_lists=False,
+            ),
+        )
+        assert preprocessed_gen_1 == gen_row_1
+
+        # vector-encoding
+        vec_data = [0.1, -0.2, 0.3]
+        dvec_row = {"dvec": DataAPIVector(vec_data)}
+        preprocessed_dvec_0 = preprocess_table_payload(
+            dvec_row,
+            options=ptp_opts,
+        )
+        assert preprocessed_dvec_0 == {"dvec": {"$binary": "PczMzb5MzM0+mZma"}}
+        preprocessed_dvec_1 = preprocess_table_payload(
+            dvec_row,
+            options=FullWireFormatOptions(
+                binary_encode_vectors=False,
+                custom_datatypes_in_reading=True,
+                unroll_iterables_to_lists=True,
+            ),
+        )
+        assert preprocessed_dvec_1 == {"dvec": vec_data}
+
+        with pytest.raises(ValueError):
+            preprocess_table_payload(
+                {"err_field": ObjectId()},
+                options=ptp_opts,
+            )
