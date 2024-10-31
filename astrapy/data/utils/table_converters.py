@@ -16,10 +16,13 @@ from __future__ import annotations
 
 import datetime
 import decimal
+import hashlib
 import ipaddress
+import json
 import math
-from typing import Any, Callable, cast
+from typing import Any, Callable, Generic, cast
 
+from astrapy.constants import ROW
 from astrapy.data.info.table_descriptor import (
     TableColumnTypeDescriptor,
     TableKeyValuedColumnTypeDescriptor,
@@ -590,3 +593,61 @@ def preprocess_table_payload(
         )
     else:
         return payload
+
+
+class _TableConverterAgent(Generic[ROW]):
+    options: FullWireFormatOptions
+    row_postprocessors: dict[str, Callable[[dict[str, Any]], dict[str, Any]]]
+    key_postprocessors: dict[str, Callable[[list[Any]], dict[str, Any]]]
+
+    def __init__(self, *, options: FullWireFormatOptions) -> None:
+        self.options = options
+        self.row_postprocessors = {}
+        self.key_postprocessors = {}
+
+    @staticmethod
+    def _hash_dict(input_dict: dict[str, Any]) -> str:
+        return hashlib.md5(
+            json.dumps(input_dict, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+
+    def preprocess_payload(
+        self, payload: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
+        return preprocess_table_payload(payload, options=self.options)
+
+    def postprocess_key(
+        self, primary_key_list: list[Any], *, primary_key_schema_dict: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        The primary key schema is not coerced here, just parsed from its json
+        """
+        schema_hash = self._hash_dict(primary_key_schema_dict)
+        if schema_hash not in self.key_postprocessors:
+            primary_key_schema: dict[str, TableColumnTypeDescriptor] = {
+                col_name: TableColumnTypeDescriptor.coerce(col_dict)
+                for col_name, col_dict in primary_key_schema_dict.items()
+            }
+            self.key_postprocessors[schema_hash] = create_key_ktpostprocessor(
+                primary_key_schema=primary_key_schema,
+                options=self.options,
+            )
+        return self.key_postprocessors[schema_hash](primary_key_list)
+
+    def postprocess_row(
+        self, raw_dict: dict[str, Any], *, columns_dict: dict[str, Any]
+    ) -> ROW:
+        """
+        The columns schema is not coerced here, just parsed from its json
+        """
+        schema_hash = self._hash_dict(columns_dict)
+        if schema_hash not in self.row_postprocessors:
+            columns: dict[str, TableColumnTypeDescriptor] = {
+                col_name: TableColumnTypeDescriptor.coerce(col_dict)
+                for col_name, col_dict in columns_dict.items()
+            }
+            self.row_postprocessors[schema_hash] = create_row_tpostprocessor(
+                columns=columns,
+                options=self.options,
+            )
+        return self.row_postprocessors[schema_hash](raw_dict)  # type: ignore[return-value]

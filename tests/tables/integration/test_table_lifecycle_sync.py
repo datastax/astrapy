@@ -33,6 +33,8 @@ from astrapy.info import (
     VectorServiceOptions,
 )
 
+from ..conftest import IS_ASTRA_DB
+
 if TYPE_CHECKING:
     from astrapy import Database
 
@@ -268,8 +270,9 @@ class TestTableLifecycle:
             ),
         )
 
-        table.drop_index("tfi_idx_p_text")
-        table.drop_index("tfi_idx_p_int")
-        table.drop_index("tfi_idx_p_vector")
-        table.drop_index("tfi_idx_p_vector_sm")
+        if not IS_ASTRA_DB:  # TODO: reinstate once dropIndex deployed
+            table.drop_index("tfi_idx_p_text")
+            table.drop_index("tfi_idx_p_int")
+            table.drop_index("tfi_idx_p_vector")
+            table.drop_index("tfi_idx_p_vector_sm")
         sync_database.drop_table(table)
