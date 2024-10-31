@@ -72,8 +72,8 @@ def test_imports() -> None:
         APIOptions,
         DataAPIURLOptions,
         DevOpsAPIURLOptions,
+        SerdesOptions,
         TimeoutOptions,
-        WireFormatOptions,
     )
     from astrapy.constants import (  # noqa: F401
         DefaultIdType,

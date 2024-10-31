@@ -24,7 +24,7 @@ from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import CollectionDeleteResult, CollectionInsertOneResult
-from astrapy.utils.api_options import APIOptions, WireFormatOptions
+from astrapy.utils.api_options import APIOptions, SerdesOptions
 
 from ..conftest import DefaultCollection
 
@@ -116,7 +116,7 @@ class TestDMLSync:
     ) -> None:
         collection_Yb_Yc = sync_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     binary_encode_vectors=True,
                     unroll_iterables_to_lists=True,
                 ),
@@ -124,7 +124,7 @@ class TestDMLSync:
         )
         collection_Nb_Yc = sync_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     binary_encode_vectors=False,
                     unroll_iterables_to_lists=True,
                 ),
@@ -132,7 +132,7 @@ class TestDMLSync:
         )
         collection_Yb_Nc = sync_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     binary_encode_vectors=True,
                     unroll_iterables_to_lists=False,
                 ),
@@ -140,7 +140,7 @@ class TestDMLSync:
         )
         collection_Nb_Nc = sync_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     binary_encode_vectors=False,
                     unroll_iterables_to_lists=False,
                 ),
@@ -209,14 +209,14 @@ class TestDMLSync:
 
         collection_Ycc = sync_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     custom_datatypes_in_reading=True,
                 ),
             ),
         )
         collection_Ncc = sync_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     custom_datatypes_in_reading=False,
                 ),
             ),
@@ -991,14 +991,14 @@ class TestDMLSync:
     ) -> None:
         col_standard_dtypes = sync_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     custom_datatypes_in_reading=False,
                 ),
             ),
         )
         col_custom_dtypes = sync_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     custom_datatypes_in_reading=True,
                 ),
             ),

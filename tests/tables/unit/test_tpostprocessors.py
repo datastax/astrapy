@@ -43,7 +43,7 @@ from astrapy.data_types import (
 from astrapy.data_types.data_api_vector import bytes_to_floats
 from astrapy.ids import UUID, ObjectId
 from astrapy.info import TableDescriptor, TableScalarColumnTypeDescriptor
-from astrapy.utils.api_options import FullWireFormatOptions
+from astrapy.utils.api_options import FullSerdesOptions
 
 TABLE_DESCRIPTION = {
     "name": "table_simple",
@@ -327,7 +327,7 @@ class TestTableConverters:
         col_desc = TableDescriptor.coerce(TABLE_DESCRIPTION)
         tpostprocessor = create_row_tpostprocessor(
             columns=col_desc.definition.columns,
-            options=FullWireFormatOptions(
+            options=FullSerdesOptions(
                 binary_encode_vectors=True,
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=False,
@@ -358,7 +358,7 @@ class TestTableConverters:
                 for c_n, c_d in col_desc.definition.columns.items()
                 if c_n in EXPECTED_NONCUSTOMTYPES_POSTPROCESSED_ROW
             },
-            options=FullWireFormatOptions(
+            options=FullSerdesOptions(
                 binary_encode_vectors=True,
                 custom_datatypes_in_reading=False,
                 unroll_iterables_to_lists=False,
@@ -394,7 +394,7 @@ class TestTableConverters:
 
         ktpostprocessor = create_key_ktpostprocessor(
             primary_key_schema=primary_key_schema,
-            options=FullWireFormatOptions(
+            options=FullSerdesOptions(
                 binary_encode_vectors=True,
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=False,
@@ -432,7 +432,7 @@ class TestTableConverters:
 
         ktpostprocessor = create_key_ktpostprocessor(
             primary_key_schema=primary_key_schema,
-            options=FullWireFormatOptions(
+            options=FullSerdesOptions(
                 binary_encode_vectors=True,
                 custom_datatypes_in_reading=False,
                 unroll_iterables_to_lists=False,
@@ -445,7 +445,7 @@ class TestTableConverters:
 
     @pytest.mark.descripte("test of type-based row preprocessor")
     def test_row_preprocessors_from_types(self) -> None:
-        ptp_opts = FullWireFormatOptions(
+        ptp_opts = FullSerdesOptions(
             binary_encode_vectors=True,
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
@@ -466,7 +466,7 @@ class TestTableConverters:
         gen_row_1 = {"gen_col": (i for i in range(5))}
         preprocessed_gen_1 = preprocess_table_payload(
             gen_row_1,
-            options=FullWireFormatOptions(
+            options=FullSerdesOptions(
                 binary_encode_vectors=True,
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=False,
@@ -484,7 +484,7 @@ class TestTableConverters:
         assert preprocessed_dvec_0 == {"dvec": {"$binary": "PczMzb5MzM0+mZma"}}
         preprocessed_dvec_1 = preprocess_table_payload(
             dvec_row,
-            options=FullWireFormatOptions(
+            options=FullSerdesOptions(
                 binary_encode_vectors=False,
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=True,

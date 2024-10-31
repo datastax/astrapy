@@ -53,7 +53,7 @@ from astrapy.data_types import (
     TableTime,
 )
 from astrapy.ids import UUID, ObjectId
-from astrapy.utils.api_options import FullWireFormatOptions
+from astrapy.utils.api_options import FullSerdesOptions
 from astrapy.utils.date_utils import _get_datetime_offset
 
 NAN_FLOAT_STRING_REPRESENTATION = "NaN"
@@ -66,7 +66,7 @@ DATETIME_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 
 def _create_scalar_tpostprocessor(
     column_type: TableScalarColumnType,
-    options: FullWireFormatOptions,
+    options: FullSerdesOptions,
 ) -> Callable[[Any], Any]:
     if column_type in {
         TableScalarColumnType.TEXT,
@@ -245,7 +245,7 @@ def _create_scalar_tpostprocessor(
 
 def _create_unsupported_tpostprocessor(
     cql_definition: str,
-    options: FullWireFormatOptions,
+    options: FullSerdesOptions,
 ) -> Callable[[Any], Any]:
     if cql_definition == "counter":
         return _create_scalar_tpostprocessor(
@@ -267,7 +267,7 @@ def _create_unsupported_tpostprocessor(
 
 def _create_column_tpostprocessor(
     col_def: TableColumnTypeDescriptor,
-    options: FullWireFormatOptions,
+    options: FullSerdesOptions,
 ) -> Callable[[Any], Any]:
     if isinstance(col_def, TableScalarColumnTypeDescriptor):
         return _create_scalar_tpostprocessor(col_def.column_type, options=options)
@@ -419,7 +419,7 @@ def _create_column_tpostprocessor(
 
 def create_row_tpostprocessor(
     columns: dict[str, TableColumnTypeDescriptor],
-    options: FullWireFormatOptions,
+    options: FullSerdesOptions,
 ) -> Callable[[dict[str, Any]], dict[str, Any]]:
     tpostprocessor_map = {
         col_name: _create_column_tpostprocessor(col_definition, options=options)
@@ -444,7 +444,7 @@ def create_row_tpostprocessor(
 
 def create_key_ktpostprocessor(
     primary_key_schema: dict[str, TableColumnTypeDescriptor],
-    options: FullWireFormatOptions,
+    options: FullSerdesOptions,
 ) -> Callable[[list[Any]], dict[str, Any]]:
     ktpostprocessor_list: list[tuple[str, Callable[[Any], Any]]] = [
         (col_name, _create_column_tpostprocessor(col_definition, options=options))
@@ -470,7 +470,7 @@ def create_key_ktpostprocessor(
 
 
 def preprocess_table_payload_value(
-    path: list[str], value: Any, options: FullWireFormatOptions
+    path: list[str], value: Any, options: FullSerdesOptions
 ) -> Any:
     """
     Walk a payload for Tables and apply the necessary and required conversions
@@ -572,7 +572,7 @@ def preprocess_table_payload_value(
 
 
 def preprocess_table_payload(
-    payload: dict[str, Any] | None, options: FullWireFormatOptions
+    payload: dict[str, Any] | None, options: FullSerdesOptions
 ) -> dict[str, Any] | None:
     """
     Normalize a payload for API calls.
@@ -596,11 +596,11 @@ def preprocess_table_payload(
 
 
 class _TableConverterAgent(Generic[ROW]):
-    options: FullWireFormatOptions
+    options: FullSerdesOptions
     row_postprocessors: dict[str, Callable[[dict[str, Any]], dict[str, Any]]]
     key_postprocessors: dict[str, Callable[[list[Any]], dict[str, Any]]]
 
-    def __init__(self, *, options: FullWireFormatOptions) -> None:
+    def __init__(self, *, options: FullSerdesOptions) -> None:
         self.options = options
         self.row_postprocessors = {}
         self.key_postprocessors = {}

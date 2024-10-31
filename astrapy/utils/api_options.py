@@ -90,7 +90,7 @@ class FullTimeoutOptions(TimeoutOptions):
 
 
 @dataclass
-class WireFormatOptions:
+class SerdesOptions:
     """
     TODO
 
@@ -105,9 +105,9 @@ class WireFormatOptions:
         DataAPITimestamp  => datetime.datetime:
             shorter year range (1AD-9999AD); lossy storage of timestamp if
             year is way in the past
-        DataAPIVector     => list[float:
+        DataAPIVector     => list[float]:
             in write path, the list does not result in binary encoding on the
-            wire (slower and more bytes in transit)
+            wire (which is slower and more bytes in transit).
         TableDate         => datetime.date:
             same year range limitations as datetime.datetime
         TableDuration     => datetime.timedelta:
@@ -132,13 +132,13 @@ class WireFormatOptions:
 
 
 @dataclass
-class FullWireFormatOptions(WireFormatOptions):
+class FullSerdesOptions(SerdesOptions):
     binary_encode_vectors: bool
     custom_datatypes_in_reading: bool
     unroll_iterables_to_lists: bool
 
-    def with_override(self, other: WireFormatOptions) -> FullWireFormatOptions:
-        return FullWireFormatOptions(
+    def with_override(self, other: SerdesOptions) -> FullSerdesOptions:
+        return FullSerdesOptions(
             binary_encode_vectors=(
                 other.binary_encode_vectors
                 if not isinstance(other.binary_encode_vectors, UnsetType)
@@ -220,7 +220,7 @@ class APIOptions:
     embedding_api_key: EmbeddingHeadersProvider | UnsetType = _UNSET
 
     timeout_options: TimeoutOptions | UnsetType = _UNSET
-    wire_format_options: WireFormatOptions | UnsetType = _UNSET
+    serdes_options: SerdesOptions | UnsetType = _UNSET
     data_api_url_options: DataAPIURLOptions | UnsetType = _UNSET
     dev_ops_api_url_options: DevOpsAPIURLOptions | UnsetType = _UNSET
 
@@ -279,8 +279,8 @@ class APIOptions:
                 if isinstance(self.timeout_options, UnsetType)
                 else f"timeout_options={self.timeout_options}",
                 None
-                if isinstance(self.wire_format_options, UnsetType)
-                else f"wire_format_options={self.wire_format_options}",
+                if isinstance(self.serdes_options, UnsetType)
+                else f"serdes_options={self.serdes_options}",
                 None
                 if isinstance(self.data_api_url_options, UnsetType)
                 else f"data_api_url_options={self.data_api_url_options}",
@@ -305,7 +305,7 @@ class FullAPIOptions(APIOptions):
     embedding_api_key: EmbeddingHeadersProvider
 
     timeout_options: FullTimeoutOptions
-    wire_format_options: FullWireFormatOptions
+    serdes_options: FullSerdesOptions
     data_api_url_options: FullDataAPIURLOptions
     dev_ops_api_url_options: FullDevOpsAPIURLOptions
 
@@ -343,7 +343,7 @@ class FullAPIOptions(APIOptions):
         redacted_header_names: set[str]
 
         timeout_options: FullTimeoutOptions
-        wire_format_options: FullWireFormatOptions
+        serdes_options: FullSerdesOptions
         data_api_url_options: FullDataAPIURLOptions
         dev_ops_api_url_options: FullDevOpsAPIURLOptions
 
@@ -372,12 +372,10 @@ class FullAPIOptions(APIOptions):
             timeout_options = self.timeout_options.with_override(other.timeout_options)
         else:
             timeout_options = self.timeout_options
-        if isinstance(other.wire_format_options, WireFormatOptions):
-            wire_format_options = self.wire_format_options.with_override(
-                other.wire_format_options
-            )
+        if isinstance(other.serdes_options, SerdesOptions):
+            serdes_options = self.serdes_options.with_override(other.serdes_options)
         else:
-            wire_format_options = self.wire_format_options
+            serdes_options = self.serdes_options
         if isinstance(other.data_api_url_options, DataAPIURLOptions):
             data_api_url_options = self.data_api_url_options.with_override(
                 other.data_api_url_options
@@ -412,7 +410,7 @@ class FullAPIOptions(APIOptions):
                 else self.embedding_api_key
             ),
             timeout_options=timeout_options,
-            wire_format_options=wire_format_options,
+            serdes_options=serdes_options,
             data_api_url_options=data_api_url_options,
             dev_ops_api_url_options=dev_ops_api_url_options,
         )
@@ -425,7 +423,7 @@ defaultTimeoutOptions = FullTimeoutOptions(
     database_admin_timeout_ms=DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
     keyspace_admin_timeout_ms=DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
 )
-defaultWireFormatOptions = FullWireFormatOptions(
+defaultSerdesOptions = FullSerdesOptions(
     binary_encode_vectors=DEFAULT_BINARY_ENCODE_VECTORS,
     custom_datatypes_in_reading=DEFAULT_CUSTOM_DATATYPES_IN_READING,
     unroll_iterables_to_lists=DEFAULT_UNROLL_ITERABLES_TO_LISTS,
@@ -457,7 +455,7 @@ def defaultAPIOptions(environment: str) -> FullAPIOptions:
         token=StaticTokenProvider(None),
         embedding_api_key=EmbeddingAPIKeyHeaderProvider(None),
         timeout_options=defaultTimeoutOptions,
-        wire_format_options=defaultWireFormatOptions,
+        serdes_options=defaultSerdesOptions,
         data_api_url_options=defaultDataAPIURLOptions,
         dev_ops_api_url_options=defaultDevOpsAPIURLOptions,
     )

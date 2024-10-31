@@ -119,7 +119,7 @@ class Table(Generic[ROW]):
         }
         self._api_commander = self._get_api_commander()
         self._converter_agent: _TableConverterAgent[ROW] = _TableConverterAgent(
-            options=self.api_options.wire_format_options,
+            options=self.api_options.serdes_options,
         )
 
     def __repr__(self) -> str:
@@ -770,7 +770,7 @@ class Table(Generic[ROW]):
         for document in f_cursor:
             for item in _extractor(document):
                 _item_hash = _hash_document(
-                    item, options=self.api_options.wire_format_options
+                    item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:
                     _item_hashes.add(_item_hash)
@@ -902,7 +902,7 @@ class AsyncTable(Generic[ROW]):
         }
         self._api_commander = self._get_api_commander()
         self._converter_agent: _TableConverterAgent[ROW] = _TableConverterAgent(
-            options=self.api_options.wire_format_options,
+            options=self.api_options.serdes_options,
         )
 
     def __repr__(self) -> str:
@@ -1571,7 +1571,7 @@ class AsyncTable(Generic[ROW]):
         async for document in f_cursor:
             for item in _extractor(document):
                 _item_hash = _hash_document(
-                    item, options=self.api_options.wire_format_options
+                    item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:
                     _item_hashes.add(_item_hash)

@@ -748,10 +748,35 @@ class UpdateManyException(CumulativeOperationException):
         self.partial_result = partial_result
 
 
+def _httpx_timeout_to_ms(req_timeout: httpx.Timeout | None) -> int | None:
+    if req_timeout is None:
+        return None
+    timeouts_s = [
+        to
+        for to in [
+            req_timeout.connect,
+            req_timeout.pool,
+            req_timeout.read,
+            req_timeout.write,
+        ]
+        if to is not None
+    ]
+    if timeouts_s:
+        return int(1000.0 * min(timeouts_s))
+    return None
+
+
 def to_dataapi_timeout_exception(
     httpx_timeout: httpx.TimeoutException,
+    req_timeout: httpx.Timeout | None,
 ) -> DataAPITimeoutException:
-    text = str(httpx_timeout)
+    text: str
+    text_0 = str(httpx_timeout) or "timed out"
+    timeout_ms = _httpx_timeout_to_ms(req_timeout)
+    if timeout_ms:
+        text = f"{text_0} (timeout honoured: {timeout_ms} ms)"
+    else:
+        text = text_0
     if isinstance(httpx_timeout, httpx.ConnectTimeout):
         timeout_type = "connect"
     elif isinstance(httpx_timeout, httpx.ReadTimeout):
@@ -781,8 +806,15 @@ def to_dataapi_timeout_exception(
 
 def to_devopsapi_timeout_exception(
     httpx_timeout: httpx.TimeoutException,
+    req_timeout: httpx.Timeout | None,
 ) -> DevOpsAPITimeoutException:
-    text = str(httpx_timeout) or "timed out"
+    text: str
+    text_0 = str(httpx_timeout) or "timed out"
+    timeout_ms = _httpx_timeout_to_ms(req_timeout)
+    if timeout_ms:
+        text = f"{text_0} (timeout honoured: {timeout_ms} ms)"
+    else:
+        text = text_0
     if isinstance(httpx_timeout, httpx.ConnectTimeout):
         timeout_type = "connect"
     elif isinstance(httpx_timeout, httpx.ReadTimeout):

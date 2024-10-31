@@ -37,11 +37,11 @@ from astrapy.data.utils.vector_coercion import (
 )
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.ids import UUID, ObjectId
-from astrapy.utils.api_options import FullWireFormatOptions
+from astrapy.utils.api_options import FullSerdesOptions
 
 
 def preprocess_collection_payload_value(
-    path: list[str], value: Any, options: FullWireFormatOptions
+    path: list[str], value: Any, options: FullSerdesOptions
 ) -> Any:
     """
     The path helps determining special treatments
@@ -69,7 +69,7 @@ def preprocess_collection_payload_value(
                 # back to a regular list
                 return _value.data
         else:
-            # this is a list. Encode if set as default wire mode
+            # this is a list. Encode if serdes options allow it
             if can_bin_encode and options.binary_encode_vectors:
                 return convert_to_ejson_bytes(DataAPIVector(_value).to_bytes())
             else:
@@ -102,7 +102,7 @@ def preprocess_collection_payload_value(
 
 
 def preprocess_collection_payload(
-    payload: dict[str, Any] | None, options: FullWireFormatOptions
+    payload: dict[str, Any] | None, options: FullSerdesOptions
 ) -> dict[str, Any] | None:
     """
     Normalize a payload for API calls.
@@ -125,7 +125,7 @@ def preprocess_collection_payload(
 
 
 def postprocess_collection_response_value(
-    path: list[str], value: Any, options: FullWireFormatOptions
+    path: list[str], value: Any, options: FullSerdesOptions
 ) -> Any:
     """
     The path helps determining special treatments
@@ -185,7 +185,7 @@ def postprocess_collection_response_value(
 
 
 def postprocess_collection_response(
-    response: DefaultDocumentType, options: FullWireFormatOptions
+    response: DefaultDocumentType, options: FullSerdesOptions
 ) -> DefaultDocumentType:
     """
     Process a dictionary just returned from the API.

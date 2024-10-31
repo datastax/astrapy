@@ -248,7 +248,7 @@ class Collection(Generic[DOC]):
         timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         converted_payload = preprocess_collection_payload(
-            payload, options=self.api_options.wire_format_options
+            payload, options=self.api_options.serdes_options
         )
         raw_response_json = self._api_commander.request(
             http_method=http_method,
@@ -259,7 +259,7 @@ class Collection(Generic[DOC]):
             timeout_ms=timeout_ms,
         )
         response_json = postprocess_collection_response(
-            raw_response_json, options=self.api_options.wire_format_options
+            raw_response_json, options=self.api_options.serdes_options
         )
         return response_json
 
@@ -1361,7 +1361,7 @@ class Collection(Generic[DOC]):
         for document in f_cursor:
             for item in _extractor(document):
                 _item_hash = _hash_document(
-                    item, options=self.api_options.wire_format_options
+                    item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:
                     _item_hashes.add(_item_hash)
@@ -2665,7 +2665,7 @@ class AsyncCollection(Generic[DOC]):
         timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         converted_payload = preprocess_collection_payload(
-            payload, options=self.api_options.wire_format_options
+            payload, options=self.api_options.serdes_options
         )
         raw_response_json = await self._api_commander.async_request(
             http_method=http_method,
@@ -2676,7 +2676,7 @@ class AsyncCollection(Generic[DOC]):
             timeout_ms=timeout_ms,
         )
         response_json = postprocess_collection_response(
-            raw_response_json, options=self.api_options.wire_format_options
+            raw_response_json, options=self.api_options.serdes_options
         )
         return response_json
 
@@ -3813,7 +3813,7 @@ class AsyncCollection(Generic[DOC]):
         async for document in f_cursor:
             for item in _extractor(document):
                 _item_hash = _hash_document(
-                    item, options=self.api_options.wire_format_options
+                    item, options=self.api_options.serdes_options
                 )
                 if _item_hash not in _item_hashes:
                     _item_hashes.add(_item_hash)

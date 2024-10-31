@@ -50,6 +50,8 @@ from astrapy.utils.user_agents import (
 
 user_agent_astrapy = detect_astrapy_user_agent()
 
+DEFAULT_HTTPX_TIMEOUT = to_httpx_timeout(DEFAULT_REQUEST_TIMEOUT_MS)
+
 logger = logging.getLogger(__name__)
 
 
@@ -259,7 +261,7 @@ class APICommander:
         raise_api_errors: bool = True,
         timeout_ms: int | None = None,
     ) -> httpx.Response:
-        timeout = to_httpx_timeout(timeout_ms)
+        timeout = to_httpx_timeout(timeout_ms) or DEFAULT_HTTPX_TIMEOUT
         request_url = self._compose_request_url(additional_path)
         log_httpx_request(
             http_method=http_method,
@@ -277,14 +279,14 @@ class APICommander:
                 url=request_url,
                 content=encoded_payload,
                 params=request_params,
-                timeout=timeout or DEFAULT_REQUEST_TIMEOUT_MS,
+                timeout=timeout,
                 headers=self.full_headers,
             )
         except httpx.TimeoutException as timeout_exc:
             if self.dev_ops_api:
-                raise to_devopsapi_timeout_exception(timeout_exc)
+                raise to_devopsapi_timeout_exception(timeout_exc, req_timeout=timeout)
             else:
-                raise to_dataapi_timeout_exception(timeout_exc)
+                raise to_dataapi_timeout_exception(timeout_exc, req_timeout=timeout)
 
         try:
             raw_response.raise_for_status()
@@ -303,7 +305,7 @@ class APICommander:
         raise_api_errors: bool = True,
         timeout_ms: int | None = None,
     ) -> httpx.Response:
-        timeout = to_httpx_timeout(timeout_ms)
+        timeout = to_httpx_timeout(timeout_ms) or DEFAULT_HTTPX_TIMEOUT
         request_url = self._compose_request_url(additional_path)
         log_httpx_request(
             http_method=http_method,
@@ -321,14 +323,14 @@ class APICommander:
                 url=request_url,
                 content=encoded_payload,
                 params=request_params,
-                timeout=timeout or DEFAULT_REQUEST_TIMEOUT_MS,
+                timeout=timeout,
                 headers=self.full_headers,
             )
         except httpx.TimeoutException as timeout_exc:
             if self.dev_ops_api:
-                raise to_devopsapi_timeout_exception(timeout_exc)
+                raise to_devopsapi_timeout_exception(timeout_exc, req_timeout=timeout)
             else:
-                raise to_dataapi_timeout_exception(timeout_exc)
+                raise to_dataapi_timeout_exception(timeout_exc, req_timeout=timeout)
 
         try:
             raw_response.raise_for_status()

@@ -27,7 +27,7 @@ from astrapy.data.utils.collection_converters import (
     preprocess_collection_payload,
 )
 from astrapy.ids import UUID, ObjectId
-from astrapy.utils.api_options import FullWireFormatOptions
+from astrapy.utils.api_options import FullSerdesOptions
 
 
 @pytest.mark.describe("test of serdes for ids")
@@ -54,7 +54,7 @@ def test_ids_serdes() -> None:
 
     normalized = preprocess_collection_payload(
         full_structure,
-        options=FullWireFormatOptions(
+        options=FullSerdesOptions(
             binary_encode_vectors=True,
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
@@ -64,7 +64,7 @@ def test_ids_serdes() -> None:
     assert normalized is not None
     restored = postprocess_collection_response(
         normalized,
-        options=FullWireFormatOptions(
+        options=FullSerdesOptions(
             binary_encode_vectors=True,
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,

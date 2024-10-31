@@ -35,7 +35,7 @@ class AstraDBAdminDatabaseRegionInfo:
     TODO docstring+attrs
     """
 
-    region: str
+    region_name: str
     id: str
     api_endpoint: str
     created_at: datetime.datetime | None
@@ -47,7 +47,7 @@ class AstraDBAdminDatabaseRegionInfo:
         environment: str,
         database_id: str,
     ) -> None:
-        self.region = raw_datacenter_dict["region"]
+        self.region_name = raw_datacenter_dict["region"]
         self.id = raw_datacenter_dict["id"]
         self.api_endpoint = build_api_endpoint(
             environment=environment,
@@ -58,7 +58,7 @@ class AstraDBAdminDatabaseRegionInfo:
 
     def __repr__(self) -> str:
         pieces = [
-            f"region={self.region}",
+            f"region_name={self.region_name}",
             f"id={self.id}",
             f"api_endpoint={self.api_endpoint}",
             f"created_at={self.created_at}",

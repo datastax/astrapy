@@ -226,14 +226,14 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
             },
         }
         converted_f_payload = preprocess_collection_payload(
-            f_payload, options=self.collection.api_options.wire_format_options
+            f_payload, options=self.collection.api_options.serdes_options
         )
         raw_f_response = self.collection.command(
             body=converted_f_payload,
             request_timeout_ms=request_timeout_ms,
         )
         f_response = postprocess_collection_response(
-            raw_f_response, options=self.collection.api_options.wire_format_options
+            raw_f_response, options=self.collection.api_options.serdes_options
         )
         if "documents" not in f_response.get("data", {}):
             raise UnexpectedDataAPIResponseException(
@@ -264,7 +264,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
             },
         }
         converted_f_payload = preprocess_collection_payload(
-            f_payload, options=self.async_collection.api_options.wire_format_options
+            f_payload, options=self.async_collection.api_options.serdes_options
         )
         raw_f_response = await self.async_collection.command(
             body=converted_f_payload,
@@ -272,7 +272,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         )
         f_response = postprocess_collection_response(
             raw_f_response,
-            options=self.async_collection.api_options.wire_format_options,
+            options=self.async_collection.api_options.serdes_options,
         )
         if "documents" not in f_response.get("data", {}):
             raise UnexpectedDataAPIResponseException(

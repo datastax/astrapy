@@ -24,7 +24,7 @@ from typing import (
 
 # TODO review using this function in this context
 from astrapy.data.utils.collection_converters import preprocess_collection_payload_value
-from astrapy.utils.api_options import FullWireFormatOptions
+from astrapy.utils.api_options import FullSerdesOptions
 
 IndexPairType = tuple[str, int | None]
 
@@ -118,7 +118,7 @@ def _reduce_distinct_key_to_safe(distinct_key: str) -> str:
     return ".".join(valid_portion)
 
 
-def _hash_document(document: dict[str, Any], options: FullWireFormatOptions) -> str:
+def _hash_document(document: dict[str, Any], options: FullSerdesOptions) -> str:
     _normalized_item = preprocess_collection_payload_value(
         path=[], value=document, options=options
     )

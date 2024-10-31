@@ -18,14 +18,14 @@ from astrapy.utils.api_options import (
     APIOptions,
     DataAPIURLOptions,
     DevOpsAPIURLOptions,
+    SerdesOptions,
     TimeoutOptions,
-    WireFormatOptions,
 )
 
 __all__ = [
     "APIOptions",
     "DataAPIURLOptions",
     "DevOpsAPIURLOptions",
-    "WireFormatOptions",
+    "SerdesOptions",
     "TimeoutOptions",
 ]

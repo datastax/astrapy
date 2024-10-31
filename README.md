@@ -415,7 +415,7 @@ from astrapy.api_options import (
     APIOptions,
     DataAPIURLOptions,
     DevOpsAPIURLOptions,
-    WireFormatOptions,
+    SerdesOptions,
     TimeoutOptions,
 )
 ```

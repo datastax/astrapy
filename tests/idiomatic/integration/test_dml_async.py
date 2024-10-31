@@ -25,7 +25,7 @@ from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import CollectionDeleteResult, CollectionInsertOneResult
-from astrapy.utils.api_options import APIOptions, WireFormatOptions
+from astrapy.utils.api_options import APIOptions, SerdesOptions
 
 from ..conftest import DefaultAsyncCollection
 
@@ -145,7 +145,7 @@ class TestDMLAsync:
     ) -> None:
         acollection_Yb_Yc = async_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     binary_encode_vectors=True,
                     unroll_iterables_to_lists=True,
                 ),
@@ -153,7 +153,7 @@ class TestDMLAsync:
         )
         acollection_Nb_Yc = async_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     binary_encode_vectors=False,
                     unroll_iterables_to_lists=True,
                 ),
@@ -161,7 +161,7 @@ class TestDMLAsync:
         )
         acollection_Yb_Nc = async_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     binary_encode_vectors=True,
                     unroll_iterables_to_lists=False,
                 ),
@@ -169,7 +169,7 @@ class TestDMLAsync:
         )
         acollection_Nb_Nc = async_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     binary_encode_vectors=False,
                     unroll_iterables_to_lists=False,
                 ),
@@ -240,14 +240,14 @@ class TestDMLAsync:
 
         acollection_Ycc = async_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     custom_datatypes_in_reading=True,
                 ),
             ),
         )
         acollection_Ncc = async_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     custom_datatypes_in_reading=False,
                 ),
             ),
@@ -1054,14 +1054,14 @@ class TestDMLAsync:
     ) -> None:
         acol_standard_dtypes = async_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     custom_datatypes_in_reading=False,
                 ),
             ),
         )
         acol_custom_dtypes = async_empty_collection.with_options(
             api_options=APIOptions(
-                wire_format_options=WireFormatOptions(
+                serdes_options=SerdesOptions(
                     custom_datatypes_in_reading=True,
                 ),
             ),
