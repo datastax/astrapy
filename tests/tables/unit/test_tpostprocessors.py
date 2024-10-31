@@ -40,6 +40,7 @@ from astrapy.data_types import (
     TableSet,
     TableTime,
 )
+from astrapy.data_types.data_api_vector import bytes_to_floats
 from astrapy.ids import UUID, ObjectId
 from astrapy.info import TableDescriptor, TableScalarColumnTypeDescriptor
 from astrapy.utils.api_options import FullWireFormatOptions
@@ -190,6 +191,36 @@ EXPECTED_POSTPROCESSED_ROW = {
     "p_timeuuid": UUID("0de779c0-92e3-11ef-96a4-a745ae2c0a0b"),
 }
 
+OUTPUT_NONCUSTOMTYPES_ROW_TO_POSTPROCESS = {
+    "p_timestamp": "2015-05-03T13:30:54.234Z",
+    "somevector": {"$binary": "PczMzb5MzM0+mZma"},  # [0.1, -0.2, 0.3] but not bit-wise
+    "embeddings": [0.1, -0.2, 0.3],
+    "p_date": "1956-09-30",
+    "p_duration": "1d2m3s",
+    "p_time": "12:34:56.78912",
+    "p_set_ascii": ["a", "b", "c"],
+    "p_set_float": [1.1, "NaN", "-Infinity", 9.9],
+    "p_map_text_float": {"a": 0.1, "b": 0.2},
+    "p_map_float_text": {1.1: "1-1", "NaN": "NANNN!"},
+}
+
+EXPECTED_NONCUSTOMTYPES_POSTPROCESSED_ROW = {
+    "p_timestamp": datetime.datetime(
+        2015, 5, 3, 13, 30, 54, 234000, tzinfo=datetime.timezone.utc
+    ),
+    "somevector": bytes_to_floats(
+        convert_ejson_binary_object_to_bytes({"$binary": "PczMzb5MzM0+mZma"})
+    ),
+    "embeddings": [0.1, -0.2, 0.3],
+    "p_date": datetime.date(1956, 9, 30),
+    "p_duration": datetime.timedelta(days=1, minutes=2, seconds=3),
+    "p_time": datetime.time(12, 34, 56, 789120),
+    "p_set_ascii": {"a", "b", "c"},
+    "p_set_float": {1.1, float("NaN"), float("-Infinity"), 9.9},
+    "p_map_text_float": {"a": 0.1, "b": 0.2},
+    "p_map_float_text": {1.1: "1-1", float("NaN"): "NANNN!"},
+}
+
 INPUT_ROW_TO_PREPROCESS = {
     "none": None,
     "str": "the str",
@@ -282,6 +313,10 @@ def _repaint_NaNs(val: Any) -> Any:
         return TableSet(_repaint_NaNs(v) for v in val)
     elif isinstance(val, TableMap):
         return TableMap((_repaint_NaNs(k), _repaint_NaNs(v)) for k, v in val.items())
+    elif isinstance(val, set):
+        return {_repaint_NaNs(v) for v in val}
+    elif isinstance(val, dict):
+        return {_repaint_NaNs(k): _repaint_NaNs(v) for k, v in val.items()}
     else:
         return val
 
@@ -290,7 +325,14 @@ class TestTableConverters:
     @pytest.mark.describe("test of row postprocessors from schema")
     def test_row_postprocessors_from_schema(self) -> None:
         col_desc = TableDescriptor.coerce(TABLE_DESCRIPTION)
-        tpostprocessor = create_row_tpostprocessor(col_desc.definition.columns)
+        tpostprocessor = create_row_tpostprocessor(
+            columns=col_desc.definition.columns,
+            options=FullWireFormatOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=True,
+                unroll_iterables_to_lists=False,
+            ),
+        )
 
         converted_column = tpostprocessor(OUTPUT_ROW_TO_POSTPROCESS)
         assert _repaint_NaNs(converted_column) == _repaint_NaNs(
@@ -306,6 +348,27 @@ class TestTableConverters:
 
         with pytest.raises(ValueError):
             tpostprocessor({"bippy": 123})
+
+    @pytest.mark.describe("test of row postprocessors from schema, no custom types")
+    def test_row_postprocessors_from_schema_nocustom(self) -> None:
+        col_desc = TableDescriptor.coerce(TABLE_DESCRIPTION)
+        tpostprocessor = create_row_tpostprocessor(
+            columns={
+                c_n: c_d
+                for c_n, c_d in col_desc.definition.columns.items()
+                if c_n in EXPECTED_NONCUSTOMTYPES_POSTPROCESSED_ROW
+            },
+            options=FullWireFormatOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=False,
+                unroll_iterables_to_lists=False,
+            ),
+        )
+
+        converted_column = tpostprocessor(OUTPUT_NONCUSTOMTYPES_ROW_TO_POSTPROCESS)
+        assert _repaint_NaNs(converted_column) == _repaint_NaNs(
+            EXPECTED_NONCUSTOMTYPES_POSTPROCESSED_ROW
+        )
 
     @pytest.mark.describe("test of primary-key postprocessors based on pk-schema")
     def test_pk_postprocessors_from_schema(self) -> None:
@@ -329,7 +392,14 @@ class TestTableConverters:
         ]
         expected_primary_key = EXPECTED_POSTPROCESSED_ROW
 
-        ktpostprocessor = create_key_ktpostprocessor(primary_key_schema)
+        ktpostprocessor = create_key_ktpostprocessor(
+            primary_key_schema=primary_key_schema,
+            options=FullWireFormatOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=True,
+                unroll_iterables_to_lists=False,
+            ),
+        )
 
         assert _repaint_NaNs(ktpostprocessor(primary_key_list)) == _repaint_NaNs(
             expected_primary_key
@@ -337,6 +407,41 @@ class TestTableConverters:
 
         with pytest.raises(ValueError):
             ktpostprocessor(["bippy", 123])
+
+    @pytest.mark.describe(
+        "test of primary-key postprocessors based on pk-schema, no custom types"
+    )
+    def test_pk_postprocessors_from_schema_nocustom(self) -> None:
+        primary_key_schema = {
+            col_name: col_dict
+            for col_name, col_dict in TableDescriptor.coerce(
+                TABLE_DESCRIPTION
+            ).definition.columns.items()
+            if col_name in EXPECTED_NONCUSTOMTYPES_POSTPROCESSED_ROW
+        }
+        primary_key_list = [
+            (
+                OUTPUT_NONCUSTOMTYPES_ROW_TO_POSTPROCESS[col_name]["$binary"]  # type: ignore[index]
+                if isinstance(col_desc, TableScalarColumnTypeDescriptor)
+                and col_desc.column_type == TableScalarColumnType.BLOB
+                else OUTPUT_NONCUSTOMTYPES_ROW_TO_POSTPROCESS[col_name]
+            )
+            for col_name, col_desc in primary_key_schema.items()
+        ]
+        expected_primary_key = EXPECTED_NONCUSTOMTYPES_POSTPROCESSED_ROW
+
+        ktpostprocessor = create_key_ktpostprocessor(
+            primary_key_schema=primary_key_schema,
+            options=FullWireFormatOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=False,
+                unroll_iterables_to_lists=False,
+            ),
+        )
+
+        assert _repaint_NaNs(ktpostprocessor(primary_key_list)) == _repaint_NaNs(
+            expected_primary_key
+        )
 
     @pytest.mark.descripte("test of type-based row preprocessor")
     def test_row_preprocessors_from_types(self) -> None:

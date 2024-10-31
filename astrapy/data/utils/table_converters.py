@@ -63,6 +63,7 @@ DATETIME_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
 
 def _create_scalar_tpostprocessor(
     column_type: TableScalarColumnType,
+    options: FullWireFormatOptions,
 ) -> Callable[[Any], Any]:
     if column_type in {
         TableScalarColumnType.TEXT,
@@ -137,40 +138,84 @@ def _create_scalar_tpostprocessor(
         return _tpostprocessor_uuid
 
     elif column_type == TableScalarColumnType.DATE:
+        if options.custom_datatypes_in_reading:
 
-        def _tpostprocessor_date(raw_value: Any) -> TableDate | None:
-            if raw_value is None:
-                return None
-            return TableDate.from_string(raw_value)
+            def _tpostprocessor_date(raw_value: Any) -> TableDate | None:
+                if raw_value is None:
+                    return None
+                return TableDate.from_string(raw_value)
 
-        return _tpostprocessor_date
+            return _tpostprocessor_date
+
+        else:
+
+            def _tpostprocessor_date_stdlib(raw_value: Any) -> datetime.date | None:
+                if raw_value is None:
+                    return None
+                return TableDate.from_string(raw_value).to_date()
+
+            return _tpostprocessor_date_stdlib
 
     elif column_type == TableScalarColumnType.TIME:
+        if options.custom_datatypes_in_reading:
 
-        def _tpostprocessor_time(raw_value: Any) -> TableTime | None:
-            if raw_value is None:
-                return None
-            return TableTime.from_string(raw_value)
+            def _tpostprocessor_time(raw_value: Any) -> TableTime | None:
+                if raw_value is None:
+                    return None
+                return TableTime.from_string(raw_value)
 
-        return _tpostprocessor_time
+            return _tpostprocessor_time
+
+        else:
+
+            def _tpostprocessor_time_stdlib(raw_value: Any) -> datetime.time | None:
+                if raw_value is None:
+                    return None
+                return TableTime.from_string(raw_value).to_time()
+
+            return _tpostprocessor_time_stdlib
 
     elif column_type == TableScalarColumnType.TIMESTAMP:
+        if options.custom_datatypes_in_reading:
 
-        def _tpostprocessor_timestamp(raw_value: Any) -> DataAPITimestamp | None:
-            if raw_value is None:
-                return None
-            return DataAPITimestamp.from_string(raw_value)
+            def _tpostprocessor_timestamp(raw_value: Any) -> DataAPITimestamp | None:
+                if raw_value is None:
+                    return None
+                return DataAPITimestamp.from_string(raw_value)
 
-        return _tpostprocessor_timestamp
+            return _tpostprocessor_timestamp
+
+        else:
+
+            def _tpostprocessor_timestamp_stdlib(
+                raw_value: Any,
+            ) -> datetime.datetime | None:
+                if raw_value is None:
+                    return None
+                return DataAPITimestamp.from_string(raw_value).to_datetime()
+
+            return _tpostprocessor_timestamp_stdlib
 
     elif column_type == TableScalarColumnType.DURATION:
+        if options.custom_datatypes_in_reading:
 
-        def _tpostprocessor_duration(raw_value: Any) -> TableDuration | None:
-            if raw_value is None:
-                return None
-            return TableDuration.from_string(raw_value)
+            def _tpostprocessor_duration(raw_value: Any) -> TableDuration | None:
+                if raw_value is None:
+                    return None
+                return TableDuration.from_string(raw_value)
 
-        return _tpostprocessor_duration
+            return _tpostprocessor_duration
+
+        else:
+
+            def _tpostprocessor_duration_stdlib(
+                raw_value: Any,
+            ) -> datetime.timedelta | None:
+                if raw_value is None:
+                    return None
+                return TableDuration.from_string(raw_value).to_timedelta()
+
+            return _tpostprocessor_duration_stdlib
 
     elif column_type == TableScalarColumnType.INET:
 
@@ -195,13 +240,22 @@ def _create_scalar_tpostprocessor(
         raise ValueError(f"Unrecognized scalar type for reads: {column_type}")
 
 
-def _create_unsupported_tpostprocessor(cql_definition: str) -> Callable[[Any], Any]:
+def _create_unsupported_tpostprocessor(
+    cql_definition: str,
+    options: FullWireFormatOptions,
+) -> Callable[[Any], Any]:
     if cql_definition == "counter":
-        return _create_scalar_tpostprocessor(column_type=TableScalarColumnType.INT)
+        return _create_scalar_tpostprocessor(
+            column_type=TableScalarColumnType.INT, options=options
+        )
     elif cql_definition == "varchar":
-        return _create_scalar_tpostprocessor(column_type=TableScalarColumnType.TEXT)
+        return _create_scalar_tpostprocessor(
+            column_type=TableScalarColumnType.TEXT, options=options
+        )
     elif cql_definition == "timeuuid":
-        return _create_scalar_tpostprocessor(column_type=TableScalarColumnType.UUID)
+        return _create_scalar_tpostprocessor(
+            column_type=TableScalarColumnType.UUID, options=options
+        )
     else:
         raise ValueError(
             f"Unrecognized table unsupported-column cqlDefinition for reads: {cql_definition}"
@@ -210,35 +264,60 @@ def _create_unsupported_tpostprocessor(cql_definition: str) -> Callable[[Any], A
 
 def _create_column_tpostprocessor(
     col_def: TableColumnTypeDescriptor,
+    options: FullWireFormatOptions,
 ) -> Callable[[Any], Any]:
     if isinstance(col_def, TableScalarColumnTypeDescriptor):
-        return _create_scalar_tpostprocessor(col_def.column_type)
+        return _create_scalar_tpostprocessor(col_def.column_type, options=options)
     elif isinstance(col_def, TableVectorColumnTypeDescriptor):
         if col_def.column_type == TableVectorColumnType.VECTOR:
             value_tpostprocessor = _create_scalar_tpostprocessor(
-                TableScalarColumnType.FLOAT
+                TableScalarColumnType.FLOAT,
+                options=options,
             )
 
-            def _tpostprocessor_vector(
-                raw_items: list[float] | dict[str, str] | None,
-            ) -> DataAPIVector | None:
-                if raw_items is None:
-                    return None
-                elif isinstance(raw_items, dict):
-                    # {"$binary": ...}
-                    return DataAPIVector.from_bytes(
-                        convert_ejson_binary_object_to_bytes(raw_items)
-                    )
-                return DataAPIVector([value_tpostprocessor(item) for item in raw_items])
+            if options.custom_datatypes_in_reading:
 
-            return _tpostprocessor_vector
+                def _tpostprocessor_vector(
+                    raw_items: list[float] | dict[str, str] | None,
+                ) -> DataAPIVector | None:
+                    if raw_items is None:
+                        return None
+                    elif isinstance(raw_items, dict):
+                        # {"$binary": ...}
+                        return DataAPIVector.from_bytes(
+                            convert_ejson_binary_object_to_bytes(raw_items)
+                        )
+                    return DataAPIVector(
+                        [value_tpostprocessor(item) for item in raw_items]
+                    )
+
+                return _tpostprocessor_vector
+
+            else:
+
+                def _tpostprocessor_vector_as_list(
+                    raw_items: list[float] | dict[str, str] | None,
+                ) -> list[float] | None:
+                    if raw_items is None:
+                        return None
+                    elif isinstance(raw_items, dict):
+                        # {"$binary": ...}
+                        return DataAPIVector.from_bytes(
+                            convert_ejson_binary_object_to_bytes(raw_items)
+                        ).data
+                    return [value_tpostprocessor(item) for item in raw_items]
+
+                return _tpostprocessor_vector_as_list
+
         else:
             raise ValueError(
                 f"Unrecognized table vector-column descriptor for reads: {col_def.as_dict()}"
             )
     elif isinstance(col_def, TableValuedColumnTypeDescriptor):
         if col_def.column_type == TableValuedColumnType.LIST:
-            value_tpostprocessor = _create_scalar_tpostprocessor(col_def.value_type)
+            value_tpostprocessor = _create_scalar_tpostprocessor(
+                col_def.value_type, options=options
+            )
 
             def _tpostprocessor_list(raw_items: list[Any] | None) -> list[Any] | None:
                 if raw_items is None:
@@ -248,14 +327,31 @@ def _create_column_tpostprocessor(
             return _tpostprocessor_list
 
         elif TableValuedColumnType.SET:
-            value_tpostprocessor = _create_scalar_tpostprocessor(col_def.value_type)
+            value_tpostprocessor = _create_scalar_tpostprocessor(
+                col_def.value_type, options=options
+            )
 
-            def _tpostprocessor_set(raw_items: set[Any] | None) -> TableSet[Any] | None:
-                if raw_items is None:
-                    return None
-                return TableSet(value_tpostprocessor(item) for item in raw_items)
+            if options.custom_datatypes_in_reading:
 
-            return _tpostprocessor_set
+                def _tpostprocessor_tableset(
+                    raw_items: set[Any] | None,
+                ) -> TableSet[Any] | None:
+                    if raw_items is None:
+                        return None
+                    return TableSet(value_tpostprocessor(item) for item in raw_items)
+
+                return _tpostprocessor_tableset
+
+            else:
+
+                def _tpostprocessor_tableset_as_set(
+                    raw_items: set[Any] | None,
+                ) -> set[Any] | None:
+                    if raw_items is None:
+                        return None
+                    return {value_tpostprocessor(item) for item in raw_items}
+
+                return _tpostprocessor_tableset_as_set
 
         else:
             raise ValueError(
@@ -263,21 +359,40 @@ def _create_column_tpostprocessor(
             )
     elif isinstance(col_def, TableKeyValuedColumnTypeDescriptor):
         if col_def.column_type == TableKeyValuedColumnType.MAP:
-            key_tpostprocessor = _create_scalar_tpostprocessor(col_def.key_type)
-            value_tpostprocessor = _create_scalar_tpostprocessor(col_def.value_type)
+            key_tpostprocessor = _create_scalar_tpostprocessor(
+                col_def.key_type, options=options
+            )
+            value_tpostprocessor = _create_scalar_tpostprocessor(
+                col_def.value_type, options=options
+            )
 
-            def _tpostprocessor_map(
-                raw_items: dict[Any, Any] | None,
-            ) -> TableMap[Any, Any] | None:
-                if raw_items is None:
-                    return None
-                return TableMap(
-                    (key_tpostprocessor(k), value_tpostprocessor(v))
-                    for k, v in raw_items.items()
-                )
+            if options.custom_datatypes_in_reading:
 
-            return _tpostprocessor_map
+                def _tpostprocessor_tablemap(
+                    raw_items: dict[Any, Any] | None,
+                ) -> TableMap[Any, Any] | None:
+                    if raw_items is None:
+                        return None
+                    return TableMap(
+                        (key_tpostprocessor(k), value_tpostprocessor(v))
+                        for k, v in raw_items.items()
+                    )
 
+                return _tpostprocessor_tablemap
+
+            else:
+
+                def _tpostprocessor_tablemap_as_dict(
+                    raw_items: dict[Any, Any] | None,
+                ) -> dict[Any, Any] | None:
+                    if raw_items is None:
+                        return None
+                    return {
+                        key_tpostprocessor(k): value_tpostprocessor(v)
+                        for k, v in raw_items.items()
+                    }
+
+                return _tpostprocessor_tablemap_as_dict
         else:
             raise ValueError(
                 f"Unrecognized table key-valued-column descriptor for reads: {col_def.as_dict()}"
@@ -286,7 +401,8 @@ def _create_column_tpostprocessor(
         if col_def.column_type == TableUnsupportedColumnType.UNSUPPORTED:
             # if UNSUPPORTED columns encountered: find the 'type' in the right place:
             return _create_unsupported_tpostprocessor(
-                cql_definition=col_def.api_support.cql_definition
+                cql_definition=col_def.api_support.cql_definition,
+                options=options,
             )
         else:
             raise ValueError(
@@ -300,9 +416,10 @@ def _create_column_tpostprocessor(
 
 def create_row_tpostprocessor(
     columns: dict[str, TableColumnTypeDescriptor],
+    options: FullWireFormatOptions,
 ) -> Callable[[dict[str, Any]], dict[str, Any]]:
     tpostprocessor_map = {
-        col_name: _create_column_tpostprocessor(col_definition)
+        col_name: _create_column_tpostprocessor(col_definition, options=options)
         for col_name, col_definition in columns.items()
     }
     column_name_set = set(tpostprocessor_map.keys())
@@ -324,9 +441,10 @@ def create_row_tpostprocessor(
 
 def create_key_ktpostprocessor(
     primary_key_schema: dict[str, TableColumnTypeDescriptor],
+    options: FullWireFormatOptions,
 ) -> Callable[[list[Any]], dict[str, Any]]:
     ktpostprocessor_list: list[tuple[str, Callable[[Any], Any]]] = [
-        (col_name, _create_column_tpostprocessor(col_definition))
+        (col_name, _create_column_tpostprocessor(col_definition, options=options))
         for col_name, col_definition in primary_key_schema.items()
     ]
 
