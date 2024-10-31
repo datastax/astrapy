@@ -136,6 +136,9 @@ class TableDuration:
     def __reduce__(self) -> tuple[type, tuple[int, int, int]]:
         return self.__class__, (self.months, self.days, self.nanoseconds)
 
+    def __hash__(self) -> int:
+        return hash((self.months, self.days, self.nanoseconds))
+
     @staticmethod
     def from_string(duration_string: str) -> TableDuration:
         if duration_string == "":

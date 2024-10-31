@@ -67,6 +67,9 @@ class TableDate:
         self.month = month
         self.day = day
 
+    def __hash__(self) -> int:
+        return hash((self.year, self.month, self.day))
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.year}, {self.month}, {self.day})"
 

@@ -1,5 +1,9 @@
 v 2.0.0
 =======
+The following info methods are made async (= awaitable): `AsyncDatabase.info`, `AsyncDatabase.name`, `AsyncCollection.info`, `AsyncTable.info`
+Collections default to using custom types for lossless and full-range expression of database content.
+    - e.g. instead of 'datetime.datetime', instances of `DataAPITimestamp` are returned
+    - Use the options' serdes_option to opt out and revert to non-custom data types
 Renamed (collection-specific) "Result" classes like this:
     - 'DeleteResult' => `CollectionDeleteResult`
     - 'InsertOneResult' => `CollectionInsertOneResult`

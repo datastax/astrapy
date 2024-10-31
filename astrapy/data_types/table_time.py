@@ -65,6 +65,9 @@ class TableTime:
             f"{self.second}, {self.nanosecond})"
         )
 
+    def __hash__(self) -> int:
+        return hash((self.hour, self.minute, self.second, self.nanosecond))
+
     def __str__(self) -> str:
         return self.to_string()
 

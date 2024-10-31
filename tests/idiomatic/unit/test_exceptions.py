@@ -21,12 +21,14 @@ from httpx import HTTPStatusError, Response
 from pytest_httpserver import HTTPServer
 
 from astrapy import DataAPIClient
+from astrapy.constants import Environment
 from astrapy.exceptions import (
     DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
     DataAPIHttpException,
     DataAPIResponseException,
     DeleteManyException,
+    DevOpsAPIException,
     InsertManyException,
 )
 from astrapy.results import CollectionDeleteResult, CollectionInsertManyResult
@@ -312,3 +314,19 @@ def test_deletemanyexception() -> None:
             raw_response={"errors": [{"errorCode": "C", "message": "Aaa"}]},
         )
     ]
+
+
+@pytest.mark.describe("test of database info failures, sync")
+def test_get_database_info_failures_sync() -> None:
+    client = DataAPIClient(environment=Environment.OTHER)
+    db = client.get_database("http://not.a.real.thing", keyspace="ks")
+    with pytest.raises(DevOpsAPIException):
+        db.info()
+
+
+@pytest.mark.describe("test of database info failures, async")
+async def test_get_database_info_failures_async() -> None:
+    client = DataAPIClient(environment=Environment.OTHER)
+    adb = client.get_async_database("http://not.a.real.thing", keyspace="ks")
+    with pytest.raises(DevOpsAPIException):
+        await adb.info()

@@ -54,6 +54,9 @@ class DataAPITimestamp:
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(timestamp_ms={self.timestamp_ms})"
 
+    def __hash__(self) -> int:
+        return self.timestamp_ms
+
     def __reduce__(self) -> tuple[type, tuple[int]]:
         return self.__class__, (self.timestamp_ms,)
 

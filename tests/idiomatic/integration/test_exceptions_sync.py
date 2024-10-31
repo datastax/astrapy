@@ -22,12 +22,11 @@ from astrapy.exceptions import (
     CollectionNotFoundException,
     CursorException,
     DataAPIResponseException,
-    DevOpsAPIException,
     InsertManyException,
     TooManyDocumentsToCountException,
 )
 
-from ..conftest import IS_ASTRA_DB, DataAPICredentials, DefaultCollection
+from ..conftest import IS_ASTRA_DB, DefaultCollection
 
 
 class TestExceptionsSync:
@@ -202,16 +201,6 @@ class TestExceptionsSync:
             list(sync_database.list_collections(keyspace="nonexisting"))
         with pytest.raises(DataAPIResponseException):
             sync_database.list_collection_names(keyspace="nonexisting")
-
-    @pytest.mark.describe("test of database info failures, sync")
-    def test_get_database_info_failures_sync(
-        self,
-        sync_database: Database,
-        data_api_credentials_kwargs: DataAPICredentials,
-    ) -> None:
-        hacked_ks = (data_api_credentials_kwargs["keyspace"] or "") + "_hacked"
-        with pytest.raises(DevOpsAPIException):
-            sync_database._copy(keyspace=hacked_ks).info()
 
     @pytest.mark.describe("test of hard exceptions in cursors, sync")
     def test_cursor_hard_exceptions_sync(

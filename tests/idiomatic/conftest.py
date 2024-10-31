@@ -104,6 +104,8 @@ def sync_collection(
         indexing={"deny": ["not_indexed"]},
         collection_api_options=APIOptions(
             serdes_options=SerdesOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=True,
             ),
         ),

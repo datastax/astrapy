@@ -2929,7 +2929,7 @@ class AsyncCollection(Generic[DOC]):
                 collection_name=self.name,
             )
 
-    def info(
+    async def info(
         self,
         *,
         request_timeout_ms: int | None = None,
@@ -2948,9 +2948,9 @@ class AsyncCollection(Generic[DOC]):
             max_time_ms: an alias for `request_timeout_ms`.
 
         Example:
-            >>> my_async_coll.info().database_info.region
+            >>> asyncio.run(my_async_coll.info()).database_info.region
             'us-east1'
-            >>> my_async_coll.info().full_name
+            >>> asyncio.run(my_async_coll.info()).full_name
             'default_keyspace.my_v_collection'
 
         Note:
@@ -2961,11 +2961,12 @@ class AsyncCollection(Generic[DOC]):
             See the documentation for `Database.info()` for more details.
         """
 
+        db_info = await self.database.info(
+            request_timeout_ms=request_timeout_ms,
+            max_time_ms=max_time_ms,
+        )
         return CollectionInfo(
-            database_info=self.database.info(
-                request_timeout_ms=request_timeout_ms,
-                max_time_ms=max_time_ms,
-            ),
+            database_info=db_info,
             keyspace=self.keyspace,
             name=self.name,
             full_name=self.full_name,

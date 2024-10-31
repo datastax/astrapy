@@ -52,6 +52,9 @@ class DataAPIVector(UserList[float]):
     def __iter__(self) -> Iterator[float]:
         return iter(self.data)
 
+    def __hash__(self) -> int:
+        return hash(tuple(self.data))
+
     def __repr__(self) -> str:
         if self.n < 5:
             return f"{self.__class__.__name__}({self.data})"

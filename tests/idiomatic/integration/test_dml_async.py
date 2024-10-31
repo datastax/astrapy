@@ -129,14 +129,14 @@ class TestDMLAsync:
             {"tag": "v1"}, projection={"*": 1}
         )
         assert retrieved1 is not None
-        assert retrieved1["$vector"] == [-1, -2]
+        assert retrieved1["$vector"] == DataAPIVector([-1, -2])
 
         await async_empty_collection.insert_one({"tag": "v2", "$vector": [-3, -4]})
         retrieved2 = await async_empty_collection.find_one(
             {"tag": "v2"}, projection={"*": 1}
         )
         assert retrieved2 is not None
-        assert retrieved2["$vector"] == [-3, -4]
+        assert retrieved2["$vector"] == DataAPIVector([-3, -4])
 
     @pytest.mark.describe("test of collection vector insertion options, async")
     async def test_collection_vector_insertion_options_async(
@@ -694,24 +694,35 @@ class TestDMLAsync:
         await acol.insert_many(documents * 2)
 
         d_items = await acol.distinct("f")
-        expected = [
-            1,
-            "a",
-            {"subf": 99},
-            {"subf": 99, "another": {"subsubf": [True, False]}},
-            10,
-            11,
-            datetime.datetime(2000, 1, 1, 12, 0),
-            None,
-        ]
-        assert len(d_items) == len(expected)
+        assert len(d_items) == 8
         for doc in documents:
             if "f" in doc:
                 if isinstance(doc["f"], list):
                     for item in doc["f"]:
                         assert item in d_items
+                elif isinstance(doc["f"], datetime.datetime):
+                    da_ts = DataAPITimestamp.from_datetime(doc["f"])
+                    assert da_ts in d_items
                 else:
                     assert doc["f"] in d_items
+
+        d_items_noncustom = await acol.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                )
+            ),
+        ).distinct("f")
+        assert len(d_items_noncustom) == 8
+        for doc in documents:
+            if "f" in doc:
+                if isinstance(doc["f"], list):
+                    for item in doc["f"]:
+                        assert item in d_items_noncustom
+                elif isinstance(doc["f"], datetime.datetime):
+                    assert doc["f"] in d_items_noncustom
+                else:
+                    assert doc["f"] in d_items_noncustom
 
     @pytest.mark.describe("test of usage of projection in distinct, async")
     async def test_collection_projections_distinct_async(
@@ -1092,13 +1103,18 @@ class TestDMLAsync:
         assert (
             DataAPITimestamp.from_datetime(dtime_standard_dtypes) == dtime_custom_dtypes
         )
-        assert dtime_custom_dtypes.to_datetime() == dtime_standard_dtypes
+
+        assert dtime_custom_dtypes == DataAPITimestamp.from_datetime(
+            dtime_standard_dtypes
+        )
         assert isinstance(date_standard_dtypes, datetime.datetime)
         assert isinstance(date_custom_dtypes, DataAPITimestamp)
         assert (
             DataAPITimestamp.from_datetime(date_standard_dtypes) == date_custom_dtypes
         )
-        assert date_custom_dtypes.to_datetime() == date_standard_dtypes
+        assert date_custom_dtypes == DataAPITimestamp.from_datetime(
+            date_standard_dtypes
+        )
 
         # write path
         await async_empty_collection.delete_one({"_id": "t0"})

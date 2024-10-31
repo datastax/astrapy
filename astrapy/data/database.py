@@ -18,7 +18,11 @@ import logging
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Sequence, overload
 
-from astrapy.admin import fetch_database_info, parse_api_endpoint
+from astrapy.admin import (
+    async_fetch_database_info,
+    fetch_database_info,
+    parse_api_endpoint,
+)
 from astrapy.authentication import (
     coerce_possible_embedding_headers_provider,
     coerce_possible_token_provider,
@@ -1918,7 +1922,7 @@ class AsyncDatabase:
         self._using_keyspace = keyspace
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
-    def info(
+    async def info(
         self,
         *,
         request_timeout_ms: int | None = None,
@@ -1936,10 +1940,10 @@ class AsyncDatabase:
             max_time_ms: an alias for `request_timeout_ms`.
 
         Example:
-            >>> my_async_db.info().region
+            >>> asyncio.run(my_async_db.info()).region
             'eu-west-1'
 
-            >>> my_async_db.info().raw_info['datacenters'][0]['dateCreated']
+            >>> asyncio.run(my_async_db.info()).raw_info['datacenters'][0]['dateCreated']
             '2023-01-30T12:34:56Z'
 
         Note:
@@ -1953,7 +1957,7 @@ class AsyncDatabase:
             or self.api_options.timeout_options.request_timeout_ms
         )
         logger.info("getting database info")
-        database_info = fetch_database_info(
+        database_info = await async_fetch_database_info(
             self.api_endpoint,
             token=self.api_options.token.get_token(),
             keyspace=self.keyspace,
@@ -2007,7 +2011,7 @@ class AsyncDatabase:
                 "Database is not in a supported environment for this operation."
             )
 
-    def name(self) -> str:
+    async def name(self) -> str:
         """
         The name of this database. Note that this bears no unicity guarantees.
 
@@ -2016,12 +2020,12 @@ class AsyncDatabase:
         See the `info()` method for more details.
 
         Example:
-            >>> my_async_db.name()
+            >>> asyncio.run(my_async_db.name())
             'the_application_database'
         """
 
         if self._name is None:
-            self._name = self.info().name
+            self._name = (await self.info()).name
         return self._name
 
     @property
