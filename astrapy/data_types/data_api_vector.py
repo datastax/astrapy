@@ -52,6 +52,19 @@ class DataAPIVector(UserList[float]):
     def __iter__(self) -> Iterator[float]:
         return iter(self.data)
 
+    def __repr__(self) -> str:
+        if self.n < 5:
+            return f"{self.__class__.__name__}({self.data})"
+        else:
+            data_start = f"[{', '.join(str(x) for x in self.data[:3])} ...]"
+            return f"{self.__class__.__name__}({data_start}, n={self.n})"
+
+    def __str__(self) -> str:
+        if self.n < 5:
+            return str(self.data)
+        else:
+            return f"[{', '.join(str(x) for x in self.data[:3])} ...]"
+
     def to_bytes(self) -> bytes:
         return floats_to_bytes(self.data, self.n)
 
