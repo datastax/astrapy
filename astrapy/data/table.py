@@ -31,13 +31,14 @@ from astrapy.data.utils.distinct_extractors import (
     _hash_document,
     _reduce_distinct_key_to_safe,
 )
+from astrapy.data.utils.table_converters import _TableConverterAgent
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
-    DataAPIFaultyResponseException,
     TableNotFoundException,
+    UnexpectedDataAPIResponseException,
 )
 from astrapy.info import TableIndexDefinition, TableInfo, TableVectorIndexDefinition
-from astrapy.results import DeleteResult, InsertOneResult
+from astrapy.results import TableDeleteResult, TableInsertOneResult
 from astrapy.settings.defaults import DEFAULT_DATA_API_AUTH_HEADER
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import APIOptions, FullAPIOptions, TimeoutOptions
@@ -117,6 +118,9 @@ class Table(Generic[ROW]):
             **self.api_options.database_additional_headers,
         }
         self._api_commander = self._get_api_commander()
+        self._converter_agent: _TableConverterAgent[ROW] = _TableConverterAgent(
+            options=self.api_options.wire_format_options,
+        )
 
     def __repr__(self) -> str:
         return (
@@ -409,7 +413,7 @@ class Table(Generic[ROW]):
             timeout_ms=_schema_operation_timeout_ms,
         )
         if ci_response.get("status") != {"ok": 1}:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text=f"Faulty response from {ci_command} API command.",
                 raw_response=ci_response,
             )
@@ -572,7 +576,7 @@ class Table(Generic[ROW]):
             timeout_ms=_schema_operation_timeout_ms,
         )
         if di_response.get("status") != {"ok": 1}:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from dropIndex API command.",
                 raw_response=di_response,
             )
@@ -584,7 +588,7 @@ class Table(Generic[ROW]):
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> InsertOneResult:
+    ) -> TableInsertOneResult:
         """
         TODO
         """
@@ -594,7 +598,9 @@ class Table(Generic[ROW]):
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
-        io_payload = {"insertOne": {"document": row}}
+        io_payload = self._converter_agent.preprocess_payload(
+            {"insertOne": {"document": row}}
+        )
         logger.info(f"insertOne on '{self.name}'")
         io_response = self._api_commander.request(
             payload=io_payload,
@@ -602,20 +608,30 @@ class Table(Generic[ROW]):
         )
         logger.info(f"finished insertOne on '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
-            if io_response["status"]["insertedIds"]:
-                inserted_id = io_response["status"]["insertedIds"][0]
-                return InsertOneResult(
-                    raw_results=[io_response],
-                    inserted_id=inserted_id,
-                )
-            else:
-                raise DataAPIFaultyResponseException(
-                    text="Faulty response from insert_one API command.",
+            if not io_response["status"]["insertedIds"]:
+                raise UnexpectedDataAPIResponseException(
+                    text="Response from insertOne API command has empty 'insertedIds'.",
                     raw_response=io_response,
                 )
+            if not io_response["status"]["primaryKeySchema"]:
+                raise UnexpectedDataAPIResponseException(
+                    text="Response from insertOne API command has empty 'primaryKeySchema'.",
+                    raw_response=io_response,
+                )
+            inserted_id_list = io_response["status"]["insertedIds"][0]
+            inserted_id = self._converter_agent.postprocess_key(
+                inserted_id_list,
+                primary_key_schema_dict=io_response["status"]["primaryKeySchema"],
+            )
+            inserted_id_tuple = tuple(inserted_id_list)
+            return TableInsertOneResult(
+                raw_results=[io_response],
+                inserted_id=inserted_id,
+                inserted_id_tuple=inserted_id_tuple,
+            )
         else:
-            raise DataAPIFaultyResponseException(
-                text="Faulty response from insert_one API command.",
+            raise UnexpectedDataAPIResponseException(
+                text="Response from insertOne API command missing 'insertedIds'.",
                 raw_response=io_response,
             )
 
@@ -680,23 +696,30 @@ class Table(Generic[ROW]):
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
-        fo_payload = {"findOne": {"filter": filter}}
+        fo_payload = self._converter_agent.preprocess_payload(
+            {"findOne": {"filter": filter}},
+        )
         fo_response = self._api_commander.request(
             payload=fo_payload,
             timeout_ms=_request_timeout_ms,
         )
-        # TODO reinstate this once proper response for no-matches
-        # if "document" not in (fo_response.get("data") or {}):
-        #     raise DataAPIFaultyResponseException(
-        #         text="Faulty response from findOne API command.",
-        #         raw_response=fo_response,
-        #     )
-        # TODO replace next line with the one after that:
-        doc_response = fo_response.get("data", {}).get("document")
-        # doc_response = fo_response["data"]["document"]
+        if "document" not in (fo_response.get("data") or {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Response from findOne API command missing 'document'.",
+                raw_response=fo_response,
+            )
+        if "projectionSchema" not in (fo_response.get("status") or {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Response from findOne API command missing 'projectionSchema'.",
+                raw_response=fo_response,
+            )
+        doc_response = fo_response["data"]["document"]
         if doc_response is None:
             return None
-        return fo_response["data"]["document"]  # type: ignore[no-any-return]
+        return self._converter_agent.postprocess_row(
+            fo_response["data"]["document"],
+            columns_dict=fo_response["status"]["projectionSchema"],
+        )
 
     def distinct(
         self,
@@ -761,7 +784,7 @@ class Table(Generic[ROW]):
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DeleteResult:
+    ) -> TableDeleteResult:
         """
         TODO
         """
@@ -771,15 +794,17 @@ class Table(Generic[ROW]):
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
-        do_payload = {
-            "deleteOne": {
-                k: v
-                for k, v in {
-                    "filter": filter,
-                }.items()
-                if v is not None
+        do_payload = self._converter_agent.preprocess_payload(
+            {
+                "deleteOne": {
+                    k: v
+                    for k, v in {
+                        "filter": filter,
+                    }.items()
+                    if v is not None
+                }
             }
-        }
+        )
         logger.info(f"deleteOne on '{self.name}'")
         do_response = self._api_commander.request(
             payload=do_payload,
@@ -787,12 +812,11 @@ class Table(Generic[ROW]):
         )
         logger.info(f"finished deleteOne on '{self.name}'")
         if do_response.get("status", {}).get("deletedCount") == -1:
-            return DeleteResult(
-                deleted_count=-1,  # TODO adjust and erase
+            return TableDeleteResult(
                 raw_results=[do_response],
             )
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from delete_one API command.",
                 raw_response=do_response,
             )
@@ -820,7 +844,7 @@ class Table(Generic[ROW]):
 
     def command(
         self,
-        body: dict[str, Any],
+        body: dict[str, Any] | None,
         *,
         raise_api_errors: bool = True,
         request_timeout_ms: int | None = None,
@@ -835,7 +859,11 @@ class Table(Generic[ROW]):
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
-        _cmd_desc = ",".join(sorted(body.keys()))
+        _cmd_desc: str
+        if body:
+            _cmd_desc = ",".join(sorted(body.keys()))
+        else:
+            _cmd_desc = "(none)"
         logger.info(f"command={_cmd_desc} on '{self.name}'")
         command_result = self._api_commander.request(
             payload=body,
@@ -873,6 +901,9 @@ class AsyncTable(Generic[ROW]):
             **self.api_options.database_additional_headers,
         }
         self._api_commander = self._get_api_commander()
+        self._converter_agent: _TableConverterAgent[ROW] = _TableConverterAgent(
+            options=self.api_options.wire_format_options,
+        )
 
     def __repr__(self) -> str:
         return (
@@ -1183,7 +1214,7 @@ class AsyncTable(Generic[ROW]):
             timeout_ms=_schema_operation_timeout_ms,
         )
         if ci_response.get("status") != {"ok": 1}:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text=f"Faulty response from {ci_command} API command.",
                 raw_response=ci_response,
             )
@@ -1346,7 +1377,7 @@ class AsyncTable(Generic[ROW]):
             timeout_ms=_schema_operation_timeout_ms,
         )
         if di_response.get("status") != {"ok": 1}:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from dropIndex API command.",
                 raw_response=di_response,
             )
@@ -1358,7 +1389,7 @@ class AsyncTable(Generic[ROW]):
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> InsertOneResult:
+    ) -> TableInsertOneResult:
         """
         TODO
         """
@@ -1368,7 +1399,9 @@ class AsyncTable(Generic[ROW]):
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
-        io_payload = {"insertOne": {"document": row}}
+        io_payload = self._converter_agent.preprocess_payload(
+            {"insertOne": {"document": row}}
+        )
         logger.info(f"insertOne on '{self.name}'")
         io_response = await self._api_commander.async_request(
             payload=io_payload,
@@ -1376,19 +1409,29 @@ class AsyncTable(Generic[ROW]):
         )
         logger.info(f"finished insertOne on '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
-            if io_response["status"]["insertedIds"]:
-                inserted_id = io_response["status"]["insertedIds"][0]
-                return InsertOneResult(
-                    raw_results=[io_response],
-                    inserted_id=inserted_id,
-                )
-            else:
-                raise DataAPIFaultyResponseException(
-                    text="Faulty response from insert_one API command.",
+            if not io_response["status"]["insertedIds"]:
+                raise UnexpectedDataAPIResponseException(
+                    text="Response from insertOne API command has empty 'insertedIds'.",
                     raw_response=io_response,
                 )
+            if not io_response["status"]["primaryKeySchema"]:
+                raise UnexpectedDataAPIResponseException(
+                    text="Response from insertOne API command has empty 'primaryKeySchema'.",
+                    raw_response=io_response,
+                )
+            inserted_id_list = io_response["status"]["insertedIds"][0]
+            inserted_id = self._converter_agent.postprocess_key(
+                inserted_id_list,
+                primary_key_schema_dict=io_response["status"]["primaryKeySchema"],
+            )
+            inserted_id_tuple = tuple(inserted_id_list)
+            return TableInsertOneResult(
+                raw_results=[io_response],
+                inserted_id=inserted_id,
+                inserted_id_tuple=inserted_id_tuple,
+            )
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from insert_one API command.",
                 raw_response=io_response,
             )
@@ -1454,23 +1497,30 @@ class AsyncTable(Generic[ROW]):
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
-        fo_payload = {"findOne": {"filter": filter}}
+        fo_payload = self._converter_agent.preprocess_payload(
+            {"findOne": {"filter": filter}},
+        )
         fo_response = await self._api_commander.async_request(
             payload=fo_payload,
             timeout_ms=_request_timeout_ms,
         )
-        # TODO reinstate this once proper response for no-matches
-        # if "document" not in (fo_response.get("data") or {}):
-        #     raise DataAPIFaultyResponseException(
-        #         text="Faulty response from findOne API command.",
-        #         raw_response=fo_response,
-        #     )
-        # TODO replace next line with the one after that:
-        doc_response = fo_response.get("data", {}).get("document")
-        # doc_response = fo_response["data"]["document"]
+        if "document" not in (fo_response.get("data") or {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Response from findOne API command missing 'document'.",
+                raw_response=fo_response,
+            )
+        if "projectionSchema" not in (fo_response.get("status") or {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Response from findOne API command missing 'projectionSchema'.",
+                raw_response=fo_response,
+            )
+        doc_response = fo_response["data"]["document"]
         if doc_response is None:
             return None
-        return fo_response["data"]["document"]  # type: ignore[no-any-return]
+        return self._converter_agent.postprocess_row(
+            fo_response["data"]["document"],
+            columns_dict=fo_response["status"]["projectionSchema"],
+        )
 
     async def distinct(
         self,
@@ -1535,7 +1585,7 @@ class AsyncTable(Generic[ROW]):
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DeleteResult:
+    ) -> TableDeleteResult:
         """
         TODO
         """
@@ -1545,15 +1595,17 @@ class AsyncTable(Generic[ROW]):
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
-        do_payload = {
-            "deleteOne": {
-                k: v
-                for k, v in {
-                    "filter": filter,
-                }.items()
-                if v is not None
+        do_payload = self._converter_agent.preprocess_payload(
+            {
+                "deleteOne": {
+                    k: v
+                    for k, v in {
+                        "filter": filter,
+                    }.items()
+                    if v is not None
+                }
             }
-        }
+        )
         logger.info(f"deleteOne on '{self.name}'")
         do_response = await self._api_commander.async_request(
             payload=do_payload,
@@ -1561,12 +1613,11 @@ class AsyncTable(Generic[ROW]):
         )
         logger.info(f"finished deleteOne on '{self.name}'")
         if do_response.get("status", {}).get("deletedCount") == -1:
-            return DeleteResult(
-                deleted_count=-1,  # TODO adjust and erase
+            return TableDeleteResult(
                 raw_results=[do_response],
             )
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from delete_one API command.",
                 raw_response=do_response,
             )
@@ -1595,7 +1646,7 @@ class AsyncTable(Generic[ROW]):
 
     async def command(
         self,
-        body: dict[str, Any],
+        body: dict[str, Any] | None,
         *,
         raise_api_errors: bool = True,
         request_timeout_ms: int | None = None,
@@ -1610,7 +1661,11 @@ class AsyncTable(Generic[ROW]):
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
-        _cmd_desc = ",".join(sorted(body.keys()))
+        _cmd_desc: str
+        if body:
+            _cmd_desc = ",".join(sorted(body.keys()))
+        else:
+            _cmd_desc = "(none)"
         logger.info(f"command={_cmd_desc} on '{self.name}'")
         command_result = await self._api_commander.async_request(
             payload=body,

@@ -23,12 +23,12 @@ import httpx
 
 from astrapy.constants import CallerType
 from astrapy.exceptions import (
-    DataAPIFaultyResponseException,
     DataAPIHttpException,
     DataAPIResponseException,
-    DevOpsAPIFaultyResponseException,
     DevOpsAPIHttpException,
     DevOpsAPIResponseException,
+    UnexpectedDataAPIResponseException,
+    UnexpectedDevOpsAPIResponseException,
     to_dataapi_timeout_exception,
     to_devopsapi_timeout_exception,
 )
@@ -78,19 +78,19 @@ class APICommander:
         self.dev_ops_api = dev_ops_api
 
         self._faulty_response_exc_class: (
-            type[DevOpsAPIFaultyResponseException]
-            | type[DataAPIFaultyResponseException]
+            type[UnexpectedDevOpsAPIResponseException]
+            | type[UnexpectedDataAPIResponseException]
         )
         self._response_exc_class: (
             type[DevOpsAPIResponseException] | type[DataAPIResponseException]
         )
         self._http_exc_class: type[DataAPIHttpException] | type[DevOpsAPIHttpException]
         if self.dev_ops_api:
-            self._faulty_response_exc_class = DevOpsAPIFaultyResponseException
+            self._faulty_response_exc_class = UnexpectedDevOpsAPIResponseException
             self._response_exc_class = DevOpsAPIResponseException
             self._http_exc_class = DevOpsAPIHttpException
         else:
-            self._faulty_response_exc_class = DataAPIFaultyResponseException
+            self._faulty_response_exc_class = UnexpectedDataAPIResponseException
             self._response_exc_class = DataAPIResponseException
             self._http_exc_class = DataAPIHttpException
         self._api_description = "DevOps API" if self.dev_ops_api else "Data API"

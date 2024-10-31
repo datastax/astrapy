@@ -29,7 +29,7 @@ from astrapy.exceptions import (
     DeleteManyException,
     InsertManyException,
 )
-from astrapy.results import DeleteResult, InsertManyResult
+from astrapy.results import CollectionDeleteResult, CollectionInsertManyResult
 
 SAMPLE_API_MESSAGE = "da_message"
 SAMPLE_API_ERROR_OBJECT = {
@@ -268,7 +268,9 @@ def test_dataapiresponseexception() -> None:
 
 @pytest.mark.describe("test InsertManyException")
 def test_insertmanyexception() -> None:
-    im_result = InsertManyResult(raw_results=[{"a": 1}], inserted_ids=["a", "b"])
+    im_result = CollectionInsertManyResult(
+        raw_results=[{"a": 1}], inserted_ids=["a", "b"]
+    )
     # mypy thinks im_e1 is a DataAPIException for some reason...
     im_e1: InsertManyException = InsertManyException.from_responses(  # type: ignore[assignment]
         commands=[{"cmd": "C1"}],
@@ -291,7 +293,7 @@ def test_insertmanyexception() -> None:
 
 @pytest.mark.describe("test DeleteManyException")
 def test_deletemanyexception() -> None:
-    dm_result = DeleteResult(deleted_count=123, raw_results=[{"a": 1}])
+    dm_result = CollectionDeleteResult(deleted_count=123, raw_results=[{"a": 1}])
     # mypy thinks dm_e1 is a DataAPIException for some reason...
     dm_e1: DeleteManyException = DeleteManyException.from_responses(  # type: ignore[assignment]
         commands=[{"cmd": "C1"}],

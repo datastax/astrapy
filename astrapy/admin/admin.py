@@ -31,9 +31,9 @@ from astrapy.admin.endpoints import (
 from astrapy.authentication import coerce_possible_token_provider
 from astrapy.constants import CallerType, Environment
 from astrapy.exceptions import (
-    DataAPIFaultyResponseException,
     DevOpsAPIException,
     MultiCallTimeoutManager,
+    UnexpectedDataAPIResponseException,
 )
 from astrapy.info import (
     AstraDBAdminDatabaseInfo,
@@ -2940,7 +2940,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             timeout_ms=_request_timeout_ms,
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from findEmbeddingProviders API command.",
                 raw_response=fe_response,
             )
@@ -2992,7 +2992,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             timeout_ms=_request_timeout_ms,
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from findEmbeddingProviders API command.",
                 raw_response=fe_response,
             )
@@ -3211,7 +3211,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             timeout_ms=_request_timeout_ms,
         )
         if "keyspaces" not in fn_response.get("status", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from findKeyspaces API command.",
                 raw_response=fn_response,
             )
@@ -3282,7 +3282,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             timeout_ms=_request_timeout_ms,
         )
         if (cn_response.get("status") or {}).get("ok") != 1:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from createKeyspace API command.",
                 raw_response=cn_response,
             )
@@ -3330,7 +3330,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             timeout_ms=_request_timeout_ms,
         )
         if (dn_response.get("status") or {}).get("ok") != 1:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from dropKeyspace API command.",
                 raw_response=dn_response,
             )
@@ -3372,7 +3372,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             timeout_ms=_request_timeout_ms,
         )
         if "keyspaces" not in fn_response.get("status", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from findKeyspaces API command.",
                 raw_response=fn_response,
             )
@@ -3446,7 +3446,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             timeout_ms=_request_timeout_ms,
         )
         if (cn_response.get("status") or {}).get("ok") != 1:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from createKeyspace API command.",
                 raw_response=cn_response,
             )
@@ -3497,7 +3497,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             timeout_ms=_request_timeout_ms,
         )
         if (dn_response.get("status") or {}).get("ok") != 1:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from dropKeyspace API command.",
                 raw_response=dn_response,
             )
@@ -3700,7 +3700,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             timeout_ms=_request_timeout_ms,
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from findEmbeddingProviders API command.",
                 raw_response=fe_response,
             )
@@ -3752,7 +3752,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             timeout_ms=_request_timeout_ms,
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from findEmbeddingProviders API command.",
                 raw_response=fe_response,
             )

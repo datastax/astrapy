@@ -47,7 +47,7 @@ def test_namespace() -> None:
     assert str(astrapy.exceptions.DevOpsAPIException) != ""
     assert str(astrapy.ids.uuid6) != ""
     assert str(astrapy.info.AstraDBDatabaseInfo) != ""
-    assert str(astrapy.results.DeleteResult) != ""
+    assert str(astrapy.results.CollectionDeleteResult) != ""
     assert str(astrapy.settings.defaults) != ""
     assert str(astrapy.utils.request_tools) != ""
 
@@ -94,19 +94,19 @@ def test_imports() -> None:
         DataAPIDetailedErrorDescriptor,
         DataAPIErrorDescriptor,
         DataAPIException,
-        DataAPIFaultyResponseException,
         DataAPIHttpException,
         DataAPIResponseException,
         DataAPITimeoutException,
         DeleteManyException,
         DevOpsAPIErrorDescriptor,
         DevOpsAPIException,
-        DevOpsAPIFaultyResponseException,
         DevOpsAPIHttpException,
         DevOpsAPIResponseException,
         DevOpsAPITimeoutException,
         InsertManyException,
         TooManyDocumentsToCountException,
+        UnexpectedDataAPIResponseException,
+        UnexpectedDevOpsAPIResponseException,
         UpdateManyException,
     )
     from astrapy.ids import (  # noqa: F401
@@ -137,9 +137,9 @@ def test_imports() -> None:
         VectorServiceOptions,
     )
     from astrapy.results import (  # noqa: F401
-        DeleteResult,
-        InsertManyResult,
-        InsertOneResult,
+        CollectionDeleteResult,
+        CollectionInsertManyResult,
+        CollectionInsertOneResult,
+        CollectionUpdateResult,
         OperationResult,
-        UpdateResult,
     )

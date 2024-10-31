@@ -611,6 +611,36 @@ class _TableConverterAgent(Generic[ROW]):
             json.dumps(input_dict, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
 
+    def _get_key_postprocessor(
+        self, primary_key_schema_dict: dict[str, Any]
+    ) -> Callable[[list[Any]], dict[str, Any]]:
+        schema_hash = self._hash_dict(primary_key_schema_dict)
+        if schema_hash not in self.key_postprocessors:
+            primary_key_schema: dict[str, TableColumnTypeDescriptor] = {
+                col_name: TableColumnTypeDescriptor.coerce(col_dict)
+                for col_name, col_dict in primary_key_schema_dict.items()
+            }
+            self.key_postprocessors[schema_hash] = create_key_ktpostprocessor(
+                primary_key_schema=primary_key_schema,
+                options=self.options,
+            )
+        return self.key_postprocessors[schema_hash]
+
+    def _get_row_postprocessor(
+        self, columns_dict: dict[str, Any]
+    ) -> Callable[[dict[str, Any]], dict[str, Any]]:
+        schema_hash = self._hash_dict(columns_dict)
+        if schema_hash not in self.row_postprocessors:
+            columns: dict[str, TableColumnTypeDescriptor] = {
+                col_name: TableColumnTypeDescriptor.coerce(col_dict)
+                for col_name, col_dict in columns_dict.items()
+            }
+            self.row_postprocessors[schema_hash] = create_row_tpostprocessor(
+                columns=columns,
+                options=self.options,
+            )
+        return self.row_postprocessors[schema_hash]
+
     def preprocess_payload(
         self, payload: dict[str, Any] | None
     ) -> dict[str, Any] | None:
@@ -622,17 +652,29 @@ class _TableConverterAgent(Generic[ROW]):
         """
         The primary key schema is not coerced here, just parsed from its json
         """
-        schema_hash = self._hash_dict(primary_key_schema_dict)
-        if schema_hash not in self.key_postprocessors:
-            primary_key_schema: dict[str, TableColumnTypeDescriptor] = {
-                col_name: TableColumnTypeDescriptor.coerce(col_dict)
-                for col_name, col_dict in primary_key_schema_dict.items()
-            }
-            self.key_postprocessors[schema_hash] = create_key_ktpostprocessor(
-                primary_key_schema=primary_key_schema,
-                options=self.options,
+        return self._get_key_postprocessor(
+            primary_key_schema_dict=primary_key_schema_dict
+        )(primary_key_list)
+
+    def postprocess_keys(
+        self,
+        primary_key_lists: list[list[Any]],
+        *,
+        primary_key_schema_dict: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """
+        The primary key schema is not coerced here, just parsed from its json
+        """
+        if primary_key_lists:
+            _k_postprocessor = self._get_key_postprocessor(
+                primary_key_schema_dict=primary_key_schema_dict
             )
-        return self.key_postprocessors[schema_hash](primary_key_list)
+            return [
+                _k_postprocessor(primary_key_list)
+                for primary_key_list in primary_key_lists
+            ]
+        else:
+            return []
 
     def postprocess_row(
         self, raw_dict: dict[str, Any], *, columns_dict: dict[str, Any]
@@ -640,14 +682,16 @@ class _TableConverterAgent(Generic[ROW]):
         """
         The columns schema is not coerced here, just parsed from its json
         """
-        schema_hash = self._hash_dict(columns_dict)
-        if schema_hash not in self.row_postprocessors:
-            columns: dict[str, TableColumnTypeDescriptor] = {
-                col_name: TableColumnTypeDescriptor.coerce(col_dict)
-                for col_name, col_dict in columns_dict.items()
-            }
-            self.row_postprocessors[schema_hash] = create_row_tpostprocessor(
-                columns=columns,
-                options=self.options,
-            )
-        return self.row_postprocessors[schema_hash](raw_dict)  # type: ignore[return-value]
+        return self._get_row_postprocessor(columns_dict=columns_dict)(raw_dict)  # type: ignore[return-value]
+
+    def postprocess_rows(
+        self, raw_dicts: list[dict[str, Any]], *, columns_dict: dict[str, Any]
+    ) -> list[ROW]:
+        """
+        The columns schema is not coerced here, just parsed from its json
+        """
+        if raw_dicts:
+            _r_postprocessor = self._get_row_postprocessor(columns_dict=columns_dict)
+            return [cast(ROW, _r_postprocessor(raw_dict)) for raw_dict in raw_dicts]
+        else:
+            return []

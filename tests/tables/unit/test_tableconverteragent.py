@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import pytest
 
+from astrapy.constants import DefaultRowType
 from astrapy.data.utils.table_converters import _TableConverterAgent
 from astrapy.utils.api_options import FullWireFormatOptions
 
@@ -28,7 +29,9 @@ class TestTableConverterAgent:
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
         )
-        agent = _TableConverterAgent(options=options)
+        agent: _TableConverterAgent[DefaultRowType] = _TableConverterAgent(
+            options=options
+        )
         assert len(agent.row_postprocessors) == 0
 
         # try row of type 1
@@ -71,7 +74,9 @@ class TestTableConverterAgent:
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
         )
-        agent = _TableConverterAgent(options=options)
+        agent: _TableConverterAgent[DefaultRowType] = _TableConverterAgent(
+            options=options
+        )
         assert len(agent.key_postprocessors) == 0
 
         # try row of type 1

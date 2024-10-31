@@ -26,10 +26,10 @@ from astrapy.data.info.table_exceptions import TableNotFoundException
 
 if TYPE_CHECKING:
     from astrapy.results import (
-        DeleteResult,
-        InsertManyResult,
+        CollectionDeleteResult,
+        CollectionInsertManyResult,
+        CollectionUpdateResult,
         OperationResult,
-        UpdateResult,
     )
 
 
@@ -175,7 +175,7 @@ class DevOpsAPIErrorDescriptor:
 
 
 @dataclass
-class DevOpsAPIFaultyResponseException(DevOpsAPIException):
+class UnexpectedDevOpsAPIResponseException(DevOpsAPIException):
     """
     The DevOps API response is malformed in that it does not have
     expected field(s), or they are of the wrong type.
@@ -493,7 +493,7 @@ class TooManyDocumentsToCountException(DataAPIException):
 
 
 @dataclass
-class DataAPIFaultyResponseException(DataAPIException):
+class UnexpectedDataAPIResponseException(DataAPIException):
     """
     The Data API response is malformed in that it does not have
     expected field(s), or they are of the wrong type.
@@ -662,14 +662,19 @@ class InsertManyException(CumulativeOperationException):
             objects, one for each of the requests performed during this operation.
             For single-request methods, such as insert_one, this list always
             has a single element.
-        partial_result: an InsertManyResult object, just like the one that would
-            be the return value of the operation, had it succeeded completely.
+        partial_result: an CollectionInsertManyResult object, just like the one
+            that would be the return value of the operation, had it succeeded
+            completely.
     """
 
-    partial_result: InsertManyResult
+    partial_result: CollectionInsertManyResult
 
     def __init__(
-        self, text: str, partial_result: InsertManyResult, *pargs: Any, **kwargs: Any
+        self,
+        text: str,
+        partial_result: CollectionInsertManyResult,
+        *pargs: Any,
+        **kwargs: Any,
     ) -> None:
         super().__init__(text, *pargs, **kwargs)
         self.partial_result = partial_result
@@ -692,14 +697,18 @@ class DeleteManyException(CumulativeOperationException):
             objects, one for each of the requests performed during this operation.
             For single-request methods, such as insert_one, this list always
             has a single element.
-        partial_result: a DeleteResult object, just like the one that would
+        partial_result: a CollectionDeleteResult object, just like the one that would
             be the return value of the operation, had it succeeded completely.
     """
 
-    partial_result: DeleteResult
+    partial_result: CollectionDeleteResult
 
     def __init__(
-        self, text: str, partial_result: DeleteResult, *pargs: Any, **kwargs: Any
+        self,
+        text: str,
+        partial_result: CollectionDeleteResult,
+        *pargs: Any,
+        **kwargs: Any,
     ) -> None:
         super().__init__(text, *pargs, **kwargs)
         self.partial_result = partial_result
@@ -722,14 +731,18 @@ class UpdateManyException(CumulativeOperationException):
             objects, one for each of the requests performed during this operation.
             For single-request methods, such as insert_one, this list always
             has a single element.
-        partial_result: an UpdateResult object, just like the one that would
-            be the return value of the operation, had it succeeded completely.
+        partial_result: an CollectionUpdateResult object, just like the one that
+        would be the return value of the operation, had it succeeded completely.
     """
 
-    partial_result: UpdateResult
+    partial_result: CollectionUpdateResult
 
     def __init__(
-        self, text: str, partial_result: UpdateResult, *pargs: Any, **kwargs: Any
+        self,
+        text: str,
+        partial_result: CollectionUpdateResult,
+        *pargs: Any,
+        **kwargs: Any,
     ) -> None:
         super().__init__(text, *pargs, **kwargs)
         self.partial_result = partial_result
@@ -875,7 +888,7 @@ __all__ = [
     "DevOpsAPIHttpException",
     "DevOpsAPITimeoutException",
     "DevOpsAPIErrorDescriptor",
-    "DevOpsAPIFaultyResponseException",
+    "UnexpectedDevOpsAPIResponseException",
     "DevOpsAPIResponseException",
     "DataAPIErrorDescriptor",
     "DataAPIDetailedErrorDescriptor",
@@ -884,7 +897,7 @@ __all__ = [
     "DataAPITimeoutException",
     "CursorException",
     "TooManyDocumentsToCountException",
-    "DataAPIFaultyResponseException",
+    "UnexpectedDataAPIResponseException",
     "DataAPIResponseException",
     "CumulativeOperationException",
     "InsertManyException",

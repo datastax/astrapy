@@ -32,8 +32,8 @@ from astrapy.constants import (
     Environment,
 )
 from astrapy.exceptions import (
-    DataAPIFaultyResponseException,
     DevOpsAPIException,
+    UnexpectedDataAPIResponseException,
 )
 from astrapy.info import (
     AstraDBDatabaseInfo,
@@ -837,7 +837,7 @@ class Database:
             timeout_ms=_schema_operation_timeout_ms,
         )
         if cc_response.get("status") != {"ok": 1}:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from createCollection API command.",
                 raw_response=cc_response,
             )
@@ -906,7 +906,7 @@ class Database:
             timeout_ms=_schema_operation_timeout_ms,
         )
         if dc_response.get("status") != {"ok": 1}:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from deleteCollection API command.",
                 raw_response=dc_response,
             )
@@ -957,7 +957,7 @@ class Database:
             timeout_ms=_request_timeout_ms,
         )
         if "collections" not in gc_response.get("status", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from findCollections API command.",
                 raw_response=gc_response,
             )
@@ -1008,7 +1008,7 @@ class Database:
             timeout_ms=_request_timeout_ms,
         )
         if "collections" not in gc_response.get("status", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from findCollections API command.",
                 raw_response=gc_response,
             )
@@ -1279,7 +1279,7 @@ class Database:
             timeout_ms=_schema_operation_timeout_ms,
         )
         if ct_response.get("status") != {"ok": 1}:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from createTable API command.",
                 raw_response=ct_response,
             )
@@ -1348,7 +1348,7 @@ class Database:
             timeout_ms=_schema_operation_timeout_ms,
         )
         if dt_response.get("status") != {"ok": 1}:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from dropTable API command.",
                 raw_response=dt_response,
             )
@@ -1399,7 +1399,7 @@ class Database:
             timeout_ms=_request_timeout_ms,
         )
         if "tables" not in lt_response.get("status", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from listTables API command.",
                 raw_response=lt_response,
             )
@@ -1450,7 +1450,7 @@ class Database:
             timeout_ms=_request_timeout_ms,
         )
         if "tables" not in lt_response.get("status", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from listTables API command.",
                 raw_response=lt_response,
             )
@@ -2345,7 +2345,7 @@ class AsyncDatabase:
             timeout_ms=_schema_operation_timeout_ms,
         )
         if cc_response.get("status") != {"ok": 1}:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from createCollection API command.",
                 raw_response=cc_response,
             )
@@ -2414,7 +2414,7 @@ class AsyncDatabase:
             timeout_ms=_schema_operation_timeout_ms,
         )
         if dc_response.get("status") != {"ok": 1}:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from deleteCollection API command.",
                 raw_response=dc_response,
             )
@@ -2467,7 +2467,7 @@ class AsyncDatabase:
             timeout_ms=_request_timeout_ms,
         )
         if "collections" not in gc_response.get("status", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from findCollections API command.",
                 raw_response=gc_response,
             )
@@ -2518,7 +2518,7 @@ class AsyncDatabase:
             timeout_ms=_request_timeout_ms,
         )
         if "collections" not in gc_response.get("status", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from findCollections API command.",
                 raw_response=gc_response,
             )
@@ -2791,7 +2791,7 @@ class AsyncDatabase:
             timeout_ms=_schema_operation_timeout_ms,
         )
         if ct_response.get("status") != {"ok": 1}:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from createTable API command.",
                 raw_response=ct_response,
             )
@@ -2860,7 +2860,7 @@ class AsyncDatabase:
             timeout_ms=_schema_operation_timeout_ms,
         )
         if dt_response.get("status") != {"ok": 1}:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from dropTable API command.",
                 raw_response=dt_response,
             )
@@ -2914,7 +2914,7 @@ class AsyncDatabase:
             timeout_ms=_request_timeout_ms,
         )
         if "tables" not in lt_response.get("status", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from listTables API command.",
                 raw_response=lt_response,
             )
@@ -2971,7 +2971,7 @@ class AsyncDatabase:
             timeout_ms=_request_timeout_ms,
         )
         if "tables" not in lt_response.get("status", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from listTables API command.",
                 raw_response=lt_response,
             )

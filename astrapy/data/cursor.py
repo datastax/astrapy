@@ -33,8 +33,8 @@ from astrapy.data.utils.collection_converters import (
 )
 from astrapy.exceptions import (
     CursorException,
-    DataAPIFaultyResponseException,
     MultiCallTimeoutManager,
+    UnexpectedDataAPIResponseException,
 )
 from astrapy.utils.unset import _UNSET, UnsetType
 
@@ -236,7 +236,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
             raw_f_response, options=self.collection.api_options.wire_format_options
         )
         if "documents" not in f_response.get("data", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from find API command (no 'documents').",
                 raw_response=f_response,
             )
@@ -275,7 +275,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
             options=self.async_collection.api_options.wire_format_options,
         )
         if "documents" not in f_response.get("data", {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from find API command (no 'documents').",
                 raw_response=f_response,
             )
@@ -335,26 +335,35 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
         if self.table is None:
             raise ValueError("Query engine has no sync table.")
-        f_payload = {
-            "find": {
-                **self.f_r_subpayload,
-                "options": {
-                    **self.f_options0,
-                    **({"pageState": page_state} if page_state else {}),
+        f_payload = self.table._converter_agent.preprocess_payload(
+            {
+                "find": {
+                    **self.f_r_subpayload,
+                    "options": {
+                        **self.f_options0,
+                        **({"pageState": page_state} if page_state else {}),
+                    },
                 },
-            },
-        }
-        # TODO pre/post process here
+            }
+        )
         f_response = self.table.command(
             body=f_payload,
             request_timeout_ms=request_timeout_ms,
         )
         if "documents" not in f_response.get("data", {}):
-            raise DataAPIFaultyResponseException(
-                text="Faulty response from find API command (no 'documents').",
+            raise UnexpectedDataAPIResponseException(
+                text="Response from find API command missing 'documents'.",
                 raw_response=f_response,
             )
-        p_documents = f_response["data"]["documents"]
+        if "projectionSchema" not in f_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Response from find API command missing 'projectionSchema'.",
+                raw_response=f_response,
+            )
+        p_documents = self.table._converter_agent.postprocess_rows(
+            f_response["data"]["documents"],
+            columns_dict=f_response["status"]["projectionSchema"],
+        )
         n_p_state = f_response["data"]["nextPageState"]
         p_r_status = f_response.get("status")
         return (p_documents, n_p_state, p_r_status)
@@ -368,26 +377,35 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
         if self.async_table is None:
             raise ValueError("Query engine has no async table.")
-        f_payload = {
-            "find": {
-                **self.f_r_subpayload,
-                "options": {
-                    **self.f_options0,
-                    **({"pageState": page_state} if page_state else {}),
+        f_payload = self.async_table._converter_agent.preprocess_payload(
+            {
+                "find": {
+                    **self.f_r_subpayload,
+                    "options": {
+                        **self.f_options0,
+                        **({"pageState": page_state} if page_state else {}),
+                    },
                 },
-            },
-        }
-        # TODO pre/post process here
+            }
+        )
         f_response = await self.async_table.command(
             body=f_payload,
             request_timeout_ms=request_timeout_ms,
         )
         if "documents" not in f_response.get("data", {}):
-            raise DataAPIFaultyResponseException(
-                text="Faulty response from find API command (no 'documents').",
+            raise UnexpectedDataAPIResponseException(
+                text="Response from find API command missing 'documents'.",
                 raw_response=f_response,
             )
-        p_documents = f_response["data"]["documents"]
+        if "projectionSchema" not in f_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Response from find API command missing 'projectionSchema'.",
+                raw_response=f_response,
+            )
+        p_documents = self.async_table._converter_agent.postprocess_rows(
+            f_response["data"]["documents"],
+            columns_dict=f_response["status"]["projectionSchema"],
+        )
         n_p_state = f_response["data"]["nextPageState"]
         p_r_status = f_response.get("status")
         return (p_documents, n_p_state, p_r_status)

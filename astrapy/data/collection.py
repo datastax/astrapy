@@ -43,19 +43,19 @@ from astrapy.data.utils.distinct_extractors import (
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
     CollectionNotFoundException,
-    DataAPIFaultyResponseException,
     DeleteManyException,
     InsertManyException,
     MultiCallTimeoutManager,
     TooManyDocumentsToCountException,
+    UnexpectedDataAPIResponseException,
     UpdateManyException,
 )
 from astrapy.info import CollectionInfo, CollectionOptions
 from astrapy.results import (
-    DeleteResult,
-    InsertManyResult,
-    InsertOneResult,
-    UpdateResult,
+    CollectionDeleteResult,
+    CollectionInsertManyResult,
+    CollectionInsertOneResult,
+    CollectionUpdateResult,
 )
 from astrapy.settings.defaults import (
     DEFAULT_DATA_API_AUTH_HEADER,
@@ -612,7 +612,7 @@ class Collection(Generic[DOC]):
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> InsertOneResult:
+    ) -> CollectionInsertOneResult:
         """
         Insert a single document in the collection in an atomic operation.
 
@@ -625,7 +625,7 @@ class Collection(Generic[DOC]):
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            an InsertOneResult object.
+            a CollectionInsertOneResult object.
 
         Examples:
             >>> my_coll.count_documents({}, upper_bound=10)
@@ -638,14 +638,14 @@ class Collection(Generic[DOC]):
             ...         "likes_fruit": True,
             ...     },
             ... )
-            InsertOneResult(raw_results=..., inserted_id='ed4587a4-...-...-...')
+            CollectionInsertOneResult(raw_results=..., inserted_id='ed4587a4-...-...-...')
             >>> my_coll.insert_one({"_id": "user-123", "age": 50, "name": "Maccio"})
-            InsertOneResult(raw_results=..., inserted_id='user-123')
+            CollectionInsertOneResult(raw_results=..., inserted_id='user-123')
             >>> my_coll.count_documents({}, upper_bound=10)
             2
 
             >>> my_coll.insert_one({"tag": "v", "$vector": [10, 11]})
-            InsertOneResult(...)
+            CollectionInsertOneResult(...)
 
         Note:
             If an `_id` is explicitly provided, which corresponds to a document
@@ -668,17 +668,17 @@ class Collection(Generic[DOC]):
         if "insertedIds" in io_response.get("status", {}):
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
-                return InsertOneResult(
+                return CollectionInsertOneResult(
                     raw_results=[io_response],
                     inserted_id=inserted_id,
                 )
             else:
-                raise DataAPIFaultyResponseException(
+                raise UnexpectedDataAPIResponseException(
                     text="Faulty response from insert_one API command.",
                     raw_response=io_response,
                 )
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from insert_one API command.",
                 raw_response=io_response,
             )
@@ -693,7 +693,7 @@ class Collection(Generic[DOC]):
         request_timeout_ms: int | None = None,
         data_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> InsertManyResult:
+    ) -> CollectionInsertManyResult:
         """
         Insert a list of documents into the collection.
         This is not an atomic operation.
@@ -719,7 +719,7 @@ class Collection(Generic[DOC]):
             max_time_ms: an alias for `data_operation_timeout_ms`.
 
         Returns:
-            an InsertManyResult object.
+            a CollectionInsertManyResult object.
 
         Examples:
             >>> my_coll.count_documents({}, upper_bound=10)
@@ -728,14 +728,14 @@ class Collection(Generic[DOC]):
             ...     [{"a": 10}, {"a": 5}, {"b": [True, False, False]}],
             ...     ordered=True,
             ... )
-            InsertManyResult(raw_results=..., inserted_ids=['184bb06f-...', '...', '...'])
+            CollectionInsertManyResult(raw_results=..., inserted_ids=['184bb06f-...', '...', '...'])
             >>> my_coll.count_documents({}, upper_bound=100)
             3
             >>> my_coll.insert_many(
             ...     [{"seq": i} for i in range(50)],
             ...     concurrency=5,
             ... )
-            InsertManyResult(raw_results=..., inserted_ids=[... ...])
+            CollectionInsertManyResult(raw_results=..., inserted_ids=[... ...])
             >>> my_coll.count_documents({}, upper_bound=100)
             53
             >>> my_coll.insert_many(
@@ -744,7 +744,7 @@ class Collection(Generic[DOC]):
             ...         {"tag": "b", "$vector": [3, 4]},
             ...     ]
             ... )
-            InsertManyResult(...)
+            CollectionInsertManyResult(...)
 
         Note:
             Unordered insertions are executed with some degree of concurrency,
@@ -827,7 +827,7 @@ class Collection(Generic[DOC]):
                 raw_results += [chunk_response]
                 # if errors, quit early
                 if chunk_response.get("errors", []):
-                    partial_result = InsertManyResult(
+                    partial_result = CollectionInsertManyResult(
                         raw_results=raw_results,
                         inserted_ids=inserted_ids,
                     )
@@ -838,7 +838,7 @@ class Collection(Generic[DOC]):
                     )
 
             # return
-            full_result = InsertManyResult(
+            full_result = CollectionInsertManyResult(
                 raw_results=raw_results,
                 inserted_ids=inserted_ids,
             )
@@ -913,7 +913,7 @@ class Collection(Generic[DOC]):
             if any(
                 [chunk_response.get("errors", []) for chunk_response in raw_results]
             ):
-                partial_result = InsertManyResult(
+                partial_result = CollectionInsertManyResult(
                     raw_results=raw_results,
                     inserted_ids=inserted_ids,
                 )
@@ -924,7 +924,7 @@ class Collection(Generic[DOC]):
                 )
 
             # return
-            full_result = InsertManyResult(
+            full_result = CollectionInsertManyResult(
                 raw_results=raw_results,
                 inserted_ids=inserted_ids,
             )
@@ -1241,7 +1241,7 @@ class Collection(Generic[DOC]):
             timeout_ms=_request_timeout_ms,
         )
         if "document" not in (fo_response.get("data") or {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from findOne API command.",
                 raw_response=fo_response,
             )
@@ -1298,7 +1298,7 @@ class Collection(Generic[DOC]):
             ...         {"name": "Emma", "food": {"likes_fruit": True, "allergies": []}},
             ...     ]
             ... )
-            InsertManyResult(raw_results=..., inserted_ids=['c5b99f37-...', 'd6416321-...'])
+            CollectionInsertManyResult(raw_results=..., inserted_ids=['c5b99f37-...', 'd6416321-...'])
             >>> my_coll.distinct("name")
             ['Marco', 'Emma']
             >>> my_coll.distinct("city")
@@ -1403,7 +1403,7 @@ class Collection(Generic[DOC]):
 
         Example:
             >>> my_coll.insert_many([{"seq": i} for i in range(20)])
-            InsertManyResult(...)
+            CollectionInsertManyResult(...)
             >>> my_coll.count_documents({}, upper_bound=100)
             20
             >>> my_coll.count_documents({"seq":{"$gt": 15}}, upper_bound=100)
@@ -1452,7 +1452,7 @@ class Collection(Generic[DOC]):
                 else:
                     return count
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from count_documents API command.",
                 raw_response=cd_response,
             )
@@ -1496,7 +1496,7 @@ class Collection(Generic[DOC]):
             count: int = ed_response["status"]["count"]
             return count
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from estimated_document_count API command.",
                 raw_response=ed_response,
             )
@@ -1570,7 +1570,7 @@ class Collection(Generic[DOC]):
 
         Example:
             >>> my_coll.insert_one({"_id": "rule1", "text": "all animals are equal"})
-            InsertOneResult(...)
+            CollectionInsertOneResult(...)
             >>> my_coll.find_one_and_replace(
             ...     {"_id": "rule1"},
             ...     {"text": "some animals are more equal!"},
@@ -1633,7 +1633,7 @@ class Collection(Generic[DOC]):
             else:
                 return ret_document  # type: ignore[no-any-return]
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from find_one_and_replace API command.",
                 raw_response=fo_response,
             )
@@ -1647,7 +1647,7 @@ class Collection(Generic[DOC]):
         upsert: bool = False,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> UpdateResult:
+    ) -> CollectionUpdateResult:
         """
         Replace a single document on the collection with a new one,
         optionally inserting a new one if no match is found.
@@ -1676,19 +1676,20 @@ class Collection(Generic[DOC]):
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            an UpdateResult object summarizing the outcome of the replace operation.
+            a CollectionUpdateResult object summarizing the outcome of
+            the replace operation.
 
         Example:
             >>> my_coll.insert_one({"Marco": "Polo"})
-            InsertOneResult(...)
+            CollectionInsertOneResult(...)
             >>> my_coll.replace_one({"Marco": {"$exists": True}}, {"Buda": "Pest"})
-            UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': True, 'ok': 1.0, 'nModified': 1})
+            CollectionUpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': True, 'ok': 1.0, 'nModified': 1})
             >>> my_coll.find_one({"Buda": "Pest"})
             {'_id': '8424905a-...', 'Buda': 'Pest'}
             >>> my_coll.replace_one({"Mirco": {"$exists": True}}, {"Oh": "yeah?"})
-            UpdateResult(raw_results=..., update_info={'n': 0, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0})
+            CollectionUpdateResult(raw_results=..., update_info={'n': 0, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0})
             >>> my_coll.replace_one({"Mirco": {"$exists": True}}, {"Oh": "yeah?"}, upsert=True)
-            UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '931b47d6-...'})
+            CollectionUpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '931b47d6-...'})
         """
 
         _request_timeout_ms = (
@@ -1720,12 +1721,12 @@ class Collection(Generic[DOC]):
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
             _update_info = _prepare_update_info([fo_status])
-            return UpdateResult(
+            return CollectionUpdateResult(
                 raw_results=[fo_response],
                 update_info=_update_info,
             )
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from find_one_and_replace API command.",
                 raw_response=fo_response,
             )
@@ -1805,7 +1806,7 @@ class Collection(Generic[DOC]):
 
         Example:
             >>> my_coll.insert_one({"Marco": "Polo"})
-            InsertOneResult(...)
+            CollectionInsertOneResult(...)
             >>> my_coll.find_one_and_update(
             ...     {"Marco": {"$exists": True}},
             ...     {"$set": {"title": "Mr."}},
@@ -1868,7 +1869,7 @@ class Collection(Generic[DOC]):
             else:
                 return ret_document  # type: ignore[no-any-return]
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from find_one_and_update API command.",
                 raw_response=fo_response,
             )
@@ -1882,7 +1883,7 @@ class Collection(Generic[DOC]):
         upsert: bool = False,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> UpdateResult:
+    ) -> CollectionUpdateResult:
         """
         Update a single document on the collection as requested,
         optionally inserting a new one if no match is found.
@@ -1917,17 +1918,18 @@ class Collection(Generic[DOC]):
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            an UpdateResult object summarizing the outcome of the update operation.
+            an CollectionUpdateResult object summarizing the outcome of
+            the update operation.
 
         Example:
             >>> my_coll.insert_one({"Marco": "Polo"})
-            InsertOneResult(...)
+            CollectionInsertOneResult(...)
             >>> my_coll.update_one({"Marco": {"$exists": True}}, {"$inc": {"rank": 3}})
-            UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': True, 'ok': 1.0, 'nModified': 1})
+            CollectionUpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': True, 'ok': 1.0, 'nModified': 1})
             >>> my_coll.update_one({"Mirko": {"$exists": True}}, {"$inc": {"rank": 3}})
-            UpdateResult(raw_results=..., update_info={'n': 0, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0})
+            CollectionUpdateResult(raw_results=..., update_info={'n': 0, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0})
             >>> my_coll.update_one({"Mirko": {"$exists": True}}, {"$inc": {"rank": 3}}, upsert=True)
-            UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '2a45ff60-...'})
+            CollectionUpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '2a45ff60-...'})
         """
 
         _request_timeout_ms = (
@@ -1959,12 +1961,12 @@ class Collection(Generic[DOC]):
         if "status" in uo_response:
             uo_status = uo_response["status"]
             _update_info = _prepare_update_info([uo_status])
-            return UpdateResult(
+            return CollectionUpdateResult(
                 raw_results=[uo_response],
                 update_info=_update_info,
             )
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from update_one API command.",
                 raw_response=uo_response,
             )
@@ -1978,7 +1980,7 @@ class Collection(Generic[DOC]):
         request_timeout_ms: int | None = None,
         data_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> UpdateResult:
+    ) -> CollectionUpdateResult:
         """
         Apply an update operation to all documents matching a condition,
         optionally inserting one documents in absence of matches.
@@ -2012,21 +2014,22 @@ class Collection(Generic[DOC]):
             max_time_ms: an alias for `data_operation_timeout_ms`.
 
         Returns:
-            an UpdateResult object summarizing the outcome of the update operation.
+            an CollectionUpdateResult object summarizing the outcome of
+            the update operation.
 
         Example:
             >>> my_coll.insert_many([{"c": "red"}, {"c": "green"}, {"c": "blue"}])
-            InsertManyResult(...)
+            CollectionInsertManyResult(...)
             >>> my_coll.update_many({"c": {"$ne": "green"}}, {"$set": {"nongreen": True}})
-            UpdateResult(raw_results=..., update_info={'n': 2, 'updatedExisting': True, 'ok': 1.0, 'nModified': 2})
+            CollectionUpdateResult(raw_results=..., update_info={'n': 2, 'updatedExisting': True, 'ok': 1.0, 'nModified': 2})
             >>> my_coll.update_many({"c": "orange"}, {"$set": {"is_also_fruit": True}})
-            UpdateResult(raw_results=..., update_info={'n': 0, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0})
+            CollectionUpdateResult(raw_results=..., update_info={'n': 0, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0})
             >>> my_coll.update_many(
             ...     {"c": "orange"},
             ...     {"$set": {"is_also_fruit": True}},
             ...     upsert=True,
             ... )
-            UpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '46643050-...'})
+            CollectionUpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '46643050-...'})
 
         Note:
             Similarly to the case of `find` (see its docstring for more details),
@@ -2082,7 +2085,7 @@ class Collection(Generic[DOC]):
             # if errors, quit early
             if this_um_response.get("errors", []):
                 partial_update_info = _prepare_update_info(um_statuses)
-                partial_result = UpdateResult(
+                partial_result = CollectionUpdateResult(
                     raw_results=um_responses,
                     update_info=partial_update_info,
                 )
@@ -2094,7 +2097,7 @@ class Collection(Generic[DOC]):
                 )
             else:
                 if "status" not in this_um_response:
-                    raise DataAPIFaultyResponseException(
+                    raise UnexpectedDataAPIResponseException(
                         text="Faulty response from update_many API command.",
                         raw_response=this_um_response,
                     )
@@ -2110,7 +2113,7 @@ class Collection(Generic[DOC]):
 
         update_info = _prepare_update_info(um_statuses)
         logger.info(f"finished update_many on '{self.name}'")
-        return UpdateResult(
+        return CollectionUpdateResult(
             raw_results=um_responses,
             update_info=update_info,
         )
@@ -2171,7 +2174,7 @@ class Collection(Generic[DOC]):
             ...         {"species": "frog", "class": "Amphibia"},
             ...     ],
             ... )
-            InsertManyResult(...)
+            CollectionInsertManyResult(...)
             >>> my_coll.find_one_and_delete(
             ...     {"species": {"$ne": "frog"}},
             ...     projection=["species"],
@@ -2212,7 +2215,7 @@ class Collection(Generic[DOC]):
             if deleted_count == 0:
                 return None
             else:
-                raise DataAPIFaultyResponseException(
+                raise UnexpectedDataAPIResponseException(
                     text="Faulty response from find_one_and_delete API command.",
                     raw_response=fo_response,
                 )
@@ -2224,7 +2227,7 @@ class Collection(Generic[DOC]):
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DeleteResult:
+    ) -> CollectionDeleteResult:
         """
         Delete one document matching a provided filter.
         This method never deletes more than a single document, regardless
@@ -2247,24 +2250,25 @@ class Collection(Generic[DOC]):
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            a DeleteResult object summarizing the outcome of the delete operation.
+            a CollectionDeleteResult object summarizing the outcome of the
+            delete operation.
 
         Example:
             >>> my_coll.insert_many([{"seq": 1}, {"seq": 0}, {"seq": 2}])
-            InsertManyResult(...)
+            CollectionInsertManyResult(...)
             >>> my_coll.delete_one({"seq": 1})
-            DeleteResult(raw_results=..., deleted_count=1)
+            CollectionDeleteResult(raw_results=..., deleted_count=1)
             >>> my_coll.distinct("seq")
             [0, 2]
             >>> my_coll.delete_one(
             ...     {"seq": {"$exists": True}},
             ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
             ... )
-            DeleteResult(raw_results=..., deleted_count=1)
+            CollectionDeleteResult(raw_results=..., deleted_count=1)
             >>> my_coll.distinct("seq")
             [0]
             >>> my_coll.delete_one({"seq": 2})
-            DeleteResult(raw_results=..., deleted_count=0)
+            CollectionDeleteResult(raw_results=..., deleted_count=0)
         """
 
         _request_timeout_ms = (
@@ -2290,12 +2294,12 @@ class Collection(Generic[DOC]):
         logger.info(f"finished deleteOne on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
-            return DeleteResult(
+            return CollectionDeleteResult(
                 deleted_count=deleted_count,
                 raw_results=[do_response],
             )
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from delete_one API command.",
                 raw_response=do_response,
             )
@@ -2307,7 +2311,7 @@ class Collection(Generic[DOC]):
         request_timeout_ms: int | None = None,
         data_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DeleteResult:
+    ) -> CollectionDeleteResult:
         """
         Delete all documents matching a provided filter.
 
@@ -2331,17 +2335,18 @@ class Collection(Generic[DOC]):
             max_time_ms: an alias for `data_operation_timeout_ms`.
 
         Returns:
-            a DeleteResult object summarizing the outcome of the delete operation.
+            a CollectionDeleteResult object summarizing the outcome of the
+            delete operation.
 
         Example:
             >>> my_coll.insert_many([{"seq": 1}, {"seq": 0}, {"seq": 2}])
-            InsertManyResult(...)
+            CollectionInsertManyResult(...)
             >>> my_coll.delete_many({"seq": {"$lte": 1}})
-            DeleteResult(raw_results=..., deleted_count=2)
+            CollectionDeleteResult(raw_results=..., deleted_count=2)
             >>> my_coll.distinct("seq")
             [2]
             >>> my_coll.delete_many({"seq": {"$lte": 1}})
-            DeleteResult(raw_results=..., deleted_count=0)
+            CollectionDeleteResult(raw_results=..., deleted_count=0)
 
         Note:
             This operation is in general not atomic. Depending on the amount
@@ -2381,7 +2386,7 @@ class Collection(Generic[DOC]):
             logger.info(f"finished deleteMany on '{self.name}'")
             # if errors, quit early
             if this_dm_response.get("errors", []):
-                partial_result = DeleteResult(
+                partial_result = CollectionDeleteResult(
                     deleted_count=deleted_count,
                     raw_results=dm_responses,
                 )
@@ -2394,7 +2399,7 @@ class Collection(Generic[DOC]):
             else:
                 this_dc = this_dm_response.get("status", {}).get("deletedCount")
                 if this_dc is None:
-                    raise DataAPIFaultyResponseException(
+                    raise UnexpectedDataAPIResponseException(
                         text="Faulty response from delete_many API command.",
                         raw_response=this_dm_response,
                     )
@@ -2403,7 +2408,7 @@ class Collection(Generic[DOC]):
                 must_proceed = this_dm_response.get("status", {}).get("moreData", False)
 
         logger.info(f"finished delete_many on '{self.name}'")
-        return DeleteResult(
+        return CollectionDeleteResult(
             deleted_count=deleted_count,
             raw_results=dm_responses,
         )
@@ -2491,7 +2496,11 @@ class Collection(Generic[DOC]):
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
-        _cmd_desc = ",".join(sorted((body or {}).keys()))
+        _cmd_desc: str
+        if body:
+            _cmd_desc = ",".join(sorted(body.keys()))
+        else:
+            _cmd_desc = "(none)"
         logger.info(f"command={_cmd_desc} on '{self.name}'")
         command_result = self._api_commander.request(
             payload=body,
@@ -3020,7 +3029,7 @@ class AsyncCollection(Generic[DOC]):
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> InsertOneResult:
+    ) -> CollectionInsertOneResult:
         """
         Insert a single document in the collection in an atomic operation.
 
@@ -3033,7 +3042,7 @@ class AsyncCollection(Generic[DOC]):
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            an InsertOneResult object.
+            a CollectionInsertOneResult object.
 
         Example:
             >>> async def write_and_count(acol: AsyncCollection) -> None:
@@ -3056,7 +3065,7 @@ class AsyncCollection(Generic[DOC]):
             count1 2
 
             >>> asyncio.run(my_async_coll.insert_one({"tag": v", "$vector": [10, 11]}))
-            InsertOneResult(...)
+            CollectionInsertOneResult(...)
 
         Note:
             If an `_id` is explicitly provided, which corresponds to a document
@@ -3079,7 +3088,7 @@ class AsyncCollection(Generic[DOC]):
         if "insertedIds" in io_response.get("status", {}):
             if io_response["status"]["insertedIds"]:
                 inserted_id = io_response["status"]["insertedIds"][0]
-                return InsertOneResult(
+                return CollectionInsertOneResult(
                     raw_results=[io_response],
                     inserted_id=inserted_id,
                 )
@@ -3104,7 +3113,7 @@ class AsyncCollection(Generic[DOC]):
         request_timeout_ms: int | None = None,
         data_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> InsertManyResult:
+    ) -> CollectionInsertManyResult:
         """
         Insert a list of documents into the collection.
         This is not an atomic operation.
@@ -3130,7 +3139,7 @@ class AsyncCollection(Generic[DOC]):
             max_time_ms: an alias for `data_operation_timeout_ms`.
 
         Returns:
-            an InsertManyResult object.
+            a CollectionInsertManyResult object.
 
         Examples:
             >>> async def write_and_count(acol: AsyncCollection) -> None:
@@ -3165,7 +3174,7 @@ class AsyncCollection(Generic[DOC]):
             ...         {"tag": "b", "$vector": [3, 4]},
             ...     ]
             ... ))
-            InsertManyResult(...)
+            CollectionInsertManyResult(...)
 
         Note:
             Unordered insertions are executed with some degree of concurrency,
@@ -3248,7 +3257,7 @@ class AsyncCollection(Generic[DOC]):
                 raw_results += [chunk_response]
                 # if errors, quit early
                 if chunk_response.get("errors", []):
-                    partial_result = InsertManyResult(
+                    partial_result = CollectionInsertManyResult(
                         raw_results=raw_results,
                         inserted_ids=inserted_ids,
                     )
@@ -3259,7 +3268,7 @@ class AsyncCollection(Generic[DOC]):
                     )
 
             # return
-            full_result = InsertManyResult(
+            full_result = CollectionInsertManyResult(
                 raw_results=raw_results,
                 inserted_ids=inserted_ids,
             )
@@ -3322,7 +3331,7 @@ class AsyncCollection(Generic[DOC]):
             if any(
                 [chunk_response.get("errors", []) for chunk_response in raw_results]
             ):
-                partial_result = InsertManyResult(
+                partial_result = CollectionInsertManyResult(
                     raw_results=raw_results,
                     inserted_ids=inserted_ids,
                 )
@@ -3333,7 +3342,7 @@ class AsyncCollection(Generic[DOC]):
                 )
 
             # return
-            full_result = InsertManyResult(
+            full_result = CollectionInsertManyResult(
                 raw_results=raw_results,
                 inserted_ids=inserted_ids,
             )
@@ -3676,7 +3685,7 @@ class AsyncCollection(Generic[DOC]):
             timeout_ms=_request_timeout_ms,
         )
         if "document" not in (fo_response.get("data") or {}):
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from findOne API command.",
                 raw_response=fo_response,
             )
@@ -3900,7 +3909,7 @@ class AsyncCollection(Generic[DOC]):
                 else:
                     return count
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from count_documents API command.",
                 raw_response=cd_response,
             )
@@ -3944,7 +3953,7 @@ class AsyncCollection(Generic[DOC]):
             count: int = ed_response["status"]["count"]
             return count
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from estimated_document_count API command.",
                 raw_response=ed_response,
             )
@@ -4087,7 +4096,7 @@ class AsyncCollection(Generic[DOC]):
             else:
                 return ret_document  # type: ignore[no-any-return]
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from find_one_and_replace API command.",
                 raw_response=fo_response,
             )
@@ -4101,7 +4110,7 @@ class AsyncCollection(Generic[DOC]):
         upsert: bool = False,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> UpdateResult:
+    ) -> CollectionUpdateResult:
         """
         Replace a single document on the collection with a new one,
         optionally inserting a new one if no match is found.
@@ -4130,7 +4139,8 @@ class AsyncCollection(Generic[DOC]):
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            an UpdateResult object summarizing the outcome of the replace operation.
+            an CollectionUpdateResult object summarizing the outcome of
+            the replace operation.
 
         Example:
             >>> async def do_replace_one(acol: AsyncCollection) -> None:
@@ -4190,12 +4200,12 @@ class AsyncCollection(Generic[DOC]):
         if "document" in fo_response.get("data", {}):
             fo_status = fo_response.get("status") or {}
             _update_info = _prepare_update_info([fo_status])
-            return UpdateResult(
+            return CollectionUpdateResult(
                 raw_results=[fo_response],
                 update_info=_update_info,
             )
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from find_one_and_replace API command.",
                 raw_response=fo_response,
             )
@@ -4344,7 +4354,7 @@ class AsyncCollection(Generic[DOC]):
             else:
                 return ret_document  # type: ignore[no-any-return]
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from find_one_and_update API command.",
                 raw_response=fo_response,
             )
@@ -4358,7 +4368,7 @@ class AsyncCollection(Generic[DOC]):
         upsert: bool = False,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> UpdateResult:
+    ) -> CollectionUpdateResult:
         """
         Update a single document on the collection as requested,
         optionally inserting a new one if no match is found.
@@ -4393,7 +4403,8 @@ class AsyncCollection(Generic[DOC]):
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            an UpdateResult object summarizing the outcome of the update operation.
+            an CollectionUpdateResult object summarizing the outcome of
+            the update operation.
 
         Example:
             >>> async def do_update_one(acol: AsyncCollection) -> None:
@@ -4450,12 +4461,12 @@ class AsyncCollection(Generic[DOC]):
         if "status" in uo_response:
             uo_status = uo_response["status"]
             _update_info = _prepare_update_info([uo_status])
-            return UpdateResult(
+            return CollectionUpdateResult(
                 raw_results=[uo_response],
                 update_info=_update_info,
             )
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from update_one API command.",
                 raw_response=uo_response,
             )
@@ -4469,7 +4480,7 @@ class AsyncCollection(Generic[DOC]):
         request_timeout_ms: int | None = None,
         data_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> UpdateResult:
+    ) -> CollectionUpdateResult:
         """
         Apply an update operation to all documents matching a condition,
         optionally inserting one documents in absence of matches.
@@ -4503,7 +4514,8 @@ class AsyncCollection(Generic[DOC]):
             max_time_ms: an alias for `data_operation_timeout_ms`.
 
         Returns:
-            an UpdateResult object summarizing the outcome of the update operation.
+            an CollectionUpdateResult object summarizing the outcome of
+            the update operation.
 
         Example:
             >>> async def do_update_many(acol: AsyncCollection) -> None:
@@ -4584,7 +4596,7 @@ class AsyncCollection(Generic[DOC]):
             # if errors, quit early
             if this_um_response.get("errors", []):
                 partial_update_info = _prepare_update_info(um_statuses)
-                partial_result = UpdateResult(
+                partial_result = CollectionUpdateResult(
                     raw_results=um_responses,
                     update_info=partial_update_info,
                 )
@@ -4596,7 +4608,7 @@ class AsyncCollection(Generic[DOC]):
                 )
             else:
                 if "status" not in this_um_response:
-                    raise DataAPIFaultyResponseException(
+                    raise UnexpectedDataAPIResponseException(
                         text="Faulty response from update_many API command.",
                         raw_response=this_um_response,
                     )
@@ -4612,7 +4624,7 @@ class AsyncCollection(Generic[DOC]):
 
         update_info = _prepare_update_info(um_statuses)
         logger.info(f"finished update_many on '{self.name}'")
-        return UpdateResult(
+        return CollectionUpdateResult(
             raw_results=um_responses,
             update_info=update_info,
         )
@@ -4722,7 +4734,7 @@ class AsyncCollection(Generic[DOC]):
             if deleted_count == 0:
                 return None
             else:
-                raise DataAPIFaultyResponseException(
+                raise UnexpectedDataAPIResponseException(
                     text="Faulty response from find_one_and_delete API command.",
                     raw_response=fo_response,
                 )
@@ -4734,7 +4746,7 @@ class AsyncCollection(Generic[DOC]):
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DeleteResult:
+    ) -> CollectionDeleteResult:
         """
         Delete one document matching a provided filter.
         This method never deletes more than a single document, regardless
@@ -4759,24 +4771,25 @@ class AsyncCollection(Generic[DOC]):
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            a DeleteResult object summarizing the outcome of the delete operation.
+            a CollectionDeleteResult object summarizing the outcome of the
+            delete operation.
 
         Example:
             >>> my_coll.insert_many([{"seq": 1}, {"seq": 0}, {"seq": 2}])
-            InsertManyResult(...)
+            CollectionInsertManyResult(...)
             >>> my_coll.delete_one({"seq": 1})
-            DeleteResult(raw_results=..., deleted_count=1)
+            CollectionDeleteResult(raw_results=..., deleted_count=1)
             >>> my_coll.distinct("seq")
             [0, 2]
             >>> my_coll.delete_one(
             ...     {"seq": {"$exists": True}},
             ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
             ... )
-            DeleteResult(raw_results=..., deleted_count=1)
+            CollectionDeleteResult(raw_results=..., deleted_count=1)
             >>> my_coll.distinct("seq")
             [0]
             >>> my_coll.delete_one({"seq": 2})
-            DeleteResult(raw_results=..., deleted_count=0)
+            CollectionDeleteResult(raw_results=..., deleted_count=0)
         """
 
         _request_timeout_ms = (
@@ -4802,12 +4815,12 @@ class AsyncCollection(Generic[DOC]):
         logger.info(f"finished deleteOne on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
             deleted_count = do_response["status"]["deletedCount"]
-            return DeleteResult(
+            return CollectionDeleteResult(
                 deleted_count=deleted_count,
                 raw_results=[do_response],
             )
         else:
-            raise DataAPIFaultyResponseException(
+            raise UnexpectedDataAPIResponseException(
                 text="Faulty response from delete_one API command.",
                 raw_response=do_response,
             )
@@ -4819,7 +4832,7 @@ class AsyncCollection(Generic[DOC]):
         request_timeout_ms: int | None = None,
         data_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> DeleteResult:
+    ) -> CollectionDeleteResult:
         """
         Delete all documents matching a provided filter.
 
@@ -4843,7 +4856,8 @@ class AsyncCollection(Generic[DOC]):
             max_time_ms: an alias for `data_operation_timeout_ms`.
 
         Returns:
-            a DeleteResult object summarizing the outcome of the delete operation.
+            a CollectionDeleteResult object summarizing the outcome of the
+            delete operation.
 
         Example:
             >>> async def do_delete_many(acol: AsyncCollection) -> None:
@@ -4898,7 +4912,7 @@ class AsyncCollection(Generic[DOC]):
             logger.info(f"finished deleteMany on '{self.name}'")
             # if errors, quit early
             if this_dm_response.get("errors", []):
-                partial_result = DeleteResult(
+                partial_result = CollectionDeleteResult(
                     deleted_count=deleted_count,
                     raw_results=dm_responses,
                 )
@@ -4911,7 +4925,7 @@ class AsyncCollection(Generic[DOC]):
             else:
                 this_dc = this_dm_response.get("status", {}).get("deletedCount")
                 if this_dc is None:
-                    raise DataAPIFaultyResponseException(
+                    raise UnexpectedDataAPIResponseException(
                         text="Faulty response from delete_many API command.",
                         raw_response=this_dm_response,
                     )
@@ -4920,7 +4934,7 @@ class AsyncCollection(Generic[DOC]):
                 must_proceed = this_dm_response.get("status", {}).get("moreData", False)
 
         logger.info(f"finished delete_many on '{self.name}'")
-        return DeleteResult(
+        return CollectionDeleteResult(
             deleted_count=deleted_count,
             raw_results=dm_responses,
         )
@@ -5012,7 +5026,11 @@ class AsyncCollection(Generic[DOC]):
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
-        _cmd_desc = ",".join(sorted((body or ({} or {})).keys()))
+        _cmd_desc: str
+        if body:
+            _cmd_desc = ",".join(sorted(body.keys()))
+        else:
+            _cmd_desc = "(none)"
         logger.info(f"command={_cmd_desc} on '{self.name}'")
         command_result = await self._api_commander.async_request(
             payload=body,

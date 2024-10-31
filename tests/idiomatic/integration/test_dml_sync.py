@@ -23,7 +23,7 @@ from astrapy.constants import DefaultDocumentType, ReturnDocument, SortDocuments
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.exceptions import DataAPIResponseException, InsertManyException
 from astrapy.ids import UUID, ObjectId
-from astrapy.results import DeleteResult, InsertOneResult
+from astrapy.results import CollectionDeleteResult, CollectionInsertOneResult
 from astrapy.utils.api_options import APIOptions, WireFormatOptions
 
 from ..conftest import DefaultCollection
@@ -82,7 +82,7 @@ class TestDMLSync:
         sync_empty_collection: DefaultCollection,
     ) -> None:
         io_result1 = sync_empty_collection.insert_one({"doc": 1, "group": "A"})
-        assert isinstance(io_result1, InsertOneResult)
+        assert isinstance(io_result1, CollectionInsertOneResult)
         io_result2 = sync_empty_collection.insert_one(
             {"_id": "xxx", "doc": 2, "group": "B"}
         )
@@ -236,7 +236,7 @@ class TestDMLSync:
         sync_empty_collection.insert_one({"doc": 3, "group": "A"})
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 3
         do_result1 = sync_empty_collection.delete_one({"group": "A"})
-        assert isinstance(do_result1, DeleteResult)
+        assert isinstance(do_result1, CollectionDeleteResult)
         assert do_result1.deleted_count == 1
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 2
 
@@ -255,7 +255,7 @@ class TestDMLSync:
         sync_empty_collection.insert_one({"doc": 3, "group": "A"})
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 3
         do_result1 = sync_empty_collection.delete_many({"group": "A"})
-        assert isinstance(do_result1, DeleteResult)
+        assert isinstance(do_result1, CollectionDeleteResult)
         assert do_result1.deleted_count == 2
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 1
 
@@ -274,7 +274,7 @@ class TestDMLSync:
         sync_empty_collection.insert_many([{"doc": i, "group": "B"} for i in range(10)])
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 60
         do_result1 = sync_empty_collection.delete_many({"group": "A"})
-        assert isinstance(do_result1, DeleteResult)
+        assert isinstance(do_result1, CollectionDeleteResult)
         assert do_result1.deleted_count == 50
         assert sync_empty_collection.count_documents(filter={}, upper_bound=100) == 10
 
