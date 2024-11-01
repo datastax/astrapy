@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import Enum
@@ -43,6 +44,9 @@ from astrapy.utils.unset import _UNSET, UnsetType
 TRAW = TypeVar("TRAW")
 T = TypeVar("T")
 TNEW = TypeVar("TNEW")
+
+
+logger = logging.getLogger(__name__)
 
 
 class CursorState(Enum):
@@ -228,10 +232,16 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         converted_f_payload = preprocess_collection_payload(
             f_payload, options=self.collection.api_options.serdes_options
         )
-        raw_f_response = self.collection.command(
-            body=converted_f_payload,
-            request_timeout_ms=request_timeout_ms,
+
+        _page_str = page_state if page_state else "(empty page state)"
+        _coll_name = self.collection.name if self.collection else "(none)"
+        logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}")
+        raw_f_response = self.collection._api_commander.request(
+            payload=converted_f_payload,
+            timeout_ms=request_timeout_ms,
         )
+        logger.info(f"cursor finished fetching a page: {_page_str} from {_coll_name}")
+
         f_response = postprocess_collection_response(
             raw_f_response, options=self.collection.api_options.serdes_options
         )
@@ -266,10 +276,18 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         converted_f_payload = preprocess_collection_payload(
             f_payload, options=self.async_collection.api_options.serdes_options
         )
-        raw_f_response = await self.async_collection.command(
-            body=converted_f_payload,
-            request_timeout_ms=request_timeout_ms,
+
+        _page_str = page_state if page_state else "(empty page state)"
+        _coll_name = self.async_collection.name if self.async_collection else "(none)"
+        logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}, async")
+        raw_f_response = await self.async_collection._api_commander.async_request(
+            payload=converted_f_payload,
+            timeout_ms=request_timeout_ms,
         )
+        logger.info(
+            f"cursor finished fetching a page: {_page_str} from {_coll_name}, async"
+        )
+
         f_response = postprocess_collection_response(
             raw_f_response,
             options=self.async_collection.api_options.serdes_options,
@@ -346,10 +364,16 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
                 },
             }
         )
-        f_response = self.table.command(
-            body=f_payload,
-            request_timeout_ms=request_timeout_ms,
+
+        _page_str = page_state if page_state else "(empty page state)"
+        _table_name = self.table.name if self.table else "(none)"
+        logger.info(f"cursor fetching a page: {_page_str} from {_table_name}")
+        f_response = self.table._api_commander.request(
+            payload=f_payload,
+            timeout_ms=request_timeout_ms,
         )
+        logger.info(f"cursor finished fetching a page: {_page_str} from {_table_name}")
+
         if "documents" not in f_response.get("data", {}):
             raise UnexpectedDataAPIResponseException(
                 text="Response from find API command missing 'documents'.",
@@ -388,10 +412,16 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
                 },
             }
         )
-        f_response = await self.async_table.command(
-            body=f_payload,
-            request_timeout_ms=request_timeout_ms,
+
+        _page_str = page_state if page_state else "(empty page state)"
+        _table_name = self.async_table.name if self.async_table else "(none)"
+        logger.info(f"cursor fetching a page: {_page_str} from {_table_name}")
+        f_response = await self.async_table._api_commander.async_request(
+            payload=f_payload,
+            timeout_ms=request_timeout_ms,
         )
+        logger.info(f"cursor finished fetching a page: {_page_str} from {_table_name}")
+
         if "documents" not in f_response.get("data", {}):
             raise UnexpectedDataAPIResponseException(
                 text="Response from find API command missing 'documents'.",
