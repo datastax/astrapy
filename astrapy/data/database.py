@@ -38,6 +38,7 @@ from astrapy.constants import (
 from astrapy.exceptions import (
     DevOpsAPIException,
     UnexpectedDataAPIResponseException,
+    _TimeoutContext,
 )
 from astrapy.info import (
     AstraDBDatabaseInfo,
@@ -838,7 +839,7 @@ class Database:
         logger.info(f"createCollection('{name}')")
         cc_response = driver_commander.request(
             payload=cc_payload,
-            timeout_ms=_schema_operation_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
         )
         if cc_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -907,7 +908,7 @@ class Database:
         logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = driver_commander.request(
             payload=dc_payload,
-            timeout_ms=_schema_operation_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
         )
         if dc_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -958,7 +959,7 @@ class Database:
         logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -1009,7 +1010,7 @@ class Database:
         logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -1280,7 +1281,7 @@ class Database:
         logger.info(f"createTable('{name}')")
         ct_response = driver_commander.request(
             payload=cc_payload,
-            timeout_ms=_schema_operation_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
         )
         if ct_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -1349,7 +1350,7 @@ class Database:
         logger.info(f"dropTable('{_table_name}')")
         dt_response = driver_commander.request(
             payload=dt_payload,
-            timeout_ms=_schema_operation_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
         )
         if dt_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -1400,7 +1401,7 @@ class Database:
         logger.info("listTables")
         lt_response = driver_commander.request(
             payload=lt_payload,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         if "tables" not in lt_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -1451,7 +1452,7 @@ class Database:
         logger.info("listTables")
         lt_response = driver_commander.request(
             payload=lt_payload,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         if "tables" not in lt_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -1529,7 +1530,7 @@ class Database:
             req_response = driver_commander.request(
                 payload=body,
                 raise_api_errors=raise_api_errors,
-                timeout_ms=_request_timeout_ms,
+                timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
             )
             logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             return req_response
@@ -2346,7 +2347,7 @@ class AsyncDatabase:
         logger.info(f"createCollection('{name}')")
         cc_response = await driver_commander.async_request(
             payload=cc_payload,
-            timeout_ms=_schema_operation_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
         )
         if cc_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -2415,7 +2416,7 @@ class AsyncDatabase:
         logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = await driver_commander.async_request(
             payload=dc_payload,
-            timeout_ms=_schema_operation_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
         )
         if dc_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -2468,7 +2469,7 @@ class AsyncDatabase:
         logger.info("findCollections")
         gc_response = await driver_commander.async_request(
             payload=gc_payload,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -2519,7 +2520,7 @@ class AsyncDatabase:
         logger.info("findCollections")
         gc_response = await driver_commander.async_request(
             payload=gc_payload,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         if "collections" not in gc_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -2792,7 +2793,7 @@ class AsyncDatabase:
         logger.info(f"createTable('{name}')")
         ct_response = await driver_commander.async_request(
             payload=cc_payload,
-            timeout_ms=_schema_operation_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
         )
         if ct_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -2861,7 +2862,7 @@ class AsyncDatabase:
         logger.info(f"dropTable('{_table_name}')")
         dt_response = await driver_commander.async_request(
             payload=dt_payload,
-            timeout_ms=_schema_operation_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
         )
         if dt_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -2915,7 +2916,7 @@ class AsyncDatabase:
         logger.info("listTables")
         lt_response = driver_commander.request(
             payload=lt_payload,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         if "tables" not in lt_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -2972,7 +2973,7 @@ class AsyncDatabase:
         logger.info("listTables")
         lt_response = await driver_commander.async_request(
             payload=lt_payload,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         if "tables" not in lt_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -3054,7 +3055,7 @@ class AsyncDatabase:
             req_response = await driver_commander.async_request(
                 payload=body,
                 raise_api_errors=raise_api_errors,
-                timeout_ms=_request_timeout_ms,
+                timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
             )
             logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
             return req_response

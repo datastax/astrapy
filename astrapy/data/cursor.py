@@ -36,6 +36,7 @@ from astrapy.exceptions import (
     CursorException,
     MultiCallTimeoutManager,
     UnexpectedDataAPIResponseException,
+    _TimeoutContext,
 )
 from astrapy.utils.unset import _UNSET, UnsetType
 
@@ -154,7 +155,7 @@ class _QueryEngine(ABC, Generic[TRAW]):
         self,
         *,
         page_state: str | None,
-        request_timeout_ms: int | None,
+        timeout_context: _TimeoutContext,
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
         """Run a query for one page and return (entries, next-page-state, response.status)."""
         ...
@@ -164,7 +165,7 @@ class _QueryEngine(ABC, Generic[TRAW]):
         self,
         *,
         page_state: str | None,
-        request_timeout_ms: int | None,
+        timeout_context: _TimeoutContext,
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
         """Run a query for one page and return (entries, next-page-state, response.status)."""
         ...
@@ -216,7 +217,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         self,
         *,
         page_state: str | None,
-        request_timeout_ms: int | None,
+        timeout_context: _TimeoutContext,
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
         if self.collection is None:
             raise ValueError("Query engine has no sync collection.")
@@ -238,7 +239,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}")
         raw_f_response = self.collection._api_commander.request(
             payload=converted_f_payload,
-            timeout_ms=request_timeout_ms,
+            timeout_context=timeout_context,
         )
         logger.info(f"cursor finished fetching a page: {_page_str} from {_coll_name}")
 
@@ -260,7 +261,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         self,
         *,
         page_state: str | None,
-        request_timeout_ms: int | None,
+        timeout_context: _TimeoutContext,
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
         if self.async_collection is None:
             raise ValueError("Query engine has no async collection.")
@@ -282,7 +283,7 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         logger.info(f"cursor fetching a page: {_page_str} from {_coll_name}, async")
         raw_f_response = await self.async_collection._api_commander.async_request(
             payload=converted_f_payload,
-            timeout_ms=request_timeout_ms,
+            timeout_context=timeout_context,
         )
         logger.info(
             f"cursor finished fetching a page: {_page_str} from {_coll_name}, async"
@@ -349,7 +350,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         self,
         *,
         page_state: str | None,
-        request_timeout_ms: int | None,
+        timeout_context: _TimeoutContext,
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
         if self.table is None:
             raise ValueError("Query engine has no sync table.")
@@ -370,7 +371,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         logger.info(f"cursor fetching a page: {_page_str} from {_table_name}")
         f_response = self.table._api_commander.request(
             payload=f_payload,
-            timeout_ms=request_timeout_ms,
+            timeout_context=timeout_context,
         )
         logger.info(f"cursor finished fetching a page: {_page_str} from {_table_name}")
 
@@ -397,7 +398,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         self,
         *,
         page_state: str | None,
-        request_timeout_ms: int | None,
+        timeout_context: _TimeoutContext,
     ) -> tuple[list[TRAW], str | None, dict[str, Any] | None]:
         if self.async_table is None:
             raise ValueError("Query engine has no async table.")
@@ -418,7 +419,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         logger.info(f"cursor fetching a page: {_page_str} from {_table_name}")
         f_response = await self.async_table._api_commander.async_request(
             payload=f_payload,
-            timeout_ms=request_timeout_ms,
+            timeout_context=timeout_context,
         )
         logger.info(f"cursor finished fetching a page: {_page_str} from {_table_name}")
 
@@ -555,7 +556,7 @@ class CollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
                 new_buffer, next_page_state, resp_status = (
                     self._query_engine.fetch_page(
                         page_state=self._next_page_state,
-                        request_timeout_ms=self._timeout_manager.remaining_timeout_ms(
+                        timeout_context=self._timeout_manager.remaining_timeout(
                             cap_time_ms=self._request_timeout_ms,
                         ),
                     )
@@ -850,7 +851,7 @@ class AsyncCollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
                     resp_status,
                 ) = await self._query_engine.async_fetch_page(
                     page_state=self._next_page_state,
-                    request_timeout_ms=self._timeout_manager.remaining_timeout_ms(
+                    timeout_context=self._timeout_manager.remaining_timeout(
                         cap_time_ms=self._request_timeout_ms,
                     ),
                 )
@@ -1146,7 +1147,7 @@ class TableCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
                 new_buffer, next_page_state, resp_status = (
                     self._query_engine.fetch_page(
                         page_state=self._next_page_state,
-                        request_timeout_ms=self._timeout_manager.remaining_timeout_ms(
+                        timeout_context=self._timeout_manager.remaining_timeout(
                             cap_time_ms=self._request_timeout_ms,
                         ),
                     )
@@ -1441,7 +1442,7 @@ class AsyncTableCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
                     resp_status,
                 ) = await self._query_engine.async_fetch_page(
                     page_state=self._next_page_state,
-                    request_timeout_ms=self._timeout_manager.remaining_timeout_ms(
+                    timeout_context=self._timeout_manager.remaining_timeout(
                         cap_time_ms=self._request_timeout_ms,
                     ),
                 )

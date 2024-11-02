@@ -19,6 +19,8 @@ from typing import Any
 
 import httpx
 
+from astrapy.exceptions import _TimeoutContext
+
 logger = logging.getLogger(__name__)
 
 
@@ -28,7 +30,7 @@ def log_httpx_request(
     request_params: dict[str, Any] | None,
     redacted_request_headers: dict[str, str],
     payload: dict[str, Any] | None,
-    timeout_ms: int | None,
+    timeout_context: _TimeoutContext,
 ) -> None:
     """
     Log the details of an HTTP request for debugging purposes.
@@ -48,8 +50,11 @@ def log_httpx_request(
         logger.debug(f"Request headers: {redacted_request_headers}")
     if payload:
         logger.debug(f"Request payload: {payload}")
-    if timeout_ms:
-        logger.debug(f"Timeout (ms): {timeout_ms}")
+    if timeout_context:
+        logger.debug(
+            f"Timeout (ms): for request {timeout_context.request_ms or '(unset)'} ms"
+            f", overall operation {timeout_context.nominal_ms or '(unset)'} ms"
+        )
 
 
 def log_httpx_response(response: httpx.Response) -> None:
@@ -72,8 +77,8 @@ class HttpMethod:
     DELETE = "DELETE"
 
 
-def to_httpx_timeout(timeout_ms: int | None) -> httpx.Timeout | None:
-    if timeout_ms is None:
+def to_httpx_timeout(timeout_context: _TimeoutContext) -> httpx.Timeout | None:
+    if timeout_context.request_ms is None:
         return None
     else:
-        return httpx.Timeout(timeout_ms / 1000)
+        return httpx.Timeout(timeout_context.request_ms / 1000)

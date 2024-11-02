@@ -36,6 +36,7 @@ from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
     TableNotFoundException,
     UnexpectedDataAPIResponseException,
+    _TimeoutContext,
 )
 from astrapy.info import TableIndexDefinition, TableInfo, TableVectorIndexDefinition
 from astrapy.results import TableDeleteResult, TableInsertOneResult
@@ -410,7 +411,7 @@ class Table(Generic[ROW]):
         logger.info(f"{ci_command}('{i_name}')")
         ci_response = self._api_commander.request(
             payload=ci_payload,
-            timeout_ms=_schema_operation_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
         )
         if ci_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -573,7 +574,7 @@ class Table(Generic[ROW]):
         logger.info(f"dropIndex('{name}')")
         di_response = self._api_commander.request(
             payload=di_payload,
-            timeout_ms=_schema_operation_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
         )
         if di_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -604,7 +605,7 @@ class Table(Generic[ROW]):
         logger.info(f"insertOne on '{self.name}'")
         io_response = self._api_commander.request(
             payload=io_payload,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         logger.info(f"finished insertOne on '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
@@ -701,7 +702,7 @@ class Table(Generic[ROW]):
         )
         fo_response = self._api_commander.request(
             payload=fo_payload,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         if "document" not in (fo_response.get("data") or {}):
             raise UnexpectedDataAPIResponseException(
@@ -808,7 +809,7 @@ class Table(Generic[ROW]):
         logger.info(f"deleteOne on '{self.name}'")
         do_response = self._api_commander.request(
             payload=do_payload,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         logger.info(f"finished deleteOne on '{self.name}'")
         if do_response.get("status", {}).get("deletedCount") == -1:
@@ -868,7 +869,7 @@ class Table(Generic[ROW]):
         command_result = self._api_commander.request(
             payload=body,
             raise_api_errors=raise_api_errors,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         logger.info(f"finished command={_cmd_desc} on '{self.name}'")
         return command_result
@@ -1212,7 +1213,7 @@ class AsyncTable(Generic[ROW]):
         logger.info(f"{ci_command}('{i_name}')")
         ci_response = await self._api_commander.async_request(
             payload=ci_payload,
-            timeout_ms=_schema_operation_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
         )
         if ci_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -1375,7 +1376,7 @@ class AsyncTable(Generic[ROW]):
         logger.info(f"dropIndex('{name}')")
         di_response = await self._api_commander.async_request(
             payload=di_payload,
-            timeout_ms=_schema_operation_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
         )
         if di_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -1406,7 +1407,7 @@ class AsyncTable(Generic[ROW]):
         logger.info(f"insertOne on '{self.name}'")
         io_response = await self._api_commander.async_request(
             payload=io_payload,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         logger.info(f"finished insertOne on '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
@@ -1503,7 +1504,7 @@ class AsyncTable(Generic[ROW]):
         )
         fo_response = await self._api_commander.async_request(
             payload=fo_payload,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         if "document" not in (fo_response.get("data") or {}):
             raise UnexpectedDataAPIResponseException(
@@ -1610,7 +1611,7 @@ class AsyncTable(Generic[ROW]):
         logger.info(f"deleteOne on '{self.name}'")
         do_response = await self._api_commander.async_request(
             payload=do_payload,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         logger.info(f"finished deleteOne on '{self.name}'")
         if do_response.get("status", {}).get("deletedCount") == -1:
@@ -1671,7 +1672,7 @@ class AsyncTable(Generic[ROW]):
         command_result = await self._api_commander.async_request(
             payload=body,
             raise_api_errors=raise_api_errors,
-            timeout_ms=_request_timeout_ms,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
         )
         logger.info(f"finished command={_cmd_desc} on '{self.name}'")
         return command_result

@@ -748,31 +748,13 @@ class UpdateManyException(CumulativeOperationException):
         self.partial_result = partial_result
 
 
-def _httpx_timeout_to_ms(req_timeout: httpx.Timeout | None) -> int | None:
-    if req_timeout is None:
-        return None
-    timeouts_s = [
-        to
-        for to in [
-            req_timeout.connect,
-            req_timeout.pool,
-            req_timeout.read,
-            req_timeout.write,
-        ]
-        if to is not None
-    ]
-    if timeouts_s:
-        return int(1000.0 * min(timeouts_s))
-    return None
-
-
 def to_dataapi_timeout_exception(
     httpx_timeout: httpx.TimeoutException,
-    req_timeout: httpx.Timeout | None,
+    timeout_context: _TimeoutContext,
 ) -> DataAPITimeoutException:
     text: str
     text_0 = str(httpx_timeout) or "timed out"
-    timeout_ms = _httpx_timeout_to_ms(req_timeout)
+    timeout_ms = timeout_context.nominal_ms or timeout_context.request_ms
     if timeout_ms:
         text = f"{text_0} (timeout honoured: {timeout_ms} ms)"
     else:
@@ -806,11 +788,11 @@ def to_dataapi_timeout_exception(
 
 def to_devopsapi_timeout_exception(
     httpx_timeout: httpx.TimeoutException,
-    req_timeout: httpx.Timeout | None,
+    timeout_context: _TimeoutContext,
 ) -> DevOpsAPITimeoutException:
     text: str
     text_0 = str(httpx_timeout) or "timed out"
-    timeout_ms = _httpx_timeout_to_ms(req_timeout)
+    timeout_ms = timeout_context.nominal_ms or timeout_context.request_ms
     if timeout_ms:
         text = f"{text_0} (timeout honoured: {timeout_ms} ms)"
     else:
@@ -842,6 +824,28 @@ def to_devopsapi_timeout_exception(
     )
 
 
+@dataclass
+class _TimeoutContext:
+    """
+    TODO
+    """
+
+    nominal_ms: int | None
+    request_ms: int | None
+
+    def __init__(
+        self,
+        *,
+        request_ms: int | None,
+        nominal_ms: int | None = None,
+    ) -> None:
+        self.nominal_ms = nominal_ms
+        self.request_ms = request_ms
+
+    def __bool__(self) -> bool:
+        return self.nominal_ms is not None or self.request_ms is not None
+
+
 class MultiCallTimeoutManager:
     """
     A helper class to keep track of timing and timeouts
@@ -871,7 +875,7 @@ class MultiCallTimeoutManager:
         else:
             self.deadline_ms = None
 
-    def remaining_timeout_ms(self, cap_time_ms: int | None = None) -> int | None:
+    def remaining_timeout(self, cap_time_ms: int | None = None) -> _TimeoutContext:
         """
         Ensure the deadline, if any, is not yet in the past.
         If it is, raise an appropriate timeout error.
@@ -882,15 +886,24 @@ class MultiCallTimeoutManager:
             cap_time_ms: an additional timeout constraint to cap the result of
                 this method. If the remaining timeout from this manager exceeds
                 the provided cap, the cap is returned.
+
+        Returns:
+            TODO
         """
         now_ms = int(time.time() * 1000)
         if self.deadline_ms is not None:
             if now_ms < self.deadline_ms:
                 remaining = self.deadline_ms - now_ms
                 if cap_time_ms is None:
-                    return remaining
+                    return _TimeoutContext(
+                        nominal_ms=self.overall_timeout_ms,
+                        request_ms=remaining,
+                    )
                 else:
-                    return min(remaining, cap_time_ms)
+                    return _TimeoutContext(
+                        nominal_ms=self.overall_timeout_ms,
+                        request_ms=min(remaining, cap_time_ms),
+                    )
             else:
                 if not self.dev_ops_api:
                     raise DataAPITimeoutException(
@@ -908,9 +921,15 @@ class MultiCallTimeoutManager:
                     )
         else:
             if cap_time_ms is None:
-                return None
+                return _TimeoutContext(
+                    nominal_ms=self.overall_timeout_ms,
+                    request_ms=None,
+                )
             else:
-                return cap_time_ms
+                return _TimeoutContext(
+                    nominal_ms=self.overall_timeout_ms,
+                    request_ms=cap_time_ms,
+                )
 
 
 __all__ = [
