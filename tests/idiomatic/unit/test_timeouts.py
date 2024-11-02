@@ -24,7 +24,11 @@ import pytest
 import werkzeug
 from pytest_httpserver import HTTPServer
 
-from astrapy.exceptions import DataAPITimeoutException, DevOpsAPITimeoutException
+from astrapy.exceptions import (
+    DataAPITimeoutException,
+    DevOpsAPITimeoutException,
+    _TimeoutContext,
+)
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.request_tools import HttpMethod
 
@@ -52,7 +56,7 @@ class TestTimeouts:
             method=HttpMethod.POST,
         ).respond_with_handler(response_sleeper)
         with pytest.raises(DataAPITimeoutException):
-            cmd.request(timeout_ms=TIMEOUT_PARAM_MS)
+            cmd.request(timeout_context=_TimeoutContext(request_ms=TIMEOUT_PARAM_MS))
 
     @pytest.mark.describe("test of APICommander timeout, async")
     async def test_apicommander_timeout_async(self, httpserver: HTTPServer) -> None:
@@ -68,7 +72,9 @@ class TestTimeouts:
             method=HttpMethod.POST,
         ).respond_with_handler(response_sleeper)
         with pytest.raises(DataAPITimeoutException):
-            await cmd.async_request(timeout_ms=TIMEOUT_PARAM_MS)
+            await cmd.async_request(
+                timeout_context=_TimeoutContext(request_ms=TIMEOUT_PARAM_MS)
+            )
 
     @pytest.mark.describe("test of APICommander timeout DevOps, sync")
     def test_apicommander_timeout_devops_sync(self, httpserver: HTTPServer) -> None:
@@ -85,7 +91,7 @@ class TestTimeouts:
             method=HttpMethod.POST,
         ).respond_with_handler(response_sleeper)
         with pytest.raises(DevOpsAPITimeoutException):
-            cmd.request(timeout_ms=TIMEOUT_PARAM_MS)
+            cmd.request(timeout_context=_TimeoutContext(request_ms=TIMEOUT_PARAM_MS))
 
     @pytest.mark.describe("test of APICommander timeout DevOps, async")
     async def test_apicommander_timeout_devops_async(
@@ -104,4 +110,6 @@ class TestTimeouts:
             method=HttpMethod.POST,
         ).respond_with_handler(response_sleeper)
         with pytest.raises(DevOpsAPITimeoutException):
-            await cmd.async_request(timeout_ms=TIMEOUT_PARAM_MS)
+            await cmd.async_request(
+                timeout_context=_TimeoutContext(request_ms=TIMEOUT_PARAM_MS)
+            )

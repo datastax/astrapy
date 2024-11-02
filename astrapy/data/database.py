@@ -459,9 +459,9 @@ class Database:
         logger.info("getting database info")
         database_info = fetch_database_info(
             self.api_endpoint,
-            token=self.api_options.token.get_token(),
             keyspace=self.keyspace,
-            max_time_ms=_request_timeout_ms,
+            request_timeout_ms=_request_timeout_ms,
+            api_options=self.api_options,
         )
         if database_info is not None:
             logger.info("finished getting database info")
@@ -1960,9 +1960,9 @@ class AsyncDatabase:
         logger.info("getting database info")
         database_info = await async_fetch_database_info(
             self.api_endpoint,
-            token=self.api_options.token.get_token(),
             keyspace=self.keyspace,
-            max_time_ms=_request_timeout_ms,
+            request_timeout_ms=_request_timeout_ms,
+            api_options=self.api_options,
         )
         if database_info is not None:
             logger.info("finished getting database info")

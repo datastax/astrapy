@@ -257,18 +257,19 @@ class APICommander:
         additional_path: str | None = None,
         request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
-        timeout_context: _TimeoutContext,
+        timeout_context: _TimeoutContext | None = None,
     ) -> httpx.Response:
         request_url = self._compose_request_url(additional_path)
+        _timeout_context = timeout_context or _TimeoutContext(request_ms=None)
         log_httpx_request(
             http_method=http_method,
             full_url=request_url,
             request_params=request_params,
             redacted_request_headers=self._loggable_headers,
             payload=payload,
-            timeout_context=timeout_context,
+            timeout_context=_timeout_context,
         )
-        httpx_timeout_s = to_httpx_timeout(timeout_context)
+        httpx_timeout_s = to_httpx_timeout(_timeout_context)
         encoded_payload = self._encode_payload(payload)
 
         try:
@@ -283,11 +284,11 @@ class APICommander:
         except httpx.TimeoutException as timeout_exc:
             if self.dev_ops_api:
                 raise to_devopsapi_timeout_exception(
-                    timeout_exc, timeout_context=timeout_context
+                    timeout_exc, timeout_context=_timeout_context
                 )
             else:
                 raise to_dataapi_timeout_exception(
-                    timeout_exc, timeout_context=timeout_context
+                    timeout_exc, timeout_context=_timeout_context
                 )
 
         try:
@@ -305,18 +306,19 @@ class APICommander:
         additional_path: str | None = None,
         request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
-        timeout_context: _TimeoutContext,
+        timeout_context: _TimeoutContext | None = None,
     ) -> httpx.Response:
         request_url = self._compose_request_url(additional_path)
+        _timeout_context = timeout_context or _TimeoutContext(request_ms=None)
         log_httpx_request(
             http_method=http_method,
             full_url=request_url,
             request_params=request_params,
             redacted_request_headers=self._loggable_headers,
             payload=payload,
-            timeout_context=timeout_context,
+            timeout_context=_timeout_context,
         )
-        httpx_timeout_s = to_httpx_timeout(timeout_context)
+        httpx_timeout_s = to_httpx_timeout(_timeout_context)
         encoded_payload = self._encode_payload(payload)
 
         try:
@@ -331,11 +333,11 @@ class APICommander:
         except httpx.TimeoutException as timeout_exc:
             if self.dev_ops_api:
                 raise to_devopsapi_timeout_exception(
-                    timeout_exc, timeout_context=timeout_context
+                    timeout_exc, timeout_context=_timeout_context
                 )
             else:
                 raise to_dataapi_timeout_exception(
-                    timeout_exc, timeout_context=timeout_context
+                    timeout_exc, timeout_context=_timeout_context
                 )
 
         try:
@@ -353,7 +355,7 @@ class APICommander:
         additional_path: str | None = None,
         request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
-        timeout_context: _TimeoutContext,
+        timeout_context: _TimeoutContext | None = None,
     ) -> dict[str, Any]:
         raw_response = self.raw_request(
             http_method=http_method,
@@ -375,7 +377,7 @@ class APICommander:
         additional_path: str | None = None,
         request_params: dict[str, Any] = {},
         raise_api_errors: bool = True,
-        timeout_context: _TimeoutContext,
+        timeout_context: _TimeoutContext | None = None,
     ) -> dict[str, Any]:
         raw_response = await self.async_raw_request(
             http_method=http_method,

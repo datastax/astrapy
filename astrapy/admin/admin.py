@@ -56,8 +56,6 @@ from astrapy.settings.defaults import (
     DEV_OPS_KEYSPACE_POLL_INTERVAL_S,
     DEV_OPS_RESPONSE_HTTP_ACCEPTED,
     DEV_OPS_RESPONSE_HTTP_CREATED,
-    DEV_OPS_URL_ENV_MAP,
-    DEV_OPS_VERSION_ENV_MAP,
 )
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import (
@@ -66,6 +64,7 @@ from astrapy.utils.api_options import (
     DevOpsAPIURLOptions,
     FullAPIOptions,
     TimeoutOptions,
+    defaultAPIOptions,
 )
 from astrapy.utils.request_tools import HttpMethod
 from astrapy.utils.unset import _UNSET, UnsetType
@@ -121,9 +120,11 @@ def check_id_endpoint_parg_kwargs(
 def fetch_raw_database_info_from_id_token(
     id: str,
     *,
-    token: str | None,
+    token: str | TokenProvider | UnsetType = _UNSET,
     environment: str = Environment.PROD,
+    request_timeout_ms: int | None = None,
     max_time_ms: int | None = None,
+    api_options: APIOptions | None = None,
 ) -> dict[str, Any]:
     """
     Fetch database information through the DevOps API and return it in
@@ -135,37 +136,63 @@ def fetch_raw_database_info_from_id_token(
         environment: a string representing the target Data API environment.
             It can be left unspecified for the default value of `Environment.PROD`.
             Only Astra DB environments can be meaningfully supplied.
-        max_time_ms: a timeout, in milliseconds, for waiting on a response.
+        request_timeout_ms: a timeout, in milliseconds, for waiting on a response.
+        max_time_ms: an alias for `request_timeout_ms`.
+        api_options: a (possibly partial) specification of the API Options to use.
 
     Returns:
         The full response from the DevOps API about the database.
     """
 
-    ops_headers: dict[str, str | None]
-    if token is not None:
-        ops_headers = {
-            DEFAULT_DEV_OPS_AUTH_HEADER: f"{DEFAULT_DEV_OPS_AUTH_PREFIX}{token}",
+    _api_options = (
+        defaultAPIOptions(environment=environment)
+        .with_override(api_options)
+        .with_override(
+            APIOptions(
+                token=coerce_possible_token_provider(token),
+                timeout_options=TimeoutOptions(
+                    request_timeout_ms=request_timeout_ms or max_time_ms or _UNSET,
+                ),
+            ),
+        )
+    )
+    base_path_components = [
+        comp
+        for comp in (
+            ncomp.strip("/")
+            for ncomp in (
+                _api_options.dev_ops_api_url_options.dev_ops_api_version,
+                "databases",
+                id,
+            )
+            if ncomp is not None
+        )
+        if comp != ""
+    ]
+    dev_ops_base_path = "/".join(base_path_components)
+    _dev_ops_commander_headers: dict[str, str | None]
+    if _api_options.token:
+        _token_str = _api_options.token.get_token()
+        _dev_ops_commander_headers = {
+            DEFAULT_DEV_OPS_AUTH_HEADER: f"{DEFAULT_DEV_OPS_AUTH_PREFIX}{_token_str}",
+            **_api_options.admin_additional_headers,
         }
     else:
-        ops_headers = {}
-    full_path = "/".join(
-        [
-            DEV_OPS_VERSION_ENV_MAP[environment],
-            "databases",
-            id,
-        ]
-    )
-    # TODO restore the callers info info here
-    ops_commander = APICommander(
-        api_endpoint=DEV_OPS_URL_ENV_MAP[environment],
-        path=full_path,
-        headers=ops_headers,
+        _dev_ops_commander_headers = {
+            **_api_options.admin_additional_headers,
+        }
+    dev_ops_commander = APICommander(
+        api_endpoint=_api_options.dev_ops_api_url_options.dev_ops_url,
+        path=dev_ops_base_path,
+        headers=_dev_ops_commander_headers,
+        callers=_api_options.callers,
         dev_ops_api=True,
+        redacted_header_names=_api_options.redacted_header_names,
     )
 
-    gd_response = ops_commander.request(
+    gd_response = dev_ops_commander.request(
         http_method=HttpMethod.GET,
-        timeout_ms=max_time_ms,
+        timeout_context=_TimeoutContext(request_ms=max_time_ms),
     )
     return gd_response
 
@@ -173,9 +200,11 @@ def fetch_raw_database_info_from_id_token(
 async def async_fetch_raw_database_info_from_id_token(
     id: str,
     *,
-    token: str | None,
+    token: str | TokenProvider | UnsetType = _UNSET,
     environment: str = Environment.PROD,
+    request_timeout_ms: int | None = None,
     max_time_ms: int | None = None,
+    api_options: APIOptions | None = None,
 ) -> dict[str, Any]:
     """
     Fetch database information through the DevOps API and return it in
@@ -188,46 +217,74 @@ async def async_fetch_raw_database_info_from_id_token(
         environment: a string representing the target Data API environment.
             It can be left unspecified for the default value of `Environment.PROD`.
             Only Astra DB environments can be meaningfully supplied.
-        max_time_ms: a timeout, in milliseconds, for waiting on a response.
+        request_timeout_ms: a timeout, in milliseconds, for waiting on a response.
+        max_time_ms: an alias for `request_timeout_ms`.
+        api_options: a (possibly partial) specification of the API Options to use.
 
     Returns:
         The full response from the DevOps API about the database.
     """
 
-    ops_headers: dict[str, str | None]
-    if token is not None:
-        ops_headers = {
-            DEFAULT_DEV_OPS_AUTH_HEADER: f"{DEFAULT_DEV_OPS_AUTH_PREFIX}{token}",
+    _api_options = (
+        defaultAPIOptions(environment=environment)
+        .with_override(api_options)
+        .with_override(
+            APIOptions(
+                token=coerce_possible_token_provider(token),
+                timeout_options=TimeoutOptions(
+                    request_timeout_ms=request_timeout_ms or max_time_ms or _UNSET,
+                ),
+            ),
+        )
+    )
+    base_path_components = [
+        comp
+        for comp in (
+            ncomp.strip("/")
+            for ncomp in (
+                _api_options.dev_ops_api_url_options.dev_ops_api_version,
+                "databases",
+                id,
+            )
+            if ncomp is not None
+        )
+        if comp != ""
+    ]
+    dev_ops_base_path = "/".join(base_path_components)
+    _dev_ops_commander_headers: dict[str, str | None]
+    if _api_options.token:
+        _token_str = _api_options.token.get_token()
+        _dev_ops_commander_headers = {
+            DEFAULT_DEV_OPS_AUTH_HEADER: f"{DEFAULT_DEV_OPS_AUTH_PREFIX}{_token_str}",
+            **_api_options.admin_additional_headers,
         }
     else:
-        ops_headers = {}
-    full_path = "/".join(
-        [
-            DEV_OPS_VERSION_ENV_MAP[environment],
-            "databases",
-            id,
-        ]
-    )
-    # TODO restore the callers info info here
-    ops_commander = APICommander(
-        api_endpoint=DEV_OPS_URL_ENV_MAP[environment],
-        path=full_path,
-        headers=ops_headers,
+        _dev_ops_commander_headers = {
+            **_api_options.admin_additional_headers,
+        }
+    dev_ops_commander = APICommander(
+        api_endpoint=_api_options.dev_ops_api_url_options.dev_ops_url,
+        path=dev_ops_base_path,
+        headers=_dev_ops_commander_headers,
+        callers=_api_options.callers,
         dev_ops_api=True,
+        redacted_header_names=_api_options.redacted_header_names,
     )
 
-    gd_response = await ops_commander.async_request(
+    gd_response = await dev_ops_commander.async_request(
         http_method=HttpMethod.GET,
-        timeout_ms=max_time_ms,
+        timeout_context=_TimeoutContext(request_ms=max_time_ms),
     )
     return gd_response
 
 
 def fetch_database_info(
     api_endpoint: str,
-    token: str | None,
+    token: str | TokenProvider | UnsetType = _UNSET,
     keyspace: str | None = None,
+    request_timeout_ms: int | None = None,
     max_time_ms: int | None = None,
+    api_options: APIOptions | None = None,
 ) -> AstraDBDatabaseInfo | None:
     """
     Fetch database information through the DevOps API.
@@ -237,7 +294,9 @@ def fetch_database_info(
         token: a valid token to access the database information.
         keyspace: the desired keyspace that will be used in the result.
             If not specified, the resulting database info will show it as None.
-        max_time_ms: a timeout, in milliseconds, for waiting on a response.
+        request_timeout_ms: a timeout, in milliseconds, for waiting on a response.
+        max_time_ms: an alias for `request_timeout_ms`.
+        api_options: a (possibly partial) specification of the API Options to use.
 
     Returns:
         A AstraDBDatabaseInfo object.
@@ -251,7 +310,9 @@ def fetch_database_info(
             id=parsed_endpoint.database_id,
             token=token,
             environment=parsed_endpoint.environment,
+            request_timeout_ms=request_timeout_ms,
             max_time_ms=max_time_ms,
+            api_options=api_options,
         )
         raw_info = gd_response
         return AstraDBDatabaseInfo(
@@ -265,9 +326,11 @@ def fetch_database_info(
 
 async def async_fetch_database_info(
     api_endpoint: str,
-    token: str | None,
+    token: str | TokenProvider | UnsetType = _UNSET,
     keyspace: str | None = None,
+    request_timeout_ms: int | None = None,
     max_time_ms: int | None = None,
+    api_options: APIOptions | None = None,
 ) -> AstraDBDatabaseInfo | None:
     """
     Fetch database information through the DevOps API.
@@ -281,9 +344,9 @@ async def async_fetch_database_info(
         max_time_ms: a timeout, in milliseconds, for waiting on a response.
 
     Returns:
-        A AstraDBDatabaseInfo object.
-        If the API endpoint fails to be parsed, None is returned.
-        For valid-looking endpoints, if something goes wrong an exception is raised.
+        request_timeout_ms: a timeout, in milliseconds, for waiting on a response.
+        max_time_ms: an alias for `request_timeout_ms`.
+        api_options: a (possibly partial) specification of the API Options to use.
     """
 
     parsed_endpoint = parse_api_endpoint(api_endpoint)
@@ -317,10 +380,12 @@ def _recast_as_admin_database_info(
 
 def normalize_region_for_id(
     database_id: str,
-    token_str: str | None,
     environment: str,
     region_param: str | None,
-    max_time_ms: int | None,
+    token: str | TokenProvider | UnsetType = _UNSET,
+    request_timeout_ms: int | None = None,
+    max_time_ms: int | None = None,
+    api_options: APIOptions | None = None,
 ) -> str:
     if region_param:
         return region_param
@@ -328,9 +393,11 @@ def normalize_region_for_id(
         logger.info(f"fetching raw database info for {database_id}")
         this_db_info = fetch_raw_database_info_from_id_token(
             id=database_id,
-            token=token_str,
+            token=token,
             environment=environment,
+            request_timeout_ms=request_timeout_ms,
             max_time_ms=max_time_ms,
+            api_options=api_options,
         )
         logger.info(f"finished fetching raw database info for {database_id}")
         found_region = this_db_info.get("info", {}).get("region")
@@ -1401,10 +1468,10 @@ class AstraDBAdmin:
                 raise ValueError("Either `api_endpoint` or `id` must be supplied.")
             _region = normalize_region_for_id(
                 database_id=_id_p,
-                token_str=self.api_options.token.get_token(),
                 environment=self.api_options.environment,
                 region_param=region,
-                max_time_ms=_request_timeout_ms,
+                request_timeout_ms=_request_timeout_ms,
+                api_options=self.api_options,
             )
             return AstraDBDatabaseAdmin.from_astra_db_admin(
                 api_endpoint=build_api_endpoint(
@@ -1564,10 +1631,10 @@ class AstraDBAdmin:
                 raise ValueError("Either `api_endpoint` or `id` must be supplied.")
             _region = normalize_region_for_id(
                 database_id=_id_p,
-                token_str=self.api_options.token.get_token(),
                 environment=self.api_options.environment,
                 region_param=region,
-                max_time_ms=_request_timeout_ms,
+                request_timeout_ms=_request_timeout_ms,
+                api_options=self.api_options,
             )
             if keyspace:
                 _keyspace = keyspace
