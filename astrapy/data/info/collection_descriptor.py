@@ -252,6 +252,12 @@ class CollectionDescriptor:
         ]
         return f"{self.__class__.__name__}({', '.join(not_null_pieces)})"
 
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, CollectionDescriptor):
+            return self.name == other.name and self.options == other.options
+        else:
+            return False
+
     def as_dict(self) -> dict[str, Any]:
         """
         Recast this object into a dictionary.
