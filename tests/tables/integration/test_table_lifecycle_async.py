@@ -33,8 +33,6 @@ from astrapy.info import (
     VectorServiceOptions,
 )
 
-from ..conftest import IS_ASTRA_DB
-
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase
 
@@ -265,12 +263,12 @@ class TestTableLifecycle:
             definition=TableVectorIndexDefinition(
                 column="p_vector",
                 options=TableVectorIndexOptions(
-                    source_model="openai_v3_large",
+                    source_model="openai-v3-large",
                 ),
             ),
         )
 
-        if not IS_ASTRA_DB:  # TODO: reinstate once dropIndex deployed
+        if False:  # TODO: reinstate once dropIndex restored
             await table.drop_index("tfi_idx_p_text")
             await table.drop_index("tfi_idx_p_int")
             await table.drop_index("tfi_idx_p_vector")

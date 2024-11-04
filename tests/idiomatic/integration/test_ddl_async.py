@@ -185,10 +185,10 @@ class TestDDLAsync:
         data_api_credentials_kwargs: DataAPICredentials,
     ) -> None:
         assert isinstance(async_database.id, str)
-        assert isinstance(async_database.name(), str)
+        assert isinstance(await async_database.name(), str)
         assert async_database.keyspace == data_api_credentials_kwargs["keyspace"]
-        assert isinstance(async_database.info(), AstraDBDatabaseInfo)
-        assert isinstance(async_database.info().raw, dict)
+        assert isinstance(await async_database.info(), AstraDBDatabaseInfo)
+        assert isinstance((await async_database.info()).raw, dict)
 
     @pytest.mark.skipif(not IS_ASTRA_DB, reason="Not supported outside of Astra DB")
     @pytest.mark.describe("test of collection metainformation, async")
@@ -196,7 +196,7 @@ class TestDDLAsync:
         self,
         async_collection: DefaultAsyncCollection,
     ) -> None:
-        info = async_collection.info()
+        info = await async_collection.info()
         assert info.keyspace == async_collection.keyspace
         assert info.keyspace == async_collection.database.keyspace
 
