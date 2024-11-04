@@ -692,6 +692,7 @@ class CollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         *,
         data_operation_timeout_ms: int | None = None,
     ) -> None:
+        self._ensure_alive()
         _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
         for document in _cursor:
             function(document)
@@ -702,6 +703,7 @@ class CollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         *,
         data_operation_timeout_ms: int | None = None,
     ) -> list[T]:
+        self._ensure_alive()
         _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
         documents = [document for document in _cursor]
         self.close()
@@ -990,6 +992,7 @@ class AsyncCollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         *,
         data_operation_timeout_ms: int | None = None,
     ) -> None:
+        self._ensure_alive()
         _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
         async for document in _cursor:
             function(document)
@@ -1000,6 +1003,7 @@ class AsyncCollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         *,
         data_operation_timeout_ms: int | None = None,
     ) -> list[T]:
+        self._ensure_alive()
         _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
         documents = [document async for document in _cursor]
         self.close()
