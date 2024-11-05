@@ -16,42 +16,44 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy.data_types import TableSet
+from astrapy.data_types import DataAPISet
 
 
-class TestTableSet:
+class TestDataAPISet:
     @pytest.mark.describe("test of table set usage with hashables")
-    def test_tableset_hashables(self) -> None:
-        ts0: TableSet[int] = TableSet()
-        assert ts0 == TableSet()
+    def test_dataapiset_hashables(self) -> None:
+        ts0: DataAPISet[int] = DataAPISet()
+        assert ts0 == DataAPISet()
         assert set(ts0) == set()
         # identity/equality
-        ts1 = TableSet([1, 2, 3])
-        assert ts1 == TableSet([1, 2, 3])
-        assert ts1 == TableSet([1, 2, 3, 2])
-        assert ts1 != TableSet([1, 3, 2])
+        ts1 = DataAPISet([1, 2, 3])
+        assert ts1 == DataAPISet([1, 2, 3])
+        assert ts1 == DataAPISet([1, 2, 3, 2])
+        assert ts1 != DataAPISet([1, 3, 2])
         assert set(ts1) == {1, 2, 3}
         # set operations
-        assert ts1 - {2} == TableSet([1, 3])
-        assert ts1 | {2} == TableSet([1, 2, 3])
-        assert ts1 | {4} == TableSet([1, 2, 3, 4])
-        assert ts1 | TableSet([4, 2, 5]) == TableSet([1, 2, 3, 4, 5])
-        assert ts1 ^ TableSet([4, 2, 5]) == TableSet([1, 3, 4, 5])
-        assert ts1 & TableSet([4, 2, 5]) == TableSet([2])
+        assert ts1 - {2} == DataAPISet([1, 3])
+        assert ts1 | {2} == DataAPISet([1, 2, 3])
+        assert ts1 | {4} == DataAPISet([1, 2, 3, 4])
+        assert ts1 | DataAPISet([4, 2, 5]) == DataAPISet([1, 2, 3, 4, 5])
+        assert ts1 ^ DataAPISet([4, 2, 5]) == DataAPISet([1, 3, 4, 5])
+        assert ts1 & DataAPISet([4, 2, 5]) == DataAPISet([2])
 
     @pytest.mark.describe("test of table set usage with non-hashables")
-    def test_tableset_nonhashables(self) -> None:
-        ts0: TableSet[list[int]] = TableSet()
-        assert ts0 == TableSet()
+    def test_dataapiset_nonhashables(self) -> None:
+        ts0: DataAPISet[list[int]] = DataAPISet()
+        assert ts0 == DataAPISet()
         # identity/equality
-        ts1 = TableSet([[1], [2], [3]])
-        assert ts1 == TableSet([[1], [2], [3]])
-        assert ts1 == TableSet([[1], [2], [3], [2]])
-        assert ts1 != TableSet([[1], [3], [2]])
+        ts1 = DataAPISet([[1], [2], [3]])
+        assert ts1 == DataAPISet([[1], [2], [3]])
+        assert ts1 == DataAPISet([[1], [2], [3], [2]])
+        assert ts1 != DataAPISet([[1], [3], [2]])
         # set operations
-        assert ts1 - TableSet([[2]]) == TableSet([[1], [3]])
-        assert ts1 | TableSet([[2]]) == TableSet([[1], [2], [3]])
-        assert ts1 | TableSet([[4]]) == TableSet([[1], [2], [3], [4]])
-        assert ts1 | TableSet([[4], [2], [5]]) == TableSet([[1], [2], [3], [4], [5]])
-        assert ts1 ^ TableSet([[4], [2], [5]]) == TableSet([[1], [3], [4], [5]])
-        assert ts1 & TableSet([[4], [2], [5]]) == TableSet([[2]])
+        assert ts1 - DataAPISet([[2]]) == DataAPISet([[1], [3]])
+        assert ts1 | DataAPISet([[2]]) == DataAPISet([[1], [2], [3]])
+        assert ts1 | DataAPISet([[4]]) == DataAPISet([[1], [2], [3], [4]])
+        assert ts1 | DataAPISet([[4], [2], [5]]) == DataAPISet(
+            [[1], [2], [3], [4], [5]]
+        )
+        assert ts1 ^ DataAPISet([[4], [2], [5]]) == DataAPISet([[1], [3], [4], [5]])
+        assert ts1 & DataAPISet([[4], [2], [5]]) == DataAPISet([[2]])

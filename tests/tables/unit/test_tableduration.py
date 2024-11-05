@@ -18,63 +18,65 @@ import datetime
 
 import pytest
 
-from astrapy.data_types import TableDuration
+from astrapy.data_types import DataAPIDuration
 
 
-class TestTableDuration:
+class TestDataAPIDuration:
     @pytest.mark.describe("test of duration type, errors in parsing from string")
-    def test_tableduration_parse_errors(self) -> None:
+    def test_dataapiduration_parse_errors(self) -> None:
         # spurious begin
         with pytest.raises(ValueError):
-            TableDuration.from_string("X1mo")
+            DataAPIDuration.from_string("X1mo")
         # spurious end
         with pytest.raises(ValueError):
-            TableDuration.from_string("1moY")
+            DataAPIDuration.from_string("1moY")
         # spurious in the middle
         with pytest.raises(ValueError):
-            TableDuration.from_string("1moX1s")
+            DataAPIDuration.from_string("1moX1s")
         # fake unit
         with pytest.raises(ValueError):
-            TableDuration.from_string("1mo6b1s")
+            DataAPIDuration.from_string("1mo6b1s")
         # repeated unit
         with pytest.raises(ValueError):
-            TableDuration.from_string("1mo1d1d1s")
+            DataAPIDuration.from_string("1mo1d1d1s")
         # out-of-order unit
         with pytest.raises(ValueError):
-            TableDuration.from_string("1d1mo1s")
+            DataAPIDuration.from_string("1d1mo1s")
         # quantity with '+'
         with pytest.raises(ValueError):
-            TableDuration.from_string("1mo+3s")
+            DataAPIDuration.from_string("1mo+3s")
 
     @pytest.mark.describe("test of duration type, lifecycle")
-    def test_tableduration_lifecycle(self) -> None:
+    def test_dataapiduration_lifecycle(self) -> None:
         # base
-        dfull = TableDuration.from_string("1y1mo1w1d1h1m1s1ms1us1ns")
-        dfull_exp = TableDuration(months=13, days=8, nanoseconds=3661001001001)
+        dfull = DataAPIDuration.from_string("1y1mo1w1d1h1m1s1ms1us1ns")
+        dfull_exp = DataAPIDuration(months=13, days=8, nanoseconds=3661001001001)
         assert dfull == dfull_exp
         # mu, signed quantity and case-insensitivity
-        assert TableDuration.from_string("-123US") == TableDuration.from_string(
+        assert DataAPIDuration.from_string("-123US") == DataAPIDuration.from_string(
             "-123µs"
         )
         # holey cases
-        dhole1 = TableDuration.from_string("1mo1d1m1ms1ns")
-        dhole1_exp = TableDuration(months=1, days=1, nanoseconds=60001000001)
+        dhole1 = DataAPIDuration.from_string("1mo1d1m1ms1ns")
+        dhole1_exp = DataAPIDuration(months=1, days=1, nanoseconds=60001000001)
         assert dhole1 == dhole1_exp
-        dhole2 = TableDuration.from_string("1y1w1h1s1us")
-        dhole2_exp = TableDuration(months=12, days=7, nanoseconds=3601000001000)
+        dhole2 = DataAPIDuration.from_string("1y1w1h1s1us")
+        dhole2_exp = DataAPIDuration(months=12, days=7, nanoseconds=3601000001000)
         assert dhole2 == dhole2_exp
         # sign to quantities
-        assert TableDuration.from_string("1m-1s") == TableDuration.from_string("59s")
+        assert DataAPIDuration.from_string("1m-1s") == DataAPIDuration.from_string(
+            "59s"
+        )
         # equivalent-formulation identity
-        deq1 = TableDuration.from_string("13mo2w1h1s1us")
-        deq2 = TableDuration.from_string("1y1mo14d60m1000ms1000ns")
+        deq1 = DataAPIDuration.from_string("13mo2w1h1s1us")
+        deq2 = DataAPIDuration.from_string("1y1mo14d60m1000ms1000ns")
         assert deq1 == deq2
         # null duration
-        zd0 = TableDuration(months=0, days=0, nanoseconds=0)
-        zd1 = TableDuration.from_string("0y")
-        zd2 = TableDuration.from_string("0mo0d")
-        zd3 = TableDuration.from_string("0w0ns")
-        zd4 = TableDuration.from_string("")
+        zd0 = DataAPIDuration(months=0, days=0, nanoseconds=0)
+        zd1 = DataAPIDuration.from_string("0y")
+        zd2 = DataAPIDuration.from_string("0mo0d")
+        zd3 = DataAPIDuration.from_string("0w0ns")
+        zd4 = DataAPIDuration.from_string("")
         assert zd0 == zd1
         assert zd0 == zd2
         assert zd0 == zd3
@@ -86,25 +88,25 @@ class TestTableDuration:
         repr(zd0)
 
     @pytest.mark.describe("test of duration type, timedelta conversions")
-    def test_tableduration_timedelta_conversions(self) -> None:
-        td_ok_0 = TableDuration.from_string("")
-        td_ok_1 = TableDuration.from_string("1d1s-333ms")
-        td_ok_2 = TableDuration.from_string("-191d1s")
-        td_ok_3 = TableDuration.from_string("1d3s777000ns")
-        td_no = TableDuration.from_string("-1y1s")
+    def test_dataapiduration_timedelta_conversions(self) -> None:
+        td_ok_0 = DataAPIDuration.from_string("")
+        td_ok_1 = DataAPIDuration.from_string("1d1s-333ms")
+        td_ok_2 = DataAPIDuration.from_string("-191d1s")
+        td_ok_3 = DataAPIDuration.from_string("1d3s777000ns")
+        td_no = DataAPIDuration.from_string("-1y1s")
 
         # due to lossy conversions and the month-day-subday math being different,
         # other (more challenging) values will fail here (limitations of timedelta)
-        assert TableDuration.from_timedelta(td_ok_0.to_timedelta()) == td_ok_0
-        assert TableDuration.from_timedelta(td_ok_1.to_timedelta()) == td_ok_1
-        assert TableDuration.from_timedelta(td_ok_2.to_timedelta()) == td_ok_2
-        assert TableDuration.from_timedelta(td_ok_3.to_timedelta()) == td_ok_3
+        assert DataAPIDuration.from_timedelta(td_ok_0.to_timedelta()) == td_ok_0
+        assert DataAPIDuration.from_timedelta(td_ok_1.to_timedelta()) == td_ok_1
+        assert DataAPIDuration.from_timedelta(td_ok_2.to_timedelta()) == td_ok_2
+        assert DataAPIDuration.from_timedelta(td_ok_3.to_timedelta()) == td_ok_3
         with pytest.raises(ValueError):
             td_no.to_timedelta()
 
         tdelta_0 = datetime.timedelta()
         tdelta_1 = datetime.timedelta(days=1, seconds=2, microseconds=345678)
         tdelta_2 = datetime.timedelta(seconds=10, milliseconds=-456)
-        assert TableDuration.from_timedelta(tdelta_0).to_timedelta() == tdelta_0
-        assert TableDuration.from_timedelta(tdelta_1).to_timedelta() == tdelta_1
-        assert TableDuration.from_timedelta(tdelta_2).to_timedelta() == tdelta_2
+        assert DataAPIDuration.from_timedelta(tdelta_0).to_timedelta() == tdelta_0
+        assert DataAPIDuration.from_timedelta(tdelta_1).to_timedelta() == tdelta_1
+        assert DataAPIDuration.from_timedelta(tdelta_2).to_timedelta() == tdelta_2

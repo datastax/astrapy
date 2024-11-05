@@ -108,16 +108,16 @@ class SerdesOptions:
         DataAPIVector     => list[float]:
             in write path, the list does not result in binary encoding on the
             wire (which is slower and more bytes in transit).
-        TableDate         => datetime.date:
+        DataAPIDate         => datetime.date:
             same year range limitations as datetime.datetime
-        TableDuration     => datetime.timedelta:
+        DataAPIDuration     => datetime.timedelta:
             does not do months, also imprecise as days can be 23-24-25 hours
             and different math applies! (also nanoseconds are lost)
-        TableTime         => datetime.time:
+        DataAPITime         => datetime.time:
             loss of nanoseconds as the stdlib has microseconds
-        TableMap          => dict:
+        DataAPIMap          => dict:
             does not allow non-hashable items as keys
-        TableSet          => set:
+        DataAPISet          => set:
             does not guarantee order (the underlying storage does)
 
     On the choice of `unroll_iterables_to_lists`: besides slight performance

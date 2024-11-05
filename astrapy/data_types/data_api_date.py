@@ -46,7 +46,7 @@ DATE_FORMAT_DESC = (
 
 
 @dataclass
-class TableDate:
+class DataAPIDate:
     """
     TODO also for methods
     """
@@ -80,34 +80,34 @@ class TableDate:
         return self.__class__, (self.year, self.month, self.day)
 
     def __le__(self, other: Any) -> bool:
-        if isinstance(other, TableDate):
+        if isinstance(other, DataAPIDate):
             return self._to_tuple() <= other._to_tuple()
         elif isinstance(other, datetime.date):
-            return self.__le__(TableDate.from_date(other))
+            return self.__le__(DataAPIDate.from_date(other))
         else:
             return NotImplemented
 
     def __lt__(self, other: Any) -> bool:
-        if isinstance(other, TableDate):
+        if isinstance(other, DataAPIDate):
             return self._to_tuple() < other._to_tuple()
         elif isinstance(other, datetime.date):
-            return self.__lt__(TableDate.from_date(other))
+            return self.__lt__(DataAPIDate.from_date(other))
         else:
             return NotImplemented
 
     def __ge__(self, other: Any) -> bool:
-        if isinstance(other, TableDate):
+        if isinstance(other, DataAPIDate):
             return self._to_tuple() >= other._to_tuple()
         elif isinstance(other, datetime.date):
-            return self.__ge__(TableDate.from_date(other))
+            return self.__ge__(DataAPIDate.from_date(other))
         else:
             return NotImplemented
 
     def __gt__(self, other: Any) -> bool:
-        if isinstance(other, TableDate):
+        if isinstance(other, DataAPIDate):
             return self._to_tuple() > other._to_tuple()
         elif isinstance(other, datetime.date):
-            return self.__gt__(TableDate.from_date(other))
+            return self.__gt__(DataAPIDate.from_date(other))
         else:
             return NotImplemented
 
@@ -123,15 +123,15 @@ class TableDate:
         return datetime.date(*self._to_tuple())
 
     @staticmethod
-    def from_date(dt: datetime.date) -> TableDate:
-        return TableDate(
+    def from_date(dt: datetime.date) -> DataAPIDate:
+        return DataAPIDate(
             year=dt.year,
             month=dt.month,
             day=dt.day,
         )
 
     @staticmethod
-    def from_string(date_string: str) -> TableDate:
+    def from_string(date_string: str) -> DataAPIDate:
         match = DATE_PARSE_PATTERN.match(date_string)
         if match:
             year = int(match[1])
@@ -143,7 +143,7 @@ class TableDate:
                     f"Cannot parse '{date_string}' into a valid date: "
                     f"{_fail_reason}. {DATE_FORMAT_DESC}"
                 )
-            return TableDate(year=year, month=month, day=day)
+            return DataAPIDate(year=year, month=month, day=day)
         else:
             raise ValueError(
                 f"Cannot parse '{date_string}' into a valid date "

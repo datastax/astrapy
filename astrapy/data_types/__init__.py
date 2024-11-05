@@ -14,20 +14,20 @@
 
 from __future__ import annotations
 
+from astrapy.data_types.data_api_date import DataAPIDate
+from astrapy.data_types.data_api_duration import DataAPIDuration
+from astrapy.data_types.data_api_map import DataAPIMap
+from astrapy.data_types.data_api_set import DataAPISet
+from astrapy.data_types.data_api_time import DataAPITime
 from astrapy.data_types.data_api_timestamp import DataAPITimestamp
 from astrapy.data_types.data_api_vector import DataAPIVector
-from astrapy.data_types.table_date import TableDate
-from astrapy.data_types.table_duration import TableDuration
-from astrapy.data_types.table_map import TableMap
-from astrapy.data_types.table_set import TableSet
-from astrapy.data_types.table_time import TableTime
 
 __all__ = [
     "DataAPITimestamp",
     "DataAPIVector",
-    "TableDate",
-    "TableDuration",
-    "TableMap",
-    "TableSet",
-    "TableTime",
+    "DataAPIDate",
+    "DataAPIDuration",
+    "DataAPIMap",
+    "DataAPISet",
+    "DataAPITime",
 ]

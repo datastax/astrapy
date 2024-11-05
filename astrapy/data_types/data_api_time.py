@@ -33,7 +33,7 @@ TIME_FORMAT_DESC = (
 
 
 @dataclass
-class TableTime:
+class DataAPITime:
     """
     TODO also for methods
     """
@@ -75,34 +75,34 @@ class TableTime:
         return self.__class__, (self.hour, self.minute, self.second, self.nanosecond)
 
     def __le__(self, other: Any) -> bool:
-        if isinstance(other, TableTime):
+        if isinstance(other, DataAPITime):
             return self._to_tuple() <= other._to_tuple()
         elif isinstance(other, datetime.time):
-            return self.__le__(TableTime.from_time(other))
+            return self.__le__(DataAPITime.from_time(other))
         else:
             return NotImplemented
 
     def __lt__(self, other: Any) -> bool:
-        if isinstance(other, TableTime):
+        if isinstance(other, DataAPITime):
             return self._to_tuple() < other._to_tuple()
         elif isinstance(other, datetime.time):
-            return self.__lt__(TableTime.from_time(other))
+            return self.__lt__(DataAPITime.from_time(other))
         else:
             return NotImplemented
 
     def __ge__(self, other: Any) -> bool:
-        if isinstance(other, TableTime):
+        if isinstance(other, DataAPITime):
             return self._to_tuple() >= other._to_tuple()
         elif isinstance(other, datetime.time):
-            return self.__ge__(TableTime.from_time(other))
+            return self.__ge__(DataAPITime.from_time(other))
         else:
             return NotImplemented
 
     def __gt__(self, other: Any) -> bool:
-        if isinstance(other, TableTime):
+        if isinstance(other, DataAPITime):
             return self._to_tuple() > other._to_tuple()
         elif isinstance(other, datetime.time):
-            return self.__gt__(TableTime.from_time(other))
+            return self.__gt__(DataAPITime.from_time(other))
         else:
             return NotImplemented
 
@@ -141,8 +141,8 @@ class TableTime:
         )
 
     @staticmethod
-    def from_time(dt: datetime.time) -> TableTime:
-        return TableTime(
+    def from_time(dt: datetime.time) -> DataAPITime:
+        return DataAPITime(
             hour=dt.hour,
             minute=dt.minute,
             second=dt.second,
@@ -150,7 +150,7 @@ class TableTime:
         )
 
     @staticmethod
-    def from_string(time_string: str) -> TableTime:
+    def from_string(time_string: str) -> DataAPITime:
         match = TIME_PARSE_PATTERN.match(time_string)
         if match:
             hour = int(match[1])
@@ -172,7 +172,7 @@ class TableTime:
                     f"Cannot parse '{time_string}' into a valid time: "
                     f"{_fail_reason}. {TIME_FORMAT_DESC}"
                 )
-            return TableTime(
+            return DataAPITime(
                 hour=hour,
                 minute=minute,
                 second=second,

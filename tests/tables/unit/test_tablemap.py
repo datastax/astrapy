@@ -16,21 +16,21 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy.data_types import TableMap
+from astrapy.data_types import DataAPIMap
 
 
-class TestTableMap:
+class TestDataAPIMap:
     @pytest.mark.describe("test of table map usage with hashables")
-    def test_tablemap_hashables(self) -> None:
-        mp0: TableMap[int, int] = TableMap()
-        assert mp0 == TableMap()
+    def test_dataapimap_hashables(self) -> None:
+        mp0: DataAPIMap[int, int] = DataAPIMap()
+        assert mp0 == DataAPIMap()
         assert dict(mp0) == {}
         # identity/equality
         items1 = [(1, "a"), (2, "b"), (3, "c")]
-        mp1 = TableMap(items1)
-        assert mp1 == TableMap(items1)
-        assert mp1 == TableMap(items1 + [(2, "b")])
-        assert mp1 != TableMap(items1[2:] + items1[:2])
+        mp1 = DataAPIMap(items1)
+        assert mp1 == DataAPIMap(items1)
+        assert mp1 == DataAPIMap(items1 + [(2, "b")])
+        assert mp1 != DataAPIMap(items1[2:] + items1[:2])
         assert dict(items1) == mp1
         # map operations
         assert list(mp1.keys()) == [1, 2, 3]
@@ -43,16 +43,16 @@ class TestTableMap:
         assert list(mp1) == [1, 2, 3]
 
     @pytest.mark.describe("test of table map usage with non-hashables")
-    def test_tablemap_nonhashables(self) -> None:
-        mp0: TableMap[list[int], int] = TableMap()
-        assert mp0 == TableMap()
+    def test_dataapimap_nonhashables(self) -> None:
+        mp0: DataAPIMap[list[int], int] = DataAPIMap()
+        assert mp0 == DataAPIMap()
         assert dict(mp0) == {}
         # identity/equality
         items1 = [([1], "a"), ([2], "b"), ([3], "c")]
-        mp1 = TableMap(items1)
-        assert mp1 == TableMap(items1)
-        assert mp1 == TableMap(items1 + [([2], "b")])
-        assert mp1 != TableMap(items1[2:] + items1[:2])
+        mp1 = DataAPIMap(items1)
+        assert mp1 == DataAPIMap(items1)
+        assert mp1 == DataAPIMap(items1 + [([2], "b")])
+        assert mp1 != DataAPIMap(items1[2:] + items1[:2])
         # map operations
         assert list(mp1.keys()) == [[1], [2], [3]]
         assert list(mp1.values()) == ["a", "b", "c"]

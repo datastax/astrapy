@@ -16,9 +16,9 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
-from astrapy.data_types import DataAPIVector, TableMap, TableSet
+from astrapy.data_types import DataAPIMap, DataAPISet, DataAPIVector
 
-ITERABLES_TO_NOT_UNROLL = list, str, bytes, dict, DataAPIVector, TableMap, TableSet
+ITERABLES_TO_NOT_UNROLL = list, str, bytes, dict, DataAPIVector, DataAPIMap, DataAPISet
 
 
 def ensure_unrolled_if_iterable(value: Any) -> Any:

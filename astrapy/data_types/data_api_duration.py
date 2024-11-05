@@ -60,7 +60,7 @@ DURATION_FORMAT_DESC = (
 )
 
 
-def _parse_duration(duration_string: str) -> TableDuration:
+def _parse_duration(duration_string: str) -> DataAPIDuration:
     _norm_string = duration_string.lower().replace("µs", "us")
     if DURATION_V_PATTERN.fullmatch(_norm_string):
         qunits = [
@@ -75,12 +75,12 @@ def _parse_duration(duration_string: str) -> TableDuration:
                 if this_uindex < last_uindex:
                     raise ValueError(
                         f"Unit '{this_unit}' cannot follow smaller units in literal "
-                        f"for a TableDuration: '{duration_string}'. {DURATION_FORMAT_DESC}"
+                        f"for a DataAPIDuration: '{duration_string}'. {DURATION_FORMAT_DESC}"
                     )
                 elif this_uindex == last_uindex:
                     raise ValueError(
                         f"Unit '{this_unit}' cannot be repeated in literal for a "
-                        f"TableDuration: '{duration_string}'. {DURATION_FORMAT_DESC}"
+                        f"DataAPIDuration: '{duration_string}'. {DURATION_FORMAT_DESC}"
                     )
                 last_uindex = this_uindex
             # reconstruct the final value
@@ -98,22 +98,22 @@ def _parse_duration(duration_string: str) -> TableDuration:
                 umult * parsed_uvals.get(unit, 0)
                 for unit, umult in NANOSECOND_MULTIPLIER.items()
             )
-            return TableDuration(months=months, days=days, nanoseconds=nanoseconds)
+            return DataAPIDuration(months=months, days=days, nanoseconds=nanoseconds)
         else:
             raise ValueError(
                 "No quantity+unit groups in literal for a "
-                f"TableDuration: '{duration_string}'. {DURATION_FORMAT_DESC}"
+                f"DataAPIDuration: '{duration_string}'. {DURATION_FORMAT_DESC}"
             )
     else:
         # TODO more verbose error (here and above)
         raise ValueError(
-            "Invalid literal for a TableDuration: "
+            "Invalid literal for a DataAPIDuration: "
             f"'{duration_string}'. {DURATION_FORMAT_DESC}"
         )
 
 
 @dataclass
-class TableDuration:
+class DataAPIDuration:
     """
     TODO
 
@@ -140,9 +140,9 @@ class TableDuration:
         return hash((self.months, self.days, self.nanoseconds))
 
     @staticmethod
-    def from_string(duration_string: str) -> TableDuration:
+    def from_string(duration_string: str) -> DataAPIDuration:
         if duration_string == "":
-            return TableDuration(
+            return DataAPIDuration(
                 months=0,
                 days=0,
                 nanoseconds=0,
@@ -176,13 +176,15 @@ class TableDuration:
         )
 
     @staticmethod
-    def from_timedelta(td: datetime.timedelta) -> TableDuration:
-        return TableDuration.from_string(f"{td.days}d{td.seconds}s{td.microseconds}us")
+    def from_timedelta(td: datetime.timedelta) -> DataAPIDuration:
+        return DataAPIDuration.from_string(
+            f"{td.days}d{td.seconds}s{td.microseconds}us"
+        )
 
     def to_timedelta(self) -> datetime.timedelta:
         if self.months != 0:
             raise ValueError(
-                "Cannot convert a TableDuration with nonzero months into a timedelta."
+                "Cannot convert a DataAPIDuration with nonzero months into a timedelta."
             )
         return datetime.timedelta(
             days=self.days,

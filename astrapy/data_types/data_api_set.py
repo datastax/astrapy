@@ -28,7 +28,7 @@ def _accumulate(destination: list[T], source: Iterable[T]) -> list[T]:
     return _new_destination
 
 
-class TableSet(Generic[T], Set[T]):
+class DataAPISet(Generic[T], Set[T]):
     """
     An immutable 'set-like' class that preserves the order and can store
     non-hashable entries (which must support __eq__). Not designed for performance.
@@ -90,23 +90,23 @@ class TableSet(Generic[T], Set[T]):
     def __gt__(self, other: Any) -> bool:
         return len(self._items) > len(other) and self.issuperset(other)
 
-    def __and__(self, other: Any) -> TableSet[T]:
+    def __and__(self, other: Any) -> DataAPISet[T]:
         return self._intersect(other)
 
     __rand__ = __and__
 
-    def __or__(self, other: Any) -> TableSet[T]:
+    def __or__(self, other: Any) -> DataAPISet[T]:
         return self.union(other)
 
     __ror__ = __or__
 
-    def __sub__(self, other: Any) -> TableSet[T]:
+    def __sub__(self, other: Any) -> DataAPISet[T]:
         return self._diff(other)
 
-    def __rsub__(self, other: Any) -> TableSet[T]:
-        return TableSet(other) - self
+    def __rsub__(self, other: Any) -> DataAPISet[T]:
+        return DataAPISet(other) - self
 
-    def __xor__(self, other: Any) -> TableSet[T]:
+    def __xor__(self, other: Any) -> DataAPISet[T]:
         return self.symmetric_difference(other)
 
     __rxor__ = __xor__
@@ -123,42 +123,42 @@ class TableSet(Generic[T], Set[T]):
     def issuperset(self, other: Any) -> bool:
         return len(self._intersect(other)) == len(other)
 
-    def union(self, *others: Any) -> TableSet[T]:
-        return TableSet(
+    def union(self, *others: Any) -> DataAPISet[T]:
+        return DataAPISet(
             _accumulate(list(iter(self)), (item for other in others for item in other)),
         )
 
-    def intersection(self, *others: Any) -> TableSet[T]:
-        isect = TableSet(iter(self))
+    def intersection(self, *others: Any) -> DataAPISet[T]:
+        isect = DataAPISet(iter(self))
         for other in others:
             isect = isect._intersect(other)
             if not isect:
                 break
         return isect
 
-    def difference(self, *others: Any) -> TableSet[T]:
-        diff = TableSet(iter(self))
+    def difference(self, *others: Any) -> DataAPISet[T]:
+        diff = DataAPISet(iter(self))
         for other in others:
             diff = diff._diff(other)
             if not diff:
                 break
         return diff
 
-    def symmetric_difference(self, other: Any) -> TableSet[T]:
+    def symmetric_difference(self, other: Any) -> DataAPISet[T]:
         diff_self_other = self._diff(other)
         diff_other_self = other.difference(self)
         return diff_self_other.union(diff_other_self)
 
-    def _diff(self, other: Any) -> TableSet[T]:
-        return TableSet(
+    def _diff(self, other: Any) -> DataAPISet[T]:
+        return DataAPISet(
             _accumulate(
                 [],
                 (item for item in self._items if item not in other),
             )
         )
 
-    def _intersect(self, other: Any) -> TableSet[T]:
-        return TableSet(
+    def _intersect(self, other: Any) -> DataAPISet[T]:
+        return DataAPISet(
             _accumulate(
                 [],
                 (item for item in self._items if item in other),

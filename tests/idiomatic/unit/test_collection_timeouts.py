@@ -117,7 +117,7 @@ class TestCollectionTimeouts:
         httpserver.expect_oneshot_request(
             f"/{BASE_PATH}/{PATH_SUFFIX}",
             method=HttpMethod.POST,
-        ).respond_with_json({"data": {"document": [{"a": 1}]}})
+        ).respond_with_json({"data": {"document": {"a": 1}}})
         await mock_acollection.find_one({})
 
         httpserver.expect_oneshot_request(

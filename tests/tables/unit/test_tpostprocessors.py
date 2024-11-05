@@ -32,13 +32,13 @@ from astrapy.data.utils.table_converters import (
 )
 from astrapy.data.utils.table_types import TableScalarColumnType
 from astrapy.data_types import (
+    DataAPIDate,
+    DataAPIDuration,
+    DataAPIMap,
+    DataAPISet,
+    DataAPITime,
     DataAPITimestamp,
     DataAPIVector,
-    TableDate,
-    TableDuration,
-    TableMap,
-    TableSet,
-    TableTime,
 )
 from astrapy.data_types.data_api_vector import bytes_to_floats
 from astrapy.ids import UUID, ObjectId
@@ -161,10 +161,10 @@ EXPECTED_POSTPROCESSED_ROW = {
     "p_blob": b"abc123",
     "p_uuid": UUID("9c5b94b1-35ad-49bb-b118-8e8fc24abf80"),
     "p_decimal": decimal.Decimal("123.456"),
-    "p_date": TableDate.from_string("11111-09-30"),
-    "p_duration": TableDuration(months=1, days=1, nanoseconds=60000000001),
+    "p_date": DataAPIDate.from_string("11111-09-30"),
+    "p_duration": DataAPIDuration(months=1, days=1, nanoseconds=60000000001),
     "p_inet": ipaddress.ip_address("10.1.1.2"),
-    "p_time": TableTime(12, 34, 56, 789120000),
+    "p_time": DataAPITime(12, 34, 56, 789120000),
     "p_timestamp": DataAPITimestamp.from_string("2015-05-03T13:30:54.234Z"),
     "p_timestamp_out_offset": DataAPITimestamp.from_string(
         "-123-04-03T13:13:04.123+1:00"
@@ -178,10 +178,10 @@ EXPECTED_POSTPROCESSED_ROW = {
         float("-Infinity"),
         9.9,
     ],
-    "p_set_ascii": TableSet(["a", "b", "c"]),
-    "p_set_float": TableSet([1.1, float("NaN"), float("-Infinity"), 9.9]),
-    "p_map_text_float": TableMap({"a": 0.1, "b": 0.2}),
-    "p_map_float_text": TableMap({1.1: "1-1", float("NaN"): "NANNN!"}),
+    "p_set_ascii": DataAPISet(["a", "b", "c"]),
+    "p_set_float": DataAPISet([1.1, float("NaN"), float("-Infinity"), 9.9]),
+    "p_map_text_float": DataAPIMap({"a": 0.1, "b": 0.2}),
+    "p_map_float_text": DataAPIMap({1.1: "1-1", float("NaN"): "NANNN!"}),
     "somevector": DataAPIVector.from_bytes(
         convert_ejson_binary_object_to_bytes({"$binary": "PczMzb5MzM0+mZma"})
     ),
@@ -232,8 +232,8 @@ INPUT_ROW_TO_PREPROCESS = {
     "float_minf": float("-Infinity"),
     "bytes": b"\xcd\xcc\xcc={\x00\x00\x00",  # {'$binary': 'zczMPXsAAAA='}
     "DataAPITimestamp": DataAPITimestamp(-65403045296110),  # "-103-06-17T07:25:03.890Z"
-    "TableDate": TableDate(1724, 4, 22),  # Kant's date of birth
-    "TableTime": TableTime(4, 5, 6, 789000000),
+    "DataAPIDate": DataAPIDate(1724, 4, 22),  # Kant's date of birth
+    "DataAPITime": DataAPITime(4, 5, 6, 789000000),
     "d.datetime": datetime.datetime(
         1724, 4, 22, 4, 5, 6, 789000, tzinfo=datetime.timezone.utc
     ),
@@ -245,7 +245,7 @@ INPUT_ROW_TO_PREPROCESS = {
     "Decimal_ninf": decimal.Decimal("-Infinity"),
     #
     "DataAPIVector": DataAPIVector([0.1, -0.2, 0.3]),
-    "TableMap_f": TableMap(
+    "DataAPIMap_f": DataAPIMap(
         [
             (float("NaN"), 1.0),
             ("k2", float("NaN")),
@@ -258,7 +258,7 @@ INPUT_ROW_TO_PREPROCESS = {
         "k3": "v3",
     },
     "list_f": [0.1, float("Infinity"), 0.3],
-    "TableSet_f": TableSet([0.1, float("Infinity"), 0.3]),
+    "DataAPISet_f": DataAPISet([0.1, float("Infinity"), 0.3]),
     "set_f": {float("Infinity")},  # 1-item, because of regular sets being unordered
 }
 
@@ -273,8 +273,8 @@ EXPECTED_PREPROCESSED_ROW = {
     "float_minf": "-Infinity",
     "bytes": {"$binary": "zczMPXsAAAA="},
     "DataAPITimestamp": "-103-06-17T07:25:03.890Z",
-    "TableDate": "1724-04-22",
-    "TableTime": "04:05:06.789",
+    "DataAPIDate": "1724-04-22",
+    "DataAPITime": "04:05:06.789",
     "d.datetime": "1724-04-22T04:05:06.789000+00:00",
     "d.date": "1724-04-22",
     "d.time": "04:05:06.789000",
@@ -284,7 +284,7 @@ EXPECTED_PREPROCESSED_ROW = {
     "Decimal_ninf": "-Infinity",
     #
     "DataAPIVector": {"$binary": "PczMzb5MzM0+mZma"},  # [0.1, -0.2, 0.3],
-    "TableMap_f": {
+    "DataAPIMap_f": {
         "NaN": 1.0,
         "k2": "NaN",
         "k3": "v3",
@@ -295,7 +295,7 @@ EXPECTED_PREPROCESSED_ROW = {
         "k3": "v3",
     },
     "list_f": [0.1, "Infinity", 0.3],
-    "TableSet_f": [0.1, "Infinity", 0.3],
+    "DataAPISet_f": [0.1, "Infinity", 0.3],
     "set_f": ["Infinity"],
 }
 
@@ -309,10 +309,10 @@ def _repaint_NaNs(val: Any) -> Any:
         return {_repaint_NaNs(k): _repaint_NaNs(v) for k, v in val.items()}
     elif isinstance(val, list):
         return [_repaint_NaNs(x) for x in val]
-    elif isinstance(val, TableSet):
-        return TableSet(_repaint_NaNs(v) for v in val)
-    elif isinstance(val, TableMap):
-        return TableMap((_repaint_NaNs(k), _repaint_NaNs(v)) for k, v in val.items())
+    elif isinstance(val, DataAPISet):
+        return DataAPISet(_repaint_NaNs(v) for v in val)
+    elif isinstance(val, DataAPIMap):
+        return DataAPIMap((_repaint_NaNs(k), _repaint_NaNs(v)) for k, v in val.items())
     elif isinstance(val, set):
         return {_repaint_NaNs(v) for v in val}
     elif isinstance(val, dict):

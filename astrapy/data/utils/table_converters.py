@@ -44,13 +44,13 @@ from astrapy.data.utils.table_types import (
 )
 from astrapy.data.utils.vector_coercion import ensure_unrolled_if_iterable
 from astrapy.data_types import (
+    DataAPIDate,
+    DataAPIDuration,
+    DataAPIMap,
+    DataAPISet,
+    DataAPITime,
     DataAPITimestamp,
     DataAPIVector,
-    TableDate,
-    TableDuration,
-    TableMap,
-    TableSet,
-    TableTime,
 )
 from astrapy.ids import UUID, ObjectId
 from astrapy.utils.api_options import FullSerdesOptions
@@ -143,10 +143,10 @@ def _create_scalar_tpostprocessor(
     elif column_type == TableScalarColumnType.DATE:
         if options.custom_datatypes_in_reading:
 
-            def _tpostprocessor_date(raw_value: Any) -> TableDate | None:
+            def _tpostprocessor_date(raw_value: Any) -> DataAPIDate | None:
                 if raw_value is None:
                     return None
-                return TableDate.from_string(raw_value)
+                return DataAPIDate.from_string(raw_value)
 
             return _tpostprocessor_date
 
@@ -155,17 +155,17 @@ def _create_scalar_tpostprocessor(
             def _tpostprocessor_date_stdlib(raw_value: Any) -> datetime.date | None:
                 if raw_value is None:
                     return None
-                return TableDate.from_string(raw_value).to_date()
+                return DataAPIDate.from_string(raw_value).to_date()
 
             return _tpostprocessor_date_stdlib
 
     elif column_type == TableScalarColumnType.TIME:
         if options.custom_datatypes_in_reading:
 
-            def _tpostprocessor_time(raw_value: Any) -> TableTime | None:
+            def _tpostprocessor_time(raw_value: Any) -> DataAPITime | None:
                 if raw_value is None:
                     return None
-                return TableTime.from_string(raw_value)
+                return DataAPITime.from_string(raw_value)
 
             return _tpostprocessor_time
 
@@ -174,7 +174,7 @@ def _create_scalar_tpostprocessor(
             def _tpostprocessor_time_stdlib(raw_value: Any) -> datetime.time | None:
                 if raw_value is None:
                     return None
-                return TableTime.from_string(raw_value).to_time()
+                return DataAPITime.from_string(raw_value).to_time()
 
             return _tpostprocessor_time_stdlib
 
@@ -202,10 +202,10 @@ def _create_scalar_tpostprocessor(
     elif column_type == TableScalarColumnType.DURATION:
         if options.custom_datatypes_in_reading:
 
-            def _tpostprocessor_duration(raw_value: Any) -> TableDuration | None:
+            def _tpostprocessor_duration(raw_value: Any) -> DataAPIDuration | None:
                 if raw_value is None:
                     return None
-                return TableDuration.from_string(raw_value)
+                return DataAPIDuration.from_string(raw_value)
 
             return _tpostprocessor_duration
 
@@ -216,7 +216,7 @@ def _create_scalar_tpostprocessor(
             ) -> datetime.timedelta | None:
                 if raw_value is None:
                     return None
-                return TableDuration.from_string(raw_value).to_timedelta()
+                return DataAPIDuration.from_string(raw_value).to_timedelta()
 
             return _tpostprocessor_duration_stdlib
 
@@ -336,25 +336,25 @@ def _create_column_tpostprocessor(
 
             if options.custom_datatypes_in_reading:
 
-                def _tpostprocessor_tableset(
+                def _tpostprocessor_dataapiset(
                     raw_items: set[Any] | None,
-                ) -> TableSet[Any] | None:
+                ) -> DataAPISet[Any] | None:
                     if raw_items is None:
                         return None
-                    return TableSet(value_tpostprocessor(item) for item in raw_items)
+                    return DataAPISet(value_tpostprocessor(item) for item in raw_items)
 
-                return _tpostprocessor_tableset
+                return _tpostprocessor_dataapiset
 
             else:
 
-                def _tpostprocessor_tableset_as_set(
+                def _tpostprocessor_dataapiset_as_set(
                     raw_items: set[Any] | None,
                 ) -> set[Any] | None:
                     if raw_items is None:
                         return None
                     return {value_tpostprocessor(item) for item in raw_items}
 
-                return _tpostprocessor_tableset_as_set
+                return _tpostprocessor_dataapiset_as_set
 
         else:
             raise ValueError(
@@ -371,21 +371,21 @@ def _create_column_tpostprocessor(
 
             if options.custom_datatypes_in_reading:
 
-                def _tpostprocessor_tablemap(
+                def _tpostprocessor_dataapimap(
                     raw_items: dict[Any, Any] | None,
-                ) -> TableMap[Any, Any] | None:
+                ) -> DataAPIMap[Any, Any] | None:
                     if raw_items is None:
                         return None
-                    return TableMap(
+                    return DataAPIMap(
                         (key_tpostprocessor(k), value_tpostprocessor(v))
                         for k, v in raw_items.items()
                     )
 
-                return _tpostprocessor_tablemap
+                return _tpostprocessor_dataapimap
 
             else:
 
-                def _tpostprocessor_tablemap_as_dict(
+                def _tpostprocessor_dataapimap_as_dict(
                     raw_items: dict[Any, Any] | None,
                 ) -> dict[Any, Any] | None:
                     if raw_items is None:
@@ -395,7 +395,7 @@ def _create_column_tpostprocessor(
                         for k, v in raw_items.items()
                     }
 
-                return _tpostprocessor_tablemap_as_dict
+                return _tpostprocessor_dataapimap_as_dict
         else:
             raise ValueError(
                 f"Unrecognized table key-valued-column descriptor for reads: {col_def.as_dict()}"
@@ -478,14 +478,14 @@ def preprocess_table_payload_value(
     """
 
     # is this a nesting structure?
-    if isinstance(value, (dict, TableMap)):
+    if isinstance(value, (dict, DataAPIMap)):
         return {
             preprocess_table_payload_value(
                 path, k, options=options
             ): preprocess_table_payload_value(path + [k], v, options=options)
             for k, v in value.items()
         }
-    elif isinstance(value, (list, set, TableSet)):
+    elif isinstance(value, (list, set, DataAPISet)):
         return [
             preprocess_table_payload_value(path + [""], v, options=options)
             for v in value
@@ -515,9 +515,9 @@ def preprocess_table_payload_value(
             ]
     elif isinstance(value, DataAPITimestamp):
         return value.to_string()
-    elif isinstance(value, TableDate):
+    elif isinstance(value, DataAPIDate):
         return value.to_string()
-    elif isinstance(value, TableTime):
+    elif isinstance(value, DataAPITime):
         return value.to_string()
     elif isinstance(value, datetime.datetime):
         # encoding in two steps (that's because the '%:z' strftime directive
@@ -541,14 +541,14 @@ def preprocess_table_payload_value(
         # For now it's a cascade of make-float -> treat as float
         fvalue = float(value)
         return preprocess_table_payload_value(path=path, value=fvalue, options=options)
-    elif isinstance(value, TableDuration):
+    elif isinstance(value, DataAPIDuration):
         return value.to_string()
     elif isinstance(value, UUID):
         return str(value)
     elif isinstance(value, (ipaddress.IPv4Address, ipaddress.IPv6Address)):
         return str(value)
     elif isinstance(value, datetime.timedelta):
-        return TableDuration.from_timedelta(value).to_string()
+        return DataAPIDuration.from_timedelta(value).to_string()
     elif isinstance(value, ObjectId):
         raise ValueError(
             "Values of type ObjectId are not supported. Consider switching to "
