@@ -105,7 +105,14 @@ def test_imports() -> None:
         DevOpsAPIHttpException,
         DevOpsAPIResponseException,
         DevOpsAPITimeoutException,
+        MultiCallTimeoutManager,
+        TableCumulativeOperationException,
+        TableDeleteManyException,
+        TableInsertManyException,
+        TableNotFoundException,
+        TableUpdateManyException,
         TooManyDocumentsToCountException,
+        TooManyRowsToCountException,
         UnexpectedDataAPIResponseException,
         UnexpectedDevOpsAPIResponseException,
     )
@@ -142,4 +149,8 @@ def test_imports() -> None:
         CollectionInsertOneResult,
         CollectionUpdateResult,
         OperationResult,
+        TableDeleteResult,
+        TableInsertManyResult,
+        TableInsertOneResult,
+        TableUpdateResult,
     )

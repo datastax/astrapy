@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from astrapy.data.info.data_api_exceptions import (
+from astrapy.exceptions import (
     DataAPIException,
     DataAPIResponseException,
 )
@@ -63,9 +63,9 @@ class CollectionNotFoundException(DataAPIException):
 @dataclass
 class TooManyDocumentsToCountException(DataAPIException):
     """
-    A `count_documents()` operation failed because the resulting number of documents
-    exceeded either the upper bound set by the caller or the hard limit imposed
-    by the Data API.
+    A `count_documents()` operation on a collection failed because the resulting
+    number of documents exceeded either the upper bound set by the caller or the
+    hard limit imposed by the Data API.
 
     Attributes:
         text: a text message about the exception.
@@ -128,7 +128,7 @@ class CollectionInsertManyException(CollectionCumulativeOperationException):
             objects, one for each of the requests performed during this operation.
             For single-request methods, such as insert_one, this list always
             has a single element.
-        partial_result: an CollectionInsertManyResult object, just like the one
+        partial_result: a CollectionInsertManyResult object, just like the one
             that would be the return value of the operation, had it succeeded
             completely.
     """
@@ -197,7 +197,7 @@ class CollectionUpdateManyException(CollectionCumulativeOperationException):
             objects, one for each of the requests performed during this operation.
             For single-request methods, such as insert_one, this list always
             has a single element.
-        partial_result: an CollectionUpdateResult object, just like the one that
+        partial_result: a CollectionUpdateResult object, just like the one that
         would be the return value of the operation, had it succeeded completely.
     """
 

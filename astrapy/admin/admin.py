@@ -21,7 +21,6 @@ import time
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Sequence
 
-from astrapy.admin.devops_api_exceptions import DevOpsAPIException
 from astrapy.admin.endpoints import (
     ParsedAPIEndpoint,
     api_endpoint_parsing_error_message,
@@ -31,10 +30,11 @@ from astrapy.admin.endpoints import (
 )
 from astrapy.authentication import coerce_possible_token_provider
 from astrapy.constants import CallerType, Environment
-from astrapy.data.info.data_api_exceptions import UnexpectedDataAPIResponseException
 from astrapy.exceptions import (
+    DevOpsAPIException,
     InvalidEnvironmentException,
     MultiCallTimeoutManager,
+    UnexpectedDataAPIResponseException,
     _TimeoutContext,
 )
 from astrapy.info import (

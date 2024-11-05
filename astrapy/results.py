@@ -114,7 +114,6 @@ class CollectionUpdateResult(OperationResult):
         the "update_info" field has the following fields: "n" (int),
         "updatedExisting" (bool), "ok" (float), "nModified" (int)
         and optionally "upserted" containing the ID of an upserted document.
-
     """
 
     update_info: dict[str, Any]
@@ -192,6 +191,25 @@ class TableInsertManyResult(OperationResult):
             [
                 f"inserted_ids={self.inserted_ids}",
                 f"inserted_id_tuples={self.inserted_id_tuples}",
+                "raw_results=..." if self.raw_results is not None else None,
+            ]
+        )
+
+
+@dataclass
+class TableUpdateResult(OperationResult):
+    """
+    Class that represents the result of any update operation on a table.
+
+    TODO add fields if the API returns them
+
+    Attributes:
+        raw_results: responses from the Data API calls
+    """
+
+    def __repr__(self) -> str:
+        return self._piecewise_repr(
+            [
                 "raw_results=..." if self.raw_results is not None else None,
             ]
         )

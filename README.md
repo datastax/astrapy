@@ -424,11 +424,15 @@ Result classes:
 
 ```python
 from astrapy.results import (
+    CollectionDeleteResult,
+    CollectionInsertManyResult,
+    CollectionInsertOneResult,
+    CollectionUpdateResult,
     OperationResult,
-    DeleteResult,
-    InsertOneResult,
-    InsertManyResult,
-    UpdateResult,
+    TableDeleteResult,
+    TableInsertManyResult,
+    TableInsertOneResult,
+    TableUpdateResult,
 )
 ```
 
@@ -436,26 +440,33 @@ Exceptions:
 
 ```python
 from astrapy.exceptions import (
-    CollectionNotFoundException,
     CollectionCumulativeOperationException,
+    CollectionDeleteManyException,
+    CollectionInsertManyException,
+    CollectionNotFoundException,
+    CollectionUpdateManyException,
     CursorException,
     DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
     DataAPIException,
-    UnexpectedDataAPIResponseException,
     DataAPIHttpException,
     DataAPIResponseException,
     DataAPITimeoutException,
-    CollectionDeleteManyException,
     DevOpsAPIErrorDescriptor,
     DevOpsAPIException,
-    UnexpectedDevOpsAPIResponseException,
     DevOpsAPIHttpException,
     DevOpsAPIResponseException,
     DevOpsAPITimeoutException,
-    CollectionInsertManyException,
+    MultiCallTimeoutManager,
+    TableCumulativeOperationException,
+    TableDeleteManyException,
+    TableInsertManyException,
+    TableNotFoundException,
+    TableUpdateManyException,
     TooManyDocumentsToCountException,
-    CollectionUpdateManyException,
+    TooManyRowsToCountException,
+    UnexpectedDataAPIResponseException,
+    UnexpectedDevOpsAPIResponseException,
 )
 ```
 

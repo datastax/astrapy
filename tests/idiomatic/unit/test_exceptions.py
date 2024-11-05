@@ -21,7 +21,6 @@ from httpx import HTTPStatusError, Response
 from pytest_httpserver import HTTPServer
 
 from astrapy import DataAPIClient
-from astrapy.admin.devops_api_exceptions import DevOpsAPIException
 from astrapy.constants import Environment
 from astrapy.exceptions import (
     CollectionDeleteManyException,
@@ -30,6 +29,7 @@ from astrapy.exceptions import (
     DataAPIErrorDescriptor,
     DataAPIHttpException,
     DataAPIResponseException,
+    DevOpsAPIException,
 )
 from astrapy.results import CollectionDeleteResult, CollectionInsertManyResult
 

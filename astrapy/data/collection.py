@@ -31,7 +31,6 @@ from astrapy.constants import (
     SortType,
     normalize_optional_projection,
 )
-from astrapy.data.info.data_api_exceptions import UnexpectedDataAPIResponseException
 from astrapy.data.utils.collection_converters import (
     postprocess_collection_response,
     preprocess_collection_payload,
@@ -49,6 +48,7 @@ from astrapy.exceptions import (
     CollectionUpdateManyException,
     MultiCallTimeoutManager,
     TooManyDocumentsToCountException,
+    UnexpectedDataAPIResponseException,
     _TimeoutContext,
 )
 from astrapy.info import CollectionInfo, CollectionOptions
@@ -1919,7 +1919,7 @@ class Collection(Generic[DOC]):
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            an CollectionUpdateResult object summarizing the outcome of
+            a CollectionUpdateResult object summarizing the outcome of
             the update operation.
 
         Example:
@@ -2015,7 +2015,7 @@ class Collection(Generic[DOC]):
             max_time_ms: an alias for `data_operation_timeout_ms`.
 
         Returns:
-            an CollectionUpdateResult object summarizing the outcome of
+            a CollectionUpdateResult object summarizing the outcome of
             the update operation.
 
         Example:
@@ -4141,7 +4141,7 @@ class AsyncCollection(Generic[DOC]):
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            an CollectionUpdateResult object summarizing the outcome of
+            a CollectionUpdateResult object summarizing the outcome of
             the replace operation.
 
         Example:
@@ -4405,7 +4405,7 @@ class AsyncCollection(Generic[DOC]):
             max_time_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            an CollectionUpdateResult object summarizing the outcome of
+            a CollectionUpdateResult object summarizing the outcome of
             the update operation.
 
         Example:
@@ -4516,7 +4516,7 @@ class AsyncCollection(Generic[DOC]):
             max_time_ms: an alias for `data_operation_timeout_ms`.
 
         Returns:
-            an CollectionUpdateResult object summarizing the outcome of
+            a CollectionUpdateResult object summarizing the outcome of
             the update operation.
 
         Example:

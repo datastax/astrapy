@@ -45,7 +45,14 @@ from astrapy.data.info.data_api_exceptions import (
     DataAPITimeoutException,
     UnexpectedDataAPIResponseException,
 )
-from astrapy.data.info.table_exceptions import TableNotFoundException
+from astrapy.data.info.table_exceptions import (
+    TableCumulativeOperationException,
+    TableDeleteManyException,
+    TableInsertManyException,
+    TableNotFoundException,
+    TableUpdateManyException,
+    TooManyRowsToCountException,
+)
 
 
 class InvalidEnvironmentException(ValueError):
@@ -265,6 +272,11 @@ __all__ = [
     "CollectionDeleteManyException",
     "CollectionUpdateManyException",
     "MultiCallTimeoutManager",
+    "TooManyRowsToCountException",
+    "TableCumulativeOperationException",
+    "TableInsertManyException",
+    "TableDeleteManyException",
+    "TableUpdateManyException",
 ]
 
 __pdoc__ = {
