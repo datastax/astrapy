@@ -23,6 +23,7 @@ from astrapy.admin import (
     fetch_database_info,
     parse_api_endpoint,
 )
+from astrapy.admin.devops_api_exceptions import DevOpsAPIException
 from astrapy.authentication import (
     coerce_possible_embedding_headers_provider,
     coerce_possible_token_provider,
@@ -35,9 +36,9 @@ from astrapy.constants import (
     DefaultRowType,
     Environment,
 )
+from astrapy.data.info.data_api_exceptions import UnexpectedDataAPIResponseException
 from astrapy.exceptions import (
-    DevOpsAPIException,
-    UnexpectedDataAPIResponseException,
+    InvalidEnvironmentException,
     _TimeoutContext,
 )
 from astrapy.info import (
@@ -1597,11 +1598,11 @@ class Database:
             )
         else:
             if not isinstance(dev_ops_url, UnsetType):
-                raise ValueError(
+                raise InvalidEnvironmentException(
                     "Parameter `dev_ops_url` not supported outside of Astra DB."
                 )
             if not isinstance(dev_ops_api_version, UnsetType):
-                raise ValueError(
+                raise InvalidEnvironmentException(
                     "Parameter `dev_ops_api_version` not supported outside of Astra DB."
                 )
             return DataAPIDatabaseAdmin(
@@ -3122,11 +3123,11 @@ class AsyncDatabase:
             )
         else:
             if not isinstance(dev_ops_url, UnsetType):
-                raise ValueError(
+                raise InvalidEnvironmentException(
                     "Parameter `dev_ops_url` not supported outside of Astra DB."
                 )
             if not isinstance(dev_ops_api_version, UnsetType):
-                raise ValueError(
+                raise InvalidEnvironmentException(
                     "Parameter `dev_ops_api_version` not supported outside of Astra DB."
                 )
             return DataAPIDatabaseAdmin(

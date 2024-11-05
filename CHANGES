@@ -1,5 +1,6 @@
 v 2.0.0
 =======
+Introduced `InvalidEnvironmentException` for operations invalid on some Data API environments.
 The following info methods are made async (= awaitable): `AsyncDatabase.info`, `AsyncDatabase.name`, `AsyncCollection.info`, `AsyncTable.info`
 Collections default to using custom types for lossless and full-range expression of database content.
     - e.g. instead of 'datetime.datetime', instances of `DataAPITimestamp` are returned
@@ -29,6 +30,8 @@ Removed the CommandCursor/AsyncCommandCursor classes:
   - AsyncDatabase's `list_collections`, `list_tables` methods have become awaitable and return regular lists
 Remove 'check_exists' from [Async]Database `create_collection` method (always False now)
 Remove `CollectionAlreadyExistsException` class (not used anymore without `check_exists`)
+Rename 'DevOpsAPIFaultyResponseException' to `UnexpectedDevOpsAPIResponseException`
+Rename 'DataAPIFaultyResponseException' to `UnexpectedDataAPIResponseException`
 Signature change from `-> {"ok": 1}` to `-> None` for some admin and schema methods:
     - AstraDBAdmin: `drop_database` (+ async)
     - AstraDBDatabaseAdmin, DataAPIDatabaseAdmin: `create_keyspace`, `drop_keyspace`, `drop` (+ async)

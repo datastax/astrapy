@@ -25,6 +25,7 @@ from astrapy.admin.endpoints import (
 )
 from astrapy.authentication import coerce_possible_token_provider
 from astrapy.constants import CallerType, Environment
+from astrapy.exceptions import InvalidEnvironmentException
 from astrapy.utils.api_options import (
     APIOptions,
     DataAPIURLOptions,
@@ -100,7 +101,9 @@ class DataAPIClient:
         else:
             _environment = environment.lower()
         if _environment not in Environment.values:
-            raise ValueError(f"Unsupported `environment` value: '{_environment}'.")
+            raise InvalidEnvironmentException(
+                f"Unsupported `environment` value: '{_environment}'."
+            )
         arg_api_options = APIOptions(
             environment=_environment,
             callers=callers,
@@ -250,7 +253,7 @@ class DataAPIClient:
             parsed_api_endpoint = parse_api_endpoint(api_endpoint)
             if parsed_api_endpoint is not None:
                 if parsed_api_endpoint.environment != api_options.environment:
-                    raise ValueError(
+                    raise InvalidEnvironmentException(
                         "Environment mismatch between client and provided "
                         "API endpoint. You can try adding "
                         f'`environment="{parsed_api_endpoint.environment}"` '
@@ -475,6 +478,8 @@ class DataAPIClient:
         api_options = self.api_options.with_override(arg_api_options)
 
         if api_options.environment not in Environment.astra_db_values:
-            raise ValueError("Method not supported outside of Astra DB.")
+            raise InvalidEnvironmentException(
+                "Method not supported outside of Astra DB."
+            )
 
         return AstraDBAdmin(api_options=api_options)

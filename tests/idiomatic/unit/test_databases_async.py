@@ -17,9 +17,9 @@ from __future__ import annotations
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase, DataAPIClient
+from astrapy.admin.devops_api_exceptions import DevOpsAPIException
 from astrapy.authentication import StaticTokenProvider, coerce_token_provider
 from astrapy.constants import Environment
-from astrapy.exceptions import DevOpsAPIException
 from astrapy.settings.defaults import DEFAULT_ASTRA_DB_KEYSPACE
 from astrapy.utils.api_options import (
     APIOptions,

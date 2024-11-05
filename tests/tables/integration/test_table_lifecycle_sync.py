@@ -174,6 +174,7 @@ class TestTableLifecycle:
             "table_fluent",
             definition=ct_fluent_definition,
         )
+        # TODO replace with DataAPIResponseException here
         with pytest.raises(DataAPIException):
             sync_database.create_table(
                 "table_fluent",

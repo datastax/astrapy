@@ -28,14 +28,16 @@ from astrapy.constants import (
     ProjectionType,
     normalize_optional_projection,
 )
+from astrapy.data.info.data_api_exceptions import (
+    CursorException,
+    UnexpectedDataAPIResponseException,
+)
 from astrapy.data.utils.collection_converters import (
     postprocess_collection_response,
     preprocess_collection_payload,
 )
 from astrapy.exceptions import (
-    CursorException,
     MultiCallTimeoutManager,
-    UnexpectedDataAPIResponseException,
     _TimeoutContext,
 )
 from astrapy.utils.unset import _UNSET, UnsetType

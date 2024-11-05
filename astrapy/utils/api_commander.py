@@ -22,12 +22,14 @@ from typing import Any, Dict, Iterable, Sequence, cast
 import httpx
 
 from astrapy.constants import CallerType
-from astrapy.exceptions import (
+from astrapy.data.info.data_api_exceptions import (
     DataAPIHttpException,
     DataAPIResponseException,
+    UnexpectedDataAPIResponseException,
+)
+from astrapy.exceptions import (
     DevOpsAPIHttpException,
     DevOpsAPIResponseException,
-    UnexpectedDataAPIResponseException,
     UnexpectedDevOpsAPIResponseException,
     _TimeoutContext,
     to_dataapi_timeout_exception,

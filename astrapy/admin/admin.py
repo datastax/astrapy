@@ -21,6 +21,7 @@ import time
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Sequence
 
+from astrapy.admin.devops_api_exceptions import DevOpsAPIException
 from astrapy.admin.endpoints import (
     ParsedAPIEndpoint,
     api_endpoint_parsing_error_message,
@@ -30,10 +31,10 @@ from astrapy.admin.endpoints import (
 )
 from astrapy.authentication import coerce_possible_token_provider
 from astrapy.constants import CallerType, Environment
+from astrapy.data.info.data_api_exceptions import UnexpectedDataAPIResponseException
 from astrapy.exceptions import (
-    DevOpsAPIException,
+    InvalidEnvironmentException,
     MultiCallTimeoutManager,
-    UnexpectedDataAPIResponseException,
     _TimeoutContext,
 )
 from astrapy.info import (
@@ -440,7 +441,9 @@ class AstraDBAdmin:
         api_options: FullAPIOptions,
     ) -> None:
         if api_options.environment not in Environment.astra_db_values:
-            raise ValueError("Environments outside of Astra DB are not supported.")
+            raise InvalidEnvironmentException(
+                "Environments outside of Astra DB are not supported."
+            )
 
         self.api_options = api_options
         self._dev_ops_commander_headers: dict[str, str | None]
@@ -1916,7 +1919,9 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         from astrapy.database import Database
 
         if api_options.environment not in Environment.astra_db_values:
-            raise ValueError("Environments outside of Astra DB are not supported.")
+            raise InvalidEnvironmentException(
+                "Environments outside of Astra DB are not supported."
+            )
 
         self.api_options = api_options
         self.api_endpoint = api_endpoint
@@ -1927,7 +1932,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self._database_id = parsed_api_endpoint.database_id
         self._region = parsed_api_endpoint.region
         if parsed_api_endpoint.environment != self.api_options.environment:
-            raise ValueError(
+            raise InvalidEnvironmentException(
                 "Environment mismatch between client and provided "
                 "API endpoint. You can try adding "
                 f'`environment="{parsed_api_endpoint.environment}"` '

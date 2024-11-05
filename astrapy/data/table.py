@@ -26,6 +26,7 @@ from astrapy.constants import (
     ProjectionType,
     SortType,
 )
+from astrapy.data.info.data_api_exceptions import UnexpectedDataAPIResponseException
 from astrapy.data.utils.distinct_extractors import (
     _create_document_key_extractor,
     _hash_document,
@@ -35,7 +36,6 @@ from astrapy.data.utils.table_converters import _TableConverterAgent
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
     TableNotFoundException,
-    UnexpectedDataAPIResponseException,
     _TimeoutContext,
 )
 from astrapy.info import TableIndexDefinition, TableInfo, TableVectorIndexDefinition
