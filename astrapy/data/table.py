@@ -394,8 +394,11 @@ class Table(Generic[ROW]):
         schema_operation_timeout_ms: int | None,
         max_time_ms: int | None,
     ) -> None:
-        _if_not_exists = False if if_not_exists is None else if_not_exists
-        ci_options = {"ifNotExists": _if_not_exists}
+        ci_options: dict[str, bool]
+        if if_not_exists is not None:
+            ci_options = {"ifNotExists": if_not_exists}
+        else:
+            ci_options = {}
         _schema_operation_timeout_ms = (
             schema_operation_timeout_ms
             or max_time_ms
@@ -537,6 +540,7 @@ class Table(Generic[ROW]):
         self,
         name: str,
         *,
+        if_exists: bool | None = None,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> None:
@@ -544,11 +548,16 @@ class Table(Generic[ROW]):
         Drops (deletes) an index (of any kind) from the table.
 
         This is a blocking operation: the method returns once the index
-        is created and ready to use. If the index does not exist already,
-        nothing changes on the database and this method succeeds.
+        is deleted.
+
+        Note:
+            Although associated to a table, index names are unique across a keyspace.
 
         Args:
             name: the name of the index.
+            if_exists: if passed as True, trying to drop a non-existing index
+                will not error, just silently do nothing instead. If not provided,
+                the API default behaviour will hold.
             schema_operation_timeout_ms: a timeout, in milliseconds, for the
                 dropIndex HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
@@ -570,9 +579,26 @@ class Table(Generic[ROW]):
             or max_time_ms
             or self.api_options.timeout_options.schema_operation_timeout_ms
         )
-        di_payload = {"dropIndex": {"indexName": name}}
+        di_options: dict[str, bool]
+        if if_exists is not None:
+            di_options = {"ifExists": if_exists}
+        else:
+            di_options = {}
+        di_payload = {
+            "dropIndex": {
+                k: v
+                for k, v in {
+                    "name": name,
+                    "options": di_options,
+                }.items()
+                if v is not None
+                if v != {}
+            }
+        }
         logger.info(f"dropIndex('{name}')")
-        di_response = self._api_commander.request(
+        if self._database._api_commander is None:
+            raise ValueError("Parent Database of the table has no API Commander.")
+        di_response = self._database._api_commander.request(
             payload=di_payload,
             timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
         )
@@ -825,11 +851,16 @@ class Table(Generic[ROW]):
     def drop(
         self,
         *,
+        if_exists: bool | None = None,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> None:
         """
         TODO
+
+            if_exists: if passed as True, trying to drop a non-existing table
+                will not error, just silently do nothing instead. If not provided,
+                the API default behaviour will hold.
         """
 
         _schema_operation_timeout_ms = (
@@ -839,7 +870,9 @@ class Table(Generic[ROW]):
         )
         logger.info(f"dropping table '{self.name}' (self)")
         self.database.drop_table(
-            self, schema_operation_timeout_ms=_schema_operation_timeout_ms
+            self,
+            if_exists=if_exists,
+            schema_operation_timeout_ms=_schema_operation_timeout_ms,
         )
         logger.info(f"finished dropping table '{self.name}' (self)")
 
@@ -1196,8 +1229,11 @@ class AsyncTable(Generic[ROW]):
         schema_operation_timeout_ms: int | None,
         max_time_ms: int | None,
     ) -> None:
-        _if_not_exists = False if if_not_exists is None else if_not_exists
-        ci_options = {"ifNotExists": _if_not_exists}
+        ci_options: dict[str, bool]
+        if if_not_exists is not None:
+            ci_options = {"ifNotExists": if_not_exists}
+        else:
+            ci_options = {}
         _schema_operation_timeout_ms = (
             schema_operation_timeout_ms
             or max_time_ms
@@ -1339,6 +1375,7 @@ class AsyncTable(Generic[ROW]):
         self,
         name: str,
         *,
+        if_exists: bool | None = None,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> None:
@@ -1346,11 +1383,16 @@ class AsyncTable(Generic[ROW]):
         Drops (deletes) an index (of any kind) from the table.
 
         This is a blocking operation: the method returns once the index
-        is created and ready to use. If the index does not exist already,
-        nothing changes on the database and this method succeeds.
+        is deleted.
+
+        Note:
+            Although associated to a table, index names are unique across a keyspace.
 
         Args:
             name: the name of the index.
+            if_exists: if passed as True, trying to drop a non-existing index
+                will not error, just silently do nothing instead. If not provided,
+                the API default behaviour will hold.
             schema_operation_timeout_ms: a timeout, in milliseconds, for the
                 dropIndex HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
@@ -1372,9 +1414,26 @@ class AsyncTable(Generic[ROW]):
             or max_time_ms
             or self.api_options.timeout_options.schema_operation_timeout_ms
         )
-        di_payload = {"dropIndex": {"indexName": name}}
+        di_options: dict[str, bool]
+        if if_exists is not None:
+            di_options = {"ifExists": if_exists}
+        else:
+            di_options = {}
+        di_payload = {
+            "dropIndex": {
+                k: v
+                for k, v in {
+                    "name": name,
+                    "options": di_options,
+                }.items()
+                if v is not None
+                if v != {}
+            }
+        }
         logger.info(f"dropIndex('{name}')")
-        di_response = await self._api_commander.async_request(
+        if self._database._api_commander is None:
+            raise ValueError("Parent AsyncDatabase of the table has no API Commander.")
+        di_response = await self._database._api_commander.async_request(
             payload=di_payload,
             timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
         )
@@ -1627,11 +1686,16 @@ class AsyncTable(Generic[ROW]):
     async def drop(
         self,
         *,
+        if_exists: bool | None = None,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
         TODO
+
+            if_exists: if passed as True, trying to drop a non-existing table
+                will not error, just silently do nothing instead. If not provided,
+                the API default behaviour will hold.
         """
 
         _schema_operation_timeout_ms = (
@@ -1641,7 +1705,9 @@ class AsyncTable(Generic[ROW]):
         )
         logger.info(f"dropping table '{self.name}' (self)")
         drop_result = await self.database.drop_table(
-            self, schema_operation_timeout_ms=_schema_operation_timeout_ms
+            self,
+            if_exists=if_exists,
+            schema_operation_timeout_ms=_schema_operation_timeout_ms,
         )
         logger.info(f"finished dropping table '{self.name}' (self)")
         return drop_result

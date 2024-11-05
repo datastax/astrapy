@@ -1260,8 +1260,11 @@ class Database:
             TODO add usage
         """
 
-        _if_not_exists = False if if_not_exists is None else if_not_exists
-        ct_options = {"ifNotExists": _if_not_exists}
+        ct_options: dict[str, bool]
+        if if_not_exists is not None:
+            ct_options = {"ifNotExists": if_not_exists}
+        else:
+            ct_options = {}
 
         ct_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
 
@@ -1274,9 +1277,14 @@ class Database:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {
             "createTable": {
-                "name": name,
-                "definition": ct_definition,
-                "options": ct_options,
+                k: v
+                for k, v in {
+                    "name": name,
+                    "definition": ct_definition,
+                    "options": ct_options,
+                }.items()
+                if v is not None
+                if v != {}
             }
         }
         logger.info(f"createTable('{name}')")
@@ -1304,15 +1312,19 @@ class Database:
         self,
         name_or_table: str | Table[ROW],
         *,
+        if_exists: bool | None = None,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> None:
         """
-        Drop a table from the database, along with all documents therein.
+        Drop a table from the database, along with all documents therein and indexes and indexes.
 
         Args:
             name_or_table: either the name of a table or
                 a `Table` instance.
+            if_exists: if passed as True, trying to drop a non-existing table
+                will not error, just silently do nothing instead. If not provided,
+                the API default behaviour will hold.
             schema_operation_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
@@ -1340,6 +1352,11 @@ class Database:
 
         _keyspace: str | None
         _table_name: str
+        dt_options: dict[str, bool]
+        if if_exists is not None:
+            dt_options = {"ifExists": if_exists}
+        else:
+            dt_options = {}
         if isinstance(name_or_table, Table):
             _keyspace = name_or_table.keyspace
             _table_name = name_or_table.name
@@ -1347,7 +1364,17 @@ class Database:
             _keyspace = self.keyspace
             _table_name = name_or_table
         driver_commander = self._get_driver_commander(keyspace=_keyspace)
-        dt_payload = {"dropTable": {"name": _table_name}}
+        dt_payload = {
+            "dropTable": {
+                k: v
+                for k, v in {
+                    "name": _table_name,
+                    "options": dt_options,
+                }.items()
+                if v is not None
+                if v != {}
+            }
+        }
         logger.info(f"dropTable('{_table_name}')")
         dt_response = driver_commander.request(
             payload=dt_payload,
@@ -2772,8 +2799,11 @@ class AsyncDatabase:
             TODO add usage
         """
 
-        _if_not_exists = False if if_not_exists is None else if_not_exists
-        ct_options = {"ifNotExists": _if_not_exists}
+        ct_options: dict[str, bool]
+        if if_not_exists is not None:
+            ct_options = {"ifNotExists": if_not_exists}
+        else:
+            ct_options = {}
 
         ct_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
 
@@ -2786,9 +2816,14 @@ class AsyncDatabase:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {
             "createTable": {
-                "name": name,
-                "definition": ct_definition,
-                "options": ct_options,
+                k: v
+                for k, v in {
+                    "name": name,
+                    "definition": ct_definition,
+                    "options": ct_options,
+                }.items()
+                if v is not None
+                if v != {}
             }
         }
         logger.info(f"createTable('{name}')")
@@ -2816,15 +2851,19 @@ class AsyncDatabase:
         self,
         name_or_table: str | AsyncTable[ROW],
         *,
+        if_exists: bool | None = None,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
-        Drop a table from the database, along with all documents therein.
+        Drop a table from the database, along with all documents therein and indexes.
 
         Args:
             name_or_table: either the name of a table or
                 an `AsyncTable` instance.
+            if_exists: if passed as True, trying to drop a non-existing table
+                will not error, just silently do nothing instead. If not provided,
+                the API default behaviour will hold.
             schema_operation_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
@@ -2852,6 +2891,11 @@ class AsyncDatabase:
 
         _keyspace: str | None
         _table_name: str
+        dt_options: dict[str, bool]
+        if if_exists is not None:
+            dt_options = {"ifExists": if_exists}
+        else:
+            dt_options = {}
         if isinstance(name_or_table, AsyncTable):
             _keyspace = name_or_table.keyspace
             _table_name = name_or_table.name
@@ -2859,7 +2903,17 @@ class AsyncDatabase:
             _keyspace = self.keyspace
             _table_name = name_or_table
         driver_commander = self._get_driver_commander(keyspace=_keyspace)
-        dt_payload = {"dropTable": {"name": _table_name}}
+        dt_payload = {
+            "dropTable": {
+                k: v
+                for k, v in {
+                    "name": _table_name,
+                    "options": dt_options,
+                }.items()
+                if v is not None
+                if v != {}
+            }
+        }
         logger.info(f"dropTable('{_table_name}')")
         dt_response = await driver_commander.async_request(
             payload=dt_payload,

@@ -269,9 +269,8 @@ class TestTableLifecycle:
             ),
         )
 
-        if False:  # TODO: reinstate once dropIndex restored
-            table.drop_index("tfi_idx_p_text")
-            table.drop_index("tfi_idx_p_int")
-            table.drop_index("tfi_idx_p_vector")
-            table.drop_index("tfi_idx_p_vector_sm")
+        table.drop_index("tfi_idx_p_text")
+        table.drop_index("tfi_idx_p_int")
+        table.drop_index("tfi_idx_p_vector")
+        table.drop_index("tfi_idx_p_vector_sm")
         sync_database.drop_table(table)

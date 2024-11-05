@@ -269,9 +269,8 @@ class TestTableLifecycle:
             ),
         )
 
-        if False:  # TODO: reinstate once dropIndex restored
-            await table.drop_index("tfi_idx_p_text")
-            await table.drop_index("tfi_idx_p_int")
-            await table.drop_index("tfi_idx_p_vector")
-            await table.drop_index("tfi_idx_p_vector_sm")
+        await table.drop_index("tfi_idx_p_text")
+        await table.drop_index("tfi_idx_p_int")
+        await table.drop_index("tfi_idx_p_vector")
+        await table.drop_index("tfi_idx_p_vector_sm")
         await async_database.drop_table(table)
