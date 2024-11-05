@@ -19,10 +19,10 @@ import pytest
 from astrapy import Database
 from astrapy.cursors import CursorState
 from astrapy.exceptions import (
+    CollectionInsertManyException,
     CollectionNotFoundException,
     CursorException,
     DataAPIResponseException,
-    InsertManyException,
     TooManyDocumentsToCountException,
 )
 
@@ -78,7 +78,7 @@ class TestExceptionsSync:
         assert len(list(col.find({}))) == 6
 
         col.delete_many({})
-        with pytest.raises(InsertManyException) as exc:
+        with pytest.raises(CollectionInsertManyException) as exc:
             col.insert_many(dup_docs, ordered=True, chunk_size=2, concurrency=1)
         assert len(exc.value.error_descriptors) == 1
         assert len(exc.value.detailed_error_descriptors) == 1
@@ -88,7 +88,7 @@ class TestExceptionsSync:
         assert {doc["_id"] for doc in col.find()} == {"a", "b"}
 
         col.delete_many({})
-        with pytest.raises(InsertManyException) as exc:
+        with pytest.raises(CollectionInsertManyException) as exc:
             col.insert_many(dup_docs, ordered=False, chunk_size=2, concurrency=1)
         assert len(exc.value.error_descriptors) == 3
         assert len(exc.value.detailed_error_descriptors) == 2
@@ -99,7 +99,7 @@ class TestExceptionsSync:
         assert {doc["_id"] for doc in col.find()} == {"a", "b", "d", "e", "f"}
 
         col.delete_many({})
-        with pytest.raises(InsertManyException) as exc:
+        with pytest.raises(CollectionInsertManyException) as exc:
             im_result3 = col.insert_many(
                 dup_docs, ordered=False, chunk_size=2, concurrency=2
             )

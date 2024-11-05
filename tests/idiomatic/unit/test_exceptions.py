@@ -24,12 +24,12 @@ from astrapy import DataAPIClient
 from astrapy.admin.devops_api_exceptions import DevOpsAPIException
 from astrapy.constants import Environment
 from astrapy.exceptions import (
+    CollectionDeleteManyException,
+    CollectionInsertManyException,
     DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
     DataAPIHttpException,
     DataAPIResponseException,
-    DeleteManyException,
-    InsertManyException,
 )
 from astrapy.results import CollectionDeleteResult, CollectionInsertManyResult
 
@@ -268,13 +268,13 @@ def test_dataapiresponseexception() -> None:
     ]
 
 
-@pytest.mark.describe("test InsertManyException")
-def test_insertmanyexception() -> None:
+@pytest.mark.describe("test CollectionInsertManyException")
+def test_CollectionInsertManyException() -> None:
     im_result = CollectionInsertManyResult(
         raw_results=[{"a": 1}], inserted_ids=["a", "b"]
     )
     # mypy thinks im_e1 is a DataAPIException for some reason...
-    im_e1: InsertManyException = InsertManyException.from_responses(  # type: ignore[assignment]
+    im_e1: CollectionInsertManyException = CollectionInsertManyException.from_responses(  # type: ignore[assignment]
         commands=[{"cmd": "C1"}],
         raw_responses=[{"errors": [{"errorCode": "C", "message": "Aaa"}]}],
         partial_result=im_result,
@@ -293,11 +293,11 @@ def test_insertmanyexception() -> None:
     ]
 
 
-@pytest.mark.describe("test DeleteManyException")
-def test_deletemanyexception() -> None:
+@pytest.mark.describe("test CollectionDeleteManyException")
+def test_CollectionDeleteManyException() -> None:
     dm_result = CollectionDeleteResult(deleted_count=123, raw_results=[{"a": 1}])
     # mypy thinks dm_e1 is a DataAPIException for some reason...
-    dm_e1: DeleteManyException = DeleteManyException.from_responses(  # type: ignore[assignment]
+    dm_e1: CollectionDeleteManyException = CollectionDeleteManyException.from_responses(  # type: ignore[assignment]
         commands=[{"cmd": "C1"}],
         raw_responses=[{"errors": [{"errorCode": "C", "message": "Aaa"}]}],
         partial_result=dm_result,

@@ -22,7 +22,7 @@ import pytest
 
 from astrapy import Database
 from astrapy.authentication import AWSEmbeddingHeadersProvider, EmbeddingHeadersProvider
-from astrapy.exceptions import DataAPIResponseException, InsertManyException
+from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
 from astrapy.info import VectorServiceOptions
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -155,7 +155,7 @@ class TestVectorizeProviders:
                         {"tag": test_sample_tag, "$vectorize": test_sample_text},
                     )
                 # also test for an error if inserting many
-                with pytest.raises(InsertManyException):
+                with pytest.raises(CollectionInsertManyException):
                     collection.insert_many(
                         [
                             {"tag": tag, "$vectorize": text}

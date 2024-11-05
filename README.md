@@ -437,7 +437,7 @@ Exceptions:
 ```python
 from astrapy.exceptions import (
     CollectionNotFoundException,
-    CumulativeOperationException,
+    CollectionCumulativeOperationException,
     CursorException,
     DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
@@ -446,16 +446,16 @@ from astrapy.exceptions import (
     DataAPIHttpException,
     DataAPIResponseException,
     DataAPITimeoutException,
-    DeleteManyException,
+    CollectionDeleteManyException,
     DevOpsAPIErrorDescriptor,
     DevOpsAPIException,
     UnexpectedDevOpsAPIResponseException,
     DevOpsAPIHttpException,
     DevOpsAPIResponseException,
     DevOpsAPITimeoutException,
-    InsertManyException,
+    CollectionInsertManyException,
     TooManyDocumentsToCountException,
-    UpdateManyException,
+    CollectionUpdateManyException,
 )
 ```
 

@@ -88,8 +88,11 @@ def test_imports() -> None:
         CursorState,
     )
     from astrapy.exceptions import (  # noqa: F401
+        CollectionCumulativeOperationException,
+        CollectionDeleteManyException,
+        CollectionInsertManyException,
         CollectionNotFoundException,
-        CumulativeOperationException,
+        CollectionUpdateManyException,
         CursorException,
         DataAPIDetailedErrorDescriptor,
         DataAPIErrorDescriptor,
@@ -97,17 +100,14 @@ def test_imports() -> None:
         DataAPIHttpException,
         DataAPIResponseException,
         DataAPITimeoutException,
-        DeleteManyException,
         DevOpsAPIErrorDescriptor,
         DevOpsAPIException,
         DevOpsAPIHttpException,
         DevOpsAPIResponseException,
         DevOpsAPITimeoutException,
-        InsertManyException,
         TooManyDocumentsToCountException,
         UnexpectedDataAPIResponseException,
         UnexpectedDevOpsAPIResponseException,
-        UpdateManyException,
     )
     from astrapy.ids import (  # noqa: F401
         UUID,

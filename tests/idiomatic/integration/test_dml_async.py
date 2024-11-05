@@ -22,7 +22,7 @@ import pytest
 from astrapy.constants import DefaultDocumentType, ReturnDocument, SortDocuments
 from astrapy.cursors import AsyncCollectionCursor
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
-from astrapy.exceptions import DataAPIResponseException, InsertManyException
+from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
 from astrapy.ids import UUID, ObjectId
 from astrapy.results import CollectionDeleteResult, CollectionInsertOneResult
 from astrapy.utils.api_options import APIOptions, SerdesOptions
@@ -975,17 +975,17 @@ class TestDMLAsync:
         assert set(ins_result1.inserted_ids) == {"a", "b"}
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
-        with pytest.raises(InsertManyException):
+        with pytest.raises(CollectionInsertManyException):
             await acol.insert_many([{"_id": "a"}, {"_id": "c"}], ordered=True)
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
-        with pytest.raises(InsertManyException):
+        with pytest.raises(CollectionInsertManyException):
             await acol.insert_many(
                 [{"_id": "c"}, {"_id": "a"}, {"_id": "d"}], ordered=True
             )
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "c"}
 
-        with pytest.raises(InsertManyException):
+        with pytest.raises(CollectionInsertManyException):
             await acol.insert_many(
                 [{"_id": "c"}, {"_id": "d"}, {"_id": "e"}],
                 ordered=False,

@@ -1,5 +1,10 @@
 v 2.0.0
 =======
+Renamed collection-specific exceptions:
+    - 'CumulativeOperationException' ==> `CollectionCumulativeOperationException`
+    - 'InsertManyException' ==> `CollectionInsertManyException`
+    - 'DeleteManyException' ==> `CollectionDeleteManyException`
+    - 'UpdateManyException' ==> `CollectionUpdateManyException`
 Introduced `InvalidEnvironmentException` for operations invalid on some Data API environments.
 The following info methods are made async (= awaitable): `AsyncDatabase.info`, `AsyncDatabase.name`, `AsyncCollection.info`, `AsyncTable.info`
 Collections default to using custom types for lossless and full-range expression of database content.

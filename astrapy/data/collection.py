@@ -43,12 +43,12 @@ from astrapy.data.utils.distinct_extractors import (
 )
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
+    CollectionDeleteManyException,
+    CollectionInsertManyException,
     CollectionNotFoundException,
-    DeleteManyException,
-    InsertManyException,
+    CollectionUpdateManyException,
     MultiCallTimeoutManager,
     TooManyDocumentsToCountException,
-    UpdateManyException,
     _TimeoutContext,
 )
 from astrapy.info import CollectionInfo, CollectionOptions
@@ -832,7 +832,7 @@ class Collection(Generic[DOC]):
                         raw_results=raw_results,
                         inserted_ids=inserted_ids,
                     )
-                    raise InsertManyException.from_response(
+                    raise CollectionInsertManyException.from_response(
                         command=None,
                         raw_response=chunk_response,
                         partial_result=partial_result,
@@ -918,7 +918,7 @@ class Collection(Generic[DOC]):
                     raw_results=raw_results,
                     inserted_ids=inserted_ids,
                 )
-                raise InsertManyException.from_responses(
+                raise CollectionInsertManyException.from_responses(
                     commands=[None for _ in raw_results],
                     raw_responses=raw_results,
                     partial_result=partial_result,
@@ -2091,7 +2091,7 @@ class Collection(Generic[DOC]):
                     update_info=partial_update_info,
                 )
                 all_um_responses = um_responses + [this_um_response]
-                raise UpdateManyException.from_responses(
+                raise CollectionUpdateManyException.from_responses(
                     commands=[None for _ in all_um_responses],
                     raw_responses=all_um_responses,
                     partial_result=partial_result,
@@ -2392,7 +2392,7 @@ class Collection(Generic[DOC]):
                     raw_results=dm_responses,
                 )
                 all_dm_responses = dm_responses + [this_dm_response]
-                raise DeleteManyException.from_responses(
+                raise CollectionDeleteManyException.from_responses(
                     commands=[None for _ in all_dm_responses],
                     raw_responses=all_dm_responses,
                     partial_result=partial_result,
@@ -3263,7 +3263,7 @@ class AsyncCollection(Generic[DOC]):
                         raw_results=raw_results,
                         inserted_ids=inserted_ids,
                     )
-                    raise InsertManyException.from_response(
+                    raise CollectionInsertManyException.from_response(
                         command=None,
                         raw_response=chunk_response,
                         partial_result=partial_result,
@@ -3337,7 +3337,7 @@ class AsyncCollection(Generic[DOC]):
                     raw_results=raw_results,
                     inserted_ids=inserted_ids,
                 )
-                raise InsertManyException.from_responses(
+                raise CollectionInsertManyException.from_responses(
                     commands=[None for _ in raw_results],
                     raw_responses=raw_results,
                     partial_result=partial_result,
@@ -4603,7 +4603,7 @@ class AsyncCollection(Generic[DOC]):
                     update_info=partial_update_info,
                 )
                 all_um_responses = um_responses + [this_um_response]
-                raise UpdateManyException.from_responses(
+                raise CollectionUpdateManyException.from_responses(
                     commands=[None for _ in all_um_responses],
                     raw_responses=all_um_responses,
                     partial_result=partial_result,
@@ -4919,7 +4919,7 @@ class AsyncCollection(Generic[DOC]):
                     raw_results=dm_responses,
                 )
                 all_dm_responses = dm_responses + [this_dm_response]
-                raise DeleteManyException.from_responses(
+                raise CollectionDeleteManyException.from_responses(
                     commands=[None for _ in all_dm_responses],
                     raw_responses=all_dm_responses,
                     partial_result=partial_result,

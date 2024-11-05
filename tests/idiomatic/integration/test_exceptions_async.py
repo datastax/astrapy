@@ -20,10 +20,10 @@ from astrapy import AsyncDatabase
 from astrapy.constants import DefaultDocumentType
 from astrapy.cursors import AsyncCollectionCursor, CursorState
 from astrapy.exceptions import (
+    CollectionInsertManyException,
     CollectionNotFoundException,
     CursorException,
     DataAPIResponseException,
-    InsertManyException,
     TooManyDocumentsToCountException,
 )
 
@@ -86,7 +86,7 @@ class TestExceptionsAsync:
         assert len(await _alist(acol.find({}))) == 6
 
         await acol.delete_many({})
-        with pytest.raises(InsertManyException) as exc:
+        with pytest.raises(CollectionInsertManyException) as exc:
             await acol.insert_many(dup_docs, ordered=True, chunk_size=2, concurrency=1)
         assert len(exc.value.error_descriptors) == 1
         assert len(exc.value.detailed_error_descriptors) == 1
@@ -96,7 +96,7 @@ class TestExceptionsAsync:
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b"}
 
         await acol.delete_many({})
-        with pytest.raises(InsertManyException) as exc:
+        with pytest.raises(CollectionInsertManyException) as exc:
             await acol.insert_many(dup_docs, ordered=False, chunk_size=2, concurrency=1)
         assert len(exc.value.error_descriptors) == 3
         assert len(exc.value.detailed_error_descriptors) == 2
@@ -107,7 +107,7 @@ class TestExceptionsAsync:
         assert {doc["_id"] async for doc in acol.find()} == {"a", "b", "d", "e", "f"}
 
         await acol.delete_many({})
-        with pytest.raises(InsertManyException) as exc:
+        with pytest.raises(CollectionInsertManyException) as exc:
             im_result3 = await acol.insert_many(
                 dup_docs, ordered=False, chunk_size=2, concurrency=2
             )
