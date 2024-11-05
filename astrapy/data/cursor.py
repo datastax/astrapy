@@ -454,7 +454,7 @@ class CollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _skip: int | None
-    _mapper: Callable[[TRAW], T]
+    _mapper: Callable[[TRAW], T] | None
 
     def __init__(
         self,
@@ -478,14 +478,7 @@ class CollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
         self._skip = skip
-        if mapper is None:
-
-            def _identity(document: TRAW) -> T:
-                return cast(T, document)
-
-            self._mapper = _identity
-        else:
-            self._mapper = mapper
+        self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
         self._overall_timeout_ms = overall_timeout_ms
         self._query_engine = _CollectionQueryEngine(
@@ -589,7 +582,7 @@ class CollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         traw0, rest_buffer = self._buffer[0], self._buffer[1:]
         self._buffer = rest_buffer
         self._consumed += 1
-        return self._mapper(traw0)
+        return cast(T, self._mapper(traw0) if self._mapper is not None else traw0)
 
     @property
     def data_source(self) -> Collection[TRAW]:
@@ -627,6 +620,11 @@ class CollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
     def project(self, projection: ProjectionType | None) -> CollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
+        if self._mapper is not None:
+            raise CursorException(
+                "Cannot set projection after map.",
+                cursor_state=self._state.value,
+            )
         return self._copy(projection=projection)
 
     def sort(self, sort: dict[str, Any] | None) -> CollectionCursor[TRAW, T]:
@@ -667,11 +665,11 @@ class CollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         if self._mapper is not None:
 
             def _composite(document: TRAW) -> TNEW:
-                return mapper(self._mapper(document))
+                return mapper(self._mapper(document))  # type: ignore[misc]
 
             composite_mapper = _composite
         else:
-            composite_mapper = mapper
+            composite_mapper = cast(Callable[[TRAW], TNEW], mapper)
         return CollectionCursor(
             collection=self._query_engine.collection,
             request_timeout_ms=self._request_timeout_ms,
@@ -744,7 +742,7 @@ class AsyncCollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _skip: int | None
-    _mapper: Callable[[TRAW], T]
+    _mapper: Callable[[TRAW], T] | None
 
     def __init__(
         self,
@@ -768,14 +766,7 @@ class AsyncCollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
         self._skip = skip
-        if mapper is None:
-
-            def _identity(document: TRAW) -> T:
-                return cast(T, document)
-
-            self._mapper = _identity
-        else:
-            self._mapper = mapper
+        self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
         self._overall_timeout_ms = overall_timeout_ms
         self._query_engine = _CollectionQueryEngine(
@@ -882,7 +873,7 @@ class AsyncCollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         traw0, rest_buffer = self._buffer[0], self._buffer[1:]
         self._buffer = rest_buffer
         self._consumed += 1
-        return self._mapper(traw0)
+        return cast(T, self._mapper(traw0) if self._mapper is not None else traw0)
 
     @property
     def data_source(self) -> AsyncCollection[TRAW]:
@@ -922,6 +913,11 @@ class AsyncCollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
     ) -> AsyncCollectionCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
+        if self._mapper is not None:
+            raise CursorException(
+                "Cannot set projection after map.",
+                cursor_state=self._state.value,
+            )
         return self._copy(projection=projection)
 
     def sort(self, sort: dict[str, Any] | None) -> AsyncCollectionCursor[TRAW, T]:
@@ -962,11 +958,11 @@ class AsyncCollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         if self._mapper is not None:
 
             def _composite(document: TRAW) -> TNEW:
-                return mapper(self._mapper(document))
+                return mapper(self._mapper(document))  # type: ignore[misc]
 
             composite_mapper = _composite
         else:
-            composite_mapper = mapper
+            composite_mapper = cast(Callable[[TRAW], TNEW], mapper)
         return AsyncCollectionCursor(
             collection=self._query_engine.async_collection,
             request_timeout_ms=self._request_timeout_ms,
@@ -1039,7 +1035,7 @@ class TableCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _skip: int | None
-    _mapper: Callable[[TRAW], T]
+    _mapper: Callable[[TRAW], T] | None
 
     def __init__(
         self,
@@ -1063,14 +1059,7 @@ class TableCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
         self._skip = skip
-        if mapper is None:
-
-            def _identity(document: TRAW) -> T:
-                return cast(T, document)
-
-            self._mapper = _identity
-        else:
-            self._mapper = mapper
+        self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
         self._overall_timeout_ms = overall_timeout_ms
         self._query_engine = _TableQueryEngine(
@@ -1174,7 +1163,7 @@ class TableCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         traw0, rest_buffer = self._buffer[0], self._buffer[1:]
         self._buffer = rest_buffer
         self._consumed += 1
-        return self._mapper(traw0)
+        return cast(T, self._mapper(traw0) if self._mapper is not None else traw0)
 
     @property
     def data_source(self) -> Table[TRAW]:
@@ -1212,6 +1201,11 @@ class TableCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
     def project(self, projection: ProjectionType | None) -> TableCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
+        if self._mapper is not None:
+            raise CursorException(
+                "Cannot set projection after map.",
+                cursor_state=self._state.value,
+            )
         return self._copy(projection=projection)
 
     def sort(self, sort: dict[str, Any] | None) -> TableCursor[TRAW, T]:
@@ -1252,11 +1246,11 @@ class TableCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         if self._mapper is not None:
 
             def _composite(document: TRAW) -> TNEW:
-                return mapper(self._mapper(document))
+                return mapper(self._mapper(document))  # type: ignore[misc]
 
             composite_mapper = _composite
         else:
-            composite_mapper = mapper
+            composite_mapper = cast(Callable[[TRAW], TNEW], mapper)
         return TableCursor(
             table=self._query_engine.table,
             request_timeout_ms=self._request_timeout_ms,
@@ -1329,7 +1323,7 @@ class AsyncTableCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
     _include_similarity: bool | None
     _include_sort_vector: bool | None
     _skip: int | None
-    _mapper: Callable[[TRAW], T]
+    _mapper: Callable[[TRAW], T] | None
 
     def __init__(
         self,
@@ -1353,14 +1347,7 @@ class AsyncTableCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         self._include_similarity = include_similarity
         self._include_sort_vector = include_sort_vector
         self._skip = skip
-        if mapper is None:
-
-            def _identity(document: TRAW) -> T:
-                return cast(T, document)
-
-            self._mapper = _identity
-        else:
-            self._mapper = mapper
+        self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
         self._overall_timeout_ms = overall_timeout_ms
         self._query_engine = _TableQueryEngine(
@@ -1467,7 +1454,7 @@ class AsyncTableCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         traw0, rest_buffer = self._buffer[0], self._buffer[1:]
         self._buffer = rest_buffer
         self._consumed += 1
-        return self._mapper(traw0)
+        return cast(T, self._mapper(traw0) if self._mapper is not None else traw0)
 
     @property
     def data_source(self) -> AsyncTable[TRAW]:
@@ -1505,6 +1492,11 @@ class AsyncTableCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
     def project(self, projection: ProjectionType | None) -> AsyncTableCursor[TRAW, T]:
         # cannot happen once started consuming
         self._ensure_idle()
+        if self._mapper is not None:
+            raise CursorException(
+                "Cannot set projection after map.",
+                cursor_state=self._state.value,
+            )
         return self._copy(projection=projection)
 
     def sort(self, sort: dict[str, Any] | None) -> AsyncTableCursor[TRAW, T]:
@@ -1545,11 +1537,11 @@ class AsyncTableCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         if self._mapper is not None:
 
             def _composite(document: TRAW) -> TNEW:
-                return mapper(self._mapper(document))
+                return mapper(self._mapper(document))  # type: ignore[misc]
 
             composite_mapper = _composite
         else:
-            composite_mapper = mapper
+            composite_mapper = cast(Callable[[TRAW], TNEW], mapper)
         return AsyncTableCursor(
             table=self._query_engine.async_table,
             request_timeout_ms=self._request_timeout_ms,
