@@ -269,8 +269,8 @@ class TestTableLifecycle:
             ),
         )
 
-        table.drop_index("tfi_idx_p_text")
-        table.drop_index("tfi_idx_p_int")
-        table.drop_index("tfi_idx_p_vector")
-        table.drop_index("tfi_idx_p_vector_sm")
+        sync_database.drop_table_index("tfi_idx_p_text")
+        sync_database.drop_table_index("tfi_idx_p_int")
+        sync_database.drop_table_index("tfi_idx_p_vector")
+        sync_database.drop_table_index("tfi_idx_p_vector_sm")
         sync_database.drop_table(table)

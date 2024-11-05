@@ -1308,6 +1308,82 @@ class Database:
             table_api_options=table_api_options,
         )
 
+    def drop_table_index(
+        self,
+        name: str,
+        *,
+        keyspace: str | None = None,
+        if_exists: bool | None = None,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> None:
+        """
+        Drops (deletes) an index (of any kind) from the table it is associated to.
+
+        This is a blocking operation: the method returns once the index
+        is deleted.
+
+        Note:
+            Although associated to a table, index names are unique across a keyspace.
+            For this reason, no table name is required in this call.
+
+        Args:
+            name: the name of the index.
+            keyspace: the keyspace to which the index belongs.
+                If not specified, the general setting for this database is used.
+            if_exists: if passed as True, trying to drop a non-existing index
+                will not error, just silently do nothing instead. If not provided,
+                the API default behaviour will hold.
+            schema_operation_timeout_ms: a timeout, in milliseconds, for the
+                dropIndex HTTP request.
+            max_time_ms: an alias for `schema_operation_timeout_ms`.
+
+        Example:
+            TODO
+            >>> table_def = (
+            ...     TableDefinition.zero()
+            ...     .add_column("id", "text")
+            ...     .add_column("name", "text")
+            ...     .add_partition_by(["id"])
+            ... )
+            ...
+            >>> my_table = my_db.create_table("my_table", definition=table_def)
+        """
+
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.schema_operation_timeout_ms
+        )
+        di_options: dict[str, bool]
+        if if_exists is not None:
+            di_options = {"ifExists": if_exists}
+        else:
+            di_options = {}
+        di_payload = {
+            "dropIndex": {
+                k: v
+                for k, v in {
+                    "name": name,
+                    "options": di_options,
+                }.items()
+                if v is not None
+                if v != {}
+            }
+        }
+        driver_commander = self._get_driver_commander(keyspace=keyspace)
+        logger.info(f"dropIndex('{name}')")
+        di_response = driver_commander.request(
+            payload=di_payload,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
+        )
+        if di_response.get("status") != {"ok": 1}:
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from dropIndex API command.",
+                raw_response=di_response,
+            )
+        logger.info(f"finished dropIndex('{name}')")
+
     def drop_table(
         self,
         name_or_table: str | Table[ROW],
@@ -2846,6 +2922,82 @@ class AsyncDatabase:
             table_max_time_ms=table_max_time_ms,
             table_api_options=table_api_options,
         )
+
+    async def drop_table_index(
+        self,
+        name: str,
+        *,
+        keyspace: str | None = None,
+        if_exists: bool | None = None,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> None:
+        """
+        Drops (deletes) an index (of any kind) from the table it is associated to.
+
+        This is a blocking operation: the method returns once the index
+        is deleted.
+
+        Note:
+            Although associated to a table, index names are unique across a keyspace.
+            For this reason, no table name is required in this call.
+
+        Args:
+            name: the name of the index.
+            keyspace: the keyspace to which the index belongs.
+                If not specified, the general setting for this database is used.
+            if_exists: if passed as True, trying to drop a non-existing index
+                will not error, just silently do nothing instead. If not provided,
+                the API default behaviour will hold.
+            schema_operation_timeout_ms: a timeout, in milliseconds, for the
+                dropIndex HTTP request.
+            max_time_ms: an alias for `schema_operation_timeout_ms`.
+
+        Example:
+            TODO
+            >>> table_def = (
+            ...     TableDefinition.zero()
+            ...     .add_column("id", "text")
+            ...     .add_column("name", "text")
+            ...     .add_partition_by(["id"])
+            ... )
+            ...
+            >>> my_table = my_db.create_table("my_table", definition=table_def)
+        """
+
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.schema_operation_timeout_ms
+        )
+        di_options: dict[str, bool]
+        if if_exists is not None:
+            di_options = {"ifExists": if_exists}
+        else:
+            di_options = {}
+        di_payload = {
+            "dropIndex": {
+                k: v
+                for k, v in {
+                    "name": name,
+                    "options": di_options,
+                }.items()
+                if v is not None
+                if v != {}
+            }
+        }
+        driver_commander = self._get_driver_commander(keyspace=keyspace)
+        logger.info(f"dropIndex('{name}')")
+        di_response = await driver_commander.async_request(
+            payload=di_payload,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
+        )
+        if di_response.get("status") != {"ok": 1}:
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from dropIndex API command.",
+                raw_response=di_response,
+            )
+        logger.info(f"finished dropIndex('{name}')")
 
     async def drop_table(
         self,

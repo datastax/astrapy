@@ -269,8 +269,8 @@ class TestTableLifecycle:
             ),
         )
 
-        await table.drop_index("tfi_idx_p_text")
-        await table.drop_index("tfi_idx_p_int")
-        await table.drop_index("tfi_idx_p_vector")
-        await table.drop_index("tfi_idx_p_vector_sm")
+        await async_database.drop_table_index("tfi_idx_p_text")
+        await async_database.drop_table_index("tfi_idx_p_int")
+        await async_database.drop_table_index("tfi_idx_p_vector")
+        await async_database.drop_table_index("tfi_idx_p_vector_sm")
         await async_database.drop_table(table)
