@@ -710,11 +710,6 @@ class CollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         return documents
 
     def has_next(self) -> bool:
-        if self._state == CursorState.IDLE:
-            raise CursorException(
-                text="Cannot call has_next on an idle cursor.",
-                cursor_state=self._state.value,
-            )
         if self._state == CursorState.CLOSED:
             return False
         self._try_ensure_fill_buffer()
@@ -1010,11 +1005,6 @@ class AsyncCollectionCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         return documents
 
     async def has_next(self) -> bool:
-        if self._state == CursorState.IDLE:
-            raise CursorException(
-                text="Cannot call has_next on an idle cursor.",
-                cursor_state=self._state.value,
-            )
         if self._state == CursorState.CLOSED:
             return False
         await self._try_ensure_fill_buffer()
@@ -1305,11 +1295,6 @@ class TableCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         return documents
 
     def has_next(self) -> bool:
-        if self._state == CursorState.IDLE:
-            raise CursorException(
-                text="Cannot call has_next on an idle cursor.",
-                cursor_state=self._state.value,
-            )
         if self._state == CursorState.CLOSED:
             return False
         self._try_ensure_fill_buffer()
@@ -1603,11 +1588,6 @@ class AsyncTableCursor(Generic[TRAW, T], _BufferedCursor[TRAW]):
         return documents
 
     async def has_next(self) -> bool:
-        if self._state == CursorState.IDLE:
-            raise CursorException(
-                text="Cannot call has_next on an idle cursor.",
-                cursor_state=self._state.value,
-            )
         if self._state == CursorState.CLOSED:
             return False
         await self._try_ensure_fill_buffer()
