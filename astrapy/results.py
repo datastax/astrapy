@@ -93,9 +93,17 @@ class CollectionInsertManyResult(OperationResult):
     inserted_ids: list[Any]
 
     def __repr__(self) -> str:
+        _ins_ids_str: str
+        if len(self.inserted_ids) > 5:
+            _ins_ids_str = (
+                f"[{', '.join(str(_iid) for _iid in self.inserted_ids[:5])} "
+                f"... ({len(self.inserted_ids)} total)]"
+            )
+        else:
+            _ins_ids_str = str(self.inserted_ids)
         return self._piecewise_repr(
             [
-                f"inserted_ids={self.inserted_ids}",
+                f"inserted_ids={_ins_ids_str}",
                 "raw_results=..." if self.raw_results is not None else None,
             ]
         )
@@ -187,10 +195,26 @@ class TableInsertManyResult(OperationResult):
     inserted_id_tuples: list[tuple[Any, ...]]
 
     def __repr__(self) -> str:
+        _ins_ids_str: str
+        if len(self.inserted_ids) > 5:
+            _ins_ids_str = (
+                f"[{', '.join(str(_iid) for _iid in self.inserted_ids[:5])} "
+                f"... ({len(self.inserted_ids)} total)]"
+            )
+        else:
+            _ins_ids_str = str(self.inserted_ids)
+        _ins_idts_str: str
+        if len(self.inserted_id_tuples) > 5:
+            _ins_idts_str = (
+                f"[{', '.join(str(_iidt) for _iidt in self.inserted_id_tuples[:5])} "
+                f"... ({len(self.inserted_id_tuples)} total)]"
+            )
+        else:
+            _ins_idts_str = str(self.inserted_id_tuples)
         return self._piecewise_repr(
             [
-                f"inserted_ids={self.inserted_ids}",
-                f"inserted_id_tuples={self.inserted_id_tuples}",
+                f"inserted_ids={_ins_ids_str}",
+                f"inserted_id_tuples={_ins_idts_str}",
                 "raw_results=..." if self.raw_results is not None else None,
             ]
         )
