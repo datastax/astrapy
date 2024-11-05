@@ -19,15 +19,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from astrapy.admin.devops_api_exceptions import (
-    DevOpsAPIErrorDescriptor,
-    DevOpsAPIException,
-    DevOpsAPIHttpException,
-    DevOpsAPIResponseException,
-    DevOpsAPITimeoutException,
-    UnexpectedDevOpsAPIResponseException,
-)
-from astrapy.data.info.collection_exceptions import (
+from astrapy.exceptions.collection_exceptions import (
     CollectionCumulativeOperationException,
     CollectionDeleteManyException,
     CollectionInsertManyException,
@@ -35,7 +27,7 @@ from astrapy.data.info.collection_exceptions import (
     CollectionUpdateManyException,
     TooManyDocumentsToCountException,
 )
-from astrapy.data.info.data_api_exceptions import (
+from astrapy.exceptions.data_api_exceptions import (
     CursorException,
     DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
@@ -45,7 +37,15 @@ from astrapy.data.info.data_api_exceptions import (
     DataAPITimeoutException,
     UnexpectedDataAPIResponseException,
 )
-from astrapy.data.info.table_exceptions import (
+from astrapy.exceptions.devops_api_exceptions import (
+    DevOpsAPIErrorDescriptor,
+    DevOpsAPIException,
+    DevOpsAPIHttpException,
+    DevOpsAPIResponseException,
+    DevOpsAPITimeoutException,
+    UnexpectedDevOpsAPIResponseException,
+)
+from astrapy.exceptions.table_exceptions import (
     TableCumulativeOperationException,
     TableDeleteManyException,
     TableInsertManyException,

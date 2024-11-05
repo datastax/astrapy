@@ -17,78 +17,70 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from astrapy.exceptions import (
+from astrapy.exceptions.data_api_exceptions import (
     DataAPIException,
     DataAPIResponseException,
 )
 
 if TYPE_CHECKING:
     from astrapy.results import (
-        CollectionDeleteResult,
-        CollectionInsertManyResult,
-        CollectionUpdateResult,
         OperationResult,
+        TableDeleteResult,
+        TableInsertManyResult,
+        TableUpdateResult,
     )
 
 
 @dataclass
-class CollectionNotFoundException(DataAPIException):
+class TableNotFoundException(DataAPIException):
     """
-    A collection is found non-existing and the requested operation
+    A table is found non-existing and the requested operation
     cannot be performed.
 
     Attributes:
         text: a text message about the exception.
-        keyspace: the keyspace where the collection was supposed to be.
-        collection_name: the name of the expected collection.
+        keyspace: the keyspace where the table was supposed to be.
+        table_name: the name of the expected table.
     """
 
     text: str
     keyspace: str
-    collection_name: str
+    table_name: str
 
     def __init__(
         self,
         text: str,
         *,
         keyspace: str,
-        collection_name: str,
+        table_name: str,
     ) -> None:
         super().__init__(text)
         self.text = text
         self.keyspace = keyspace
-        self.collection_name = collection_name
+        self.table_name = table_name
 
 
 @dataclass
-class TooManyDocumentsToCountException(DataAPIException):
+class TooManyRowsToCountException(DataAPIException):
     """
-    A `count_documents()` operation on a collection failed because the resulting
-    number of documents exceeded either the upper bound set by the caller or the
-    hard limit imposed by the Data API.
+    A `count_documents()` operation on a table failed because of the excessive amount
+    of rows to count.
 
     Attributes:
         text: a text message about the exception.
-        server_max_count_exceeded: True if the count limit imposed by the API
-            is reached. In that case, increasing the upper bound in the method
-            invocation is of no help.
     """
 
     text: str
-    server_max_count_exceeded: bool
 
     def __init__(
         self,
         text: str,
-        *,
-        server_max_count_exceeded: bool,
     ) -> None:
         super().__init__(text)
         self.text = text
-        self.server_max_count_exceeded = server_max_count_exceeded
 
 
-class CollectionCumulativeOperationException(DataAPIResponseException):
+class TableCumulativeOperationException(DataAPIResponseException):
     """
     An exception of type DataAPIResponseException (see) occurred
     during an operation that in general spans several requests.
@@ -112,7 +104,7 @@ class CollectionCumulativeOperationException(DataAPIResponseException):
 
 
 @dataclass
-class CollectionInsertManyException(CollectionCumulativeOperationException):
+class TableInsertManyException(TableCumulativeOperationException):
     """
     An exception of type DataAPIResponseException (see) occurred
     during an insert_many (that in general spans several requests).
@@ -128,17 +120,17 @@ class CollectionInsertManyException(CollectionCumulativeOperationException):
             objects, one for each of the requests performed during this operation.
             For single-request methods, such as insert_one, this list always
             has a single element.
-        partial_result: a CollectionInsertManyResult object, just like the one
+        partial_result: a TableInsertManyResult object, just like the one
             that would be the return value of the operation, had it succeeded
             completely.
     """
 
-    partial_result: CollectionInsertManyResult
+    partial_result: TableInsertManyResult
 
     def __init__(
         self,
         text: str,
-        partial_result: CollectionInsertManyResult,
+        partial_result: TableInsertManyResult,
         *pargs: Any,
         **kwargs: Any,
     ) -> None:
@@ -147,7 +139,7 @@ class CollectionInsertManyException(CollectionCumulativeOperationException):
 
 
 @dataclass
-class CollectionDeleteManyException(CollectionCumulativeOperationException):
+class TableDeleteManyException(TableCumulativeOperationException):
     """
     An exception of type DataAPIResponseException (see) occurred
     during a delete_many (that in general spans several requests).
@@ -163,16 +155,16 @@ class CollectionDeleteManyException(CollectionCumulativeOperationException):
             objects, one for each of the requests performed during this operation.
             For single-request methods, such as insert_one, this list always
             has a single element.
-        partial_result: a CollectionDeleteResult object, just like the one that would
+        partial_result: a TableDeleteResult object, just like the one that would
             be the return value of the operation, had it succeeded completely.
     """
 
-    partial_result: CollectionDeleteResult
+    partial_result: TableDeleteResult
 
     def __init__(
         self,
         text: str,
-        partial_result: CollectionDeleteResult,
+        partial_result: TableDeleteResult,
         *pargs: Any,
         **kwargs: Any,
     ) -> None:
@@ -181,7 +173,7 @@ class CollectionDeleteManyException(CollectionCumulativeOperationException):
 
 
 @dataclass
-class CollectionUpdateManyException(CollectionCumulativeOperationException):
+class TableUpdateManyException(TableCumulativeOperationException):
     """
     An exception of type DataAPIResponseException (see) occurred
     during an update_many (that in general spans several requests).
@@ -197,16 +189,16 @@ class CollectionUpdateManyException(CollectionCumulativeOperationException):
             objects, one for each of the requests performed during this operation.
             For single-request methods, such as insert_one, this list always
             has a single element.
-        partial_result: a CollectionUpdateResult object, just like the one that
+        partial_result: a TableUpdateResult object, just like the one that
         would be the return value of the operation, had it succeeded completely.
     """
 
-    partial_result: CollectionUpdateResult
+    partial_result: TableUpdateResult
 
     def __init__(
         self,
         text: str,
-        partial_result: CollectionUpdateResult,
+        partial_result: TableUpdateResult,
         *pargs: Any,
         **kwargs: Any,
     ) -> None:
