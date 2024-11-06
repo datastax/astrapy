@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any, Iterable
 
 import pytest
@@ -23,9 +24,10 @@ import pytest
 from astrapy import AsyncDatabase, AsyncTable, DataAPIClient, Database, Table
 from astrapy.api_options import APIOptions
 from astrapy.constants import SortDocuments
+from astrapy.data_types import DataAPIMap, DataAPISet, DataAPITimestamp
 from astrapy.info import (
     TableDefinition,
-    # TableKeyValuedColumnTypeDescriptor,
+    TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
     TableValuedColumnTypeDescriptor,
@@ -72,10 +74,9 @@ TEST_ALL_RETURNS_TABLE_DEFINITION = TableDefinition(
             column_type="list",
             value_type="int",
         ),
-        # TODO reinstate once maps fixed
-        # "p_map_text_text": TableKeyValuedColumnTypeDescriptor(
-        #     column_type="map", key_type="text", value_type="text"
-        # ),
+        "p_map_text_text": TableKeyValuedColumnTypeDescriptor(
+            column_type="map", key_type="text", value_type="text"
+        ),
         "p_set_int": TableValuedColumnTypeDescriptor(
             column_type="set",
             value_type="int",
@@ -92,6 +93,123 @@ TEST_ALL_RETURNS_TABLE_DEFINITION = TableDefinition(
         },
     ),
 )
+
+AR_DOC_PK_0 = {
+    "p_ascii": "abc",
+    "p_bigint": 10000,
+    "p_int": 987,
+    "p_boolean": False,
+}
+AR_DOC_0 = {
+    "p_text": "Ålesund",
+    **AR_DOC_PK_0,
+}
+
+DISTINCT_AR_DOCS = [
+    {
+        "p_ascii": "A",
+        "p_bigint": 1,
+        "p_int": 1,
+        "p_boolean": True,
+        #
+        "p_float": 0.1,
+        "p_text": "a",
+        "p_timestamp": DataAPITimestamp.from_string("1111-01-01T01:01:01Z"),
+        "p_list_int": [1, 1, 2],
+        "p_map_text_text": {"a": "va", "b": "vb"},
+        "p_set_int": {100, 200},
+    },
+    {
+        "p_ascii": "A",
+        "p_bigint": 1,
+        "p_int": 2,
+        "p_boolean": True,
+        #
+        "p_float": 0.1,
+        "p_text": "a",
+        "p_timestamp": DataAPITimestamp.from_string("1111-01-01T01:01:01Z"),
+        "p_list_int": [2, 1],
+        "p_map_text_text": {"a": "va", "b": "vb"},
+        "p_set_int": {200},
+    },
+    {
+        "p_ascii": "A",
+        "p_bigint": 1,
+        "p_int": 3,
+        "p_boolean": True,
+        #
+        "p_float": float("NaN"),
+        "p_text": "a",
+        "p_list_int": [],
+        "p_map_text_text": {"b": "VB"},
+        "p_set_int": set(),
+    },
+    {
+        "p_ascii": "A",
+        "p_bigint": 1,
+        "p_int": 4,
+        "p_boolean": True,
+        #
+        "p_float": float("NaN"),
+    },
+    {
+        "p_ascii": "A",
+        "p_bigint": 1,
+        "p_int": 5,
+        "p_boolean": True,
+        #
+        "p_float": 0.2,
+        "p_text": "b",
+        "p_timestamp": DataAPITimestamp.from_string("1221-01-01T01:01:01Z"),
+        "p_list_int": [3, 1],
+        "p_map_text_text": {"a": "VA", "b": "VB"},
+        "p_set_int": {200, 300},
+    },
+]
+
+TEST_SIMPLE_TABLE_NAME = "test_table_simple"
+TEST_SIMPLE_TABLE_DEFINITION = TableDefinition(
+    columns={
+        "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
+        "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
+        "p_vector": TableVectorColumnTypeDescriptor(
+            column_type="vector",
+            dimension=3,
+            service=None,
+        ),
+    },
+    primary_key=TablePrimaryKeyDescriptor(
+        partition_by=["p_text"],
+        partition_sort={},
+    ),
+)
+
+S_DOCS = [
+    {"p_text": "A1", "p_int": 1, "p_vector": [1.1, 1.1, 1.1]},
+    {"p_text": "A2", "p_int": 2, "p_vector": [2.2, 2.2, 2.2]},
+    {"p_text": "A3", "p_int": 3, "p_vector": [3.3, 3.3, 3.3]},
+]
+
+_NaN = object()
+
+
+def _repaint_NaNs(val: Any) -> Any:
+    if isinstance(val, float) and math.isnan(val):
+        return _NaN
+    elif isinstance(val, dict):
+        return {_repaint_NaNs(k): _repaint_NaNs(v) for k, v in val.items()}
+    elif isinstance(val, list):
+        return [_repaint_NaNs(x) for x in val]
+    elif isinstance(val, DataAPISet):
+        return DataAPISet(_repaint_NaNs(v) for v in val)
+    elif isinstance(val, DataAPIMap):
+        return DataAPIMap((_repaint_NaNs(k), _repaint_NaNs(v)) for k, v in val.items())
+    elif isinstance(val, set):
+        return {_repaint_NaNs(v) for v in val}
+    elif isinstance(val, dict):
+        return {_repaint_NaNs(k): _repaint_NaNs(v) for k, v in val.items()}
+    else:
+        return val
 
 
 @pytest.fixture(scope="session")
@@ -150,7 +268,7 @@ def sync_empty_table_all_returns(
     sync_table_all_returns: DefaultTable,
 ) -> Iterable[DefaultTable]:
     """Emptied for each test function"""
-    # sync_table_all_returns.delete_many({}) TODO reinstate once available
+    sync_table_all_returns.delete_many({})
     yield sync_table_all_returns
 
 
@@ -170,6 +288,46 @@ def async_empty_table_all_returns(
     yield sync_empty_table_all_returns.to_async()
 
 
+@pytest.fixture(scope="session")
+def sync_table_simple(
+    data_api_credentials_kwargs: DataAPICredentials,
+    sync_database: Database,
+) -> Iterable[DefaultTable]:
+    """An actual table on DB, in the main keyspace"""
+    table = sync_database.create_table(
+        TEST_SIMPLE_TABLE_NAME,
+        definition=TEST_SIMPLE_TABLE_DEFINITION,
+    )
+    yield table
+
+    sync_database.drop_table(TEST_SIMPLE_TABLE_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_table_simple(
+    sync_table_simple: DefaultTable,
+) -> Iterable[DefaultTable]:
+    """Emptied for each test function"""
+    sync_table_simple.delete_many({})
+    yield sync_table_simple
+
+
+@pytest.fixture(scope="function")
+def async_table_simple(
+    sync_table_simple: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """An actual table on DB, the same as the sync counterpart"""
+    yield sync_table_simple.to_async()
+
+
+@pytest.fixture(scope="function")
+def async_empty_table_simple(
+    sync_empty_table_simple: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """Emptied for each test function"""
+    yield sync_empty_table_simple.to_async()
+
+
 __all__ = [
     "DataAPICredentials",
     "DataAPICredentialsInfo",
@@ -177,4 +335,7 @@ __all__ = [
     "async_database",
     "IS_ASTRA_DB",
     "SECONDARY_KEYSPACE",
+    "AR_DOC_PK_0",
+    "AR_DOC_0",
+    "_repaint_NaNs",
 ]

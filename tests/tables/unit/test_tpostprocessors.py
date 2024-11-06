@@ -17,8 +17,6 @@ from __future__ import annotations
 import datetime
 import decimal
 import ipaddress
-import math
-from typing import Any
 
 import pytest
 
@@ -44,6 +42,8 @@ from astrapy.data_types.data_api_vector import bytes_to_floats
 from astrapy.ids import UUID, ObjectId
 from astrapy.info import TableDescriptor, TableScalarColumnTypeDescriptor
 from astrapy.utils.api_options import FullSerdesOptions
+
+from ..conftest import _repaint_NaNs
 
 TABLE_DESCRIPTION = {
     "name": "table_simple",
@@ -298,27 +298,6 @@ EXPECTED_PREPROCESSED_ROW = {
     "DataAPISet_f": [0.1, "Infinity", 0.3],
     "set_f": ["Infinity"],
 }
-
-_NaN = object()
-
-
-def _repaint_NaNs(val: Any) -> Any:
-    if isinstance(val, float) and math.isnan(val):
-        return _NaN
-    elif isinstance(val, dict):
-        return {_repaint_NaNs(k): _repaint_NaNs(v) for k, v in val.items()}
-    elif isinstance(val, list):
-        return [_repaint_NaNs(x) for x in val]
-    elif isinstance(val, DataAPISet):
-        return DataAPISet(_repaint_NaNs(v) for v in val)
-    elif isinstance(val, DataAPIMap):
-        return DataAPIMap((_repaint_NaNs(k), _repaint_NaNs(v)) for k, v in val.items())
-    elif isinstance(val, set):
-        return {_repaint_NaNs(v) for v in val}
-    elif isinstance(val, dict):
-        return {_repaint_NaNs(k): _repaint_NaNs(v) for k, v in val.items()}
-    else:
-        return val
 
 
 class TestTableConverters:

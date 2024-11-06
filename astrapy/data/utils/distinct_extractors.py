@@ -24,6 +24,7 @@ from typing import (
 
 # TODO review using this function in this context
 from astrapy.data.utils.collection_converters import preprocess_collection_payload_value
+from astrapy.data_types import DataAPIMap, DataAPISet
 from astrapy.utils.api_options import FullSerdesOptions
 
 IndexPairType = tuple[str, int | None]
@@ -56,7 +57,7 @@ def _create_document_key_extractor(
         key_blocks: list[IndexPairType], value: Any
     ) -> Iterable[Any]:
         if key_blocks == []:
-            if isinstance(value, list):
+            if isinstance(value, (list, set, DataAPISet)):
                 for item in value:
                     yield item
             else:
@@ -67,16 +68,17 @@ def _create_document_key_extractor(
             rest_key_blocks = key_blocks[1:]
             key_block = key_blocks[0]
             k_str, k_int = key_block
-            if isinstance(value, dict):
+            if isinstance(value, (dict, DataAPIMap)):
                 if k_str in value:
                     new_value = value[k_str]
                     for item in _extract_with_key_blocks(rest_key_blocks, new_value):
                         yield item
                 return
-            elif isinstance(value, list):
+            elif isinstance(value, (list, set, DataAPISet)):
+                _list_value = list(value)
                 if k_int is not None:
-                    if len(value) > k_int:
-                        new_value = value[k_int]
+                    if len(_list_value) > k_int:
+                        new_value = _list_value[k_int]
                         for item in _extract_with_key_blocks(
                             rest_key_blocks, new_value
                         ):
@@ -85,7 +87,7 @@ def _create_document_key_extractor(
                         # list has no such element. Nothing to extract.
                         return
                 else:
-                    for item in value:
+                    for item in _list_value:
                         for item in _extract_with_key_blocks(key_blocks, item):
                             yield item
                 return
@@ -99,6 +101,20 @@ def _create_document_key_extractor(
     return _item_extractor
 
 
+def _split_distinct_key_to_safe_blocks(distinct_key: str) -> list[str]:
+    """
+    Make the provided key into a list of the blocks
+    """
+    blocks = distinct_key.split(".")
+    valid_portion = []
+    for block in blocks:
+        if _maybe_valid_list_index(block) is None:
+            valid_portion.append(block)
+        else:
+            break
+    return valid_portion
+
+
 def _reduce_distinct_key_to_safe(distinct_key: str) -> str:
     """
     In light of the twofold interpretation of "0" as index and dict key
@@ -108,14 +124,20 @@ def _reduce_distinct_key_to_safe(distinct_key: str) -> str:
         key = "x.0"
     With full key as projection, we would lose the `"y": "Y"` part (mistakenly).
     """
-    blocks = distinct_key.split(".")
-    valid_portion = []
-    for block in blocks:
-        if _maybe_valid_list_index(block) is None:
-            valid_portion.append(block)
-        else:
-            break
+    valid_portion = _split_distinct_key_to_safe_blocks(distinct_key)
     return ".".join(valid_portion)
+
+
+def _reduce_distinct_key_to_shallow_safe(distinct_key: str) -> str:
+    """
+    For Tables, the "safe" key always should stop at the first level
+    because of these being exactly columns.
+    """
+    valid_portion = _split_distinct_key_to_safe_blocks(distinct_key)
+    if valid_portion:
+        return valid_portion[0]
+    else:
+        return ""
 
 
 def _hash_document(document: dict[str, Any], options: FullSerdesOptions) -> str:

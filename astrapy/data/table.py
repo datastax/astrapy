@@ -29,7 +29,7 @@ from astrapy.constants import (
 from astrapy.data.utils.distinct_extractors import (
     _create_document_key_extractor,
     _hash_document,
-    _reduce_distinct_key_to_safe,
+    _reduce_distinct_key_to_shallow_safe,
 )
 from astrapy.data.utils.table_converters import _TableConverterAgent
 from astrapy.database import AsyncDatabase, Database
@@ -701,7 +701,7 @@ class Table(Generic[ROW]):
         )
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
-        _key = _reduce_distinct_key_to_safe(key)
+        _key = _reduce_distinct_key_to_shallow_safe(key)
         if _key == "":
             raise ValueError(
                 "The 'key' parameter for distinct cannot be empty "
@@ -771,8 +771,51 @@ class Table(Generic[ROW]):
             )
         else:
             raise UnexpectedDataAPIResponseException(
-                text="Faulty response from delete_one API command.",
+                text="Faulty response from deleteOne API command.",
                 raw_response=do_response,
+            )
+
+    def delete_many(
+        self,
+        filter: FilterType,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> TableDeleteResult:
+        """
+        TODO
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        dm_payload = self._converter_agent.preprocess_payload(
+            {
+                "deleteMany": {
+                    k: v
+                    for k, v in {
+                        "filter": filter,
+                    }.items()
+                    if v is not None
+                }
+            }
+        )
+        logger.info(f"deleteMany on '{self.name}'")
+        dm_response = self._api_commander.request(
+            payload=dm_payload,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+        )
+        logger.info(f"finished deleteMany on '{self.name}'")
+        if dm_response.get("status", {}).get("deletedCount") == -1:
+            return TableDeleteResult(
+                raw_results=[dm_response],
+            )
+        else:
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from deleteMany API command.",
+                raw_response=dm_response,
             )
 
     def drop(
@@ -1420,7 +1463,7 @@ class AsyncTable(Generic[ROW]):
             )
         else:
             raise UnexpectedDataAPIResponseException(
-                text="Faulty response from insert_one API command.",
+                text="Faulty response from insertOne API command.",
                 raw_response=io_response,
             )
 
@@ -1536,7 +1579,7 @@ class AsyncTable(Generic[ROW]):
         )
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
-        _key = _reduce_distinct_key_to_safe(key)
+        _key = _reduce_distinct_key_to_shallow_safe(key)
         if _key == "":
             raise ValueError(
                 "The 'key' parameter for distinct cannot be empty "
@@ -1606,8 +1649,51 @@ class AsyncTable(Generic[ROW]):
             )
         else:
             raise UnexpectedDataAPIResponseException(
-                text="Faulty response from delete_one API command.",
+                text="Faulty response from deleteOne API command.",
                 raw_response=do_response,
+            )
+
+    async def delete_many(
+        self,
+        filter: FilterType,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> TableDeleteResult:
+        """
+        TODO
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        dm_payload = self._converter_agent.preprocess_payload(
+            {
+                "deleteMany": {
+                    k: v
+                    for k, v in {
+                        "filter": filter,
+                    }.items()
+                    if v is not None
+                }
+            }
+        )
+        logger.info(f"deleteMany on '{self.name}'")
+        dm_response = await self._api_commander.async_request(
+            payload=dm_payload,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+        )
+        logger.info(f"finished deleteMany on '{self.name}'")
+        if dm_response.get("status", {}).get("deletedCount") == -1:
+            return TableDeleteResult(
+                raw_results=[dm_response],
+            )
+        else:
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from deleteMany API command.",
+                raw_response=dm_response,
             )
 
     async def drop(
