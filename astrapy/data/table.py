@@ -173,7 +173,8 @@ class Table(Generic[ROW]):
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
-            handle_decimals=True,
+            handle_decimals_writes=True,
+            handle_decimals_reads=True,
         )
         return api_commander
 
@@ -979,7 +980,8 @@ class AsyncTable(Generic[ROW]):
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
-            handle_decimals=True,
+            handle_decimals_writes=True,
+            handle_decimals_reads=True,
         )
         return api_commander
 

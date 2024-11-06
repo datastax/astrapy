@@ -28,6 +28,7 @@ class TestTableConverterAgent:
             binary_encode_vectors=True,
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
+            use_decimals_in_collections=False,
         )
         agent: _TableConverterAgent[DefaultRowType] = _TableConverterAgent(
             options=options
@@ -73,6 +74,7 @@ class TestTableConverterAgent:
             binary_encode_vectors=True,
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
+            use_decimals_in_collections=False,
         )
         agent: _TableConverterAgent[DefaultRowType] = _TableConverterAgent(
             options=options

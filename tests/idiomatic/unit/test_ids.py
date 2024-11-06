@@ -58,6 +58,7 @@ def test_ids_serdes() -> None:
             binary_encode_vectors=True,
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
+            use_decimals_in_collections=False,
         ),
     )
     json.dumps(normalized)
@@ -68,6 +69,7 @@ def test_ids_serdes() -> None:
             binary_encode_vectors=True,
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
+            use_decimals_in_collections=False,
         ),
     )
     assert restored == full_structure

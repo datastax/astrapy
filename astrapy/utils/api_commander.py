@@ -19,7 +19,7 @@ import logging
 import re
 from decimal import Decimal
 from types import TracebackType
-from typing import Any, Dict, Iterable, Sequence, cast
+from typing import Any, Iterable, Sequence, cast
 
 import httpx
 
@@ -56,10 +56,12 @@ user_agent_astrapy = detect_astrapy_user_agent()
 logger = logging.getLogger(__name__)
 
 
-DECIMAL_MARKER_PREFIX_STR = "𐐏𐐆𐐅𐐤"
-DECIMAL_MARKER_SUFFIX_STR = "𐐆𐐚𐐊𐐡"
+# these are a mixture from disparate alphabet, to minimize the chance
+# of a collision with user-provided actual content:
+DECIMAL_MARKER_PREFIX_STR = "𐐏丂"
+DECIMAL_MARKER_SUFFIX_STR = "∀🇦🇫"
 DECIMAL_CLEANER_PATTERN = re.compile(
-    f'"{DECIMAL_MARKER_PREFIX_STR}([o0-9.]+){DECIMAL_MARKER_SUFFIX_STR}"'
+    f'"{DECIMAL_MARKER_PREFIX_STR}([0-9.]+){DECIMAL_MARKER_SUFFIX_STR}"'
 )
 
 
@@ -97,7 +99,8 @@ class APICommander:
         callers: Sequence[CallerType] = [],
         redacted_header_names: Iterable[str] | None = None,
         dev_ops_api: bool = False,
-        handle_decimals: bool = False,
+        handle_decimals_writes: bool = False,
+        handle_decimals_reads: bool = False,
     ) -> None:
         self.async_client = httpx.AsyncClient()
         self.api_endpoint = api_endpoint.rstrip("/")
@@ -109,7 +112,8 @@ class APICommander:
             self.redacted_header_names | DEFAULT_REDACTED_HEADER_NAMES
         )
         self.dev_ops_api = dev_ops_api
-        self.handle_decimals = handle_decimals
+        self.handle_decimals_writes = handle_decimals_writes
+        self.handle_decimals_reads = handle_decimals_reads
 
         self._faulty_response_exc_class: (
             type[UnexpectedDevOpsAPIResponseException]
@@ -220,6 +224,12 @@ class APICommander:
             dev_ops_api=dev_ops_api if dev_ops_api is not None else self.dev_ops_api,
         )
 
+    def _compose_request_url(self, additional_path: str | None) -> str:
+        if additional_path:
+            return "/".join([self.full_path.rstrip("/"), additional_path.lstrip("/")])
+        else:
+            return self.full_path
+
     def _raw_response_to_json(
         self,
         raw_response: httpx.Response,
@@ -229,21 +239,17 @@ class APICommander:
         # try to process the httpx raw response into a JSON or throw a failure
         raw_response_json: dict[str, Any]
         try:
-            if self.handle_decimals:
+            if self.handle_decimals_reads:
                 # for decimal-aware contents (aka 'tables'), all number-looking things
-                # are made into Decimal, to be later adjusted in postprocessing (proper)
-                raw_response_json = cast(
-                    Dict[str, Any],
-                    json.loads(
-                        raw_response.text,
-                        parse_float=Decimal,
-                        parse_int=Decimal,
-                    ),
+                # are made into Decimal.
+                # (for collections, this will be it. for Tables, schema-aware
+                # proper post-processing will refine types, e.g. back to int, ...)
+                raw_response_json = self._decimal_aware_parse_json_response(
+                    raw_response.text,
                 )
             else:
-                raw_response_json = cast(
-                    Dict[str, Any],
-                    raw_response.json(),
+                raw_response_json = self._decimal_unaware_parse_json_response(
+                    raw_response.text,
                 )
         except ValueError:
             # json() parsing has failed (e.g., empty body)
@@ -279,11 +285,23 @@ class APICommander:
 
         return raw_response_json
 
-    def _compose_request_url(self, additional_path: str | None) -> str:
-        if additional_path:
-            return "/".join([self.full_path.rstrip("/"), additional_path.lstrip("/")])
-        else:
-            return self.full_path
+    @staticmethod
+    def _decimal_unaware_parse_json_response(response_text: str) -> dict[str, Any]:
+        return cast(
+            dict[str, Any],
+            json.loads(response_text),
+        )
+
+    @staticmethod
+    def _decimal_aware_parse_json_response(response_text: str) -> dict[str, Any]:
+        return cast(
+            dict[str, Any],
+            json.loads(
+                response_text,
+                parse_float=Decimal,
+                parse_int=Decimal,
+            ),
+        )
 
     @staticmethod
     def _decimal_unaware_encode_payload(payload: dict[str, Any] | None) -> str | None:
@@ -340,7 +358,7 @@ class APICommander:
         _timeout_context = timeout_context or _TimeoutContext(request_ms=None)
         encoded_payload = (
             self._decimal_aware_encode_payload(payload)
-            if self.handle_decimals
+            if self.handle_decimals_writes
             else self._decimal_unaware_encode_payload(payload)
         )
         log_httpx_request(
@@ -395,7 +413,7 @@ class APICommander:
         _timeout_context = timeout_context or _TimeoutContext(request_ms=None)
         encoded_payload = (
             self._decimal_aware_encode_payload(payload)
-            if self.handle_decimals
+            if self.handle_decimals_writes
             else self._decimal_unaware_encode_payload(payload)
         )
         log_httpx_request(

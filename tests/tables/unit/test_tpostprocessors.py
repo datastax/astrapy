@@ -310,6 +310,7 @@ class TestTableConverters:
                 binary_encode_vectors=True,
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
             ),
         )
 
@@ -341,6 +342,7 @@ class TestTableConverters:
                 binary_encode_vectors=True,
                 custom_datatypes_in_reading=False,
                 unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
             ),
         )
 
@@ -377,6 +379,7 @@ class TestTableConverters:
                 binary_encode_vectors=True,
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
             ),
         )
 
@@ -415,6 +418,7 @@ class TestTableConverters:
                 binary_encode_vectors=True,
                 custom_datatypes_in_reading=False,
                 unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
             ),
         )
 
@@ -428,6 +432,7 @@ class TestTableConverters:
             binary_encode_vectors=True,
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
+            use_decimals_in_collections=False,
         )
         preprocessed_row = preprocess_table_payload(
             INPUT_ROW_TO_PREPROCESS,
@@ -449,6 +454,7 @@ class TestTableConverters:
                 binary_encode_vectors=True,
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
             ),
         )
         assert preprocessed_gen_1 == gen_row_1
@@ -467,6 +473,7 @@ class TestTableConverters:
                 binary_encode_vectors=False,
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=True,
+                use_decimals_in_collections=False,
             ),
         )
         assert preprocessed_dvec_1 == {"dvec": vec_data}

@@ -22,6 +22,7 @@ from httpx import HTTPStatusError, Response
 from pytest_httpserver import HTTPServer
 
 from astrapy import DataAPIClient
+from astrapy.api_options import APIOptions, SerdesOptions
 from astrapy.constants import Environment
 from astrapy.exceptions import (
     CollectionDeleteManyException,
@@ -340,13 +341,20 @@ def test_collections_error_on_decimal_sync(httpserver: HTTPServer) -> None:
     database = client.get_database(root_endpoint, keyspace="xkeyspace")
     collection = database.get_collection("xcoll")
     expected_url = "/v1/xkeyspace/xcoll"
-    httpserver.expect_oneshot_request(
+    httpserver.expect_request(
         expected_url,
         method="POST",
     ).respond_with_json({"status": {"insertedIds": ["x"]}})
     collection.insert_one({"a": 1.23})
     with pytest.raises(TypeError):
         collection.insert_one({"a": Decimal("1.23")})
+    hd_collection = collection.with_options(
+        api_options=APIOptions(
+            serdes_options=SerdesOptions(use_decimals_in_collections=True)
+        )
+    )
+    hd_collection.insert_one({"a": 1.23})
+    hd_collection.insert_one({"a": Decimal("1.23")})
 
 
 @pytest.mark.describe("test of collections not inserting Decimals, async")
@@ -356,10 +364,17 @@ async def test_collections_error_on_decimal_async(httpserver: HTTPServer) -> Non
     adatabase = client.get_async_database(root_endpoint, keyspace="xkeyspace")
     acollection = await adatabase.get_collection("xcoll")
     expected_url = "/v1/xkeyspace/xcoll"
-    httpserver.expect_oneshot_request(
+    httpserver.expect_request(
         expected_url,
         method="POST",
     ).respond_with_json({"status": {"insertedIds": ["x"]}})
     await acollection.insert_one({"a": 1.23})
     with pytest.raises(TypeError):
         await acollection.insert_one({"a": Decimal("1.23")})
+    hd_acollection = acollection.with_options(
+        api_options=APIOptions(
+            serdes_options=SerdesOptions(use_decimals_in_collections=True)
+        )
+    )
+    await hd_acollection.insert_one({"a": 1.23})
+    await hd_acollection.insert_one({"a": Decimal("1.23")})

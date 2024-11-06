@@ -235,6 +235,12 @@ class Collection(Generic[DOC]):
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
+            handle_decimals_writes=(
+                self.api_options.serdes_options.use_decimals_in_collections
+            ),
+            handle_decimals_reads=(
+                self.api_options.serdes_options.use_decimals_in_collections
+            ),
         )
         return api_commander
 
@@ -2636,6 +2642,12 @@ class AsyncCollection(Generic[DOC]):
             headers=self._commander_headers,
             callers=self.api_options.callers,
             redacted_header_names=self.api_options.redacted_header_names,
+            handle_decimals_writes=(
+                self.api_options.serdes_options.use_decimals_in_collections
+            ),
+            handle_decimals_reads=(
+                self.api_options.serdes_options.use_decimals_in_collections
+            ),
         )
         return api_commander
 

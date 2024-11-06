@@ -35,6 +35,7 @@ from astrapy.settings.defaults import (
     DEFAULT_REQUEST_TIMEOUT_MS,
     DEFAULT_SCHEMA_OPERATION_TIMEOUT_MS,
     DEFAULT_UNROLL_ITERABLES_TO_LISTS,
+    DEFAULT_USE_DECIMALS_IN_COLLECTIONS,
     DEV_OPS_URL_ENV_MAP,
     DEV_OPS_VERSION_ENV_MAP,
     FIXED_SECRET_PLACEHOLDER,
@@ -58,6 +59,24 @@ class FullTimeoutOptions(TimeoutOptions):
     schema_operation_timeout_ms: int
     database_admin_timeout_ms: int
     keyspace_admin_timeout_ms: int
+
+    def __init__(
+        self,
+        *,
+        request_timeout_ms: int,
+        data_operation_timeout_ms: int,
+        schema_operation_timeout_ms: int,
+        database_admin_timeout_ms: int,
+        keyspace_admin_timeout_ms: int,
+    ) -> None:
+        TimeoutOptions.__init__(
+            self,
+            request_timeout_ms=request_timeout_ms,
+            data_operation_timeout_ms=data_operation_timeout_ms,
+            schema_operation_timeout_ms=schema_operation_timeout_ms,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            keyspace_admin_timeout_ms=keyspace_admin_timeout_ms,
+        )
 
     def with_override(self, other: TimeoutOptions) -> FullTimeoutOptions:
         return FullTimeoutOptions(
@@ -129,6 +148,7 @@ class SerdesOptions:
     binary_encode_vectors: bool | UnsetType = _UNSET
     custom_datatypes_in_reading: bool | UnsetType = _UNSET
     unroll_iterables_to_lists: bool | UnsetType = _UNSET
+    use_decimals_in_collections: bool | UnsetType = _UNSET
 
 
 @dataclass
@@ -136,6 +156,23 @@ class FullSerdesOptions(SerdesOptions):
     binary_encode_vectors: bool
     custom_datatypes_in_reading: bool
     unroll_iterables_to_lists: bool
+    use_decimals_in_collections: bool
+
+    def __init__(
+        self,
+        *,
+        binary_encode_vectors: bool,
+        custom_datatypes_in_reading: bool,
+        unroll_iterables_to_lists: bool,
+        use_decimals_in_collections: bool,
+    ) -> None:
+        SerdesOptions.__init__(
+            self,
+            binary_encode_vectors=binary_encode_vectors,
+            custom_datatypes_in_reading=custom_datatypes_in_reading,
+            unroll_iterables_to_lists=unroll_iterables_to_lists,
+            use_decimals_in_collections=use_decimals_in_collections,
+        )
 
     def with_override(self, other: SerdesOptions) -> FullSerdesOptions:
         return FullSerdesOptions(
@@ -154,6 +191,11 @@ class FullSerdesOptions(SerdesOptions):
                 if not isinstance(other.unroll_iterables_to_lists, UnsetType)
                 else self.unroll_iterables_to_lists
             ),
+            use_decimals_in_collections=(
+                other.use_decimals_in_collections
+                if not isinstance(other.use_decimals_in_collections, UnsetType)
+                else self.use_decimals_in_collections
+            ),
         )
 
 
@@ -167,6 +209,18 @@ class DataAPIURLOptions:
 class FullDataAPIURLOptions(DataAPIURLOptions):
     api_path: str | None
     api_version: str | None
+
+    def __init__(
+        self,
+        *,
+        api_path: str | None,
+        api_version: str | None,
+    ) -> None:
+        DataAPIURLOptions.__init__(
+            self,
+            api_path=api_path,
+            api_version=api_version,
+        )
 
     def with_override(self, other: DataAPIURLOptions) -> FullDataAPIURLOptions:
         return FullDataAPIURLOptions(
@@ -193,6 +247,18 @@ class DevOpsAPIURLOptions:
 class FullDevOpsAPIURLOptions(DevOpsAPIURLOptions):
     dev_ops_url: str
     dev_ops_api_version: str | None
+
+    def __init__(
+        self,
+        *,
+        dev_ops_url: str,
+        dev_ops_api_version: str | None,
+    ) -> None:
+        DevOpsAPIURLOptions.__init__(
+            self,
+            dev_ops_url=dev_ops_url,
+            dev_ops_api_version=dev_ops_api_version,
+        )
 
     def with_override(self, other: DevOpsAPIURLOptions) -> FullDevOpsAPIURLOptions:
         return FullDevOpsAPIURLOptions(
@@ -308,6 +374,36 @@ class FullAPIOptions(APIOptions):
     serdes_options: FullSerdesOptions
     data_api_url_options: FullDataAPIURLOptions
     dev_ops_api_url_options: FullDevOpsAPIURLOptions
+
+    def __init__(
+        self,
+        *,
+        environment: str,
+        callers: Sequence[tuple[str | None, str | None]],
+        database_additional_headers: dict[str, str | None],
+        admin_additional_headers: dict[str, str | None],
+        redacted_header_names: set[str],
+        token: TokenProvider,
+        embedding_api_key: EmbeddingHeadersProvider,
+        timeout_options: FullTimeoutOptions,
+        serdes_options: FullSerdesOptions,
+        data_api_url_options: FullDataAPIURLOptions,
+        dev_ops_api_url_options: FullDevOpsAPIURLOptions,
+    ) -> None:
+        APIOptions.__init__(
+            self,
+            environment=environment,
+            callers=callers,
+            database_additional_headers=database_additional_headers,
+            admin_additional_headers=admin_additional_headers,
+            redacted_header_names=redacted_header_names,
+            token=token,
+            embedding_api_key=embedding_api_key,
+            timeout_options=timeout_options,
+            serdes_options=serdes_options,
+            data_api_url_options=data_api_url_options,
+            dev_ops_api_url_options=dev_ops_api_url_options,
+        )
 
     def __repr__(self) -> str:
         # special items
@@ -427,6 +523,7 @@ defaultSerdesOptions = FullSerdesOptions(
     binary_encode_vectors=DEFAULT_BINARY_ENCODE_VECTORS,
     custom_datatypes_in_reading=DEFAULT_CUSTOM_DATATYPES_IN_READING,
     unroll_iterables_to_lists=DEFAULT_UNROLL_ITERABLES_TO_LISTS,
+    use_decimals_in_collections=DEFAULT_USE_DECIMALS_IN_COLLECTIONS,
 )
 
 
