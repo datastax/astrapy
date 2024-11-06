@@ -25,6 +25,7 @@ from astrapy.constants import (
     FilterType,
     ProjectionType,
     SortType,
+    normalize_optional_projection,
 )
 from astrapy.data.utils.distinct_extractors import (
     _create_document_key_extractor,
@@ -638,6 +639,9 @@ class Table(Generic[ROW]):
         self,
         filter: FilterType | None = None,
         *,
+        projection: ProjectionType | None = None,
+        include_similarity: bool | None = None,
+        sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> ROW | None:
@@ -650,8 +654,24 @@ class Table(Generic[ROW]):
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
+        fo_options = (
+            None
+            if include_similarity is None
+            else {"includeSimilarity": include_similarity}
+        )
         fo_payload = self._converter_agent.preprocess_payload(
-            {"findOne": {"filter": filter}},
+            {
+                "findOne": {
+                    k: v
+                    for k, v in {
+                        "filter": filter,
+                        "projection": normalize_optional_projection(projection),
+                        "options": fo_options,
+                        "sort": sort,
+                    }.items()
+                    if v is not None
+                }
+            }
         )
         fo_response = self._api_commander.request(
             payload=fo_payload,
@@ -1516,6 +1536,9 @@ class AsyncTable(Generic[ROW]):
         self,
         filter: FilterType | None = None,
         *,
+        projection: ProjectionType | None = None,
+        include_similarity: bool | None = None,
+        sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> ROW | None:
@@ -1528,8 +1551,24 @@ class AsyncTable(Generic[ROW]):
             or max_time_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
+        fo_options = (
+            None
+            if include_similarity is None
+            else {"includeSimilarity": include_similarity}
+        )
         fo_payload = self._converter_agent.preprocess_payload(
-            {"findOne": {"filter": filter}},
+            {
+                "findOne": {
+                    k: v
+                    for k, v in {
+                        "filter": filter,
+                        "projection": normalize_optional_projection(projection),
+                        "options": fo_options,
+                        "sort": sort,
+                    }.items()
+                    if v is not None
+                }
+            }
         )
         fo_response = await self._api_commander.async_request(
             payload=fo_payload,

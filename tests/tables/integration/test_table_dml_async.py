@@ -43,6 +43,16 @@ class TestTableDMLSync:
         doc_0 = await async_empty_table_all_returns.find_one(filter=AR_DOC_PK_0)
         assert doc_0 is not None
         assert {doc_0[k] == v for k, v in AR_DOC_0.items()}
+        # projection:
+        projected_fields = {"p_bigint", "p_boolean"}
+        doc_0 = await async_empty_table_all_returns.find_one(
+            filter=AR_DOC_PK_0,
+            projection={pf: True for pf in projected_fields},
+        )
+        assert doc_0 is not None
+        assert {doc_0[k] == AR_DOC_0[k] for k in projected_fields}
+        assert doc_0.keys() == projected_fields
+        # delete and retry
         await async_empty_table_all_returns.delete_one(filter=AR_DOC_PK_0)
         no_doc_0b = await async_empty_table_all_returns.find_one(filter=AR_DOC_PK_0)
         assert no_doc_0b is None
