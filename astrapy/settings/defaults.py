@@ -14,6 +14,11 @@
 
 from __future__ import annotations
 
+# whether to go the extra mile and ensure the "decimal escape trick" is
+# not colliding with legitimate user-provided (extremely rare) strings.
+# A system setting, off at this time
+CHECK_DECIMAL_ESCAPING_CONSISTENCY = False
+
 # Environment names for management internal to astrapy
 DATA_API_ENVIRONMENT_PROD = "prod"
 DATA_API_ENVIRONMENT_DEV = "dev"

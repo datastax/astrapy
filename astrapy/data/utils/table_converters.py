@@ -94,7 +94,10 @@ def _create_scalar_tpostprocessor(
     }:
 
         def _tpostprocessor_int(raw_value: Any) -> int | None:
-            return raw_value  # type: ignore[no-any-return]
+            if raw_value is None:
+                return None
+            # the 'int(...)' handles Decimal's
+            return int(raw_value)
 
         return _tpostprocessor_int
 
@@ -106,7 +109,7 @@ def _create_scalar_tpostprocessor(
         def _tpostprocessor_float(raw_value: Any) -> float | None:
             if raw_value is None:
                 return None
-            elif isinstance(raw_value, str):
+            elif isinstance(raw_value, (str, decimal.Decimal)):
                 return float(raw_value)
             # just a float already
             return cast(float, raw_value)
@@ -236,6 +239,9 @@ def _create_scalar_tpostprocessor(
         def _tpostprocessor_decimal(raw_value: Any) -> decimal.Decimal | None:
             if raw_value is None:
                 return None
+            elif isinstance(raw_value, decimal.Decimal):
+                return raw_value
+            # else: it is "NaN", "-Infinity" or "Infinity"
             return decimal.Decimal(f"{raw_value}")
 
         return _tpostprocessor_decimal
@@ -537,10 +543,17 @@ def preprocess_table_payload_value(
     elif isinstance(value, datetime.time):
         return value.strftime(DATETIME_TIME_FORMAT)
     elif isinstance(value, decimal.Decimal):
-        # TODO finalize handling (check latest encoding choices)
-        # For now it's a cascade of make-float -> treat as float
-        fvalue = float(value)
-        return preprocess_table_payload_value(path=path, value=fvalue, options=options)
+        # Non-numbers must be manually made into a string, just like floats
+        if math.isnan(value):
+            return NAN_FLOAT_STRING_REPRESENTATION
+        elif math.isinf(value):
+            if value > 0:
+                return PLUS_INFINITY_FLOAT_STRING_REPRESENTATION
+            else:
+                return MINUS_INFINITY_FLOAT_STRING_REPRESENTATION
+        # actually-numeric decimals: leave them as they are for the encoding step,
+        # which will apply the nasty trick to ensure all digits get there.
+        return value
     elif isinstance(value, DataAPIDuration):
         return value.to_string()
     elif isinstance(value, UUID):

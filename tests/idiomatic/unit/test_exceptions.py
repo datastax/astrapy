@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 
 import pytest
 from httpx import HTTPStatusError, Response
@@ -330,3 +331,35 @@ async def test_get_database_info_failures_async() -> None:
     adb = client.get_async_database("http://not.a.real.thing", keyspace="ks")
     with pytest.raises(DevOpsAPIException):
         await adb.info()
+
+
+@pytest.mark.describe("test of collections not inserting Decimals, sync")
+def test_collections_error_on_decimal_sync(httpserver: HTTPServer) -> None:
+    root_endpoint = httpserver.url_for("/")
+    client = DataAPIClient(environment="other")
+    database = client.get_database(root_endpoint, keyspace="xkeyspace")
+    collection = database.get_collection("xcoll")
+    expected_url = "/v1/xkeyspace/xcoll"
+    httpserver.expect_oneshot_request(
+        expected_url,
+        method="POST",
+    ).respond_with_json({"status": {"insertedIds": ["x"]}})
+    collection.insert_one({"a": 1.23})
+    with pytest.raises(TypeError):
+        collection.insert_one({"a": Decimal("1.23")})
+
+
+@pytest.mark.describe("test of collections not inserting Decimals, async")
+async def test_collections_error_on_decimal_async(httpserver: HTTPServer) -> None:
+    root_endpoint = httpserver.url_for("/")
+    client = DataAPIClient(environment="other")
+    adatabase = client.get_async_database(root_endpoint, keyspace="xkeyspace")
+    acollection = await adatabase.get_collection("xcoll")
+    expected_url = "/v1/xkeyspace/xcoll"
+    httpserver.expect_oneshot_request(
+        expected_url,
+        method="POST",
+    ).respond_with_json({"status": {"insertedIds": ["x"]}})
+    await acollection.insert_one({"a": 1.23})
+    with pytest.raises(TypeError):
+        await acollection.insert_one({"a": Decimal("1.23")})

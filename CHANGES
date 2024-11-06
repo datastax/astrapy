@@ -1,5 +1,6 @@
 v 2.0.0
 =======
+Payloads are not encoded to ASCII anymore for HTTP requests.
 Renamed collection-specific exceptions:
     - 'CumulativeOperationException' ==> `CollectionCumulativeOperationException`
     - 'InsertManyException' ==> `CollectionInsertManyException`

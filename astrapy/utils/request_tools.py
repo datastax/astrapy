@@ -29,7 +29,7 @@ def log_httpx_request(
     full_url: str,
     request_params: dict[str, Any] | None,
     redacted_request_headers: dict[str, str],
-    payload: dict[str, Any] | None,
+    encoded_payload: str | None,
     timeout_context: _TimeoutContext,
 ) -> None:
     """
@@ -40,7 +40,7 @@ def log_httpx_request(
         full_url: the URL of the request (e.g. "https://domain.com/full/path").
         request_params: parameters of the request.
         redacted_request_headers: caution, as these will be logged as they are.
-        payload: The payload sent with the request, if any.
+        encoded_payload: the payload (in bytes) sent with the request, if any.
         timeout_ms: the timeout in milliseconds, if any is set.
     """
     logger.debug(f"Request URL: {http_method} {full_url}")
@@ -48,8 +48,8 @@ def log_httpx_request(
         logger.debug(f"Request params: {request_params}")
     if redacted_request_headers:
         logger.debug(f"Request headers: {redacted_request_headers}")
-    if payload:
-        logger.debug(f"Request payload: {payload}")
+    if encoded_payload is not None:
+        logger.debug(f"Request payload: {encoded_payload}")
     if timeout_context:
         logger.debug(
             f"Timeout (ms): for request {timeout_context.request_ms or '(unset)'} ms"

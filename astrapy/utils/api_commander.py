@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import json
 import logging
+import re
+from decimal import Decimal
 from types import TracebackType
 from typing import Any, Dict, Iterable, Sequence, cast
 
@@ -34,6 +36,7 @@ from astrapy.exceptions import (
     to_devopsapi_timeout_exception,
 )
 from astrapy.settings.defaults import (
+    CHECK_DECIMAL_ESCAPING_CONSISTENCY,
     DEFAULT_REDACTED_HEADER_NAMES,
     FIXED_SECRET_PLACEHOLDER,
 )
@@ -53,6 +56,35 @@ user_agent_astrapy = detect_astrapy_user_agent()
 logger = logging.getLogger(__name__)
 
 
+DECIMAL_MARKER_PREFIX_STR = "𐐏𐐆𐐅𐐤"
+DECIMAL_MARKER_SUFFIX_STR = "𐐆𐐚𐐊𐐡"
+DECIMAL_CLEANER_PATTERN = re.compile(
+    f'"{DECIMAL_MARKER_PREFIX_STR}([o0-9.]+){DECIMAL_MARKER_SUFFIX_STR}"'
+)
+
+
+class _MarkedDecimalDefuser(json.JSONEncoder):
+    def default(self, obj: object) -> Any:
+        if isinstance(obj, Decimal):
+            return "(defused decimal)"
+        return super().default(obj)
+
+
+class _MarkedDecimalEncoder(json.JSONEncoder):
+    def default(self, obj: object) -> Any:
+        if isinstance(obj, Decimal):
+            return f"{DECIMAL_MARKER_PREFIX_STR}{obj}{DECIMAL_MARKER_SUFFIX_STR}"
+        return super().default(obj)
+
+    @staticmethod
+    def _check_mark_match(json_string: str) -> bool:
+        return bool(DECIMAL_CLEANER_PATTERN.search(json_string))
+
+    @staticmethod
+    def _clean_encoded_string(json_string: str) -> str:
+        return re.sub(DECIMAL_CLEANER_PATTERN, r"\1", json_string)
+
+
 class APICommander:
     client = httpx.Client()
 
@@ -65,6 +97,7 @@ class APICommander:
         callers: Sequence[CallerType] = [],
         redacted_header_names: Iterable[str] | None = None,
         dev_ops_api: bool = False,
+        handle_decimals: bool = False,
     ) -> None:
         self.async_client = httpx.AsyncClient()
         self.api_endpoint = api_endpoint.rstrip("/")
@@ -76,6 +109,7 @@ class APICommander:
             self.redacted_header_names | DEFAULT_REDACTED_HEADER_NAMES
         )
         self.dev_ops_api = dev_ops_api
+        self.handle_decimals = handle_decimals
 
         self._faulty_response_exc_class: (
             type[UnexpectedDevOpsAPIResponseException]
@@ -195,10 +229,22 @@ class APICommander:
         # try to process the httpx raw response into a JSON or throw a failure
         raw_response_json: dict[str, Any]
         try:
-            raw_response_json = cast(
-                Dict[str, Any],
-                raw_response.json(),
-            )
+            if self.handle_decimals:
+                # for decimal-aware contents (aka 'tables'), all number-looking things
+                # are made into Decimal, to be later adjusted in postprocessing (proper)
+                raw_response_json = cast(
+                    Dict[str, Any],
+                    json.loads(
+                        raw_response.text,
+                        parse_float=Decimal,
+                        parse_int=Decimal,
+                    ),
+                )
+            else:
+                raw_response_json = cast(
+                    Dict[str, Any],
+                    raw_response.json(),
+                )
         except ValueError:
             # json() parsing has failed (e.g., empty body)
             if payload is not None:
@@ -239,13 +285,44 @@ class APICommander:
         else:
             return self.full_path
 
-    def _encode_payload(self, payload: dict[str, Any] | None) -> bytes | None:
+    @staticmethod
+    def _decimal_unaware_encode_payload(payload: dict[str, Any] | None) -> str | None:
+        # This is the JSON encoder in absence of the workaround to treat Decimals
         if payload is not None:
             return json.dumps(
                 payload,
                 allow_nan=False,
                 separators=(",", ":"),
-            ).encode()
+                ensure_ascii=False,
+            )
+        else:
+            return None
+
+    @staticmethod
+    def _decimal_aware_encode_payload(payload: dict[str, Any] | None) -> str | None:
+        if payload is not None:
+            if CHECK_DECIMAL_ESCAPING_CONSISTENCY:
+                # check if escaping collision. This is expensive and 99.9999999% useless
+                _naive_dump = json.dumps(
+                    payload,
+                    allow_nan=False,
+                    separators=(",", ":"),
+                    ensure_ascii=False,
+                    cls=_MarkedDecimalDefuser,
+                )
+                if _MarkedDecimalEncoder._check_mark_match(_naive_dump):
+                    raise ValueError(
+                        "The pattern to work around Decimals was detected in a "
+                        "user-provided item. This payload cannot be JSON-encoded."
+                    )
+            dec_marked_dump = json.dumps(
+                payload,
+                allow_nan=False,
+                separators=(",", ":"),
+                ensure_ascii=False,
+                cls=_MarkedDecimalEncoder,
+            )
+            return _MarkedDecimalEncoder._clean_encoded_string(dec_marked_dump)
         else:
             return None
 
@@ -261,22 +338,28 @@ class APICommander:
     ) -> httpx.Response:
         request_url = self._compose_request_url(additional_path)
         _timeout_context = timeout_context or _TimeoutContext(request_ms=None)
+        encoded_payload = (
+            self._decimal_aware_encode_payload(payload)
+            if self.handle_decimals
+            else self._decimal_unaware_encode_payload(payload)
+        )
         log_httpx_request(
             http_method=http_method,
             full_url=request_url,
             request_params=request_params,
             redacted_request_headers=self._loggable_headers,
-            payload=payload,
+            encoded_payload=encoded_payload,
             timeout_context=_timeout_context,
         )
         httpx_timeout_s = to_httpx_timeout(_timeout_context)
-        encoded_payload = self._encode_payload(payload)
 
         try:
             raw_response = self.client.request(
                 method=http_method,
                 url=request_url,
-                content=encoded_payload,
+                content=encoded_payload.encode()
+                if encoded_payload is not None
+                else None,
                 params=request_params,
                 timeout=httpx_timeout_s,
                 headers=self.full_headers,
@@ -310,22 +393,28 @@ class APICommander:
     ) -> httpx.Response:
         request_url = self._compose_request_url(additional_path)
         _timeout_context = timeout_context or _TimeoutContext(request_ms=None)
+        encoded_payload = (
+            self._decimal_aware_encode_payload(payload)
+            if self.handle_decimals
+            else self._decimal_unaware_encode_payload(payload)
+        )
         log_httpx_request(
             http_method=http_method,
             full_url=request_url,
             request_params=request_params,
             redacted_request_headers=self._loggable_headers,
-            payload=payload,
+            encoded_payload=encoded_payload,
             timeout_context=_timeout_context,
         )
         httpx_timeout_s = to_httpx_timeout(_timeout_context)
-        encoded_payload = self._encode_payload(payload)
 
         try:
             raw_response = await self.async_client.request(
                 method=http_method,
                 url=request_url,
-                content=encoded_payload,
+                content=encoded_payload.encode()
+                if encoded_payload is not None
+                else None,
                 params=request_params,
                 timeout=httpx_timeout_s,
                 headers=self.full_headers,
