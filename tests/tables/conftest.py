@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import math
+from decimal import Decimal
 from typing import Any, Iterable
 
 import pytest
@@ -191,11 +192,14 @@ S_DOCS = [
 ]
 
 _NaN = object()
+_DNaN = object()
 
 
 def _repaint_NaNs(val: Any) -> Any:
     if isinstance(val, float) and math.isnan(val):
         return _NaN
+    if isinstance(val, Decimal) and math.isnan(val):
+        return _DNaN
     elif isinstance(val, dict):
         return {_repaint_NaNs(k): _repaint_NaNs(v) for k, v in val.items()}
     elif isinstance(val, list):

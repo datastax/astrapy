@@ -24,9 +24,9 @@ from astrapy.utils.api_commander import APICommander
 
 from ..decimal_support_assets import (
     BASELINE_OBJ,
-    OBJ_W_DECIMALS,
     S_OPTS_NO_DECS,
     S_OPTS_OK_DECS,
+    WDECS_OBJ,
     is_decimal_super,
 )
 
@@ -58,7 +58,7 @@ class TestCollectionDecimalSupportUnit:
         with pytest.raises(TypeError):
             APICommander._decimal_unaware_encode_payload(
                 preprocess_collection_payload(
-                    OBJ_W_DECIMALS,
+                    WDECS_OBJ,
                     options=S_OPTS_NO_DECS,
                 )
             )
@@ -89,7 +89,7 @@ class TestCollectionDecimalSupportUnit:
         # write path with decimals
         wdecs_fully_encoded = APICommander._decimal_aware_encode_payload(
             preprocess_collection_payload(
-                OBJ_W_DECIMALS,
+                WDECS_OBJ,
                 options=S_OPTS_OK_DECS,
             )
         )
@@ -103,4 +103,4 @@ class TestCollectionDecimalSupportUnit:
         )
         # the re-read object must "be more-or-equally Decimal" than the source
         # but otherwise coincide
-        assert is_decimal_super(wdecs_2, OBJ_W_DECIMALS)
+        assert is_decimal_super(wdecs_2, WDECS_OBJ)

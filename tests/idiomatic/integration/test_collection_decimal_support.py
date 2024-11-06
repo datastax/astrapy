@@ -21,9 +21,9 @@ from astrapy.api_options import APIOptions
 from ..conftest import DefaultAsyncCollection, DefaultCollection
 from ..decimal_support_assets import (
     BASELINE_OBJ,
-    OBJ_W_DECIMALS,
     S_OPTS_NO_DECS,
     S_OPTS_OK_DECS,
+    WDECS_OBJ,
     is_decimal_super,
 )
 
@@ -49,7 +49,7 @@ class TestCollectionDecimalSupportIntegration:
 
         # the write should error for object with decimals
         with pytest.raises(TypeError):
-            no_decimal_coll.insert_one(OBJ_W_DECIMALS)
+            no_decimal_coll.insert_one(WDECS_OBJ)
 
     @pytest.mark.describe(
         "test of decimals not supported by default in collections, async"
@@ -71,7 +71,7 @@ class TestCollectionDecimalSupportIntegration:
 
         # the write should error for object with decimals
         with pytest.raises(TypeError):
-            await no_decimal_acoll.insert_one(OBJ_W_DECIMALS)
+            await no_decimal_acoll.insert_one(WDECS_OBJ)
 
     @pytest.mark.describe(
         "test of decimals supported in collections if set to do so, sync"
@@ -92,10 +92,10 @@ class TestCollectionDecimalSupportIntegration:
         assert is_decimal_super(baseline_obj_2, BASELINE_OBJ)
 
         # write-and-read, with decimals
-        ok_decimal_coll.insert_one(OBJ_W_DECIMALS)
-        wdecs_2 = ok_decimal_coll.find_one({"_id": OBJ_W_DECIMALS["_id"]})
+        ok_decimal_coll.insert_one(WDECS_OBJ)
+        wdecs_2 = ok_decimal_coll.find_one({"_id": WDECS_OBJ["_id"]})
         assert wdecs_2 is not None
-        assert is_decimal_super(wdecs_2, OBJ_W_DECIMALS)
+        assert is_decimal_super(wdecs_2, WDECS_OBJ)
 
     @pytest.mark.describe(
         "test of decimals supported in collections if set to do so, async"
@@ -116,7 +116,7 @@ class TestCollectionDecimalSupportIntegration:
         assert is_decimal_super(baseline_obj_2, BASELINE_OBJ)
 
         # write-and-read, with decimals
-        await ok_decimal_acoll.insert_one(OBJ_W_DECIMALS)
-        wdecs_2 = await ok_decimal_acoll.find_one({"_id": OBJ_W_DECIMALS["_id"]})
+        await ok_decimal_acoll.insert_one(WDECS_OBJ)
+        wdecs_2 = await ok_decimal_acoll.find_one({"_id": WDECS_OBJ["_id"]})
         assert wdecs_2 is not None
-        assert is_decimal_super(wdecs_2, OBJ_W_DECIMALS)
+        assert is_decimal_super(wdecs_2, WDECS_OBJ)

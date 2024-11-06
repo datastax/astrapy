@@ -51,7 +51,7 @@ BASELINE_OBJ = {
     "subdict": _BASELINE_SCALAR_CASES,
     "sublist": list(_BASELINE_SCALAR_CASES.values()),
 }
-OBJ_W_DECIMALS = {
+WDECS_OBJ = {
     **_W_DECIMALS_SCALAR_CASES,
     "subdict": _W_DECIMALS_SCALAR_CASES,
     "sublist": list(_W_DECIMALS_SCALAR_CASES.values()),
