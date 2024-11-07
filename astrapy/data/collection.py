@@ -44,7 +44,6 @@ from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
     CollectionDeleteManyException,
     CollectionInsertManyException,
-    CollectionNotFoundException,
     CollectionUpdateManyException,
     MultiCallTimeoutManager,
     TooManyDocumentsToCountException,
@@ -513,10 +512,8 @@ class Collection(Generic[DOC]):
         if self_descriptors:
             return self_descriptors[0].options
         else:
-            raise CollectionNotFoundException(
-                text=f"Collection {self.keyspace}.{self.name} not found.",
-                keyspace=self.keyspace,
-                collection_name=self.name,
+            raise ValueError(
+                f"Collection {self.keyspace}.{self.name} not found.",
             )
 
     def info(
@@ -2936,10 +2933,8 @@ class AsyncCollection(Generic[DOC]):
         if self_descriptors:
             return self_descriptors[0].options
         else:
-            raise CollectionNotFoundException(
-                text=f"Collection {self.keyspace}.{self.name} not found.",
-                keyspace=self.keyspace,
-                collection_name=self.name,
+            raise ValueError(
+                f"Collection {self.keyspace}.{self.name} not found.",
             )
 
     async def info(

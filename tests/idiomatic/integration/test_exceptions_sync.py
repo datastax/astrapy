@@ -20,7 +20,6 @@ from astrapy import Database
 from astrapy.cursors import CursorState
 from astrapy.exceptions import (
     CollectionInsertManyException,
-    CollectionNotFoundException,
     CursorException,
     DataAPIResponseException,
     TooManyDocumentsToCountException,
@@ -135,10 +134,8 @@ class TestExceptionsSync:
     ) -> None:
         col = sync_empty_collection._copy()
         col._name += "_hacked"
-        with pytest.raises(CollectionNotFoundException) as exc:
+        with pytest.raises(ValueError, match="not found"):
             col.options()
-        assert exc.value.collection_name == col._name
-        assert exc.value.keyspace == sync_empty_collection.keyspace
 
     @pytest.mark.describe("test of collection count_documents failure modes, sync")
     def test_collection_count_documents_failures_sync(

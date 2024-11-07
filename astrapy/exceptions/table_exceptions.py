@@ -32,35 +32,6 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class TableNotFoundException(DataAPIException):
-    """
-    A table is found non-existing and the requested operation
-    cannot be performed.
-
-    Attributes:
-        text: a text message about the exception.
-        keyspace: the keyspace where the table was supposed to be.
-        table_name: the name of the expected table.
-    """
-
-    text: str
-    keyspace: str
-    table_name: str
-
-    def __init__(
-        self,
-        text: str,
-        *,
-        keyspace: str,
-        table_name: str,
-    ) -> None:
-        super().__init__(text)
-        self.text = text
-        self.keyspace = keyspace
-        self.table_name = table_name
-
-
-@dataclass
 class TooManyRowsToCountException(DataAPIException):
     """
     A `count_documents()` operation on a table failed because of the excessive amount

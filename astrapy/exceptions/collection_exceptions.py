@@ -32,35 +32,6 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class CollectionNotFoundException(DataAPIException):
-    """
-    A collection is found non-existing and the requested operation
-    cannot be performed.
-
-    Attributes:
-        text: a text message about the exception.
-        keyspace: the keyspace where the collection was supposed to be.
-        collection_name: the name of the expected collection.
-    """
-
-    text: str
-    keyspace: str
-    collection_name: str
-
-    def __init__(
-        self,
-        text: str,
-        *,
-        keyspace: str,
-        collection_name: str,
-    ) -> None:
-        super().__init__(text)
-        self.text = text
-        self.keyspace = keyspace
-        self.collection_name = collection_name
-
-
-@dataclass
 class TooManyDocumentsToCountException(DataAPIException):
     """
     A `count_documents()` operation on a collection failed because the resulting

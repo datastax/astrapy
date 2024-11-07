@@ -21,7 +21,6 @@ from astrapy.constants import DefaultDocumentType
 from astrapy.cursors import AsyncCollectionCursor, CursorState
 from astrapy.exceptions import (
     CollectionInsertManyException,
-    CollectionNotFoundException,
     CursorException,
     DataAPIResponseException,
     TooManyDocumentsToCountException,
@@ -143,10 +142,8 @@ class TestExceptionsAsync:
     ) -> None:
         acol = async_empty_collection._copy()
         acol._name += "_hacked"
-        with pytest.raises(CollectionNotFoundException) as exc:
+        with pytest.raises(ValueError, match="not found"):
             await acol.options()
-        assert exc.value.collection_name == acol._name
-        assert exc.value.keyspace == async_empty_collection.keyspace
 
     @pytest.mark.describe("test of collection count_documents failure modes, async")
     async def test_collection_count_documents_failures_async(

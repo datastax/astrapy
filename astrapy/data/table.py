@@ -35,7 +35,6 @@ from astrapy.data.utils.distinct_extractors import (
 from astrapy.data.utils.table_converters import _TableConverterAgent
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
-    TableNotFoundException,
     UnexpectedDataAPIResponseException,
     _TimeoutContext,
 )
@@ -315,10 +314,8 @@ class Table(Generic[ROW]):
         if self_descriptors:
             return self_descriptors[0].definition
         else:
-            raise TableNotFoundException(
-                text=f"Table {self.keyspace}.{self.name} not found.",
-                keyspace=self.keyspace,
-                table_name=self.name,
+            raise ValueError(
+                f"Table {self.keyspace}.{self.name} not found.",
             )
 
     def info(
@@ -1140,10 +1137,8 @@ class AsyncTable(Generic[ROW]):
         if self_descriptors:
             return self_descriptors[0].definition
         else:
-            raise TableNotFoundException(
-                text=f"Table {self.keyspace}.{self.name} not found.",
-                keyspace=self.keyspace,
-                table_name=self.name,
+            raise ValueError(
+                f"Table {self.keyspace}.{self.name} not found.",
             )
 
     async def info(
@@ -1364,79 +1359,6 @@ class AsyncTable(Generic[ROW]):
             schema_operation_timeout_ms=schema_operation_timeout_ms,
             max_time_ms=max_time_ms,
         )
-
-    async def drop_index(
-        self,
-        name: str,
-        *,
-        if_exists: bool | None = None,
-        schema_operation_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
-    ) -> None:
-        """
-        Drops (deletes) an index (of any kind) from the table.
-
-        This is a blocking operation: the method returns once the index
-        is deleted.
-
-        Note:
-            Although associated to a table, index names are unique across a keyspace.
-
-        Args:
-            name: the name of the index.
-            if_exists: if passed as True, trying to drop a non-existing index
-                will not error, just silently do nothing instead. If not provided,
-                the API default behaviour will hold.
-            schema_operation_timeout_ms: a timeout, in milliseconds, for the
-                dropIndex HTTP request.
-            max_time_ms: an alias for `schema_operation_timeout_ms`.
-
-        Example:
-            TODO
-            >>> table_def = (
-            ...     TableDefinition.zero()
-            ...     .add_column("id", "text")
-            ...     .add_column("name", "text")
-            ...     .add_partition_by(["id"])
-            ... )
-            ...
-            >>> my_table = my_db.create_table("my_table", definition=table_def)
-        """
-
-        _schema_operation_timeout_ms = (
-            schema_operation_timeout_ms
-            or max_time_ms
-            or self.api_options.timeout_options.schema_operation_timeout_ms
-        )
-        di_options: dict[str, bool]
-        if if_exists is not None:
-            di_options = {"ifExists": if_exists}
-        else:
-            di_options = {}
-        di_payload = {
-            "dropIndex": {
-                k: v
-                for k, v in {
-                    "name": name,
-                    "options": di_options,
-                }.items()
-                if v is not None
-                if v != {}
-            }
-        }
-        logger.info(f"dropIndex('{name}')")
-        if self._database._api_commander is None:
-            raise ValueError("Parent AsyncDatabase of the table has no API Commander.")
-        di_response = await self._database._api_commander.async_request(
-            payload=di_payload,
-            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
-        )
-        if di_response.get("status") != {"ok": 1}:
-            raise UnexpectedDataAPIResponseException(
-                text="Faulty response from dropIndex API command.",
-                raw_response=di_response,
-            )
-        logger.info(f"finished dropIndex('{name}')")
 
     async def insert_one(
         self,

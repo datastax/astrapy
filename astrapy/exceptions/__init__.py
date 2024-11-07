@@ -23,7 +23,6 @@ from astrapy.exceptions.collection_exceptions import (
     CollectionCumulativeOperationException,
     CollectionDeleteManyException,
     CollectionInsertManyException,
-    CollectionNotFoundException,
     CollectionUpdateManyException,
     TooManyDocumentsToCountException,
 )
@@ -49,7 +48,6 @@ from astrapy.exceptions.table_exceptions import (
     TableCumulativeOperationException,
     TableDeleteManyException,
     TableInsertManyException,
-    TableNotFoundException,
     TableUpdateManyException,
     TooManyRowsToCountException,
 )
@@ -250,8 +248,6 @@ class MultiCallTimeoutManager:
 
 
 __all__ = [
-    "CollectionNotFoundException",
-    "TableNotFoundException",
     "DevOpsAPIException",
     "DevOpsAPIHttpException",
     "DevOpsAPITimeoutException",

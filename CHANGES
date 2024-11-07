@@ -10,6 +10,7 @@ Introduced `InvalidEnvironmentException` for operations invalid on some Data API
 The following info methods are made async (= awaitable): `AsyncDatabase.info`, `AsyncDatabase.name`, `AsyncCollection.info`, `AsyncTable.info`
 Collections default to using custom types for lossless and full-range expression of database content.
     - e.g. instead of 'datetime.datetime', instances of `DataAPITimestamp` are returned
+    - Exception: numbers are treated by default as ints and floats. To have them all Decimal, set serdes_option.use_decimals_in_collections to True.
     - Use the options' serdes_option to opt out and revert to non-custom data types
 Renamed (collection-specific) "Result" classes like this:
     - 'DeleteResult' => `CollectionDeleteResult`
@@ -31,10 +32,11 @@ Cursors are similarly typed and are rewritten entirely:
 (internal) simplified timeout management classes and representations.
 (internal) Async/Collection's find_one method uses findOne API command.
 Removed the CommandCursor/AsyncCommandCursor classes:
-  - AstraDBAdmin's `list_databases`, `async_list_databases` methods return regular lists
-  - Database's `list_collections`, `list_tables` methods return regular lists
-  - AsyncDatabase's `list_collections`, `list_tables` methods have become awaitable and return regular lists
+    - AstraDBAdmin's `list_databases`, `async_list_databases` methods return regular lists
+    - Database's `list_collections`, `list_tables` methods return regular lists
+    - AsyncDatabase's `list_collections`, `list_tables` methods have become awaitable and return regular lists
 Remove 'check_exists' from [Async]Database `create_collection` method (always False now)
+    - Remove 'CollectionNotFoundException', replaced by a ValueError in the few cases it's needed
 Remove `CollectionAlreadyExistsException` class (not used anymore without `check_exists`)
 Rename 'DevOpsAPIFaultyResponseException' to `UnexpectedDevOpsAPIResponseException`
 Rename 'DataAPIFaultyResponseException' to `UnexpectedDataAPIResponseException`
