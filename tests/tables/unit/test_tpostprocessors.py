@@ -162,7 +162,7 @@ EXPECTED_POSTPROCESSED_ROW = {
     "p_uuid": UUID("9c5b94b1-35ad-49bb-b118-8e8fc24abf80"),
     "p_decimal": decimal.Decimal("123.456"),
     "p_date": DataAPIDate.from_string("11111-09-30"),
-    "p_duration": DataAPIDuration(months=1, days=1, nanoseconds=60000000001),
+    "p_duration": DataAPIDuration(signum=+1, months=1, days=1, nanoseconds=60000000001),
     "p_inet": ipaddress.ip_address("10.1.1.2"),
     "p_time": DataAPITime(12, 34, 56, 789120000),
     "p_timestamp": DataAPITimestamp.from_string("2015-05-03T13:30:54.234Z"),

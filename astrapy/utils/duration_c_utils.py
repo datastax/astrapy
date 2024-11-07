@@ -47,8 +47,8 @@ DURATION_C_NANOSECOND_MULTIPLIER = {
 }
 
 # Note: "ms" and "mo" MUST come before "m" here (otherwise a wrong "m" is found first).
-DURATION_C_V_PATTERN = re.compile(r"^(-?\d+(y|ms|mo|w|d|h|m|s|us|ns))+$")
-DURATION_C_I_PATTERN = re.compile(r"(-?\d+)(y|ms|mo|w|d|h|m|s|us|ns)")
+DURATION_C_V_PATTERN = re.compile(r"^(-?)(\d+(y|ms|mo|w|d|h|m|s|us|ns))+$")
+DURATION_C_I_PATTERN = re.compile(r"(\d+)(y|ms|mo|w|d|h|m|s|us|ns)")
 
 DURATION_C_FORMAT_DESC = (
     "Durations must be a non-empty sequence of '<quantity><unit>', without "
@@ -58,10 +58,18 @@ DURATION_C_FORMAT_DESC = (
 )
 
 
-def _parse_c_duration_string(duration_string: str) -> tuple[int, int, int]:
+def _parse_c_duration_string(duration_string: str) -> tuple[int, int, int, int]:
+    # signum, months, days, nanoseconds
     if duration_string == "":
-        return (0, 0, 0)
-    _norm_string = duration_string.lower().replace("µs", "us")
+        return (1, 0, 0, 0)
+    _norm_string0 = duration_string.lower().replace("µs", "us")
+    _norm_string: str
+    if _norm_string0[0] == "-":
+        signum = -1
+        _norm_string = _norm_string0[1:]
+    else:
+        signum = +1
+        _norm_string = _norm_string0
     if DURATION_C_V_PATTERN.fullmatch(_norm_string):
         qunits = [
             (match.group(1), match.group(2))
@@ -98,7 +106,7 @@ def _parse_c_duration_string(duration_string: str) -> tuple[int, int, int]:
                 umult * parsed_uvals.get(unit, 0)
                 for unit, umult in DURATION_C_NANOSECOND_MULTIPLIER.items()
             )
-            return (months, days, nanoseconds)
+            return (signum, months, days, nanoseconds)
         else:
             raise ValueError(
                 "No quantity+unit groups in literal for a "
@@ -113,14 +121,18 @@ def _parse_c_duration_string(duration_string: str) -> tuple[int, int, int]:
 
 
 def _build_c_duration_string(
+    signum: int,
     months: int,
     days: int,
     nanoseconds: int,
 ) -> str:
+    _signum_string: str | None = None
     _month_string: str | None = None
     _day_string: str | None = None
     _nanosecond_string: str | None = None
     #
+    if signum < 0:
+        _signum_string = "-"
     if months:
         _month_string = ""
         _residual_months = months
@@ -139,5 +151,7 @@ def _build_c_duration_string(
                 _nanosecond_string += f"{u_qty}{u}"
                 _residual_nanoseconds -= u_qty * div
     return "".join(
-        b for b in (_month_string, _day_string, _nanosecond_string) if b is not None
+        b
+        for b in (_signum_string, _month_string, _day_string, _nanosecond_string)
+        if b is not None
     )

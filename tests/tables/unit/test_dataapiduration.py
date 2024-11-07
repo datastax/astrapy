@@ -26,74 +26,84 @@ class TestDataAPIDuration:
     def test_dataapiduration_parse_errors(self) -> None:
         # spurious begin
         with pytest.raises(ValueError):
-            DataAPIDuration.from_string("X1mo")
+            DataAPIDuration.from_c_string("X1mo")
         # spurious end
         with pytest.raises(ValueError):
-            DataAPIDuration.from_string("1moY")
+            DataAPIDuration.from_c_string("1moY")
         # spurious in the middle
         with pytest.raises(ValueError):
-            DataAPIDuration.from_string("1moX1s")
+            DataAPIDuration.from_c_string("1moX1s")
         # fake unit
         with pytest.raises(ValueError):
-            DataAPIDuration.from_string("1mo6b1s")
+            DataAPIDuration.from_c_string("1mo6b1s")
         # repeated unit
         with pytest.raises(ValueError):
-            DataAPIDuration.from_string("1mo1d1d1s")
+            DataAPIDuration.from_c_string("1mo1d1d1s")
         # out-of-order unit
         with pytest.raises(ValueError):
-            DataAPIDuration.from_string("1d1mo1s")
+            DataAPIDuration.from_c_string("1d1mo1s")
         # quantity with '+'
         with pytest.raises(ValueError):
-            DataAPIDuration.from_string("1mo+3s")
+            DataAPIDuration.from_c_string("1mo+3s")
+        # signs in the middle
+        with pytest.raises(ValueError):
+            DataAPIDuration.from_c_string("-1d-1s")
+        with pytest.raises(ValueError):
+            DataAPIDuration.from_c_string("1d-1s")
 
     @pytest.mark.describe("test of duration type, lifecycle")
     def test_dataapiduration_lifecycle(self) -> None:
         # base
-        dfull = DataAPIDuration.from_string("1y1mo1w1d1h1m1s1ms1us1ns")
-        dfull_exp = DataAPIDuration(months=13, days=8, nanoseconds=3661001001001)
+        dfull = DataAPIDuration.from_c_string("1y1mo1w1d1h1m1s1ms1us1ns")
+        dfull_exp = DataAPIDuration(
+            signum=+1, months=13, days=8, nanoseconds=3661001001001
+        )
         assert dfull == dfull_exp
         # mu, signed quantity and case-insensitivity
-        assert DataAPIDuration.from_string("-123US") == DataAPIDuration.from_string(
+        assert DataAPIDuration.from_c_string("-123US") == DataAPIDuration.from_c_string(
             "-123µs"
         )
         # holey cases
-        dhole1 = DataAPIDuration.from_string("1mo1d1m1ms1ns")
-        dhole1_exp = DataAPIDuration(months=1, days=1, nanoseconds=60001000001)
+        dhole1 = DataAPIDuration.from_c_string("1mo1d1m1ms1ns")
+        dhole1_exp = DataAPIDuration(
+            signum=+1, months=1, days=1, nanoseconds=60001000001
+        )
         assert dhole1 == dhole1_exp
-        dhole2 = DataAPIDuration.from_string("1y1w1h1s1us")
-        dhole2_exp = DataAPIDuration(months=12, days=7, nanoseconds=3601000001000)
+        dhole2 = DataAPIDuration.from_c_string("1y1w1h1s1us")
+        dhole2_exp = DataAPIDuration(
+            signum=+1, months=12, days=7, nanoseconds=3601000001000
+        )
         assert dhole2 == dhole2_exp
-        # sign to quantities
-        assert DataAPIDuration.from_string("1m-1s") == DataAPIDuration.from_string(
-            "59s"
+        assert DataAPIDuration.from_c_string("1m1s") == DataAPIDuration.from_c_string(
+            "61s"
         )
         # equivalent-formulation identity
-        deq1 = DataAPIDuration.from_string("13mo2w1h1s1us")
-        deq2 = DataAPIDuration.from_string("1y1mo14d60m1000ms1000ns")
+        deq1 = DataAPIDuration.from_c_string("13mo2w1h1s1us")
+        deq2 = DataAPIDuration.from_c_string("1y1mo14d60m1000ms1000ns")
         assert deq1 == deq2
         # null duration
-        zd0 = DataAPIDuration(months=0, days=0, nanoseconds=0)
-        zd1 = DataAPIDuration.from_string("0y")
-        zd2 = DataAPIDuration.from_string("0mo0d")
-        zd3 = DataAPIDuration.from_string("0w0ns")
-        zd4 = DataAPIDuration.from_string("")
+        zd0 = DataAPIDuration(signum=+1, months=0, days=0, nanoseconds=0)
+        zd1 = DataAPIDuration.from_c_string("0y")
+        zd2 = DataAPIDuration.from_c_string("0mo0d")
+        zd3 = DataAPIDuration.from_c_string("0w0ns")
+        zd4 = DataAPIDuration.from_c_string("")
         assert zd0 == zd1
         assert zd0 == zd2
         assert zd0 == zd3
         assert zd0 == zd4
         # stringy functions
-        str(dfull)
+        dfull.to_c_string()
         repr(dfull)
-        str(zd0)
+        zd0.to_c_string()
         repr(zd0)
 
     @pytest.mark.describe("test of duration type, timedelta conversions")
     def test_dataapiduration_timedelta_conversions(self) -> None:
-        td_ok_0 = DataAPIDuration.from_string("")
-        td_ok_1 = DataAPIDuration.from_string("1d1s-333ms")
-        td_ok_2 = DataAPIDuration.from_string("-191d1s")
-        td_ok_3 = DataAPIDuration.from_string("1d3s777000ns")
-        td_no = DataAPIDuration.from_string("-1y1s")
+        td_ok_0 = DataAPIDuration.from_c_string("")
+        td_ok_1 = DataAPIDuration.from_c_string("-1h1s333ms")
+        td_ok_2 = DataAPIDuration.from_c_string("-191h1s")
+        td_ok_3 = DataAPIDuration.from_c_string("1h44m3s777000ns")
+        td_no = DataAPIDuration.from_c_string("-1y1s")
 
         # due to lossy conversions and the month-day-subday math being different,
         # other (more challenging) values will fail here (limitations of timedelta)
