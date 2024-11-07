@@ -18,8 +18,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from astrapy.exceptions.data_api_exceptions import (
+    CumulativeOperationException,
     DataAPIException,
-    DataAPIResponseException,
 )
 
 if TYPE_CHECKING:
@@ -46,17 +46,8 @@ class TooManyRowsToCountException(DataAPIException):
         self.text = text
 
 
-class TableCumulativeOperationException(DataAPIResponseException):
-    """
-    An exception of type DataAPIResponseException (see) occurred
-    during a table operation that in general may span several requests.
-    As such, it may have accumulated
-    a partial result from past successful Data API requests.
-    """
-
-
 @dataclass
-class TableInsertManyException(TableCumulativeOperationException):
+class TableInsertManyException(CumulativeOperationException):
     """
     An exception of type DataAPIResponseException (see) occurred
     during an insert_many (that in general spans several requests).
@@ -88,63 +79,3 @@ class TableInsertManyException(TableCumulativeOperationException):
     ) -> None:
         super().__init__(text, *pargs, **kwargs)
         self.partial_result = partial_result
-
-
-@dataclass
-class TableDeleteManyException(TableCumulativeOperationException):
-    """
-    An exception of type DataAPIResponseException (see) occurred
-    during a delete_many (that in general spans several requests).
-    As such, besides information on the error, it may have accumulated
-    a partial result from past successful Data API requests.
-
-    Attributes:
-        text: a text message about the exception.
-        error_descriptors: a list of all DataAPIErrorDescriptor objects
-            found across all requests involved in this exception, which are
-            possibly more than one.
-        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
-            objects, one for each of the requests performed during this operation.
-            For single-request methods, such as insert_one, this list always
-            has a single element.
-        partial_result: a TableDeleteResult object, just like the one that would
-            be the return value of the operation, had it succeeded completely.
-    """
-
-    def __init__(
-        self,
-        text: str,
-        *pargs: Any,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(text, *pargs, **kwargs)
-
-
-@dataclass
-class TableUpdateManyException(TableCumulativeOperationException):
-    """
-    An exception of type DataAPIResponseException (see) occurred
-    during an update_many (that in general spans several requests).
-    As such, besides information on the error, it may have accumulated
-    a partial result from past successful Data API requests.
-
-    Attributes:
-        text: a text message about the exception.
-        error_descriptors: a list of all DataAPIErrorDescriptor objects
-            found across all requests involved in this exception, which are
-            possibly more than one.
-        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
-            objects, one for each of the requests performed during this operation.
-            For single-request methods, such as insert_one, this list always
-            has a single element.
-        partial_result: a TableUpdateResult object, just like the one that
-        would be the return value of the operation, had it succeeded completely.
-    """
-
-    def __init__(
-        self,
-        text: str,
-        *pargs: Any,
-        **kwargs: Any,
-    ) -> None:
-        super().__init__(text, *pargs, **kwargs)

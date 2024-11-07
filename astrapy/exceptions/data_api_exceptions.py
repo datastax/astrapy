@@ -379,3 +379,24 @@ class UnexpectedDataAPIResponseException(DataAPIException):
         super().__init__(text)
         self.text = text
         self.raw_response = raw_response
+
+
+class CumulativeOperationException(DataAPIResponseException):
+    """
+    An exception of type DataAPIResponseException (see) occurred
+    during a collection operation that in general may span several requests.
+    As such, besides information on the error, it may have accumulated
+    a partial result from past successful Data API requests.
+
+    Attributes:
+        text: a text message about the exception.
+        error_descriptors: a list of all DataAPIErrorDescriptor objects
+            found across all requests involved in this exception, which are
+            possibly more than one.
+        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
+            objects, one for each of the requests performed during this operation.
+            For single-request methods, such as insert_one, this list always
+            has a single element.
+    """
+
+    pass

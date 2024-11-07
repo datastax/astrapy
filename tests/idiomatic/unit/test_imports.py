@@ -88,10 +88,10 @@ def test_imports() -> None:
         CursorState,
     )
     from astrapy.exceptions import (  # noqa: F401
-        CollectionCumulativeOperationException,
         CollectionDeleteManyException,
         CollectionInsertManyException,
         CollectionUpdateManyException,
+        CumulativeOperationException,
         CursorException,
         DataAPIDetailedErrorDescriptor,
         DataAPIErrorDescriptor,
@@ -105,10 +105,7 @@ def test_imports() -> None:
         DevOpsAPIResponseException,
         DevOpsAPITimeoutException,
         MultiCallTimeoutManager,
-        TableCumulativeOperationException,
-        TableDeleteManyException,
         TableInsertManyException,
-        TableUpdateManyException,
         TooManyDocumentsToCountException,
         TooManyRowsToCountException,
         UnexpectedDataAPIResponseException,
@@ -147,8 +144,6 @@ def test_imports() -> None:
         CollectionInsertOneResult,
         CollectionUpdateResult,
         OperationResult,
-        TableDeleteResult,
         TableInsertManyResult,
         TableInsertOneResult,
-        TableUpdateResult,
     )

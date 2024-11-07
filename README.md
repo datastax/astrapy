@@ -440,10 +440,10 @@ Exceptions:
 
 ```python
 from astrapy.exceptions import (
-    CollectionCumulativeOperationException,
     CollectionDeleteManyException,
     CollectionInsertManyException,
     CollectionUpdateManyException,
+    CumulativeOperationException,
     CursorException,
     DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
@@ -457,7 +457,6 @@ from astrapy.exceptions import (
     DevOpsAPIResponseException,
     DevOpsAPITimeoutException,
     MultiCallTimeoutManager,
-    TableCumulativeOperationException,
     TableDeleteManyException,
     TableInsertManyException,
     TableUpdateManyException,

@@ -18,8 +18,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from astrapy.exceptions.data_api_exceptions import (
+    CumulativeOperationException,
     DataAPIException,
-    DataAPIResponseException,
 )
 
 if TYPE_CHECKING:
@@ -27,7 +27,6 @@ if TYPE_CHECKING:
         CollectionDeleteResult,
         CollectionInsertManyResult,
         CollectionUpdateResult,
-        OperationResult,
     )
 
 
@@ -59,31 +58,8 @@ class TooManyDocumentsToCountException(DataAPIException):
         self.server_max_count_exceeded = server_max_count_exceeded
 
 
-class CollectionCumulativeOperationException(DataAPIResponseException):
-    """
-    An exception of type DataAPIResponseException (see) occurred
-    during a collection operation that in general may span several requests.
-    As such, besides information on the error, it may have accumulated
-    a partial result from past successful Data API requests.
-
-    Attributes:
-        text: a text message about the exception.
-        error_descriptors: a list of all DataAPIErrorDescriptor objects
-            found across all requests involved in this exception, which are
-            possibly more than one.
-        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
-            objects, one for each of the requests performed during this operation.
-            For single-request methods, such as insert_one, this list always
-            has a single element.
-        partial_result: an OperationResult object, just like the one that would
-            be the return value of the operation, had it succeeded completely.
-    """
-
-    partial_result: OperationResult
-
-
 @dataclass
-class CollectionInsertManyException(CollectionCumulativeOperationException):
+class CollectionInsertManyException(CumulativeOperationException):
     """
     An exception of type DataAPIResponseException (see) occurred
     during an insert_many (that in general spans several requests).
@@ -118,7 +94,7 @@ class CollectionInsertManyException(CollectionCumulativeOperationException):
 
 
 @dataclass
-class CollectionDeleteManyException(CollectionCumulativeOperationException):
+class CollectionDeleteManyException(CumulativeOperationException):
     """
     An exception of type DataAPIResponseException (see) occurred
     during a delete_many (that in general spans several requests).
@@ -152,7 +128,7 @@ class CollectionDeleteManyException(CollectionCumulativeOperationException):
 
 
 @dataclass
-class CollectionUpdateManyException(CollectionCumulativeOperationException):
+class CollectionUpdateManyException(CumulativeOperationException):
     """
     An exception of type DataAPIResponseException (see) occurred
     during an update_many (that in general spans several requests).
@@ -168,8 +144,8 @@ class CollectionUpdateManyException(CollectionCumulativeOperationException):
             objects, one for each of the requests performed during this operation.
             For single-request methods, such as insert_one, this list always
             has a single element.
-        partial_result: a CollectionUpdateResult object, just like the one that
-        would be the return value of the operation, had it succeeded completely.
+        partial_result: a CollectionUpdateResult object, just like the one that would
+            be the return value of the operation, had it succeeded completely.
     """
 
     partial_result: CollectionUpdateResult

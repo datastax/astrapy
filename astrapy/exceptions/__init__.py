@@ -20,13 +20,13 @@ from dataclasses import dataclass
 import httpx
 
 from astrapy.exceptions.collection_exceptions import (
-    CollectionCumulativeOperationException,
     CollectionDeleteManyException,
     CollectionInsertManyException,
     CollectionUpdateManyException,
     TooManyDocumentsToCountException,
 )
 from astrapy.exceptions.data_api_exceptions import (
+    CumulativeOperationException,
     CursorException,
     DataAPIDetailedErrorDescriptor,
     DataAPIErrorDescriptor,
@@ -45,10 +45,7 @@ from astrapy.exceptions.devops_api_exceptions import (
     UnexpectedDevOpsAPIResponseException,
 )
 from astrapy.exceptions.table_exceptions import (
-    TableCumulativeOperationException,
-    TableDeleteManyException,
     TableInsertManyException,
-    TableUpdateManyException,
     TooManyRowsToCountException,
 )
 
@@ -263,16 +260,13 @@ __all__ = [
     "TooManyDocumentsToCountException",
     "UnexpectedDataAPIResponseException",
     "DataAPIResponseException",
-    "CollectionCumulativeOperationException",
     "CollectionInsertManyException",
     "CollectionDeleteManyException",
     "CollectionUpdateManyException",
+    "CumulativeOperationException",
     "MultiCallTimeoutManager",
     "TooManyRowsToCountException",
-    "TableCumulativeOperationException",
     "TableInsertManyException",
-    "TableDeleteManyException",
-    "TableUpdateManyException",
 ]
 
 __pdoc__ = {
