@@ -39,7 +39,7 @@ from astrapy.exceptions import (
     _TimeoutContext,
 )
 from astrapy.info import TableIndexDefinition, TableInfo, TableVectorIndexDefinition
-from astrapy.results import TableDeleteResult, TableInsertOneResult
+from astrapy.results import TableInsertOneResult
 from astrapy.settings.defaults import DEFAULT_DATA_API_AUTH_HEADER
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import APIOptions, FullAPIOptions, TimeoutOptions
@@ -757,7 +757,7 @@ class Table(Generic[ROW]):
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> TableDeleteResult:
+    ) -> None:
         """
         TODO
         """
@@ -785,9 +785,7 @@ class Table(Generic[ROW]):
         )
         logger.info(f"finished deleteOne on '{self.name}'")
         if do_response.get("status", {}).get("deletedCount") == -1:
-            return TableDeleteResult(
-                raw_results=[do_response],
-            )
+            return
         else:
             raise UnexpectedDataAPIResponseException(
                 text="Faulty response from deleteOne API command.",
@@ -800,7 +798,7 @@ class Table(Generic[ROW]):
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> TableDeleteResult:
+    ) -> None:
         """
         TODO
         """
@@ -828,9 +826,7 @@ class Table(Generic[ROW]):
         )
         logger.info(f"finished deleteMany on '{self.name}'")
         if dm_response.get("status", {}).get("deletedCount") == -1:
-            return TableDeleteResult(
-                raw_results=[dm_response],
-            )
+            return
         else:
             raise UnexpectedDataAPIResponseException(
                 text="Faulty response from deleteMany API command.",
@@ -1581,7 +1577,7 @@ class AsyncTable(Generic[ROW]):
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> TableDeleteResult:
+    ) -> None:
         """
         TODO
         """
@@ -1609,9 +1605,7 @@ class AsyncTable(Generic[ROW]):
         )
         logger.info(f"finished deleteOne on '{self.name}'")
         if do_response.get("status", {}).get("deletedCount") == -1:
-            return TableDeleteResult(
-                raw_results=[do_response],
-            )
+            return
         else:
             raise UnexpectedDataAPIResponseException(
                 text="Faulty response from deleteOne API command.",
@@ -1624,7 +1618,7 @@ class AsyncTable(Generic[ROW]):
         *,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> TableDeleteResult:
+    ) -> None:
         """
         TODO
         """
@@ -1652,9 +1646,7 @@ class AsyncTable(Generic[ROW]):
         )
         logger.info(f"finished deleteMany on '{self.name}'")
         if dm_response.get("status", {}).get("deletedCount") == -1:
-            return TableDeleteResult(
-                raw_results=[dm_response],
-            )
+            return
         else:
             raise UnexpectedDataAPIResponseException(
                 text="Faulty response from deleteMany API command.",

@@ -136,27 +136,6 @@ class CollectionUpdateResult(OperationResult):
 
 
 @dataclass
-class TableDeleteResult(OperationResult):
-    """
-    Class that represents the result of delete operations on a table.
-
-    TODO check what to add here
-
-    Attributes:
-        raw_results: response/responses from the Data API call.
-            Depending on the exact delete method being used, this
-            list of raw responses can contain exactly one or a number of items.
-    """
-
-    def __repr__(self) -> str:
-        return self._piecewise_repr(
-            [
-                "raw_results=..." if self.raw_results is not None else None,
-            ]
-        )
-
-
-@dataclass
 class TableInsertOneResult(OperationResult):
     """
     Class that represents the result of insert_one operations on a table.
@@ -215,25 +194,6 @@ class TableInsertManyResult(OperationResult):
             [
                 f"inserted_ids={_ins_ids_str}",
                 f"inserted_id_tuples={_ins_idts_str}",
-                "raw_results=..." if self.raw_results is not None else None,
-            ]
-        )
-
-
-@dataclass
-class TableUpdateResult(OperationResult):
-    """
-    Class that represents the result of any update operation on a table.
-
-    TODO add fields if the API returns them
-
-    Attributes:
-        raw_results: responses from the Data API calls
-    """
-
-    def __repr__(self) -> str:
-        return self._piecewise_repr(
-            [
                 "raw_results=..." if self.raw_results is not None else None,
             ]
         )

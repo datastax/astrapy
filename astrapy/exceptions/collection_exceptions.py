@@ -62,7 +62,7 @@ class TooManyDocumentsToCountException(DataAPIException):
 class CollectionCumulativeOperationException(DataAPIResponseException):
     """
     An exception of type DataAPIResponseException (see) occurred
-    during an operation that in general spans several requests.
+    during a collection operation that in general may span several requests.
     As such, besides information on the error, it may have accumulated
     a partial result from past successful Data API requests.
 

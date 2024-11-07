@@ -23,12 +23,7 @@ from astrapy.exceptions.data_api_exceptions import (
 )
 
 if TYPE_CHECKING:
-    from astrapy.results import (
-        OperationResult,
-        TableDeleteResult,
-        TableInsertManyResult,
-        TableUpdateResult,
-    )
+    from astrapy.results import TableInsertManyResult
 
 
 @dataclass
@@ -54,24 +49,10 @@ class TooManyRowsToCountException(DataAPIException):
 class TableCumulativeOperationException(DataAPIResponseException):
     """
     An exception of type DataAPIResponseException (see) occurred
-    during an operation that in general spans several requests.
-    As such, besides information on the error, it may have accumulated
+    during a table operation that in general may span several requests.
+    As such, it may have accumulated
     a partial result from past successful Data API requests.
-
-    Attributes:
-        text: a text message about the exception.
-        error_descriptors: a list of all DataAPIErrorDescriptor objects
-            found across all requests involved in this exception, which are
-            possibly more than one.
-        detailed_error_descriptors: a list of DataAPIDetailedErrorDescriptor
-            objects, one for each of the requests performed during this operation.
-            For single-request methods, such as insert_one, this list always
-            has a single element.
-        partial_result: an OperationResult object, just like the one that would
-            be the return value of the operation, had it succeeded completely.
     """
-
-    partial_result: OperationResult
 
 
 @dataclass
@@ -130,17 +111,13 @@ class TableDeleteManyException(TableCumulativeOperationException):
             be the return value of the operation, had it succeeded completely.
     """
 
-    partial_result: TableDeleteResult
-
     def __init__(
         self,
         text: str,
-        partial_result: TableDeleteResult,
         *pargs: Any,
         **kwargs: Any,
     ) -> None:
         super().__init__(text, *pargs, **kwargs)
-        self.partial_result = partial_result
 
 
 @dataclass
@@ -164,14 +141,10 @@ class TableUpdateManyException(TableCumulativeOperationException):
         would be the return value of the operation, had it succeeded completely.
     """
 
-    partial_result: TableUpdateResult
-
     def __init__(
         self,
         text: str,
-        partial_result: TableUpdateResult,
         *pargs: Any,
         **kwargs: Any,
     ) -> None:
         super().__init__(text, *pargs, **kwargs)
-        self.partial_result = partial_result
