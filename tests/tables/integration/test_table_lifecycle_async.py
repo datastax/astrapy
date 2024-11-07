@@ -20,6 +20,10 @@ import pytest
 
 from astrapy.exceptions import DataAPIException
 from astrapy.info import (
+    AlterTableAddColumns,
+    AlterTableAddVectorize,
+    AlterTableDropColumns,
+    AlterTableDropVectorize,
     TableDefinition,
     TableIndexDefinition,
     TableIndexOptions,
@@ -274,3 +278,54 @@ class TestTableLifecycle:
         await async_database.drop_table_index("tfi_idx_p_vector")
         await async_database.drop_table_index("tfi_idx_p_vector_sm")
         await async_database.drop_table(table)
+
+    @pytest.mark.describe("test of alter table, async")
+    async def test_alter_tableindex_async(
+        self,
+        async_database: AsyncDatabase,
+    ) -> None:
+        orig_table_def = TableDefinition(
+            columns={
+                "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
+                "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
+                "p_vector": TableVectorColumnTypeDescriptor(
+                    column_type="vector", dimension=1024, service=None
+                ),
+            },
+            primary_key=TablePrimaryKeyDescriptor(
+                partition_by=["p_text"],
+                partition_sort={},
+            ),
+        )
+        atable = await async_database.create_table(
+            "table_to_alter",
+            definition=orig_table_def,
+        )
+
+        try:
+            await atable.alter(
+                operation=AlterTableAddColumns.coerce({"columns": {"added_1": "float"}})
+            )
+            await atable.alter(
+                operation=AlterTableDropColumns.coerce({"columns": ["added_1"]})
+            )
+            await atable.alter(
+                operation=AlterTableAddVectorize.coerce(
+                    {
+                        "columns": {
+                            "p_vector": {
+                                "provider": "mistral",
+                                "modelName": "mistral-embed",
+                            }
+                        }
+                    }
+                )
+            )
+            # add column
+            await atable.alter(
+                operation=AlterTableDropVectorize.coerce({"columns": ["p_vector"]})
+            )
+            # back to the original table:
+            assert (await atable.definition()) == orig_table_def
+        finally:
+            await atable.drop()

@@ -48,6 +48,7 @@ from astrapy.utils.unset import _UNSET, UnsetType
 if TYPE_CHECKING:
     from astrapy.authentication import EmbeddingHeadersProvider
     from astrapy.cursors import AsyncTableCursor, TableCursor
+    from astrapy.data.info.table_descriptor import AlterTableOperation
     from astrapy.info import TableDefinition
 
 
@@ -535,6 +536,63 @@ class Table(Generic[ROW]):
             schema_operation_timeout_ms=schema_operation_timeout_ms,
             max_time_ms=max_time_ms,
         )
+
+    def alter(
+        self,
+        operation: AlterTableOperation,
+        *,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> None:
+        """
+        Executes one of the available alter-table operations on this table,
+        such as adding/dropping columns.
+
+        This is a blocking operation: the method returns once the index
+        is created and ready to use.
+
+        Args:
+            operation: an instance of one of the `astrapy.info.AlterTable*` classes.
+            schema_operation_timeout_ms: a timeout, in milliseconds, for the
+                schema-altering HTTP request.
+            max_time_ms: an alias for `schema_operation_timeout_ms`.
+
+        Example:
+            TODO
+            >>> table_def = (
+            ...     TableDefinition.zero()
+            ...     .add_column("id", "text")
+            ...     .add_column("name", "text")
+            ...     .add_partition_by(["id"])
+            ... )
+            ...
+            >>> my_table = my_db.create_table("my_table", definition=table_def)
+        """
+
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.schema_operation_timeout_ms
+        )
+        at_operation_name = operation._name
+        at_payload = {
+            "alterTable": {
+                "operation": {
+                    at_operation_name: operation.as_dict(),
+                },
+            },
+        }
+        logger.info(f"alterTable({at_operation_name})")
+        at_response = self._api_commander.request(
+            payload=at_payload,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
+        )
+        if at_response.get("status") != {"ok": 1}:
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from alterTable API command.",
+                raw_response=at_response,
+            )
+        logger.info(f"finished alterTable({at_operation_name})")
 
     def insert_one(
         self,
@@ -1355,6 +1413,63 @@ class AsyncTable(Generic[ROW]):
             schema_operation_timeout_ms=schema_operation_timeout_ms,
             max_time_ms=max_time_ms,
         )
+
+    async def alter(
+        self,
+        operation: AlterTableOperation,
+        *,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> None:
+        """
+        Executes one of the available alter-table operations on this table,
+        such as adding/dropping columns.
+
+        This is a blocking operation: the method returns once the index
+        is created and ready to use.
+
+        Args:
+            operation: an instance of one of the `astrapy.info.AlterTable*` classes.
+            schema_operation_timeout_ms: a timeout, in milliseconds, for the
+                schema-altering HTTP request.
+            max_time_ms: an alias for `schema_operation_timeout_ms`.
+
+        Example:
+            TODO
+            >>> table_def = (
+            ...     TableDefinition.zero()
+            ...     .add_column("id", "text")
+            ...     .add_column("name", "text")
+            ...     .add_partition_by(["id"])
+            ... )
+            ...
+            >>> my_table = my_db.create_table("my_table", definition=table_def)
+        """
+
+        _schema_operation_timeout_ms = (
+            schema_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.schema_operation_timeout_ms
+        )
+        at_operation_name = operation._name
+        at_payload = {
+            "alterTable": {
+                "operation": {
+                    at_operation_name: operation.as_dict(),
+                },
+            },
+        }
+        logger.info(f"alterTable({at_operation_name})")
+        at_response = await self._api_commander.async_request(
+            payload=at_payload,
+            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
+        )
+        if at_response.get("status") != {"ok": 1}:
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from alterTable API command.",
+                raw_response=at_response,
+            )
+        logger.info(f"finished alterTable({at_operation_name})")
 
     async def insert_one(
         self,

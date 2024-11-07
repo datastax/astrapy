@@ -26,6 +26,10 @@ from astrapy.data.info.database_info import (
     AstraDBDatabaseInfo,
 )
 from astrapy.data.info.table_descriptor import (
+    AlterTableAddColumns,
+    AlterTableAddVectorize,
+    AlterTableDropColumns,
+    AlterTableDropVectorize,
     TableAPISupportDescriptor,
     TableDefinition,
     TableDescriptor,
@@ -52,6 +56,10 @@ from astrapy.data.info.vectorize import (
 )
 
 __all__ = [
+    "AlterTableAddColumns",
+    "AlterTableAddVectorize",
+    "AlterTableDropColumns",
+    "AlterTableDropVectorize",
     "AstraDBAdminDatabaseInfo",
     "CollectionDefaultIDOptions",
     "CollectionDescriptor",

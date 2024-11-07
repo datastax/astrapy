@@ -17,7 +17,7 @@ from __future__ import annotations
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 from astrapy.data.info.database_info import AstraDBDatabaseInfo
 from astrapy.data.info.vectorize import VectorServiceOptions
@@ -911,3 +911,207 @@ class TableVectorIndexDefinition:
         else:
             _filled_raw_input = {**{"options": {}}, **raw_input}
             return cls._from_dict(_filled_raw_input)
+
+
+@dataclass
+class AlterTableOperation(ABC):
+    """
+    TODO
+    """
+
+    _name: str
+
+    @abstractmethod
+    def as_dict(self) -> dict[str, Any]: ...
+
+
+@dataclass
+class AlterTableAddColumns(AlterTableOperation):
+    """
+    TODO
+    """
+
+    columns: dict[str, TableColumnTypeDescriptor]
+
+    def __init__(self, *, columns: dict[str, TableColumnTypeDescriptor]) -> None:
+        self._name = "add"
+        self.columns = columns
+
+    def __repr__(self) -> str:
+        _col_desc = f"columns=[{','.join(self.columns.keys())}]"
+        return f"{self.__class__.__name__}({_col_desc})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+        return {
+            "columns": {col_n: col_v.as_dict() for col_n, col_v in self.columns.items()}
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> AlterTableAddColumns:
+        """
+        Create an instance of AlterTableAddColumns from a dictionary
+        such as one suitable as (partial) command payload.
+        """
+
+        warn_residual_keys(cls, raw_dict, {"columns"})
+        return AlterTableAddColumns(
+            columns={
+                col_n: TableColumnTypeDescriptor.coerce(col_v)
+                for col_n, col_v in raw_dict["columns"].items()
+            },
+        )
+
+    @classmethod
+    def coerce(
+        cls, raw_input: AlterTableAddColumns | dict[str, Any]
+    ) -> AlterTableAddColumns:
+        if isinstance(raw_input, AlterTableAddColumns):
+            return raw_input
+        else:
+            return cls._from_dict(raw_input)
+
+
+@dataclass
+class AlterTableDropColumns(AlterTableOperation):
+    """
+    TODO
+    """
+
+    columns: list[str]
+
+    def __init__(self, *, columns: list[str]) -> None:
+        self._name = "drop"
+        self.columns = columns
+
+    def __repr__(self) -> str:
+        _col_desc = f"columns=[{','.join(self.columns)}]"
+        return f"{self.__class__.__name__}({_col_desc})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+        return {
+            "columns": self.columns,
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> AlterTableDropColumns:
+        """
+        Create an instance of AlterTableDropColumns from a dictionary
+        such as one suitable as (partial) command payload.
+        """
+        warn_residual_keys(cls, raw_dict, {"columns"})
+        return AlterTableDropColumns(
+            columns=raw_dict["columns"],
+        )
+
+    @classmethod
+    def coerce(
+        cls, raw_input: AlterTableDropColumns | dict[str, Any]
+    ) -> AlterTableDropColumns:
+        if isinstance(raw_input, AlterTableDropColumns):
+            return raw_input
+        else:
+            return cls._from_dict(raw_input)
+
+
+@dataclass
+class AlterTableAddVectorize(AlterTableOperation):
+    """
+    TODO
+    """
+
+    columns: dict[str, VectorServiceOptions]
+
+    def __init__(self, *, columns: dict[str, VectorServiceOptions]) -> None:
+        self._name = "addVectorize"
+        self.columns = columns
+
+    def __repr__(self) -> str:
+        _cols_desc = [
+            f"{col_n}({col_svc.provider}/{col_svc.model_name})"
+            for col_n, col_svc in self.columns.items()
+        ]
+        return f"{self.__class__.__name__}(columns={', '.join(_cols_desc)})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+        return {
+            "columns": {
+                col_n: col_svc.as_dict() for col_n, col_svc in self.columns.items()
+            }
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> AlterTableAddVectorize:
+        """
+        Create an instance of AlterTableAddVectorize from a dictionary
+        such as one suitable as (partial) command payload.
+        """
+        warn_residual_keys(cls, raw_dict, {"columns"})
+        _columns: dict[str, VectorServiceOptions | None] = {
+            col_n: VectorServiceOptions.coerce(col_v)
+            for col_n, col_v in raw_dict["columns"].items()
+        }
+        if any(_col_svc is None for _col_svc in _columns.values()):
+            raise ValueError(
+                "Vector service definition cannot be None for AlterTableAddVectorize"
+            )
+        return AlterTableAddVectorize(
+            columns=cast(
+                dict[str, VectorServiceOptions],
+                _columns,
+            )
+        )
+
+    @classmethod
+    def coerce(
+        cls, raw_input: AlterTableAddVectorize | dict[str, Any]
+    ) -> AlterTableAddVectorize:
+        if isinstance(raw_input, AlterTableAddVectorize):
+            return raw_input
+        else:
+            return cls._from_dict(raw_input)
+
+
+@dataclass
+class AlterTableDropVectorize(AlterTableOperation):
+    """
+    TODO
+    """
+
+    columns: list[str]
+
+    def __init__(self, *, columns: list[str]) -> None:
+        self._name = "dropVectorize"
+        self.columns = columns
+
+    def __repr__(self) -> str:
+        _col_desc = f"columns=[{','.join(self.columns)}]"
+        return f"{self.__class__.__name__}({_col_desc})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+        return {
+            "columns": self.columns,
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> AlterTableDropVectorize:
+        """
+        Create an instance of AlterTableDropVectorize from a dictionary
+        such as one suitable as (partial) command payload.
+        """
+        warn_residual_keys(cls, raw_dict, {"columns"})
+        return AlterTableDropVectorize(
+            columns=raw_dict["columns"],
+        )
+
+    @classmethod
+    def coerce(
+        cls, raw_input: AlterTableDropVectorize | dict[str, Any]
+    ) -> AlterTableDropVectorize:
+        if isinstance(raw_input, AlterTableDropVectorize):
+            return raw_input
+        else:
+            return cls._from_dict(raw_input)
