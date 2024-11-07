@@ -21,6 +21,10 @@ from astrapy.utils.duration_c_utils import (
     _build_c_duration_string,
     _parse_c_duration_string,
 )
+from astrapy.utils.duration_std_utils import (
+    _build_std_duration_string,
+    _parse_std_duration_string,
+)
 
 
 @dataclass
@@ -78,12 +82,21 @@ class DataAPIDuration:
 
     @staticmethod
     def from_string(duration_string: str) -> DataAPIDuration:
-        # TEMP
-        return DataAPIDuration(signum=1, months=0, days=0, nanoseconds=0)
+        si, mo, da, ns = _parse_std_duration_string(duration_string)
+        return DataAPIDuration(
+            signum=si,
+            months=mo,
+            days=da,
+            nanoseconds=ns,
+        )
 
     def to_string(self) -> str:
-        # TEMP
-        return "TODO"
+        return _build_std_duration_string(
+            signum=self.signum,
+            months=self.months,
+            days=self.days,
+            nanoseconds=self.nanoseconds,
+        )
 
     @staticmethod
     def from_c_string(duration_string: str) -> DataAPIDuration:

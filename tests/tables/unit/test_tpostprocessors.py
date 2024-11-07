@@ -132,7 +132,7 @@ OUTPUT_ROW_TO_POSTPROCESS = {
     "p_uuid": "9c5b94b1-35ad-49bb-b118-8e8fc24abf80",
     "p_decimal": decimal.Decimal("123.456"),
     "p_date": "11111-09-30",
-    "p_duration": "1mo1d1m1ns",
+    "p_duration": "P1M1DT1M0.000000001S",
     "p_inet": "10.1.1.2",
     "p_time": "12:34:56.78912",
     "p_timestamp": "2015-05-03T13:30:54.234Z",
@@ -196,7 +196,7 @@ OUTPUT_NONCUSTOMTYPES_ROW_TO_POSTPROCESS = {
     "somevector": {"$binary": "PczMzb5MzM0+mZma"},  # [0.1, -0.2, 0.3] but not bit-wise
     "embeddings": [0.1, -0.2, 0.3],
     "p_date": "1956-09-30",
-    "p_duration": "1d2m3s",
+    "p_duration": "P1DT2M3S",
     "p_time": "12:34:56.78912",
     "p_set_ascii": ["a", "b", "c"],
     "p_set_float": [1.1, "NaN", "-Infinity", 9.9],

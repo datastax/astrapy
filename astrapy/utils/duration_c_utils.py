@@ -64,11 +64,12 @@ def _parse_c_duration_string(duration_string: str) -> tuple[int, int, int, int]:
         return (1, 0, 0, 0)
     _norm_string0 = duration_string.lower().replace("µs", "us")
     _norm_string: str
+    signum0: int
     if _norm_string0[0] == "-":
-        signum = -1
+        signum0 = -1
         _norm_string = _norm_string0[1:]
     else:
-        signum = +1
+        signum0 = +1
         _norm_string = _norm_string0
     if DURATION_C_V_PATTERN.fullmatch(_norm_string):
         qunits = [
@@ -83,12 +84,12 @@ def _parse_c_duration_string(duration_string: str) -> tuple[int, int, int, int]:
                 if this_uindex < last_uindex:
                     raise ValueError(
                         f"Unit '{this_unit}' cannot follow smaller units in literal "
-                        f"for a DataAPIDuration: '{duration_string}'. {DURATION_C_FORMAT_DESC}"
+                        f"for a duration: '{duration_string}'. {DURATION_C_FORMAT_DESC}"
                     )
                 elif this_uindex == last_uindex:
                     raise ValueError(
                         f"Unit '{this_unit}' cannot be repeated in literal for a "
-                        f"DataAPIDuration: '{duration_string}'. {DURATION_C_FORMAT_DESC}"
+                        f"duration: '{duration_string}'. {DURATION_C_FORMAT_DESC}"
                     )
                 last_uindex = this_uindex
             # reconstruct the final value
@@ -106,16 +107,24 @@ def _parse_c_duration_string(duration_string: str) -> tuple[int, int, int, int]:
                 umult * parsed_uvals.get(unit, 0)
                 for unit, umult in DURATION_C_NANOSECOND_MULTIPLIER.items()
             )
+
+            # resolve signum ambiguity if null duration
+            signum: int
+            if months != 0 or days != 0 or nanoseconds != 0:
+                signum = signum0
+            else:
+                signum = +1
+
             return (signum, months, days, nanoseconds)
         else:
             raise ValueError(
                 "No quantity+unit groups in literal for a "
-                f"DataAPIDuration: '{duration_string}'. {DURATION_C_FORMAT_DESC}"
+                f"duration: '{duration_string}'. {DURATION_C_FORMAT_DESC}"
             )
     else:
         # TODO more verbose error (here and above)
         raise ValueError(
-            "Invalid literal for a DataAPIDuration: "
+            "Invalid literal for a duration: "
             f"'{duration_string}'. {DURATION_C_FORMAT_DESC}"
         )
 
@@ -131,6 +140,9 @@ def _build_c_duration_string(
     _day_string: str | None = None
     _nanosecond_string: str | None = None
     #
+    if months == 0 and days == 0 and nanoseconds == 0:
+        # a special case
+        return "0s"
     if signum < 0:
         _signum_string = "-"
     if months:
