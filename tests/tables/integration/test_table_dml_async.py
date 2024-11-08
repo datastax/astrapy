@@ -17,6 +17,8 @@ from __future__ import annotations
 import pytest
 
 from astrapy.data_types import DataAPITimestamp
+from astrapy.exceptions import TableInsertManyException
+from astrapy.results import TableInsertManyResult
 
 from ..conftest import (
     AR_DOC_0,
@@ -25,6 +27,11 @@ from ..conftest import (
     S_DOCS,
     DefaultAsyncTable,
     _repaint_NaNs,
+)
+from .table_row_assets import (
+    SIMPLE_SEVEN_ROWS_F2,
+    SIMPLE_SEVEN_ROWS_F4,
+    SIMPLE_SEVEN_ROWS_OK,
 )
 
 
@@ -130,3 +137,103 @@ class TestTableDMLSync:
         d_set_int = await async_empty_table_all_returns.distinct("p_set_int")
         exp_d_set_int = {100, 200, 300}
         assert set(d_set_int) == set(exp_d_set_int)
+
+    @pytest.mark.describe("test of table insert_many, async")
+    async def test_table_insert_many_async(
+        self,
+        async_table_simple: DefaultAsyncTable,
+    ) -> None:
+        """ordered/unordered, concurrent/nonconcurrent; with good/failing rows"""
+
+        async def _pkeys() -> set[str]:
+            return {
+                row["p_text"]
+                async for row in async_table_simple.find(
+                    {}, projection={"p_text": True}
+                )
+            }
+
+        async def _assert_consistency(
+            p_text_values: list[str], ins_result: TableInsertManyResult
+        ) -> None:
+            pkeys = await _pkeys()
+            assert pkeys == set(p_text_values)
+            assert ins_result.inserted_id_tuples == [(pk,) for pk in p_text_values]
+            assert ins_result.inserted_ids == [{"p_text": pk} for pk in p_text_values]
+
+        # ordered, good rows
+        await async_table_simple.delete_many({})
+        i_result = await async_table_simple.insert_many(
+            SIMPLE_SEVEN_ROWS_OK, ordered=True, chunk_size=2
+        )
+        await _assert_consistency(["p1", "p2", "p3", "p4", "p5", "p6", "p7"], i_result)
+
+        # ordered, failing first batch
+        await async_table_simple.delete_many({})
+        with pytest.raises(TableInsertManyException) as exc:
+            await async_table_simple.insert_many(
+                SIMPLE_SEVEN_ROWS_F2, ordered=True, chunk_size=2
+            )
+        await _assert_consistency([], exc.value.partial_result)
+
+        # ordered, failing later batch
+        await async_table_simple.delete_many({})
+        with pytest.raises(TableInsertManyException) as exc:
+            await async_table_simple.insert_many(
+                SIMPLE_SEVEN_ROWS_F4, ordered=True, chunk_size=2
+            )
+        await _assert_consistency(["p1", "p2"], exc.value.partial_result)
+
+        # unordered/concurrency=1, good rows
+        await async_table_simple.delete_many({})
+        await async_table_simple.insert_many(
+            SIMPLE_SEVEN_ROWS_OK, ordered=False, chunk_size=2, concurrency=1
+        )
+        await _assert_consistency(["p1", "p2", "p3", "p4", "p5", "p6", "p7"], i_result)
+
+        # unordered/concurrency=1, failing first batch
+        await async_table_simple.delete_many({})
+        with pytest.raises(TableInsertManyException) as exc:
+            await async_table_simple.insert_many(
+                SIMPLE_SEVEN_ROWS_F2, ordered=False, chunk_size=2, concurrency=1
+            )
+        await _assert_consistency(
+            ["p1", "p3", "p4", "p5", "p6", "p7"], exc.value.partial_result
+        )
+
+        # unordered/concurrency=1, failing later batch
+        await async_table_simple.delete_many({})
+        with pytest.raises(TableInsertManyException) as exc:
+            await async_table_simple.insert_many(
+                SIMPLE_SEVEN_ROWS_F4, ordered=False, chunk_size=2, concurrency=1
+            )
+        await _assert_consistency(
+            ["p1", "p2", "p3", "p5", "p6", "p7"], exc.value.partial_result
+        )
+
+        # unordered/concurrency=2, good rows
+        await async_table_simple.delete_many({})
+        i_result = await async_table_simple.insert_many(
+            SIMPLE_SEVEN_ROWS_OK, ordered=False, chunk_size=2, concurrency=2
+        )
+        await _assert_consistency(["p1", "p2", "p3", "p4", "p5", "p6", "p7"], i_result)
+
+        # unordered/concurrency=2, failing first batch
+        await async_table_simple.delete_many({})
+        with pytest.raises(TableInsertManyException) as exc:
+            await async_table_simple.insert_many(
+                SIMPLE_SEVEN_ROWS_F2, ordered=False, chunk_size=2, concurrency=2
+            )
+        await _assert_consistency(
+            ["p1", "p3", "p4", "p5", "p6", "p7"], exc.value.partial_result
+        )
+
+        # unordered/concurrency=2, failing later batch
+        await async_table_simple.delete_many({})
+        with pytest.raises(TableInsertManyException) as exc:
+            await async_table_simple.insert_many(
+                SIMPLE_SEVEN_ROWS_F4, ordered=False, chunk_size=2, concurrency=2
+            )
+        await _assert_consistency(
+            ["p1", "p2", "p3", "p5", "p6", "p7"], exc.value.partial_result
+        )

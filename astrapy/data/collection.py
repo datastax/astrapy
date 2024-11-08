@@ -814,7 +814,7 @@ class Collection(Generic[DOC]):
                         "options": options,
                     },
                 }
-                logger.info(f"insertMany on '{self.name}'")
+                logger.info(f"insertMany(chunk) on '{self.name}'")
                 chunk_response = self._converted_request(
                     payload=im_payload,
                     raise_api_errors=False,
@@ -822,7 +822,7 @@ class Collection(Generic[DOC]):
                         cap_time_ms=_request_timeout_ms
                     ),
                 )
-                logger.info(f"finished insertMany on '{self.name}'")
+                logger.info(f"finished insertMany(chunk) on '{self.name}'")
                 # accumulate the results in this call
                 chunk_inserted_ids = (chunk_response.get("status") or {}).get(
                     "insertedIds", []
@@ -3249,7 +3249,7 @@ class AsyncCollection(Generic[DOC]):
                         "options": options,
                     },
                 }
-                logger.info(f"insertMany on '{self.name}'")
+                logger.info(f"insertMany(chunk) on '{self.name}'")
                 chunk_response = await self._converted_request(
                     payload=im_payload,
                     raise_api_errors=False,
@@ -3257,7 +3257,7 @@ class AsyncCollection(Generic[DOC]):
                         cap_time_ms=_request_timeout_ms
                     ),
                 )
-                logger.info(f"finished insertMany on '{self.name}'")
+                logger.info(f"finished insertMany(chunk) on '{self.name}'")
                 # accumulate the results in this call
                 chunk_inserted_ids = (chunk_response.get("status") or {}).get(
                     "insertedIds", []
