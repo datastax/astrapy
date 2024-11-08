@@ -37,13 +37,17 @@ class TooManyRowsToCountException(DataAPIException):
     """
 
     text: str
+    server_max_count_exceeded: bool
 
     def __init__(
         self,
         text: str,
+        *,
+        server_max_count_exceeded: bool,
     ) -> None:
         super().__init__(text)
         self.text = text
+        self.server_max_count_exceeded = server_max_count_exceeded
 
 
 @dataclass

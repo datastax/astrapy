@@ -35,6 +35,7 @@ from astrapy.data.utils.distinct_extractors import (
 from astrapy.data.utils.table_converters import _TableConverterAgent
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
+    TooManyRowsToCountException,
     UnexpectedDataAPIResponseException,
     _TimeoutContext,
 )
@@ -808,6 +809,232 @@ class Table(Generic[ROW]):
                     distinct_items.append(item)
         logger.info(f"finished running distinct() on '{self.name}'")
         return distinct_items
+
+    def count_documents(
+        self,
+        filter: FilterType,
+        *,
+        upper_bound: int,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> int:
+        """
+        Count the row in the table matching the specified filter.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"name": "John", "age": 59}
+                    {"$and": [{"name": {"$eq": "John"}}, {"age": {"$gt": 58}}]}
+                See the Data API documentation for the full set of operators.
+            upper_bound: a required ceiling on the result of the count operation.
+                If the actual number of rows exceeds this value,
+                an exception will be raised.
+                Furthermore, if the actual number of rows exceeds the maximum
+                count that the Data API can reach (regardless of upper_bound),
+                an exception will be raised.
+            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
+                If not passed, the table-level setting is used instead.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            the exact count of matching rows.
+
+        Example:
+            >>> my_table.insert_many([{"seq": i} for i in range(20)])
+            TableInsertManyResult(...)
+            >>> my_table.count_documents({}, upper_bound=100)
+            20
+            >>> my_table.count_documents({"seq":{"$gt": 15}}, upper_bound=100)
+            4
+            >>> my_table.count_documents({}, upper_bound=10)
+            Traceback (most recent call last):
+                ... ...
+            astrapy.exceptions.TooManyRowsToCountException
+
+        Note:
+            Count operations are expensive: for this reason, the best practice
+            is to provide a reasonable `upper_bound` according to the caller
+            expectations. Moreover, indiscriminate usage of count operations
+            for sizeable amounts of rows (i.e. in the thousands and more)
+            is discouraged in favor of alternative application-specific solutions.
+            Keep in mind that the Data API has a hard upper limit on the amount
+            of rows it will count, and that an exception will be thrown
+            by this method if this limit is encountered.
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        cd_payload = {"countDocuments": {"filter": filter}}
+        logger.info(f"countDocuments on '{self.name}'")
+        cd_response = self._api_commander.request(
+            payload=cd_payload,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+        )
+        logger.info(f"finished countDocuments on '{self.name}'")
+        if "count" in cd_response.get("status", {}):
+            count: int = cd_response["status"]["count"]
+            if cd_response["status"].get("moreData", False):
+                raise TooManyRowsToCountException(
+                    text=f"Document count exceeds {count}, the maximum allowed by the server",
+                    server_max_count_exceeded=True,
+                )
+            else:
+                if count > upper_bound:
+                    raise TooManyRowsToCountException(
+                        text="Document count exceeds required upper bound",
+                        server_max_count_exceeded=False,
+                    )
+                else:
+                    return count
+        else:
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from countDocuments API command.",
+                raw_response=cd_response,
+            )
+
+    def count_rows(
+        self,
+        filter: FilterType,
+        *,
+        upper_bound: int,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> int:
+        """
+        Count the row in the table matching the specified filter.
+
+        This method is an alias for `count_documents`.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"name": "John", "age": 59}
+                    {"$and": [{"name": {"$eq": "John"}}, {"age": {"$gt": 58}}]}
+                See the Data API documentation for the full set of operators.
+            upper_bound: a required ceiling on the result of the count operation.
+                If the actual number of rows exceeds this value,
+                an exception will be raised.
+                Furthermore, if the actual number of rows exceeds the maximum
+                count that the Data API can reach (regardless of upper_bound),
+                an exception will be raised.
+            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
+                If not passed, the table-level setting is used instead.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            the exact count of matching rows.
+
+        Example:
+            >>> my_table.insert_many([{"seq": i} for i in range(20)])
+            TableInsertManyResult(...)
+            >>> my_table.count_documents({}, upper_bound=100)
+            20
+            >>> my_table.count_documents({"seq":{"$gt": 15}}, upper_bound=100)
+            4
+            >>> my_table.count_documents({}, upper_bound=10)
+            Traceback (most recent call last):
+                ... ...
+            astrapy.exceptions.TooManyRowsToCountException
+
+        Note:
+            Count operations are expensive: for this reason, the best practice
+            is to provide a reasonable `upper_bound` according to the caller
+            expectations. Moreover, indiscriminate usage of count operations
+            for sizeable amounts of rows (i.e. in the thousands and more)
+            is discouraged in favor of alternative application-specific solutions.
+            Keep in mind that the Data API has a hard upper limit on the amount
+            of rows it will count, and that an exception will be thrown
+            by this method if this limit is encountered.
+        """
+
+        return self.count_documents(
+            filter=filter,
+            upper_bound=upper_bound,
+            request_timeout_ms=request_timeout_ms,
+            max_time_ms=max_time_ms,
+        )
+
+    def estimated_document_count(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> int:
+        """
+        Query the API server for an estimate of the document count in the table.
+
+        Contrary to `count_documents`, this method has no filtering parameters.
+
+        Args:
+            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
+                If not passed, the table-level setting is used instead.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a server-provided estimate count of the documents in the table.
+
+        Example:
+            >>> my_table.estimated_document_count()
+            5820
+        """
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        ed_payload: dict[str, Any] = {"estimatedDocumentCount": {}}
+        logger.info(f"estimatedDocumentCount on '{self.name}'")
+        ed_response = self._api_commander.request(
+            payload=ed_payload,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+        )
+        logger.info(f"finished estimatedDocumentCount on '{self.name}'")
+        if "count" in ed_response.get("status", {}):
+            count: int = ed_response["status"]["count"]
+            return count
+        else:
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from estimatedDocumentCount API command.",
+                raw_response=ed_response,
+            )
+
+    def estimated_row_count(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> int:
+        """
+        Query the API server for an estimate of the document count in the table.
+
+        Contrary to `count_documents`, this method has no filtering parameters.
+        This method is an alias for `estimated_document_count`.
+
+        Args:
+            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
+                If not passed, the table-level setting is used instead.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a server-provided estimate count of the documents in the table.
+
+        Example:
+            >>> my_table.estimated_row_count()
+            5820
+        """
+
+        return self.estimated_document_count(
+            request_timeout_ms=request_timeout_ms,
+            max_time_ms=max_time_ms,
+        )
 
     def delete_one(
         self,
@@ -1685,6 +1912,232 @@ class AsyncTable(Generic[ROW]):
                     distinct_items.append(item)
         logger.info(f"finished running distinct() on '{self.name}'")
         return distinct_items
+
+    async def count_documents(
+        self,
+        filter: FilterType,
+        *,
+        upper_bound: int,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> int:
+        """
+        Count the row in the table matching the specified filter.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"name": "John", "age": 59}
+                    {"$and": [{"name": {"$eq": "John"}}, {"age": {"$gt": 58}}]}
+                See the Data API documentation for the full set of operators.
+            upper_bound: a required ceiling on the result of the count operation.
+                If the actual number of rows exceeds this value,
+                an exception will be raised.
+                Furthermore, if the actual number of rows exceeds the maximum
+                count that the Data API can reach (regardless of upper_bound),
+                an exception will be raised.
+            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
+                If not passed, the table-level setting is used instead.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            the exact count of matching rows.
+
+        Example:
+            >>> my_table.insert_many([{"seq": i} for i in range(20)])
+            TableInsertManyResult(...)
+            >>> my_table.count_documents({}, upper_bound=100)
+            20
+            >>> my_table.count_documents({"seq":{"$gt": 15}}, upper_bound=100)
+            4
+            >>> my_table.count_documents({}, upper_bound=10)
+            Traceback (most recent call last):
+                ... ...
+            astrapy.exceptions.TooManyRowsToCountException
+
+        Note:
+            Count operations are expensive: for this reason, the best practice
+            is to provide a reasonable `upper_bound` according to the caller
+            expectations. Moreover, indiscriminate usage of count operations
+            for sizeable amounts of rows (i.e. in the thousands and more)
+            is discouraged in favor of alternative application-specific solutions.
+            Keep in mind that the Data API has a hard upper limit on the amount
+            of rows it will count, and that an exception will be thrown
+            by this method if this limit is encountered.
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        cd_payload = {"countDocuments": {"filter": filter}}
+        logger.info(f"countDocuments on '{self.name}'")
+        cd_response = await self._api_commander.async_request(
+            payload=cd_payload,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+        )
+        logger.info(f"finished countDocuments on '{self.name}'")
+        if "count" in cd_response.get("status", {}):
+            count: int = cd_response["status"]["count"]
+            if cd_response["status"].get("moreData", False):
+                raise TooManyRowsToCountException(
+                    text=f"Document count exceeds {count}, the maximum allowed by the server",
+                    server_max_count_exceeded=True,
+                )
+            else:
+                if count > upper_bound:
+                    raise TooManyRowsToCountException(
+                        text="Document count exceeds required upper bound",
+                        server_max_count_exceeded=False,
+                    )
+                else:
+                    return count
+        else:
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from countDocuments API command.",
+                raw_response=cd_response,
+            )
+
+    async def count_rows(
+        self,
+        filter: FilterType,
+        *,
+        upper_bound: int,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> int:
+        """
+        Count the row in the table matching the specified filter.
+
+        This method is an alias for `count_documents`.
+
+        Args:
+            filter: a predicate expressed as a dictionary according to the
+                Data API filter syntax. Examples are:
+                    {}
+                    {"name": "John"}
+                    {"name": "John", "age": 59}
+                    {"$and": [{"name": {"$eq": "John"}}, {"age": {"$gt": 58}}]}
+                See the Data API documentation for the full set of operators.
+            upper_bound: a required ceiling on the result of the count operation.
+                If the actual number of rows exceeds this value,
+                an exception will be raised.
+                Furthermore, if the actual number of rows exceeds the maximum
+                count that the Data API can reach (regardless of upper_bound),
+                an exception will be raised.
+            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
+                If not passed, the table-level setting is used instead.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            the exact count of matching rows.
+
+        Example:
+            >>> my_table.insert_many([{"seq": i} for i in range(20)])
+            TableInsertManyResult(...)
+            >>> my_table.count_documents({}, upper_bound=100)
+            20
+            >>> my_table.count_documents({"seq":{"$gt": 15}}, upper_bound=100)
+            4
+            >>> my_table.count_documents({}, upper_bound=10)
+            Traceback (most recent call last):
+                ... ...
+            astrapy.exceptions.TooManyRowsToCountException
+
+        Note:
+            Count operations are expensive: for this reason, the best practice
+            is to provide a reasonable `upper_bound` according to the caller
+            expectations. Moreover, indiscriminate usage of count operations
+            for sizeable amounts of rows (i.e. in the thousands and more)
+            is discouraged in favor of alternative application-specific solutions.
+            Keep in mind that the Data API has a hard upper limit on the amount
+            of rows it will count, and that an exception will be thrown
+            by this method if this limit is encountered.
+        """
+
+        return await self.count_documents(
+            filter=filter,
+            upper_bound=upper_bound,
+            request_timeout_ms=request_timeout_ms,
+            max_time_ms=max_time_ms,
+        )
+
+    async def estimated_document_count(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> int:
+        """
+        Query the API server for an estimate of the document count in the table.
+
+        Contrary to `count_documents`, this method has no filtering parameters.
+
+        Args:
+            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
+                If not passed, the table-level setting is used instead.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a server-provided estimate count of the documents in the table.
+
+        Example:
+            >>> my_table.estimated_document_count()
+            5820
+        """
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        ed_payload: dict[str, Any] = {"estimatedDocumentCount": {}}
+        logger.info(f"estimatedDocumentCount on '{self.name}'")
+        ed_response = await self._api_commander.async_request(
+            payload=ed_payload,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+        )
+        logger.info(f"finished estimatedDocumentCount on '{self.name}'")
+        if "count" in ed_response.get("status", {}):
+            count: int = ed_response["status"]["count"]
+            return count
+        else:
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from estimatedDocumentCount API command.",
+                raw_response=ed_response,
+            )
+
+    async def estimated_row_count(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> int:
+        """
+        Query the API server for an estimate of the document count in the table.
+
+        Contrary to `count_documents`, this method has no filtering parameters.
+        This method is an alias for `estimated_document_count`.
+
+        Args:
+            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
+                If not passed, the table-level setting is used instead.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a server-provided estimate count of the documents in the table.
+
+        Example:
+            >>> my_table.estimated_row_count()
+            5820
+        """
+
+        return await self.estimated_document_count(
+            request_timeout_ms=request_timeout_ms,
+            max_time_ms=max_time_ms,
+        )
 
     async def delete_one(
         self,

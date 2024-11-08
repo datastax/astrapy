@@ -1457,7 +1457,7 @@ class Collection(Generic[DOC]):
                     return count
         else:
             raise UnexpectedDataAPIResponseException(
-                text="Faulty response from count_documents API command.",
+                text="Faulty response from countDocuments API command.",
                 raw_response=cd_response,
             )
 
@@ -1501,7 +1501,7 @@ class Collection(Generic[DOC]):
             return count
         else:
             raise UnexpectedDataAPIResponseException(
-                text="Faulty response from estimated_document_count API command.",
+                text="Faulty response from estimatedDocumentCount API command.",
                 raw_response=ed_response,
             )
 
@@ -3919,7 +3919,7 @@ class AsyncCollection(Generic[DOC]):
                     return count
         else:
             raise UnexpectedDataAPIResponseException(
-                text="Faulty response from count_documents API command.",
+                text="Faulty response from countDocuments API command.",
                 raw_response=cd_response,
             )
 
@@ -3963,7 +3963,7 @@ class AsyncCollection(Generic[DOC]):
             return count
         else:
             raise UnexpectedDataAPIResponseException(
-                text="Faulty response from estimated_document_count API command.",
+                text="Faulty response from estimatedDocumentCount API command.",
                 raw_response=ed_response,
             )
 
