@@ -1971,7 +1971,7 @@ class Collection(Generic[DOC]):
             )
         else:
             raise UnexpectedDataAPIResponseException(
-                text="Faulty response from update_one API command.",
+                text="Faulty response from updateOne API command.",
                 raw_response=uo_response,
             )
 
@@ -4476,7 +4476,7 @@ class AsyncCollection(Generic[DOC]):
             )
         else:
             raise UnexpectedDataAPIResponseException(
-                text="Faulty response from update_one API command.",
+                text="Faulty response from updateOne API command.",
                 raw_response=uo_response,
             )
 

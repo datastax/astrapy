@@ -151,3 +151,27 @@ class TestTableDryMethods:
         ).respond_with_json({"status": {"count": 50}})
         with pytest.raises(TooManyRowsToCountException):
             await mock_atable.count_rows({}, upper_bound=20)
+
+    @pytest.mark.describe("test of table update_one, sync")
+    def test_table_update_one_sync(
+        self,
+        httpserver: HTTPServer,
+        mock_table: DefaultTable,
+    ) -> None:
+        httpserver.expect_oneshot_request(
+            f"/{BASE_PATH}/{PATH_SUFFIX}",
+            method=HttpMethod.POST,
+        ).respond_with_json({"status": {}})
+        mock_table.update_one({"pk": "v"}, {"$set": {"x": {1, 2, 3}}})
+
+    @pytest.mark.describe("test of table update_one, async")
+    async def test_table_update_one_async(
+        self,
+        httpserver: HTTPServer,
+        mock_atable: DefaultAsyncTable,
+    ) -> None:
+        httpserver.expect_oneshot_request(
+            f"/{BASE_PATH}/{PATH_SUFFIX}",
+            method=HttpMethod.POST,
+        ).respond_with_json({"status": {}})
+        await mock_atable.update_one({"pk": "v"}, {"$set": {"x": {1, 2, 3}}})

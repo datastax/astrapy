@@ -1036,6 +1036,74 @@ class Table(Generic[ROW]):
             max_time_ms=max_time_ms,
         )
 
+    def update_one(
+        self,
+        filter: FilterType,
+        update: dict[str, Any],
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> None:
+        """
+        Update a single document on the table as requested,
+        with the implicit behaviour of inserting a new one if no match is found.
+
+        Args:
+            filter: a predicate expressing in full a primary key, i.e. a dictionary
+                defining values for all columns that form the table's primary key.
+                Examples:
+                    {"code": 123}
+                    {"country": "UK", "year": 2024}
+            update: the update prescription to apply to the row, expressed
+                as a dictionary as per Data API syntax. Examples are:
+                    {"$set": {"field": "value}}
+                    {"$unset": {"field": ""}}
+                Primary key fields cannot be provided for a "$set" operation.
+                For Tables, a limited set of update operators apply.
+                See the Data API documentation for more details.
+            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
+                If not passed, the table-level setting is used instead.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Example:
+            >>> # Assume "country" and "year" make the primary key and the table starts empty.
+            >>> my_table.insert_one({"country": "UK", "year": 2024, "colours": ["yellow", "blue"]})
+            TableInsertOneResult(...)
+            >>> my_table.update_one({"country": "UK", "year": 2024}, update={"$set": {"colours": []}})
+            >>> # the following will create a new row:
+            >>> my_table.update_one({"country": "ES", "year": 2020}, update={"$set": {"colours": ["amarillo"]}})
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        uo_payload = {
+            "updateOne": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "update": self._converter_agent.preprocess_payload(update),
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"updateOne on '{self.name}'")
+        uo_response = self._api_commander.request(
+            payload=uo_payload,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+        )
+        logger.info(f"finished updateOne on '{self.name}'")
+        if "status" in uo_response:
+            # the contents are disregarded and the method just returns:
+            return
+        else:
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from updateOne API command.",
+                raw_response=uo_response,
+            )
+
     def delete_one(
         self,
         filter: FilterType,
@@ -2138,6 +2206,69 @@ class AsyncTable(Generic[ROW]):
             request_timeout_ms=request_timeout_ms,
             max_time_ms=max_time_ms,
         )
+
+    async def update_one(
+        self,
+        filter: FilterType,
+        update: dict[str, Any],
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> None:
+        """
+        Update a single document on the table as requested,
+        with the implicit behaviour of inserting a new one if no match is found.
+
+        Args:
+            filter: a predicate expressing in full a primary key, i.e. a dictionary
+                defining values for all columns that form the table's primary key.
+                Examples:
+                    {"code": 123}
+                    {"country": "UK", "year": 2024}
+            update: the update prescription to apply to the row, expressed
+                as a dictionary as per Data API syntax. Examples are:
+                    {"$set": {"field": "value}}
+                    {"$unset": {"field": ""}}
+                Primary key fields cannot be provided for a "$set" operation.
+                For Tables, a limited set of update operators apply.
+                See the Data API documentation for more details.
+            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
+                If not passed, the table-level setting is used instead.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Example:
+            TODO async
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+        uo_payload = {
+            "updateOne": {
+                k: v
+                for k, v in {
+                    "filter": filter,
+                    "update": self._converter_agent.preprocess_payload(update),
+                }.items()
+                if v is not None
+            }
+        }
+        logger.info(f"updateOne on '{self.name}'")
+        uo_response = await self._api_commander.async_request(
+            payload=uo_payload,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+        )
+        logger.info(f"finished updateOne on '{self.name}'")
+        if "status" in uo_response:
+            # the contents are disregarded and the method just returns:
+            return
+        else:
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from updateOne API command.",
+                raw_response=uo_response,
+            )
 
     async def delete_one(
         self,
