@@ -15,8 +15,9 @@
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Generic, Sequence
+from typing import TYPE_CHECKING, Any, Generic, Iterable, Sequence
 
 from astrapy.authentication import coerce_possible_embedding_headers_provider
 from astrapy.constants import (
@@ -35,13 +36,19 @@ from astrapy.data.utils.distinct_extractors import (
 from astrapy.data.utils.table_converters import _TableConverterAgent
 from astrapy.database import AsyncDatabase, Database
 from astrapy.exceptions import (
+    MultiCallTimeoutManager,
+    TableInsertManyException,
     TooManyRowsToCountException,
     UnexpectedDataAPIResponseException,
     _TimeoutContext,
 )
 from astrapy.info import TableIndexDefinition, TableInfo, TableVectorIndexDefinition
-from astrapy.results import TableInsertOneResult
-from astrapy.settings.defaults import DEFAULT_DATA_API_AUTH_HEADER
+from astrapy.results import TableInsertManyResult, TableInsertOneResult
+from astrapy.settings.defaults import (
+    DEFAULT_DATA_API_AUTH_HEADER,
+    DEFAULT_INSERT_MANY_CHUNK_SIZE,
+    DEFAULT_INSERT_MANY_CONCURRENCY,
+)
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import APIOptions, FullAPIOptions, TimeoutOptions
 from astrapy.utils.unset import _UNSET, UnsetType
@@ -647,6 +654,277 @@ class Table(Generic[ROW]):
                 text="Response from insertOne API command missing 'insertedIds'.",
                 raw_response=io_response,
             )
+
+    def _prepare_keys_from_status(
+        self, status: dict[str, Any] | None, raise_on_missing: bool = False
+    ) -> tuple[list[dict[str, Any]], list[tuple[Any, ...]]]:
+        ids: list[dict[str, Any]]
+        id_tuples: list[tuple[Any, ...]]
+        if status is None:
+            if raise_on_missing:
+                raise UnexpectedDataAPIResponseException(
+                    text="'status' not found in API response",
+                    raw_response=None,
+                )
+            else:
+                ids = []
+                id_tuples = []
+        else:
+            primary_key_schema = status["primaryKeySchema"]
+            ids = self._converter_agent.postprocess_keys(
+                status["insertedIds"],
+                primary_key_schema_dict=primary_key_schema,
+            )
+            id_tuples = [tuple(id_list) for id_list in status["insertedIds"]]
+        return ids, id_tuples
+
+    def insert_many(
+        self,
+        rows: Iterable[ROW],
+        *,
+        ordered: bool = False,
+        chunk_size: int | None = None,
+        concurrency: int | None = None,
+        request_timeout_ms: int | None = None,
+        data_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> TableInsertManyResult:
+        """
+        Insert a list of rows into the table.
+        This is not an atomic operation.
+
+        Inserting rows whose primary key correspond to entries alredy stored
+        in the table has the effect of an in-place update: the rows are overwritten.
+        However, tf the rows being inserted are partially provided, i.e. some columns
+        are not specified, these are left unchanged on the database. To explicitly
+        reset them in a row, specify their value as appropriate to their data type,
+        i.e. `None`, `{}` or analogous.
+
+        Args:
+            rows: an iterable of dictionaries, each a row to insert.
+                Each row must at least fully specify the primary key column values.
+            ordered: if False (default), the insertions can occur in arbitrary order
+                and possibly concurrently. If True, they are processed sequentially.
+                If there are no specific reasons against it, unordered insertions are to
+                be preferred as they complete much faster.
+            chunk_size: how many rows to include in a single API request.
+                Exceeding the server maximum allowed value results in an error.
+                Leave it unspecified (recommended) to use the system default.
+            concurrency: maximum number of concurrent requests to the API at
+                a given time. It cannot be more than one for ordered insertions.
+            request_timeout_ms: a timeout, in milliseconds, for each API request.
+                If not passed, the table-level setting is used instead.
+            data_operation_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation (which may involve multiple API requests).
+                If not passed, the table-level setting is used instead.
+            max_time_ms: an alias for `data_operation_timeout_ms`.
+
+        Returns:
+            a TableInsertManyResult object.
+
+        Examples:
+            TODO
+
+        Note:
+            Unordered insertions are executed with some degree of concurrency,
+            so it is usually better to prefer this mode unless the order in the
+            row sequence is important.
+
+        Note:
+            A failure mode for this command is related to certain faulty rows
+            found among those to insert: a row dictionary may feature,
+            for instance, the wrong data type for a column, a mismatched
+            vector dimension or other problems.
+
+            For an ordered insertion, the method will raise an exception about
+            the first such faulty row -- and a certain amount of rows, sent to the
+            API in the same batch, will end up not being inserted.
+
+            For unordered insertions, if the error stems from faulty rows
+            the insertion proceeds until exhausting the input rows: then,
+            an exception is raised -- and all insertable rows will have been
+            written to the database, including those "after" the troublesome ones.
+
+            If, on the other hand, there are errors not related to individual
+            rows (such as a network connectivity error), the whole
+            `insert_many` operation will stop in mid-way, an exception will be raised,
+            and only a certain amount of the input rows will
+            have made their way to the database.
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        )
+        _data_operation_timeout_ms = (
+            data_operation_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.data_operation_timeout_ms
+        )
+        if concurrency is None:
+            if ordered:
+                _concurrency = 1
+            else:
+                _concurrency = DEFAULT_INSERT_MANY_CONCURRENCY
+        else:
+            _concurrency = concurrency
+        if _concurrency > 1 and ordered:
+            raise ValueError("Cannot run ordered insert_many concurrently.")
+        if chunk_size is None:
+            _chunk_size = DEFAULT_INSERT_MANY_CHUNK_SIZE
+        else:
+            _chunk_size = chunk_size
+        _rows = list(rows)
+        logger.info(f"inserting {len(_rows)} rows in '{self.name}'")
+        raw_results: list[dict[str, Any]] = []
+        timeout_manager = MultiCallTimeoutManager(
+            overall_timeout_ms=_data_operation_timeout_ms
+        )
+        if ordered:
+            options = {"ordered": True}
+            inserted_ids: list[Any] = []
+            inserted_id_tuples: list[Any] = []
+            for i in range(0, len(_rows), _chunk_size):
+                im_payload = self._converter_agent.preprocess_payload(
+                    {
+                        "insertMany": {
+                            "documents": _rows[i : i + _chunk_size],
+                            "options": options,
+                        },
+                    },
+                )
+                logger.info(f"insertMany on '{self.name}'")
+                chunk_response = self._api_commander.request(
+                    payload=im_payload,
+                    raise_api_errors=False,
+                    timeout_context=timeout_manager.remaining_timeout(
+                        cap_time_ms=_request_timeout_ms
+                    ),
+                )
+                logger.info(f"finished insertMany on '{self.name}'")
+                # accumulate the results in this call
+                chunk_inserted_ids, chunk_inserted_ids_tuples = (
+                    self._prepare_keys_from_status(chunk_response.get("status"))
+                )
+                inserted_ids += chunk_inserted_ids
+                inserted_id_tuples += chunk_inserted_ids_tuples
+                raw_results += [chunk_response]
+                # if errors, quit early
+                if chunk_response.get("errors", []):
+                    partial_result = TableInsertManyResult(
+                        raw_results=raw_results,
+                        inserted_ids=inserted_ids,
+                        inserted_id_tuples=inserted_id_tuples,
+                    )
+                    raise TableInsertManyException.from_response(
+                        command=None,
+                        raw_response=chunk_response,
+                        partial_result=partial_result,
+                    )
+
+            # return
+            full_result = TableInsertManyResult(
+                raw_results=raw_results,
+                inserted_ids=inserted_ids,
+                inserted_id_tuples=inserted_id_tuples,
+            )
+            logger.info(f"finished inserting {len(_rows)} rows in '{self.name}'")
+            return full_result
+
+        else:
+            # unordered: concurrent or not, do all of them and parse the results
+            options = {"ordered": False}
+            if _concurrency > 1:
+                with ThreadPoolExecutor(max_workers=_concurrency) as executor:
+
+                    def _chunk_insertor(
+                        row_chunk: list[dict[str, Any]],
+                    ) -> dict[str, Any]:
+                        im_payload = self._converter_agent.preprocess_payload(
+                            {
+                                "insertMany": {
+                                    "documents": row_chunk,
+                                    "options": options,
+                                },
+                            },
+                        )
+                        logger.info(f"insertMany(chunk) on '{self.name}'")
+                        im_response = self._api_commander.request(
+                            payload=im_payload,
+                            raise_api_errors=False,
+                            timeout_context=timeout_manager.remaining_timeout(
+                                cap_time_ms=_request_timeout_ms
+                            ),
+                        )
+                        logger.info(f"finished insertMany(chunk) on '{self.name}'")
+                        return im_response
+
+                    raw_results = list(
+                        executor.map(
+                            _chunk_insertor,
+                            (
+                                _rows[i : i + _chunk_size]
+                                for i in range(0, len(_rows), _chunk_size)
+                            ),
+                        )
+                    )
+            else:
+                for i in range(0, len(_rows), _chunk_size):
+                    im_payload = self._converter_agent.preprocess_payload(
+                        {
+                            "insertMany": {
+                                "documents": _rows[i : i + _chunk_size],
+                                "options": options,
+                            },
+                        },
+                    )
+                    logger.info(f"insertMany(chunk) on '{self.name}'")
+                    im_response = self._api_commander.request(
+                        payload=im_payload,
+                        raise_api_errors=False,
+                        timeout_context=timeout_manager.remaining_timeout(
+                            cap_time_ms=_request_timeout_ms
+                        ),
+                    )
+                    logger.info(f"finished insertMany(chunk) on '{self.name}'")
+                    raw_results.append(im_response)
+            # recast raw_results. Each response has its schema: unfold appropriately
+            ids_and_tuples_per_chunk = [
+                self._prepare_keys_from_status(chunk_response.get("status"))
+                for chunk_response in raw_results
+            ]
+            inserted_ids = [
+                inserted_id
+                for chunk_ids, _ in ids_and_tuples_per_chunk
+                for inserted_id in chunk_ids
+            ]
+            inserted_id_tuples = [
+                inserted_id_tuple
+                for _, chunk_id_tuples in ids_and_tuples_per_chunk
+                for inserted_id_tuple in chunk_id_tuples
+            ]
+            # check-raise
+            if any(
+                [chunk_response.get("errors", []) for chunk_response in raw_results]
+            ):
+                partial_result = TableInsertManyResult(
+                    raw_results=raw_results,
+                    inserted_ids=inserted_ids,
+                    inserted_id_tuples=inserted_id_tuples,
+                )
+                raise TableInsertManyException.from_responses(
+                    commands=[None for _ in raw_results],
+                    raw_responses=raw_results,
+                    partial_result=partial_result,
+                )
+
+            # return
+            full_result = TableInsertManyResult(
+                raw_results=raw_results,
+                inserted_ids=inserted_ids,
+                inserted_id_tuples=inserted_id_tuples,
+            )
+            logger.info(f"finished inserting {len(_rows)} rows in '{self.name}'")
+            return full_result
 
     def find(
         self,
