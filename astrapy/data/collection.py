@@ -178,9 +178,10 @@ class Collection(Generic[DOC]):
         self._api_commander = self._get_api_commander()
 
     def __repr__(self) -> str:
+        _db_desc = f'database.api_endpoint="{self.database.api_endpoint}"'
         return (
             f'{self.__class__.__name__}(name="{self.name}", '
-            f'keyspace="{self.keyspace}", database={self.database}, '
+            f'keyspace="{self.keyspace}", {_db_desc}, '
             f"api_options={self.api_options})"
         )
 
@@ -2583,9 +2584,10 @@ class AsyncCollection(Generic[DOC]):
         self._api_commander = self._get_api_commander()
 
     def __repr__(self) -> str:
+        _db_desc = f'database.api_endpoint="{self.database.api_endpoint}"'
         return (
             f'{self.__class__.__name__}(name="{self.name}", '
-            f'keyspace="{self.keyspace}", database={self.database}, '
+            f'keyspace="{self.keyspace}", {_db_desc}, '
             f"api_options={self.api_options})"
         )
 
