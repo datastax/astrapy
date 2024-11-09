@@ -5,6 +5,7 @@ Renamed collection-specific exceptions:
     - 'InsertManyException' ==> `CollectionInsertManyException`
     - 'DeleteManyException' ==> `CollectionDeleteManyException`
     - 'UpdateManyException' ==> `CollectionUpdateManyException`
+Improved string representation of DataAPIResponseException cases with multiple error descriptors
 Introduced `InvalidEnvironmentException` for operations invalid on some Data API environments.
 The following info methods are made async (= awaitable): `AsyncDatabase.info`, `AsyncDatabase.name`, `AsyncCollection.info`, `AsyncTable.info`
 Collections default to using custom types for lossless and full-range expression of database content.

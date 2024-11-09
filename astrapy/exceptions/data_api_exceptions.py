@@ -92,6 +92,32 @@ class DataAPIErrorDescriptor:
         ]
         return f"{self.__class__.__name__}({', '.join(pc for pc in pieces if pc)})"
 
+    def __str__(self) -> str:
+        return self.summary()
+
+    def summary(self) -> str:
+        non_code_part: str | None
+        if self.title:
+            if self.message:
+                non_code_part = f"{self.title}: {self.message}"
+            else:
+                non_code_part = f"{self.title}"
+        else:
+            if self.message:
+                non_code_part = f"{self.message}"
+            else:
+                non_code_part = None
+        if self.error_code:
+            if non_code_part:
+                return f"{non_code_part} ({self.error_code})"
+            else:
+                return f"{self.error_code}"
+        else:
+            if non_code_part:
+                return non_code_part
+            else:
+                return ""
+
 
 @dataclass
 class DataAPIDetailedErrorDescriptor:
@@ -201,7 +227,15 @@ class DataAPIResponseException(DataAPIException):
         ]
 
         if error_descriptors:
-            text = error_descriptors[0].message
+            summaries = [e_d.summary() for e_d in error_descriptors]
+            if len(summaries) == 1:
+                text = summaries[0]
+            else:
+                _j_summaries = "; ".join(
+                    f"[{summ_i + 1}] {summ_s}"
+                    for summ_i, summ_s in enumerate(summaries)
+                )
+                text = f"[{len(summaries)} errors collected] {_j_summaries}"
         else:
             text = ""
 
