@@ -608,6 +608,19 @@ def preprocess_table_payload(
         return payload
 
 
+class _DecimalCleaner(json.JSONEncoder):
+    """
+    This class cleans decimal (coming from decimal-oriented parsing of responses)
+    so that the schema can be made into a string, hashed, and used as key to the
+    converters cache safely.
+    """
+
+    def default(self, obj: object) -> Any:
+        if isinstance(obj, decimal.Decimal):
+            return float(obj)
+        return super().default(obj)
+
+
 class _TableConverterAgent(Generic[ROW]):
     options: FullSerdesOptions
     row_postprocessors: dict[str, Callable[[dict[str, Any]], dict[str, Any]]]
@@ -621,7 +634,12 @@ class _TableConverterAgent(Generic[ROW]):
     @staticmethod
     def _hash_dict(input_dict: dict[str, Any]) -> str:
         return hashlib.md5(
-            json.dumps(input_dict, sort_keys=True, separators=(",", ":")).encode()
+            json.dumps(
+                input_dict,
+                sort_keys=True,
+                separators=(",", ":"),
+                cls=_DecimalCleaner,
+            ).encode()
         ).hexdigest()
 
     def _get_key_postprocessor(

@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import pytest
 
-from astrapy.data_types import DataAPITimestamp
-from astrapy.exceptions import TableInsertManyException
+from astrapy.data_types import DataAPITimestamp, DataAPIVector
+from astrapy.exceptions import DataAPIException, TableInsertManyException
 from astrapy.results import TableInsertManyResult
 
 from ..conftest import (
@@ -232,3 +232,141 @@ class TestTableDMLSync:
         _assert_consistency(
             ["p1", "p2", "p3", "p5", "p6", "p7"], exc.value.partial_result
         )
+
+    @pytest.mark.describe("test of table update_one, sync")
+    def test_table_update_one_sync(
+        self,
+        sync_table_simple: DefaultTable,
+    ) -> None:
+        # erroring updates
+        with pytest.raises(DataAPIException):
+            sync_table_simple.update_one(
+                {"p_text": {"$gt": "x"}},
+                update={"$set": {"p_int": -111}},
+            )
+        with pytest.raises(DataAPIException):
+            sync_table_simple.update_one(
+                {"p_text": "x"},
+                update={"$set": {"p_int": -111, "p_text": "x"}},
+            )
+        with pytest.raises(DataAPIException):
+            sync_table_simple.update_one(
+                {"p_text": "x"},
+                update={"$unset": {"p_text": ""}},
+            )
+        with pytest.raises(DataAPIException):
+            sync_table_simple.update_one(
+                {"p_text": "x"},
+                update={"$set": {"p_fake": "x"}},
+            )
+        with pytest.raises(DataAPIException):
+            sync_table_simple.update_one(
+                {"p_int": 147},
+                update={"$set": {"p_int": -111}},
+            )
+
+        # $set
+        sync_table_simple.delete_many({})
+        assert sync_table_simple.find_one({"p_text": "A"}) is None
+
+        # $set, new row
+        sync_table_simple.update_one(
+            {"p_text": "A"},
+            update={"$set": {"p_int": 10, "p_vector": DataAPIVector([1, 2, 3])}},
+        )
+        assert sync_table_simple.find_one({"p_text": "A"}) == {
+            "p_text": "A",
+            "p_int": 10,
+            "p_vector": DataAPIVector([1, 2, 3]),
+        }
+
+        # $set, partial write
+        sync_table_simple.update_one(
+            {"p_text": "A"},
+            update={"$set": {"p_int": 11}},
+        )
+        assert sync_table_simple.find_one({"p_text": "A"}) == {
+            "p_text": "A",
+            "p_int": 11,
+            "p_vector": DataAPIVector([1, 2, 3]),
+        }
+
+        # $set, overwriting row
+        sync_table_simple.update_one(
+            {"p_text": "A"},
+            update={"$set": {"p_int": 10, "p_vector": DataAPIVector([1, 2, 3])}},
+        )
+        assert sync_table_simple.find_one({"p_text": "A"}) == {
+            "p_text": "A",
+            "p_int": 10,
+            "p_vector": DataAPIVector([1, 2, 3]),
+        }
+
+        # $set, partial set-to-null
+        sync_table_simple.update_one(
+            {"p_text": "A"},
+            update={"$set": {"p_int": None}},
+        )
+        assert sync_table_simple.find_one({"p_text": "A"}) == {
+            "p_text": "A",
+            "p_int": None,
+            "p_vector": DataAPIVector([1, 2, 3]),
+        }
+
+        # $set, full set-to-null (which deletes the row)
+        sync_table_simple.update_one(
+            {"p_text": "A"},
+            update={"$set": {"p_int": None, "p_vector": None}},
+        )
+        assert sync_table_simple.find_one({"p_text": "A"}) is None
+
+        # $unset
+        sync_table_simple.delete_many({})
+        sync_table_simple.insert_one(
+            {"p_text": "B", "p_int": 123, "p_vector": DataAPIVector([9, 8, 7])}
+        )
+        assert sync_table_simple.find_one({"p_text": "B"}) == {
+            "p_text": "B",
+            "p_int": 123,
+            "p_vector": DataAPIVector([9, 8, 7]),
+        }
+
+        # $unset, on existing(partial)
+        sync_table_simple.update_one(
+            {"p_text": "B"},
+            update={"$unset": {"p_int": ""}},
+        )
+        assert sync_table_simple.find_one({"p_text": "B"}) == {
+            "p_text": "B",
+            "p_int": None,
+            "p_vector": DataAPIVector([9, 8, 7]),
+        }
+
+        # $unset, on existing(partial) 2: the other column
+        sync_table_simple.update_one(
+            {"p_text": "B"},
+            update={"$unset": {"p_vector": ""}},
+        )
+        assert sync_table_simple.find_one({"p_text": "B"}) == {
+            "p_text": "B",
+            "p_int": None,
+            "p_vector": None,
+        }
+
+        # $unset, on existing(full) (which DOES NOT DELETE the row)
+        sync_table_simple.update_one(
+            {"p_text": "B"},
+            update={"$unset": {"p_int": "", "p_vector": ""}},
+        )
+        assert sync_table_simple.find_one({"p_text": "B"}) == {
+            "p_text": "B",
+            "p_int": None,
+            "p_vector": None,
+        }
+
+        # $unset, on nonexisting
+        sync_table_simple.update_one(
+            {"p_text": "Z"},
+            update={"$unset": {"p_int": ""}},
+        )
+        assert sync_table_simple.find_one({"p_text": "Z"}) is None
