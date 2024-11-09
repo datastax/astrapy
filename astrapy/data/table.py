@@ -56,7 +56,7 @@ from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
     from astrapy.authentication import EmbeddingHeadersProvider
-    from astrapy.cursors import AsyncTableCursor, TableCursor
+    from astrapy.cursors import AsyncTableFindCursor, TableFindCursor
     from astrapy.data.info.table_descriptor import AlterTableOperation
     from astrapy.info import TableDefinition
 
@@ -958,13 +958,13 @@ class Table(Generic[ROW]):
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> TableCursor[ROW, ROW]:
+    ) -> TableFindCursor[ROW, ROW]:
         """
         TODO
         """
 
         # lazy-import here to avoid circular import issues
-        from astrapy.cursors import TableCursor
+        from astrapy.cursors import TableFindCursor
 
         _request_timeout_ms = (
             request_timeout_ms
@@ -977,7 +977,7 @@ class Table(Generic[ROW]):
         #         "Cannot use `include_similarity` unless for vector search."
         #     )
         return (
-            TableCursor(
+            TableFindCursor(
                 table=self,
                 request_timeout_ms=_request_timeout_ms,
                 overall_timeout_ms=None,
@@ -1065,7 +1065,7 @@ class Table(Generic[ROW]):
         """
 
         # lazy-import here to avoid circular import issues
-        from astrapy.cursors import TableCursor
+        from astrapy.cursors import TableFindCursor
 
         _request_timeout_ms = (
             request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
@@ -1084,8 +1084,8 @@ class Table(Generic[ROW]):
                 "or start with a list index."
             )
         # relaxing the type hint (limited to within this method body)
-        f_cursor: TableCursor[dict[str, Any], dict[str, Any]] = (
-            TableCursor(
+        f_cursor: TableFindCursor[dict[str, Any], dict[str, Any]] = (
+            TableFindCursor(
                 table=self,
                 request_timeout_ms=_request_timeout_ms,
                 overall_timeout_ms=_data_operation_timeout_ms,
@@ -2402,13 +2402,13 @@ class AsyncTable(Generic[ROW]):
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> AsyncTableCursor[ROW, ROW]:
+    ) -> AsyncTableFindCursor[ROW, ROW]:
         """
         TODO
         """
 
         # lazy-import here to avoid circular import issues
-        from astrapy.cursors import AsyncTableCursor
+        from astrapy.cursors import AsyncTableFindCursor
 
         _request_timeout_ms = (
             request_timeout_ms
@@ -2421,7 +2421,7 @@ class AsyncTable(Generic[ROW]):
         #         "Cannot use `include_similarity` unless for vector search."
         #     )
         return (
-            AsyncTableCursor(
+            AsyncTableFindCursor(
                 table=self,
                 request_timeout_ms=_request_timeout_ms,
                 overall_timeout_ms=None,
@@ -2509,7 +2509,7 @@ class AsyncTable(Generic[ROW]):
         """
 
         # lazy-import here to avoid circular import issues
-        from astrapy.cursors import AsyncTableCursor
+        from astrapy.cursors import AsyncTableFindCursor
 
         _request_timeout_ms = (
             request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
@@ -2528,8 +2528,8 @@ class AsyncTable(Generic[ROW]):
                 "or start with a list index."
             )
         # relaxing the type hint (limited to within this method body)
-        f_cursor: AsyncTableCursor[dict[str, Any], dict[str, Any]] = (
-            AsyncTableCursor(
+        f_cursor: AsyncTableFindCursor[dict[str, Any], dict[str, Any]] = (
+            AsyncTableFindCursor(
                 table=self,
                 request_timeout_ms=_request_timeout_ms,
                 overall_timeout_ms=_data_operation_timeout_ms,

@@ -496,7 +496,7 @@ class TestDMLSync:
         document0b = cursor0b.__next__()
         assert "ternary" in document0b
 
-        assert cursor0b.data_source == sync_empty_collection
+        assert cursor0b.collection == sync_empty_collection
 
         # rewinding, slicing and retrieved
         cursor1 = sync_empty_collection.find(sort={"seq": 1})
@@ -509,7 +509,7 @@ class TestDMLSync:
 
         # address, cursor_id, collection
         assert isinstance(cursor1.cursor_id, int)
-        assert cursor1.data_source == sync_empty_collection
+        assert cursor1.collection == sync_empty_collection
 
         # clone, alive
         cursor2 = sync_empty_collection.find()

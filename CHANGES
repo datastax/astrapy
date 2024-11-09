@@ -22,12 +22,17 @@ Introduced `DataAPIVector` class (Iterable, Sequence): this also offers better c
 Collections are optionally typed:
     - `get_collection` and `create_collection` get a `document_type` parameter to go with the type hint `Collection[MyType]`
     - if unspecified fall back to `DefaultCollection = Collection[DefaultDocumentType]` (where `DefaultDocumentType = dict[str, Any]`)
-Cursors are similarly typed and are rewritten entirely:
+Complete rewriting of cursors and enhancement of the cursor protocol:
+    - Cursors are typed, similarly to Tables and Collections
+    - Cursor classes renamed to `[Async]CollectionCursor`
+    - Base class for all (find) cursors renamed to `FindCursor`
+    - introduced `map` and `to_list` methods
     - `cursor.state` now has values in `CursorState` enum (take `cursor.state.value` for a string)
     - 'cursor.address' is removed from the API
     - `cursor.rewind()` returns None, mutates cursor in-place
     - removed 'cursor.distinct()': use the  corresponding collection(/table) method.
     - removed 'CursorIsStartedException': now `CursorException` raised for all state-related illegal calls
+    - Cursors' state described by the `CursorState` enum
 (internal) simplified timeout management classes and representations.
 (internal) Async/Collection's find_one method uses findOne API command.
 Removed the CommandCursor/AsyncCommandCursor classes:
@@ -58,17 +63,15 @@ Reworked the options system:
     - introduced `serdes_options.binary_encode_vectors`, affecting read/write wire format for collections
     - introduced `serdes_options.unroll_iterables_to_lists` to make the write path tolerant w.r.t. lazy iterables, numpy etc in writing vectors/lists
 Major restructuring of the codebase into directories
-    - BaseCursor not exported by astrapy.cursors anymore
     - some imports (supposedly not used externally) changed slightly
     - adapted and limited scope of test_imports.py
 Removed AstraDBDatabaseAdmin's `from_api_endpoint` static method (reason: unused)
 Rename main branch from 'master' ==> `main`
-Cursors' state described by the `CursorState` enum
 Removal of several deprecated modules/features from previous versions:
     - 'core' (i.e. pre-1.0) library
     - 'collection.bulk_write' and the associated result and exception classes
     - 'vector=', 'vectorize=' and 'vectors=' parameters from collection methods
-    - 'retrieved' (=> `consumed`) and 'collection' (=> `data_source`) for cursors
+    - 'retrieved' (=> `consumed`) for cursors
     - 'set_caller' method of `DataAPIClient`, `AstraDBAdmin`, `DataAPIDatabaseAdmin`, `AstraDBDatabaseAdmin`, `[Async]Database`, `[Async]Collection`
     - 'caller_name' and 'caller_version' parameters where `callers` is now expected
     - 'id' and 'region' to DataAPIClient's 'get_database' (and async version). Use `api_endpoint` which is now the one positional parameter.

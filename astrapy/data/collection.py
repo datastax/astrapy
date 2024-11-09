@@ -69,7 +69,7 @@ from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
     from astrapy.authentication import EmbeddingHeadersProvider
-    from astrapy.cursors import AsyncCollectionCursor, CollectionCursor
+    from astrapy.cursors import AsyncCollectionFindCursor, CollectionFindCursor
 
 
 logger = logging.getLogger(__name__)
@@ -949,7 +949,7 @@ class Collection(Generic[DOC]):
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> CollectionCursor[DOC, DOC]:
+    ) -> CollectionFindCursor[DOC, DOC]:
         """
         Find documents on the collection, matching a certain provided filter.
 
@@ -1112,7 +1112,7 @@ class Collection(Generic[DOC]):
         """
 
         # lazy-import here to avoid circular import issues
-        from astrapy.cursors import CollectionCursor
+        from astrapy.cursors import CollectionFindCursor
 
         _request_timeout_ms = (
             request_timeout_ms
@@ -1124,7 +1124,7 @@ class Collection(Generic[DOC]):
                 "Cannot use `include_similarity` unless for vector search."
             )
         return (
-            CollectionCursor(
+            CollectionFindCursor(
                 collection=self,
                 request_timeout_ms=_request_timeout_ms,
                 overall_timeout_ms=None,
@@ -1330,7 +1330,7 @@ class Collection(Generic[DOC]):
         """
 
         # lazy-import here to avoid circular import issues
-        from astrapy.cursors import CollectionCursor
+        from astrapy.cursors import CollectionFindCursor
 
         _request_timeout_ms = (
             request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
@@ -1349,8 +1349,8 @@ class Collection(Generic[DOC]):
                 "or start with a list index."
             )
         # relaxing the type hint (limited to within this method body)
-        f_cursor: CollectionCursor[dict[str, Any], dict[str, Any]] = (
-            CollectionCursor(
+        f_cursor: CollectionFindCursor[dict[str, Any], dict[str, Any]] = (
+            CollectionFindCursor(
                 collection=self,
                 request_timeout_ms=_request_timeout_ms,
                 overall_timeout_ms=_data_operation_timeout_ms,
@@ -3372,7 +3372,7 @@ class AsyncCollection(Generic[DOC]):
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> AsyncCollectionCursor[DOC, DOC]:
+    ) -> AsyncCollectionFindCursor[DOC, DOC]:
         """
         Find documents on the collection, matching a certain provided filter.
 
@@ -3545,7 +3545,7 @@ class AsyncCollection(Generic[DOC]):
         """
 
         # lazy-import here to avoid circular import issues
-        from astrapy.cursors import AsyncCollectionCursor
+        from astrapy.cursors import AsyncCollectionFindCursor
 
         _request_timeout_ms = (
             request_timeout_ms
@@ -3557,7 +3557,7 @@ class AsyncCollection(Generic[DOC]):
                 "Cannot use `include_similarity` unless for vector search."
             )
         return (
-            AsyncCollectionCursor(
+            AsyncCollectionFindCursor(
                 collection=self,
                 request_timeout_ms=_request_timeout_ms,
                 overall_timeout_ms=None,
@@ -3787,7 +3787,7 @@ class AsyncCollection(Generic[DOC]):
         """
 
         # lazy-import here to avoid circular import issues
-        from astrapy.cursors import AsyncCollectionCursor
+        from astrapy.cursors import AsyncCollectionFindCursor
 
         _request_timeout_ms = (
             request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
@@ -3806,8 +3806,8 @@ class AsyncCollection(Generic[DOC]):
                 "or start with a list index."
             )
         # relaxing the type hint (limited to within this method body)
-        f_cursor: AsyncCollectionCursor[dict[str, Any], dict[str, Any]] = (
-            AsyncCollectionCursor(
+        f_cursor: AsyncCollectionFindCursor[dict[str, Any], dict[str, Any]] = (
+            AsyncCollectionFindCursor(
                 collection=self,
                 request_timeout_ms=_request_timeout_ms,
                 overall_timeout_ms=_data_operation_timeout_ms,

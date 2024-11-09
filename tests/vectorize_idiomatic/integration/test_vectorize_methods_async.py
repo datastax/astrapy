@@ -20,7 +20,7 @@ import pytest
 
 from astrapy import AsyncDatabase
 from astrapy.constants import DefaultDocumentType
-from astrapy.cursors import AsyncCollectionCursor
+from astrapy.cursors import AsyncCollectionFindCursor
 from astrapy.exceptions import DataAPIResponseException
 
 from ..conftest import DefaultAsyncCollection
@@ -145,7 +145,9 @@ class TestVectorizeMethodsAsync:
             return isinstance(v, list) and isinstance(v[0], float)
 
         async def _alist(
-            acursor: AsyncCollectionCursor[DefaultDocumentType, DefaultDocumentType],
+            acursor: AsyncCollectionFindCursor[
+                DefaultDocumentType, DefaultDocumentType
+            ],
         ) -> list[DefaultDocumentType]:
             return [doc async for doc in acursor]
 
