@@ -283,6 +283,7 @@ class Database:
         environment: str | UnsetType = _UNSET,
         api_path: str | None | UnsetType = _UNSET,
         api_version: str | None | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         arg_api_options = APIOptions(
             token=token,
@@ -293,11 +294,13 @@ class Database:
                 api_version=api_version,
             ),
         )
-        api_options = self.api_options.with_override(arg_api_options)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
+        )
         return Database(
             api_endpoint=api_endpoint or self.api_endpoint,
             keyspace=keyspace or self.keyspace,
-            api_options=api_options,
+            api_options=final_api_options,
         )
 
     def with_options(
@@ -305,6 +308,7 @@ class Database:
         *,
         keyspace: str | None = None,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
         Create a clone of this database with some changed attributes.
@@ -317,6 +321,10 @@ class Database:
                 on behalf of which the Data API calls are performed. These end up
                 in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
+            api_options: any additional options to set for the clone, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
 
         Returns:
             a new `Database` instance.
@@ -331,6 +339,7 @@ class Database:
         return self._copy(
             keyspace=keyspace,
             callers=callers,
+            api_options=api_options,
         )
 
     def to_async(
@@ -343,6 +352,7 @@ class Database:
         environment: str | UnsetType = _UNSET,
         api_path: str | None | UnsetType = _UNSET,
         api_version: str | None | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Create an AsyncDatabase from this one. Save for the arguments
@@ -369,6 +379,10 @@ class Database:
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
+            api_options: any additional options to set for the result, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
 
         Returns:
             the new copy, an `AsyncDatabase` instance.
@@ -387,11 +401,13 @@ class Database:
                 api_version=api_version,
             ),
         )
-        api_options = self.api_options.with_override(arg_api_options)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
+        )
         return AsyncDatabase(
             api_endpoint=api_endpoint or self.api_endpoint,
             keyspace=keyspace or self.keyspace,
-            api_options=api_options,
+            api_options=final_api_options,
         )
 
     def use_keyspace(self, keyspace: str) -> None:
@@ -1891,6 +1907,7 @@ class AsyncDatabase:
         environment: str | UnsetType = _UNSET,
         api_path: str | None | UnsetType = _UNSET,
         api_version: str | None | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         arg_api_options = APIOptions(
             token=token,
@@ -1901,11 +1918,13 @@ class AsyncDatabase:
                 api_version=api_version,
             ),
         )
-        api_options = self.api_options.with_override(arg_api_options)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
+        )
         return AsyncDatabase(
             api_endpoint=api_endpoint or self.api_endpoint,
             keyspace=keyspace or self.keyspace,
-            api_options=api_options,
+            api_options=final_api_options,
         )
 
     def with_options(
@@ -1913,6 +1932,7 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Create a clone of this database with some changed attributes.
@@ -1925,6 +1945,10 @@ class AsyncDatabase:
                 on behalf of which the Data API calls are performed. These end up
                 in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
+            api_options: any additional options to set for the clone, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
 
         Returns:
             a new `AsyncDatabase` instance.
@@ -1939,6 +1963,7 @@ class AsyncDatabase:
         return self._copy(
             keyspace=keyspace,
             callers=callers,
+            api_options=api_options,
         )
 
     def to_sync(
@@ -1951,6 +1976,7 @@ class AsyncDatabase:
         environment: str | UnsetType = _UNSET,
         api_path: str | None | UnsetType = _UNSET,
         api_version: str | None | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
         Create a (synchronous) Database from this one. Save for the arguments
@@ -1977,6 +2003,10 @@ class AsyncDatabase:
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
+            api_options: any additional options to set for the result, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
 
         Returns:
             the new copy, a `Database` instance.
@@ -1996,11 +2026,13 @@ class AsyncDatabase:
                 api_version=api_version,
             ),
         )
-        api_options = self.api_options.with_override(arg_api_options)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
+        )
         return Database(
             api_endpoint=api_endpoint or self.api_endpoint,
             keyspace=keyspace or self.keyspace,
-            api_options=api_options,
+            api_options=final_api_options,
         )
 
     def use_keyspace(self, keyspace: str) -> None:

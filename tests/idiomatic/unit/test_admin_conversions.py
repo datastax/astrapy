@@ -76,6 +76,12 @@ class TestAdminConversions:
         assert dac1 == dac1.with_options(callers=callers1).with_options(
             callers=callers0
         )
+        assert dac1 == dac1.with_options(token="x").with_options(
+            api_options=APIOptions(token="t1")
+        )
+        assert dac1 == dac1.with_options(token="x").with_options(
+            token="t1", api_options=APIOptions(token="t_another")
+        )
 
         a_e_string = (
             "https://01234567-89ab-cdef-0123-456789abcdef-us-east1"
@@ -190,6 +196,13 @@ class TestAdminConversions:
             callers=callers0
         )
 
+        assert adm0 == adm0.with_options(token="x").with_options(
+            api_options=APIOptions(token="t1")
+        )
+        assert adm0 == adm0.with_options(token="x").with_options(
+            token="t1", api_options=APIOptions(token="t_another")
+        )
+
     @pytest.mark.describe(
         "test of AstraDBDatabaseAdmin conversions and comparison functions"
     )
@@ -253,6 +266,13 @@ class TestAdminConversions:
             callers=callers0
         )
 
+        assert adda1 == adda1.with_options(token="x").with_options(
+            api_options=APIOptions(token="t1")
+        )
+        assert adda1 == adda1.with_options(token="x").with_options(
+            token="t1", api_options=APIOptions(token="t1_another")
+        )
+
     @pytest.mark.describe(
         "test of DataAPIDBDatabaseAdmin conversions and comparison functions"
     )
@@ -306,6 +326,13 @@ class TestAdminConversions:
         assert dada1 == dada1.with_options(token="x").with_options(token="t1")
         assert dada1 == dada1.with_options(callers=callers1).with_options(
             callers=callers0
+        )
+
+        assert dada1 == dada1.with_options(token="x").with_options(
+            api_options=APIOptions(token="t1")
+        )
+        assert dada1 == dada1.with_options(token="x").with_options(
+            token="t1", api_options=APIOptions(token="t1_another")
         )
 
     @pytest.mark.describe("test of token inheritance in spawning from DataAPIClient")

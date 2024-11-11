@@ -501,24 +501,28 @@ class AstraDBAdmin:
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         dev_ops_url: str | UnsetType = _UNSET,
         dev_ops_api_version: str | None | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBAdmin:
         arg_api_options = APIOptions(
-            token=coerce_possible_token_provider(token),
-            callers=callers,
+            token=token,
             environment=environment,
+            callers=callers,
             dev_ops_api_url_options=DevOpsAPIURLOptions(
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
             ),
         )
-        api_options = self.api_options.with_override(arg_api_options)
-        return AstraDBAdmin(api_options=api_options)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
+        )
+        return AstraDBAdmin(api_options=final_api_options)
 
     def with_options(
         self,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBAdmin:
         """
         Create a clone of this AstraDBAdmin with some changed attributes.
@@ -531,6 +535,10 @@ class AstraDBAdmin:
                 on behalf of which DevOps API calls are performed. These end up in
                 the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
+            api_options: any additional options to set for the clone, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
 
         Returns:
             a new AstraDBAdmin instance.
@@ -544,6 +552,7 @@ class AstraDBAdmin:
         return self._copy(
             token=token,
             callers=callers,
+            api_options=api_options,
         )
 
     def list_databases(
@@ -2056,6 +2065,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         dev_ops_api_version: str | None | UnsetType = _UNSET,
         api_path: str | UnsetType = _UNSET,
         api_version: str | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         arg_api_options = APIOptions(
             token=coerce_possible_token_provider(token),
@@ -2070,10 +2080,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 dev_ops_api_version=dev_ops_api_version,
             ),
         )
-        api_options = self.api_options.with_override(arg_api_options)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
+        )
         return AstraDBDatabaseAdmin(
             api_endpoint=api_endpoint or self.api_endpoint,
-            api_options=api_options,
+            api_options=final_api_options,
             spawner_database=self.spawner_database,
             spawner_astra_db_admin=self._astra_db_admin,
         )
@@ -2084,6 +2096,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         api_endpoint: str | None = None,
         token: str | TokenProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         """
         Create a clone of this AstraDBDatabaseAdmin with some changed attributes.
@@ -2101,6 +2114,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 on behalf of which Data API and DevOps API calls are performed.
                 These end up in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
+            api_options: any additional options to set for the clone, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
 
         Returns:
             a new AstraDBDatabaseAdmin instance.
@@ -2115,6 +2132,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             api_endpoint=api_endpoint,
             token=token,
             callers=callers,
+            api_options=api_options,
         )
 
     @property
@@ -3259,6 +3277,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         api_path: str | UnsetType = _UNSET,
         api_version: str | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> DataAPIDatabaseAdmin:
         arg_api_options = APIOptions(
             token=coerce_possible_token_provider(token),
@@ -3269,10 +3288,12 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 api_version=api_version,
             ),
         )
-        api_options = self.api_options.with_override(arg_api_options)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
+        )
         return DataAPIDatabaseAdmin(
             api_endpoint=api_endpoint or self.api_endpoint,
-            api_options=api_options,
+            api_options=final_api_options,
             spawner_database=self.spawner_database,
         )
 
@@ -3282,6 +3303,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         api_endpoint: str | None = None,
         token: str | TokenProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> DataAPIDatabaseAdmin:
         """
         Create a clone of this DataAPIDatabaseAdmin with some changed attributes.
@@ -3296,6 +3318,10 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
                 on behalf of which Data API calls are performed. These end up in the
                 request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
+            api_options: any additional options to set for the clone, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
 
         Returns:
             a new DataAPIDatabaseAdmin instance.
@@ -3310,6 +3336,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             api_endpoint=api_endpoint,
             token=token,
             callers=callers,
+            api_options=api_options,
         )
 
     def list_keyspaces(

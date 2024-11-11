@@ -19,6 +19,7 @@ from typing import Sequence
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase
+from astrapy.constants import CallerType
 from astrapy.utils.api_options import APIOptions, FullAPIOptions, defaultAPIOptions
 from astrapy.utils.unset import _UNSET, UnsetType
 
@@ -31,7 +32,7 @@ from ..conftest import (
 
 def _wrapCallers(
     asrc_database: AsyncDatabase,
-    callers: Sequence[tuple[str | None, str | None]] | UnsetType = _UNSET,
+    callers: Sequence[CallerType] | UnsetType = _UNSET,
 ) -> FullAPIOptions:
     return defaultAPIOptions(
         environment=asrc_database.api_options.environment
@@ -109,6 +110,19 @@ class TestCollectionsAsync:
             col1.with_options(callers=callers1).with_options(callers=callers0) == col1
         )
 
+        assert (
+            col1.with_options(callers=callers1).with_options(
+                api_options=APIOptions(callers=callers0)
+            )
+            == col1
+        )
+        assert (
+            col1.with_options(callers=callers1).with_options(
+                callers=callers0, api_options=APIOptions(callers=callers1)
+            )
+            == col1
+        )
+
     @pytest.mark.describe("test of Collection rich conversions, async")
     async def test_rich_convert_collection_async(
         self,
@@ -147,6 +161,14 @@ class TestCollectionsAsync:
             callers=callers0,
         )
         assert col3 == col1
+
+        col1_a = col1.to_sync(callers=callers1)
+        assert col1_a.to_async() != col1
+        assert col1_a.to_async(api_options=APIOptions(callers=callers0)) == col1
+        assert (
+            col1_a.to_async(callers=callers0, api_options=APIOptions(callers=callers1))
+            == col1
+        )
 
     @pytest.mark.describe("test of Collection database property, async")
     async def test_collection_database_property_async(

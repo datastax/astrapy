@@ -130,6 +130,19 @@ class TestDatabasesSync:
         assert db1.with_options(keyspace="x").with_options(keyspace="keyspace") == db1
         assert db1.with_options(callers=callers1).with_options(callers=callers0) == db1
 
+        assert (
+            db1.with_options(callers=callers1).with_options(
+                api_options=APIOptions(callers=callers0)
+            )
+            == db1
+        )
+        assert (
+            db1.with_options(callers=callers1).with_options(
+                callers=callers0, api_options=APIOptions(callers=callers1)
+            )
+            == db1
+        )
+
     @pytest.mark.describe("test of Database rich conversions, sync")
     def test_rich_convert_database_sync(
         self,
@@ -176,6 +189,14 @@ class TestDatabasesSync:
             api_version="api_version",
         )
         assert db3 == db1
+
+        db1_a = db1.to_async(callers=callers1)
+        assert db1_a.to_sync() != db1
+        assert db1_a.to_sync(api_options=APIOptions(callers=callers0)) == db1
+        assert (
+            db1_a.to_sync(callers=callers0, api_options=APIOptions(callers=callers1))
+            == db1
+        )
 
     @pytest.mark.describe("test get_collection method, sync")
     def test_database_get_collection_sync(

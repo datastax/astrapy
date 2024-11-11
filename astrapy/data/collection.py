@@ -21,7 +21,6 @@ from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Generic, Iterable, Sequence
 
-from astrapy.authentication import coerce_possible_embedding_headers_provider
 from astrapy.constants import (
     DOC,
     CallerType,
@@ -282,35 +281,29 @@ class Collection(Generic[DOC]):
         collection_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
+        arg_api_options = APIOptions(
+            callers=callers,
+            embedding_api_key=embedding_api_key,
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=collection_max_time_ms,
+            ),
+        )
         # a double override for the timeout aliasing
-        resulting_api_options = (
-            self.api_options.with_override(
-                api_options,
-            )
-            .with_override(
-                APIOptions(
-                    callers=callers,
-                    embedding_api_key=coerce_possible_embedding_headers_provider(
-                        embedding_api_key
-                    ),
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=collection_max_time_ms,
-                    ),
-                )
-            )
-            .with_override(
-                APIOptions(
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=request_timeout_ms,
-                    ),
-                )
-            )
+        arg_api_options_2 = APIOptions(
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=request_timeout_ms,
+            ),
+        )
+        final_api_options = (
+            self.api_options.with_override(api_options)
+            .with_override(arg_api_options)
+            .with_override(arg_api_options_2)
         )
         return Collection(
             database=database or self.database,
             name=name or self.name,
             keyspace=keyspace or self.keyspace,
-            api_options=resulting_api_options,
+            api_options=final_api_options,
         )
 
     def with_options(
@@ -351,12 +344,10 @@ class Collection(Generic[DOC]):
                 bear in mind that individual collection methods also accept timeout
                 parameters.
             collection_max_time_ms: an alias for `request_timeout_ms`.
-            api_options: a specification - complete or partial - of the
-                API Options to override those of the current collection.
-                This allows for a deeper configuration of the collection, e.g.
-                concerning timeouts; if this is passed together with
-                the named option parameters, the latter will take precedence
-                in their respective settings.
+            api_options: any additional options to set for the clone, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
 
         Returns:
             a new Collection instance.
@@ -423,12 +414,10 @@ class Collection(Generic[DOC]):
                 bear in mind that individual collection methods also accept timeout
                 parameters.
             collection_max_time_ms: an alias for `request_timeout_ms`.
-            api_options: a specification - complete or partial - of the
-                API Options to override those of the current collection.
-                This allows for a deeper configuration of the collection, e.g.
-                concerning timeouts; if this is passed together with
-                the named option parameters, the latter will take precedence
-                in their respective settings.
+            api_options: any additional options to set for the result, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
 
         Returns:
             the new copy, an AsyncCollection instance.
@@ -438,35 +427,29 @@ class Collection(Generic[DOC]):
             77
         """
 
+        arg_api_options = APIOptions(
+            callers=callers,
+            embedding_api_key=embedding_api_key,
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=collection_max_time_ms,
+            ),
+        )
         # a double override for the timeout aliasing
-        resulting_api_options = (
-            self.api_options.with_override(
-                api_options,
-            )
-            .with_override(
-                APIOptions(
-                    callers=callers,
-                    embedding_api_key=coerce_possible_embedding_headers_provider(
-                        embedding_api_key
-                    ),
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=collection_max_time_ms,
-                    ),
-                )
-            )
-            .with_override(
-                APIOptions(
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=request_timeout_ms,
-                    ),
-                )
-            )
+        arg_api_options_2 = APIOptions(
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=request_timeout_ms,
+            ),
+        )
+        final_api_options = (
+            self.api_options.with_override(api_options)
+            .with_override(arg_api_options)
+            .with_override(arg_api_options_2)
         )
         return AsyncCollection(
             database=database or self.database.to_async(),
             name=name or self.name,
             keyspace=keyspace or self.keyspace,
-            api_options=resulting_api_options,
+            api_options=final_api_options,
         )
 
     def options(
@@ -2704,35 +2687,29 @@ class AsyncCollection(Generic[DOC]):
         collection_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
+        arg_api_options = APIOptions(
+            callers=callers,
+            embedding_api_key=embedding_api_key,
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=collection_max_time_ms,
+            ),
+        )
         # a double override for the timeout aliasing
-        resulting_api_options = (
-            self.api_options.with_override(
-                api_options,
-            )
-            .with_override(
-                APIOptions(
-                    callers=callers,
-                    embedding_api_key=coerce_possible_embedding_headers_provider(
-                        embedding_api_key
-                    ),
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=collection_max_time_ms,
-                    ),
-                )
-            )
-            .with_override(
-                APIOptions(
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=request_timeout_ms,
-                    ),
-                )
-            )
+        arg_api_options_2 = APIOptions(
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=request_timeout_ms,
+            ),
+        )
+        final_api_options = (
+            self.api_options.with_override(api_options)
+            .with_override(arg_api_options)
+            .with_override(arg_api_options_2)
         )
         return AsyncCollection(
             database=database or self.database,
             name=name or self.name,
             keyspace=keyspace or self.keyspace,
-            api_options=resulting_api_options,
+            api_options=final_api_options,
         )
 
     def with_options(
@@ -2773,12 +2750,10 @@ class AsyncCollection(Generic[DOC]):
                 bear in mind that individual collection methods also accept timeout
                 parameters.
             collection_max_time_ms: an alias for `request_timeout_ms`.
-            api_options: a specification - complete or partial - of the
-                API Options to override those of the current collection.
-                This allows for a deeper configuration of the collection, e.g.
-                concerning timeouts; if this is passed together with
-                the named option parameters, the latter will take precedence
-                in their respective settings.
+            api_options: any additional options to set for the clone, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
 
         Returns:
             a new AsyncCollection instance.
@@ -2845,12 +2820,10 @@ class AsyncCollection(Generic[DOC]):
                 bear in mind that individual collection methods also accept timeout
                 parameters.
             collection_max_time_ms: an alias for `request_timeout_ms`.
-            api_options: a specification - complete or partial - of the
-                API Options to override those of the current collection.
-                This allows for a deeper configuration of the collection, e.g.
-                concerning timeouts; if this is passed together with
-                the named option parameters, the latter will take precedence
-                in their respective settings.
+            api_options: any additional options to set for the result, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
 
         Returns:
             the new copy, a Collection instance.
@@ -2860,35 +2833,29 @@ class AsyncCollection(Generic[DOC]):
             77
         """
 
+        arg_api_options = APIOptions(
+            callers=callers,
+            embedding_api_key=embedding_api_key,
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=collection_max_time_ms,
+            ),
+        )
         # a double override for the timeout aliasing
-        resulting_api_options = (
-            self.api_options.with_override(
-                api_options,
-            )
-            .with_override(
-                APIOptions(
-                    callers=callers,
-                    embedding_api_key=coerce_possible_embedding_headers_provider(
-                        embedding_api_key
-                    ),
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=collection_max_time_ms,
-                    ),
-                )
-            )
-            .with_override(
-                APIOptions(
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=request_timeout_ms,
-                    ),
-                )
-            )
+        arg_api_options_2 = APIOptions(
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=request_timeout_ms,
+            ),
+        )
+        final_api_options = (
+            self.api_options.with_override(api_options)
+            .with_override(arg_api_options)
+            .with_override(arg_api_options_2)
         )
         return Collection(
             database=database or self.database.to_sync(),
             name=name or self.name,
             keyspace=keyspace or self.keyspace,
-            api_options=resulting_api_options,
+            api_options=final_api_options,
         )
 
     async def options(

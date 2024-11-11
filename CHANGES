@@ -1,5 +1,6 @@
 v 2.0.0
 =======
+All the client/admin/database/table/collection classes have api_options parameter in their with_options/to_[a]sync method
 Payloads are not encoded to ASCII anymore for HTTP requests.
 Renamed collection-specific exceptions:
     - 'InsertManyException' ==> `CollectionInsertManyException`
@@ -63,6 +64,7 @@ Reworked the options system:
     - introduced `serdes_options.custom_datatypes_in_reading`, also controlling datetime management in Collections
     - introduced `serdes_options.binary_encode_vectors`, affecting read/write wire format for collections
     - introduced `serdes_options.unroll_iterables_to_lists` to make the write path tolerant w.r.t. lazy iterables, numpy etc in writing vectors/lists
+    - token and embedding API key coercion into `*Provider` happens at the Options' init layer
 Major restructuring of the codebase into directories
     - some imports (supposedly not used externally) changed slightly
     - adapted and limited scope of test_imports.py

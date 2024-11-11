@@ -138,18 +138,21 @@ class DataAPIClient:
         token: str | TokenProvider | UnsetType = _UNSET,
         environment: str | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> DataAPIClient:
-        _environment: str
-        # this parameter bootstraps the defaults, has a special treatment:
-        if isinstance(environment, UnsetType):
-            _environment = self.api_options.environment
-        else:
-            _environment = environment
+        arg_api_options = APIOptions(
+            token=token,
+            environment=environment,
+            callers=callers,
+        )
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
+        )
         return DataAPIClient(
             token=token,
-            environment=_environment,
+            environment=final_api_options.environment,
             callers=callers,
-            api_options=self.api_options,
+            api_options=final_api_options,
         )
 
     def with_options(
@@ -157,6 +160,7 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> DataAPIClient:
         """
         Create a clone of this DataAPIClient with some changed attributes.
@@ -169,6 +173,10 @@ class DataAPIClient:
                 on behalf of which Data API and DevOps API calls are performed.
                 These end up in the request user-agent.
                 Each caller identity is a ("caller_name", "caller_version") pair.
+            api_options: any additional options to set for the clone, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
 
         Returns:
             a new DataAPIClient instance.
@@ -182,6 +190,7 @@ class DataAPIClient:
         return self._copy(
             token=token,
             callers=callers,
+            api_options=api_options,
         )
 
     def get_database(

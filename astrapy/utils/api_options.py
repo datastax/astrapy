@@ -25,7 +25,7 @@ from astrapy.authentication import (
     coerce_possible_embedding_headers_provider,
     coerce_possible_token_provider,
 )
-from astrapy.constants import Environment
+from astrapy.constants import CallerType, Environment
 from astrapy.settings.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
@@ -280,7 +280,7 @@ class FullDevOpsAPIURLOptions(DevOpsAPIURLOptions):
 @dataclass
 class APIOptions:
     environment: str | UnsetType = _UNSET
-    callers: Sequence[tuple[str | None, str | None]] | UnsetType = _UNSET
+    callers: Sequence[CallerType] | UnsetType = _UNSET
     database_additional_headers: dict[str, str | None] | UnsetType = _UNSET
     admin_additional_headers: dict[str, str | None] | UnsetType = _UNSET
     redacted_header_names: set[str] | UnsetType = _UNSET
@@ -296,7 +296,7 @@ class APIOptions:
         self,
         *,
         environment: str | UnsetType = _UNSET,
-        callers: Sequence[tuple[str | None, str | None]] | UnsetType = _UNSET,
+        callers: Sequence[CallerType] | UnsetType = _UNSET,
         database_additional_headers: dict[str, str | None] | UnsetType = _UNSET,
         admin_additional_headers: dict[str, str | None] | UnsetType = _UNSET,
         redacted_header_names: set[str] | UnsetType = _UNSET,
@@ -395,7 +395,7 @@ class APIOptions:
 @dataclass
 class FullAPIOptions(APIOptions):
     environment: str
-    callers: Sequence[tuple[str | None, str | None]]
+    callers: Sequence[CallerType]
     database_additional_headers: dict[str, str | None]
     admin_additional_headers: dict[str, str | None]
     redacted_header_names: set[str]
@@ -411,7 +411,7 @@ class FullAPIOptions(APIOptions):
         self,
         *,
         environment: str,
-        callers: Sequence[tuple[str | None, str | None]],
+        callers: Sequence[CallerType],
         database_additional_headers: dict[str, str | None],
         admin_additional_headers: dict[str, str | None],
         redacted_header_names: set[str],

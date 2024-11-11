@@ -20,7 +20,6 @@ from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Generic, Iterable, Sequence
 
-from astrapy.authentication import coerce_possible_embedding_headers_provider
 from astrapy.constants import (
     ROW,
     CallerType,
@@ -200,35 +199,29 @@ class Table(Generic[ROW]):
         table_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
+        arg_api_options = APIOptions(
+            callers=callers,
+            embedding_api_key=embedding_api_key,
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=table_max_time_ms,
+            ),
+        )
         # a double override for the timeout aliasing
-        resulting_api_options = (
-            self.api_options.with_override(
-                api_options,
-            )
-            .with_override(
-                APIOptions(
-                    callers=callers,
-                    embedding_api_key=coerce_possible_embedding_headers_provider(
-                        embedding_api_key
-                    ),
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=table_max_time_ms,
-                    ),
-                )
-            )
-            .with_override(
-                APIOptions(
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=request_timeout_ms,
-                    ),
-                )
-            )
+        arg_api_options_2 = APIOptions(
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=request_timeout_ms,
+            ),
+        )
+        final_api_options = (
+            self.api_options.with_override(api_options)
+            .with_override(arg_api_options)
+            .with_override(arg_api_options_2)
         )
         return Table(
             database=database or self.database,
             name=name or self.name,
             keyspace=keyspace or self.keyspace,
-            api_options=resulting_api_options,
+            api_options=final_api_options,
         )
 
     def with_options(
@@ -269,35 +262,29 @@ class Table(Generic[ROW]):
         TODO
         """
 
+        arg_api_options = APIOptions(
+            callers=callers,
+            embedding_api_key=embedding_api_key,
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=table_max_time_ms,
+            ),
+        )
         # a double override for the timeout aliasing
-        resulting_api_options = (
-            self.api_options.with_override(
-                api_options,
-            )
-            .with_override(
-                APIOptions(
-                    callers=callers,
-                    embedding_api_key=coerce_possible_embedding_headers_provider(
-                        embedding_api_key
-                    ),
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=table_max_time_ms,
-                    ),
-                )
-            )
-            .with_override(
-                APIOptions(
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=request_timeout_ms,
-                    ),
-                )
-            )
+        arg_api_options_2 = APIOptions(
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=request_timeout_ms,
+            ),
+        )
+        final_api_options = (
+            self.api_options.with_override(api_options)
+            .with_override(arg_api_options)
+            .with_override(arg_api_options_2)
         )
         return AsyncTable(
             database=database or self.database.to_async(),
             name=name or self.name,
             keyspace=keyspace or self.keyspace,
-            api_options=resulting_api_options,
+            api_options=final_api_options,
         )
 
     def definition(
@@ -1659,35 +1646,29 @@ class AsyncTable(Generic[ROW]):
         table_max_time_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
+        arg_api_options = APIOptions(
+            callers=callers,
+            embedding_api_key=embedding_api_key,
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=table_max_time_ms,
+            ),
+        )
         # a double override for the timeout aliasing
-        resulting_api_options = (
-            self.api_options.with_override(
-                api_options,
-            )
-            .with_override(
-                APIOptions(
-                    callers=callers,
-                    embedding_api_key=coerce_possible_embedding_headers_provider(
-                        embedding_api_key
-                    ),
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=table_max_time_ms,
-                    ),
-                )
-            )
-            .with_override(
-                APIOptions(
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=request_timeout_ms,
-                    ),
-                )
-            )
+        arg_api_options_2 = APIOptions(
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=request_timeout_ms,
+            ),
+        )
+        final_api_options = (
+            self.api_options.with_override(api_options)
+            .with_override(arg_api_options)
+            .with_override(arg_api_options_2)
         )
         return AsyncTable(
             database=database or self.database,
             name=name or self.name,
             keyspace=keyspace or self.keyspace,
-            api_options=resulting_api_options,
+            api_options=final_api_options,
         )
 
     def with_options(
@@ -1728,35 +1709,29 @@ class AsyncTable(Generic[ROW]):
         TODO
         """
 
+        arg_api_options = APIOptions(
+            callers=callers,
+            embedding_api_key=embedding_api_key,
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=table_max_time_ms,
+            ),
+        )
         # a double override for the timeout aliasing
-        resulting_api_options = (
-            self.api_options.with_override(
-                api_options,
-            )
-            .with_override(
-                APIOptions(
-                    callers=callers,
-                    embedding_api_key=coerce_possible_embedding_headers_provider(
-                        embedding_api_key
-                    ),
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=table_max_time_ms,
-                    ),
-                )
-            )
-            .with_override(
-                APIOptions(
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=request_timeout_ms,
-                    ),
-                )
-            )
+        arg_api_options_2 = APIOptions(
+            timeout_options=TimeoutOptions(
+                request_timeout_ms=request_timeout_ms,
+            ),
+        )
+        final_api_options = (
+            self.api_options.with_override(api_options)
+            .with_override(arg_api_options)
+            .with_override(arg_api_options_2)
         )
         return Table(
             database=database or self.database.to_sync(),
             name=name or self.name,
             keyspace=keyspace or self.keyspace,
-            api_options=resulting_api_options,
+            api_options=final_api_options,
         )
 
     async def definition(

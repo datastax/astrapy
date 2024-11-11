@@ -19,6 +19,7 @@ from typing import Sequence
 import pytest
 
 from astrapy import Collection, Database
+from astrapy.constants import CallerType
 from astrapy.utils.api_options import APIOptions, FullAPIOptions, defaultAPIOptions
 from astrapy.utils.unset import _UNSET, UnsetType
 
@@ -31,7 +32,7 @@ from ..conftest import (
 
 def _wrapCallers(
     src_database: Database,
-    callers: Sequence[tuple[str | None, str | None]] | UnsetType = _UNSET,
+    callers: Sequence[CallerType] | UnsetType = _UNSET,
 ) -> FullAPIOptions:
     return defaultAPIOptions(
         environment=src_database.api_options.environment
@@ -109,6 +110,19 @@ class TestCollectionsSync:
             col1.with_options(callers=callers1).with_options(callers=callers0) == col1
         )
 
+        assert (
+            col1.with_options(callers=callers1).with_options(
+                api_options=APIOptions(callers=callers0)
+            )
+            == col1
+        )
+        assert (
+            col1.with_options(callers=callers1).with_options(
+                callers=callers0, api_options=APIOptions(callers=callers1)
+            )
+            == col1
+        )
+
     @pytest.mark.describe("test of Collection rich conversions, sync")
     def test_rich_convert_collection_sync(
         self,
@@ -147,6 +161,14 @@ class TestCollectionsSync:
             callers=callers0,
         )
         assert col3 == col1
+
+        col1_a = col1.to_async(callers=callers1)
+        assert col1_a.to_sync() != col1
+        assert col1_a.to_sync(api_options=APIOptions(callers=callers0)) == col1
+        assert (
+            col1_a.to_sync(callers=callers0, api_options=APIOptions(callers=callers1))
+            == col1
+        )
 
     @pytest.mark.describe("test of Collection database property, sync")
     def test_collection_database_property_sync(
