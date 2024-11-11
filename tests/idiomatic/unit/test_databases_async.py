@@ -17,7 +17,7 @@ from __future__ import annotations
 import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase, DataAPIClient
-from astrapy.authentication import StaticTokenProvider, coerce_token_provider
+from astrapy.authentication import StaticTokenProvider
 from astrapy.constants import Environment
 from astrapy.exceptions import DevOpsAPIException
 from astrapy.settings.defaults import DEFAULT_ASTRA_DB_KEYSPACE
@@ -49,7 +49,7 @@ class TestDatabasesAsync:
         opts0 = defaultAPIOptions(environment=data_api_credentials_info["environment"])
         opts = opts0.with_override(
             APIOptions(
-                token=coerce_token_provider(data_api_credentials_kwargs["token"]),
+                token=data_api_credentials_kwargs["token"],
             )
         )
 
@@ -74,7 +74,7 @@ class TestDatabasesAsync:
         opts0 = defaultAPIOptions(environment=data_api_credentials_info["environment"])
         opts = opts0.with_override(
             APIOptions(
-                token=coerce_token_provider(data_api_credentials_kwargs["token"]),
+                token=data_api_credentials_kwargs["token"],
             )
         )
 
