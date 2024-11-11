@@ -573,7 +573,7 @@ class AstraDBAdmin:
             provider: a filter on the cloud provider for the databases.
                 As per DevOps API, defaults to "ALL". Pass e.g. "AWS" to
                 restrict the results.
-            page_size: number of results per page from the DevOps API. Optional.
+            page_size: number of results per page from the DevOps API.
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying API request(s).
             max_time_ms: an alias for `request_timeout_ms`.
@@ -696,7 +696,7 @@ class AstraDBAdmin:
             provider: a filter on the cloud provider for the databases.
                 As per DevOps API, defaults to "ALL". Pass e.g. "AWS" to
                 restrict the results.
-            page_size: number of results per page from the DevOps API. Optional.
+            page_size: number of results per page from the DevOps API.
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying API request(s).
             max_time_ms: an alias for `request_timeout_ms`.

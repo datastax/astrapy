@@ -33,7 +33,7 @@ from ..vectorize_models import live_test_models
 
 def enabled_vectorize_models(auth_type: str) -> list[Any]:
     """
-    This actually returns a List of `_pytest.mark.structures.ParameterSet` instances,
+    This actually returns a list of `_pytest.mark.structures.ParameterSet` instances,
     each wrapping a dict with the needed info to test the model
 
     The tested models can also be further restricted by:

@@ -2445,7 +2445,7 @@ class AsyncDatabase:
             an `AsyncCollection` instance, representing the newly-created collection.
 
         Example:
-            >>> async def create_and_insert(adb: AsyncDatabase) -> Dict[str, Any]:
+            >>> async def create_and_insert(adb: AsyncDatabase) -> dict[str, Any]:
             ...     new_a_col = await adb.create_collection("my_v_col", dimension=3)
             ...     return await new_a_col.insert_one(
             ...         {"name": "the_row", "$vector": [0.4, 0.5, 0.7]},

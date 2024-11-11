@@ -39,8 +39,8 @@ PRE_DROP_SAFETY_TIMEOUT = 120
 
 def admin_test_envs_tokens() -> list[Any]:
     """
-    This actually returns a List of `_pytest.mark.structures.ParameterSet` instances,
-    each wrapping a Tuple[str, Optional[str]] = (env, token)
+    This actually returns a list of `_pytest.mark.structures.ParameterSet` instances,
+    each wrapping a tuple[str, Optional[str]] = (env, token)
     """
     envs_tokens: list[Any] = []
     for admin_env in ADMIN_ENV_LIST:
