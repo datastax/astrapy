@@ -28,7 +28,6 @@ from astrapy.admin.endpoints import (
     database_id_matcher,
     parse_api_endpoint,
 )
-from astrapy.authentication import coerce_possible_token_provider
 from astrapy.constants import CallerType, Environment
 from astrapy.exceptions import (
     DevOpsAPIException,
@@ -150,7 +149,7 @@ def fetch_raw_database_info_from_id_token(
         .with_override(api_options)
         .with_override(
             APIOptions(
-                token=coerce_possible_token_provider(token),
+                token=token,
                 timeout_options=TimeoutOptions(
                     request_timeout_ms=request_timeout_ms or max_time_ms or _UNSET,
                 ),
@@ -231,7 +230,7 @@ async def async_fetch_raw_database_info_from_id_token(
         .with_override(api_options)
         .with_override(
             APIOptions(
-                token=coerce_possible_token_provider(token),
+                token=token,
                 timeout_options=TimeoutOptions(
                     request_timeout_ms=request_timeout_ms or max_time_ms or _UNSET,
                 ),
@@ -1589,7 +1588,7 @@ class AstraDBAdmin:
             )
             .with_override(
                 APIOptions(
-                    token=coerce_possible_token_provider(token),
+                    token=token,
                     timeout_options=TimeoutOptions(
                         request_timeout_ms=database_max_time_ms,
                     ),
@@ -2068,7 +2067,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         arg_api_options = APIOptions(
-            token=coerce_possible_token_provider(token),
+            token=token,
             callers=callers,
             environment=environment,
             data_api_url_options=DataAPIURLOptions(
@@ -3280,7 +3279,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> DataAPIDatabaseAdmin:
         arg_api_options = APIOptions(
-            token=coerce_possible_token_provider(token),
+            token=token,
             callers=callers,
             environment=environment,
             data_api_url_options=DataAPIURLOptions(
@@ -3732,7 +3731,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
             .with_override(
                 APIOptions(
-                    token=coerce_possible_token_provider(token),
+                    token=token,
                     timeout_options=TimeoutOptions(
                         request_timeout_ms=database_max_time_ms,
                     ),
