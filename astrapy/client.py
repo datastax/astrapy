@@ -112,9 +112,7 @@ class DataAPIClient:
         self.api_options = (
             defaultAPIOptions(_environment)
             .with_override(api_options)
-            .with_override(
-                arg_api_options,
-            )
+            .with_override(arg_api_options)
         )
 
     def __repr__(self) -> str:
@@ -195,6 +193,7 @@ class DataAPIClient:
         keyspace: str | None = None,
         api_path: str | None | UnsetType = _UNSET,
         api_version: str | None | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
         Get a Database object from this client, for doing data-related work.
@@ -215,6 +214,12 @@ class DataAPIClient:
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
+            api_options: a specification - complete or partial - of the
+                API Options to override the defaults.
+                This allows for a deeper configuration of the collection, e.g.
+                concerning timeouts; if this is passed together with
+                the equivalent named parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             a Database object with which to work on Data API collections.
@@ -247,7 +252,9 @@ class DataAPIClient:
                 api_version=api_version,
             ),
         )
-        api_options = self.api_options.with_override(arg_api_options)
+        api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
+        )
 
         if api_options.environment in Environment.astra_db_values:
             parsed_api_endpoint = parse_api_endpoint(api_endpoint)
@@ -287,6 +294,7 @@ class DataAPIClient:
         keyspace: str | None = None,
         api_path: str | None | UnsetType = _UNSET,
         api_version: str | None | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Get an AsyncDatabase object from this client, for doing data-related work.
@@ -307,6 +315,12 @@ class DataAPIClient:
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
+            api_options: a specification - complete or partial - of the
+                API Options to override the defaults.
+                This allows for a deeper configuration of the collection, e.g.
+                concerning timeouts; if this is passed together with
+                the equivalent named parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             an AsyncDatabase object with which to work on Data API collections.
@@ -336,6 +350,7 @@ class DataAPIClient:
             keyspace=keyspace,
             api_path=api_path,
             api_version=api_version,
+            api_options=api_options,
         ).to_async()
 
     def get_database_by_api_endpoint(
@@ -346,6 +361,7 @@ class DataAPIClient:
         keyspace: str | None = None,
         api_path: str | None | UnsetType = _UNSET,
         api_version: str | None | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
         Get a Database object from this client, for doing data-related work.
@@ -368,6 +384,12 @@ class DataAPIClient:
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
+            api_options: a specification - complete or partial - of the
+                API Options to override the defaults.
+                This allows for a deeper configuration of the collection, e.g.
+                concerning timeouts; if this is passed together with
+                the equivalent named parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             a Database object with which to work on Data API collections.
@@ -379,6 +401,7 @@ class DataAPIClient:
             keyspace=keyspace,
             api_path=api_path,
             api_version=api_version,
+            api_options=api_options,
         )
 
     def get_async_database_by_api_endpoint(
@@ -389,6 +412,7 @@ class DataAPIClient:
         keyspace: str | None = None,
         api_path: str | None | UnsetType = _UNSET,
         api_version: str | None | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Get an AsyncDatabase object from this client, for doing data-related work.
@@ -411,6 +435,12 @@ class DataAPIClient:
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
+            api_options: a specification - complete or partial - of the
+                API Options to override the defaults.
+                This allows for a deeper configuration of the collection, e.g.
+                concerning timeouts; if this is passed together with
+                the equivalent named parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             an AsyncDatabase object with which to work on Data API collections.
@@ -422,6 +452,7 @@ class DataAPIClient:
             keyspace=keyspace,
             api_path=api_path,
             api_version=api_version,
+            api_options=api_options,
         )
 
     def get_admin(
@@ -430,6 +461,7 @@ class DataAPIClient:
         token: str | TokenProvider | UnsetType = _UNSET,
         dev_ops_url: str | UnsetType = _UNSET,
         dev_ops_api_version: str | None | UnsetType = _UNSET,
+        api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBAdmin:
         """
         Get an AstraDBAdmin instance corresponding to this client, for
@@ -447,6 +479,12 @@ class DataAPIClient:
                 determined from the API Endpoint.
             dev_ops_api_version: this can specify a custom version of the DevOps API
                 (such as "v2"). Generally not needed.
+            api_options: a specification - complete or partial - of the
+                API Options to override the defaults.
+                This allows for a deeper configuration of the collection, e.g.
+                concerning timeouts; if this is passed together with
+                the equivalent named parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             An AstraDBAdmin instance, wich which to perform management at the
@@ -475,7 +513,9 @@ class DataAPIClient:
                 dev_ops_api_version=dev_ops_api_version,
             ),
         )
-        api_options = self.api_options.with_override(arg_api_options)
+        api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
+        )
 
         if api_options.environment not in Environment.astra_db_values:
             raise InvalidEnvironmentException(

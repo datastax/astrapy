@@ -85,7 +85,9 @@ class TestAdminConversions:
         db1 = dac1[a_e_string]
         opts0 = defaultAPIOptions(environment="dev").with_override(
             APIOptions(
-                token=coerce_possible_token_provider("t1"),
+                token=coerce_possible_token_provider(
+                    "t1"
+                ),  # TODO: remove this coercion
                 callers=callers0,
             )
         )
@@ -98,6 +100,30 @@ class TestAdminConversions:
         assert db1 == expected_db_1
         with pytest.raises(ValueError):
             dac1["abc"]
+
+        # equivalence between passing api_options and named parameters; option override
+        dac1_opt = DataAPIClient(
+            environment="dev",
+            api_options=APIOptions(
+                token=coerce_possible_token_provider(
+                    "t1"
+                ),  # TODO: remove this coercion
+                callers=callers0,
+            ),
+        )
+        dac1_opt_ovr = DataAPIClient(
+            "t1",
+            environment="dev",
+            callers=callers0,
+            api_options=APIOptions(
+                token=coerce_possible_token_provider(
+                    "t_another"
+                ),  # TODO: remove this coercion
+                callers=callers1,
+            ),
+        )
+        assert dac1 == dac1_opt
+        assert dac1 == dac1_opt_ovr
 
     @pytest.mark.describe("test of spawning databases from a DataAPIClient")
     def test_dataapiclient_spawning_databases(self) -> None:
@@ -113,6 +139,28 @@ class TestAdminConversions:
         db1 = client.get_database(endpoint)
         db2 = client.get_database(endpoint)
         assert db1 == db2
+
+        # api_options and override check
+        db2_param = client.get_database(endpoint, token="t1")
+        db2_opt = client.get_database(
+            endpoint,
+            api_options=APIOptions(
+                token=coerce_possible_token_provider(
+                    "t1"
+                ),  # TODO: remove this coercion
+            ),
+        )
+        db2_opt_override = client.get_database(
+            endpoint,
+            token="t1",
+            api_options=APIOptions(
+                token=coerce_possible_token_provider(
+                    "t_another"
+                ),  # TODO: remove this coercion
+            ),
+        )
+        assert db2_param == db2_opt
+        assert db2_param == db2_opt_override
 
     @pytest.mark.describe("test of AstraDBAdmin conversions and comparison functions")
     def test_astradbadmin_conversions(self) -> None:
@@ -298,6 +346,29 @@ class TestAdminConversions:
 
         assert client_t.get_admin(token=token_f) == client_f.get_admin()
         assert client_0.get_admin(token=token_f) == client_f.get_admin()
+
+    @pytest.mark.describe("test of client.get_admin option passing")
+    def test_client_get_admin_option_passing(self) -> None:
+        client_0 = DataAPIClient()
+        admin_opt = client_0.get_admin(
+            api_options=APIOptions(
+                token=coerce_possible_token_provider(
+                    "tx"
+                ),  # TODO: remove this coercion
+            ),
+        )
+        admin_param = client_0.get_admin(token="tx")
+        admin_opt_param = client_0.get_admin(
+            token="tx",
+            api_options=APIOptions(
+                token=coerce_possible_token_provider(
+                    "t_another"
+                ),  # TODO: remove this coercion
+            ),
+        )
+
+        assert admin_opt == admin_param
+        assert admin_opt == admin_opt_param
 
     @pytest.mark.describe("test of token inheritance in spawning from AstraDBAdmin")
     def test_astradbadmin_token_inheritance(self) -> None:
