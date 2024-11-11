@@ -23,7 +23,6 @@ from astrapy.admin.endpoints import (
     parse_api_endpoint,
     parse_generic_api_url,
 )
-from astrapy.authentication import coerce_possible_token_provider
 from astrapy.constants import CallerType, Environment
 from astrapy.exceptions import InvalidEnvironmentException
 from astrapy.utils.api_options import (
@@ -107,7 +106,7 @@ class DataAPIClient:
         arg_api_options = APIOptions(
             environment=_environment,
             callers=callers,
-            token=coerce_possible_token_provider(token),
+            token=token,
         )
         self.api_options = (
             defaultAPIOptions(_environment)
@@ -216,7 +215,7 @@ class DataAPIClient:
                 usage, this should be left to its default of "v1".
             api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
-                This allows for a deeper configuration of the collection, e.g.
+                This allows for a deeper configuration of the database, e.g.
                 concerning timeouts; if this is passed together with
                 the equivalent named parameters, the latter will take precedence
                 in their respective settings.
@@ -246,7 +245,7 @@ class DataAPIClient:
         from astrapy import Database
 
         arg_api_options = APIOptions(
-            token=coerce_possible_token_provider(token),
+            token=token,
             data_api_url_options=DataAPIURLOptions(
                 api_path=api_path,
                 api_version=api_version,
@@ -317,7 +316,7 @@ class DataAPIClient:
                 usage, this should be left to its default of "v1".
             api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
-                This allows for a deeper configuration of the collection, e.g.
+                This allows for a deeper configuration of the database, e.g.
                 concerning timeouts; if this is passed together with
                 the equivalent named parameters, the latter will take precedence
                 in their respective settings.
@@ -386,7 +385,7 @@ class DataAPIClient:
                 usage, this should be left to its default of "v1".
             api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
-                This allows for a deeper configuration of the collection, e.g.
+                This allows for a deeper configuration of the database, e.g.
                 concerning timeouts; if this is passed together with
                 the equivalent named parameters, the latter will take precedence
                 in their respective settings.
@@ -437,7 +436,7 @@ class DataAPIClient:
                 usage, this should be left to its default of "v1".
             api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
-                This allows for a deeper configuration of the collection, e.g.
+                This allows for a deeper configuration of the database, e.g.
                 concerning timeouts; if this is passed together with
                 the equivalent named parameters, the latter will take precedence
                 in their respective settings.
@@ -481,7 +480,7 @@ class DataAPIClient:
                 (such as "v2"). Generally not needed.
             api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
-                This allows for a deeper configuration of the collection, e.g.
+                This allows for a deeper configuration of the admin, e.g.
                 concerning timeouts; if this is passed together with
                 the equivalent named parameters, the latter will take precedence
                 in their respective settings.
@@ -507,7 +506,7 @@ class DataAPIClient:
         from astrapy.admin import AstraDBAdmin
 
         arg_api_options = APIOptions(
-            token=coerce_possible_token_provider(token),
+            token=token,
             dev_ops_api_url_options=DevOpsAPIURLOptions(
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,

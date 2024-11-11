@@ -22,6 +22,8 @@ from astrapy.authentication import (
     EmbeddingHeadersProvider,
     StaticTokenProvider,
     TokenProvider,
+    coerce_possible_embedding_headers_provider,
+    coerce_possible_token_provider,
 )
 from astrapy.constants import Environment
 from astrapy.settings.defaults import (
@@ -290,6 +292,36 @@ class APIOptions:
     data_api_url_options: DataAPIURLOptions | UnsetType = _UNSET
     dev_ops_api_url_options: DevOpsAPIURLOptions | UnsetType = _UNSET
 
+    def __init__(
+        self,
+        *,
+        environment: str | UnsetType = _UNSET,
+        callers: Sequence[tuple[str | None, str | None]] | UnsetType = _UNSET,
+        database_additional_headers: dict[str, str | None] | UnsetType = _UNSET,
+        admin_additional_headers: dict[str, str | None] | UnsetType = _UNSET,
+        redacted_header_names: set[str] | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
+        timeout_options: TimeoutOptions | UnsetType = _UNSET,
+        serdes_options: SerdesOptions | UnsetType = _UNSET,
+        data_api_url_options: DataAPIURLOptions | UnsetType = _UNSET,
+        dev_ops_api_url_options: DevOpsAPIURLOptions | UnsetType = _UNSET,
+    ) -> None:
+        # Special conversions and type coercions occur here
+        self.environment = environment
+        self.callers = callers
+        self.database_additional_headers = database_additional_headers
+        self.admin_additional_headers = admin_additional_headers
+        self.redacted_header_names = redacted_header_names
+        self.token = coerce_possible_token_provider(token)
+        self.embedding_api_key = coerce_possible_embedding_headers_provider(
+            embedding_api_key,
+        )
+        self.timeout_options = timeout_options
+        self.serdes_options = serdes_options
+        self.data_api_url_options = data_api_url_options
+        self.dev_ops_api_url_options = dev_ops_api_url_options
+
     def __repr__(self) -> str:
         # special items
         _admin_additional_headers: dict[str, str | None] | UnsetType
@@ -383,8 +415,8 @@ class FullAPIOptions(APIOptions):
         database_additional_headers: dict[str, str | None],
         admin_additional_headers: dict[str, str | None],
         redacted_header_names: set[str],
-        token: TokenProvider,
-        embedding_api_key: EmbeddingHeadersProvider,
+        token: str | TokenProvider,
+        embedding_api_key: str | EmbeddingHeadersProvider,
         timeout_options: FullTimeoutOptions,
         serdes_options: FullSerdesOptions,
         data_api_url_options: FullDataAPIURLOptions,

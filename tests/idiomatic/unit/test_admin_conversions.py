@@ -27,7 +27,6 @@ from astrapy import (
 from astrapy.authentication import (
     StaticTokenProvider,
     UsernamePasswordTokenProvider,
-    coerce_possible_token_provider,
 )
 from astrapy.constants import Environment
 from astrapy.utils.api_options import (
@@ -85,9 +84,7 @@ class TestAdminConversions:
         db1 = dac1[a_e_string]
         opts0 = defaultAPIOptions(environment="dev").with_override(
             APIOptions(
-                token=coerce_possible_token_provider(
-                    "t1"
-                ),  # TODO: remove this coercion
+                token="t1",
                 callers=callers0,
             )
         )
@@ -105,9 +102,7 @@ class TestAdminConversions:
         dac1_opt = DataAPIClient(
             environment="dev",
             api_options=APIOptions(
-                token=coerce_possible_token_provider(
-                    "t1"
-                ),  # TODO: remove this coercion
+                token="t1",
                 callers=callers0,
             ),
         )
@@ -116,9 +111,7 @@ class TestAdminConversions:
             environment="dev",
             callers=callers0,
             api_options=APIOptions(
-                token=coerce_possible_token_provider(
-                    "t_another"
-                ),  # TODO: remove this coercion
+                token="t_another",
                 callers=callers1,
             ),
         )
@@ -145,18 +138,14 @@ class TestAdminConversions:
         db2_opt = client.get_database(
             endpoint,
             api_options=APIOptions(
-                token=coerce_possible_token_provider(
-                    "t1"
-                ),  # TODO: remove this coercion
+                token="t1",
             ),
         )
         db2_opt_override = client.get_database(
             endpoint,
             token="t1",
             api_options=APIOptions(
-                token=coerce_possible_token_provider(
-                    "t_another"
-                ),  # TODO: remove this coercion
+                token="t_another",
             ),
         )
         assert db2_param == db2_opt
@@ -168,7 +157,7 @@ class TestAdminConversions:
         callers1 = [("x", "y")]
         opts0 = defaultAPIOptions(environment="dev").with_override(
             APIOptions(
-                token=coerce_possible_token_provider("t1"),
+                token="t1",
                 environment="dev",
                 callers=callers0,
                 dev_ops_api_url_options=DevOpsAPIURLOptions(
@@ -209,7 +198,7 @@ class TestAdminConversions:
         callers1 = [("x", "y")]
         opts0 = defaultAPIOptions(environment="dev").with_override(
             APIOptions(
-                token=coerce_possible_token_provider("t1"),
+                token="t1",
                 environment="dev",
                 callers=callers0,
                 dev_ops_api_url_options=DevOpsAPIURLOptions(
@@ -272,7 +261,7 @@ class TestAdminConversions:
         callers1 = [("x", "y")]
         opts0 = defaultAPIOptions(environment="hcd").with_override(
             APIOptions(
-                token=coerce_possible_token_provider("t1"),
+                token="t1",
                 environment="hcd",
                 callers=callers0,
                 data_api_url_options=DataAPIURLOptions(
@@ -352,18 +341,14 @@ class TestAdminConversions:
         client_0 = DataAPIClient()
         admin_opt = client_0.get_admin(
             api_options=APIOptions(
-                token=coerce_possible_token_provider(
-                    "tx"
-                ),  # TODO: remove this coercion
+                token="tx",
             ),
         )
         admin_param = client_0.get_admin(token="tx")
         admin_opt_param = client_0.get_admin(
             token="tx",
             api_options=APIOptions(
-                token=coerce_possible_token_provider(
-                    "t_another"
-                ),  # TODO: remove this coercion
+                token="t_another",
             ),
         )
 
@@ -489,6 +474,39 @@ class TestAdminConversions:
             a_database_0.get_database_admin(token=token_f)
             == a_database_f.get_database_admin()
         )
+
+    @pytest.mark.describe("test of option override in getting a DB admin from a DB")
+    def test_database_get_database_admin_options(self) -> None:
+        opts_0 = defaultAPIOptions(environment=Environment.TEST)
+        database_0 = Database(
+            api_endpoint=api_ep9999_test, keyspace="k", api_options=opts_0
+        )
+
+        db_admin_param = database_0.get_database_admin(token="tx")
+        db_admin_opt = database_0.get_database_admin(
+            admin_api_options=APIOptions(token="tx"),
+        )
+        db_admin_opt_param = database_0.get_database_admin(
+            token="tx",
+            admin_api_options=APIOptions(token="t_another"),
+        )
+        assert db_admin_param == db_admin_opt
+        assert db_admin_param == db_admin_opt_param
+
+        adatabase_0 = database_0.to_async()
+
+        adb_admin_param = adatabase_0.get_database_admin(token="tx")
+        adb_admin_opt = adatabase_0.get_database_admin(
+            admin_api_options=APIOptions(token="tx"),
+        )
+        adb_admin_opt_param = adatabase_0.get_database_admin(
+            token="tx",
+            admin_api_options=APIOptions(token="t_another"),
+        )
+        assert adb_admin_param == adb_admin_opt
+        assert adb_admin_param == adb_admin_opt_param
+
+        assert adb_admin_param == db_admin_param
 
     @pytest.mark.describe(
         "test of token inheritance in spawning from Database, non-Astra"

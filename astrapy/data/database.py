@@ -23,10 +23,6 @@ from astrapy.admin import (
     fetch_database_info,
     parse_api_endpoint,
 )
-from astrapy.authentication import (
-    coerce_possible_embedding_headers_provider,
-    coerce_possible_token_provider,
-)
 from astrapy.constants import (
     DOC,
     ROW,
@@ -289,7 +285,7 @@ class Database:
         api_version: str | None | UnsetType = _UNSET,
     ) -> Database:
         arg_api_options = APIOptions(
-            token=coerce_possible_token_provider(token),
+            token=token,
             callers=callers,
             environment=environment,
             data_api_url_options=DataAPIURLOptions(
@@ -383,7 +379,7 @@ class Database:
         """
 
         arg_api_options = APIOptions(
-            token=coerce_possible_token_provider(token),
+            token=token,
             callers=callers,
             environment=environment,
             data_api_url_options=DataAPIURLOptions(
@@ -656,9 +652,7 @@ class Database:
             )
             .with_override(
                 APIOptions(
-                    embedding_api_key=coerce_possible_embedding_headers_provider(
-                        embedding_api_key
-                    ),
+                    embedding_api_key=embedding_api_key,
                     timeout_options=TimeoutOptions(
                         request_timeout_ms=collection_request_timeout_ms,
                     ),
@@ -1124,9 +1118,7 @@ class Database:
             )
             .with_override(
                 APIOptions(
-                    embedding_api_key=coerce_possible_embedding_headers_provider(
-                        embedding_api_key
-                    ),
+                    embedding_api_key=embedding_api_key,
                     timeout_options=TimeoutOptions(
                         request_timeout_ms=table_request_timeout_ms,
                     ),
@@ -1645,6 +1637,7 @@ class Database:
         token: str | TokenProvider | UnsetType = _UNSET,
         dev_ops_url: str | UnsetType = _UNSET,
         dev_ops_api_version: str | None | UnsetType = _UNSET,
+        admin_api_options: APIOptions | UnsetType = _UNSET,
     ) -> DatabaseAdmin:
         """
         Return a DatabaseAdmin object corresponding to this database, for
@@ -1667,6 +1660,12 @@ class Database:
             dev_ops_api_version: this can specify a custom version of the DevOps API
                 (such as "v2"). Generally not needed.
                 Note that this parameter is allowed only for Astra DB environments.
+            admin_api_options: a specification - complete or partial - of the
+                API Options to override the defaults.
+                This allows for a deeper configuration of the database admin, e.g.
+                concerning timeouts; if this is passed together with
+                the equivalent named parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             A DatabaseAdmin instance targeting this database. More precisely,
@@ -1685,13 +1684,15 @@ class Database:
         from astrapy.admin.admin import AstraDBDatabaseAdmin, DataAPIDatabaseAdmin
 
         arg_api_options = APIOptions(
-            token=coerce_possible_token_provider(token),
+            token=token,
             dev_ops_api_url_options=DevOpsAPIURLOptions(
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
             ),
         )
-        api_options = self.api_options.with_override(arg_api_options)
+        api_options = self.api_options.with_override(admin_api_options).with_override(
+            arg_api_options
+        )
 
         if api_options.environment in Environment.astra_db_values:
             return AstraDBDatabaseAdmin(
@@ -1892,7 +1893,7 @@ class AsyncDatabase:
         api_version: str | None | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         arg_api_options = APIOptions(
-            token=coerce_possible_token_provider(token),
+            token=token,
             callers=callers,
             environment=environment,
             data_api_url_options=DataAPIURLOptions(
@@ -1987,7 +1988,7 @@ class AsyncDatabase:
         """
 
         arg_api_options = APIOptions(
-            token=coerce_possible_token_provider(token),
+            token=token,
             callers=callers,
             environment=environment,
             data_api_url_options=DataAPIURLOptions(
@@ -2263,9 +2264,7 @@ class AsyncDatabase:
             )
             .with_override(
                 APIOptions(
-                    embedding_api_key=coerce_possible_embedding_headers_provider(
-                        embedding_api_key
-                    ),
+                    embedding_api_key=embedding_api_key,
                     timeout_options=TimeoutOptions(
                         request_timeout_ms=collection_request_timeout_ms,
                     ),
@@ -2737,9 +2736,7 @@ class AsyncDatabase:
             )
             .with_override(
                 APIOptions(
-                    embedding_api_key=coerce_possible_embedding_headers_provider(
-                        embedding_api_key
-                    ),
+                    embedding_api_key=embedding_api_key,
                     timeout_options=TimeoutOptions(
                         request_timeout_ms=table_request_timeout_ms,
                     ),
@@ -3273,6 +3270,7 @@ class AsyncDatabase:
         token: str | TokenProvider | UnsetType = _UNSET,
         dev_ops_url: str | UnsetType = _UNSET,
         dev_ops_api_version: str | None | UnsetType = _UNSET,
+        admin_api_options: APIOptions | UnsetType = _UNSET,
     ) -> DatabaseAdmin:
         """
         Return a DatabaseAdmin object corresponding to this database, for
@@ -3295,6 +3293,12 @@ class AsyncDatabase:
             dev_ops_api_version: this can specify a custom version of the DevOps API
                 (such as "v2"). Generally not needed.
                 Note that this parameter is allowed only for Astra DB environments.
+            admin_api_options: a specification - complete or partial - of the
+                API Options to override the defaults.
+                This allows for a deeper configuration of the database admin, e.g.
+                concerning timeouts; if this is passed together with
+                the equivalent named parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             A DatabaseAdmin instance targeting this database. More precisely,
@@ -3313,13 +3317,15 @@ class AsyncDatabase:
         from astrapy.admin.admin import AstraDBDatabaseAdmin, DataAPIDatabaseAdmin
 
         arg_api_options = APIOptions(
-            token=coerce_possible_token_provider(token),
+            token=token,
             dev_ops_api_url_options=DevOpsAPIURLOptions(
                 dev_ops_url=dev_ops_url,
                 dev_ops_api_version=dev_ops_api_version,
             ),
         )
-        api_options = self.api_options.with_override(arg_api_options)
+        api_options = self.api_options.with_override(admin_api_options).with_override(
+            arg_api_options
+        )
 
         if api_options.environment in Environment.astra_db_values:
             return AstraDBDatabaseAdmin(
