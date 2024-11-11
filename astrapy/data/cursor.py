@@ -561,7 +561,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
     def __repr__(self) -> str:
         return (
-            f'{self.__class__.__name__}("{self.collection.name}", '
+            f'{self.__class__.__name__}("{self.data_source.name}", '
             f"{self._state.value}, "
             f"consumed so far: {self.consumed})"
         )
@@ -585,14 +585,14 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         return cast(T, self._mapper(traw0) if self._mapper is not None else traw0)
 
     @property
-    def collection(self) -> Collection[TRAW]:
+    def data_source(self) -> Collection[TRAW]:
         if self._query_engine.collection is None:
             raise ValueError("Query engine has no collection.")
         return self._query_engine.collection
 
     @property
     def keyspace(self) -> str:
-        return self.collection.keyspace
+        return self.data_source.keyspace
 
     def clone(self) -> CollectionFindCursor[TRAW, TRAW]:
         """TODO. A new rewound cursor. Also: strips away any mapping."""
@@ -852,7 +852,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
     def __repr__(self) -> str:
         return (
-            f'{self.__class__.__name__}("{self.collection.name}", '
+            f'{self.__class__.__name__}("{self.data_source.name}", '
             f"{self._state.value}, "
             f"consumed so far: {self.consumed})"
         )
@@ -878,14 +878,14 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         return cast(T, self._mapper(traw0) if self._mapper is not None else traw0)
 
     @property
-    def collection(self) -> AsyncCollection[TRAW]:
+    def data_source(self) -> AsyncCollection[TRAW]:
         if self._query_engine.async_collection is None:
             raise ValueError("Query engine has no async collection.")
         return self._query_engine.async_collection
 
     @property
     def keyspace(self) -> str:
-        return self.collection.keyspace
+        return self.data_source.keyspace
 
     def clone(self) -> AsyncCollectionFindCursor[TRAW, TRAW]:
         """TODO. A new rewound cursor. Also: strips away any mapping."""
@@ -1144,7 +1144,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
     def __repr__(self) -> str:
         return (
-            f'{self.__class__.__name__}("{self.table.name}", '
+            f'{self.__class__.__name__}("{self.data_source.name}", '
             f"{self._state.value}, "
             f"consumed so far: {self.consumed})"
         )
@@ -1168,14 +1168,14 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         return cast(T, self._mapper(traw0) if self._mapper is not None else traw0)
 
     @property
-    def table(self) -> Table[TRAW]:
+    def data_source(self) -> Table[TRAW]:
         if self._query_engine.table is None:
             raise ValueError("Query engine has no table.")
         return self._query_engine.table
 
     @property
     def keyspace(self) -> str:
-        return self.table.keyspace
+        return self.data_source.keyspace
 
     def clone(self) -> TableFindCursor[TRAW, TRAW]:
         """TODO. A new rewound cursor. Also: strips away any mapping."""
@@ -1433,7 +1433,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
     def __repr__(self) -> str:
         return (
-            f'{self.__class__.__name__}("{self.table.name}", '
+            f'{self.__class__.__name__}("{self.data_source.name}", '
             f"{self._state.value}, "
             f"consumed so far: {self.consumed})"
         )
@@ -1459,14 +1459,14 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         return cast(T, self._mapper(traw0) if self._mapper is not None else traw0)
 
     @property
-    def table(self) -> AsyncTable[TRAW]:
+    def data_source(self) -> AsyncTable[TRAW]:
         if self._query_engine.async_table is None:
             raise ValueError("Query engine has no async table.")
         return self._query_engine.async_table
 
     @property
     def keyspace(self) -> str:
-        return self.table.keyspace
+        return self.data_source.keyspace
 
     def clone(self) -> AsyncTableFindCursor[TRAW, TRAW]:
         """TODO. A new rewound cursor. Also: strips away any mapping."""

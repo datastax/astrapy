@@ -256,8 +256,8 @@ def test_dataapiresponseexception() -> None:
     assert the_daed.message == "Aaa"
     assert the_daed.attributes == {"field": "value"}
 
-    assert da_e1.text == "Aaa"
-    assert str(da_e1) == "Aaa"
+    assert da_e1.text == "Aaa (C)"
+    assert str(da_e1) == "Aaa (C)"
     assert da_e1.error_descriptors == [the_daed]
     assert da_e1.detailed_error_descriptors == [
         DataAPIDetailedErrorDescriptor(
@@ -271,7 +271,7 @@ def test_dataapiresponseexception() -> None:
 
 
 @pytest.mark.describe("test CollectionInsertManyException")
-def test_CollectionInsertManyException() -> None:
+def test_collection_insert_many_exception() -> None:
     im_result = CollectionInsertManyResult(
         raw_results=[{"a": 1}], inserted_ids=["a", "b"]
     )
@@ -284,7 +284,7 @@ def test_CollectionInsertManyException() -> None:
     the_daed = DataAPIErrorDescriptor({"errorCode": "C", "message": "Aaa"})
 
     assert im_e1.partial_result == im_result
-    assert im_e1.text == "Aaa"
+    assert im_e1.text == "Aaa (C)"
     assert im_e1.error_descriptors == [the_daed]
     assert im_e1.detailed_error_descriptors == [
         DataAPIDetailedErrorDescriptor(
@@ -296,7 +296,7 @@ def test_CollectionInsertManyException() -> None:
 
 
 @pytest.mark.describe("test CollectionDeleteManyException")
-def test_CollectionDeleteManyException() -> None:
+def test_collection_delete_many_exception() -> None:
     dm_result = CollectionDeleteResult(deleted_count=123, raw_results=[{"a": 1}])
     # mypy thinks dm_e1 is a DataAPIException for some reason...
     dm_e1: CollectionDeleteManyException = CollectionDeleteManyException.from_responses(  # type: ignore[assignment]
@@ -307,7 +307,7 @@ def test_CollectionDeleteManyException() -> None:
     the_daed = DataAPIErrorDescriptor({"errorCode": "C", "message": "Aaa"})
 
     assert dm_e1.partial_result == dm_result
-    assert dm_e1.text == "Aaa"
+    assert dm_e1.text == "Aaa (C)"
     assert dm_e1.error_descriptors == [the_daed]
     assert dm_e1.detailed_error_descriptors == [
         DataAPIDetailedErrorDescriptor(
