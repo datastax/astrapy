@@ -18,11 +18,12 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Generic, Iterable, Sequence
+from typing import TYPE_CHECKING, Any, Generic, Iterable, Sequence, TypeVar, overload
 
 from astrapy.constants import (
     ROW,
     CallerType,
+    DefaultRowType,
     FilterType,
     ProjectionType,
     SortType,
@@ -61,6 +62,8 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+NEW_ROW = TypeVar("NEW_ROW")
 
 
 class Table(Generic[ROW]):
@@ -534,13 +537,33 @@ class Table(Generic[ROW]):
             max_time_ms=max_time_ms,
         )
 
+    @overload
     def alter(
         self,
         operation: AlterTableOperation,
         *,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> None:
+    ) -> Table[DefaultRowType]: ...
+
+    @overload
+    def alter(
+        self,
+        operation: AlterTableOperation,
+        *,
+        row_type: type[NEW_ROW],
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> Table[NEW_ROW]: ...
+
+    def alter(
+        self,
+        operation: AlterTableOperation,
+        *,
+        row_type: type[Any] = DefaultRowType,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> Table[NEW_ROW]:
         """
         Executes one of the available alter-table operations on this table,
         such as adding/dropping columns.
@@ -550,6 +573,7 @@ class Table(Generic[ROW]):
 
         Args:
             operation: an instance of one of the `astrapy.info.AlterTable*` classes.
+            row_type: TODO
             schema_operation_timeout_ms: a timeout, in milliseconds, for the
                 schema-altering HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
@@ -590,6 +614,12 @@ class Table(Generic[ROW]):
                 raw_response=at_response,
             )
         logger.info(f"finished alterTable({at_operation_name})")
+        return Table(
+            database=self.database,
+            name=self.name,
+            keyspace=self.keyspace,
+            api_options=self.api_options,
+        )
 
     def insert_one(
         self,
@@ -1984,13 +2014,33 @@ class AsyncTable(Generic[ROW]):
             max_time_ms=max_time_ms,
         )
 
+    @overload
     async def alter(
         self,
         operation: AlterTableOperation,
         *,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
-    ) -> None:
+    ) -> AsyncTable[DefaultRowType]: ...
+
+    @overload
+    async def alter(
+        self,
+        operation: AlterTableOperation,
+        *,
+        row_type: type[NEW_ROW],
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> AsyncTable[NEW_ROW]: ...
+
+    async def alter(
+        self,
+        operation: AlterTableOperation,
+        *,
+        row_type: type[Any] = DefaultRowType,
+        schema_operation_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> AsyncTable[NEW_ROW]:
         """
         Executes one of the available alter-table operations on this table,
         such as adding/dropping columns.
@@ -2000,6 +2050,7 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             operation: an instance of one of the `astrapy.info.AlterTable*` classes.
+            row_type: TODO
             schema_operation_timeout_ms: a timeout, in milliseconds, for the
                 schema-altering HTTP request.
             max_time_ms: an alias for `schema_operation_timeout_ms`.
@@ -2040,6 +2091,12 @@ class AsyncTable(Generic[ROW]):
                 raw_response=at_response,
             )
         logger.info(f"finished alterTable({at_operation_name})")
+        return AsyncTable(
+            database=self.database,
+            name=self.name,
+            keyspace=self.keyspace,
+            api_options=self.api_options,
+        )
 
     async def insert_one(
         self,

@@ -19,6 +19,7 @@ from typing import Iterable, TypedDict
 import pytest
 
 from astrapy import AsyncDatabase, AsyncTable, Database, Table
+from astrapy.info import AlterTableAddColumns, AlterTableDropColumns
 
 from ..conftest import DefaultAsyncTable, DefaultTable
 
@@ -26,6 +27,12 @@ from ..conftest import DefaultAsyncTable, DefaultTable
 class TestDoc(TypedDict):
     p_bigint: int
     p_ascii: str
+
+
+class AlteredTestDoc(TypedDict):
+    p_bigint: int
+    p_ascii: str
+    added: int
 
 
 TYPING_TABLE_NAME = "test_typing_table"
@@ -43,6 +50,9 @@ TYPING_TABLE_DEFINITION = {
 ROW = {"p_ascii": "abc", "p_bigint": 10000, "p_float": 0.123}
 TYPED_ROW: TestDoc = {"p_ascii": "abc", "p_bigint": 10000}
 FIND_FILTER = {"p_ascii": "abc", "p_bigint": 10000}
+
+ALTER_ADD_COLUMN = AlterTableAddColumns.coerce({"columns": {"added": "int"}})
+ALTER_DROP_COLUMN = AlterTableDropColumns.coerce({"columns": ["added"]})
 
 
 @pytest.fixture(scope="module")
@@ -65,8 +75,8 @@ def async_typing_test_table(
 
 
 class TestTableTyping:
-    @pytest.mark.describe("test of typing create_table, sync")
-    def test_create_table_typing_sync(
+    @pytest.mark.describe("test of typing create_table and alter_table, sync")
+    def test_create_alter_table_typing_sync(
         self,
         sync_database: Database,
         sync_typing_test_table: DefaultTable,
@@ -94,6 +104,16 @@ class TestTableTyping:
         with pytest.raises(KeyError):
             cu_y = cu_doc["c"]  # noqa: F841
 
+        # untyped, check using alter table's return value
+        altered_c_tb_untyped = c_tb_untyped.alter(ALTER_ADD_COLUMN)
+        altered_cu_doc = altered_c_tb_untyped.find_one(FIND_FILTER)
+        assert altered_cu_doc is not None
+        alt_cu_a: str
+        alt_cu_b: int
+        alt_cu_a = altered_cu_doc["added"]  # noqa: F841
+        alt_cu_b = altered_cu_doc["added"]  # noqa: F841
+        altered_c_tb_untyped.alter(ALTER_DROP_COLUMN)
+
         # Typed
         c_tb_typed: Table[TestDoc] = sync_database.create_table(
             TYPING_TABLE_NAME,
@@ -115,6 +135,16 @@ class TestTableTyping:
         ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
             ct_y = ct_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
+        # typed, check using alter table's return value
+        altered_c_tb_typed = c_tb_typed.alter(ALTER_ADD_COLUMN, row_type=AlteredTestDoc)
+        altered_ct_doc = altered_c_tb_typed.find_one(FIND_FILTER)
+        assert altered_ct_doc is not None
+        alt_ct_a: str
+        alt_ct_b: int
+        alt_ct_a = altered_ct_doc["added"]  # type: ignore[assignment] # noqa: F841
+        alt_ct_b = altered_ct_doc["added"]  # noqa: F841
+        altered_c_tb_typed.alter(ALTER_DROP_COLUMN)
 
     @pytest.mark.describe("test of typing get_table, sync")
     def test_get_table_typing_sync(
@@ -189,6 +219,16 @@ class TestTableTyping:
         with pytest.raises(KeyError):
             cu_y = cu_doc["c"]  # noqa: F841
 
+        # untyped, check using alter table's return value
+        altered_ac_tb_untyped = await ac_tb_untyped.alter(ALTER_ADD_COLUMN)
+        altered_cu_doc = await altered_ac_tb_untyped.find_one(FIND_FILTER)
+        assert altered_cu_doc is not None
+        alt_cu_a: str
+        alt_cu_b: int
+        alt_cu_a = altered_cu_doc["added"]  # noqa: F841
+        alt_cu_b = altered_cu_doc["added"]  # noqa: F841
+        await altered_ac_tb_untyped.alter(ALTER_DROP_COLUMN)
+
         # Typed
         ac_tb_typed: AsyncTable[TestDoc] = await async_database.create_table(
             TYPING_TABLE_NAME,
@@ -210,6 +250,18 @@ class TestTableTyping:
         ct_x = ct_doc["p_ascii"]  # type: ignore[assignment]  # noqa: F841
         with pytest.raises(KeyError):
             ct_y = ct_doc["c"]  # type: ignore[typeddict-item]  # noqa: F841
+
+        # typed, check using alter table's return value
+        altered_ac_tb_typed = await ac_tb_typed.alter(
+            ALTER_ADD_COLUMN, row_type=AlteredTestDoc
+        )
+        altered_ct_doc = await altered_ac_tb_typed.find_one(FIND_FILTER)
+        assert altered_ct_doc is not None
+        alt_ct_a: str
+        alt_ct_b: int
+        alt_ct_a = altered_ct_doc["added"]  # type: ignore[assignment] # noqa: F841
+        alt_ct_b = altered_ct_doc["added"]  # noqa: F841
+        await altered_ac_tb_typed.alter(ALTER_DROP_COLUMN)
 
     @pytest.mark.describe("test of typing get_table, async")
     async def test_get_table_typing_async(

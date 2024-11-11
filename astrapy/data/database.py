@@ -586,9 +586,7 @@ class Database:
         self,
         name: str,
         *,
-        document_type: type[
-            Any
-        ] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
+        document_type: type[Any] = DefaultDocumentType,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
@@ -734,9 +732,7 @@ class Database:
         self,
         name: str,
         *,
-        document_type: type[
-            Any
-        ] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
+        document_type: type[Any] = DefaultDocumentType,
         keyspace: str | None = None,
         dimension: int | None = None,
         metric: str | None = None,
@@ -1061,7 +1057,7 @@ class Database:
         self,
         name: str,
         *,
-        row_type: type[Any] = DefaultRowType,  # type[ROW] | type[DefaultRowType]
+        row_type: type[Any] = DefaultRowType,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -1193,7 +1189,7 @@ class Database:
         name: str,
         *,
         definition: TableDefinition | dict[str, Any],
-        row_type: type[Any] = DefaultRowType,  # type[ROW] | type[DefaultRowType]
+        row_type: type[Any] = DefaultRowType,
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         schema_operation_timeout_ms: int | None = None,
@@ -2211,9 +2207,7 @@ class AsyncDatabase:
         self,
         name: str,
         *,
-        document_type: type[
-            Any
-        ] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
+        document_type: type[Any] = DefaultDocumentType,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
@@ -2362,9 +2356,7 @@ class AsyncDatabase:
         self,
         name: str,
         *,
-        document_type: type[
-            Any
-        ] = DefaultDocumentType,  # type[DOC] | type[DefaultDocumentType]
+        document_type: type[Any] = DefaultDocumentType,
         keyspace: str | None = None,
         dimension: int | None = None,
         metric: str | None = None,
@@ -2695,7 +2687,7 @@ class AsyncDatabase:
         self,
         name: str,
         *,
-        row_type: type[Any] = DefaultRowType,  # type[ROW] | type[DefaultRowType]
+        row_type: type[Any] = DefaultRowType,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -2827,7 +2819,7 @@ class AsyncDatabase:
         name: str,
         *,
         definition: TableDefinition | dict[str, Any],
-        row_type: type[Any] = DefaultRowType,  # type[ROW] | type[DefaultRowType]
+        row_type: type[Any] = DefaultRowType,
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         schema_operation_timeout_ms: int | None = None,
