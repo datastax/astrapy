@@ -19,7 +19,7 @@ from typing import Any
 
 import pytest
 
-from astrapy.constants import DefaultDocumentType, ReturnDocument, SortDocuments
+from astrapy.constants import DefaultDocumentType, ReturnDocument, SortMode
 from astrapy.cursors import AsyncCollectionFindCursor
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
@@ -352,7 +352,7 @@ class TestDMLAsync:
         await async_empty_collection.insert_many([{"seq": i} for i in range(30)])
         Nski = 1
         Nlim = 28
-        Nsor = {"seq": SortDocuments.DESCENDING}
+        Nsor = {"seq": SortMode.DESCENDING}
         Nfil = {"seq": {"$exists": True}}
 
         # case 0000 of find-pattern matrix

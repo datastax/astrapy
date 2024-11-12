@@ -387,7 +387,7 @@ from astrapy.constants import (
     DefaultIdType,
     Environment,
     ReturnDocument,
-    SortDocuments,
+    SortMode,
     VectorMetric,
 )
 ```

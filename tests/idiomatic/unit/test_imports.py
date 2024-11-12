@@ -79,7 +79,7 @@ def test_imports() -> None:
         DefaultIdType,
         Environment,
         ReturnDocument,
-        SortDocuments,
+        SortMode,
         VectorMetric,
     )
     from astrapy.cursors import (  # noqa: F401

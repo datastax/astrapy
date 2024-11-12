@@ -24,7 +24,7 @@ import pytest
 
 from astrapy import AsyncDatabase, AsyncTable, DataAPIClient, Database, Table
 from astrapy.api_options import APIOptions
-from astrapy.constants import SortDocuments
+from astrapy.constants import SortMode
 from astrapy.data_types import DataAPIMap, DataAPISet, DataAPITimestamp
 from astrapy.info import (
     TableDefinition,
@@ -91,8 +91,8 @@ TEST_ALL_RETURNS_TABLE_DEFINITION = TableDefinition(
     primary_key=TablePrimaryKeyDescriptor(
         partition_by=["p_ascii", "p_bigint"],
         partition_sort={
-            "p_int": SortDocuments.ASCENDING,
-            "p_boolean": SortDocuments.DESCENDING,
+            "p_int": SortMode.ASCENDING,
+            "p_boolean": SortMode.DESCENDING,
         },
     ),
 )
@@ -194,6 +194,25 @@ TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION = TableVectorIndexDefinition(
     ),
 )
 
+
+TEST_COMPOSITE_TABLE_NAME = "test_table_composite"
+TEST_COMPOSITE_TABLE_DEFINITION = TableDefinition(
+    columns={
+        "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
+        "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
+        "p_vector": TableVectorColumnTypeDescriptor(
+            column_type="vector",
+            dimension=3,
+            service=None,
+        ),
+    },
+    primary_key=TablePrimaryKeyDescriptor(
+        partition_by=["p_text"],
+        partition_sort={"p_int": SortMode.ASCENDING},
+    ),
+)
+TEST_COMPOSITE_TABLE_VECTOR_INDEX_NAME = TEST_SIMPLE_TABLE_VECTOR_INDEX_NAME
+TEST_COMPOSITE_TABLE_VECTOR_INDEX_DEFINITION = TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION
 
 S_DOCS = [
     {"p_text": "A1", "p_int": 1, "p_vector": [1.1, 1.1, 1.1]},
@@ -344,6 +363,50 @@ def async_empty_table_simple(
 ) -> Iterable[DefaultAsyncTable]:
     """Emptied for each test function"""
     yield sync_empty_table_simple.to_async()
+
+
+@pytest.fixture(scope="session")
+def sync_table_composite(
+    data_api_credentials_kwargs: DataAPICredentials,
+    sync_database: Database,
+) -> Iterable[DefaultTable]:
+    """An actual table on DB, in the main keyspace"""
+    table = sync_database.create_table(
+        TEST_COMPOSITE_TABLE_NAME,
+        definition=TEST_COMPOSITE_TABLE_DEFINITION,
+    )
+    table.create_vector_index(
+        TEST_COMPOSITE_TABLE_VECTOR_INDEX_NAME,
+        definition=TEST_COMPOSITE_TABLE_VECTOR_INDEX_DEFINITION,
+    )
+    yield table
+
+    sync_database.drop_table(TEST_COMPOSITE_TABLE_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_table_composite(
+    sync_table_composite: DefaultTable,
+) -> Iterable[DefaultTable]:
+    """Emptied for each test function"""
+    sync_table_composite.delete_many({})
+    yield sync_table_composite
+
+
+@pytest.fixture(scope="function")
+def async_table_composite(
+    sync_table_composite: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """An actual table on DB, the same as the sync counterpart"""
+    yield sync_table_composite.to_async()
+
+
+@pytest.fixture(scope="function")
+def async_empty_table_composite(
+    sync_empty_table_composite: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """Emptied for each test function"""
+    yield sync_empty_table_composite.to_async()
 
 
 __all__ = [

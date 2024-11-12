@@ -66,10 +66,10 @@ class ReturnDocument:
     AFTER = "after"
 
 
-class SortDocuments:
+class SortMode:
     """
     Admitted values for the `sort` parameter in the find collection methods,
-    e.g. `sort={"field": SortDocuments.ASCENDING}`.
+    e.g. `sort={"field": SortMode.ASCENDING}`.
     """
 
     def __init__(self) -> None:
@@ -77,6 +77,9 @@ class SortDocuments:
 
     ASCENDING = 1
     DESCENDING = -1
+
+
+SortDocuments = SortMode
 
 
 class VectorMetric:
@@ -134,7 +137,7 @@ __all__ = [
     "DefaultIdType",
     "Environment",
     "ReturnDocument",
-    "SortDocuments",
+    "SortMode",
     "VectorMetric",
 ]
 

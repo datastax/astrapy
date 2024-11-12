@@ -422,3 +422,34 @@ class TestTableDMLSync:
 
         assert cur1_v0_inpv.get_sort_vector() == [1, 2, 3]
         assert cur1_v1_inpv.get_sort_vector() == DataAPIVector([1, 2, 3])
+
+    @pytest.mark.describe("test of table find, sync")
+    def test_table_find_sync(
+        self,
+        sync_empty_table_composite: DefaultTable,
+    ) -> None:
+        # TODO do more than just pagination (distinct, maps etc)
+        sync_empty_table_composite.insert_many(
+            [
+                {"p_text": "pA", "p_int": i, "p_vector": DataAPIVector([i, 5, 6])}
+                for i in range(50)
+            ]
+        )
+        sync_empty_table_composite.insert_many(
+            [
+                {"p_text": "pB", "p_int": i, "p_vector": DataAPIVector([i, 6, 5])}
+                for i in range(50)
+            ]
+        )
+
+        rows_a = sync_empty_table_composite.find({"p_text": "pA"}).to_list()
+        assert len(rows_a) == 50
+        assert all(row["p_text"] == "pA" for row in rows_a)
+
+        rows_all = sync_empty_table_composite.find({}).to_list()
+        assert len(rows_all) == 100
+
+        rows_all_2 = sync_empty_table_composite.find(
+            {"$or": [{"p_text": "pA"}, {"p_text": "pB"}]}
+        ).to_list()
+        assert len(rows_all_2) == 100

@@ -1016,7 +1016,7 @@ class Collection(Generic[DOC]):
             >>> cursor1 = my_coll.find(
             ...     {},
             ...     limit=4,
-            ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
+            ...     sort={"seq": astrapy.constants.SortMode.DESCENDING},
             ... )
             >>> [doc["_id"] for doc in cursor1]
             ['97e85f81-...', '1581efe4-...', '...', '...']
@@ -1059,15 +1059,15 @@ class Collection(Generic[DOC]):
             When no particular order is required:
                 sort={}  # (default when parameter not provided)
             When sorting by a certain value in ascending/descending order:
-                sort={"field": SortDocuments.ASCENDING}
-                sort={"field": SortDocuments.DESCENDING}
+                sort={"field": SortMode.ASCENDING}
+                sort={"field": SortMode.DESCENDING}
             When sorting first by "field" and then by "subfield"
             (while modern Python versions preserve the order of dictionaries,
             it is suggested for clarity to employ a `collections.OrderedDict`
             in these cases):
                 sort={
-                    "field": SortDocuments.ASCENDING,
-                    "subfield": SortDocuments.ASCENDING,
+                    "field": SortMode.ASCENDING,
+                    "subfield": SortMode.ASCENDING,
                 }
             When running a vector similarity (ANN) search:
                 sort={"$vector": [0.4, 0.15, -0.5]}
@@ -1187,7 +1187,7 @@ class Collection(Generic[DOC]):
             {'_id': '68d1e515-...'}
             >>> my_coll.find_one(
             ...     {},
-            ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
+            ...     sort={"seq": astrapy.constants.SortMode.DESCENDING},
             ... )
             {'_id': '97e85f81-...', 'seq': 69}
             >>> my_coll.find_one({}, sort={"$vector": [1, 0]}, projection={"*": True})
@@ -2250,7 +2250,7 @@ class Collection(Generic[DOC]):
             [0, 2]
             >>> my_coll.delete_one(
             ...     {"seq": {"$exists": True}},
-            ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
+            ...     sort={"seq": astrapy.constants.SortMode.DESCENDING},
             ... )
             CollectionDeleteResult(raw_results=..., deleted_count=1)
             >>> my_coll.distinct("seq")
@@ -3420,7 +3420,7 @@ class AsyncCollection(Generic[DOC]):
             ...             async_cursor1 = acol.find(
             ...                 {},
             ...                 limit=4,
-            ...                 sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
+            ...                 sort={"seq": astrapy.constants.SortMode.DESCENDING},
             ...             )
             ...             ids = [doc["_id"] async for doc in async_cursor1]
             ...             print("find results 2:", ids)
@@ -3477,15 +3477,15 @@ class AsyncCollection(Generic[DOC]):
             When no particular order is required:
                 sort={}
             When sorting by a certain value in ascending/descending order:
-                sort={"field": SortDocuments.ASCENDING}
-                sort={"field": SortDocuments.DESCENDING}
+                sort={"field": SortMode.ASCENDING}
+                sort={"field": SortMode.DESCENDING}
             When sorting first by "field" and then by "subfield"
             (while modern Python versions preserve the order of dictionaries,
             it is suggested for clarity to employ a `collections.OrderedDict`
             in these cases):
                 sort={
-                    "field": SortDocuments.ASCENDING,
-                    "subfield": SortDocuments.ASCENDING,
+                    "field": SortMode.ASCENDING,
+                    "subfield": SortMode.ASCENDING,
                 }
             When running a vector similarity (ANN) search:
                 sort={"$vector": [0.4, 0.15, -0.5]}
@@ -3607,7 +3607,7 @@ class AsyncCollection(Generic[DOC]):
             ...     print("result3", result3)
             ...     result4 = await acol.find_one(
             ...         {},
-            ...         sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
+            ...         sort={"seq": astrapy.constants.SortMode.DESCENDING},
             ...     )
             ...     print("result4", result4)
             ...
@@ -4761,7 +4761,7 @@ class AsyncCollection(Generic[DOC]):
             [0, 2]
             >>> my_coll.delete_one(
             ...     {"seq": {"$exists": True}},
-            ...     sort={"seq": astrapy.constants.SortDocuments.DESCENDING},
+            ...     sort={"seq": astrapy.constants.SortMode.DESCENDING},
             ... )
             CollectionDeleteResult(raw_results=..., deleted_count=1)
             >>> my_coll.distinct("seq")

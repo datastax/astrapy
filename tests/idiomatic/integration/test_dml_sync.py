@@ -19,7 +19,7 @@ from typing import Any
 
 import pytest
 
-from astrapy.constants import DefaultDocumentType, ReturnDocument, SortDocuments
+from astrapy.constants import DefaultDocumentType, ReturnDocument, SortMode
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
 from astrapy.ids import UUID, ObjectId
@@ -286,7 +286,7 @@ class TestDMLSync:
         sync_empty_collection.insert_many([{"seq": i} for i in range(30)])
         Nski = 1
         Nlim = 28
-        Nsor = {"seq": SortDocuments.DESCENDING}
+        Nsor = {"seq": SortMode.DESCENDING}
         Nfil = {"seq": {"$exists": True}}
 
         # case 0000 of find-pattern matrix
@@ -715,7 +715,7 @@ class TestDMLSync:
                 sync_empty_collection.find(
                     {},
                     projection=["tag"],
-                    sort={"$vector": q_vector, "tag": SortDocuments.DESCENDING},
+                    sort={"$vector": q_vector, "tag": SortMode.DESCENDING},
                     limit=3,
                 )
             )
