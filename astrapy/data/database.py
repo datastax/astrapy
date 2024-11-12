@@ -71,6 +71,7 @@ logger = logging.getLogger(__name__)
 def _normalize_create_collection_options(
     dimension: int | None,
     metric: str | None,
+    source_model: str | None,
     service: VectorServiceOptions | dict[str, Any] | None,
     indexing: dict[str, Any] | None,
     default_id_type: str | None,
@@ -87,6 +88,12 @@ def _normalize_create_collection_options(
             "Cannot specify `metric` for non-vector collections in the "
             "create_collection method."
         )
+    if not is_vector and source_model is not None:
+        raise ValueError(
+            "Cannot specify `source_model` for non-vector collections in the "
+            "create_collection method."
+        )
+
     # prepare the payload
     service_dict: dict[str, Any] | None
     if service is not None:
@@ -98,6 +105,7 @@ def _normalize_create_collection_options(
         for k, v in {
             "dimension": dimension,
             "metric": metric,
+            "sourceModel": source_model,
             "service": service_dict,
         }.items()
         if v is not None
@@ -736,6 +744,7 @@ class Database:
         keyspace: str | None = None,
         dimension: int | None = None,
         metric: str | None = None,
+        source_model: str | None = None,
         service: VectorServiceOptions | dict[str, Any] | None = None,
         indexing: dict[str, Any] | None = None,
         default_id_type: str | None = None,
@@ -765,6 +774,9 @@ class Database:
             metric: the similarity metric used for vector searches.
                 Allowed values are `VectorMetric.DOT_PRODUCT`, `VectorMetric.EUCLIDEAN`
                 or `VectorMetric.COSINE` (default).
+            source_model: a specification of the embedding model the embeddings
+                come from, which the index uses internally to optimize
+                its internal settings. Defaults to "other".
             service: a dictionary describing a service for
                 embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
                 Alternatively, a VectorServiceOptions object to the same effect.
@@ -829,6 +841,7 @@ class Database:
         cc_options = _normalize_create_collection_options(
             dimension=dimension,
             metric=metric,
+            source_model=source_model,
             service=service,
             indexing=indexing,
             default_id_type=default_id_type,
@@ -2360,6 +2373,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         dimension: int | None = None,
         metric: str | None = None,
+        source_model: str | None = None,
         service: VectorServiceOptions | dict[str, Any] | None = None,
         indexing: dict[str, Any] | None = None,
         default_id_type: str | None = None,
@@ -2389,6 +2403,9 @@ class AsyncDatabase:
             metric: the similarity metric used for vector searches.
                 Allowed values are `VectorMetric.DOT_PRODUCT`, `VectorMetric.EUCLIDEAN`
                 or `VectorMetric.COSINE` (default).
+            source_model: a specification of the embedding model the embeddings
+                come from, which the index uses internally to optimize
+                its internal settings. Defaults to "other".
             service: a dictionary describing a service for
                 embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
                 Alternatively, a VectorServiceOptions object to the same effect.
@@ -2457,6 +2474,7 @@ class AsyncDatabase:
         cc_options = _normalize_create_collection_options(
             dimension=dimension,
             metric=metric,
+            source_model=source_model,
             service=service,
             indexing=indexing,
             default_id_type=default_id_type,

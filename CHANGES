@@ -1,5 +1,6 @@
 v 2.0.0
 =======
+Add `source_model` parameter to create_collection methods
 All the client/admin/database/table/collection classes have api_options parameter in their with_options/to_[a]sync method
 Payloads are not encoded to ASCII anymore for HTTP requests.
 Renamed collection-specific exceptions:

@@ -81,12 +81,16 @@ class CollectionVectorOptions:
         dimension: an optional positive integer, the dimensionality of the vector space.
         metric: an optional metric among `VectorMetric.DOT_PRODUCT`,
             `VectorMetric.EUCLIDEAN` and `VectorMetric.COSINE`.
+        source_model: a specification of the embedding model the embeddings come from,
+            which the index uses internally to optimize its internal settings.
+            Defaults to "other".
         service: an optional VectorServiceOptions object in case a
             service is configured for the collection.
     """
 
     dimension: int | None
     metric: str | None
+    source_model: str | None
     service: VectorServiceOptions | None
 
     def as_dict(self) -> dict[str, Any]:
@@ -98,6 +102,7 @@ class CollectionVectorOptions:
                 "dimension": self.dimension,
                 "metric": self.metric,
                 "service": None if self.service is None else self.service.as_dict(),
+                "sourceModel": None if self.source_model is None else self.source_model,
             }.items()
             if v is not None
         }
@@ -113,6 +118,7 @@ class CollectionVectorOptions:
             return CollectionVectorOptions(
                 dimension=raw_dict.get("dimension"),
                 metric=raw_dict.get("metric"),
+                source_model=raw_dict.get("sourceModel"),
                 service=VectorServiceOptions.from_dict(raw_dict.get("service")),
             )
         else:
