@@ -333,6 +333,8 @@ class _CollectionQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
 class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
     table: Table[TRAW] | None
     async_table: AsyncTable[TRAW] | None
+    include_similarity: bool | None
+    include_sort_vector: bool | None
     f_r_subpayload: dict[str, Any]
     f_options0: dict[str, Any]
 
@@ -351,6 +353,8 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
     ) -> None:
         self.table = table
         self.async_table = async_table
+        self.include_similarity = include_similarity
+        self.include_sort_vector = include_sort_vector
         self.f_r_subpayload = {
             k: v
             for k, v in {
@@ -414,6 +418,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         p_documents = self.table._converter_agent.postprocess_rows(
             f_response["data"]["documents"],
             columns_dict=f_response["status"]["projectionSchema"],
+            similarity_pseudocolumn="$similarity" if self.include_similarity else None,
         )
         n_p_state = f_response["data"]["nextPageState"]
         p_r_status = f_response.get("status")
@@ -462,6 +467,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
         p_documents = self.async_table._converter_agent.postprocess_rows(
             f_response["data"]["documents"],
             columns_dict=f_response["status"]["projectionSchema"],
+            similarity_pseudocolumn="$similarity" if self.include_similarity else None,
         )
         n_p_state = f_response["data"]["nextPageState"]
         p_r_status = f_response.get("status")

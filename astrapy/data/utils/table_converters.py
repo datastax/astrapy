@@ -426,11 +426,17 @@ def _create_column_tpostprocessor(
 def create_row_tpostprocessor(
     columns: dict[str, TableColumnTypeDescriptor],
     options: FullSerdesOptions,
+    similarity_pseudocolumn: str | None,
 ) -> Callable[[dict[str, Any]], dict[str, Any]]:
     tpostprocessor_map = {
         col_name: _create_column_tpostprocessor(col_definition, options=options)
         for col_name, col_definition in columns.items()
     }
+    if similarity_pseudocolumn is not None:
+        # whatever in the passed schema, requiring similarity overrides that 'column':
+        tpostprocessor_map[similarity_pseudocolumn] = _create_scalar_tpostprocessor(
+            column_type=TableScalarColumnType.FLOAT, options=options
+        )
     column_name_set = set(tpostprocessor_map.keys())
 
     def _tpostprocessor(raw_dict: dict[str, Any]) -> dict[str, Any]:
@@ -623,7 +629,9 @@ class _DecimalCleaner(json.JSONEncoder):
 
 class _TableConverterAgent(Generic[ROW]):
     options: FullSerdesOptions
-    row_postprocessors: dict[str, Callable[[dict[str, Any]], dict[str, Any]]]
+    row_postprocessors: dict[
+        tuple[str, str | None], Callable[[dict[str, Any]], dict[str, Any]]
+    ]
     key_postprocessors: dict[str, Callable[[list[Any]], dict[str, Any]]]
 
     def __init__(self, *, options: FullSerdesOptions) -> None:
@@ -658,19 +666,22 @@ class _TableConverterAgent(Generic[ROW]):
         return self.key_postprocessors[schema_hash]
 
     def _get_row_postprocessor(
-        self, columns_dict: dict[str, Any]
+        self,
+        columns_dict: dict[str, Any],
+        similarity_pseudocolumn: str | None,
     ) -> Callable[[dict[str, Any]], dict[str, Any]]:
-        schema_hash = self._hash_dict(columns_dict)
-        if schema_hash not in self.row_postprocessors:
+        schema_cache_key = (self._hash_dict(columns_dict), similarity_pseudocolumn)
+        if schema_cache_key not in self.row_postprocessors:
             columns: dict[str, TableColumnTypeDescriptor] = {
                 col_name: TableColumnTypeDescriptor.coerce(col_dict)
                 for col_name, col_dict in columns_dict.items()
             }
-            self.row_postprocessors[schema_hash] = create_row_tpostprocessor(
+            self.row_postprocessors[schema_cache_key] = create_row_tpostprocessor(
                 columns=columns,
                 options=self.options,
+                similarity_pseudocolumn=similarity_pseudocolumn,
             )
-        return self.row_postprocessors[schema_hash]
+        return self.row_postprocessors[schema_cache_key]
 
     def preprocess_payload(
         self, payload: dict[str, Any] | None
@@ -708,21 +719,34 @@ class _TableConverterAgent(Generic[ROW]):
             return []
 
     def postprocess_row(
-        self, raw_dict: dict[str, Any], *, columns_dict: dict[str, Any]
+        self,
+        raw_dict: dict[str, Any],
+        *,
+        columns_dict: dict[str, Any],
+        similarity_pseudocolumn: str | None,
     ) -> ROW:
         """
         The columns schema is not coerced here, just parsed from its json
         """
-        return self._get_row_postprocessor(columns_dict=columns_dict)(raw_dict)  # type: ignore[return-value]
+        return self._get_row_postprocessor(
+            columns_dict=columns_dict, similarity_pseudocolumn=similarity_pseudocolumn
+        )(raw_dict)  # type: ignore[return-value]
 
     def postprocess_rows(
-        self, raw_dicts: list[dict[str, Any]], *, columns_dict: dict[str, Any]
+        self,
+        raw_dicts: list[dict[str, Any]],
+        *,
+        columns_dict: dict[str, Any],
+        similarity_pseudocolumn: str | None,
     ) -> list[ROW]:
         """
         The columns schema is not coerced here, just parsed from its json
         """
         if raw_dicts:
-            _r_postprocessor = self._get_row_postprocessor(columns_dict=columns_dict)
+            _r_postprocessor = self._get_row_postprocessor(
+                columns_dict=columns_dict,
+                similarity_pseudocolumn=similarity_pseudocolumn,
+            )
             return [cast(ROW, _r_postprocessor(raw_dict)) for raw_dict in raw_dicts]
         else:
             return []

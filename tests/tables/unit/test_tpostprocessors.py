@@ -312,6 +312,7 @@ class TestTableConverters:
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
             ),
+            similarity_pseudocolumn=None,
         )
 
         converted_column = tpostprocessor(OUTPUT_ROW_TO_POSTPROCESS)
@@ -344,6 +345,7 @@ class TestTableConverters:
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
             ),
+            similarity_pseudocolumn=None,
         )
 
         converted_column = tpostprocessor(OUTPUT_NONCUSTOMTYPES_ROW_TO_POSTPROCESS)

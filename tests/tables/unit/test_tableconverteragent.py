@@ -18,6 +18,7 @@ import pytest
 
 from astrapy.constants import DefaultRowType
 from astrapy.data.utils.table_converters import _TableConverterAgent
+from astrapy.data_types import DataAPIDate
 from astrapy.utils.api_options import FullSerdesOptions
 
 
@@ -46,7 +47,9 @@ class TestTableConverterAgent:
             "p_boolean": True,
             "p_float_pinf": "Infinity",
         }
-        agent.postprocess_row(raw_row1, columns_dict=schema1)
+        agent.postprocess_row(
+            raw_row1, columns_dict=schema1, similarity_pseudocolumn=None
+        )
         assert len(agent.row_postprocessors) == 1
 
         # try row of type 2
@@ -56,7 +59,9 @@ class TestTableConverterAgent:
         raw_row2 = {
             "p_float_pinf": "Infinity",
         }
-        agent.postprocess_row(raw_row2, columns_dict=schema2)
+        agent.postprocess_row(
+            raw_row2, columns_dict=schema2, similarity_pseudocolumn=None
+        )
         assert len(agent.row_postprocessors) == 2
 
         # try row of type 1 again
@@ -65,8 +70,41 @@ class TestTableConverterAgent:
             "p_boolean": False,
             "p_float_pinf": 54.321,
         }
-        agent.postprocess_row(raw_row1b, columns_dict=schema1)
+        agent.postprocess_row(
+            raw_row1b, columns_dict=schema1, similarity_pseudocolumn=None
+        )
         assert len(agent.row_postprocessors) == 2
+
+    @pytest.mark.describe("test of table converter agent, row with similarity")
+    def test_tableconverteragent_row_similarity(self) -> None:
+        options = FullSerdesOptions(
+            binary_encode_vectors=True,
+            custom_datatypes_in_reading=True,
+            unroll_iterables_to_lists=True,
+            use_decimals_in_collections=False,
+        )
+        agent: _TableConverterAgent[DefaultRowType] = _TableConverterAgent(
+            options=options
+        )
+        schema1 = {
+            "$similarity": {"type": "date"},
+        }
+
+        raw_row1 = {
+            "$similarity": 0.123,
+        }
+        result1 = agent.postprocess_row(
+            raw_row1, columns_dict=schema1, similarity_pseudocolumn="$similarity"
+        )
+        assert isinstance(result1["$similarity"], float)
+
+        raw_row2 = {
+            "$similarity": "2021-11-11",
+        }
+        result2 = agent.postprocess_row(
+            raw_row2, columns_dict=schema1, similarity_pseudocolumn=None
+        )
+        assert isinstance(result2["$similarity"], DataAPIDate)
 
     @pytest.mark.describe("test of table converter agent, key converters")
     def test_tableconverteragent_key(self) -> None:

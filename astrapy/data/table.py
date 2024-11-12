@@ -1075,6 +1075,7 @@ class Table(Generic[ROW]):
         return self._converter_agent.postprocess_row(
             fo_response["data"]["document"],
             columns_dict=fo_response["status"]["projectionSchema"],
+            similarity_pseudocolumn="$similarity" if include_similarity else None,
         )
 
     def distinct(
@@ -2542,6 +2543,7 @@ class AsyncTable(Generic[ROW]):
         return self._converter_agent.postprocess_row(
             fo_response["data"]["document"],
             columns_dict=fo_response["status"]["projectionSchema"],
+            similarity_pseudocolumn="$similarity" if include_similarity else None,
         )
 
     async def distinct(

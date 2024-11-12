@@ -49,6 +49,7 @@ class TestTableDecimalSupportUnit:
         baseline_obj_2 = t_agent.postprocess_row(
             APICommander._decimal_aware_parse_json_response(baseline_fully_encoded),  # type: ignore[arg-type]
             columns_dict=BASELINE_COLUMNS,
+            similarity_pseudocolumn=None,
         )
         assert _repaint_NaNs(baseline_obj_2) == _repaint_NaNs(BASELINE_OBJ)
         # with-decimals, encode then decode and check
@@ -58,6 +59,7 @@ class TestTableDecimalSupportUnit:
         wdecs_2 = t_agent.postprocess_row(
             APICommander._decimal_aware_parse_json_response(wdecs_fully_encoded),  # type: ignore[arg-type]
             columns_dict=WDECS_OBJ_COLUMNS,
+            similarity_pseudocolumn=None,
         )
         assert _repaint_NaNs(wdecs_2) == _repaint_NaNs(WDECS_OBJ)
 
@@ -103,5 +105,6 @@ class TestTableDecimalSupportUnit:
         colltype_obj_2 = t_agent.postprocess_row(
             APICommander._decimal_aware_parse_json_response(fully_encoded),  # type: ignore[arg-type]
             columns_dict=colltype_columns,
+            similarity_pseudocolumn=None,
         )
         assert _repaint_NaNs(colltype_obj_2) == _repaint_NaNs(colltype_obj)
