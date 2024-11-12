@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from decimal import Decimal
 from enum import Enum
 from typing import Any, Callable, Generic, TypeVar, cast
 
@@ -32,12 +33,14 @@ from astrapy.data.utils.collection_converters import (
     postprocess_collection_response,
     preprocess_collection_payload,
 )
+from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import (
     CursorException,
     MultiCallTimeoutManager,
     UnexpectedDataAPIResponseException,
     _TimeoutContext,
 )
+from astrapy.utils.api_options import FullSerdesOptions
 from astrapy.utils.unset import _UNSET, UnsetType
 
 # A cursor reads TRAW from DB and maps them to T if any mapping.
@@ -48,6 +51,29 @@ TNEW = TypeVar("TNEW")
 
 
 logger = logging.getLogger(__name__)
+
+
+def _ensure_vector(
+    fvector: list[float | Decimal] | None,
+    options: FullSerdesOptions,
+) -> list[float] | DataAPIVector | None:
+    """
+    For Tables and - depending on the JSON response parsing - collections alike,
+    the sort vector included in the response from a find can be made into a list
+    of Decimal instances. This utility makes it back to either a plain list of floats
+    or a DataAPIVector, according the the preferences for the table/collection being
+    queried.
+    """
+    if fvector is None:
+        return None
+    else:
+        # this can be a list of Decimal instances (because it's from tables,
+        # or from collections set to use decimals).
+        f_list = [float(x) for x in fvector]
+        if options.custom_datatypes_in_reading:
+            return DataAPIVector(f_list)
+        else:
+            return f_list
 
 
 class CursorState(Enum):
@@ -715,7 +741,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self._try_ensure_fill_buffer()
         return len(self._buffer) > 0
 
-    def get_sort_vector(self) -> list[float] | None:
+    def get_sort_vector(self) -> list[float] | DataAPIVector | None:
         """
         Return the vector used in this ANN search, if applicable.
         If this is not an ANN search, or it was invoked without the
@@ -727,7 +753,10 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
         self._try_ensure_fill_buffer()
         if self._last_response_status:
-            return self._last_response_status.get("sortVector")
+            return _ensure_vector(
+                self._last_response_status.get("sortVector"),
+                self.data_source.api_options.serdes_options,
+            )
         else:
             return None
 
@@ -1008,7 +1037,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         await self._try_ensure_fill_buffer()
         return len(self._buffer) > 0
 
-    async def get_sort_vector(self) -> list[float] | None:
+    async def get_sort_vector(self) -> list[float] | DataAPIVector | None:
         """
         Return the vector used in this ANN search, if applicable.
         If this is not an ANN search, or it was invoked without the
@@ -1020,7 +1049,10 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
         await self._try_ensure_fill_buffer()
         if self._last_response_status:
-            return self._last_response_status.get("sortVector")
+            return _ensure_vector(
+                self._last_response_status.get("sortVector"),
+                self.data_source.api_options.serdes_options,
+            )
         else:
             return None
 
@@ -1296,7 +1328,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self._try_ensure_fill_buffer()
         return len(self._buffer) > 0
 
-    def get_sort_vector(self) -> list[float] | None:
+    def get_sort_vector(self) -> list[float] | DataAPIVector | None:
         """
         Return the vector used in this ANN search, if applicable.
         If this is not an ANN search, or it was invoked without the
@@ -1308,7 +1340,10 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
         self._try_ensure_fill_buffer()
         if self._last_response_status:
-            return self._last_response_status.get("sortVector")
+            return _ensure_vector(
+                self._last_response_status.get("sortVector"),
+                self.data_source.api_options.serdes_options,
+            )
         else:
             return None
 
@@ -1589,7 +1624,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         await self._try_ensure_fill_buffer()
         return len(self._buffer) > 0
 
-    async def get_sort_vector(self) -> list[float] | None:
+    async def get_sort_vector(self) -> list[float] | DataAPIVector | None:
         """
         Return the vector used in this ANN search, if applicable.
         If this is not an ANN search, or it was invoked without the
@@ -1601,6 +1636,9 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
         await self._try_ensure_fill_buffer()
         if self._last_response_status:
-            return self._last_response_status.get("sortVector")
+            return _ensure_vector(
+                self._last_response_status.get("sortVector"),
+                self.data_source.api_options.serdes_options,
+            )
         else:
             return None

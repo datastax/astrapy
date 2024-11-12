@@ -897,6 +897,63 @@ class TestDMLAsync:
                 else:
                     assert (await this_ite_1.get_sort_vector()) is None
 
+    @pytest.mark.describe("test of include_sort_vector with serdes options, async")
+    async def test_collection_include_sort_vector_serdes_options_async(
+        self,
+        async_empty_collection: DefaultAsyncCollection,
+    ) -> None:
+        acol_v0_d0 = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                    use_decimals_in_collections=False,
+                ),
+            ),
+        )
+        acol_v0_d1 = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                    use_decimals_in_collections=True,
+                ),
+            ),
+        )
+        acol_v1_d0 = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                    use_decimals_in_collections=False,
+                ),
+            ),
+        )
+        acol_v1_d1 = async_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                    use_decimals_in_collections=True,
+                ),
+            ),
+        )
+        cur0_v0_d0 = acol_v0_d0.find(sort={"$vector": [1, 2]})
+        cur0_v0_d1 = acol_v0_d1.find(sort={"$vector": [1, 2]})
+        cur0_v1_d0 = acol_v1_d0.find(sort={"$vector": [1, 2]})
+        cur0_v1_d1 = acol_v1_d1.find(sort={"$vector": [1, 2]})
+
+        assert await cur0_v0_d0.get_sort_vector() is None
+        assert await cur0_v0_d1.get_sort_vector() is None
+        assert await cur0_v1_d0.get_sort_vector() is None
+        assert await cur0_v1_d1.get_sort_vector() is None
+
+        cur1_v0_d0 = acol_v0_d0.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+        cur1_v0_d1 = acol_v0_d1.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+        cur1_v1_d0 = acol_v1_d0.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+        cur1_v1_d1 = acol_v1_d1.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+
+        assert await cur1_v0_d0.get_sort_vector() == [1, 2]
+        assert await cur1_v0_d1.get_sort_vector() == [1, 2]
+        assert await cur1_v1_d0.get_sort_vector() == DataAPIVector([1, 2])
+        assert await cur1_v1_d1.get_sort_vector() == DataAPIVector([1, 2])
+
     @pytest.mark.describe("test of projections in collection find with vectors, async")
     async def test_collection_find_projections_vectors_async(
         self,

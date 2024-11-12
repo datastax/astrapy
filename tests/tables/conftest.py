@@ -33,6 +33,8 @@ from astrapy.info import (
     TableScalarColumnTypeDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
+    TableVectorIndexDefinition,
+    TableVectorIndexOptions,
 )
 
 from ..conftest import (
@@ -184,6 +186,14 @@ TEST_SIMPLE_TABLE_DEFINITION = TableDefinition(
         partition_sort={},
     ),
 )
+TEST_SIMPLE_TABLE_VECTOR_INDEX_NAME = "test_table_simple_p_vector_idx"
+TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION = TableVectorIndexDefinition(
+    column="p_vector",
+    options=TableVectorIndexOptions(
+        metric="cosine",
+    ),
+)
+
 
 S_DOCS = [
     {"p_text": "A1", "p_int": 1, "p_vector": [1.1, 1.1, 1.1]},
@@ -301,6 +311,10 @@ def sync_table_simple(
     table = sync_database.create_table(
         TEST_SIMPLE_TABLE_NAME,
         definition=TEST_SIMPLE_TABLE_DEFINITION,
+    )
+    table.create_vector_index(
+        TEST_SIMPLE_TABLE_VECTOR_INDEX_NAME,
+        definition=TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION,
     )
     yield table
 

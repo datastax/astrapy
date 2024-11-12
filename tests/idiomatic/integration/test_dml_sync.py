@@ -836,6 +836,63 @@ class TestDMLSync:
                 else:
                     assert this_ite_2.get_sort_vector() is None
 
+    @pytest.mark.describe("test of include_sort_vector with serdes options, sync")
+    def test_collection_include_sort_vector_serdes_options_sync(
+        self,
+        sync_empty_collection: DefaultCollection,
+    ) -> None:
+        col_v0_d0 = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                    use_decimals_in_collections=False,
+                ),
+            ),
+        )
+        col_v0_d1 = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                    use_decimals_in_collections=True,
+                ),
+            ),
+        )
+        col_v1_d0 = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                    use_decimals_in_collections=False,
+                ),
+            ),
+        )
+        col_v1_d1 = sync_empty_collection.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                    use_decimals_in_collections=True,
+                ),
+            ),
+        )
+        cur0_v0_d0 = col_v0_d0.find(sort={"$vector": [1, 2]})
+        cur0_v0_d1 = col_v0_d1.find(sort={"$vector": [1, 2]})
+        cur0_v1_d0 = col_v1_d0.find(sort={"$vector": [1, 2]})
+        cur0_v1_d1 = col_v1_d1.find(sort={"$vector": [1, 2]})
+
+        assert cur0_v0_d0.get_sort_vector() is None
+        assert cur0_v0_d1.get_sort_vector() is None
+        assert cur0_v1_d0.get_sort_vector() is None
+        assert cur0_v1_d1.get_sort_vector() is None
+
+        cur1_v0_d0 = col_v0_d0.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+        cur1_v0_d1 = col_v0_d1.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+        cur1_v1_d0 = col_v1_d0.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+        cur1_v1_d1 = col_v1_d1.find(sort={"$vector": [1, 2]}, include_sort_vector=True)
+
+        assert cur1_v0_d0.get_sort_vector() == [1, 2]
+        assert cur1_v0_d1.get_sort_vector() == [1, 2]
+        assert cur1_v1_d0.get_sort_vector() == DataAPIVector([1, 2])
+        assert cur1_v1_d1.get_sort_vector() == DataAPIVector([1, 2])
+
     @pytest.mark.describe("test of projections in collection find with vectors, sync")
     def test_collection_find_projections_vectors_sync(
         self,

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import pytest
 
+from astrapy.api_options import APIOptions, SerdesOptions
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.exceptions import DataAPIException, TableInsertManyException
 from astrapy.results import TableInsertManyResult
@@ -370,3 +371,54 @@ class TestTableDMLSync:
             update={"$unset": {"p_int": ""}},
         )
         assert sync_table_simple.find_one({"p_text": "Z"}) is None
+
+    @pytest.mark.describe("test of include_sort_vector with serdes options, sync")
+    def test_collection_include_sort_vector_serdes_options_sync(
+        self,
+        sync_table_simple: DefaultTable,
+    ) -> None:
+        col_v0 = sync_table_simple.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=False,
+                ),
+            ),
+        )
+        col_v1 = sync_table_simple.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(
+                    custom_datatypes_in_reading=True,
+                ),
+            ),
+        )
+        cur0_v0_inpf = col_v0.find(sort={"p_vector": [1, 2, 3]})
+        cur0_v1_inpf = col_v1.find(sort={"p_vector": [1, 2, 3]})
+
+        assert cur0_v0_inpf.get_sort_vector() is None
+        assert cur0_v1_inpf.get_sort_vector() is None
+
+        cur1_v0_inpf = col_v0.find(
+            sort={"p_vector": [1, 2, 3]}, include_sort_vector=True
+        )
+        cur1_v1_inpf = col_v1.find(
+            sort={"p_vector": [1, 2, 3]}, include_sort_vector=True
+        )
+
+        assert cur1_v0_inpf.get_sort_vector() == [1, 2, 3]
+        assert cur1_v1_inpf.get_sort_vector() == DataAPIVector([1, 2, 3])
+
+        cur0_v0_inpv = col_v0.find(sort={"p_vector": DataAPIVector([1, 2, 3])})
+        cur0_v1_inpv = col_v1.find(sort={"p_vector": DataAPIVector([1, 2, 3])})
+
+        assert cur0_v0_inpv.get_sort_vector() is None
+        assert cur0_v1_inpv.get_sort_vector() is None
+
+        cur1_v0_inpv = col_v0.find(
+            sort={"p_vector": DataAPIVector([1, 2, 3])}, include_sort_vector=True
+        )
+        cur1_v1_inpv = col_v1.find(
+            sort={"p_vector": DataAPIVector([1, 2, 3])}, include_sort_vector=True
+        )
+
+        assert cur1_v0_inpv.get_sort_vector() == [1, 2, 3]
+        assert cur1_v1_inpv.get_sort_vector() == DataAPIVector([1, 2, 3])

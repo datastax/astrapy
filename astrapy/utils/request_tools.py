@@ -45,11 +45,11 @@ def log_httpx_request(
     """
     logger.debug(f"Request URL: {http_method} {full_url}")
     if request_params:
-        logger.debug(f"Request params: {request_params}")
+        logger.debug(f"Request params: '{request_params}'")
     if redacted_request_headers:
-        logger.debug(f"Request headers: {redacted_request_headers}")
+        logger.debug(f"Request headers: '{redacted_request_headers}'")
     if encoded_payload is not None:
-        logger.debug(f"Request payload: {encoded_payload}")
+        logger.debug(f"Request payload: '{encoded_payload}'")
     if timeout_context:
         logger.debug(
             f"Timeout (ms): for request {timeout_context.request_ms or '(unset)'} ms"
@@ -65,8 +65,8 @@ def log_httpx_response(response: httpx.Response) -> None:
         response: the httpx.Response object to log.
     """
     logger.debug(f"Response status code: {response.status_code}")
-    logger.debug(f"Response headers: {response.headers}")
-    logger.debug(f"Response text: {response.text}")
+    logger.debug(f"Response headers: '{response.headers}'")
+    logger.debug(f"Response text: '{response.text}'")
 
 
 class HttpMethod:
