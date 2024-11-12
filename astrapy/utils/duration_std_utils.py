@@ -189,8 +189,10 @@ def _build_std_duration_string(
                     _nanosecond_string += f"{u_qty}{u}"
                     _residual_nanoseconds -= u_qty * div
         if _residual_nanoseconds != 0:
-            _nanosecond_string += f"{_residual_nanoseconds / 1000000000:.9f}S"
-            # TODO reinstate the .rstrip('0').rstrip('.') if ok digits not in triplets
+            _seconds_part = f"{_residual_nanoseconds / 1000000000:.9f}".rstrip(
+                "0"
+            ).rstrip(".")
+            _nanosecond_string += f"{_seconds_part}S"
     if _nanosecond_string is not None:
         _t_block = "T"
     return "".join(

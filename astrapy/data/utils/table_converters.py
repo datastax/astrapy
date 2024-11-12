@@ -561,7 +561,9 @@ def preprocess_table_payload_value(
         # which will apply the nasty trick to ensure all digits get there.
         return value
     elif isinstance(value, DataAPIDuration):
-        return value.to_string()
+        # using to_c_string over to_string until the ISO-format parsing can
+        # cope with subsecond fractions:
+        return value.to_c_string()
     elif isinstance(value, UUID):
         return str(value)
     elif isinstance(value, (ipaddress.IPv4Address, ipaddress.IPv6Address)):
