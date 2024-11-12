@@ -22,7 +22,6 @@ from astrapy.exceptions import DataAPIException
 from astrapy.info import (
     AlterTableAddColumns,
     AlterTableAddVectorize,
-    AlterTableDropColumns,
     AlterTableDropVectorize,
     TableDefinition,
     TableIndexDefinition,
@@ -307,7 +306,8 @@ class TestTableLifecycle:
                 operation=AlterTableAddColumns.coerce({"columns": {"added_1": "float"}})
             )
             await atable.alter(
-                operation=AlterTableDropColumns.coerce({"columns": ["added_1"]})
+                # one with a dictionary to parse
+                operation={"drop": {"columns": ["added_1"]}}
             )
             await atable.alter(
                 operation=AlterTableAddVectorize.coerce(
@@ -321,7 +321,6 @@ class TestTableLifecycle:
                     }
                 )
             )
-            # add column
             await atable.alter(
                 operation=AlterTableDropVectorize.coerce({"columns": ["p_vector"]})
             )

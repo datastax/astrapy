@@ -924,6 +924,23 @@ class AlterTableOperation(ABC):
     @abstractmethod
     def as_dict(self) -> dict[str, Any]: ...
 
+    @staticmethod
+    def from_full_dict(operation_dict: dict[str, Any]) -> AlterTableOperation:
+        key_set = set(operation_dict.keys())
+        if key_set == {"add"}:
+            return AlterTableAddColumns.coerce(operation_dict["add"])
+        elif key_set == {"drop"}:
+            return AlterTableDropColumns.coerce(operation_dict["drop"])
+        elif key_set == {"addVectorize"}:
+            return AlterTableAddVectorize.coerce(operation_dict["addVectorize"])
+        elif key_set == {"dropVectorize"}:
+            return AlterTableDropVectorize.coerce(operation_dict["dropVectorize"])
+        else:
+            raise ValueError(
+                f"Cannot parse a dict with keys {', '.join(sorted(key_set))} "
+                "into an AlterTableOperation"
+            )
+
 
 @dataclass
 class AlterTableAddColumns(AlterTableOperation):

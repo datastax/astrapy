@@ -29,6 +29,7 @@ from astrapy.constants import (
     SortType,
     normalize_optional_projection,
 )
+from astrapy.data.info.table_descriptor import AlterTableOperation
 from astrapy.data.utils.distinct_extractors import (
     _create_document_key_extractor,
     _hash_document,
@@ -540,7 +541,7 @@ class Table(Generic[ROW]):
     @overload
     def alter(
         self,
-        operation: AlterTableOperation,
+        operation: AlterTableOperation | dict[str, Any],
         *,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
@@ -549,7 +550,7 @@ class Table(Generic[ROW]):
     @overload
     def alter(
         self,
-        operation: AlterTableOperation,
+        operation: AlterTableOperation | dict[str, Any],
         *,
         row_type: type[NEW_ROW],
         schema_operation_timeout_ms: int | None = None,
@@ -558,7 +559,7 @@ class Table(Generic[ROW]):
 
     def alter(
         self,
-        operation: AlterTableOperation,
+        operation: AlterTableOperation | dict[str, Any],
         *,
         row_type: type[Any] = DefaultRowType,
         schema_operation_timeout_ms: int | None = None,
@@ -572,7 +573,9 @@ class Table(Generic[ROW]):
         is created and ready to use.
 
         Args:
-            operation: an instance of one of the `astrapy.info.AlterTable*` classes.
+            operation: an instance of one of the `astrapy.info.AlterTable*` classes,
+                or an equivalent (nested) dictionary such as {"add": ...} -- in which
+                case it will be parsed into the appropriate operation instance.
             row_type: TODO
             schema_operation_timeout_ms: a timeout, in milliseconds, for the
                 schema-altering HTTP request.
@@ -590,16 +593,21 @@ class Table(Generic[ROW]):
             >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
+        n_operation: AlterTableOperation
+        if isinstance(operation, AlterTableOperation):
+            n_operation = operation
+        else:
+            n_operation = AlterTableOperation.from_full_dict(operation)
         _schema_operation_timeout_ms = (
             schema_operation_timeout_ms
             or max_time_ms
             or self.api_options.timeout_options.schema_operation_timeout_ms
         )
-        at_operation_name = operation._name
+        at_operation_name = n_operation._name
         at_payload = {
             "alterTable": {
                 "operation": {
-                    at_operation_name: operation.as_dict(),
+                    at_operation_name: n_operation.as_dict(),
                 },
             },
         }
@@ -2017,7 +2025,7 @@ class AsyncTable(Generic[ROW]):
     @overload
     async def alter(
         self,
-        operation: AlterTableOperation,
+        operation: AlterTableOperation | dict[str, Any],
         *,
         schema_operation_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
@@ -2026,7 +2034,7 @@ class AsyncTable(Generic[ROW]):
     @overload
     async def alter(
         self,
-        operation: AlterTableOperation,
+        operation: AlterTableOperation | dict[str, Any],
         *,
         row_type: type[NEW_ROW],
         schema_operation_timeout_ms: int | None = None,
@@ -2035,7 +2043,7 @@ class AsyncTable(Generic[ROW]):
 
     async def alter(
         self,
-        operation: AlterTableOperation,
+        operation: AlterTableOperation | dict[str, Any],
         *,
         row_type: type[Any] = DefaultRowType,
         schema_operation_timeout_ms: int | None = None,
@@ -2049,7 +2057,9 @@ class AsyncTable(Generic[ROW]):
         is created and ready to use.
 
         Args:
-            operation: an instance of one of the `astrapy.info.AlterTable*` classes.
+            operation: an instance of one of the `astrapy.info.AlterTable*` classes,
+                or an equivalent (nested) dictionary such as {"add": ...} -- in which
+                case it will be parsed into the appropriate operation instance.
             row_type: TODO
             schema_operation_timeout_ms: a timeout, in milliseconds, for the
                 schema-altering HTTP request.
@@ -2067,16 +2077,21 @@ class AsyncTable(Generic[ROW]):
             >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
+        n_operation: AlterTableOperation
+        if isinstance(operation, AlterTableOperation):
+            n_operation = operation
+        else:
+            n_operation = AlterTableOperation.from_full_dict(operation)
         _schema_operation_timeout_ms = (
             schema_operation_timeout_ms
             or max_time_ms
             or self.api_options.timeout_options.schema_operation_timeout_ms
         )
-        at_operation_name = operation._name
+        at_operation_name = n_operation._name
         at_payload = {
             "alterTable": {
                 "operation": {
-                    at_operation_name: operation.as_dict(),
+                    at_operation_name: n_operation.as_dict(),
                 },
             },
         }

@@ -16,7 +16,13 @@ from __future__ import annotations
 
 import pytest
 
+from astrapy.data.info.table_descriptor import AlterTableOperation
+from astrapy.data.utils.table_types import TableScalarColumnType
 from astrapy.info import (
+    AlterTableAddColumns,
+    AlterTableAddVectorize,
+    AlterTableDropColumns,
+    AlterTableDropVectorize,
     TableDefinition,
     TableDescriptor,
     TableIndexDefinition,
@@ -330,3 +336,56 @@ class TestTableDescriptors:
             VECTOR_INDEX_OPTIONS_DICT_COERCEABLE_MINIMAL
         )
         assert VECTOR_INDEX_OPTIONS_DICT_MINIMAL == tvi_coerceable_minimal.as_dict()
+
+    @pytest.mark.describe("test of parsing AlterTableOperation classes")
+    def test_altertableoperation_parsing(self) -> None:
+        addc_o = AlterTableOperation.from_full_dict(
+            {
+                "add": {
+                    "columns": {
+                        "p_int": {"type": "int"},
+                        "p_text": "text",
+                    }
+                },
+            },
+        )
+        addc = AlterTableAddColumns(
+            columns={
+                "p_int": TableScalarColumnTypeDescriptor(
+                    column_type=TableScalarColumnType.INT
+                ),
+                "p_text": TableScalarColumnTypeDescriptor(
+                    column_type=TableScalarColumnType.TEXT
+                ),
+            }
+        )
+        assert addc_o == addc
+
+        addv_o = AlterTableOperation.from_full_dict(
+            {
+                "addVectorize": {
+                    "columns": {"col_v": {"provider": "p", "modelName": "mn"}}
+                }
+            }
+        )
+        addv = AlterTableAddVectorize(
+            columns={
+                "col_v": VectorServiceOptions(
+                    provider="p",
+                    model_name="mn",
+                )
+            }
+        )
+        assert addv_o == addv
+
+        dropc_o = AlterTableOperation.from_full_dict(
+            {"drop": {"columns": ["col1", "col2"]}},
+        )
+        dropc = AlterTableDropColumns(columns=["col1", "col2"])
+        assert dropc_o == dropc
+
+        dropv_o = AlterTableOperation.from_full_dict(
+            {"dropVectorize": {"columns": ["col1", "col2"]}},
+        )
+        dropv = AlterTableDropVectorize(columns=["col1", "col2"])
+        assert dropv_o == dropv
