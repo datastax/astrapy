@@ -679,7 +679,7 @@ class Collection(Generic[DOC]):
         chunk_size: int | None = None,
         concurrency: int | None = None,
         request_timeout_ms: int | None = None,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> CollectionInsertManyResult:
         """
@@ -701,10 +701,10 @@ class Collection(Generic[DOC]):
                 a given time. It cannot be more than one for ordered insertions.
             request_timeout_ms: a timeout, in milliseconds, for each API request.
                 If not passed, the collection-level setting is used instead.
-            data_operation_timeout_ms: a timeout, in milliseconds, for the whole
+            general_method_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation (which may involve multiple API requests).
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `data_operation_timeout_ms`.
+            max_time_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionInsertManyResult object.
@@ -764,10 +764,10 @@ class Collection(Generic[DOC]):
         _request_timeout_ms = (
             request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
         )
-        _data_operation_timeout_ms = (
-            data_operation_timeout_ms
+        _general_method_timeout_ms = (
+            general_method_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.data_operation_timeout_ms
+            or self.api_options.timeout_options.general_method_timeout_ms
         )
         if concurrency is None:
             if ordered:
@@ -786,7 +786,7 @@ class Collection(Generic[DOC]):
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(
-            overall_timeout_ms=_data_operation_timeout_ms
+            overall_timeout_ms=_general_method_timeout_ms
         )
         if ordered:
             options = {"ordered": True}
@@ -1244,7 +1244,7 @@ class Collection(Generic[DOC]):
         *,
         filter: FilterType | None = None,
         request_timeout_ms: int | None = None,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> list[Any]:
         """
@@ -1269,11 +1269,11 @@ class Collection(Generic[DOC]):
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             request_timeout_ms: a timeout, in milliseconds, for each API request.
-            data_operation_timeout_ms: a timeout, in milliseconds, for the whole
+            general_method_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation (which may involve multiple API requests).
                 This method, being based on `find` (see) may entail successive HTTP API
                 requests, depending on the amount of involved documents.
-            max_time_ms: an alias for `data_operation_timeout_ms`.
+            max_time_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a list of all different values for `key` found across the documents
@@ -1319,10 +1319,10 @@ class Collection(Generic[DOC]):
         _request_timeout_ms = (
             request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
         )
-        _data_operation_timeout_ms = (
-            data_operation_timeout_ms
+        _general_method_timeout_ms = (
+            general_method_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.data_operation_timeout_ms
+            or self.api_options.timeout_options.general_method_timeout_ms
         )
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
@@ -1337,7 +1337,7 @@ class Collection(Generic[DOC]):
             CollectionFindCursor(
                 collection=self,
                 request_timeout_ms=_request_timeout_ms,
-                overall_timeout_ms=_data_operation_timeout_ms,
+                overall_timeout_ms=_general_method_timeout_ms,
             )  # type: ignore[assignment]
             .filter(filter)
             .project({_key: True})
@@ -1966,7 +1966,7 @@ class Collection(Generic[DOC]):
         *,
         upsert: bool = False,
         request_timeout_ms: int | None = None,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> CollectionUpdateResult:
         """
@@ -1994,12 +1994,12 @@ class Collection(Generic[DOC]):
                 in case of no matches.
             request_timeout_ms: a timeout, in milliseconds, for each API request.
                 If not passed, the collection-level setting is used instead.
-            data_operation_timeout_ms: a timeout, in milliseconds, for the whole
+            general_method_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation (which may involve multiple API requests).
                 This method may entail successive HTTP API requests,
                 depending on the amount of involved documents.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `data_operation_timeout_ms`.
+            max_time_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionUpdateResult object summarizing the outcome of
@@ -2031,10 +2031,10 @@ class Collection(Generic[DOC]):
         _request_timeout_ms = (
             request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
         )
-        _data_operation_timeout_ms = (
-            data_operation_timeout_ms
+        _general_method_timeout_ms = (
+            general_method_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.data_operation_timeout_ms
+            or self.api_options.timeout_options.general_method_timeout_ms
         )
         api_options = {
             "upsert": upsert,
@@ -2045,7 +2045,7 @@ class Collection(Generic[DOC]):
         must_proceed = True
         logger.info(f"starting update_many on '{self.name}'")
         timeout_manager = MultiCallTimeoutManager(
-            overall_timeout_ms=_data_operation_timeout_ms
+            overall_timeout_ms=_general_method_timeout_ms
         )
         while must_proceed:
             options = {**api_options, **page_state_options}
@@ -2297,7 +2297,7 @@ class Collection(Generic[DOC]):
         filter: FilterType,
         *,
         request_timeout_ms: int | None = None,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> CollectionDeleteResult:
         """
@@ -2315,12 +2315,12 @@ class Collection(Generic[DOC]):
                 of the collection.
             request_timeout_ms: a timeout, in milliseconds, for each API request.
                 If not passed, the collection-level setting is used instead.
-            data_operation_timeout_ms: a timeout, in milliseconds, for the whole
+            general_method_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation (which may involve multiple API requests).
                 This method may entail successive HTTP API requests,
                 depending on the amount of involved documents.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `data_operation_timeout_ms`.
+            max_time_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionDeleteResult object summarizing the outcome of the
@@ -2349,16 +2349,16 @@ class Collection(Generic[DOC]):
         _request_timeout_ms = (
             request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
         )
-        _data_operation_timeout_ms = (
-            data_operation_timeout_ms
+        _general_method_timeout_ms = (
+            general_method_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.data_operation_timeout_ms
+            or self.api_options.timeout_options.general_method_timeout_ms
         )
         dm_responses: list[dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
         timeout_manager = MultiCallTimeoutManager(
-            overall_timeout_ms=_data_operation_timeout_ms
+            overall_timeout_ms=_general_method_timeout_ms
         )
         this_dm_payload = {"deleteMany": {"filter": filter}}
         logger.info(f"starting delete_many on '{self.name}'")
@@ -2404,7 +2404,7 @@ class Collection(Generic[DOC]):
     def drop(
         self,
         *,
-        schema_operation_timeout_ms: int | None = None,
+        collection_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> None:
         """
@@ -2412,12 +2412,12 @@ class Collection(Generic[DOC]):
         all the documents it contains.
 
         Args:
-            schema_operation_timeout_ms: a timeout, in milliseconds,
+            collection_admin_timeout_ms: a timeout, in milliseconds,
                 for the underlying HTTP request.
                 Remember there is not guarantee that a request that has
                 timed out us not in fact honored.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `schema_operation_timeout_ms`.
+            max_time_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
             >>> my_coll.find_one({})
@@ -2439,14 +2439,14 @@ class Collection(Generic[DOC]):
             which avoids using a deceased collection any further.
         """
 
-        _schema_operation_timeout_ms = (
-            schema_operation_timeout_ms
+        _collection_admin_timeout_ms = (
+            collection_admin_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.schema_operation_timeout_ms
+            or self.api_options.timeout_options.collection_admin_timeout_ms
         )
         logger.info(f"dropping collection '{self.name}' (self)")
         self.database.drop_collection(
-            self, schema_operation_timeout_ms=_schema_operation_timeout_ms
+            self, collection_admin_timeout_ms=_collection_admin_timeout_ms
         )
         logger.info(f"finished dropping collection '{self.name}' (self)")
 
@@ -3089,7 +3089,7 @@ class AsyncCollection(Generic[DOC]):
         chunk_size: int | None = None,
         concurrency: int | None = None,
         request_timeout_ms: int | None = None,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> CollectionInsertManyResult:
         """
@@ -3111,10 +3111,10 @@ class AsyncCollection(Generic[DOC]):
                 a given time. It cannot be more than one for ordered insertions.
             request_timeout_ms: a timeout, in milliseconds, for each API request.
                 If not passed, the collection-level setting is used instead.
-            data_operation_timeout_ms: a timeout, in milliseconds, for the whole
+            general_method_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation (which may involve multiple API requests).
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `data_operation_timeout_ms`.
+            max_time_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionInsertManyResult object.
@@ -3184,10 +3184,10 @@ class AsyncCollection(Generic[DOC]):
         _request_timeout_ms = (
             request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
         )
-        _data_operation_timeout_ms = (
-            data_operation_timeout_ms
+        _general_method_timeout_ms = (
+            general_method_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.data_operation_timeout_ms
+            or self.api_options.timeout_options.general_method_timeout_ms
         )
         if concurrency is None:
             if ordered:
@@ -3206,7 +3206,7 @@ class AsyncCollection(Generic[DOC]):
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(
-            overall_timeout_ms=_data_operation_timeout_ms
+            overall_timeout_ms=_general_method_timeout_ms
         )
         if ordered:
             options = {"ordered": True}
@@ -3678,7 +3678,7 @@ class AsyncCollection(Generic[DOC]):
         *,
         filter: FilterType | None = None,
         request_timeout_ms: int | None = None,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> list[Any]:
         """
@@ -3703,11 +3703,11 @@ class AsyncCollection(Generic[DOC]):
                     {"$and": [{"name": "John"}, {"price": {"$lt": 100}}]}
                 See the Data API documentation for the full set of operators.
             request_timeout_ms: a timeout, in milliseconds, for each API request.
-            data_operation_timeout_ms: a timeout, in milliseconds, for the whole
+            general_method_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation (which may involve multiple API requests).
                 This method, being based on `find` (see) may entail successive HTTP API
                 requests, depending on the amount of involved documents.
-            max_time_ms: an alias for `data_operation_timeout_ms`.
+            max_time_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a list of all different values for `key` found across the documents
@@ -3761,10 +3761,10 @@ class AsyncCollection(Generic[DOC]):
         _request_timeout_ms = (
             request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
         )
-        _data_operation_timeout_ms = (
-            data_operation_timeout_ms
+        _general_method_timeout_ms = (
+            general_method_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.data_operation_timeout_ms
+            or self.api_options.timeout_options.general_method_timeout_ms
         )
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
@@ -3779,7 +3779,7 @@ class AsyncCollection(Generic[DOC]):
             AsyncCollectionFindCursor(
                 collection=self,
                 request_timeout_ms=_request_timeout_ms,
-                overall_timeout_ms=_data_operation_timeout_ms,
+                overall_timeout_ms=_general_method_timeout_ms,
             )  # type: ignore[assignment]
             .filter(filter)
             .project({_key: True})
@@ -4456,7 +4456,7 @@ class AsyncCollection(Generic[DOC]):
         *,
         upsert: bool = False,
         request_timeout_ms: int | None = None,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> CollectionUpdateResult:
         """
@@ -4484,12 +4484,12 @@ class AsyncCollection(Generic[DOC]):
                 in case of no matches.
             request_timeout_ms: a timeout, in milliseconds, for each API request.
                 If not passed, the collection-level setting is used instead.
-            data_operation_timeout_ms: a timeout, in milliseconds, for the whole
+            general_method_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation (which may involve multiple API requests).
                 This method may entail successive HTTP API requests,
                 depending on the amount of involved documents.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `data_operation_timeout_ms`.
+            max_time_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionUpdateResult object summarizing the outcome of
@@ -4532,10 +4532,10 @@ class AsyncCollection(Generic[DOC]):
         _request_timeout_ms = (
             request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
         )
-        _data_operation_timeout_ms = (
-            data_operation_timeout_ms
+        _general_method_timeout_ms = (
+            general_method_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.data_operation_timeout_ms
+            or self.api_options.timeout_options.general_method_timeout_ms
         )
         api_options = {
             "upsert": upsert,
@@ -4546,7 +4546,7 @@ class AsyncCollection(Generic[DOC]):
         must_proceed = True
         logger.info(f"starting update_many on '{self.name}'")
         timeout_manager = MultiCallTimeoutManager(
-            overall_timeout_ms=_data_operation_timeout_ms
+            overall_timeout_ms=_general_method_timeout_ms
         )
         while must_proceed:
             options = {**api_options, **page_state_options}
@@ -4808,7 +4808,7 @@ class AsyncCollection(Generic[DOC]):
         filter: FilterType,
         *,
         request_timeout_ms: int | None = None,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> CollectionDeleteResult:
         """
@@ -4826,12 +4826,12 @@ class AsyncCollection(Generic[DOC]):
                 of the collection.
             request_timeout_ms: a timeout, in milliseconds, for each API request.
                 If not passed, the collection-level setting is used instead.
-            data_operation_timeout_ms: a timeout, in milliseconds, for the whole
+            general_method_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation (which may involve multiple API requests).
                 This method may entail successive HTTP API requests,
                 depending on the amount of involved documents.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `data_operation_timeout_ms`.
+            max_time_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionDeleteResult object summarizing the outcome of the
@@ -4865,16 +4865,16 @@ class AsyncCollection(Generic[DOC]):
         _request_timeout_ms = (
             request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
         )
-        _data_operation_timeout_ms = (
-            data_operation_timeout_ms
+        _general_method_timeout_ms = (
+            general_method_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.data_operation_timeout_ms
+            or self.api_options.timeout_options.general_method_timeout_ms
         )
         dm_responses: list[dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
         timeout_manager = MultiCallTimeoutManager(
-            overall_timeout_ms=_data_operation_timeout_ms
+            overall_timeout_ms=_general_method_timeout_ms
         )
         this_dm_payload = {"deleteMany": {"filter": filter}}
         logger.info(f"starting delete_many on '{self.name}'")
@@ -4920,7 +4920,7 @@ class AsyncCollection(Generic[DOC]):
     async def drop(
         self,
         *,
-        schema_operation_timeout_ms: int | None = None,
+        collection_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> None:
         """
@@ -4928,12 +4928,12 @@ class AsyncCollection(Generic[DOC]):
         all the documents it contains.
 
         Args:
-            schema_operation_timeout_ms: a timeout, in milliseconds,
+            collection_admin_timeout_ms: a timeout, in milliseconds,
                 for the underlying HTTP request.
                 If not passed, the collection-level setting is used instead.
                 Remember there is not guarantee that a request that has
                 timed out us not in fact honored.
-            max_time_ms: an alias for `schema_operation_timeout_ms`.
+            max_time_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
             >>> async def drop_and_check(acol: AsyncCollection) -> None:
@@ -4959,14 +4959,14 @@ class AsyncCollection(Generic[DOC]):
             which avoids using a deceased collection any further.
         """
 
-        _schema_operation_timeout_ms = (
-            schema_operation_timeout_ms
+        _collection_admin_timeout_ms = (
+            collection_admin_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.schema_operation_timeout_ms
+            or self.api_options.timeout_options.collection_admin_timeout_ms
         )
         logger.info(f"dropping collection '{self.name}' (self)")
         await self.database.drop_collection(
-            self, schema_operation_timeout_ms=_schema_operation_timeout_ms
+            self, collection_admin_timeout_ms=_collection_admin_timeout_ms
         )
         logger.info(f"finished dropping collection '{self.name}' (self)")
 

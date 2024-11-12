@@ -707,7 +707,7 @@ class Database:
         indexing: dict[str, Any] | None = None,
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        collection_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
@@ -728,7 +728,7 @@ class Database:
         indexing: dict[str, Any] | None = None,
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        collection_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
@@ -749,7 +749,7 @@ class Database:
         indexing: dict[str, Any] | None = None,
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        collection_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
@@ -794,9 +794,9 @@ class Database:
             additional_options: any further set of key-value pairs that will
                 be added to the "options" part of the payload when sending
                 the Data API command to create a collection.
-            schema_operation_timeout_ms: a timeout, in milliseconds, for the
+            collection_admin_timeout_ms: a timeout, in milliseconds, for the
                 createCollection HTTP request.
-            max_time_ms: an alias for `schema_operation_timeout_ms`.
+            max_time_ms: an alias for `collection_admin_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -848,10 +848,10 @@ class Database:
             additional_options=additional_options,
         )
 
-        _schema_operation_timeout_ms = (
-            schema_operation_timeout_ms
+        _collection_admin_timeout_ms = (
+            collection_admin_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.schema_operation_timeout_ms
+            or self.api_options.timeout_options.collection_admin_timeout_ms
         )
 
         driver_commander = self._get_driver_commander(keyspace=keyspace)
@@ -859,7 +859,7 @@ class Database:
         logger.info(f"createCollection('{name}')")
         cc_response = driver_commander.request(
             payload=cc_payload,
-            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
+            timeout_context=_TimeoutContext(request_ms=_collection_admin_timeout_ms),
         )
         if cc_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -881,7 +881,7 @@ class Database:
         self,
         name_or_collection: str | Collection[DOC],
         *,
-        schema_operation_timeout_ms: int | None = None,
+        collection_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> None:
         """
@@ -890,9 +890,9 @@ class Database:
         Args:
             name_or_collection: either the name of a collection or
                 a `Collection` instance.
-            schema_operation_timeout_ms: a timeout, in milliseconds, for
+            collection_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
-            max_time_ms: an alias for `schema_operation_timeout_ms`.
+            max_time_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
             >>> my_db.list_collection_names()
@@ -909,10 +909,10 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.collection import Collection
 
-        _schema_operation_timeout_ms = (
-            schema_operation_timeout_ms
+        _collection_admin_timeout_ms = (
+            collection_admin_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.schema_operation_timeout_ms
+            or self.api_options.timeout_options.collection_admin_timeout_ms
         )
 
         _keyspace: str | None
@@ -928,7 +928,7 @@ class Database:
         logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = driver_commander.request(
             payload=dc_payload,
-            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
+            timeout_context=_TimeoutContext(request_ms=_collection_admin_timeout_ms),
         )
         if dc_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -1172,7 +1172,7 @@ class Database:
         definition: TableDefinition | dict[str, Any],
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        table_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -1189,7 +1189,7 @@ class Database:
         row_type: type[ROW],
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        table_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -1205,7 +1205,7 @@ class Database:
         row_type: type[Any] = DefaultRowType,
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        table_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -1234,9 +1234,9 @@ class Database:
                 with the specified name already exists (in which case no actual
                 table creation takes place on the database). Defaults to False,
                 i.e. an error is raised by the API in case of table-name collision.
-            schema_operation_timeout_ms: a timeout, in milliseconds, for the
+            table_admin_timeout_ms: a timeout, in milliseconds, for the
                 createTable HTTP request.
-            max_time_ms: an alias for `schema_operation_timeout_ms`.
+            max_time_ms: an alias for `table_admin_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the table.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -1285,10 +1285,10 @@ class Database:
 
         ct_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
 
-        _schema_operation_timeout_ms = (
-            schema_operation_timeout_ms
+        _table_admin_timeout_ms = (
+            table_admin_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.schema_operation_timeout_ms
+            or self.api_options.timeout_options.table_admin_timeout_ms
         )
 
         driver_commander = self._get_driver_commander(keyspace=keyspace)
@@ -1307,7 +1307,7 @@ class Database:
         logger.info(f"createTable('{name}')")
         ct_response = driver_commander.request(
             payload=cc_payload,
-            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
+            timeout_context=_TimeoutContext(request_ms=_table_admin_timeout_ms),
         )
         if ct_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -1331,7 +1331,7 @@ class Database:
         *,
         keyspace: str | None = None,
         if_exists: bool | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        table_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> None:
         """
@@ -1351,9 +1351,9 @@ class Database:
             if_exists: if passed as True, trying to drop a non-existing index
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
-            schema_operation_timeout_ms: a timeout, in milliseconds, for the
+            table_admin_timeout_ms: a timeout, in milliseconds, for the
                 dropIndex HTTP request.
-            max_time_ms: an alias for `schema_operation_timeout_ms`.
+            max_time_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
             TODO
@@ -1367,10 +1367,10 @@ class Database:
             >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
-        _schema_operation_timeout_ms = (
-            schema_operation_timeout_ms
+        _table_admin_timeout_ms = (
+            table_admin_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.schema_operation_timeout_ms
+            or self.api_options.timeout_options.table_admin_timeout_ms
         )
         di_options: dict[str, bool]
         if if_exists is not None:
@@ -1392,7 +1392,7 @@ class Database:
         logger.info(f"dropIndex('{name}')")
         di_response = driver_commander.request(
             payload=di_payload,
-            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
+            timeout_context=_TimeoutContext(request_ms=_table_admin_timeout_ms),
         )
         if di_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -1406,7 +1406,7 @@ class Database:
         name_or_table: str | Table[ROW],
         *,
         if_exists: bool | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        table_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> None:
         """
@@ -1418,9 +1418,9 @@ class Database:
             if_exists: if passed as True, trying to drop a non-existing table
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
-            schema_operation_timeout_ms: a timeout, in milliseconds, for
+            table_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
-            max_time_ms: an alias for `schema_operation_timeout_ms`.
+            max_time_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
             >>> my_db.list_table_names()
@@ -1437,10 +1437,10 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.table import Table
 
-        _schema_operation_timeout_ms = (
-            schema_operation_timeout_ms
+        _table_admin_timeout_ms = (
+            table_admin_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.schema_operation_timeout_ms
+            or self.api_options.timeout_options.table_admin_timeout_ms
         )
 
         _keyspace: str | None
@@ -1471,7 +1471,7 @@ class Database:
         logger.info(f"dropTable('{_table_name}')")
         dt_response = driver_commander.request(
             payload=dt_payload,
-            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
+            timeout_context=_TimeoutContext(request_ms=_table_admin_timeout_ms),
         )
         if dt_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -2336,7 +2336,7 @@ class AsyncDatabase:
         indexing: dict[str, Any] | None = None,
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        collection_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
@@ -2357,7 +2357,7 @@ class AsyncDatabase:
         indexing: dict[str, Any] | None = None,
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        collection_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
@@ -2378,7 +2378,7 @@ class AsyncDatabase:
         indexing: dict[str, Any] | None = None,
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        collection_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
@@ -2423,9 +2423,9 @@ class AsyncDatabase:
             additional_options: any further set of key-value pairs that will
                 be added to the "options" part of the payload when sending
                 the Data API command to create a collection.
-            schema_operation_timeout_ms: a timeout, in milliseconds, for the
+            collection_admin_timeout_ms: a timeout, in milliseconds, for the
                 createCollection HTTP request.
-            max_time_ms: an alias for `schema_operation_timeout_ms`.
+            max_time_ms: an alias for `collection_admin_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -2481,10 +2481,10 @@ class AsyncDatabase:
             additional_options=additional_options,
         )
 
-        _schema_operation_timeout_ms = (
-            schema_operation_timeout_ms
+        _collection_admin_timeout_ms = (
+            collection_admin_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.schema_operation_timeout_ms
+            or self.api_options.timeout_options.collection_admin_timeout_ms
         )
 
         driver_commander = self._get_driver_commander(keyspace=keyspace)
@@ -2492,7 +2492,7 @@ class AsyncDatabase:
         logger.info(f"createCollection('{name}')")
         cc_response = await driver_commander.async_request(
             payload=cc_payload,
-            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
+            timeout_context=_TimeoutContext(request_ms=_collection_admin_timeout_ms),
         )
         if cc_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -2514,7 +2514,7 @@ class AsyncDatabase:
         self,
         name_or_collection: str | AsyncCollection[DOC],
         *,
-        schema_operation_timeout_ms: int | None = None,
+        collection_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -2523,9 +2523,9 @@ class AsyncDatabase:
         Args:
             name_or_collection: either the name of a collection or
                 an `AsyncCollection` instance.
-            schema_operation_timeout_ms: a timeout, in milliseconds, for
+            collection_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
-            max_time_ms: an alias for `schema_operation_timeout_ms`.
+            max_time_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
             >>> asyncio.run(my_async_db.list_collection_names())
@@ -2542,10 +2542,10 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.collection import AsyncCollection
 
-        _schema_operation_timeout_ms = (
-            schema_operation_timeout_ms
+        _collection_admin_timeout_ms = (
+            collection_admin_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.schema_operation_timeout_ms
+            or self.api_options.timeout_options.collection_admin_timeout_ms
         )
 
         keyspace: str | None
@@ -2561,7 +2561,7 @@ class AsyncDatabase:
         logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = await driver_commander.async_request(
             payload=dc_payload,
-            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
+            timeout_context=_TimeoutContext(request_ms=_collection_admin_timeout_ms),
         )
         if dc_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -2807,7 +2807,7 @@ class AsyncDatabase:
         definition: TableDefinition | dict[str, Any],
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        table_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -2824,7 +2824,7 @@ class AsyncDatabase:
         row_type: type[ROW],
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        table_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -2840,7 +2840,7 @@ class AsyncDatabase:
         row_type: type[Any] = DefaultRowType,
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        table_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -2869,9 +2869,9 @@ class AsyncDatabase:
                 with the specified name already exists (in which case no actual
                 table creation takes place on the database). Defaults to False,
                 i.e. an error is raised by the API in case of table-name collision.
-            schema_operation_timeout_ms: a timeout, in milliseconds, for the
+            table_admin_timeout_ms: a timeout, in milliseconds, for the
                 createTable HTTP request.
-            max_time_ms: an alias for `schema_operation_timeout_ms`.
+            max_time_ms: an alias for `table_admin_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the table.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -2922,10 +2922,10 @@ class AsyncDatabase:
 
         ct_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
 
-        _schema_operation_timeout_ms = (
-            schema_operation_timeout_ms
+        _table_admin_timeout_ms = (
+            table_admin_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.schema_operation_timeout_ms
+            or self.api_options.timeout_options.table_admin_timeout_ms
         )
 
         driver_commander = self._get_driver_commander(keyspace=keyspace)
@@ -2944,7 +2944,7 @@ class AsyncDatabase:
         logger.info(f"createTable('{name}')")
         ct_response = await driver_commander.async_request(
             payload=cc_payload,
-            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
+            timeout_context=_TimeoutContext(request_ms=_table_admin_timeout_ms),
         )
         if ct_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -2968,7 +2968,7 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         if_exists: bool | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        table_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> None:
         """
@@ -2988,9 +2988,9 @@ class AsyncDatabase:
             if_exists: if passed as True, trying to drop a non-existing index
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
-            schema_operation_timeout_ms: a timeout, in milliseconds, for the
+            table_admin_timeout_ms: a timeout, in milliseconds, for the
                 dropIndex HTTP request.
-            max_time_ms: an alias for `schema_operation_timeout_ms`.
+            max_time_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
             TODO
@@ -3004,10 +3004,10 @@ class AsyncDatabase:
             >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
-        _schema_operation_timeout_ms = (
-            schema_operation_timeout_ms
+        _table_admin_timeout_ms = (
+            table_admin_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.schema_operation_timeout_ms
+            or self.api_options.timeout_options.table_admin_timeout_ms
         )
         di_options: dict[str, bool]
         if if_exists is not None:
@@ -3029,7 +3029,7 @@ class AsyncDatabase:
         logger.info(f"dropIndex('{name}')")
         di_response = await driver_commander.async_request(
             payload=di_payload,
-            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
+            timeout_context=_TimeoutContext(request_ms=_table_admin_timeout_ms),
         )
         if di_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -3043,7 +3043,7 @@ class AsyncDatabase:
         name_or_table: str | AsyncTable[ROW],
         *,
         if_exists: bool | None = None,
-        schema_operation_timeout_ms: int | None = None,
+        table_admin_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -3055,9 +3055,9 @@ class AsyncDatabase:
             if_exists: if passed as True, trying to drop a non-existing table
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
-            schema_operation_timeout_ms: a timeout, in milliseconds, for
+            table_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
-            max_time_ms: an alias for `schema_operation_timeout_ms`.
+            max_time_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
             >>> my_db.list_table_names()
@@ -3074,10 +3074,10 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.table import AsyncTable
 
-        _schema_operation_timeout_ms = (
-            schema_operation_timeout_ms
+        _table_admin_timeout_ms = (
+            table_admin_timeout_ms
             or max_time_ms
-            or self.api_options.timeout_options.schema_operation_timeout_ms
+            or self.api_options.timeout_options.table_admin_timeout_ms
         )
 
         _keyspace: str | None
@@ -3108,7 +3108,7 @@ class AsyncDatabase:
         logger.info(f"dropTable('{_table_name}')")
         dt_response = await driver_commander.async_request(
             payload=dt_payload,
-            timeout_context=_TimeoutContext(request_ms=_schema_operation_timeout_ms),
+            timeout_context=_TimeoutContext(request_ms=_table_admin_timeout_ms),
         )
         if dt_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(

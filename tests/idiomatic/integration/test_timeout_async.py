@@ -155,12 +155,12 @@ class TestTimeoutAsync:
         await asyncio.sleep(1)
 
         with pytest.raises(DataAPITimeoutException):
-            await async_empty_collection.distinct("a", data_operation_timeout_ms=1)
+            await async_empty_collection.distinct("a", general_method_timeout_ms=1)
 
         cur_tl = async_empty_collection.find()
         with pytest.raises(DataAPITimeoutException):
-            await cur_tl.to_list(data_operation_timeout_ms=1)
+            await cur_tl.to_list(general_method_timeout_ms=1)
 
         cur_fe = async_empty_collection.find()
         with pytest.raises(DataAPITimeoutException):
-            await cur_fe.for_each(lambda doc: doc, data_operation_timeout_ms=1)
+            await cur_fe.for_each(lambda doc: doc, general_method_timeout_ms=1)

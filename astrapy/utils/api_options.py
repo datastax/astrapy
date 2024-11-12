@@ -30,12 +30,13 @@ from astrapy.settings.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
     DEFAULT_BINARY_ENCODE_VECTORS,
+    DEFAULT_COLLECTION_ADMIN_TIMEOUT_MS,
     DEFAULT_CUSTOM_DATATYPES_IN_READING,
-    DEFAULT_DATA_OPERATION_TIMEOUT_MS,
     DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
+    DEFAULT_GENERAL_METHOD_TIMEOUT_MS,
     DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
     DEFAULT_REQUEST_TIMEOUT_MS,
-    DEFAULT_SCHEMA_OPERATION_TIMEOUT_MS,
+    DEFAULT_TABLE_ADMIN_TIMEOUT_MS,
     DEFAULT_UNROLL_ITERABLES_TO_LISTS,
     DEFAULT_USE_DECIMALS_IN_COLLECTIONS,
     DEV_OPS_URL_ENV_MAP,
@@ -48,8 +49,9 @@ from astrapy.utils.unset import _UNSET, UnsetType
 @dataclass
 class TimeoutOptions:
     request_timeout_ms: int | UnsetType = _UNSET
-    data_operation_timeout_ms: int | UnsetType = _UNSET
-    schema_operation_timeout_ms: int | UnsetType = _UNSET
+    general_method_timeout_ms: int | UnsetType = _UNSET
+    collection_admin_timeout_ms: int | UnsetType = _UNSET
+    table_admin_timeout_ms: int | UnsetType = _UNSET
     database_admin_timeout_ms: int | UnsetType = _UNSET
     keyspace_admin_timeout_ms: int | UnsetType = _UNSET
 
@@ -57,8 +59,9 @@ class TimeoutOptions:
 @dataclass
 class FullTimeoutOptions(TimeoutOptions):
     request_timeout_ms: int
-    data_operation_timeout_ms: int
-    schema_operation_timeout_ms: int
+    general_method_timeout_ms: int
+    collection_admin_timeout_ms: int
+    table_admin_timeout_ms: int
     database_admin_timeout_ms: int
     keyspace_admin_timeout_ms: int
 
@@ -66,16 +69,18 @@ class FullTimeoutOptions(TimeoutOptions):
         self,
         *,
         request_timeout_ms: int,
-        data_operation_timeout_ms: int,
-        schema_operation_timeout_ms: int,
+        general_method_timeout_ms: int,
+        collection_admin_timeout_ms: int,
+        table_admin_timeout_ms: int,
         database_admin_timeout_ms: int,
         keyspace_admin_timeout_ms: int,
     ) -> None:
         TimeoutOptions.__init__(
             self,
             request_timeout_ms=request_timeout_ms,
-            data_operation_timeout_ms=data_operation_timeout_ms,
-            schema_operation_timeout_ms=schema_operation_timeout_ms,
+            general_method_timeout_ms=general_method_timeout_ms,
+            collection_admin_timeout_ms=collection_admin_timeout_ms,
+            table_admin_timeout_ms=table_admin_timeout_ms,
             database_admin_timeout_ms=database_admin_timeout_ms,
             keyspace_admin_timeout_ms=keyspace_admin_timeout_ms,
         )
@@ -87,15 +92,20 @@ class FullTimeoutOptions(TimeoutOptions):
                 if not isinstance(other.request_timeout_ms, UnsetType)
                 else self.request_timeout_ms
             ),
-            data_operation_timeout_ms=(
-                other.data_operation_timeout_ms
-                if not isinstance(other.data_operation_timeout_ms, UnsetType)
-                else self.data_operation_timeout_ms
+            general_method_timeout_ms=(
+                other.general_method_timeout_ms
+                if not isinstance(other.general_method_timeout_ms, UnsetType)
+                else self.general_method_timeout_ms
             ),
-            schema_operation_timeout_ms=(
-                other.schema_operation_timeout_ms
-                if not isinstance(other.schema_operation_timeout_ms, UnsetType)
-                else self.schema_operation_timeout_ms
+            collection_admin_timeout_ms=(
+                other.collection_admin_timeout_ms
+                if not isinstance(other.collection_admin_timeout_ms, UnsetType)
+                else self.collection_admin_timeout_ms
+            ),
+            table_admin_timeout_ms=(
+                other.table_admin_timeout_ms
+                if not isinstance(other.table_admin_timeout_ms, UnsetType)
+                else self.table_admin_timeout_ms
             ),
             database_admin_timeout_ms=(
                 other.database_admin_timeout_ms
@@ -546,8 +556,9 @@ class FullAPIOptions(APIOptions):
 
 defaultTimeoutOptions = FullTimeoutOptions(
     request_timeout_ms=DEFAULT_REQUEST_TIMEOUT_MS,
-    data_operation_timeout_ms=DEFAULT_DATA_OPERATION_TIMEOUT_MS,
-    schema_operation_timeout_ms=DEFAULT_SCHEMA_OPERATION_TIMEOUT_MS,
+    general_method_timeout_ms=DEFAULT_GENERAL_METHOD_TIMEOUT_MS,
+    collection_admin_timeout_ms=DEFAULT_COLLECTION_ADMIN_TIMEOUT_MS,
+    table_admin_timeout_ms=DEFAULT_TABLE_ADMIN_TIMEOUT_MS,
     database_admin_timeout_ms=DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
     keyspace_admin_timeout_ms=DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
 )

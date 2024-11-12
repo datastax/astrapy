@@ -153,12 +153,12 @@ class TestTimeoutSync:
         time.sleep(1)
 
         with pytest.raises(DataAPITimeoutException):
-            sync_empty_collection.distinct("a", data_operation_timeout_ms=1)
+            sync_empty_collection.distinct("a", general_method_timeout_ms=1)
 
         cur_tl = sync_empty_collection.find()
         with pytest.raises(DataAPITimeoutException):
-            cur_tl.to_list(data_operation_timeout_ms=1)
+            cur_tl.to_list(general_method_timeout_ms=1)
 
         cur_fe = sync_empty_collection.find()
         with pytest.raises(DataAPITimeoutException):
-            cur_fe.for_each(lambda doc: doc, data_operation_timeout_ms=1)
+            cur_fe.for_each(lambda doc: doc, general_method_timeout_ms=1)

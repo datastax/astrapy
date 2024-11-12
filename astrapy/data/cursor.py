@@ -722,10 +722,10 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self,
         function: Callable[[T], Any],
         *,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
     ) -> None:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
+        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
         for document in _cursor:
             function(document)
         self.close()
@@ -733,10 +733,10 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     def to_list(
         self,
         *,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
     ) -> list[T]:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
+        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
         documents = [document for document in _cursor]
         self.close()
         return documents
@@ -1018,10 +1018,10 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self,
         function: Callable[[T], Any],
         *,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
     ) -> None:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
+        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
         async for document in _cursor:
             function(document)
         self.close()
@@ -1029,10 +1029,10 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     async def to_list(
         self,
         *,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
     ) -> list[T]:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
+        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
         documents = [document async for document in _cursor]
         self.close()
         return documents
@@ -1309,10 +1309,10 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self,
         function: Callable[[T], Any],
         *,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
     ) -> None:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
+        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
         for document in _cursor:
             function(document)
         self.close()
@@ -1320,10 +1320,10 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     def to_list(
         self,
         *,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
     ) -> list[T]:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
+        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
         documents = [document for document in _cursor]
         self.close()
         return documents
@@ -1605,10 +1605,10 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self,
         function: Callable[[T], Any],
         *,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
     ) -> None:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
+        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
         async for document in _cursor:
             function(document)
         self.close()
@@ -1616,10 +1616,10 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     async def to_list(
         self,
         *,
-        data_operation_timeout_ms: int | None = None,
+        general_method_timeout_ms: int | None = None,
     ) -> list[T]:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=data_operation_timeout_ms)
+        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
         documents = [document async for document in _cursor]
         self.close()
         return documents
