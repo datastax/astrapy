@@ -64,12 +64,6 @@ class TestTableDryMethods:
         ).respond_with_json({"status": {"count": 500}})
         assert mock_table.estimated_document_count() == 500
 
-        httpserver.expect_oneshot_request(
-            f"/{BASE_PATH}/{PATH_SUFFIX}",
-            method=HttpMethod.POST,
-        ).respond_with_json({"status": {"count": 500}})
-        assert mock_table.estimated_row_count() == 500
-
     @pytest.mark.describe("test of table estimated_document_count and alias, async")
     async def test_table_estimated_document_count_async(
         self,
@@ -81,12 +75,6 @@ class TestTableDryMethods:
             method=HttpMethod.POST,
         ).respond_with_json({"status": {"count": 500}})
         assert await mock_atable.estimated_document_count() == 500
-
-        httpserver.expect_oneshot_request(
-            f"/{BASE_PATH}/{PATH_SUFFIX}",
-            method=HttpMethod.POST,
-        ).respond_with_json({"status": {"count": 500}})
-        assert await mock_atable.estimated_row_count() == 500
 
     @pytest.mark.describe("test of table count_documents and alias, sync")
     def test_table_count_documents_sync(
@@ -103,22 +91,16 @@ class TestTableDryMethods:
         httpserver.expect_oneshot_request(
             f"/{BASE_PATH}/{PATH_SUFFIX}",
             method=HttpMethod.POST,
-        ).respond_with_json({"status": {"count": 500}})
-        assert mock_table.count_rows({}, upper_bound=650) == 500
-
-        httpserver.expect_oneshot_request(
-            f"/{BASE_PATH}/{PATH_SUFFIX}",
-            method=HttpMethod.POST,
         ).respond_with_json({"status": {"count": 1000, "moreData": True}})
         with pytest.raises(TooManyRowsToCountException):
-            mock_table.count_rows({}, upper_bound=1000)
+            mock_table.count_documents({}, upper_bound=1000)
 
         httpserver.expect_oneshot_request(
             f"/{BASE_PATH}/{PATH_SUFFIX}",
             method=HttpMethod.POST,
         ).respond_with_json({"status": {"count": 50}})
         with pytest.raises(TooManyRowsToCountException):
-            mock_table.count_rows({}, upper_bound=20)
+            mock_table.count_documents({}, upper_bound=20)
 
     @pytest.mark.describe("test of table count_documents and alias, async")
     async def test_table_count_documents_async(
@@ -135,22 +117,16 @@ class TestTableDryMethods:
         httpserver.expect_oneshot_request(
             f"/{BASE_PATH}/{PATH_SUFFIX}",
             method=HttpMethod.POST,
-        ).respond_with_json({"status": {"count": 500}})
-        assert await mock_atable.count_rows({}, upper_bound=650) == 500
-
-        httpserver.expect_oneshot_request(
-            f"/{BASE_PATH}/{PATH_SUFFIX}",
-            method=HttpMethod.POST,
         ).respond_with_json({"status": {"count": 1000, "moreData": True}})
         with pytest.raises(TooManyRowsToCountException):
-            await mock_atable.count_rows({}, upper_bound=1000)
+            await mock_atable.count_documents({}, upper_bound=1000)
 
         httpserver.expect_oneshot_request(
             f"/{BASE_PATH}/{PATH_SUFFIX}",
             method=HttpMethod.POST,
         ).respond_with_json({"status": {"count": 50}})
         with pytest.raises(TooManyRowsToCountException):
-            await mock_atable.count_rows({}, upper_bound=20)
+            await mock_atable.count_documents({}, upper_bound=20)
 
     @pytest.mark.describe("test of table update_one, sync")
     def test_table_update_one_sync(
