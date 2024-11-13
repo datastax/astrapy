@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import copy
 import datetime
 import decimal
 import hashlib
@@ -271,6 +272,51 @@ def _create_unsupported_tpostprocessor(
         )
 
 
+def _column_filler_value(
+    col_def: TableColumnTypeDescriptor,
+    options: FullSerdesOptions,
+) -> Any:
+    if isinstance(col_def, TableScalarColumnTypeDescriptor):
+        return None
+    elif isinstance(col_def, TableVectorColumnTypeDescriptor):
+        if col_def.column_type == TableVectorColumnType.VECTOR:
+            return None
+        else:
+            raise ValueError(
+                f"Unrecognized table vector-column descriptor for reads: {col_def.as_dict()}"
+            )
+    elif isinstance(col_def, TableValuedColumnTypeDescriptor):
+        if col_def.column_type == TableValuedColumnType.LIST:
+            return []
+        elif TableValuedColumnType.SET:
+            if options.custom_datatypes_in_reading:
+                return DataAPISet()
+            else:
+                return set()
+        else:
+            raise ValueError(
+                f"Unrecognized table valued-column descriptor for reads: {col_def.as_dict()}"
+            )
+    elif isinstance(col_def, TableKeyValuedColumnTypeDescriptor):
+        if col_def.column_type == TableKeyValuedColumnType.MAP:
+            if options.custom_datatypes_in_reading:
+                return DataAPIMap()
+            else:
+                return {}
+        else:
+            raise ValueError(
+                f"Unrecognized table key-valued-column descriptor for reads: {col_def.as_dict()}"
+            )
+    elif isinstance(col_def, TableUnsupportedColumnTypeDescriptor):
+        # TODO: this might be an incomplete treatment of unsupported collection
+        # types, should they be returned from queries.
+        return None
+    else:
+        raise ValueError(
+            f"Unrecognized table column descriptor for reads: {col_def.as_dict()}"
+        )
+
+
 def _create_column_tpostprocessor(
     col_def: TableColumnTypeDescriptor,
     options: FullSerdesOptions,
@@ -432,11 +478,16 @@ def create_row_tpostprocessor(
         col_name: _create_column_tpostprocessor(col_definition, options=options)
         for col_name, col_definition in columns.items()
     }
+    tfiller_map = {
+        col_name: _column_filler_value(col_definition, options=options)
+        for col_name, col_definition in columns.items()
+    }
     if similarity_pseudocolumn is not None:
         # whatever in the passed schema, requiring similarity overrides that 'column':
         tpostprocessor_map[similarity_pseudocolumn] = _create_scalar_tpostprocessor(
             column_type=TableScalarColumnType.FLOAT, options=options
         )
+        tfiller_map[similarity_pseudocolumn] = None
     column_name_set = set(tpostprocessor_map.keys())
 
     def _tpostprocessor(raw_dict: dict[str, Any]) -> dict[str, Any]:
@@ -446,7 +497,10 @@ def create_row_tpostprocessor(
             raise ValueError(f"Returned row has unexpected fields: {xf_desc}")
         return {
             col_name: (
-                None if col_name not in raw_dict else tpostprocessor(raw_dict[col_name])
+                # making a copy here, since the user may mutate e.g. a map:
+                copy.copy(tfiller_map[col_name])
+                if col_name not in raw_dict
+                else tpostprocessor(raw_dict[col_name])
             )
             for col_name, tpostprocessor in tpostprocessor_map.items()
         }

@@ -17,6 +17,7 @@ from __future__ import annotations
 import datetime
 import decimal
 import ipaddress
+from typing import Any
 
 import pytest
 
@@ -221,6 +222,67 @@ EXPECTED_NONCUSTOMTYPES_POSTPROCESSED_ROW = {
     "p_map_float_text": {1.1: "1-1", float("NaN"): "NANNN!"},
 }
 
+OUTPUT_FILLERS_ROW_TO_POSTPROCESS: dict[str, Any] = {}
+EXPECTED_FILLERS_POSTPROCESSED_ROW: dict[str, Any] = {
+    "p_text": None,
+    "p_boolean": None,
+    "p_int": None,
+    "p_float": None,
+    "p_float_nan": None,
+    "p_float_pinf": None,
+    "p_float_minf": None,
+    "p_blob": None,
+    "p_uuid": None,
+    "p_decimal": None,
+    "p_date": None,
+    "p_duration": None,
+    "p_inet": None,
+    "p_time": None,
+    "p_timestamp": None,
+    "p_timestamp_out_offset": None,
+    "p_list_int": [],
+    "p_list_double": [],
+    "p_set_ascii": DataAPISet(),
+    "p_set_float": DataAPISet(),
+    "p_map_text_float": DataAPIMap({}),
+    "p_map_float_text": DataAPIMap({}),
+    "somevector": None,
+    "embeddings": None,
+    "p_counter": None,
+    "p_varchar": None,
+    "p_timeuuid": None,
+}
+EXPECTED_FILLERS_NONCUSTOMTYPES_POSTPROCESSED_ROW: dict[str, Any] = {
+    "p_text": None,
+    "p_boolean": None,
+    "p_int": None,
+    "p_float": None,
+    "p_float_nan": None,
+    "p_float_pinf": None,
+    "p_float_minf": None,
+    "p_blob": None,
+    "p_uuid": None,
+    "p_decimal": None,
+    "p_date": None,
+    "p_duration": None,
+    "p_inet": None,
+    "p_time": None,
+    "p_timestamp": None,
+    "p_timestamp_out_offset": None,
+    "p_list_int": [],
+    "p_list_double": [],
+    "p_set_ascii": set(),
+    "p_set_float": set(),
+    "p_map_text_float": {},
+    "p_map_float_text": {},
+    "somevector": None,
+    "embeddings": None,
+    "p_counter": None,
+    "p_varchar": None,
+    "p_timeuuid": None,
+}
+
+
 INPUT_ROW_TO_PREPROCESS = {
     "none": None,
     "str": "the str",
@@ -319,13 +381,6 @@ class TestTableConverters:
         assert _repaint_NaNs(converted_column) == _repaint_NaNs(
             EXPECTED_POSTPROCESSED_ROW
         )
-
-        all_nulls = {k: None for k in OUTPUT_ROW_TO_POSTPROCESS.keys()}
-        converted_empty = tpostprocessor({})
-        assert converted_empty == all_nulls
-
-        converted_nulls = tpostprocessor(all_nulls)
-        assert converted_nulls == all_nulls
 
         with pytest.raises(ValueError):
             tpostprocessor({"bippy": 123})
@@ -485,3 +540,43 @@ class TestTableConverters:
                 {"err_field": ObjectId()},
                 options=ptp_opts,
             )
+
+    @pytest.mark.describe("test of row postprocessors from schema, fillers")
+    def test_row_postprocessors_from_schema_fillers(self) -> None:
+        col_desc = TableDescriptor.coerce(TABLE_DESCRIPTION)
+        tpostprocessor = create_row_tpostprocessor(
+            columns=col_desc.definition.columns,
+            options=FullSerdesOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=True,
+                unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
+            ),
+            similarity_pseudocolumn=None,
+        )
+
+        converted_column = tpostprocessor(OUTPUT_FILLERS_ROW_TO_POSTPROCESS)
+        assert _repaint_NaNs(converted_column) == _repaint_NaNs(
+            EXPECTED_FILLERS_POSTPROCESSED_ROW
+        )
+
+    @pytest.mark.describe(
+        "test of row postprocessors from schema, fillers, no custom types"
+    )
+    def test_row_postprocessors_from_schema_fillers_nocustom(self) -> None:
+        col_desc = TableDescriptor.coerce(TABLE_DESCRIPTION)
+        tpostprocessor = create_row_tpostprocessor(
+            columns=col_desc.definition.columns,
+            options=FullSerdesOptions(
+                binary_encode_vectors=True,
+                custom_datatypes_in_reading=False,
+                unroll_iterables_to_lists=False,
+                use_decimals_in_collections=False,
+            ),
+            similarity_pseudocolumn=None,
+        )
+
+        converted_column = tpostprocessor(OUTPUT_FILLERS_ROW_TO_POSTPROCESS)
+        assert _repaint_NaNs(converted_column) == _repaint_NaNs(
+            EXPECTED_FILLERS_NONCUSTOMTYPES_POSTPROCESSED_ROW
+        )
