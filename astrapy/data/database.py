@@ -447,7 +447,7 @@ class Database:
         self,
         *,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> AstraDBDatabaseInfo:
         """
         Additional information on the database as an AstraDBDatabaseInfo instance.
@@ -458,7 +458,7 @@ class Database:
 
         Args:
             request_timeout_ms: a timeout, in milliseconds, for the DevOps API request.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Example:
             >>> my_db.info().region
@@ -474,7 +474,7 @@ class Database:
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         logger.info("getting database info")
@@ -573,7 +573,7 @@ class Database:
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DefaultDocumentType]: ...
 
@@ -586,7 +586,7 @@ class Database:
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]: ...
 
@@ -598,7 +598,7 @@ class Database:
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         """
@@ -632,7 +632,7 @@ class Database:
                 `collection_api_options` parameter is suggested; alternatively,
                 bear in mind that individual collection methods also accept timeout
                 parameters.
-            collection_max_time_ms: an alias for `collection_request_timeout_ms`.
+            collection_timeout_ms: an alias for `collection_request_timeout_ms`.
             collection_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
@@ -668,7 +668,7 @@ class Database:
             .with_override(
                 APIOptions(
                     timeout_options=TimeoutOptions(
-                        request_timeout_ms=collection_max_time_ms,
+                        request_timeout_ms=collection_timeout_ms,
                     )
                 ),
             )
@@ -708,10 +708,10 @@ class Database:
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
         collection_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DefaultDocumentType]: ...
 
@@ -729,10 +729,10 @@ class Database:
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
         collection_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]: ...
 
@@ -750,10 +750,10 @@ class Database:
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
         collection_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         """
@@ -796,7 +796,7 @@ class Database:
                 the Data API command to create a collection.
             collection_admin_timeout_ms: a timeout, in milliseconds, for the
                 createCollection HTTP request.
-            max_time_ms: an alias for `collection_admin_timeout_ms`.
+            timeout_ms: an alias for `collection_admin_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -813,7 +813,7 @@ class Database:
                 `collection_api_options` parameter is suggested; alternatively,
                 bear in mind that individual collection methods also accept timeout
                 parameters.
-            collection_max_time_ms: an alias for `collection_request_timeout_ms`.
+            collection_timeout_ms: an alias for `collection_request_timeout_ms`.
             collection_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
@@ -850,7 +850,7 @@ class Database:
 
         _collection_admin_timeout_ms = (
             collection_admin_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.collection_admin_timeout_ms
         )
 
@@ -873,7 +873,7 @@ class Database:
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
             collection_request_timeout_ms=collection_request_timeout_ms,
-            collection_max_time_ms=collection_max_time_ms,
+            collection_timeout_ms=collection_timeout_ms,
             collection_api_options=collection_api_options,
         )
 
@@ -882,7 +882,7 @@ class Database:
         name_or_collection: str | Collection[DOC],
         *,
         collection_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> None:
         """
         Drop a collection from the database, along with all documents therein.
@@ -892,7 +892,7 @@ class Database:
                 a `Collection` instance.
             collection_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
-            max_time_ms: an alias for `collection_admin_timeout_ms`.
+            timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
             >>> my_db.list_collection_names()
@@ -911,7 +911,7 @@ class Database:
 
         _collection_admin_timeout_ms = (
             collection_admin_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.collection_admin_timeout_ms
         )
 
@@ -943,7 +943,7 @@ class Database:
         *,
         keyspace: str | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[CollectionDescriptor]:
         """
         List all collections in a given keyspace for this database.
@@ -953,7 +953,7 @@ class Database:
                 the general setting for this database is assumed.
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a list of CollectionDescriptor instances one for each collection.
@@ -970,7 +970,7 @@ class Database:
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
 
@@ -999,7 +999,7 @@ class Database:
         *,
         keyspace: str | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[str]:
         """
         List the names of all collections in a given keyspace of this database.
@@ -1009,7 +1009,7 @@ class Database:
                 the general setting for this database is assumed.
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a list of the collection names as strings, in no particular order.
@@ -1021,7 +1021,7 @@ class Database:
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
 
@@ -1049,7 +1049,7 @@ class Database:
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_max_time_ms: int | UnsetType = _UNSET,
+        table_timeout_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[DefaultRowType]: ...
 
@@ -1062,7 +1062,7 @@ class Database:
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_max_time_ms: int | UnsetType = _UNSET,
+        table_timeout_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]: ...
 
@@ -1074,7 +1074,7 @@ class Database:
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_max_time_ms: int | UnsetType = _UNSET,
+        table_timeout_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
@@ -1108,7 +1108,7 @@ class Database:
                 `table_api_options` parameter is suggested; alternatively,
                 bear in mind that individual table methods also accept timeout
                 parameters.
-            table_max_time_ms: an alias for `table_request_timeout_ms`.
+            table_timeout_ms: an alias for `table_request_timeout_ms`.
             table_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the table, e.g.
@@ -1137,7 +1137,7 @@ class Database:
             .with_override(
                 APIOptions(
                     timeout_options=TimeoutOptions(
-                        request_timeout_ms=table_max_time_ms,
+                        request_timeout_ms=table_timeout_ms,
                     )
                 ),
             )
@@ -1173,10 +1173,10 @@ class Database:
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_max_time_ms: int | UnsetType = _UNSET,
+        table_timeout_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[DefaultRowType]: ...
 
@@ -1190,10 +1190,10 @@ class Database:
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_max_time_ms: int | UnsetType = _UNSET,
+        table_timeout_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]: ...
 
@@ -1206,10 +1206,10 @@ class Database:
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_max_time_ms: int | UnsetType = _UNSET,
+        table_timeout_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
@@ -1236,7 +1236,7 @@ class Database:
                 i.e. an error is raised by the API in case of table-name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, for the
                 createTable HTTP request.
-            max_time_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the table.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -1253,7 +1253,7 @@ class Database:
                 `table_api_options` parameter is suggested; alternatively,
                 bear in mind that individual table methods also accept timeout
                 parameters.
-            table_max_time_ms: an alias for `table_request_timeout_ms`.
+            table_timeout_ms: an alias for `table_request_timeout_ms`.
             table_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the table, e.g.
@@ -1287,7 +1287,7 @@ class Database:
 
         _table_admin_timeout_ms = (
             table_admin_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.table_admin_timeout_ms
         )
 
@@ -1321,7 +1321,7 @@ class Database:
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
             table_request_timeout_ms=table_request_timeout_ms,
-            table_max_time_ms=table_max_time_ms,
+            table_timeout_ms=table_timeout_ms,
             table_api_options=table_api_options,
         )
 
@@ -1332,7 +1332,7 @@ class Database:
         keyspace: str | None = None,
         if_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> None:
         """
         Drops (deletes) an index (of any kind) from the table it is associated to.
@@ -1353,7 +1353,7 @@ class Database:
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, for the
                 dropIndex HTTP request.
-            max_time_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
             TODO
@@ -1369,7 +1369,7 @@ class Database:
 
         _table_admin_timeout_ms = (
             table_admin_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.table_admin_timeout_ms
         )
         di_options: dict[str, bool]
@@ -1407,7 +1407,7 @@ class Database:
         *,
         if_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> None:
         """
         Drop a table from the database, along with all documents therein and indexes and indexes.
@@ -1420,7 +1420,7 @@ class Database:
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
-            max_time_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
             >>> my_db.list_table_names()
@@ -1439,7 +1439,7 @@ class Database:
 
         _table_admin_timeout_ms = (
             table_admin_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.table_admin_timeout_ms
         )
 
@@ -1486,7 +1486,7 @@ class Database:
         *,
         keyspace: str | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[TableDescriptor]:
         """
         List all tables in a given keyspace for this database.
@@ -1496,7 +1496,7 @@ class Database:
                 the general setting for this database is assumed.
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a list of TableDescriptor instances, one for each table.
@@ -1513,7 +1513,7 @@ class Database:
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
 
@@ -1542,7 +1542,7 @@ class Database:
         *,
         keyspace: str | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[str]:
         """
         List the names of all tables in a given keyspace of this database.
@@ -1552,7 +1552,7 @@ class Database:
                 the general setting for this database is assumed.
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a list of the table names as strings, in no particular order.
@@ -1564,7 +1564,7 @@ class Database:
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
 
@@ -1592,7 +1592,7 @@ class Database:
         collection_or_table_name: str | None = None,
         raise_api_errors: bool = True,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """
         Send a POST request to the Data API for this database with
@@ -1615,7 +1615,7 @@ class Database:
                 result in an astrapy exception being raised.
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a dictionary with the response of the HTTP request.
@@ -1629,7 +1629,7 @@ class Database:
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
 
@@ -2097,7 +2097,7 @@ class AsyncDatabase:
         self,
         *,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> AstraDBDatabaseInfo:
         """
         Additional information on the database as a AstraDBDatabaseInfo instance.
@@ -2108,7 +2108,7 @@ class AsyncDatabase:
 
         Args:
             request_timeout_ms: a timeout, in milliseconds, for the DevOps API request.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Example:
             >>> asyncio.run(my_async_db.info()).region
@@ -2124,7 +2124,7 @@ class AsyncDatabase:
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         logger.info("getting database info")
@@ -2223,7 +2223,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DefaultDocumentType]: ...
 
@@ -2236,7 +2236,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]: ...
 
@@ -2248,7 +2248,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         """
@@ -2282,7 +2282,7 @@ class AsyncDatabase:
                 `collection_api_options` parameter is suggested; alternatively,
                 bear in mind that individual collection methods also accept timeout
                 parameters.
-            collection_max_time_ms: an alias for `collection_request_timeout_ms`.
+            collection_timeout_ms: an alias for `collection_request_timeout_ms`.
             collection_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
@@ -2321,7 +2321,7 @@ class AsyncDatabase:
             .with_override(
                 APIOptions(
                     timeout_options=TimeoutOptions(
-                        request_timeout_ms=collection_max_time_ms,
+                        request_timeout_ms=collection_timeout_ms,
                     )
                 ),
             )
@@ -2361,10 +2361,10 @@ class AsyncDatabase:
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
         collection_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DefaultDocumentType]: ...
 
@@ -2382,10 +2382,10 @@ class AsyncDatabase:
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
         collection_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]: ...
 
@@ -2403,10 +2403,10 @@ class AsyncDatabase:
         default_id_type: str | None = None,
         additional_options: dict[str, Any] | None = None,
         collection_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         collection_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         """
@@ -2449,7 +2449,7 @@ class AsyncDatabase:
                 the Data API command to create a collection.
             collection_admin_timeout_ms: a timeout, in milliseconds, for the
                 createCollection HTTP request.
-            max_time_ms: an alias for `collection_admin_timeout_ms`.
+            timeout_ms: an alias for `collection_admin_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -2466,7 +2466,7 @@ class AsyncDatabase:
                 `collection_api_options` parameter is suggested; alternatively,
                 bear in mind that individual collection methods also accept timeout
                 parameters.
-            collection_max_time_ms: an alias for `collection_request_timeout_ms`.
+            collection_timeout_ms: an alias for `collection_request_timeout_ms`.
             collection_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
@@ -2507,7 +2507,7 @@ class AsyncDatabase:
 
         _collection_admin_timeout_ms = (
             collection_admin_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.collection_admin_timeout_ms
         )
 
@@ -2530,7 +2530,7 @@ class AsyncDatabase:
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
             collection_request_timeout_ms=collection_request_timeout_ms,
-            collection_max_time_ms=collection_max_time_ms,
+            collection_timeout_ms=collection_timeout_ms,
             collection_api_options=collection_api_options,
         )
 
@@ -2539,7 +2539,7 @@ class AsyncDatabase:
         name_or_collection: str | AsyncCollection[DOC],
         *,
         collection_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """
         Drop a collection from the database, along with all documents therein.
@@ -2549,7 +2549,7 @@ class AsyncDatabase:
                 an `AsyncCollection` instance.
             collection_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
-            max_time_ms: an alias for `collection_admin_timeout_ms`.
+            timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
             >>> asyncio.run(my_async_db.list_collection_names())
@@ -2568,7 +2568,7 @@ class AsyncDatabase:
 
         _collection_admin_timeout_ms = (
             collection_admin_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.collection_admin_timeout_ms
         )
 
@@ -2600,7 +2600,7 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[CollectionDescriptor]:
         """
         List all collections in a given keyspace for this database.
@@ -2610,7 +2610,7 @@ class AsyncDatabase:
                 the general setting for this database is assumed.
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a list of CollectionDescriptor instances one for each collection.
@@ -2629,7 +2629,7 @@ class AsyncDatabase:
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
 
@@ -2658,7 +2658,7 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[str]:
         """
         List the names of all collections in a given keyspace of this database.
@@ -2668,7 +2668,7 @@ class AsyncDatabase:
                 the general setting for this database is assumed.
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a list of the collection names as strings, in no particular order.
@@ -2680,7 +2680,7 @@ class AsyncDatabase:
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
 
@@ -2708,7 +2708,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_max_time_ms: int | UnsetType = _UNSET,
+        table_timeout_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[DefaultRowType]: ...
 
@@ -2721,7 +2721,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_max_time_ms: int | UnsetType = _UNSET,
+        table_timeout_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]: ...
 
@@ -2733,7 +2733,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_max_time_ms: int | UnsetType = _UNSET,
+        table_timeout_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
@@ -2767,7 +2767,7 @@ class AsyncDatabase:
                 `table_api_options` parameter is suggested; alternatively,
                 bear in mind that individual table methods also accept timeout
                 parameters.
-            table_max_time_ms: an alias for `table_request_timeout_ms`.
+            table_timeout_ms: an alias for `table_request_timeout_ms`.
             table_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the table, e.g.
@@ -2796,7 +2796,7 @@ class AsyncDatabase:
             .with_override(
                 APIOptions(
                     timeout_options=TimeoutOptions(
-                        request_timeout_ms=table_max_time_ms,
+                        request_timeout_ms=table_timeout_ms,
                     )
                 ),
             )
@@ -2832,10 +2832,10 @@ class AsyncDatabase:
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_max_time_ms: int | UnsetType = _UNSET,
+        table_timeout_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[DefaultRowType]: ...
 
@@ -2849,10 +2849,10 @@ class AsyncDatabase:
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_max_time_ms: int | UnsetType = _UNSET,
+        table_timeout_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]: ...
 
@@ -2865,10 +2865,10 @@ class AsyncDatabase:
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_max_time_ms: int | UnsetType = _UNSET,
+        table_timeout_ms: int | UnsetType = _UNSET,
         table_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
@@ -2895,7 +2895,7 @@ class AsyncDatabase:
                 i.e. an error is raised by the API in case of table-name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, for the
                 createTable HTTP request.
-            max_time_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the table.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -2912,7 +2912,7 @@ class AsyncDatabase:
                 `table_api_options` parameter is suggested; alternatively,
                 bear in mind that individual table methods also accept timeout
                 parameters.
-            table_max_time_ms: an alias for `table_request_timeout_ms`.
+            table_timeout_ms: an alias for `table_request_timeout_ms`.
             table_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the table, e.g.
@@ -2948,7 +2948,7 @@ class AsyncDatabase:
 
         _table_admin_timeout_ms = (
             table_admin_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.table_admin_timeout_ms
         )
 
@@ -2982,7 +2982,7 @@ class AsyncDatabase:
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
             table_request_timeout_ms=table_request_timeout_ms,
-            table_max_time_ms=table_max_time_ms,
+            table_timeout_ms=table_timeout_ms,
             table_api_options=table_api_options,
         )
 
@@ -2993,7 +2993,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         if_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> None:
         """
         Drops (deletes) an index (of any kind) from the table it is associated to.
@@ -3014,7 +3014,7 @@ class AsyncDatabase:
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, for the
                 dropIndex HTTP request.
-            max_time_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
             TODO
@@ -3030,7 +3030,7 @@ class AsyncDatabase:
 
         _table_admin_timeout_ms = (
             table_admin_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.table_admin_timeout_ms
         )
         di_options: dict[str, bool]
@@ -3068,7 +3068,7 @@ class AsyncDatabase:
         *,
         if_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """
         Drop a table from the database, along with all documents therein and indexes.
@@ -3081,7 +3081,7 @@ class AsyncDatabase:
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
-            max_time_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
             >>> my_db.list_table_names()
@@ -3100,7 +3100,7 @@ class AsyncDatabase:
 
         _table_admin_timeout_ms = (
             table_admin_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.table_admin_timeout_ms
         )
 
@@ -3147,7 +3147,7 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[TableDescriptor]:
         """
         List all tables in a given keyspace for this database.
@@ -3157,7 +3157,7 @@ class AsyncDatabase:
                 the general setting for this database is assumed.
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a list of TableDescriptor instances, one for each table.
@@ -3177,7 +3177,7 @@ class AsyncDatabase:
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
 
@@ -3206,7 +3206,7 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[str]:
         """
         List the names of all tables in a given keyspace of this database.
@@ -3216,7 +3216,7 @@ class AsyncDatabase:
                 the general setting for this database is assumed.
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a list of the table names as strings, in no particular order.
@@ -3234,7 +3234,7 @@ class AsyncDatabase:
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
 
@@ -3262,7 +3262,7 @@ class AsyncDatabase:
         collection_or_table_name: str | None = None,
         raise_api_errors: bool = True,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """
         Send a POST request to the Data API for this database with
@@ -3285,7 +3285,7 @@ class AsyncDatabase:
                 result in an astrapy exception being raised.
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a dictionary with the response of the HTTP request.
@@ -3299,7 +3299,7 @@ class AsyncDatabase:
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
 

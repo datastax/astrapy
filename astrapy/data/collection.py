@@ -278,14 +278,14 @@ class Collection(Generic[DOC]):
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         arg_api_options = APIOptions(
             callers=callers,
             embedding_api_key=embedding_api_key,
             timeout_options=TimeoutOptions(
-                request_timeout_ms=collection_max_time_ms,
+                request_timeout_ms=collection_timeout_ms,
             ),
         )
         # a double override for the timeout aliasing
@@ -313,7 +313,7 @@ class Collection(Generic[DOC]):
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         """
@@ -343,7 +343,7 @@ class Collection(Generic[DOC]):
                 `api_options` parameter is suggested; alternatively,
                 bear in mind that individual collection methods also accept timeout
                 parameters.
-            collection_max_time_ms: an alias for `request_timeout_ms`.
+            collection_timeout_ms: an alias for `request_timeout_ms`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -364,7 +364,7 @@ class Collection(Generic[DOC]):
             embedding_api_key=embedding_api_key,
             callers=callers,
             request_timeout_ms=request_timeout_ms,
-            collection_max_time_ms=collection_max_time_ms,
+            collection_timeout_ms=collection_timeout_ms,
             api_options=api_options,
         )
 
@@ -377,7 +377,7 @@ class Collection(Generic[DOC]):
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         """
@@ -413,7 +413,7 @@ class Collection(Generic[DOC]):
                 `api_options` parameter is suggested; alternatively,
                 bear in mind that individual collection methods also accept timeout
                 parameters.
-            collection_max_time_ms: an alias for `request_timeout_ms`.
+            collection_timeout_ms: an alias for `request_timeout_ms`.
             api_options: any additional options to set for the result, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -431,7 +431,7 @@ class Collection(Generic[DOC]):
             callers=callers,
             embedding_api_key=embedding_api_key,
             timeout_options=TimeoutOptions(
-                request_timeout_ms=collection_max_time_ms,
+                request_timeout_ms=collection_timeout_ms,
             ),
         )
         # a double override for the timeout aliasing
@@ -456,7 +456,7 @@ class Collection(Generic[DOC]):
         self,
         *,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionOptions:
         """
         Get the collection options, i.e. its configuration as read from the database.
@@ -468,7 +468,7 @@ class Collection(Generic[DOC]):
         Args:
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a CollectionOptions instance describing the collection.
@@ -481,14 +481,14 @@ class Collection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         logger.info(f"getting collections in search of '{self.name}'")
         self_descriptors = [
             coll_desc
             for coll_desc in self.database.list_collections(
-                max_time_ms=_request_timeout_ms
+                timeout_ms=_request_timeout_ms
             )
             if coll_desc.name == self.name
         ]
@@ -504,7 +504,7 @@ class Collection(Generic[DOC]):
         self,
         *,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionInfo:
         """
         Information on the collection (name, location, database), in the
@@ -516,7 +516,7 @@ class Collection(Generic[DOC]):
         Args:
             request_timeout_ms: a timeout, in milliseconds, for the DevOps API request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Example:
             >>> my_coll.info().database_info.region
@@ -535,7 +535,7 @@ class Collection(Generic[DOC]):
         return CollectionInfo(
             database_info=self.database.info(
                 request_timeout_ms=request_timeout_ms,
-                max_time_ms=max_time_ms,
+                timeout_ms=timeout_ms,
             ),
             keyspace=self.keyspace,
             name=self.name,
@@ -599,7 +599,7 @@ class Collection(Generic[DOC]):
         document: DOC,
         *,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionInsertOneResult:
         """
         Insert a single document in the collection in an atomic operation.
@@ -610,7 +610,7 @@ class Collection(Generic[DOC]):
                 case it will be created automatically.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a CollectionInsertOneResult object.
@@ -643,7 +643,7 @@ class Collection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         io_payload = {"insertOne": {"document": document}}
@@ -680,7 +680,7 @@ class Collection(Generic[DOC]):
         concurrency: int | None = None,
         request_timeout_ms: int | None = None,
         general_method_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionInsertManyResult:
         """
         Insert a list of documents into the collection.
@@ -704,7 +704,7 @@ class Collection(Generic[DOC]):
             general_method_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation (which may involve multiple API requests).
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionInsertManyResult object.
@@ -766,7 +766,7 @@ class Collection(Generic[DOC]):
         )
         _general_method_timeout_ms = (
             general_method_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.general_method_timeout_ms
         )
         if concurrency is None:
@@ -932,7 +932,7 @@ class Collection(Generic[DOC]):
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionFindCursor[DOC, DOC]:
         """
         Find documents on the collection, matching a certain provided filter.
@@ -996,7 +996,7 @@ class Collection(Generic[DOC]):
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a Cursor object representing iterations over the matching documents
@@ -1100,7 +1100,7 @@ class Collection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         if include_similarity is not None and not _is_vector_sort(sort):
@@ -1130,7 +1130,7 @@ class Collection(Generic[DOC]):
         include_similarity: bool | None = None,
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> DOC | None:
         """
         Run a search, returning the first document in the collection that matches
@@ -1171,7 +1171,7 @@ class Collection(Generic[DOC]):
                 or a "$vectorize" key in `sort`.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a dictionary expressing the required document, otherwise None.
@@ -1200,7 +1200,7 @@ class Collection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         if include_similarity is not None and not _is_vector_sort(sort):
@@ -1245,7 +1245,7 @@ class Collection(Generic[DOC]):
         filter: FilterType | None = None,
         request_timeout_ms: int | None = None,
         general_method_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[Any]:
         """
         Return a list of the unique values of `key` across the documents
@@ -1273,7 +1273,7 @@ class Collection(Generic[DOC]):
                 requested operation (which may involve multiple API requests).
                 This method, being based on `find` (see) may entail successive HTTP API
                 requests, depending on the amount of involved documents.
-            max_time_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a list of all different values for `key` found across the documents
@@ -1321,7 +1321,7 @@ class Collection(Generic[DOC]):
         )
         _general_method_timeout_ms = (
             general_method_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.general_method_timeout_ms
         )
         # preparing cursor:
@@ -1363,7 +1363,7 @@ class Collection(Generic[DOC]):
         *,
         upper_bound: int,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> int:
         """
         Count the documents in the collection matching the specified filter.
@@ -1384,7 +1384,7 @@ class Collection(Generic[DOC]):
                 an exception will be raised.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             the exact count of matching documents.
@@ -1414,7 +1414,7 @@ class Collection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         cd_payload = {"countDocuments": {"filter": filter}}
@@ -1449,7 +1449,7 @@ class Collection(Generic[DOC]):
         self,
         *,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> int:
         """
         Query the API server for an estimate of the document count in the collection.
@@ -1459,7 +1459,7 @@ class Collection(Generic[DOC]):
         Args:
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a server-provided estimate count of the documents in the collection.
@@ -1470,7 +1470,7 @@ class Collection(Generic[DOC]):
         """
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         ed_payload: dict[str, Any] = {"estimatedDocumentCount": {}}
@@ -1499,7 +1499,7 @@ class Collection(Generic[DOC]):
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> DOC | None:
         """
         Find a document on the collection and replace it entirely with a new one,
@@ -1547,7 +1547,7 @@ class Collection(Generic[DOC]):
                 document is returned. The default is "before".
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -1588,7 +1588,7 @@ class Collection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         options = {
@@ -1634,7 +1634,7 @@ class Collection(Generic[DOC]):
         sort: SortType | None = None,
         upsert: bool = False,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionUpdateResult:
         """
         Replace a single document on the collection with a new one,
@@ -1661,7 +1661,7 @@ class Collection(Generic[DOC]):
                 the operation silently does nothing in case of no matches.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a CollectionUpdateResult object summarizing the outcome of
@@ -1682,7 +1682,7 @@ class Collection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         options = {
@@ -1729,7 +1729,7 @@ class Collection(Generic[DOC]):
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> DOC | None:
         """
         Find a document on the collection and update it as requested,
@@ -1783,7 +1783,7 @@ class Collection(Generic[DOC]):
                 document is returned. The default is "before".
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -1824,7 +1824,7 @@ class Collection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         options = {
@@ -1870,7 +1870,7 @@ class Collection(Generic[DOC]):
         sort: SortType | None = None,
         upsert: bool = False,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionUpdateResult:
         """
         Update a single document on the collection as requested,
@@ -1903,7 +1903,7 @@ class Collection(Generic[DOC]):
                 in case of no matches.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a CollectionUpdateResult object summarizing the outcome of
@@ -1922,7 +1922,7 @@ class Collection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         options = {
@@ -1967,7 +1967,7 @@ class Collection(Generic[DOC]):
         upsert: bool = False,
         request_timeout_ms: int | None = None,
         general_method_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionUpdateResult:
         """
         Apply an update operation to all documents matching a condition,
@@ -1999,7 +1999,7 @@ class Collection(Generic[DOC]):
                 This method may entail successive HTTP API requests,
                 depending on the amount of involved documents.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionUpdateResult object summarizing the outcome of
@@ -2033,7 +2033,7 @@ class Collection(Generic[DOC]):
         )
         _general_method_timeout_ms = (
             general_method_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.general_method_timeout_ms
         )
         api_options = {
@@ -2113,7 +2113,7 @@ class Collection(Generic[DOC]):
         projection: ProjectionType | None = None,
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> DOC | None:
         """
         Find a document in the collection and delete it. The deleted document,
@@ -2149,7 +2149,7 @@ class Collection(Generic[DOC]):
                 deleted one. See the `find` method for more on sorting.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             Either the document (or a projection thereof, as requested), or None
@@ -2174,7 +2174,7 @@ class Collection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         _projection = normalize_optional_projection(projection)
@@ -2214,7 +2214,7 @@ class Collection(Generic[DOC]):
         *,
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionDeleteResult:
         """
         Delete one document matching a provided filter.
@@ -2235,7 +2235,7 @@ class Collection(Generic[DOC]):
                 deleted one. See the `find` method for more on sorting.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a CollectionDeleteResult object summarizing the outcome of the
@@ -2261,7 +2261,7 @@ class Collection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         do_payload = {
@@ -2298,7 +2298,7 @@ class Collection(Generic[DOC]):
         *,
         request_timeout_ms: int | None = None,
         general_method_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionDeleteResult:
         """
         Delete all documents matching a provided filter.
@@ -2320,7 +2320,7 @@ class Collection(Generic[DOC]):
                 This method may entail successive HTTP API requests,
                 depending on the amount of involved documents.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionDeleteResult object summarizing the outcome of the
@@ -2351,7 +2351,7 @@ class Collection(Generic[DOC]):
         )
         _general_method_timeout_ms = (
             general_method_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.general_method_timeout_ms
         )
         dm_responses: list[dict[str, Any]] = []
@@ -2405,7 +2405,7 @@ class Collection(Generic[DOC]):
         self,
         *,
         collection_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> None:
         """
         Drop the collection, i.e. delete it from the database along with
@@ -2417,7 +2417,7 @@ class Collection(Generic[DOC]):
                 Remember there is not guarantee that a request that has
                 timed out us not in fact honored.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `collection_admin_timeout_ms`.
+            timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
             >>> my_coll.find_one({})
@@ -2441,7 +2441,7 @@ class Collection(Generic[DOC]):
 
         _collection_admin_timeout_ms = (
             collection_admin_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.collection_admin_timeout_ms
         )
         logger.info(f"dropping collection '{self.name}' (self)")
@@ -2456,7 +2456,7 @@ class Collection(Generic[DOC]):
         *,
         raise_api_errors: bool = True,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """
         Send a POST request to the Data API for this collection with
@@ -2469,7 +2469,7 @@ class Collection(Generic[DOC]):
                 result in an astrapy exception being raised.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a dictionary with the response of the HTTP request.
@@ -2481,7 +2481,7 @@ class Collection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         _cmd_desc: str
@@ -2684,14 +2684,14 @@ class AsyncCollection(Generic[DOC]):
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         arg_api_options = APIOptions(
             callers=callers,
             embedding_api_key=embedding_api_key,
             timeout_options=TimeoutOptions(
-                request_timeout_ms=collection_max_time_ms,
+                request_timeout_ms=collection_timeout_ms,
             ),
         )
         # a double override for the timeout aliasing
@@ -2719,7 +2719,7 @@ class AsyncCollection(Generic[DOC]):
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         """
@@ -2749,7 +2749,7 @@ class AsyncCollection(Generic[DOC]):
                 `api_options` parameter is suggested; alternatively,
                 bear in mind that individual collection methods also accept timeout
                 parameters.
-            collection_max_time_ms: an alias for `request_timeout_ms`.
+            collection_timeout_ms: an alias for `request_timeout_ms`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -2770,7 +2770,7 @@ class AsyncCollection(Generic[DOC]):
             embedding_api_key=embedding_api_key,
             callers=callers,
             request_timeout_ms=request_timeout_ms,
-            collection_max_time_ms=collection_max_time_ms,
+            collection_timeout_ms=collection_timeout_ms,
             api_options=api_options,
         )
 
@@ -2783,7 +2783,7 @@ class AsyncCollection(Generic[DOC]):
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         request_timeout_ms: int | UnsetType = _UNSET,
-        collection_max_time_ms: int | UnsetType = _UNSET,
+        collection_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         """
@@ -2819,7 +2819,7 @@ class AsyncCollection(Generic[DOC]):
                 `api_options` parameter is suggested; alternatively,
                 bear in mind that individual collection methods also accept timeout
                 parameters.
-            collection_max_time_ms: an alias for `request_timeout_ms`.
+            collection_timeout_ms: an alias for `request_timeout_ms`.
             api_options: any additional options to set for the result, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -2837,7 +2837,7 @@ class AsyncCollection(Generic[DOC]):
             callers=callers,
             embedding_api_key=embedding_api_key,
             timeout_options=TimeoutOptions(
-                request_timeout_ms=collection_max_time_ms,
+                request_timeout_ms=collection_timeout_ms,
             ),
         )
         # a double override for the timeout aliasing
@@ -2862,7 +2862,7 @@ class AsyncCollection(Generic[DOC]):
         self,
         *,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionOptions:
         """
         Get the collection options, i.e. its configuration as read from the database.
@@ -2874,7 +2874,7 @@ class AsyncCollection(Generic[DOC]):
         Args:
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a CollectionOptions instance describing the collection.
@@ -2887,14 +2887,14 @@ class AsyncCollection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         logger.info(f"getting collections in search of '{self.name}'")
         self_descriptors = [
             coll_desc
             for coll_desc in await self.database.list_collections(
-                max_time_ms=_request_timeout_ms
+                timeout_ms=_request_timeout_ms
             )
             if coll_desc.name == self.name
         ]
@@ -2910,7 +2910,7 @@ class AsyncCollection(Generic[DOC]):
         self,
         *,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionInfo:
         """
         Information on the collection (name, location, database), in the
@@ -2922,7 +2922,7 @@ class AsyncCollection(Generic[DOC]):
         Args:
             request_timeout_ms: a timeout, in milliseconds, for the DevOps API request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Example:
             >>> asyncio.run(my_async_coll.info()).database_info.region
@@ -2940,7 +2940,7 @@ class AsyncCollection(Generic[DOC]):
 
         db_info = await self.database.info(
             request_timeout_ms=request_timeout_ms,
-            max_time_ms=max_time_ms,
+            timeout_ms=timeout_ms,
         )
         return CollectionInfo(
             database_info=db_info,
@@ -3006,7 +3006,7 @@ class AsyncCollection(Generic[DOC]):
         document: DOC,
         *,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionInsertOneResult:
         """
         Insert a single document in the collection in an atomic operation.
@@ -3017,7 +3017,7 @@ class AsyncCollection(Generic[DOC]):
                 case it will be created automatically.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a CollectionInsertOneResult object.
@@ -3053,7 +3053,7 @@ class AsyncCollection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         io_payload = {"insertOne": {"document": document}}
@@ -3090,7 +3090,7 @@ class AsyncCollection(Generic[DOC]):
         concurrency: int | None = None,
         request_timeout_ms: int | None = None,
         general_method_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionInsertManyResult:
         """
         Insert a list of documents into the collection.
@@ -3114,7 +3114,7 @@ class AsyncCollection(Generic[DOC]):
             general_method_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation (which may involve multiple API requests).
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionInsertManyResult object.
@@ -3186,7 +3186,7 @@ class AsyncCollection(Generic[DOC]):
         )
         _general_method_timeout_ms = (
             general_method_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.general_method_timeout_ms
         )
         if concurrency is None:
@@ -3340,7 +3340,7 @@ class AsyncCollection(Generic[DOC]):
         include_sort_vector: bool | None = None,
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> AsyncCollectionFindCursor[DOC, DOC]:
         """
         Find documents on the collection, matching a certain provided filter.
@@ -3404,7 +3404,7 @@ class AsyncCollection(Generic[DOC]):
                 of the underlying HTTP requests used to fetch documents as the
                 cursor is iterated over.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             an AsyncCursor object representing iterations over the matching documents
@@ -3518,7 +3518,7 @@ class AsyncCollection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         if include_similarity is not None and not _is_vector_sort(sort):
@@ -3548,7 +3548,7 @@ class AsyncCollection(Generic[DOC]):
         include_similarity: bool | None = None,
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> DOC | None:
         """
         Run a search, returning the first document in the collection that matches
@@ -3589,7 +3589,7 @@ class AsyncCollection(Generic[DOC]):
                 or a "$vectorize" key in `sort`.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a dictionary expressing the required document, otherwise None.
@@ -3634,7 +3634,7 @@ class AsyncCollection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         if include_similarity is not None and not _is_vector_sort(sort):
@@ -3679,7 +3679,7 @@ class AsyncCollection(Generic[DOC]):
         filter: FilterType | None = None,
         request_timeout_ms: int | None = None,
         general_method_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[Any]:
         """
         Return a list of the unique values of `key` across the documents
@@ -3707,7 +3707,7 @@ class AsyncCollection(Generic[DOC]):
                 requested operation (which may involve multiple API requests).
                 This method, being based on `find` (see) may entail successive HTTP API
                 requests, depending on the amount of involved documents.
-            max_time_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a list of all different values for `key` found across the documents
@@ -3763,7 +3763,7 @@ class AsyncCollection(Generic[DOC]):
         )
         _general_method_timeout_ms = (
             general_method_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.general_method_timeout_ms
         )
         # preparing cursor:
@@ -3805,7 +3805,7 @@ class AsyncCollection(Generic[DOC]):
         *,
         upper_bound: int,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> int:
         """
         Count the documents in the collection matching the specified filter.
@@ -3826,7 +3826,7 @@ class AsyncCollection(Generic[DOC]):
                 an exception will be raised.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             the exact count of matching documents.
@@ -3861,7 +3861,7 @@ class AsyncCollection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         cd_payload = {"countDocuments": {"filter": filter}}
@@ -3896,7 +3896,7 @@ class AsyncCollection(Generic[DOC]):
         self,
         *,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> int:
         """
         Query the API server for an estimate of the document count in the collection.
@@ -3906,7 +3906,7 @@ class AsyncCollection(Generic[DOC]):
         Args:
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a server-provided estimate count of the documents in the collection.
@@ -3917,7 +3917,7 @@ class AsyncCollection(Generic[DOC]):
         """
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         ed_payload: dict[str, Any] = {"estimatedDocumentCount": {}}
@@ -3946,7 +3946,7 @@ class AsyncCollection(Generic[DOC]):
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> DOC | None:
         """
         Find a document on the collection and replace it entirely with a new one,
@@ -3995,7 +3995,7 @@ class AsyncCollection(Generic[DOC]):
                 document is returned. The default is "before".
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A document, either the one before the replace operation or the
@@ -4041,7 +4041,7 @@ class AsyncCollection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         options = {
@@ -4087,7 +4087,7 @@ class AsyncCollection(Generic[DOC]):
         sort: SortType | None = None,
         upsert: bool = False,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionUpdateResult:
         """
         Replace a single document on the collection with a new one,
@@ -4114,7 +4114,7 @@ class AsyncCollection(Generic[DOC]):
                 the operation silently does nothing in case of no matches.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a CollectionUpdateResult object summarizing the outcome of
@@ -4151,7 +4151,7 @@ class AsyncCollection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         options = {
@@ -4198,7 +4198,7 @@ class AsyncCollection(Generic[DOC]):
         upsert: bool = False,
         return_document: str = ReturnDocument.BEFORE,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> DOC | None:
         """
         Find a document on the collection and update it as requested,
@@ -4252,7 +4252,7 @@ class AsyncCollection(Generic[DOC]):
                 document is returned. The default is "before".
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             A document (or a projection thereof, as required), either the one
@@ -4299,7 +4299,7 @@ class AsyncCollection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         options = {
@@ -4345,7 +4345,7 @@ class AsyncCollection(Generic[DOC]):
         sort: SortType | None = None,
         upsert: bool = False,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionUpdateResult:
         """
         Update a single document on the collection as requested,
@@ -4378,7 +4378,7 @@ class AsyncCollection(Generic[DOC]):
                 in case of no matches.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a CollectionUpdateResult object summarizing the outcome of
@@ -4412,7 +4412,7 @@ class AsyncCollection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         options = {
@@ -4457,7 +4457,7 @@ class AsyncCollection(Generic[DOC]):
         upsert: bool = False,
         request_timeout_ms: int | None = None,
         general_method_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionUpdateResult:
         """
         Apply an update operation to all documents matching a condition,
@@ -4489,7 +4489,7 @@ class AsyncCollection(Generic[DOC]):
                 This method may entail successive HTTP API requests,
                 depending on the amount of involved documents.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionUpdateResult object summarizing the outcome of
@@ -4534,7 +4534,7 @@ class AsyncCollection(Generic[DOC]):
         )
         _general_method_timeout_ms = (
             general_method_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.general_method_timeout_ms
         )
         api_options = {
@@ -4614,7 +4614,7 @@ class AsyncCollection(Generic[DOC]):
         projection: ProjectionType | None = None,
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> DOC | None:
         """
         Find a document in the collection and delete it. The deleted document,
@@ -4652,7 +4652,7 @@ class AsyncCollection(Generic[DOC]):
                 or a "$vectorize" key in `sort`.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             Either the document (or a projection thereof, as requested), or None
@@ -4683,7 +4683,7 @@ class AsyncCollection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         _projection = normalize_optional_projection(projection)
@@ -4723,7 +4723,7 @@ class AsyncCollection(Generic[DOC]):
         *,
         sort: SortType | None = None,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionDeleteResult:
         """
         Delete one document matching a provided filter.
@@ -4746,7 +4746,7 @@ class AsyncCollection(Generic[DOC]):
                 or a "$vectorize" key in `sort`.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a CollectionDeleteResult object summarizing the outcome of the
@@ -4772,7 +4772,7 @@ class AsyncCollection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         do_payload = {
@@ -4809,7 +4809,7 @@ class AsyncCollection(Generic[DOC]):
         *,
         request_timeout_ms: int | None = None,
         general_method_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> CollectionDeleteResult:
         """
         Delete all documents matching a provided filter.
@@ -4831,7 +4831,7 @@ class AsyncCollection(Generic[DOC]):
                 This method may entail successive HTTP API requests,
                 depending on the amount of involved documents.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a CollectionDeleteResult object summarizing the outcome of the
@@ -4867,7 +4867,7 @@ class AsyncCollection(Generic[DOC]):
         )
         _general_method_timeout_ms = (
             general_method_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.general_method_timeout_ms
         )
         dm_responses: list[dict[str, Any]] = []
@@ -4921,7 +4921,7 @@ class AsyncCollection(Generic[DOC]):
         self,
         *,
         collection_admin_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> None:
         """
         Drop the collection, i.e. delete it from the database along with
@@ -4933,7 +4933,7 @@ class AsyncCollection(Generic[DOC]):
                 If not passed, the collection-level setting is used instead.
                 Remember there is not guarantee that a request that has
                 timed out us not in fact honored.
-            max_time_ms: an alias for `collection_admin_timeout_ms`.
+            timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
             >>> async def drop_and_check(acol: AsyncCollection) -> None:
@@ -4961,7 +4961,7 @@ class AsyncCollection(Generic[DOC]):
 
         _collection_admin_timeout_ms = (
             collection_admin_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.collection_admin_timeout_ms
         )
         logger.info(f"dropping collection '{self.name}' (self)")
@@ -4976,7 +4976,7 @@ class AsyncCollection(Generic[DOC]):
         *,
         raise_api_errors: bool = True,
         request_timeout_ms: int | None = None,
-        max_time_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """
         Send a POST request to the Data API for this collection with
@@ -4989,7 +4989,7 @@ class AsyncCollection(Generic[DOC]):
                 result in an astrapy exception being raised.
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the collection-level setting is used instead.
-            max_time_ms: an alias for `request_timeout_ms`.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             a dictionary with the response of the HTTP request.
@@ -5001,7 +5001,7 @@ class AsyncCollection(Generic[DOC]):
 
         _request_timeout_ms = (
             request_timeout_ms
-            or max_time_ms
+            or timeout_ms
             or self.api_options.timeout_options.request_timeout_ms
         )
         _cmd_desc: str

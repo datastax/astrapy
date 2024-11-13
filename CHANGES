@@ -62,7 +62,7 @@ Reworked the options system:
     - an APIOptions object inherited at each "spawn" operation, with overrides
     - environment-dependent defaults if nothing supplied
     - "spawn" operations expose top-level aliases for selected settings
-    - per-method overrides. For timeouts, `max_time_ms` becomes an alias for more specific timeout types
+    - per-method overrides. For timeouts, `timeout_ms` (formerly called 'max_time_ms' becomes an alias for the appropriate timeout for that method)
     - collection and database's `info` method gets timeout parameters
     - (not user-facing) classes in the hierarchy other than DataAPIClient have breaking changes in their constructor (now options-first and keyword-arg-only)
     - introduced `serdes_options.custom_datatypes_in_reading`, also controlling datetime management in Collections

@@ -35,7 +35,7 @@ class TestTimeoutSync:
         time.sleep(2)
 
         with pytest.raises(DataAPITimeoutException) as exc:
-            sync_empty_collection.count_documents({}, upper_bound=800, max_time_ms=1)
+            sync_empty_collection.count_documents({}, upper_bound=800, timeout_ms=1)
         assert sync_empty_collection.count_documents({}, upper_bound=800) >= 500
         assert exc.value.timeout_type in {"connect", "read"}
         assert exc.value.endpoint is not None
@@ -59,7 +59,7 @@ class TestTimeoutSync:
                 sync_database.api_endpoint,
                 token=sync_database.api_options.token,
                 keyspace=sync_database.keyspace,
-                max_time_ms=1,
+                timeout_ms=1,
             )
             assert info is not None
         assert exc.value.timeout_type in {"connect", "read"}
@@ -74,13 +74,13 @@ class TestTimeoutSync:
         col = sync_empty_collection
         col.insert_many([{"a": 1}] * 1000)
 
-        col.distinct("a", max_time_ms=20000)
+        col.distinct("a", timeout_ms=20000)
         with pytest.raises(DataAPITimeoutException):
-            col.distinct("a", max_time_ms=1)
+            col.distinct("a", timeout_ms=1)
 
-        col.distinct("a", max_time_ms=20000)
+        col.distinct("a", timeout_ms=20000)
         with pytest.raises(DataAPITimeoutException):
-            col.distinct("a", max_time_ms=1)
+            col.distinct("a", timeout_ms=1)
 
     @pytest.mark.describe("test of insert_many timeouts, sync")
     def test_insert_many_timeout_exceptions_sync(
@@ -88,23 +88,23 @@ class TestTimeoutSync:
         sync_collection: DefaultCollection,
     ) -> None:
         fifty_docs = [{"seq": i} for i in range(50)]
-        sync_collection.insert_many(fifty_docs, ordered=True, max_time_ms=20000)
+        sync_collection.insert_many(fifty_docs, ordered=True, timeout_ms=20000)
         sync_collection.insert_many(
-            fifty_docs, ordered=False, concurrency=1, max_time_ms=20000
+            fifty_docs, ordered=False, concurrency=1, timeout_ms=20000
         )
         sync_collection.insert_many(
-            fifty_docs, ordered=False, concurrency=2, max_time_ms=20000
+            fifty_docs, ordered=False, concurrency=2, timeout_ms=20000
         )
 
         with pytest.raises(DataAPITimeoutException):
-            sync_collection.insert_many(fifty_docs, ordered=True, max_time_ms=2)
+            sync_collection.insert_many(fifty_docs, ordered=True, timeout_ms=2)
         with pytest.raises(DataAPITimeoutException):
             sync_collection.insert_many(
-                fifty_docs, ordered=False, concurrency=1, max_time_ms=2
+                fifty_docs, ordered=False, concurrency=1, timeout_ms=2
             )
         with pytest.raises(DataAPITimeoutException):
             sync_collection.insert_many(
-                fifty_docs, ordered=False, concurrency=2, max_time_ms=2
+                fifty_docs, ordered=False, concurrency=2, timeout_ms=2
             )
 
     @pytest.mark.describe("test of update_many timeouts, sync")
@@ -117,12 +117,12 @@ class TestTimeoutSync:
 
         sync_collection.update_many({"f": "update_many"}, {"$inc": {"seq": 100}})
         sync_collection.update_many(
-            {"f": "update_many"}, {"$inc": {"seq": 100}}, max_time_ms=20000
+            {"f": "update_many"}, {"$inc": {"seq": 100}}, timeout_ms=20000
         )
 
         with pytest.raises(DataAPITimeoutException):
             sync_collection.update_many(
-                {"f": "update_many"}, {"$inc": {"seq": 100}}, max_time_ms=2
+                {"f": "update_many"}, {"$inc": {"seq": 100}}, timeout_ms=2
             )
 
     @pytest.mark.describe("test of delete_many timeouts, sync")
@@ -140,9 +140,9 @@ class TestTimeoutSync:
         )
 
         sync_collection.delete_many({"f": "delete_many1"})
-        sync_collection.delete_many({"f": "delete_many2"}, max_time_ms=20000)
+        sync_collection.delete_many({"f": "delete_many2"}, timeout_ms=20000)
         with pytest.raises(DataAPITimeoutException):
-            sync_collection.delete_many({"f": "delete_many3"}, max_time_ms=2)
+            sync_collection.delete_many({"f": "delete_many3"}, timeout_ms=2)
 
     @pytest.mark.describe("test of collection find-with-collective timeout, sync")
     def test_collection_find_with_collective_timeout_sync(
