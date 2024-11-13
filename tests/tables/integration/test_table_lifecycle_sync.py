@@ -254,7 +254,7 @@ class TestTableLifecycle:
             ),
         )
         table.create_vector_index(
-            "tfi_idx_p_vector",
+            "tfi_idx_p_vector_sm",
             definition=TableVectorIndexDefinition(
                 column="p_vector_sm",
                 options=TableVectorIndexOptions(
@@ -263,7 +263,7 @@ class TestTableLifecycle:
             ),
         )
         table.create_vector_index(
-            "tfi_idx_p_vector_sm",
+            "tfi_idx_p_vector",
             definition=TableVectorIndexDefinition(
                 column="p_vector",
                 options=TableVectorIndexOptions(
@@ -271,6 +271,46 @@ class TestTableLifecycle:
                 ),
             ),
         )
+
+        expected_indexes = {
+            "tfi_idx_p_text",
+            "tfi_idx_p_int",
+            "tfi_idx_p_vector",
+            "tfi_idx_p_vector_sm",
+        }
+        assert set(table.list_index_names()) == expected_indexes
+        # this map needs metric and source_model always specified
+        # to match how the API behaves. Also metric is auto-selected based
+        # on sourceModel for example.
+        expected_index_map = {
+            "tfi_idx_p_text": TableIndexDefinition(
+                column="p_text",
+                options=TableIndexOptions(
+                    ascii=False,
+                    normalize=True,
+                    case_sensitive=False,
+                ),
+            ),
+            "tfi_idx_p_int": TableIndexDefinition(
+                column="p_int",
+                options=TableIndexOptions(),
+            ),
+            "tfi_idx_p_vector_sm": TableVectorIndexDefinition(
+                column="p_vector_sm",
+                options=TableVectorIndexOptions(
+                    metric="cosine",
+                    source_model="other",
+                ),
+            ),
+            "tfi_idx_p_vector": TableVectorIndexDefinition(
+                column="p_vector",
+                options=TableVectorIndexOptions(
+                    metric="dot_product",
+                    source_model="openai-v3-large",
+                ),
+            ),
+        }
+        assert table.list_indexes() == expected_index_map
 
         sync_database.drop_table_index("tfi_idx_p_text")
         sync_database.drop_table_index("tfi_idx_p_int")

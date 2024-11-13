@@ -779,7 +779,7 @@ class TableVectorIndexOptions:
                 None if isinstance(self.metric, UnsetType) else f"metric={self.metric}",
                 None
                 if isinstance(self.source_model, UnsetType)
-                else f"metric={self.source_model}",
+                else f"source_model={self.source_model}",
             )
             if pc is not None
         ]
@@ -826,12 +826,30 @@ class TableVectorIndexOptions:
 
 
 @dataclass
-class TableIndexDefinition:
+class TableBaseIndexDefinition:
     """
     TODO
     """
 
     column: str
+
+    @classmethod
+    def from_dict(cls, raw_input: dict[str, Any]) -> TableBaseIndexDefinition:
+        if "options" not in raw_input:
+            return TableIndexDefinition.coerce(raw_input)
+        else:
+            if "metric" in raw_input["options"]:
+                return TableVectorIndexDefinition.coerce(raw_input)
+            else:
+                return TableIndexDefinition.coerce(raw_input)
+
+
+@dataclass
+class TableIndexDefinition(TableBaseIndexDefinition):
+    """
+    TODO
+    """
+
     options: TableIndexOptions
 
     def __repr__(self) -> str:
@@ -870,12 +888,11 @@ class TableIndexDefinition:
 
 
 @dataclass
-class TableVectorIndexDefinition:
+class TableVectorIndexDefinition(TableBaseIndexDefinition):
     """
     TODO
     """
 
-    column: str
     options: TableVectorIndexOptions
 
     def __repr__(self) -> str:

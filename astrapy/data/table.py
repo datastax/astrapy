@@ -44,7 +44,12 @@ from astrapy.exceptions import (
     UnexpectedDataAPIResponseException,
     _TimeoutContext,
 )
-from astrapy.info import TableIndexDefinition, TableInfo, TableVectorIndexDefinition
+from astrapy.info import (
+    TableBaseIndexDefinition,
+    TableIndexDefinition,
+    TableInfo,
+    TableVectorIndexDefinition,
+)
 from astrapy.results import TableInsertManyResult, TableInsertOneResult
 from astrapy.settings.defaults import (
     DEFAULT_DATA_API_AUTH_HEADER,
@@ -537,6 +542,99 @@ class Table(Generic[ROW]):
             table_admin_timeout_ms=table_admin_timeout_ms,
             max_time_ms=max_time_ms,
         )
+
+    def list_index_names(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> list[str]:
+        """
+        List the names of all indexes existing on this table.
+
+        Args:
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a list of the index names as strings, in no particular order.
+
+        Example:
+            >>> my_table.list_index_names()
+            ['text_idx', 'vector_idx']
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
+        li_payload: dict[str, Any] = {"listIndexes": {"options": {}}}
+        logger.info("listIndexes")
+        li_response = self._api_commander.request(
+            payload=li_payload,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+        )
+        if "indexes" not in li_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from listIndexes API command.",
+                raw_response=li_response,
+            )
+        else:
+            logger.info("finished listIndexes")
+            return li_response["status"]["indexes"]  # type: ignore[no-any-return]
+
+    def list_indexes(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> dict[str, TableBaseIndexDefinition]:
+        """
+        List the full definitions of all indexes existing on this table.
+
+        Args:
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a dictionary associating each of the index names to
+            the corresponding TableBaseIndexDefinition instance.
+
+        Example:
+            TODO
+            >>> my_table.list_index_names()
+            ['text_idx', 'vector_idx']
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
+        li_payload: dict[str, Any] = {"listIndexes": {"options": {"explain": True}}}
+        logger.info("listIndexes")
+        li_response = self._api_commander.request(
+            payload=li_payload,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+        )
+        if "indexes" not in li_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from listIndexes API command.",
+                raw_response=li_response,
+            )
+        else:
+            logger.info("finished listIndexes")
+            return {
+                index_object["name"]: TableBaseIndexDefinition.from_dict(
+                    index_object["definition"],
+                )
+                for index_object in li_response["status"]["indexes"]
+            }
 
     @overload
     def alter(
@@ -1928,6 +2026,100 @@ class AsyncTable(Generic[ROW]):
             table_admin_timeout_ms=table_admin_timeout_ms,
             max_time_ms=max_time_ms,
         )
+
+    async def list_index_names(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> list[str]:
+        """
+        List the names of all indexes existing on this table.
+
+        Args:
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a list of the index names as strings, in no particular order.
+
+        Example:
+            TODO async
+            >>> my_table.list_index_names()
+            ['text_idx', 'vector_idx']
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
+        li_payload: dict[str, Any] = {"listIndexes": {"options": {}}}
+        logger.info("listIndexes")
+        li_response = await self._api_commander.async_request(
+            payload=li_payload,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+        )
+        if "indexes" not in li_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from listIndexes API command.",
+                raw_response=li_response,
+            )
+        else:
+            logger.info("finished listIndexes")
+            return li_response["status"]["indexes"]  # type: ignore[no-any-return]
+
+    async def list_indexes(
+        self,
+        *,
+        request_timeout_ms: int | None = None,
+        max_time_ms: int | None = None,
+    ) -> dict[str, TableBaseIndexDefinition]:
+        """
+        List the full definitions of all indexes existing on this table.
+
+        Args:
+            request_timeout_ms: a timeout, in milliseconds, for
+                the underlying HTTP request.
+            max_time_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a dictionary associating each of the index names to
+            the corresponding TableBaseIndexDefinition instance.
+
+        Example:
+            TODO
+            >>> my_table.list_index_names()
+            ['text_idx', 'vector_idx']
+        """
+
+        _request_timeout_ms = (
+            request_timeout_ms
+            or max_time_ms
+            or self.api_options.timeout_options.request_timeout_ms
+        )
+
+        li_payload: dict[str, Any] = {"listIndexes": {"options": {"explain": True}}}
+        logger.info("listIndexes")
+        li_response = await self._api_commander.async_request(
+            payload=li_payload,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+        )
+        if "indexes" not in li_response.get("status", {}):
+            raise UnexpectedDataAPIResponseException(
+                text="Faulty response from listIndexes API command.",
+                raw_response=li_response,
+            )
+        else:
+            logger.info("finished listIndexes")
+            return {
+                index_object["name"]: TableBaseIndexDefinition.from_dict(
+                    index_object["definition"],
+                )
+                for index_object in li_response["status"]["indexes"]
+            }
 
     @overload
     async def alter(
