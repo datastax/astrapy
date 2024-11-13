@@ -759,7 +759,7 @@ class TestDMLSync:
         self,
         sync_empty_collection: DefaultCollection,
     ) -> None:
-        q_vector = [10, 9]
+        q_vector = DataAPIVector([10, 9])
         # with empty collection
         for include_sv in [False, True]:
             for sort_cl_label in ["reg", "vec"]:

@@ -815,7 +815,7 @@ class TestDMLAsync:
         self,
         async_empty_collection: DefaultAsyncCollection,
     ) -> None:
-        q_vector = [10, 9]
+        q_vector = DataAPIVector([10, 9])
 
         # with empty collection
         for include_sv in [False, True]:

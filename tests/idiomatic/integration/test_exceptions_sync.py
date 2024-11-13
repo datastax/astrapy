@@ -192,7 +192,9 @@ class TestExceptionsSync:
             sync_database.command(body={"myCommand": {"k": "v"}}, keyspace="ns")
         with pytest.raises(DataAPIResponseException):
             sync_database.command(
-                body={"myCommand": {"k": "v"}}, keyspace="ns", collection_name="coll"
+                body={"myCommand": {"k": "v"}},
+                keyspace="ns",
+                collection_or_table_name="coll",
             )
         with pytest.raises(DataAPIResponseException):
             list(sync_database.list_collections(keyspace="nonexisting"))

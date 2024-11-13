@@ -60,6 +60,7 @@ class TestDDLAsync:
                     "vector": {
                         "dimension": 123,
                         "metric": "euclidean",
+                        "sourceModel": "other",
                     },
                     "indexing": {"deny": ["a", "b", "c"]},
                 },

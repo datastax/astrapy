@@ -202,7 +202,9 @@ class TestExceptionsAsync:
             await async_database.command(body={"myCommand": {"k": "v"}}, keyspace="ns")
         with pytest.raises(DataAPIResponseException):
             await async_database.command(
-                body={"myCommand": {"k": "v"}}, keyspace="ns", collection_name="coll"
+                body={"myCommand": {"k": "v"}},
+                keyspace="ns",
+                collection_or_table_name="coll",
             )
         with pytest.raises(DataAPIResponseException):
             [
