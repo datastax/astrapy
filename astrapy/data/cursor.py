@@ -622,10 +622,6 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             raise ValueError("Query engine has no collection.")
         return self._query_engine.collection
 
-    @property
-    def keyspace(self) -> str:
-        return self.data_source.keyspace
-
     def clone(self) -> CollectionFindCursor[TRAW, TRAW]:
         """TODO. A new rewound cursor. Also: strips away any mapping."""
         if self._query_engine.collection is None:
@@ -918,10 +914,6 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             raise ValueError("Query engine has no async collection.")
         return self._query_engine.async_collection
 
-    @property
-    def keyspace(self) -> str:
-        return self.data_source.keyspace
-
     def clone(self) -> AsyncCollectionFindCursor[TRAW, TRAW]:
         """TODO. A new rewound cursor. Also: strips away any mapping."""
         if self._query_engine.async_collection is None:
@@ -1210,10 +1202,6 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         if self._query_engine.table is None:
             raise ValueError("Query engine has no table.")
         return self._query_engine.table
-
-    @property
-    def keyspace(self) -> str:
-        return self.data_source.keyspace
 
     def clone(self) -> TableFindCursor[TRAW, TRAW]:
         """TODO. A new rewound cursor. Also: strips away any mapping."""
@@ -1504,10 +1492,6 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         if self._query_engine.async_table is None:
             raise ValueError("Query engine has no async table.")
         return self._query_engine.async_table
-
-    @property
-    def keyspace(self) -> str:
-        return self.data_source.keyspace
 
     def clone(self) -> AsyncTableFindCursor[TRAW, TRAW]:
         """TODO. A new rewound cursor. Also: strips away any mapping."""

@@ -37,6 +37,7 @@ Complete rewriting of cursors and enhancement of the cursor protocol:
     - removed 'cursor.distinct()': use the  corresponding collection(/table) method.
     - removed 'CursorIsStartedException': now `CursorException` raised for all state-related illegal calls
     - Cursors' state described by the `CursorState` enum
+    - removed cursor '.keyspace' property
 (internal) simplified timeout management classes and representations.
 (internal) Async/Collection's find_one method uses findOne API command.
 Removed the CommandCursor/AsyncCommandCursor classes:
