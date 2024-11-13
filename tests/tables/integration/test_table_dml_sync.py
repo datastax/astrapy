@@ -373,7 +373,7 @@ class TestTableDMLSync:
         assert sync_table_simple.find_one({"p_text": "Z"}) is None
 
     @pytest.mark.describe("test of include_sort_vector with serdes options, sync")
-    def test_collection_include_sort_vector_serdes_options_sync(
+    def test_table_include_sort_vector_serdes_options_sync(
         self,
         sync_table_simple: DefaultTable,
     ) -> None:

@@ -36,7 +36,7 @@ from .table_row_assets import (
 )
 
 
-class TestTableDMLSync:
+class TestTableDMLAsync:
     @pytest.mark.describe("test of table insert_one and find_one, async")
     async def test_table_insert_one_find_one_async(
         self,
@@ -378,7 +378,7 @@ class TestTableDMLSync:
         assert await async_table_simple.find_one({"p_text": "Z"}) is None
 
     @pytest.mark.describe("test of include_sort_vector with serdes options, async")
-    async def test_collection_include_sort_vector_serdes_options_async(
+    async def test_table_include_sort_vector_serdes_options_async(
         self,
         async_table_simple: DefaultAsyncTable,
     ) -> None:
