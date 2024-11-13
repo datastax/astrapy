@@ -1588,8 +1588,8 @@ class Database:
         self,
         body: dict[str, Any],
         *,
-        keyspace: str | None = None,
-        collection_name: str | None = None,
+        keyspace: str | None | UnsetType = _UNSET,
+        collection_or_table_name: str | None = None,
         raise_api_errors: bool = True,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
@@ -1600,11 +1600,17 @@ class Database:
 
         Args:
             body: a JSON-serializable dictionary, the payload of the request.
-            keyspace: the keyspace to use. Requests always target a keyspace:
-                if not specified, the general setting for this database is assumed.
-            collection_name: if provided, the collection name is appended at the end
-                of the endpoint. In this way, this method allows collection-level
-                arbitrary POST requests as well.
+            keyspace: the keyspace to use, if any. If a keyspace is employed,
+                it is used to construct the full request URL. To run a command
+                targeting no specific keyspace (rather, the database as a whole),
+                pass an explicit `None`: the request URL will lack the suffix
+                "/<keyspace>" component. If unspecified, the working keyspace of
+                this database is used. If another keyspace is passed, it will be
+                used instead of the database's working one.
+            collection_or_table_name: if provided, the name is appended at the end
+                of the endpoint. In this way, this method allows collection-
+                and table-level arbitrary POST requests as well.
+                This parameter cannot be used if `keyspace=None` is explicitly provided.
             raise_api_errors: if True, responses with a nonempty 'errors' field
                 result in an astrapy exception being raised.
             request_timeout_ms: a timeout, in milliseconds, for
@@ -1617,7 +1623,7 @@ class Database:
         Example:
             >>> my_db.command({"findCollections": {}})
             {'status': {'collections': ['my_coll']}}
-            >>> my_db.command({"countDocuments": {}}, collection_name="my_coll")
+            >>> my_db.command({"countDocuments": {}}, collection_or_table_name="my_coll")
             {'status': {'count': 123}}
         """
 
@@ -1627,34 +1633,52 @@ class Database:
             or self.api_options.timeout_options.request_timeout_ms
         )
 
-        if collection_name:
-            # if keyspace and collection_name both passed, a new database is needed
-            _database: Database
-            if keyspace:
-                _database = self._copy(keyspace=keyspace)
-            else:
-                _database = self
-            logger.info("deferring to collection " f"'{collection_name}' for command.")
-            coll_req_response = _database.get_collection(collection_name).command(
-                body=body,
-                raise_api_errors=raise_api_errors,
-                max_time_ms=_request_timeout_ms,
-            )
-            logger.info(
-                "finished deferring to collection " f"'{collection_name}' for command."
-            )
-            return coll_req_response
+        _keyspace: str | None
+        if keyspace is None:
+            if collection_or_table_name is not None:
+                raise ValueError(
+                    "Cannot pass collection_or_table_name to database "
+                    "`command` on a no-keyspace command"
+                )
+            _keyspace = None
         else:
-            driver_commander = self._get_driver_commander(keyspace=keyspace)
-            _cmd_desc = ",".join(sorted(body.keys()))
-            logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
-            req_response = driver_commander.request(
-                payload=body,
-                raise_api_errors=raise_api_errors,
-                timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            if isinstance(keyspace, UnsetType):
+                _keyspace = self.keyspace
+            else:
+                _keyspace = keyspace
+        # build the ad-hoc-commander path with _keyspace and the coll.or.table
+        base_path_components = [
+            comp
+            for comp in (
+                ncomp.strip("/")
+                for ncomp in (
+                    self.api_options.data_api_url_options.api_path,
+                    self.api_options.data_api_url_options.api_version,
+                    _keyspace,
+                    collection_or_table_name,
+                )
+                if ncomp is not None
             )
-            logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
-            return req_response
+            if comp != ""
+        ]
+        base_path = f"/{'/'.join(base_path_components)}"
+        command_commander = APICommander(
+            api_endpoint=self.api_endpoint,
+            path=base_path,
+            headers=self._commander_headers,
+            callers=self.api_options.callers,
+            redacted_header_names=self.api_options.redacted_header_names,
+        )
+
+        _cmd_desc = ",".join(sorted(body.keys()))
+        logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
+        req_response = command_commander.request(
+            payload=body,
+            raise_api_errors=raise_api_errors,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+        )
+        logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
+        return req_response
 
     def get_database_admin(
         self,
@@ -3234,8 +3258,8 @@ class AsyncDatabase:
         self,
         body: dict[str, Any],
         *,
-        keyspace: str | None = None,
-        collection_name: str | None = None,
+        keyspace: str | None | UnsetType = _UNSET,
+        collection_or_table_name: str | None = None,
         raise_api_errors: bool = True,
         request_timeout_ms: int | None = None,
         max_time_ms: int | None = None,
@@ -3246,11 +3270,17 @@ class AsyncDatabase:
 
         Args:
             body: a JSON-serializable dictionary, the payload of the request.
-            keyspace: the keyspace to use. Requests always target a keyspace:
-                if not specified, the general setting for this database is assumed.
-            collection_name: if provided, the collection name is appended at the end
-                of the endpoint. In this way, this method allows collection-level
-                arbitrary POST requests as well.
+            keyspace: the keyspace to use, if any. If a keyspace is employed,
+                it is used to construct the full request URL. To run a command
+                targeting no specific keyspace (rather, the database as a whole),
+                pass an explicit `None`: the request URL will lack the suffix
+                "/<keyspace>" component. If unspecified, the working keyspace of
+                this database is used. If another keyspace is passed, it will be
+                used instead of the database's working one.
+            collection_or_table_name: if provided, the name is appended at the end
+                of the endpoint. In this way, this method allows collection-
+                and table-level arbitrary POST requests as well.
+                This parameter cannot be used if `keyspace=None` is explicitly provided.
             raise_api_errors: if True, responses with a nonempty 'errors' field
                 result in an astrapy exception being raised.
             request_timeout_ms: a timeout, in milliseconds, for
@@ -3261,12 +3291,9 @@ class AsyncDatabase:
             a dictionary with the response of the HTTP request.
 
         Example:
-            >>> asyncio.run(my_async_db.command({"findCollections": {}}))
+            >>> my_db.command({"findCollections": {}})
             {'status': {'collections': ['my_coll']}}
-            >>> asyncio.run(my_async_db.command(
-            ...     {"countDocuments": {}},
-            ...     collection_name="my_coll",
-            ... )
+            >>> my_db.command({"countDocuments": {}}, collection_or_table_name="my_coll")
             {'status': {'count': 123}}
         """
 
@@ -3276,35 +3303,52 @@ class AsyncDatabase:
             or self.api_options.timeout_options.request_timeout_ms
         )
 
-        if collection_name:
-            # if keyspace and collection_name both passed, a new database is needed
-            _database: AsyncDatabase
-            if keyspace:
-                _database = self._copy(keyspace=keyspace)
-            else:
-                _database = self
-            logger.info("deferring to collection " f"'{collection_name}' for command.")
-            _collection = await _database.get_collection(collection_name)
-            coll_req_response = await _collection.command(
-                body=body,
-                raise_api_errors=raise_api_errors,
-                max_time_ms=_request_timeout_ms,
-            )
-            logger.info(
-                "finished deferring to collection " f"'{collection_name}' for command."
-            )
-            return coll_req_response
+        _keyspace: str | None
+        if keyspace is None:
+            if collection_or_table_name is not None:
+                raise ValueError(
+                    "Cannot pass collection_or_table_name to database "
+                    "`command` on a no-keyspace command"
+                )
+            _keyspace = None
         else:
-            driver_commander = self._get_driver_commander(keyspace=keyspace)
-            _cmd_desc = ",".join(sorted(body.keys()))
-            logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
-            req_response = await driver_commander.async_request(
-                payload=body,
-                raise_api_errors=raise_api_errors,
-                timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            if isinstance(keyspace, UnsetType):
+                _keyspace = self.keyspace
+            else:
+                _keyspace = keyspace
+        # build the ad-hoc-commander path with _keyspace and the coll.or.table
+        base_path_components = [
+            comp
+            for comp in (
+                ncomp.strip("/")
+                for ncomp in (
+                    self.api_options.data_api_url_options.api_path,
+                    self.api_options.data_api_url_options.api_version,
+                    _keyspace,
+                    collection_or_table_name,
+                )
+                if ncomp is not None
             )
-            logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
-            return req_response
+            if comp != ""
+        ]
+        base_path = f"/{'/'.join(base_path_components)}"
+        command_commander = APICommander(
+            api_endpoint=self.api_endpoint,
+            path=base_path,
+            headers=self._commander_headers,
+            callers=self.api_options.callers,
+            redacted_header_names=self.api_options.redacted_header_names,
+        )
+
+        _cmd_desc = ",".join(sorted(body.keys()))
+        logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
+        req_response = await command_commander.async_request(
+            payload=body,
+            raise_api_errors=raise_api_errors,
+            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+        )
+        logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
+        return req_response
 
     def get_database_admin(
         self,

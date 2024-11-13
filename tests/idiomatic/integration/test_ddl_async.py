@@ -301,16 +301,17 @@ class TestDDLAsync:
         async_collection: DefaultAsyncCollection,
     ) -> None:
         cmd1 = await async_database.command(
-            {"countDocuments": {}}, collection_name=async_collection.name
+            {"countDocuments": {}}, collection_or_table_name=async_collection.name
         )
         assert isinstance(cmd1, dict)
         assert isinstance(cmd1["status"]["count"], int)
         cmd2 = await async_database._copy(keyspace="...").command(
             {"countDocuments": {}},
             keyspace=async_collection.keyspace,
-            collection_name=async_collection.name,
+            collection_or_table_name=async_collection.name,
         )
         assert cmd2 == cmd1
+        assert "count" in (cmd2.get("status") or {})
 
     @pytest.mark.describe("test of database command, async")
     async def test_database_command_async(
@@ -324,6 +325,13 @@ class TestDDLAsync:
             {"findCollections": {}}, keyspace=async_database.keyspace
         )
         assert cmd2 == cmd1
+        assert "collections" in (cmd2.get("status") or {})
+
+        cmd_feps = await async_database.command(
+            {"findEmbeddingProviders": {}},
+            keyspace=None,
+        )
+        assert "embeddingProviders" in (cmd_feps.get("status") or {})
 
     @pytest.mark.describe("test of database command, async")
     async def test_collection_command_async(

@@ -1,5 +1,6 @@
 v 2.0.0
 =======
+Renamed parameter 'collection_name' to `collection_or_table_name` and allowed for `keyspace=None` in database `command()` method
 Rename `astrapy.constants.SortDocuments` to `SortMode` (keeping the old name as an alias)
 Add `source_model` parameter to create_collection methods
 All the client/admin/database/table/collection classes have api_options parameter in their with_options/to_[a]sync method

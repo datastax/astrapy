@@ -299,16 +299,17 @@ class TestDDLSync:
         sync_collection: DefaultCollection,
     ) -> None:
         cmd1 = sync_database.command(
-            {"countDocuments": {}}, collection_name=sync_collection.name
+            {"countDocuments": {}}, collection_or_table_name=sync_collection.name
         )
         assert isinstance(cmd1, dict)
         assert isinstance(cmd1["status"]["count"], int)
         cmd2 = sync_database._copy(keyspace="...").command(
             {"countDocuments": {}},
             keyspace=sync_collection.keyspace,
-            collection_name=sync_collection.name,
+            collection_or_table_name=sync_collection.name,
         )
         assert cmd2 == cmd1
+        assert "count" in (cmd2.get("status") or {})
 
     @pytest.mark.describe("test of database command, sync")
     def test_database_command_sync(
@@ -322,6 +323,13 @@ class TestDDLSync:
             {"findCollections": {}}, keyspace=sync_database.keyspace
         )
         assert cmd2 == cmd1
+        assert "collections" in (cmd2.get("status") or {})
+
+        cmd_feps = sync_database.command(
+            {"findEmbeddingProviders": {}},
+            keyspace=None,
+        )
+        assert "embeddingProviders" in (cmd_feps.get("status") or {})
 
     @pytest.mark.describe("test of database command, sync")
     def test_collection_command_sync(
