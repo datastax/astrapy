@@ -67,13 +67,13 @@ class TestTableDecimalSupportUnit:
         baseline_kobj_2 = t_agent.postprocess_key(
             APICommander._decimal_aware_parse_json_response(BASELINE_KEY_STR),  # type: ignore[arg-type]
             primary_key_schema_dict=BASELINE_COLUMNS,
-        )
+        )[1]
         assert _repaint_NaNs(baseline_kobj_2) == _repaint_NaNs(BASELINE_OBJ)
         # with-decimals, keys (decode only)
         wdecs_kobj_2 = t_agent.postprocess_key(
             APICommander._decimal_aware_parse_json_response(WDECS_KEY_STR),  # type: ignore[arg-type]
             primary_key_schema_dict=WDECS_OBJ_COLUMNS,
-        )
+        )[1]
         assert _repaint_NaNs(wdecs_kobj_2) == _repaint_NaNs(WDECS_OBJ)
 
     @pytest.mark.parametrize(

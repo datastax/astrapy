@@ -67,6 +67,8 @@ TEST_ALL_RETURNS_TABLE_DEFINITION = TableDefinition(
         "p_text_omitted": TableScalarColumnTypeDescriptor(column_type="text"),
         "p_time": TableScalarColumnTypeDescriptor(column_type="time"),
         "p_timestamp": TableScalarColumnTypeDescriptor(column_type="timestamp"),
+        "p_tinyint": TableScalarColumnTypeDescriptor(column_type="tinyint"),
+        "p_varint": TableScalarColumnTypeDescriptor(column_type="varint"),
         "p_uuid": TableScalarColumnTypeDescriptor(column_type="uuid"),
         "p_vector": TableVectorColumnTypeDescriptor(
             column_type="vector",

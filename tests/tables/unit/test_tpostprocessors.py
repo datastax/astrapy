@@ -408,8 +408,10 @@ class TestTableConverters:
             EXPECTED_NONCUSTOMTYPES_POSTPROCESSED_ROW
         )
 
-    @pytest.mark.describe("test of primary-key postprocessors based on pk-schema")
-    def test_pk_postprocessors_from_schema(self) -> None:
+    @pytest.mark.describe(
+        "test of primary-key postprocessors based on pk-schema, custom types"
+    )
+    def test_pk_postprocessors_from_schema_custom(self) -> None:
         # constructing a fake "primary key list" and associated test assets
         # from the full 'row' for the row-postprocess test.
         # Careful in the different input format for blobs
@@ -440,7 +442,7 @@ class TestTableConverters:
             ),
         )
 
-        assert _repaint_NaNs(ktpostprocessor(primary_key_list)) == _repaint_NaNs(
+        assert _repaint_NaNs(ktpostprocessor(primary_key_list)[1]) == _repaint_NaNs(
             expected_primary_key
         )
 
@@ -479,7 +481,7 @@ class TestTableConverters:
             ),
         )
 
-        assert _repaint_NaNs(ktpostprocessor(primary_key_list)) == _repaint_NaNs(
+        assert _repaint_NaNs(ktpostprocessor(primary_key_list)[1]) == _repaint_NaNs(
             expected_primary_key
         )
 

@@ -42,7 +42,7 @@ DATE_FORMAT_DESC = (
     "Dates must be '<year>-<month>-<day>', with: year a four-or-more-digit integer "
     "with optional leading minus sign (a plus sign if and only if positive year "
     "with more than 4 digits); "
-    "month a 1-12 integer; day an integer from 1 to the maximum value allowed "
+    "month a 01-12 integer; day an integer from 01 to the maximum value allowed "
     "by the month (and year) choice."
 )
 

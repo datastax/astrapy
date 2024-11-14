@@ -14,9 +14,20 @@
 
 from __future__ import annotations
 
+import ipaddress
+from decimal import Decimal
 from typing import Any
 
-from astrapy.data_types import DataAPITimestamp
+from astrapy.data_types import (
+    DataAPIDate,
+    DataAPIDuration,
+    DataAPIMap,
+    DataAPISet,
+    DataAPITime,
+    DataAPITimestamp,
+    DataAPIVector,
+)
+from astrapy.ids import UUID
 
 AR_DOC_PK_0 = {
     "p_ascii": "abc",
@@ -144,3 +155,33 @@ SIMPLE_SEVEN_ROWS_F4: list[dict[str, Any]] = [
     {"p_text": "p6", "p_int": 6},
     {"p_text": "p7", "p_int": 7},
 ]
+
+FULL_AR_DOC_CUSTOMTYPED = {
+    "p_ascii": "A",
+    "p_bigint": 1230000,
+    "p_blob": b"xyz",
+    "p_boolean": True,
+    "p_date": DataAPIDate.from_string("9876-01-12"),
+    "p_decimal": Decimal("123.456"),
+    "p_double": 123.5555,
+    "p_duration": DataAPIDuration.from_c_string("12y1mo4d3h55ns"),
+    "p_float": 1.345,
+    "p_inet": ipaddress.ip_address("127.0.0.1"),
+    "p_int": 1012,
+    "p_smallint": 12,
+    "p_text": "Àäxxyxy",
+    "p_text_nulled": None,
+    "p_text_omitted": None,
+    "p_time": DataAPITime.from_string("12:34:56.789"),
+    "p_timestamp": DataAPITimestamp.from_string("1998-07-14T12:34:56.789Z"),
+    "p_tinyint": 7,
+    "p_varint": 10293,
+    "p_uuid": UUID("01932c57-b8b7-8310-a84e-6d3fada3c525"),
+    "p_vector": DataAPIVector([-0.1, 0.2, -0.3]),
+    "p_list_int": [10, 11, -12],
+    "p_map_text_text": DataAPIMap([("p", "QQQ"), ("x", "YYY")]),
+    "p_set_int": DataAPISet([-43, 0, 109, 111]),
+    "p_double_minf": float("-Infinity"),
+    "p_double_pinf": float("Infinity"),
+    "p_float_nan": float("NaN"),
+}
