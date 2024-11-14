@@ -38,6 +38,9 @@ class DataAPIMap(Generic[T, U], Mapping[T, U]):
     """
     An immutable 'map-like' class that preserves the order and can employ
     non-hashable keys (which must support __eq__). Not designed for performance.
+
+    Despite internally preserving the order, equality between DataAPIMap instances
+    (and with regular dicts) is independent of the order.
     """
 
     _keys: list[T]
@@ -74,8 +77,6 @@ class DataAPIMap(Generic[T, U], Mapping[T, U]):
         return len(self._keys)
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, DataAPIMap):
-            return self._keys == other._keys and self._values == other._values
         try:
             dother = dict(other)  # type: ignore[call-overload]
             return len(dother) == len(self._keys) and all(

@@ -635,7 +635,7 @@ def preprocess_table_payload_value(
     elif isinstance(value, (ipaddress.IPv4Address, ipaddress.IPv6Address)):
         return str(value)
     elif isinstance(value, datetime.timedelta):
-        return DataAPIDuration.from_timedelta(value).to_string()
+        return DataAPIDuration.from_timedelta(value).to_c_string()
     elif isinstance(value, ObjectId):
         raise ValueError(
             "Values of type ObjectId are not supported. Consider switching to "

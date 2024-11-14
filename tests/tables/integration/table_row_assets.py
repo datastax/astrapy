@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import datetime
 import ipaddress
 from decimal import Decimal
 from typing import Any
@@ -164,7 +165,7 @@ FULL_AR_DOC_CUSTOMTYPED = {
     "p_date": DataAPIDate.from_string("9876-01-12"),
     "p_decimal": Decimal("123.456"),
     "p_double": 123.5555,
-    "p_duration": DataAPIDuration.from_c_string("12y1mo4d3h55ns"),
+    "p_duration": DataAPIDuration.from_c_string("4d3h55ns"),
     "p_float": 1.345,
     "p_inet": ipaddress.ip_address("127.0.0.1"),
     "p_int": 1012,
@@ -179,8 +180,40 @@ FULL_AR_DOC_CUSTOMTYPED = {
     "p_uuid": UUID("01932c57-b8b7-8310-a84e-6d3fada3c525"),
     "p_vector": DataAPIVector([-0.1, 0.2, -0.3]),
     "p_list_int": [10, 11, -12],
-    "p_map_text_text": DataAPIMap([("p", "QQQ"), ("x", "YYY")]),
-    "p_set_int": DataAPISet([-43, 0, 109, 111]),
+    "p_map_text_text": DataAPIMap({"x": "YYY", "p": "QQQ"}),
+    "p_set_int": DataAPISet({-43, 111, 109, 0}),
+    "p_double_minf": float("-Infinity"),
+    "p_double_pinf": float("Infinity"),
+    "p_float_nan": float("NaN"),
+}
+FULL_AR_DOC_NONCUSTOMTYPED = {
+    "p_ascii": "A",
+    "p_bigint": 1230000,
+    "p_blob": b"xyz",
+    "p_boolean": True,
+    "p_date": datetime.date(2013, 7, 24),
+    "p_decimal": Decimal("123.456"),
+    "p_double": 123.5555,
+    "p_duration": datetime.timedelta(hours=12, minutes=33, seconds=1.234),
+    "p_float": 1.345,
+    "p_inet": ipaddress.ip_address("127.0.0.1"),
+    "p_int": 1012,
+    "p_smallint": 12,
+    "p_text": "Àäxxyxy",
+    "p_text_nulled": None,
+    "p_text_omitted": None,
+    "p_time": datetime.time(11, 22, 33, 456),
+    # datetime in Python's stdlib is lossy after milliseconds:
+    "p_timestamp": datetime.datetime(
+        2021, 11, 21, 15, 34, 44, 123000, tzinfo=datetime.timezone.utc
+    ),
+    "p_tinyint": 7,
+    "p_varint": 10293,
+    "p_uuid": UUID("01932c57-b8b7-8310-a84e-6d3fada3c525"),
+    "p_vector": [-0.1, 0.2, -0.3],
+    "p_list_int": [10, 11, -12],
+    "p_map_text_text": {"x": "YYY", "p": "QQQ"},
+    "p_set_int": {-43, 111, 109, 0},
     "p_double_minf": float("-Infinity"),
     "p_double_pinf": float("Infinity"),
     "p_float_nan": float("NaN"),

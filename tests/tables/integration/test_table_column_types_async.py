@@ -18,7 +18,7 @@ import pytest
 
 from astrapy.api_options import APIOptions, SerdesOptions
 
-from ..conftest import DefaultTable, _repaint_NaNs
+from ..conftest import DefaultAsyncTable, _repaint_NaNs
 from .table_row_assets import (
     FULL_AR_DOC_CUSTOMTYPED,
     FULL_AR_DOC_NONCUSTOMTYPED,
@@ -26,34 +26,34 @@ from .table_row_assets import (
 
 
 class TestTableColumnTypesSync:
-    @pytest.mark.describe("test of table write-and-read, with custom types, sync")
-    def test_table_write_then_read_customtypes_sync(
+    @pytest.mark.describe("test of table write-and-read, with custom types, async")
+    async def test_table_write_then_read_customtypes_async(
         self,
-        sync_empty_table_all_returns: DefaultTable,
+        async_empty_table_all_returns: DefaultAsyncTable,
     ) -> None:
-        cdtypes_table = sync_empty_table_all_returns.with_options(
+        cdtypes_atable = async_empty_table_all_returns.with_options(
             api_options=APIOptions(
                 serdes_options=SerdesOptions(
                     custom_datatypes_in_reading=True,
                 ),
             ),
         )
-        cdtypes_table.insert_one(FULL_AR_DOC_CUSTOMTYPED)
-        retrieved = cdtypes_table.find_one({})
+        await cdtypes_atable.insert_one(FULL_AR_DOC_CUSTOMTYPED)
+        retrieved = await cdtypes_atable.find_one({})
         assert _repaint_NaNs(retrieved) == _repaint_NaNs(FULL_AR_DOC_CUSTOMTYPED)
 
-    @pytest.mark.describe("test of table write-and-read, with noncustom types, sync")
-    def test_table_write_then_read_noncustomtypes_sync(
+    @pytest.mark.describe("test of table write-and-read, with noncustom types, async")
+    async def test_table_write_then_read_noncustomtypes_async(
         self,
-        sync_empty_table_all_returns: DefaultTable,
+        async_empty_table_all_returns: DefaultAsyncTable,
     ) -> None:
-        rdtypes_table = sync_empty_table_all_returns.with_options(
+        rdtypes_atable = async_empty_table_all_returns.with_options(
             api_options=APIOptions(
                 serdes_options=SerdesOptions(
                     custom_datatypes_in_reading=False,
                 ),
             ),
         )
-        rdtypes_table.insert_one(FULL_AR_DOC_NONCUSTOMTYPED)
-        retrieved = rdtypes_table.find_one({})
+        await rdtypes_atable.insert_one(FULL_AR_DOC_NONCUSTOMTYPED)
+        retrieved = await rdtypes_atable.find_one({})
         assert _repaint_NaNs(retrieved) == _repaint_NaNs(FULL_AR_DOC_NONCUSTOMTYPED)

@@ -31,7 +31,10 @@ def _accumulate(destination: list[T], source: Iterable[T]) -> list[T]:
 class DataAPISet(Generic[T], Set[T]):
     """
     An immutable 'set-like' class that preserves the order and can store
-    non-hashable entries (which must support __eq__). Not designed for performance.
+    non-hashable entries (entries must support __eq__). Not designed for performance.
+
+    Despite internally preserving the order, equality between DataAPISet instances
+    (and with regular sets) is independent of the order.
     """
 
     _items: list[T]
@@ -58,9 +61,7 @@ class DataAPISet(Generic[T], Set[T]):
         return self.__class__, (self._items,)
 
     def __eq__(self, other: Any) -> bool:
-        if isinstance(other, self.__class__):
-            return self._items == other._items
-        elif isinstance(other, set):
+        if isinstance(other, (set, DataAPISet)):
             return len(other) == len(self._items) and all(
                 item in self for item in other
             )
