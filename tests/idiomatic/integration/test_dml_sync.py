@@ -197,10 +197,9 @@ class TestDMLSync:
             "Nb_Nc_[]": False,
             "Nb_Nc_DV": True,
         }
-        # TODO use command() when command gets cleaned of the postprocessing
-        raw_find_response = sync_empty_collection._api_commander.raw_request(
-            payload={"find": {"projection": {"_id": True, "$vector": True}}},
-        ).json()
+        raw_find_response = sync_empty_collection.command(
+            body={"find": {"projection": {"_id": True, "$vector": True}}},
+        )
         raw_docs = raw_find_response["data"]["documents"]
         for raw_doc in raw_docs:
             expect_binary = expect_binaries[raw_doc["_id"]]
