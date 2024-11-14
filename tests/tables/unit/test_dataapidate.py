@@ -29,11 +29,42 @@ class TestDataAPIDate:
             DataAPIDate.from_string("")
         with pytest.raises(ValueError):
             DataAPIDate.from_string("boom")
-
         with pytest.raises(ValueError):
             DataAPIDate.from_string("1-1-1-1")
         with pytest.raises(ValueError):
             DataAPIDate.from_string("1-1")
+
+        # signs for various lengths of the 'year digits' portion
+        # valid cases
+        DataAPIDate.from_string("0000-10-29")
+        DataAPIDate.from_string("-2024-10-29")
+        DataAPIDate.from_string("+112024-10-29")
+        DataAPIDate.from_string("+000024-10-29")
+        DataAPIDate.from_string("-112024-10-29")
+        DataAPIDate.from_string("0124-10-29")
+        DataAPIDate.from_string("-0124-10-29")
+        # incorrect cases for sign of year
+        with pytest.raises(ValueError):
+            DataAPIDate.from_string("+0000-10-29")
+        with pytest.raises(ValueError):
+            DataAPIDate.from_string("-0000-10-29")
+        with pytest.raises(ValueError):
+            DataAPIDate.from_string("+124-10-29")
+        with pytest.raises(ValueError):
+            DataAPIDate.from_string("+2024-10-29")
+        with pytest.raises(ValueError):
+            DataAPIDate.from_string("+-2024-10-29")
+        with pytest.raises(ValueError):
+            DataAPIDate.from_string("-+2024-10-29")
+        with pytest.raises(ValueError):
+            DataAPIDate.from_string("124-10-29")
+        with pytest.raises(ValueError):
+            DataAPIDate.from_string("+124-10-29")
+        with pytest.raises(ValueError):
+            DataAPIDate.from_string("-124-10-29")
+        with pytest.raises(ValueError):
+            DataAPIDate.from_string("123456-10-29")
+
         with pytest.raises(ValueError):
             DataAPIDate.from_string("+1999-1-1")
         with pytest.raises(ValueError):
@@ -92,20 +123,41 @@ class TestDataAPIDate:
         with pytest.raises(ValueError):
             DataAPIDate.from_string("2024-12-32")
 
+    @pytest.mark.describe(
+        "test of DataAPIData sign-of-year parse and stringify consistency"
+    )
+    def test_dataapidate_sign_of_year_consistency(self) -> None:
+        def parse_and_back_year_str(year_str: str) -> None:
+            # just testing that years come out as they get in with numdigits, sign
+            dt_string = f"{year_str}-01-12"
+            dt = DataAPIDate.from_string(dt_string)
+            dt_string_1 = dt.to_string()
+            assert dt_string == dt_string_1
+
+        parse_and_back_year_str("2024")
+        parse_and_back_year_str("0000")
+        parse_and_back_year_str("-2024")
+        parse_and_back_year_str("+112024")
+        parse_and_back_year_str("-112024")
+        parse_and_back_year_str("0124")
+        parse_and_back_year_str("-0124")
+        parse_and_back_year_str("-123456")
+        parse_and_back_year_str("1972")
+
     @pytest.mark.describe("test of date type, lifecycle")
     def test_dataapidate_lifecycle(self) -> None:
         dfull = DataAPIDate.from_string("1995-02-09")
         dfull_exp = DataAPIDate(year=1995, month=2, day=9)
         assert dfull == dfull_exp
         assert dfull == DataAPIDate.from_string("1995-2-9")
-        assert dfull == DataAPIDate.from_string("00001995-0002-0009")
+        assert dfull == DataAPIDate.from_string("+00001995-0002-0009")
 
         py_dfull = datetime.date(1995, 2, 9)
         assert DataAPIDate.from_date(py_dfull) == dfull
         assert dfull.to_date() == py_dfull
 
         DataAPIDate.from_string("-55000-03-30")
-        DataAPIDate.from_string("1234567-12-31")
+        DataAPIDate.from_string("+1234567-12-31")
 
         repr(dfull)
         str(dfull)
@@ -116,7 +168,7 @@ class TestDataAPIDate:
         with pytest.raises(ValueError):
             end_pleistocene.to_date()
 
-        far_future = DataAPIDate.from_string("252525-01-24")
+        far_future = DataAPIDate.from_string("+252525-01-24")
         far_future.to_string()
         with pytest.raises(ValueError):
             far_future.to_date()

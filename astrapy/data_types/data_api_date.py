@@ -21,7 +21,7 @@ from typing import Any
 
 from astrapy.utils.date_utils import _validate_date
 
-DATE_PARSE_PATTERN = re.compile(r"^(-?\d+)-(\d+)-(\d+)$")
+DATE_PARSE_PATTERN = re.compile(r"^([-\+]?\d*[\d]{4})-(\d+)-(\d+)$")
 MAX_DAY_PER_MONTH_LEAP = {2: 29}
 MAX_DAY_PER_MONTH = {
     1: 31,
@@ -39,9 +39,11 @@ MAX_DAY_PER_MONTH = {
 }
 
 DATE_FORMAT_DESC = (
-    "Dates must be '<year>-<month>-<day>', with: year an integer with optional "
-    "leading minus sign; month a 1-12 integer; day an integer from 1 to the maximum "
-    "value allowed by the month (and year) choice."
+    "Dates must be '<year>-<month>-<day>', with: year a four-or-more-digit integer "
+    "with optional leading minus sign (a plus sign if and only if positive year "
+    "with more than 4 digits); "
+    "month a 1-12 integer; day an integer from 1 to the maximum value allowed "
+    "by the month (and year) choice."
 )
 
 
@@ -115,9 +117,16 @@ class DataAPIDate:
         return (self.year, self.month, self.day)
 
     def to_string(self) -> str:
-        if self.year < 0:
-            return f"{self.year:05}-{self.month:02}-{self.day:02}"
-        return f"{self.year:04}-{self.month:02}-{self.day:02}"
+        # the year part requires care around the sign and number of digits
+        y = self.year
+        year_str: str
+        if y > 9999:
+            year_str = f"{y:+}"
+        elif y >= 0:
+            year_str = f"{y:04}"
+        else:
+            year_str = f"{y:+05}"
+        return f"{year_str}-{self.month:02}-{self.day:02}"
 
     def to_date(self) -> datetime.date:
         return datetime.date(*self._to_tuple())
@@ -134,7 +143,28 @@ class DataAPIDate:
     def from_string(date_string: str) -> DataAPIDate:
         match = DATE_PARSE_PATTERN.match(date_string)
         if match:
-            year = int(match[1])
+            # the year string has additional constraints besides the regexp:
+            year_str = match[1]
+            if year_str and year_str[0] == "+":
+                if len(year_str[1:]) <= 4:
+                    raise ValueError(
+                        f"Cannot parse '{date_string}' into a valid timestamp: "
+                        "four-digit positive year should bear no plus sign. "
+                        f"{DATE_FORMAT_DESC}"
+                    )
+            if len(year_str) > 4 and year_str[0] not in {"+", "-"}:
+                raise ValueError(
+                    f"Cannot parse '{date_string}' into a valid timestamp: "
+                    "years with more than four digits should bear a leading sign. "
+                    f"{DATE_FORMAT_DESC}"
+                )
+            year = int(year_str)
+            if year == 0 and year_str[0] == "-":
+                raise ValueError(
+                    f"Cannot parse '{date_string}' into a valid timestamp: "
+                    "year zero should be provided as '0000' without leading sign. "
+                    f"{DATE_FORMAT_DESC}"
+                )
             month = int(match[2])
             day = int(match[3])
             _fail_reason = _validate_date(year=year, month=month, day=day)
