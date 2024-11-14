@@ -90,6 +90,36 @@ class TestDataAPITimestamp:
         with pytest.raises(ValueError):
             DataAPITimestamp.from_string("boo!")
 
+        # signs for various lengths of the 'year digits' portion
+        # valid cases
+        DataAPITimestamp.from_string("0000-10-29T01:25:37.123Z")
+        DataAPITimestamp.from_string("-2024-10-29T01:25:37.123Z")
+        DataAPITimestamp.from_string("+112024-10-29T01:25:37.123Z")
+        DataAPITimestamp.from_string("-112024-10-29T01:25:37.123Z")
+        DataAPITimestamp.from_string("0124-10-29T01:25:37.123Z")
+        DataAPITimestamp.from_string("-0124-10-29T01:25:37.123Z")
+        # incorrect cases for sign of year
+        with pytest.raises(ValueError):
+            DataAPITimestamp.from_string("+0000-10-29T01:25:37.123Z")
+        with pytest.raises(ValueError):
+            DataAPITimestamp.from_string("-0000-10-29T01:25:37.123Z")
+        with pytest.raises(ValueError):
+            DataAPITimestamp.from_string("+124-10-29T01:25:37.123Z")
+        with pytest.raises(ValueError):
+            DataAPITimestamp.from_string("+2024-10-29T01:25:37.123Z")
+        with pytest.raises(ValueError):
+            DataAPITimestamp.from_string("+-2024-10-29T01:25:37.123Z")
+        with pytest.raises(ValueError):
+            DataAPITimestamp.from_string("-+2024-10-29T01:25:37.123Z")
+        with pytest.raises(ValueError):
+            DataAPITimestamp.from_string("124-10-29T01:25:37.123Z")
+        with pytest.raises(ValueError):
+            DataAPITimestamp.from_string("+124-10-29T01:25:37.123Z")
+        with pytest.raises(ValueError):
+            DataAPITimestamp.from_string("-124-10-29T01:25:37.123Z")
+        with pytest.raises(ValueError):
+            DataAPITimestamp.from_string("123456-10-29T01:25:37.123Z")
+
         DataAPITimestamp.from_string("2024-10-29T01:25:37.123Z")
         DataAPITimestamp.from_string("2024-10-29T01:25:37Z")
         DataAPITimestamp.from_string("2024-10-29T01:25:37.123+01:23")
@@ -97,8 +127,6 @@ class TestDataAPITimestamp:
         DataAPITimestamp.from_string("2024-10-29T01:25:37+01:23")
         DataAPITimestamp.from_string("2024-10-29T01:25:37-23:12")
         DataAPITimestamp.from_string("-123456-10-29T01:25:37.123Z")
-        DataAPITimestamp.from_string("123456-10-29T01:25:37.123Z")
-
         DataAPITimestamp.from_string("2024-2-3T4:5:6Z")
         DataAPITimestamp.from_string("2024-02-03T04:05:06Z")
 
@@ -137,6 +165,27 @@ class TestDataAPITimestamp:
         with pytest.raises(ValueError):
             DataAPITimestamp.from_string("2024-10-00T01:25:37.123Z")
 
+    @pytest.mark.describe(
+        "test of DataAPITimestamp sign-of-year parse and stringify consistency"
+    )
+    def test_dataapitimestamp_sign_of_year_consistency(self) -> None:
+        def parse_and_back_year_str(year_str: str) -> None:
+            # just testing that years come out as they get in with numdigits, sign
+            ts_string = f"{year_str}-01-12T12:00:00.000Z"
+            ts = DataAPITimestamp.from_string(ts_string)
+            ts_string_1 = ts.to_string()
+            assert ts_string == ts_string_1
+
+        parse_and_back_year_str("2024")
+        parse_and_back_year_str("0000")
+        parse_and_back_year_str("-2024")
+        parse_and_back_year_str("+112024")
+        parse_and_back_year_str("-112024")
+        parse_and_back_year_str("0124")
+        parse_and_back_year_str("-0124")
+        parse_and_back_year_str("-123456")
+        parse_and_back_year_str("1972")
+
     @pytest.mark.describe("test of DataAPITimestamp parsing, consistency")
     def test_dataapitimestamp_parsing_consistency(self) -> None:
         for year in range(2, 9999, 50):
@@ -156,7 +205,7 @@ class TestDataAPITimestamp:
                             if offset_hour == 0 and offset_minute == 0
                             else f"{offset_hour:+03}:{offset_minute:02}"
                         )
-                        ts_string = f"{year}-04-27T12:34:56{_fraction}{_offset}"
+                        ts_string = f"{year:04}-04-27T12:34:56{_fraction}{_offset}"
                         py_ts_ms = int(py_dt.timestamp() * 1000)
                         util_ts_ms = DataAPITimestamp.from_string(
                             ts_string

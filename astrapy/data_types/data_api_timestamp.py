@@ -28,13 +28,15 @@ from astrapy.utils.date_utils import (
 )
 
 TIMESTAMP_PARSE_PATTERN = re.compile(
-    r"^(-?\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)(\.\d+)?([+-]\d+):(\d+)$"
+    # r"^(-?\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)(\.\d+)?([+-]\d+):(\d+)$"
+    r"^([-\+]?\d*[\d]{4})-(\d+)-(\d+)T(\d+):(\d+):(\d+)(\.\d+)?([+-]\d+):(\d+)$"
 )
 
 TIMESTAMP_FORMAT_DESC = (
     "Timestamp strings must adhere to the following specific syntax of RFC 3339 "
     "'<year>-<month>-<day>T<hour>:<minute>:<second>[.<fractional-seconds>]<offset>', "
-    "with: year an integer with optional leading minus sign; month a 1-12 integer; day "
+    "with: year a four-or-more-digit integer with optional leading minus sign "
+    "(a plus sign if and only if year > 9999); month a 1-12 integer; day "
     "an integer from 1 to the maximum value allowed by the month (and year) choice; "
     "hour in 0..23; minute in 0..59; second in 0..59; and optionally a decimal "
     "point followed by a fraction of second up to millisecond precision (3 digits);"
@@ -118,7 +120,28 @@ class DataAPITimestamp:
         _datetime_string = datetime_string.upper().replace("Z", "+00:00")
         match = TIMESTAMP_PARSE_PATTERN.match(_datetime_string)
         if match:
-            year = int(match[1])
+            # the year string has additional constraints besides the regexp:
+            year_str = match[1]
+            if year_str and year_str[0] == "+":
+                if len(year_str[1:]) <= 4:
+                    raise ValueError(
+                        f"Cannot parse '{datetime_string}' into a valid timestamp: "
+                        "four-digit positive year should bear no plus sign. "
+                        f"{TIMESTAMP_FORMAT_DESC}"
+                    )
+            year = int(year_str)
+            if year == 0 and year_str[0] == "-":
+                raise ValueError(
+                    f"Cannot parse '{datetime_string}' into a valid timestamp: "
+                    "year zero should be provided as '0000' without leading sign. "
+                    f"{TIMESTAMP_FORMAT_DESC}"
+                )
+            if year > 9999 and year_str[0] != "+":
+                raise ValueError(
+                    f"Cannot parse '{datetime_string}' into a valid timestamp: "
+                    "years greater than 9999 should bear a plus sign. "
+                    f"{TIMESTAMP_FORMAT_DESC}"
+                )
             month = int(match[2])
             day = int(match[3])
             hour = int(match[4])
@@ -207,4 +230,12 @@ class DataAPITimestamp:
         Use `.timetuple()` for achieving custom string formatting.
         """
         y, mo, d, h, m, s, ms = self.timetuple()
-        return f"{y:04}-{mo:02}-{d:02}T{h:02}:{m:02}:{s:02}.{ms:03}Z"
+        # the year part requires care around the sign and number of digits
+        year_str: str
+        if y > 9999:
+            year_str = f"{y:+}"
+        elif y >= 0:
+            year_str = f"{y:04}"
+        else:
+            year_str = f"{y:+05}"
+        return f"{year_str}-{mo:02}-{d:02}T{h:02}:{m:02}:{s:02}.{ms:03}Z"
