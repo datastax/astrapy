@@ -168,6 +168,10 @@ def _repaint_NaNs(val: Any) -> Any:
         return val
 
 
+def _typify_tuple(tpl: tuple[Any, ...]) -> tuple[Any, ...]:
+    return tuple([(v, type(v)) for v in tpl])
+
+
 @pytest.fixture(scope="session")
 def client(
     data_api_credentials_info: DataAPICredentialsInfo,
@@ -340,4 +344,5 @@ __all__ = [
     "IS_ASTRA_DB",
     "SECONDARY_KEYSPACE",
     "_repaint_NaNs",
+    "_typify_tuple",
 ]

@@ -24,12 +24,16 @@ from astrapy.results import TableInsertManyResult
 from ..conftest import (
     DefaultAsyncTable,
     _repaint_NaNs,
+    _typify_tuple,
 )
 from .table_row_assets import (
     AR_DOC_0,
     AR_DOC_0_B,
     AR_DOC_PK_0,
+    AR_DOC_PK_0_TUPLE,
     DISTINCT_AR_DOCS,
+    DISTINCT_AR_DOCS_PKS,
+    DISTINCT_AR_DOCS_PK_TUPLES,
     SIMPLE_FULL_DOCS,
     SIMPLE_SEVEN_ROWS_F2,
     SIMPLE_SEVEN_ROWS_F4,
@@ -48,17 +52,21 @@ class TestTableDMLAsync:
         # TODO cross check with CQL direct (!), astra only
         no_doc_0a = await async_empty_table_all_returns.find_one(filter=AR_DOC_PK_0)
         assert no_doc_0a is None
-        await async_empty_table_all_returns.insert_one(row=AR_DOC_0)
+        ins1_res_0 = await async_empty_table_all_returns.insert_one(row=AR_DOC_0)
         doc_0 = await async_empty_table_all_returns.find_one(filter=AR_DOC_PK_0)
         doc_0_nofilter = await async_empty_table_all_returns.find_one(filter={})
         assert doc_0 is not None
         assert doc_0 == doc_0_nofilter
         assert {doc_0[k] == v for k, v in AR_DOC_0.items()}
+        assert _typify_tuple(ins1_res_0.inserted_id) == _typify_tuple(AR_DOC_PK_0)
+        assert ins1_res_0.inserted_id_tuple == AR_DOC_PK_0_TUPLE
         # overwrite:
-        await async_empty_table_all_returns.insert_one(row=AR_DOC_0_B)
+        ins1_res_0_b = await async_empty_table_all_returns.insert_one(row=AR_DOC_0_B)
         doc_0_b = await async_empty_table_all_returns.find_one(filter=AR_DOC_PK_0)
         assert doc_0_b is not None
         assert {doc_0_b[k] == v for k, v in AR_DOC_0_B.items()}
+        assert ins1_res_0_b.inserted_id == AR_DOC_PK_0
+        assert _typify_tuple(ins1_res_0_b.inserted_id_tuple) == _typify_tuple(AR_DOC_PK_0_TUPLE)
         # projection:
         projected_fields = {"p_bigint", "p_boolean"}
         doc_0 = await async_empty_table_all_returns.find_one(
@@ -117,14 +125,21 @@ class TestTableDMLAsync:
         await async_empty_table_simple.delete_many({"p_text": {"$in": ["A1", "A2"]}})
         assert len(await async_empty_table_simple.find({}).to_list()) == 1
 
+    @pytest.mark.describe("test of table insert_many returned ids, async")
+    async def test_table_insert_many_returned_ids_async(
+        self,
+        async_empty_table_all_returns: DefaultAsyncTable,
+    ) -> None:
+        im_result = await async_empty_table_all_returns.insert_many(DISTINCT_AR_DOCS)
+        assert im_result.inserted_ids == DISTINCT_AR_DOCS_PKS
+        assert im_result.inserted_id_tuples == DISTINCT_AR_DOCS_PK_TUPLES
+
     @pytest.mark.describe("test of table distinct, async")
     async def test_table_distinct_async(
         self,
         async_empty_table_all_returns: DefaultAsyncTable,
     ) -> None:
-        # TODO replace with insert many:
-        for s_doc in DISTINCT_AR_DOCS:
-            await async_empty_table_all_returns.insert_one(s_doc)
+        im_result = await async_empty_table_all_returns.insert_many(DISTINCT_AR_DOCS)
 
         d_float = await async_empty_table_all_returns.distinct("p_float")
         exp_d_float = {0.1, 0.2, float("NaN")}

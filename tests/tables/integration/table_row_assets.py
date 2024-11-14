@@ -24,6 +24,7 @@ AR_DOC_PK_0 = {
     "p_int": 987,
     "p_boolean": False,
 }
+AR_DOC_PK_0_TUPLE = ( "abc", 10000, 987, False)
 AR_DOC_0 = {
     "p_text": "Ålesund",
     **AR_DOC_PK_0,
@@ -93,6 +94,19 @@ DISTINCT_AR_DOCS = [
         "p_map_text_text": {"a": "VA", "b": "VB"},
         "p_set_int": {200, 300},
     },
+]
+DISTINCT_AR_DOCS_PKS = [
+    {
+        "p_ascii": ar_doc["p_ascii"],
+        "p_bigint": ar_doc["p_bigint"],
+        "p_int": ar_doc["p_int"],
+        "p_boolean": ar_doc["p_boolean"],
+    }
+    for ar_doc in DISTINCT_AR_DOCS
+]
+DISTINCT_AR_DOCS_PK_TUPLES = [
+    (ar_doc["p_ascii"], ar_doc["p_bigint"], ar_doc["p_int"], ar_doc["p_boolean"])
+    for ar_doc in DISTINCT_AR_DOCS
 ]
 
 SIMPLE_FULL_DOCS = [
