@@ -24,7 +24,7 @@ AR_DOC_PK_0 = {
     "p_int": 987,
     "p_boolean": False,
 }
-AR_DOC_PK_0_TUPLE = ( "abc", 10000, 987, False)
+AR_DOC_PK_0_TUPLE = ("abc", 10000, 987, False)
 AR_DOC_0 = {
     "p_text": "Ålesund",
     **AR_DOC_PK_0,

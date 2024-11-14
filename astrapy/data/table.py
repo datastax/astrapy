@@ -768,11 +768,10 @@ class Table(Generic[ROW]):
                     raw_response=io_response,
                 )
             inserted_id_list = io_response["status"]["insertedIds"][0]
-            inserted_id = self._converter_agent.postprocess_key(
+            inserted_id_tuple, inserted_id = self._converter_agent.postprocess_key(
                 inserted_id_list,
                 primary_key_schema_dict=io_response["status"]["primaryKeySchema"],
             )
-            inserted_id_tuple = tuple(inserted_id_list)
             return TableInsertOneResult(
                 raw_results=[io_response],
                 inserted_id=inserted_id,
@@ -816,11 +815,12 @@ class Table(Generic[ROW]):
                     raw_response=None,
                 )
             primary_key_schema = status["primaryKeySchema"]
-            ids = self._converter_agent.postprocess_keys(
+            id_tuples_and_ids = self._converter_agent.postprocess_keys(
                 status["insertedIds"],
                 primary_key_schema_dict=primary_key_schema,
             )
-            id_tuples = [tuple(id_list) for id_list in status["insertedIds"]]
+            id_tuples = [tpl for tpl, _ in id_tuples_and_ids]
+            ids = [id for _, id in id_tuples_and_ids]
         return ids, id_tuples
 
     def insert_many(
@@ -2258,11 +2258,10 @@ class AsyncTable(Generic[ROW]):
                     raw_response=io_response,
                 )
             inserted_id_list = io_response["status"]["insertedIds"][0]
-            inserted_id = self._converter_agent.postprocess_key(
+            inserted_id_tuple, inserted_id = self._converter_agent.postprocess_key(
                 inserted_id_list,
                 primary_key_schema_dict=io_response["status"]["primaryKeySchema"],
             )
-            inserted_id_tuple = tuple(inserted_id_list)
             return TableInsertOneResult(
                 raw_results=[io_response],
                 inserted_id=inserted_id,
@@ -2306,11 +2305,12 @@ class AsyncTable(Generic[ROW]):
                     raw_response=None,
                 )
             primary_key_schema = status["primaryKeySchema"]
-            ids = self._converter_agent.postprocess_keys(
+            id_tuples_and_ids = self._converter_agent.postprocess_keys(
                 status["insertedIds"],
                 primary_key_schema_dict=primary_key_schema,
             )
-            id_tuples = [tuple(id_list) for id_list in status["insertedIds"]]
+            id_tuples = [tpl for tpl, _ in id_tuples_and_ids]
+            ids = [id for _, id in id_tuples_and_ids]
         return ids, id_tuples
 
     async def insert_many(

@@ -511,26 +511,38 @@ def create_row_tpostprocessor(
 def create_key_ktpostprocessor(
     primary_key_schema: dict[str, TableColumnTypeDescriptor],
     options: FullSerdesOptions,
-) -> Callable[[list[Any]], dict[str, Any]]:
+) -> Callable[[list[Any]], tuple[tuple[Any, ...], dict[str, Any]]]:
     ktpostprocessor_list: list[tuple[str, Callable[[Any], Any]]] = [
         (col_name, _create_column_tpostprocessor(col_definition, options=options))
         for col_name, col_definition in primary_key_schema.items()
     ]
 
-    def _ktpostprocessor(primary_key_list: list[Any]) -> dict[str, Any]:
+    def _ktpostprocessor(
+        primary_key_list: list[Any],
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
         if len(primary_key_list) != len(ktpostprocessor_list):
             raise ValueError(
                 "Primary key list length / schema mismatch "
                 f"(expected {len(ktpostprocessor_list)}, "
                 f"received {len(primary_key_list)} fields)"
             )
-        return {
-            pk_col_name: ktpostprocessor(pk_col_value)
-            for pk_col_value, (pk_col_name, ktpostprocessor) in zip(
-                primary_key_list,
+        k_tuple = tuple(
+            [
+                ktpostprocessor(pk_col_value)
+                for pk_col_value, (_, ktpostprocessor) in zip(
+                    primary_key_list,
+                    ktpostprocessor_list,
+                )
+            ]
+        )
+        k_dict = {
+            pk_col_name: pk_processed_value
+            for pk_processed_value, (pk_col_name, _) in zip(
+                k_tuple,
                 ktpostprocessor_list,
             )
         }
+        return k_tuple, k_dict
 
     return _ktpostprocessor
 
@@ -688,7 +700,9 @@ class _TableConverterAgent(Generic[ROW]):
     row_postprocessors: dict[
         tuple[str, str | None], Callable[[dict[str, Any]], dict[str, Any]]
     ]
-    key_postprocessors: dict[str, Callable[[list[Any]], dict[str, Any]]]
+    key_postprocessors: dict[
+        str, Callable[[list[Any]], tuple[tuple[Any, ...], dict[str, Any]]]
+    ]
 
     def __init__(self, *, options: FullSerdesOptions) -> None:
         self.options = options
@@ -708,7 +722,7 @@ class _TableConverterAgent(Generic[ROW]):
 
     def _get_key_postprocessor(
         self, primary_key_schema_dict: dict[str, Any]
-    ) -> Callable[[list[Any]], dict[str, Any]]:
+    ) -> Callable[[list[Any]], tuple[tuple[Any, ...], dict[str, Any]]]:
         schema_hash = self._hash_dict(primary_key_schema_dict)
         if schema_hash not in self.key_postprocessors:
             primary_key_schema: dict[str, TableColumnTypeDescriptor] = {
@@ -746,7 +760,7 @@ class _TableConverterAgent(Generic[ROW]):
 
     def postprocess_key(
         self, primary_key_list: list[Any], *, primary_key_schema_dict: dict[str, Any]
-    ) -> dict[str, Any]:
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
         """
         The primary key schema is not coerced here, just parsed from its json
         """
@@ -759,7 +773,7 @@ class _TableConverterAgent(Generic[ROW]):
         primary_key_lists: list[list[Any]],
         *,
         primary_key_schema_dict: dict[str, Any],
-    ) -> list[dict[str, Any]]:
+    ) -> list[tuple[tuple[Any, ...], dict[str, Any]]]:
         """
         The primary key schema is not coerced here, just parsed from its json
         """

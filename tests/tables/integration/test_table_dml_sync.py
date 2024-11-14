@@ -32,8 +32,8 @@ from .table_row_assets import (
     AR_DOC_PK_0,
     AR_DOC_PK_0_TUPLE,
     DISTINCT_AR_DOCS,
-    DISTINCT_AR_DOCS_PKS,
     DISTINCT_AR_DOCS_PK_TUPLES,
+    DISTINCT_AR_DOCS_PKS,
     SIMPLE_FULL_DOCS,
     SIMPLE_SEVEN_ROWS_F2,
     SIMPLE_SEVEN_ROWS_F4,
@@ -59,14 +59,18 @@ class TestTableDMLSync:
         assert doc_0 == doc_0_nofilter
         assert {doc_0[k] == v for k, v in AR_DOC_0.items()}
         assert ins1_res_0.inserted_id == AR_DOC_PK_0
-        assert _typify_tuple(ins1_res_0.inserted_id_tuple) == _typify_tuple(AR_DOC_PK_0_TUPLE)
+        assert _typify_tuple(ins1_res_0.inserted_id_tuple) == _typify_tuple(
+            AR_DOC_PK_0_TUPLE
+        )
         # overwrite:
         ins1_res_0_b = sync_empty_table_all_returns.insert_one(row=AR_DOC_0_B)
         doc_0_b = sync_empty_table_all_returns.find_one(filter=AR_DOC_PK_0)
         assert doc_0_b is not None
         assert {doc_0_b[k] == v for k, v in AR_DOC_0_B.items()}
         assert ins1_res_0_b.inserted_id == AR_DOC_PK_0
-        assert _typify_tuple(ins1_res_0_b.inserted_id_tuple) == _typify_tuple(AR_DOC_PK_0_TUPLE)
+        assert _typify_tuple(ins1_res_0_b.inserted_id_tuple) == _typify_tuple(
+            AR_DOC_PK_0_TUPLE
+        )
         # projection:
         projected_fields = {"p_bigint", "p_boolean"}
         doc_0 = sync_empty_table_all_returns.find_one(
@@ -125,14 +129,16 @@ class TestTableDMLSync:
     ) -> None:
         im_result = sync_empty_table_all_returns.insert_many(DISTINCT_AR_DOCS)
         assert im_result.inserted_ids == DISTINCT_AR_DOCS_PKS
-        assert im_result.inserted_id_tuples == DISTINCT_AR_DOCS_PK_TUPLES
+        assert [_typify_tuple(tpl) for tpl in im_result.inserted_id_tuples] == [
+            _typify_tuple(tpl) for tpl in DISTINCT_AR_DOCS_PK_TUPLES
+        ]
 
     @pytest.mark.describe("test of table distinct, sync")
     def test_table_distinct_sync(
         self,
         sync_empty_table_all_returns: DefaultTable,
     ) -> None:
-        im_result = sync_empty_table_all_returns.insert_one(DISTINCT_AR_DOCS)
+        sync_empty_table_all_returns.insert_many(DISTINCT_AR_DOCS)
 
         d_float = sync_empty_table_all_returns.distinct("p_float")
         exp_d_float = {0.1, 0.2, float("NaN")}
