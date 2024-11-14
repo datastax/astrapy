@@ -52,7 +52,13 @@ class DataAPITimestamp:
     timestamp_ms: int
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(timestamp_ms={self.timestamp_ms})"
+        return (
+            f"{self.__class__.__name__}(timestamp_ms={self.timestamp_ms}"
+            f" [{self.to_string()}])"
+        )
+
+    def __str__(self) -> str:
+        return self.to_string()
 
     def __hash__(self) -> int:
         return self.timestamp_ms
