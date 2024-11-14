@@ -131,9 +131,7 @@ class TestTimeouts:
     @pytest.mark.describe(
         "test of timeout occurring, zero and nonzero, for Collection class, sync"
     )
-    async def test_collection_timeout_occurring_sync(
-        self, httpserver: HTTPServer
-    ) -> None:
+    def test_collection_timeout_occurring_sync(self, httpserver: HTTPServer) -> None:
         root_endpoint = httpserver.url_for("/")
         client = DataAPIClient(environment="other")
         database = client.get_database(root_endpoint, keyspace="xkeyspace")
@@ -201,9 +199,7 @@ class TestTimeouts:
     @pytest.mark.describe(
         "test of timeout suppression, zero and nonzero, for Collection class, sync"
     )
-    async def test_collection_timeout_suppression_sync(
-        self, httpserver: HTTPServer
-    ) -> None:
+    def test_collection_timeout_suppression_sync(self, httpserver: HTTPServer) -> None:
         # various ways to raise or disable timeouts and have requests succeed on time
         root_endpoint = httpserver.url_for("/")
         client = DataAPIClient(environment="other")
@@ -335,4 +331,215 @@ class TestTimeouts:
             )
         )
         dmr_LS_zgrq = collection_L_S.delete_many({}, timeout_ms=0)
+        assert dmr_LS_zgrq.deleted_count == 12
+
+    @pytest.mark.describe(
+        "test of timeout occurring, zero and nonzero, for Collection class, async"
+    )
+    async def test_collection_timeout_occurring_async(
+        self, httpserver: HTTPServer
+    ) -> None:
+        root_endpoint = httpserver.url_for("/")
+        client = DataAPIClient(environment="other")
+        database = client.get_database(root_endpoint, keyspace="xkeyspace")
+        # S_L = short timeout for request; long timeout for general-method
+        acollection_S_L = await database.to_async().get_collection(
+            "xcollt",
+            collection_api_options=APIOptions(
+                timeout_options=TimeoutOptions(
+                    request_timeout_ms=1,
+                    general_method_timeout_ms=10000,
+                ),
+            ),
+        )
+        acollection_L_S = await database.to_async().get_collection(
+            "xcollt",
+            collection_api_options=APIOptions(
+                timeout_options=TimeoutOptions(
+                    request_timeout_ms=10000,
+                    general_method_timeout_ms=1,
+                ),
+            ),
+        )
+        expected_url = "/v1/xkeyspace/xcollt"
+
+        # no method arg, the short request_ms makes it timeout
+        httpserver.expect_oneshot_request(
+            expected_url,
+            method="POST",
+        ).respond_with_handler(
+            delayed_response_handler(
+                delay_ms=1200,
+                response_json={
+                    "status": {
+                        "deletedCount": 12,
+                        "moreData": False,
+                    },
+                },
+            )
+        )
+        with pytest.raises(DataAPITimeoutException):
+            await acollection_S_L.delete_many({})
+
+        # no method arg, the short generalmethod makes it timeout
+        httpserver.expect_oneshot_request(
+            expected_url,
+            method="POST",
+        ).respond_with_handler(
+            delayed_response_handler(
+                delay_ms=1200,
+                response_json={
+                    "status": {
+                        "deletedCount": 12,
+                        "moreData": False,
+                    },
+                },
+            )
+        )
+        with pytest.raises(DataAPITimeoutException):
+            await acollection_L_S.delete_many({})
+
+        # this avoids dangling timing-out response to pollute next test:
+        httpserver.stop()  # type: ignore[no-untyped-call]
+        httpserver.start()  # type: ignore[no-untyped-call]
+
+    @pytest.mark.describe(
+        "test of timeout suppression, zero and nonzero, for Collection class, async"
+    )
+    async def test_collection_timeout_suppression_async(
+        self, httpserver: HTTPServer
+    ) -> None:
+        # various ways to raise or disable timeouts and have requests succeed on time
+        root_endpoint = httpserver.url_for("/")
+        client = DataAPIClient(environment="other")
+        database = client.get_database(root_endpoint, keyspace="xkeyspace")
+        # S_L = short timeout for request; long timeout for general-method
+        acollection_S_L = await database.to_async().get_collection(
+            "xcoll",
+            collection_api_options=APIOptions(
+                timeout_options=TimeoutOptions(
+                    request_timeout_ms=1,
+                    general_method_timeout_ms=10000,
+                ),
+            ),
+        )
+        acollection_L_S = await database.to_async().get_collection(
+            "xcoll",
+            collection_api_options=APIOptions(
+                timeout_options=TimeoutOptions(
+                    request_timeout_ms=10000,
+                    general_method_timeout_ms=1,
+                ),
+            ),
+        )
+        expected_url = "/v1/xkeyspace/xcoll"
+
+        # remove the timeout with method reqtimeout override
+        httpserver.expect_oneshot_request(
+            expected_url,
+            method="POST",
+        ).respond_with_handler(
+            delayed_response_handler(
+                delay_ms=1200,
+                response_json={
+                    "status": {
+                        "deletedCount": 12,
+                        "moreData": False,
+                    },
+                },
+            )
+        )
+        dmr_SL_rq = await acollection_S_L.delete_many({}, request_timeout_ms=1500)
+        assert dmr_SL_rq.deleted_count == 12
+
+        # remove the timeout with method genmeth-timeout override
+        httpserver.expect_oneshot_request(
+            expected_url,
+            method="POST",
+        ).respond_with_handler(
+            delayed_response_handler(
+                delay_ms=1200,
+                response_json={
+                    "status": {
+                        "deletedCount": 12,
+                        "moreData": False,
+                    },
+                },
+            )
+        )
+        dmr_LS_rq = await acollection_L_S.delete_many(
+            {}, general_method_timeout_ms=1500
+        )
+        assert dmr_LS_rq.deleted_count == 12
+
+        # remove the timeout completely with a zero per-method per-req timeout
+        httpserver.expect_oneshot_request(
+            expected_url,
+            method="POST",
+        ).respond_with_handler(
+            delayed_response_handler(
+                delay_ms=1200,
+                response_json={
+                    "status": {
+                        "deletedCount": 12,
+                        "moreData": False,
+                    },
+                },
+            )
+        )
+        dmr_SL_zrq = await acollection_S_L.delete_many({}, request_timeout_ms=0)
+        assert dmr_SL_zrq.deleted_count == 12
+
+        # remove the timeout completely with a zero per-method genmeth-timeout override
+        httpserver.expect_oneshot_request(
+            expected_url,
+            method="POST",
+        ).respond_with_handler(
+            delayed_response_handler(
+                delay_ms=1200,
+                response_json={
+                    "status": {
+                        "deletedCount": 12,
+                        "moreData": False,
+                    },
+                },
+            )
+        )
+        dmr_LS_zrq = await acollection_L_S.delete_many({}, general_method_timeout_ms=0)
+        assert dmr_LS_zrq.deleted_count == 12
+
+        # remove the timeout completely with a zero per-method 'timeout_ms' catch-all
+        httpserver.expect_oneshot_request(
+            expected_url,
+            method="POST",
+        ).respond_with_handler(
+            delayed_response_handler(
+                delay_ms=1200,
+                response_json={
+                    "status": {
+                        "deletedCount": 12,
+                        "moreData": False,
+                    },
+                },
+            )
+        )
+        dmr_SL_zgrq = await acollection_S_L.delete_many({}, timeout_ms=0)
+        assert dmr_SL_zgrq.deleted_count == 12
+
+        # remove the timeout completely with a zero per-method 'timeout_ms' catch-all
+        httpserver.expect_oneshot_request(
+            expected_url,
+            method="POST",
+        ).respond_with_handler(
+            delayed_response_handler(
+                delay_ms=1200,
+                response_json={
+                    "status": {
+                        "deletedCount": 12,
+                        "moreData": False,
+                    },
+                },
+            )
+        )
+        dmr_LS_zgrq = await acollection_L_S.delete_many({}, timeout_ms=0)
         assert dmr_LS_zgrq.deleted_count == 12
