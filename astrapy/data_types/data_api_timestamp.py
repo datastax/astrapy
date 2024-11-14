@@ -28,7 +28,6 @@ from astrapy.utils.date_utils import (
 )
 
 TIMESTAMP_PARSE_PATTERN = re.compile(
-    # r"^(-?\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)(\.\d+)?([+-]\d+):(\d+)$"
     r"^([-\+]?\d*[\d]{4})-(\d+)-(\d+)T(\d+):(\d+):(\d+)(\.\d+)?([+-]\d+):(\d+)$"
 )
 
@@ -36,7 +35,8 @@ TIMESTAMP_FORMAT_DESC = (
     "Timestamp strings must adhere to the following specific syntax of RFC 3339 "
     "'<year>-<month>-<day>T<hour>:<minute>:<second>[.<fractional-seconds>]<offset>', "
     "with: year a four-or-more-digit integer with optional leading minus sign "
-    "(a plus sign if and only if year > 9999); month a 1-12 integer; day "
+    "(a plus sign if and only if positive year with more than 4 digits); "
+    "month a 1-12 integer; day "
     "an integer from 1 to the maximum value allowed by the month (and year) choice; "
     "hour in 0..23; minute in 0..59; second in 0..59; and optionally a decimal "
     "point followed by a fraction of second up to millisecond precision (3 digits);"
@@ -129,17 +129,17 @@ class DataAPITimestamp:
                         "four-digit positive year should bear no plus sign. "
                         f"{TIMESTAMP_FORMAT_DESC}"
                     )
+            if len(year_str) > 4 and year_str[0] not in {"+", "-"}:
+                raise ValueError(
+                    f"Cannot parse '{datetime_string}' into a valid timestamp: "
+                    "years with more than four digits should bear a leading sign. "
+                    f"{TIMESTAMP_FORMAT_DESC}"
+                )
             year = int(year_str)
             if year == 0 and year_str[0] == "-":
                 raise ValueError(
                     f"Cannot parse '{datetime_string}' into a valid timestamp: "
                     "year zero should be provided as '0000' without leading sign. "
-                    f"{TIMESTAMP_FORMAT_DESC}"
-                )
-            if year > 9999 and year_str[0] != "+":
-                raise ValueError(
-                    f"Cannot parse '{datetime_string}' into a valid timestamp: "
-                    "years greater than 9999 should bear a plus sign. "
                     f"{TIMESTAMP_FORMAT_DESC}"
                 )
             month = int(match[2])

@@ -95,6 +95,7 @@ class TestDataAPITimestamp:
         DataAPITimestamp.from_string("0000-10-29T01:25:37.123Z")
         DataAPITimestamp.from_string("-2024-10-29T01:25:37.123Z")
         DataAPITimestamp.from_string("+112024-10-29T01:25:37.123Z")
+        DataAPITimestamp.from_string("+000024-10-29T01:25:37.123Z")
         DataAPITimestamp.from_string("-112024-10-29T01:25:37.123Z")
         DataAPITimestamp.from_string("0124-10-29T01:25:37.123Z")
         DataAPITimestamp.from_string("-0124-10-29T01:25:37.123Z")
