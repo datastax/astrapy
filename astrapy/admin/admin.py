@@ -133,6 +133,7 @@ def fetch_raw_database_info_from_id_token(
     Args:
         id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
         token: a valid token to access the database information.
+            If provided, overrides any token information in api_options.
         environment: a string representing the target Data API environment.
             It can be left unspecified for the default value of `Environment.PROD`.
             Only Astra DB environments can be meaningfully supplied.
@@ -222,6 +223,7 @@ async def async_fetch_raw_database_info_from_id_token(
     Args:
         id: e. g. "01234567-89ab-cdef-0123-456789abcdef".
         token: a valid token to access the database information.
+            If provided, overrides any token information in api_options.
         environment: a string representing the target Data API environment.
             It can be left unspecified for the default value of `Environment.PROD`.
             Only Astra DB environments can be meaningfully supplied.
@@ -308,6 +310,7 @@ def fetch_database_info(
     Args:
         api_endpoint: a full API endpoint for the Data API.
         token: a valid token to access the database information.
+            If provided, overrides any token info found in api_options.
         keyspace: the desired keyspace that will be used in the result.
             If not specified, the resulting database info will show it as None.
         request_timeout_ms: a timeout, in milliseconds, for waiting on a response.
@@ -315,7 +318,7 @@ def fetch_database_info(
         api_options: a (possibly partial) specification of the API Options to use.
 
     Returns:
-        A AstraDBDatabaseInfo object.
+        An AstraDBDatabaseInfo object.
         If the API endpoint fails to be parsed, None is returned.
         For valid-looking endpoints, if something goes wrong an exception is raised.
     """
@@ -355,14 +358,17 @@ async def async_fetch_database_info(
     Args:
         api_endpoint: a full API endpoint for the Data API.
         token: a valid token to access the database information.
+            If provided, overrides any token info found in api_options.
         keyspace: the desired keyspace that will be used in the result.
             If not specified, the resulting database info will show it as None.
-        timeout_ms: a timeout, in milliseconds, for waiting on a response.
-
-    Returns:
         request_timeout_ms: a timeout, in milliseconds, for waiting on a response.
         timeout_ms: an alias for `request_timeout_ms`.
         api_options: a (possibly partial) specification of the API Options to use.
+
+    Returns:
+        An AstraDBDatabaseInfo object.
+        If the API endpoint fails to be parsed, None is returned.
+        For valid-looking endpoints, if something goes wrong an exception is raised.
     """
 
     parsed_endpoint = parse_api_endpoint(api_endpoint)
@@ -371,7 +377,9 @@ async def async_fetch_database_info(
             id=parsed_endpoint.database_id,
             token=token,
             environment=parsed_endpoint.environment,
+            request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
+            api_options=api_options,
         )
         raw_info = gd_response
         return AstraDBDatabaseInfo(
