@@ -22,14 +22,15 @@ from astrapy.exceptions import DataAPIException, TableInsertManyException
 from astrapy.results import TableInsertManyResult
 
 from ..conftest import (
-    AR_DOC_0,
-    AR_DOC_PK_0,
-    DISTINCT_AR_DOCS,
-    S_DOCS,
     DefaultTable,
     _repaint_NaNs,
 )
 from .table_row_assets import (
+    AR_DOC_0,
+    AR_DOC_0_B,
+    AR_DOC_PK_0,
+    DISTINCT_AR_DOCS,
+    SIMPLE_FULL_DOCS,
     SIMPLE_SEVEN_ROWS_F2,
     SIMPLE_SEVEN_ROWS_F4,
     SIMPLE_SEVEN_ROWS_OK,
@@ -49,8 +50,15 @@ class TestTableDMLSync:
         assert no_doc_0a is None
         sync_empty_table_all_returns.insert_one(row=AR_DOC_0)
         doc_0 = sync_empty_table_all_returns.find_one(filter=AR_DOC_PK_0)
+        doc_0_nofilter = sync_empty_table_all_returns.find_one(filter={})
         assert doc_0 is not None
+        assert doc_0 == doc_0_nofilter
         assert {doc_0[k] == v for k, v in AR_DOC_0.items()}
+        # overwrite:
+        sync_empty_table_all_returns.insert_one(row=AR_DOC_0_B)
+        doc_0_b = sync_empty_table_all_returns.find_one(filter=AR_DOC_PK_0)
+        assert doc_0_b is not None
+        assert {doc_0_b[k] == v for k, v in AR_DOC_0_B.items()}
         # projection:
         projected_fields = {"p_bigint", "p_boolean"}
         doc_0 = sync_empty_table_all_returns.find_one(
@@ -62,6 +70,7 @@ class TestTableDMLSync:
         assert doc_0.keys() == projected_fields
         # delete and retry
         sync_empty_table_all_returns.delete_one(filter=AR_DOC_PK_0)
+        sync_empty_table_all_returns.delete_one(filter=AR_DOC_PK_0)
         no_doc_0b = sync_empty_table_all_returns.find_one(filter=AR_DOC_PK_0)
         assert no_doc_0b is None
 
@@ -71,16 +80,18 @@ class TestTableDMLSync:
         sync_empty_table_simple: DefaultTable,
     ) -> None:
         # TODO cross check with CQL direct (!), astra only
-        # TODO replace below with insert_many once landed
-        for s_doc in S_DOCS:
-            sync_empty_table_simple.insert_one(s_doc)
-        assert len(sync_empty_table_simple.find({}).to_list()) == 3
+        im_result = sync_empty_table_simple.insert_many(SIMPLE_FULL_DOCS)
+        assert len(im_result.inserted_ids) == len(SIMPLE_FULL_DOCS)
+        assert len(im_result.inserted_id_tuples) == len(SIMPLE_FULL_DOCS)
+        assert len(sync_empty_table_simple.find({}).to_list()) == len(SIMPLE_FULL_DOCS)
 
         sync_empty_table_simple.delete_one({"p_text": "Z"})
-        assert len(sync_empty_table_simple.find({}).to_list()) == 3
+        assert len(sync_empty_table_simple.find({}).to_list()) == len(SIMPLE_FULL_DOCS)
 
         sync_empty_table_simple.delete_one({"p_text": "A1"})
-        assert len(sync_empty_table_simple.find({}).to_list()) == 2
+        assert (
+            len(sync_empty_table_simple.find({}).to_list()) == len(SIMPLE_FULL_DOCS) - 1
+        )
 
     @pytest.mark.describe("test of table delete_many, sync")
     def test_table_delete_many_sync(
@@ -88,11 +99,10 @@ class TestTableDMLSync:
         sync_empty_table_simple: DefaultTable,
     ) -> None:
         # TODO cross check with CQL direct (!), astra only
-        # TODO replace below with insert_many once landed
-        # TODO enrich with an index-based clause not using $in
-        for s_doc in S_DOCS:
-            sync_empty_table_simple.insert_one(s_doc)
-        assert len(sync_empty_table_simple.find({}).to_list()) == 3
+        im_result = sync_empty_table_simple.insert_many(SIMPLE_FULL_DOCS)
+        assert len(im_result.inserted_ids) == len(SIMPLE_FULL_DOCS)
+        assert len(im_result.inserted_id_tuples) == len(SIMPLE_FULL_DOCS)
+        assert len(sync_empty_table_simple.find({}).to_list()) == len(SIMPLE_FULL_DOCS)
 
         sync_empty_table_simple.delete_many({"p_text": {"$in": ["Z", "Y"]}})
         assert len(sync_empty_table_simple.find({}).to_list()) == 3
@@ -233,6 +243,29 @@ class TestTableDMLSync:
         _assert_consistency(
             ["p1", "p2", "p3", "p5", "p6", "p7"], exc.value.partial_result
         )
+
+        # with massive amount of rows:
+        many_rows = [{"p_text": f"r_{i}", "p_int": i} for i in range(200)]
+        exp_tuple_set = {(row["p_text"],) for row in many_rows}
+        # ordered
+        sync_table_simple.delete_many({})
+        ins_res_o = sync_table_simple.insert_many(many_rows, ordered=True)
+        assert set(ins_res_o.inserted_id_tuples) == exp_tuple_set
+        assert len(sync_table_simple.find().to_list()) == len(many_rows)
+        # unordered, concurrency=1
+        sync_table_simple.delete_many({})
+        ins_res_u_c1 = sync_table_simple.insert_many(
+            many_rows, ordered=False, concurrency=1
+        )
+        assert set(ins_res_u_c1.inserted_id_tuples) == exp_tuple_set
+        assert len(sync_table_simple.find().to_list()) == len(many_rows)
+        # unordered, concurrency>1
+        sync_table_simple.delete_many({})
+        ins_res_u_cn = sync_table_simple.insert_many(
+            many_rows, ordered=False, concurrency=10
+        )
+        assert set(ins_res_u_cn.inserted_id_tuples) == exp_tuple_set
+        assert len(sync_table_simple.find().to_list()) == len(many_rows)
 
     @pytest.mark.describe("test of table update_one, sync")
     def test_table_update_one_sync(
@@ -432,24 +465,24 @@ class TestTableDMLSync:
         sync_empty_table_composite.insert_many(
             [
                 {"p_text": "pA", "p_int": i, "p_vector": DataAPIVector([i, 5, 6])}
-                for i in range(50)
+                for i in range(120)
             ]
         )
         sync_empty_table_composite.insert_many(
             [
                 {"p_text": "pB", "p_int": i, "p_vector": DataAPIVector([i, 6, 5])}
-                for i in range(50)
+                for i in range(120)
             ]
         )
 
         rows_a = sync_empty_table_composite.find({"p_text": "pA"}).to_list()
-        assert len(rows_a) == 50
+        assert len(rows_a) == 120
         assert all(row["p_text"] == "pA" for row in rows_a)
 
         rows_all = sync_empty_table_composite.find({}).to_list()
-        assert len(rows_all) == 100
+        assert len(rows_all) == 240
 
         rows_all_2 = sync_empty_table_composite.find(
             {"$or": [{"p_text": "pA"}, {"p_text": "pB"}]}
         ).to_list()
-        assert len(rows_all_2) == 100
+        assert len(rows_all_2) == 240
