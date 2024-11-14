@@ -63,7 +63,7 @@ from astrapy.settings.defaults import (
 )
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import APIOptions, FullAPIOptions, TimeoutOptions
-from astrapy.utils.request_tools import HttpMethod
+from astrapy.utils.request_tools import HttpMethod, first_valid_timeout
 from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
@@ -479,10 +479,10 @@ class Collection(Generic[DOC]):
             CollectionOptions(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         logger.info(f"getting collections in search of '{self.name}'")
         self_descriptors = [
@@ -641,10 +641,10 @@ class Collection(Generic[DOC]):
             the insertion fails.
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         io_payload = {"insertOne": {"document": document}}
         logger.info(f"insertOne on '{self.name}'")
@@ -761,13 +761,17 @@ class Collection(Generic[DOC]):
             have made their way to the database.
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _general_method_timeout_ms = first_valid_timeout(
+            general_method_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.general_method_timeout_ms,
         )
-        _general_method_timeout_ms = (
-            general_method_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.general_method_timeout_ms
+        _request_timeout_ms = min(
+            _general_method_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
         )
         if concurrency is None:
             if ordered:
@@ -1098,10 +1102,10 @@ class Collection(Generic[DOC]):
         # lazy-import here to avoid circular import issues
         from astrapy.cursors import CollectionFindCursor
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         if include_similarity is not None and not _is_vector_sort(sort):
             raise ValueError(
@@ -1198,10 +1202,10 @@ class Collection(Generic[DOC]):
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         if include_similarity is not None and not _is_vector_sort(sort):
             raise ValueError(
@@ -1316,13 +1320,17 @@ class Collection(Generic[DOC]):
         # lazy-import here to avoid circular import issues
         from astrapy.cursors import CollectionFindCursor
 
-        _request_timeout_ms = (
-            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _general_method_timeout_ms = first_valid_timeout(
+            general_method_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.general_method_timeout_ms,
         )
-        _general_method_timeout_ms = (
-            general_method_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.general_method_timeout_ms
+        _request_timeout_ms = min(
+            _general_method_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
         )
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
@@ -1412,10 +1420,10 @@ class Collection(Generic[DOC]):
             by this method if this limit is encountered.
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         cd_payload = {"countDocuments": {"filter": filter}}
         logger.info(f"countDocuments on '{self.name}'")
@@ -1468,10 +1476,10 @@ class Collection(Generic[DOC]):
             >>> my_coll.estimated_document_count()
             35700
         """
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         ed_payload: dict[str, Any] = {"estimatedDocumentCount": {}}
         logger.info(f"estimatedDocumentCount on '{self.name}'")
@@ -1586,10 +1594,10 @@ class Collection(Generic[DOC]):
             {'text': 'F=ma'}
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         options = {
             "returnDocument": return_document,
@@ -1680,10 +1688,10 @@ class Collection(Generic[DOC]):
             CollectionUpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '931b47d6-...'})
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         options = {
             "upsert": upsert,
@@ -1822,10 +1830,10 @@ class Collection(Generic[DOC]):
             {'_id': 'cb4ef2ab-...', 'name': 'Johnny', 'rank': 0}
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         options = {
             "returnDocument": return_document,
@@ -1920,10 +1928,10 @@ class Collection(Generic[DOC]):
             CollectionUpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '2a45ff60-...'})
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         options = {
             "upsert": upsert,
@@ -2028,13 +2036,17 @@ class Collection(Generic[DOC]):
             newly-inserted document will be picked up by the update_many command or not.
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _general_method_timeout_ms = first_valid_timeout(
+            general_method_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.general_method_timeout_ms,
         )
-        _general_method_timeout_ms = (
-            general_method_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.general_method_timeout_ms
+        _request_timeout_ms = min(
+            _general_method_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
         )
         api_options = {
             "upsert": upsert,
@@ -2172,10 +2184,10 @@ class Collection(Generic[DOC]):
             >>> # (returns None for no matches)
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         _projection = normalize_optional_projection(projection)
         fo_payload = {
@@ -2259,10 +2271,10 @@ class Collection(Generic[DOC]):
             CollectionDeleteResult(raw_results=..., deleted_count=0)
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         do_payload = {
             "deleteOne": {
@@ -2346,13 +2358,17 @@ class Collection(Generic[DOC]):
             An exception is the `filter={}` case, whereby the operation is atomic.
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _general_method_timeout_ms = first_valid_timeout(
+            general_method_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.general_method_timeout_ms,
         )
-        _general_method_timeout_ms = (
-            general_method_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.general_method_timeout_ms
+        _request_timeout_ms = min(
+            _general_method_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
         )
         dm_responses: list[dict[str, Any]] = []
         deleted_count = 0
@@ -2439,10 +2455,10 @@ class Collection(Generic[DOC]):
             which avoids using a deceased collection any further.
         """
 
-        _collection_admin_timeout_ms = (
-            collection_admin_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.collection_admin_timeout_ms
+        _collection_admin_timeout_ms = first_valid_timeout(
+            collection_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.collection_admin_timeout_ms,
         )
         logger.info(f"dropping collection '{self.name}' (self)")
         self.database.drop_collection(
@@ -2479,10 +2495,10 @@ class Collection(Generic[DOC]):
             {'status': {'count': 123}}
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         _cmd_desc: str
         if body:
@@ -2885,10 +2901,10 @@ class AsyncCollection(Generic[DOC]):
             CollectionOptions(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         logger.info(f"getting collections in search of '{self.name}'")
         self_descriptors = [
@@ -3051,10 +3067,10 @@ class AsyncCollection(Generic[DOC]):
             the insertion fails.
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         io_payload = {"insertOne": {"document": document}}
         logger.info(f"insertOne on '{self.name}'")
@@ -3181,13 +3197,17 @@ class AsyncCollection(Generic[DOC]):
             have made their way to the database.
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _general_method_timeout_ms = first_valid_timeout(
+            general_method_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.general_method_timeout_ms,
         )
-        _general_method_timeout_ms = (
-            general_method_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.general_method_timeout_ms
+        _request_timeout_ms = min(
+            _general_method_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
         )
         if concurrency is None:
             if ordered:
@@ -3516,10 +3536,10 @@ class AsyncCollection(Generic[DOC]):
         # lazy-import here to avoid circular import issues
         from astrapy.cursors import AsyncCollectionFindCursor
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         if include_similarity is not None and not _is_vector_sort(sort):
             raise ValueError(
@@ -3632,10 +3652,10 @@ class AsyncCollection(Generic[DOC]):
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         if include_similarity is not None and not _is_vector_sort(sort):
             raise ValueError(
@@ -3758,13 +3778,17 @@ class AsyncCollection(Generic[DOC]):
         # lazy-import here to avoid circular import issues
         from astrapy.cursors import AsyncCollectionFindCursor
 
-        _request_timeout_ms = (
-            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _general_method_timeout_ms = first_valid_timeout(
+            general_method_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.general_method_timeout_ms,
         )
-        _general_method_timeout_ms = (
-            general_method_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.general_method_timeout_ms
+        _request_timeout_ms = min(
+            _general_method_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
         )
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
@@ -3859,10 +3883,10 @@ class AsyncCollection(Generic[DOC]):
             by this method if this limit is encountered.
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         cd_payload = {"countDocuments": {"filter": filter}}
         logger.info(f"countDocuments on '{self.name}'")
@@ -3915,10 +3939,10 @@ class AsyncCollection(Generic[DOC]):
             >>> asyncio.run(my_async_coll.estimated_document_count())
             35700
         """
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         ed_payload: dict[str, Any] = {"estimatedDocumentCount": {}}
         logger.info(f"estimatedDocumentCount on '{self.name}'")
@@ -4039,10 +4063,10 @@ class AsyncCollection(Generic[DOC]):
             result3 {'text': 'F=ma'}
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         options = {
             "returnDocument": return_document,
@@ -4149,10 +4173,10 @@ class AsyncCollection(Generic[DOC]):
             result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '30e34e00-...'}
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         options = {
             "upsert": upsert,
@@ -4297,10 +4321,10 @@ class AsyncCollection(Generic[DOC]):
             result3 {'_id': 'db3d678d-14d4-4caa-82d2-d5fb77dab7ec', 'name': 'Johnny', 'rank': 0}
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         options = {
             "returnDocument": return_document,
@@ -4410,10 +4434,10 @@ class AsyncCollection(Generic[DOC]):
             result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '75748092-...'}
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         options = {
             "upsert": upsert,
@@ -4529,13 +4553,17 @@ class AsyncCollection(Generic[DOC]):
             newly-inserted document will be picked up by the update_many command or not.
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _general_method_timeout_ms = first_valid_timeout(
+            general_method_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.general_method_timeout_ms,
         )
-        _general_method_timeout_ms = (
-            general_method_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.general_method_timeout_ms
+        _request_timeout_ms = min(
+            _general_method_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
         )
         api_options = {
             "upsert": upsert,
@@ -4681,10 +4709,10 @@ class AsyncCollection(Generic[DOC]):
             delete_result1 None
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         _projection = normalize_optional_projection(projection)
         fo_payload = {
@@ -4770,10 +4798,10 @@ class AsyncCollection(Generic[DOC]):
             CollectionDeleteResult(raw_results=..., deleted_count=0)
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         do_payload = {
             "deleteOne": {
@@ -4862,13 +4890,17 @@ class AsyncCollection(Generic[DOC]):
             An exception is the `filter={}` case, whereby the operation is atomic.
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or self.api_options.timeout_options.request_timeout_ms
+        _general_method_timeout_ms = first_valid_timeout(
+            general_method_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.general_method_timeout_ms,
         )
-        _general_method_timeout_ms = (
-            general_method_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.general_method_timeout_ms
+        _request_timeout_ms = min(
+            _general_method_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
         )
         dm_responses: list[dict[str, Any]] = []
         deleted_count = 0
@@ -4959,10 +4991,10 @@ class AsyncCollection(Generic[DOC]):
             which avoids using a deceased collection any further.
         """
 
-        _collection_admin_timeout_ms = (
-            collection_admin_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.collection_admin_timeout_ms
+        _collection_admin_timeout_ms = first_valid_timeout(
+            collection_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.collection_admin_timeout_ms,
         )
         logger.info(f"dropping collection '{self.name}' (self)")
         await self.database.drop_collection(
@@ -4999,10 +5031,10 @@ class AsyncCollection(Generic[DOC]):
             {'status': {'count': 123}}
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         _cmd_desc: str
         if body:

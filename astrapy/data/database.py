@@ -56,6 +56,7 @@ from astrapy.utils.api_options import (
     FullAPIOptions,
     TimeoutOptions,
 )
+from astrapy.utils.request_tools import first_valid_timeout
 from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
@@ -472,10 +473,10 @@ class Database:
             between the `region` and the `raw["region"]` attributes.
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         logger.info("getting database info")
         database_info = fetch_database_info(
@@ -847,13 +848,11 @@ class Database:
             default_id_type=default_id_type,
             additional_options=additional_options,
         )
-
-        _collection_admin_timeout_ms = (
-            collection_admin_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.collection_admin_timeout_ms
+        _collection_admin_timeout_ms = first_valid_timeout(
+            collection_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.collection_admin_timeout_ms,
         )
-
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {"createCollection": {"name": name, "options": cc_options}}
         logger.info(f"createCollection('{name}')")
@@ -909,12 +908,11 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.collection import Collection
 
-        _collection_admin_timeout_ms = (
-            collection_admin_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.collection_admin_timeout_ms
+        _collection_admin_timeout_ms = first_valid_timeout(
+            collection_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.collection_admin_timeout_ms,
         )
-
         _keyspace: str | None
         _collection_name: str
         if isinstance(name_or_collection, Collection):
@@ -968,12 +966,11 @@ class Database:
             CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload = {"findCollections": {"options": {"explain": True}}}
         logger.info("findCollections")
@@ -1019,12 +1016,11 @@ class Database:
             ['a_collection', 'another_col']
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload: dict[str, Any] = {"findCollections": {}}
         logger.info("findCollections")
@@ -1282,15 +1278,12 @@ class Database:
             ct_options = {"ifNotExists": if_not_exists}
         else:
             ct_options = {}
-
         ct_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
-
-        _table_admin_timeout_ms = (
-            table_admin_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.table_admin_timeout_ms
+        _table_admin_timeout_ms = first_valid_timeout(
+            table_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.table_admin_timeout_ms,
         )
-
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {
             "createTable": {
@@ -1367,10 +1360,10 @@ class Database:
             >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
-        _table_admin_timeout_ms = (
-            table_admin_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.table_admin_timeout_ms
+        _table_admin_timeout_ms = first_valid_timeout(
+            table_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.table_admin_timeout_ms,
         )
         di_options: dict[str, bool]
         if if_exists is not None:
@@ -1437,12 +1430,11 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.table import Table
 
-        _table_admin_timeout_ms = (
-            table_admin_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.table_admin_timeout_ms
+        _table_admin_timeout_ms = first_valid_timeout(
+            table_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.table_admin_timeout_ms,
         )
-
         _keyspace: str | None
         _table_name: str
         dt_options: dict[str, bool]
@@ -1511,12 +1503,11 @@ class Database:
             TableDescriptor(name='my_table', options=TableOptions())
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload = {"listTables": {"options": {"explain": True}}}
         logger.info("listTables")
@@ -1562,12 +1553,11 @@ class Database:
             ['a_table', 'another_table']
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload: dict[str, Any] = {"listTables": {}}
         logger.info("listTables")
@@ -1627,12 +1617,11 @@ class Database:
             {'status': {'count': 123}}
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         _keyspace: str | None
         if keyspace is None:
             if collection_or_table_name is not None:
@@ -2122,10 +2111,10 @@ class AsyncDatabase:
             between the `region` and the `raw["region"]` attributes.
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         logger.info("getting database info")
         database_info = await async_fetch_database_info(
@@ -2504,13 +2493,11 @@ class AsyncDatabase:
             default_id_type=default_id_type,
             additional_options=additional_options,
         )
-
-        _collection_admin_timeout_ms = (
-            collection_admin_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.collection_admin_timeout_ms
+        _collection_admin_timeout_ms = first_valid_timeout(
+            collection_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.collection_admin_timeout_ms,
         )
-
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {"createCollection": {"name": name, "options": cc_options}}
         logger.info(f"createCollection('{name}')")
@@ -2566,12 +2553,11 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.collection import AsyncCollection
 
-        _collection_admin_timeout_ms = (
-            collection_admin_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.collection_admin_timeout_ms
+        _collection_admin_timeout_ms = first_valid_timeout(
+            collection_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.collection_admin_timeout_ms,
         )
-
         keyspace: str | None
         _collection_name: str
         if isinstance(name_or_collection, AsyncCollection):
@@ -2627,12 +2613,11 @@ class AsyncDatabase:
             * coll: CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload = {"findCollections": {"options": {"explain": True}}}
         logger.info("findCollections")
@@ -2678,12 +2663,11 @@ class AsyncDatabase:
             ['a_collection', 'another_col']
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload: dict[str, Any] = {"findCollections": {}}
         logger.info("findCollections")
@@ -2943,15 +2927,12 @@ class AsyncDatabase:
             ct_options = {"ifNotExists": if_not_exists}
         else:
             ct_options = {}
-
         ct_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
-
-        _table_admin_timeout_ms = (
-            table_admin_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.table_admin_timeout_ms
+        _table_admin_timeout_ms = first_valid_timeout(
+            table_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.table_admin_timeout_ms,
         )
-
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {
             "createTable": {
@@ -3028,10 +3009,10 @@ class AsyncDatabase:
             >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
-        _table_admin_timeout_ms = (
-            table_admin_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.table_admin_timeout_ms
+        _table_admin_timeout_ms = first_valid_timeout(
+            table_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.table_admin_timeout_ms,
         )
         di_options: dict[str, bool]
         if if_exists is not None:
@@ -3098,12 +3079,11 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.table import AsyncTable
 
-        _table_admin_timeout_ms = (
-            table_admin_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.table_admin_timeout_ms
+        _table_admin_timeout_ms = first_valid_timeout(
+            table_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.table_admin_timeout_ms,
         )
-
         _keyspace: str | None
         _table_name: str
         dt_options: dict[str, bool]
@@ -3175,12 +3155,11 @@ class AsyncDatabase:
             * table_desc: TableDescriptor(name='my_table', options=TableOptions())
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload = {"listTables": {"options": {"explain": True}}}
         logger.info("listTables")
@@ -3232,12 +3211,11 @@ class AsyncDatabase:
             ['a_table', 'another_tab']
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload: dict[str, Any] = {"listTables": {}}
         logger.info("listTables")
@@ -3297,12 +3275,11 @@ class AsyncDatabase:
             {'status': {'count': 123}}
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         _keyspace: str | None
         if keyspace is None:
             if collection_or_table_name is not None:

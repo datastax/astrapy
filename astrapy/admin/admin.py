@@ -66,7 +66,7 @@ from astrapy.utils.api_options import (
     TimeoutOptions,
     defaultAPIOptions,
 )
-from astrapy.utils.request_tools import HttpMethod
+from astrapy.utils.request_tools import HttpMethod, first_valid_timeout
 from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
@@ -144,6 +144,14 @@ def fetch_raw_database_info_from_id_token(
         The full response from the DevOps API about the database.
     """
 
+    _request_timeout_ms: int | None | UnsetType
+    if request_timeout_ms is not None:
+        _request_timeout_ms = request_timeout_ms
+    else:
+        if timeout_ms is not None:
+            _request_timeout_ms = timeout_ms
+        else:
+            _request_timeout_ms = _UNSET
     _api_options = (
         defaultAPIOptions(environment=environment)
         .with_override(api_options)
@@ -151,7 +159,7 @@ def fetch_raw_database_info_from_id_token(
             APIOptions(
                 token=token,
                 timeout_options=TimeoutOptions(
-                    request_timeout_ms=request_timeout_ms or timeout_ms or _UNSET,
+                    request_timeout_ms=_request_timeout_ms,
                 ),
             ),
         )
@@ -225,6 +233,14 @@ async def async_fetch_raw_database_info_from_id_token(
         The full response from the DevOps API about the database.
     """
 
+    _request_timeout_ms: int | None | UnsetType
+    if request_timeout_ms is not None:
+        _request_timeout_ms = request_timeout_ms
+    else:
+        if timeout_ms is not None:
+            _request_timeout_ms = timeout_ms
+        else:
+            _request_timeout_ms = _UNSET
     _api_options = (
         defaultAPIOptions(environment=environment)
         .with_override(api_options)
@@ -232,7 +248,7 @@ async def async_fetch_raw_database_info_from_id_token(
             APIOptions(
                 token=token,
                 timeout_options=TimeoutOptions(
-                    request_timeout_ms=request_timeout_ms or timeout_ms or _UNSET,
+                    request_timeout_ms=_request_timeout_ms,
                 ),
             ),
         )
@@ -593,10 +609,10 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         return self._list_databases_ctx(
             include=include,
@@ -715,10 +731,10 @@ class AstraDBAdmin:
             False
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         return await self._async_list_databases_ctx(
             include=include,
@@ -828,10 +844,10 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         return self._database_info_ctx(
             id=id,
@@ -887,10 +903,10 @@ class AstraDBAdmin:
             True
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
         return await self._async_database_info_ctx(
             id=id,
@@ -979,13 +995,19 @@ class AstraDBAdmin:
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.2]})
         """
 
-        # for timeouts, there's a 3-item chain of fallbacks for both:
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-        _database_admin_timeout_ms = (
-            database_admin_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.database_admin_timeout_ms
+        _database_admin_timeout_ms = first_valid_timeout(
+            database_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.database_admin_timeout_ms,
+        )
+        _request_timeout_ms = min(
+            _database_admin_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
+        )
         cd_payload = {
             k: v
             for k, v in {
@@ -1114,13 +1136,19 @@ class AstraDBAdmin:
             AstraDBDatabaseAdmin(id=...)
         """
 
-        # for timeouts, there's a 3-item chain of fallbacks for both:
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-        _database_admin_timeout_ms = (
-            database_admin_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.database_admin_timeout_ms
+        _database_admin_timeout_ms = first_valid_timeout(
+            database_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.database_admin_timeout_ms,
+        )
+        _request_timeout_ms = min(
+            _database_admin_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
+        )
         cd_payload = {
             k: v
             for k, v in {
@@ -1242,13 +1270,19 @@ class AstraDBAdmin:
             2
         """
 
-        # for timeouts, there's a 3-item chain of fallbacks for both:
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-        _database_admin_timeout_ms = (
-            database_admin_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.database_admin_timeout_ms
+        _database_admin_timeout_ms = first_valid_timeout(
+            database_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.database_admin_timeout_ms,
+        )
+        _request_timeout_ms = min(
+            _database_admin_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
+        )
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_database_admin_timeout_ms, dev_ops_api=True
         )
@@ -1343,13 +1377,19 @@ class AstraDBAdmin:
             ... )
         """
 
-        # for timeouts, there's a 3-item chain of fallbacks for both:
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-        _database_admin_timeout_ms = (
-            database_admin_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.database_admin_timeout_ms
+        _database_admin_timeout_ms = first_valid_timeout(
+            database_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.database_admin_timeout_ms,
+        )
+        _request_timeout_ms = min(
+            _database_admin_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
+        )
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_database_admin_timeout_ms, dev_ops_api=True
         )
@@ -1457,9 +1497,11 @@ class AstraDBAdmin:
             `create_database` method.
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
+        )
         _api_endpoint_p, _id_p = check_id_endpoint_parg_kwargs(
             p_arg=api_endpoint_or_id, api_endpoint=api_endpoint, id=id
         )
@@ -1572,9 +1614,11 @@ class AstraDBAdmin:
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
+        )
         _api_endpoint_p, _id_p = check_id_endpoint_parg_kwargs(
             p_arg=api_endpoint_or_id, api_endpoint=api_endpoint, id=id
         )
@@ -2230,12 +2274,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             'us-east1'
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         logger.info(f"getting info ('{self._database_id}')")
         req_response = self._astra_db_admin.database_info(
             id=self._database_id,
@@ -2272,12 +2315,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             >>> asyncio.run(wait_until_active(admin_for_my_db))
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         logger.info(f"getting info ('{self._database_id}'), async")
         req_response = await self._astra_db_admin.async_database_info(
             id=self._database_id,
@@ -2308,12 +2350,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_keyspace']
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         logger.info(f"getting keyspaces ('{self._database_id}')")
         info = self.info(timeout_ms=_request_timeout_ms)
         logger.info(f"finished getting keyspaces ('{self._database_id}')")
@@ -2353,12 +2394,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             True
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         logger.info(f"getting keyspaces ('{self._database_id}'), async")
         info = await self.async_info(timeout_ms=_request_timeout_ms)
         logger.info(f"finished getting keyspaces ('{self._database_id}'), async")
@@ -2419,14 +2459,19 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'that_other_one']
         """
 
-        # for timeouts, there's a 3-item chain of fallbacks for both:
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-        _keyspace_admin_timeout_ms = (
-            keyspace_admin_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.keyspace_admin_timeout_ms
-
+        _keyspace_admin_timeout_ms = first_valid_timeout(
+            keyspace_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.keyspace_admin_timeout_ms,
+        )
+        _request_timeout_ms = min(
+            _keyspace_admin_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
+        )
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
         )
@@ -2526,14 +2571,19 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ... )
         """
 
-        # for timeouts, there's a 3-item chain of fallbacks for both:
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-        _keyspace_admin_timeout_ms = (
-            keyspace_admin_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.keyspace_admin_timeout_ms
-
+        _keyspace_admin_timeout_ms = first_valid_timeout(
+            keyspace_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.keyspace_admin_timeout_ms,
+        )
+        _request_timeout_ms = min(
+            _keyspace_admin_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
+        )
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
         )
@@ -2632,14 +2682,19 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace']
         """
 
-        # for timeouts, there's a 3-item chain of fallbacks for both:
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-        _keyspace_admin_timeout_ms = (
-            keyspace_admin_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.keyspace_admin_timeout_ms
-
+        _keyspace_admin_timeout_ms = first_valid_timeout(
+            keyspace_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.keyspace_admin_timeout_ms,
+        )
+        _request_timeout_ms = min(
+            _keyspace_admin_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
+        )
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
         )
@@ -2731,14 +2786,19 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ... )
         """
 
-        # for timeouts, there's a 3-item chain of fallbacks for both:
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-        _keyspace_admin_timeout_ms = (
-            keyspace_admin_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.keyspace_admin_timeout_ms
-
+        _keyspace_admin_timeout_ms = first_valid_timeout(
+            keyspace_admin_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.keyspace_admin_timeout_ms,
+        )
+        _request_timeout_ms = min(
+            _keyspace_admin_timeout_ms,
+            first_valid_timeout(
+                request_timeout_ms,
+                timeout_ms,
+                self.api_options.timeout_options.request_timeout_ms,
+            ),
+        )
         timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=_keyspace_admin_timeout_ms, dev_ops_api=True
         )
@@ -3082,10 +3142,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
+        )
         logger.info("findEmbeddingProviders")
         fe_response = self._api_commander.request(
             payload={"findEmbeddingProviders": {}},
@@ -3134,10 +3195,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
+        )
         logger.info("findEmbeddingProviders, async")
         fe_response = await self._api_commander.async_request(
             payload={"findEmbeddingProviders": {}},
@@ -3360,12 +3422,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_keyspace']
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         logger.info("getting list of keyspaces")
         fn_response = self._api_commander.request(
             payload={"findKeyspaces": {}},
@@ -3420,10 +3481,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'that_other_one']
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
+        )
         options = {
             k: v
             for k, v in {
@@ -3481,10 +3543,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace']
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
+        )
         logger.info("dropping keyspace")
         dn_response = self._api_commander.request(
             payload={"dropKeyspace": {"name": name}},
@@ -3521,12 +3584,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_keyspace']
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms
-            or timeout_ms
-            or self.api_options.timeout_options.request_timeout_ms
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
         )
-
         logger.info("getting list of keyspaces, async")
         fn_response = await self._api_commander.async_request(
             payload={"findKeyspaces": {}},
@@ -3584,10 +3646,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'that_other_one']
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
+        )
         options = {
             k: v
             for k, v in {
@@ -3648,10 +3711,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace']
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
+        )
         logger.info("dropping keyspace, async")
         dn_response = await self._api_commander.async_request(
             payload={"dropKeyspace": {"name": name}},
@@ -3851,10 +3915,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
+        )
         logger.info("findEmbeddingProviders")
         fe_response = self._api_commander.request(
             payload={"findEmbeddingProviders": {}},
@@ -3903,10 +3968,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        _request_timeout_ms = (
-            request_timeout_ms or timeout_ms
-        ) or self.api_options.timeout_options.request_timeout_ms
-
+        _request_timeout_ms = first_valid_timeout(
+            request_timeout_ms,
+            timeout_ms,
+            self.api_options.timeout_options.request_timeout_ms,
+        )
         logger.info("findEmbeddingProviders, async")
         fe_response = await self._api_commander.async_request(
             payload={"findEmbeddingProviders": {}},

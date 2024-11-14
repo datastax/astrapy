@@ -165,6 +165,8 @@ class MultiCallTimeoutManager:
 
     Args:
         overall_timeout_ms: an optional max duration to track (milliseconds)
+        dev_ops_api: whether this manager is used in a DevOps context (a fact
+            which affects which timeout exception is raised if needed).
 
     Attributes:
         overall_timeout_ms: an optional max duration to track (milliseconds)
@@ -180,7 +182,8 @@ class MultiCallTimeoutManager:
         self, overall_timeout_ms: int | None, dev_ops_api: bool = False
     ) -> None:
         self.started_ms = int(time.time() * 1000)
-        self.overall_timeout_ms = overall_timeout_ms
+        # zero timeouts provided internally are mapped to None for deadline mgmt:
+        self.overall_timeout_ms = overall_timeout_ms or None
         self.dev_ops_api = dev_ops_api
         if self.overall_timeout_ms is not None:
             self.deadline_ms = self.started_ms + self.overall_timeout_ms
@@ -202,11 +205,14 @@ class MultiCallTimeoutManager:
         Returns:
             TODO
         """
+
+        # a zero 'cap' must be treated as None:
+        _cap_time_ms = cap_time_ms or None
         now_ms = int(time.time() * 1000)
         if self.deadline_ms is not None:
             if now_ms < self.deadline_ms:
                 remaining = self.deadline_ms - now_ms
-                if cap_time_ms is None:
+                if _cap_time_ms is None:
                     return _TimeoutContext(
                         nominal_ms=self.overall_timeout_ms,
                         request_ms=remaining,
@@ -214,7 +220,7 @@ class MultiCallTimeoutManager:
                 else:
                     return _TimeoutContext(
                         nominal_ms=self.overall_timeout_ms,
-                        request_ms=min(remaining, cap_time_ms),
+                        request_ms=min(remaining, _cap_time_ms),
                     )
             else:
                 if not self.dev_ops_api:
@@ -232,7 +238,7 @@ class MultiCallTimeoutManager:
                         raw_payload=None,
                     )
         else:
-            if cap_time_ms is None:
+            if _cap_time_ms is None:
                 return _TimeoutContext(
                     nominal_ms=self.overall_timeout_ms,
                     request_ms=None,
@@ -240,7 +246,7 @@ class MultiCallTimeoutManager:
             else:
                 return _TimeoutContext(
                     nominal_ms=self.overall_timeout_ms,
-                    request_ms=cap_time_ms,
+                    request_ms=_cap_time_ms,
                 )
 
 

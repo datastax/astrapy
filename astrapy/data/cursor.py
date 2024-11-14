@@ -76,6 +76,47 @@ def _ensure_vector(
             return f_list
 
 
+def _revise_timeouts_for_cursor_copy(
+    *,
+    new_general_method_timeout_ms: int | None,
+    new_timeout_ms: int | None,
+    old_request_timeout_ms: int | None,
+) -> tuple[int | None, int | None]:
+    """
+    This utility applies the desired logic to get the new timeout specification
+    for a cursor copy done for the purpose of to_list or for_each.
+
+    Namely, the original cursor would have an old request timeout (its overall
+    timeout assumed empty); and the to_list method call may have a general timeout
+    specified (and/or its alias, timeout_ms). This function returns the
+        (request_timeout_ms, overall_timeout_ms)
+    for use in the cursor copy.
+    (1) the two new_* parameters put in their priority for the new 'overall"
+    (2) the new per-request is either the old per-request or, if (1) is shorter,
+        that takes precedence. This is done in a None-aware safe manner.
+    """
+    _general_method_timeout_ms = (
+        new_timeout_ms if new_timeout_ms is not None else new_general_method_timeout_ms
+    )
+    # the per-request timeout, depending on what is specified, may have
+    # to undergo a min(...) logic if overall timeout is surprisingly narrow:
+    _new_request_timeout_ms: int | None
+    if _general_method_timeout_ms is not None:
+        if old_request_timeout_ms is not None:
+            _new_request_timeout_ms = min(
+                _general_method_timeout_ms,
+                old_request_timeout_ms,
+            )
+        else:
+            _new_request_timeout_ms = _general_method_timeout_ms
+    else:
+        if old_request_timeout_ms is not None:
+            _new_request_timeout_ms = old_request_timeout_ms
+        else:
+            _new_request_timeout_ms = None
+    return (_new_request_timeout_ms, _general_method_timeout_ms)
+
+
 class CursorState(Enum):
     # Iteration over results has not started yet (alive=T, started=F)
     IDLE = "idle"
@@ -476,7 +517,7 @@ class _TableQueryEngine(Generic[TRAW], _QueryEngine[TRAW]):
 
 class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     _query_engine: _CollectionQueryEngine[TRAW]
-    _request_timeout_ms: int | None | None
+    _request_timeout_ms: int | None
     _overall_timeout_ms: int | None
     _timeout_manager: MultiCallTimeoutManager
     _filter: FilterType | None
@@ -719,9 +760,18 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         function: Callable[[T], Any],
         *,
         general_method_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> None:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
+        copy_req_ms, copy_ovr_ms = _revise_timeouts_for_cursor_copy(
+            new_general_method_timeout_ms=general_method_timeout_ms,
+            new_timeout_ms=timeout_ms,
+            old_request_timeout_ms=self._request_timeout_ms,
+        )
+        _cursor = self._copy(
+            request_timeout_ms=copy_req_ms,
+            overall_timeout_ms=copy_ovr_ms,
+        )
         for document in _cursor:
             function(document)
         self.close()
@@ -730,9 +780,18 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self,
         *,
         general_method_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[T]:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
+        copy_req_ms, copy_ovr_ms = _revise_timeouts_for_cursor_copy(
+            new_general_method_timeout_ms=general_method_timeout_ms,
+            new_timeout_ms=timeout_ms,
+            old_request_timeout_ms=self._request_timeout_ms,
+        )
+        _cursor = self._copy(
+            request_timeout_ms=copy_req_ms,
+            overall_timeout_ms=copy_ovr_ms,
+        )
         documents = [document for document in _cursor]
         self.close()
         return documents
@@ -1011,9 +1070,18 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         function: Callable[[T], Any],
         *,
         general_method_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> None:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
+        copy_req_ms, copy_ovr_ms = _revise_timeouts_for_cursor_copy(
+            new_general_method_timeout_ms=general_method_timeout_ms,
+            new_timeout_ms=timeout_ms,
+            old_request_timeout_ms=self._request_timeout_ms,
+        )
+        _cursor = self._copy(
+            request_timeout_ms=copy_req_ms,
+            overall_timeout_ms=copy_ovr_ms,
+        )
         async for document in _cursor:
             function(document)
         self.close()
@@ -1022,9 +1090,18 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self,
         *,
         general_method_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[T]:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
+        copy_req_ms, copy_ovr_ms = _revise_timeouts_for_cursor_copy(
+            new_general_method_timeout_ms=general_method_timeout_ms,
+            new_timeout_ms=timeout_ms,
+            old_request_timeout_ms=self._request_timeout_ms,
+        )
+        _cursor = self._copy(
+            request_timeout_ms=copy_req_ms,
+            overall_timeout_ms=copy_ovr_ms,
+        )
         documents = [document async for document in _cursor]
         self.close()
         return documents
@@ -1057,7 +1134,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
 class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     _query_engine: _TableQueryEngine[TRAW]
-    _request_timeout_ms: int | None | None
+    _request_timeout_ms: int | None
     _overall_timeout_ms: int | None
     _timeout_manager: MultiCallTimeoutManager
     _filter: FilterType | None
@@ -1298,9 +1375,18 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         function: Callable[[T], Any],
         *,
         general_method_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> None:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
+        copy_req_ms, copy_ovr_ms = _revise_timeouts_for_cursor_copy(
+            new_general_method_timeout_ms=general_method_timeout_ms,
+            new_timeout_ms=timeout_ms,
+            old_request_timeout_ms=self._request_timeout_ms,
+        )
+        _cursor = self._copy(
+            request_timeout_ms=copy_req_ms,
+            overall_timeout_ms=copy_ovr_ms,
+        )
         for document in _cursor:
             function(document)
         self.close()
@@ -1309,9 +1395,18 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self,
         *,
         general_method_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[T]:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
+        copy_req_ms, copy_ovr_ms = _revise_timeouts_for_cursor_copy(
+            new_general_method_timeout_ms=general_method_timeout_ms,
+            new_timeout_ms=timeout_ms,
+            old_request_timeout_ms=self._request_timeout_ms,
+        )
+        _cursor = self._copy(
+            request_timeout_ms=copy_req_ms,
+            overall_timeout_ms=copy_ovr_ms,
+        )
         documents = [document for document in _cursor]
         self.close()
         return documents
@@ -1590,9 +1685,18 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         function: Callable[[T], Any],
         *,
         general_method_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> None:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
+        copy_req_ms, copy_ovr_ms = _revise_timeouts_for_cursor_copy(
+            new_general_method_timeout_ms=general_method_timeout_ms,
+            new_timeout_ms=timeout_ms,
+            old_request_timeout_ms=self._request_timeout_ms,
+        )
+        _cursor = self._copy(
+            request_timeout_ms=copy_req_ms,
+            overall_timeout_ms=copy_ovr_ms,
+        )
         async for document in _cursor:
             function(document)
         self.close()
@@ -1601,9 +1705,18 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self,
         *,
         general_method_timeout_ms: int | None = None,
+        timeout_ms: int | None = None,
     ) -> list[T]:
         self._ensure_alive()
-        _cursor = self._copy(overall_timeout_ms=general_method_timeout_ms)
+        copy_req_ms, copy_ovr_ms = _revise_timeouts_for_cursor_copy(
+            new_general_method_timeout_ms=general_method_timeout_ms,
+            new_timeout_ms=timeout_ms,
+            old_request_timeout_ms=self._request_timeout_ms,
+        )
+        _cursor = self._copy(
+            request_timeout_ms=copy_req_ms,
+            overall_timeout_ms=copy_ovr_ms,
+        )
         documents = [document async for document in _cursor]
         self.close()
         return documents
