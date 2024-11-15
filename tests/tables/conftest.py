@@ -28,6 +28,7 @@ from astrapy.constants import SortMode
 from astrapy.data_types import DataAPIMap, DataAPISet
 from astrapy.info import (
     TableDefinition,
+    TableIndexDefinition,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
@@ -131,6 +132,7 @@ TEST_COMPOSITE_TABLE_DEFINITION = TableDefinition(
     columns={
         "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
         "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
+        "p_boolean": TableScalarColumnTypeDescriptor(column_type="boolean"),
         "p_vector": TableVectorColumnTypeDescriptor(
             column_type="vector",
             dimension=3,
@@ -144,6 +146,8 @@ TEST_COMPOSITE_TABLE_DEFINITION = TableDefinition(
 )
 TEST_COMPOSITE_TABLE_VECTOR_INDEX_NAME = "test_table_composite_p_vector_idx"
 TEST_COMPOSITE_TABLE_VECTOR_INDEX_DEFINITION = TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION
+TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_NAME = "test_table_composite_p_boolean_idx"
+TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_DEFINITION = TableIndexDefinition(column="p_boolean")
 
 TEST_VECTORIZE_TABLE_NAME = "test_table_vectorize"
 TEST_VECTORIZE_TABLE_DEFINITION = TableDefinition(
@@ -384,6 +388,10 @@ def sync_table_composite(
     table.create_vector_index(
         TEST_COMPOSITE_TABLE_VECTOR_INDEX_NAME,
         definition=TEST_COMPOSITE_TABLE_VECTOR_INDEX_DEFINITION,
+    )
+    table.create_index(
+        TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_NAME,
+        definition=TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_DEFINITION,
     )
     yield table
 

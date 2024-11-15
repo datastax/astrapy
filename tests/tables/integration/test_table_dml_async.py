@@ -27,14 +27,16 @@ from ..conftest import (
     _typify_tuple,
 )
 from .table_row_assets import (
-    AR_DOC_0,
-    AR_DOC_0_B,
-    AR_DOC_PK_0,
-    AR_DOC_PK_0_TUPLE,
-    DISTINCT_AR_DOCS,
-    DISTINCT_AR_DOCS_PK_TUPLES,
-    DISTINCT_AR_DOCS_PKS,
-    SIMPLE_FULL_DOCS,
+    AR_ROW_0,
+    AR_ROW_0_B,
+    AR_ROW_PK_0,
+    AR_ROW_PK_0_TUPLE,
+    COMPOSITE_VECTOR_ROWS,
+    COMPOSITE_VECTOR_ROWS_N,
+    DISTINCT_AR_ROWS,
+    DISTINCT_AR_ROWS_PK_TUPLES,
+    DISTINCT_AR_ROWS_PKS,
+    SIMPLE_FULL_ROWS,
     SIMPLE_SEVEN_ROWS_F2,
     SIMPLE_SEVEN_ROWS_F4,
     SIMPLE_SEVEN_ROWS_OK,
@@ -50,41 +52,41 @@ class TestTableDMLAsync:
         # TODO enlarge the test with all values + a partial row
         # TODO + the different custom/nonocustom types and serdes options interplay
         # TODO cross check with CQL direct (!), astra only
-        no_doc_0a = await async_empty_table_all_returns.find_one(filter=AR_DOC_PK_0)
-        assert no_doc_0a is None
-        ins1_res_0 = await async_empty_table_all_returns.insert_one(row=AR_DOC_0)
-        doc_0 = await async_empty_table_all_returns.find_one(filter=AR_DOC_PK_0)
-        doc_0_nofilter = await async_empty_table_all_returns.find_one(filter={})
-        assert doc_0 is not None
-        assert doc_0 == doc_0_nofilter
-        assert {doc_0[k] == v for k, v in AR_DOC_0.items()}
-        assert ins1_res_0.inserted_id == AR_DOC_PK_0
+        no_row_0a = await async_empty_table_all_returns.find_one(filter=AR_ROW_PK_0)
+        assert no_row_0a is None
+        ins1_res_0 = await async_empty_table_all_returns.insert_one(row=AR_ROW_0)
+        row_0 = await async_empty_table_all_returns.find_one(filter=AR_ROW_PK_0)
+        row_0_nofilter = await async_empty_table_all_returns.find_one(filter={})
+        assert row_0 is not None
+        assert row_0 == row_0_nofilter
+        assert {row_0[k] == v for k, v in AR_ROW_0.items()}
+        assert ins1_res_0.inserted_id == AR_ROW_PK_0
         assert _typify_tuple(ins1_res_0.inserted_id_tuple) == _typify_tuple(
-            AR_DOC_PK_0_TUPLE
+            AR_ROW_PK_0_TUPLE
         )
         # overwrite:
-        ins1_res_0_b = await async_empty_table_all_returns.insert_one(row=AR_DOC_0_B)
-        doc_0_b = await async_empty_table_all_returns.find_one(filter=AR_DOC_PK_0)
-        assert doc_0_b is not None
-        assert {doc_0_b[k] == v for k, v in AR_DOC_0_B.items()}
-        assert ins1_res_0_b.inserted_id == AR_DOC_PK_0
+        ins1_res_0_b = await async_empty_table_all_returns.insert_one(row=AR_ROW_0_B)
+        row_0_b = await async_empty_table_all_returns.find_one(filter=AR_ROW_PK_0)
+        assert row_0_b is not None
+        assert {row_0_b[k] == v for k, v in AR_ROW_0_B.items()}
+        assert ins1_res_0_b.inserted_id == AR_ROW_PK_0
         assert _typify_tuple(ins1_res_0_b.inserted_id_tuple) == _typify_tuple(
-            AR_DOC_PK_0_TUPLE
+            AR_ROW_PK_0_TUPLE
         )
         # projection:
         projected_fields = {"p_bigint", "p_boolean"}
-        doc_0 = await async_empty_table_all_returns.find_one(
-            filter=AR_DOC_PK_0,
+        row_0 = await async_empty_table_all_returns.find_one(
+            filter=AR_ROW_PK_0,
             projection={pf: True for pf in projected_fields},
         )
-        assert doc_0 is not None
-        assert {doc_0[k] == AR_DOC_0[k] for k in projected_fields}
-        assert doc_0.keys() == projected_fields
+        assert row_0 is not None
+        assert {row_0[k] == AR_ROW_0[k] for k in projected_fields}
+        assert row_0.keys() == projected_fields
         # delete and retry
-        await async_empty_table_all_returns.delete_one(filter=AR_DOC_PK_0)
-        await async_empty_table_all_returns.delete_one(filter=AR_DOC_PK_0)
-        no_doc_0b = await async_empty_table_all_returns.find_one(filter=AR_DOC_PK_0)
-        assert no_doc_0b is None
+        await async_empty_table_all_returns.delete_one(filter=AR_ROW_PK_0)
+        await async_empty_table_all_returns.delete_one(filter=AR_ROW_PK_0)
+        no_row_0b = await async_empty_table_all_returns.find_one(filter=AR_ROW_PK_0)
+        assert no_row_0b is None
 
     @pytest.mark.describe("test of table delete_one, async")
     async def test_table_delete_one_async(
@@ -92,22 +94,22 @@ class TestTableDMLAsync:
         async_empty_table_simple: DefaultAsyncTable,
     ) -> None:
         # TODO cross check with CQL direct (!), astra only
-        im_result = await async_empty_table_simple.insert_many(SIMPLE_FULL_DOCS)
-        assert len(im_result.inserted_ids) == len(SIMPLE_FULL_DOCS)
-        assert len(im_result.inserted_id_tuples) == len(SIMPLE_FULL_DOCS)
+        im_result = await async_empty_table_simple.insert_many(SIMPLE_FULL_ROWS)
+        assert len(im_result.inserted_ids) == len(SIMPLE_FULL_ROWS)
+        assert len(im_result.inserted_id_tuples) == len(SIMPLE_FULL_ROWS)
         assert len(await async_empty_table_simple.find({}).to_list()) == len(
-            SIMPLE_FULL_DOCS
+            SIMPLE_FULL_ROWS
         )
 
         await async_empty_table_simple.delete_one({"p_text": "Z"})
         assert len(await async_empty_table_simple.find({}).to_list()) == len(
-            SIMPLE_FULL_DOCS
+            SIMPLE_FULL_ROWS
         )
 
         await async_empty_table_simple.delete_one({"p_text": "A1"})
         assert (
             len(await async_empty_table_simple.find({}).to_list())
-            == len(SIMPLE_FULL_DOCS) - 1
+            == len(SIMPLE_FULL_ROWS) - 1
         )
 
     @pytest.mark.describe("test of table delete_many, async")
@@ -116,11 +118,11 @@ class TestTableDMLAsync:
         async_empty_table_simple: DefaultAsyncTable,
     ) -> None:
         # TODO cross check with CQL direct (!), astra only
-        im_result = await async_empty_table_simple.insert_many(SIMPLE_FULL_DOCS)
-        assert len(im_result.inserted_ids) == len(SIMPLE_FULL_DOCS)
-        assert len(im_result.inserted_id_tuples) == len(SIMPLE_FULL_DOCS)
+        im_result = await async_empty_table_simple.insert_many(SIMPLE_FULL_ROWS)
+        assert len(im_result.inserted_ids) == len(SIMPLE_FULL_ROWS)
+        assert len(im_result.inserted_id_tuples) == len(SIMPLE_FULL_ROWS)
         assert len(await async_empty_table_simple.find({}).to_list()) == len(
-            SIMPLE_FULL_DOCS
+            SIMPLE_FULL_ROWS
         )
 
         await async_empty_table_simple.delete_many({"p_text": {"$in": ["Z", "Y"]}})
@@ -134,10 +136,10 @@ class TestTableDMLAsync:
         self,
         async_empty_table_all_returns: DefaultAsyncTable,
     ) -> None:
-        im_result = await async_empty_table_all_returns.insert_many(DISTINCT_AR_DOCS)
-        assert im_result.inserted_ids == DISTINCT_AR_DOCS_PKS
+        im_result = await async_empty_table_all_returns.insert_many(DISTINCT_AR_ROWS)
+        assert im_result.inserted_ids == DISTINCT_AR_ROWS_PKS
         assert [_typify_tuple(tpl) for tpl in im_result.inserted_id_tuples] == [
-            _typify_tuple(tpl) for tpl in DISTINCT_AR_DOCS_PK_TUPLES
+            _typify_tuple(tpl) for tpl in DISTINCT_AR_ROWS_PK_TUPLES
         ]
 
     @pytest.mark.describe("test of table distinct, async")
@@ -145,7 +147,7 @@ class TestTableDMLAsync:
         self,
         async_empty_table_all_returns: DefaultAsyncTable,
     ) -> None:
-        await async_empty_table_all_returns.insert_many(DISTINCT_AR_DOCS)
+        await async_empty_table_all_returns.insert_many(DISTINCT_AR_ROWS)
 
         d_float = await async_empty_table_all_returns.distinct("p_float")
         exp_d_float = {0.1, 0.2, float("NaN")}
@@ -497,28 +499,52 @@ class TestTableDMLAsync:
         # TODO do more than just pagination (distinct, maps etc)
         await async_empty_table_composite.insert_many(
             [
-                {"p_text": "pA", "p_int": i, "p_vector": DataAPIVector([i, 5, 6])}
+                {
+                    "p_text": "pA",
+                    "p_int": i,
+                    "p_boolean": i % 2 == 0,
+                    "p_vector": DataAPIVector([i, 5, 6]),
+                }
                 for i in range(120)
             ]
         )
         await async_empty_table_composite.insert_many(
             [
-                {"p_text": "pB", "p_int": i, "p_vector": DataAPIVector([i, 6, 5])}
+                {
+                    "p_text": "pB",
+                    "p_int": i,
+                    "p_boolean": i % 2 == 0,
+                    "p_vector": DataAPIVector([i, 6, 5]),
+                }
                 for i in range(120)
             ]
         )
 
+        # partition filter
         rows_a = await async_empty_table_composite.find({"p_text": "pA"}).to_list()
         assert len(rows_a) == 120
         assert all(row["p_text"] == "pA" for row in rows_a)
-
+        # no filters
         rows_all = await async_empty_table_composite.find({}).to_list()
         assert len(rows_all) == 240
-
+        # sophisticated (but partition) filter
         rows_all_2 = await async_empty_table_composite.find(
             {"$or": [{"p_text": "pA"}, {"p_text": "pB"}]}
         ).to_list()
         assert len(rows_all_2) == 240
+        # non-pk-column filter, alone
+        rows_even_allps = await async_empty_table_composite.find(
+            {"p_boolean": True}
+        ).to_list()
+        assert len(rows_even_allps) == 2 * sum(1 - i % 2 for i in range(120))
+        assert all(row["p_boolean"] for row in rows_even_allps)
+        # non-pk-column + partition key filter
+        rows_even_a = await async_empty_table_composite.find(
+            {"p_text": "pA", "p_boolean": True}
+        ).to_list()
+        assert len(rows_even_a) == sum(1 - i % 2 for i in range(120))
+        assert all(row["p_text"] == "pA" for row in rows_even_a)
+        assert all(row["p_boolean"] for row in rows_even_a)
 
         # projection
         projected_fields = {"p_int", "p_vector"}
@@ -527,6 +553,39 @@ class TestTableDMLAsync:
             projection={f: True for f in projected_fields},
         ).to_list()
         assert all(row.keys() == projected_fields for row in rows_proj_a)
+
+        # find_one and ANN
+        await async_empty_table_composite.delete_many({})
+        await async_empty_table_composite.insert_many(COMPOSITE_VECTOR_ROWS)
+        # in a partition
+        vrows_in_part = await async_empty_table_composite.find(
+            filter={"p_text": "A"},
+            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 0])},
+            limit=COMPOSITE_VECTOR_ROWS_N + 2,
+        ).to_list()
+        assert len(vrows_in_part) == COMPOSITE_VECTOR_ROWS_N
+        ints = [row["p_int"] for row in vrows_in_part]
+        assert sorted(ints, reverse=True) == ints
+        # across all partitions
+        vrows_in_part = await async_empty_table_composite.find(
+            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 0])},
+            limit=2 * COMPOSITE_VECTOR_ROWS_N + 2,
+        ).to_list()
+        assert len(vrows_in_part) == 2 * COMPOSITE_VECTOR_ROWS_N
+        ints = [row["p_int"] for row in vrows_in_part]
+        assert sorted(ints, reverse=True) == ints
+        # filtering on a non-pk column
+        vrows_in_part = await async_empty_table_composite.find(
+            filter={"p_boolean": True},
+            sort={"p_vector": DataAPIVector([COMPOSITE_VECTOR_ROWS_N, 0, 0])},
+            limit=2 * COMPOSITE_VECTOR_ROWS_N + 2,
+        ).to_list()
+        assert len(vrows_in_part) == 2 * sum(
+            1 - i % 2 for i in range(COMPOSITE_VECTOR_ROWS_N)
+        )
+        ints = [row["p_int"] for row in vrows_in_part]
+        assert all(i % 2 == 0 for i in ints)
+        assert sorted(ints, reverse=True) == ints
 
     @pytest.mark.describe("test of table command, async")
     async def test_table_command_async(

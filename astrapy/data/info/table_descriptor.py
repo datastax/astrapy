@@ -852,6 +852,16 @@ class TableIndexDefinition(TableBaseIndexDefinition):
 
     options: TableIndexOptions
 
+    def __init__(
+        self,
+        column: str,
+        options: TableIndexOptions | UnsetType = _UNSET,
+    ) -> None:
+        self.column = column
+        self.options = (
+            TableIndexOptions() if isinstance(options, UnsetType) else options
+        )
+
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.column}, options={self.options})"
 

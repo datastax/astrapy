@@ -30,23 +30,23 @@ from astrapy.data_types import (
 )
 from astrapy.ids import UUID
 
-AR_DOC_PK_0 = {
+AR_ROW_PK_0 = {
     "p_ascii": "abc",
     "p_bigint": 10000,
     "p_int": 987,
     "p_boolean": False,
 }
-AR_DOC_PK_0_TUPLE = ("abc", 10000, 987, False)
-AR_DOC_0 = {
+AR_ROW_PK_0_TUPLE = ("abc", 10000, 987, False)
+AR_ROW_0 = {
     "p_text": "Ålesund",
-    **AR_DOC_PK_0,
+    **AR_ROW_PK_0,
 }
-AR_DOC_0_B = {
+AR_ROW_0_B = {
     "p_text": "Overwritten™",
-    **AR_DOC_PK_0,
+    **AR_ROW_PK_0,
 }
 
-DISTINCT_AR_DOCS = [
+DISTINCT_AR_ROWS = [
     {
         "p_ascii": "A",
         "p_bigint": 1,
@@ -107,21 +107,21 @@ DISTINCT_AR_DOCS = [
         "p_set_int": {200, 300},
     },
 ]
-DISTINCT_AR_DOCS_PKS = [
+DISTINCT_AR_ROWS_PKS = [
     {
-        "p_ascii": ar_doc["p_ascii"],
-        "p_bigint": ar_doc["p_bigint"],
-        "p_int": ar_doc["p_int"],
-        "p_boolean": ar_doc["p_boolean"],
+        "p_ascii": ar_row["p_ascii"],
+        "p_bigint": ar_row["p_bigint"],
+        "p_int": ar_row["p_int"],
+        "p_boolean": ar_row["p_boolean"],
     }
-    for ar_doc in DISTINCT_AR_DOCS
+    for ar_row in DISTINCT_AR_ROWS
 ]
-DISTINCT_AR_DOCS_PK_TUPLES = [
-    (ar_doc["p_ascii"], ar_doc["p_bigint"], ar_doc["p_int"], ar_doc["p_boolean"])
-    for ar_doc in DISTINCT_AR_DOCS
+DISTINCT_AR_ROWS_PK_TUPLES = [
+    (ar_row["p_ascii"], ar_row["p_bigint"], ar_row["p_int"], ar_row["p_boolean"])
+    for ar_row in DISTINCT_AR_ROWS
 ]
 
-SIMPLE_FULL_DOCS = [
+SIMPLE_FULL_ROWS = [
     {"p_text": "A1", "p_int": 1, "p_vector": [1.1, 1.1, 1.1]},
     {"p_text": "A2", "p_int": 2, "p_vector": [2.2, 2.2, 2.2]},
     {"p_text": "A3", "p_int": 3, "p_vector": [3.3, 3.3, 3.3]},
@@ -157,7 +157,7 @@ SIMPLE_SEVEN_ROWS_F4: list[dict[str, Any]] = [
     {"p_text": "p7", "p_int": 7},
 ]
 
-FULL_AR_DOC_CUSTOMTYPED = {
+FULL_AR_ROW_CUSTOMTYPED = {
     "p_ascii": "A",
     "p_bigint": 1230000,
     "p_blob": b"xyz",
@@ -186,7 +186,7 @@ FULL_AR_DOC_CUSTOMTYPED = {
     "p_double_pinf": float("Infinity"),
     "p_float_nan": float("NaN"),
 }
-FULL_AR_DOC_NONCUSTOMTYPED = {
+FULL_AR_ROW_NONCUSTOMTYPED = {
     "p_ascii": "A",
     "p_bigint": 1230000,
     "p_blob": b"xyz",
@@ -218,3 +218,15 @@ FULL_AR_DOC_NONCUSTOMTYPED = {
     "p_double_pinf": float("Infinity"),
     "p_float_nan": float("NaN"),
 }
+
+COMPOSITE_VECTOR_ROWS_N = 3
+COMPOSITE_VECTOR_ROWS = [
+    {
+        "p_text": p_t,
+        "p_int": p_i,
+        "p_boolean": p_i % 2 == 0,
+        "p_vector": DataAPIVector([p_i + {"A": 0.0, "B": 0.1}[p_t], 1, 0]),
+    }
+    for p_t in {"A", "B"}
+    for p_i in range(COMPOSITE_VECTOR_ROWS_N)
+]

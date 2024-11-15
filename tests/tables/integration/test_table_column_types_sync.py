@@ -20,8 +20,8 @@ from astrapy.api_options import APIOptions, SerdesOptions
 
 from ..conftest import DefaultTable, _repaint_NaNs
 from .table_row_assets import (
-    FULL_AR_DOC_CUSTOMTYPED,
-    FULL_AR_DOC_NONCUSTOMTYPED,
+    FULL_AR_ROW_CUSTOMTYPED,
+    FULL_AR_ROW_NONCUSTOMTYPED,
 )
 
 
@@ -38,9 +38,9 @@ class TestTableColumnTypesSync:
                 ),
             ),
         )
-        cdtypes_table.insert_one(FULL_AR_DOC_CUSTOMTYPED)
+        cdtypes_table.insert_one(FULL_AR_ROW_CUSTOMTYPED)
         retrieved = cdtypes_table.find_one({})
-        assert _repaint_NaNs(retrieved) == _repaint_NaNs(FULL_AR_DOC_CUSTOMTYPED)
+        assert _repaint_NaNs(retrieved) == _repaint_NaNs(FULL_AR_ROW_CUSTOMTYPED)
 
     @pytest.mark.describe("test of table write-and-read, with noncustom types, sync")
     def test_table_write_then_read_noncustomtypes_sync(
@@ -54,6 +54,6 @@ class TestTableColumnTypesSync:
                 ),
             ),
         )
-        rdtypes_table.insert_one(FULL_AR_DOC_NONCUSTOMTYPED)
+        rdtypes_table.insert_one(FULL_AR_ROW_NONCUSTOMTYPED)
         retrieved = rdtypes_table.find_one({})
-        assert _repaint_NaNs(retrieved) == _repaint_NaNs(FULL_AR_DOC_NONCUSTOMTYPED)
+        assert _repaint_NaNs(retrieved) == _repaint_NaNs(FULL_AR_ROW_NONCUSTOMTYPED)
