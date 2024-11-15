@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from astrapy.exceptions import DataAPIException
+from astrapy.exceptions import DataAPIResponseException
 from astrapy.info import (
     AlterTableAddColumns,
     AlterTableAddVectorize,
@@ -35,6 +35,8 @@ from astrapy.info import (
     TableVectorIndexOptions,
     VectorServiceOptions,
 )
+
+from ..conftest import IS_ASTRA_DB
 
 if TYPE_CHECKING:
     from astrapy import AsyncDatabase
@@ -55,40 +57,41 @@ class TestTableLifecycle:
         }
         assert set(pre_tables) & created_table_names == set()
 
+        table_whole_obj_definition = TableDefinition(
+            columns={
+                "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
+                "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
+                "p_boolean": TableScalarColumnTypeDescriptor(column_type="boolean"),
+                "p_float": TableScalarColumnTypeDescriptor(column_type="float"),
+                "p_set": TableValuedColumnTypeDescriptor(
+                    column_type="set", value_type="int"
+                ),
+                "p_map": TableKeyValuedColumnTypeDescriptor(
+                    column_type="map", key_type="text", value_type="int"
+                ),
+                "p_vector": TableVectorColumnTypeDescriptor(
+                    column_type="vector", dimension=191, service=None
+                ),
+                "p_vectorize": TableVectorColumnTypeDescriptor(
+                    column_type="vector",
+                    dimension=1024,
+                    service=VectorServiceOptions(
+                        provider="mistral",
+                        model_name="mistral-embed",
+                    ),
+                ),
+            },
+            primary_key=TablePrimaryKeyDescriptor(
+                partition_by=[
+                    "p_text",
+                    "p_int",
+                ],
+                partition_sort={"p_boolean": -1, "p_float": 1},
+            ),
+        )
         await async_database.create_table(
             "table_whole_obj",
-            definition=TableDefinition(
-                columns={
-                    "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
-                    "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
-                    "p_boolean": TableScalarColumnTypeDescriptor(column_type="boolean"),
-                    "p_float": TableScalarColumnTypeDescriptor(column_type="float"),
-                    "p_set": TableValuedColumnTypeDescriptor(
-                        column_type="set", value_type="int"
-                    ),
-                    "p_map": TableKeyValuedColumnTypeDescriptor(
-                        column_type="map", key_type="text", value_type="int"
-                    ),
-                    "p_vector": TableVectorColumnTypeDescriptor(
-                        column_type="vector", dimension=191, service=None
-                    ),
-                    "p_vectorize": TableVectorColumnTypeDescriptor(
-                        column_type="vector",
-                        dimension=1024,
-                        service=VectorServiceOptions(
-                            provider="mistral",
-                            model_name="mistral-embed",
-                        ),
-                    ),
-                },
-                primary_key=TablePrimaryKeyDescriptor(
-                    partition_by=[
-                        "p_text",
-                        "p_int",
-                    ],
-                    partition_sort={"p_boolean": -1, "p_float": 1},
-                ),
-            ),
+            definition=table_whole_obj_definition,
         )
         await async_database.create_table(
             "table_whole_dict",
@@ -173,12 +176,18 @@ class TestTableLifecycle:
             .add_partition_by(["p_text", "p_int"])
             .add_partition_sort({"p_boolean": -1, "p_float": 1})
         )
-        await async_database.create_table(
+        atable_fluent = await async_database.create_table(
             "table_fluent",
             definition=ct_fluent_definition,
         )
-        # TODO replace with DataAPIResponseException here
-        with pytest.raises(DataAPIException):
+
+        # definition and info
+        assert await atable_fluent.definition() == table_whole_obj_definition
+        if IS_ASTRA_DB:
+            fl_info = await atable_fluent.info()
+            assert fl_info.name == "table_fluent"
+
+        with pytest.raises(DataAPIResponseException):
             await async_database.create_table(
                 "table_fluent",
                 definition=ct_fluent_definition,

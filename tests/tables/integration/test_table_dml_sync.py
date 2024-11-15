@@ -368,7 +368,7 @@ class TestTableDMLSync:
             "p_vector": DataAPIVector([1, 2, 3]),
         }
 
-        # $set, full set-to-null (which deletes the row)
+        # $set, full set-to-null (which deletes the row as it was created by update)
         sync_table_simple.update_one(
             {"p_text": "A"},
             update={"$set": {"p_int": None, "p_vector": None}},
@@ -507,3 +507,11 @@ class TestTableDMLSync:
             {"$or": [{"p_text": "pA"}, {"p_text": "pB"}]}
         ).to_list()
         assert len(rows_all_2) == 240
+
+        # projection
+        projected_fields = {"p_int", "p_vector"}
+        rows_proj_a = sync_empty_table_composite.find(
+            {"p_text": "pA"},
+            projection={f: True for f in projected_fields},
+        ).to_list()
+        assert all(row.keys() == projected_fields for row in rows_proj_a)
