@@ -527,3 +527,26 @@ class TestTableDMLAsync:
             projection={f: True for f in projected_fields},
         ).to_list()
         assert all(row.keys() == projected_fields for row in rows_proj_a)
+
+    @pytest.mark.describe("test of table command, async")
+    async def test_table_command_async(
+        self,
+        async_empty_table_simple: DefaultAsyncTable,
+    ) -> None:
+        ins_response = await async_empty_table_simple.command(
+            body={
+                "insertOne": {
+                    "document": {
+                        "p_text": "t_command",
+                        "p_int": 101,
+                        "p_vector": [0.1, -0.2, 0.3],
+                    }
+                }
+            }
+        )
+        assert ins_response == {
+            "status": {
+                "primaryKeySchema": {"p_text": {"type": "text"}},
+                "insertedIds": [["t_command"]],
+            }
+        }

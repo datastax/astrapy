@@ -77,7 +77,8 @@ class TestTableVectorizeSync:
             [
                 {"p_text": f"t_{text_i}", "p_vector": text}
                 for text_i, text in enumerate(VECTORIZE_TEXTS)
-            ]
+            ],
+            chunk_size=min(20, 1 + len(VECTORIZE_TEXTS) // 3),
         )
         all_rows = authenticated_table.find({}).to_list()
         assert len(all_rows) == len(VECTORIZE_TEXTS)
@@ -141,7 +142,8 @@ class TestTableVectorizeSync:
             [
                 {"p_text": f"t_{text_i}", "p_vector": text}
                 for text_i, text in enumerate(VECTORIZE_TEXTS)
-            ]
+            ],
+            chunk_size=min(20, 1 + len(VECTORIZE_TEXTS) // 3),
         )
         all_rows = sync_empty_table_kms_vectorize.find({}).to_list()
         assert len(all_rows) == len(VECTORIZE_TEXTS)
