@@ -25,13 +25,21 @@ class TestDataAPIMap:
         mp0: DataAPIMap[int, int] = DataAPIMap()
         assert mp0 == DataAPIMap()
         assert dict(mp0) == {}
+        assert mp0 == {}
         # identity/equality
         items1 = [(1, "a"), (2, "b"), (3, "c")]
         mp1 = DataAPIMap(items1)
         assert mp1 == DataAPIMap(items1)
         assert mp1 == DataAPIMap(items1 + [(2, "b")])
-        assert mp1 != DataAPIMap(items1[2:] + items1[:2])
+        assert mp1 == DataAPIMap(items1[2:] + items1[:2])
+        assert mp1 != DataAPIMap(items1[1:] + [(1, "z")])
+        assert mp1 != DataAPIMap(items1[1:] + [(9, "z")])
         assert dict(items1) == mp1
+        assert mp1 == dict(items1)
+        assert mp1 == dict(items1 + [(2, "b")])
+        assert mp1 == dict(items1[2:] + items1[:2])
+        assert mp1 != dict(items1[1:] + [(1, "z")])
+        assert mp1 != dict(items1[1:] + [(9, "z")])
         # map operations
         assert list(mp1.keys()) == [1, 2, 3]
         assert list(mp1.values()) == ["a", "b", "c"]
@@ -52,7 +60,9 @@ class TestDataAPIMap:
         mp1 = DataAPIMap(items1)
         assert mp1 == DataAPIMap(items1)
         assert mp1 == DataAPIMap(items1 + [([2], "b")])
-        assert mp1 != DataAPIMap(items1[2:] + items1[:2])
+        assert mp1 == DataAPIMap(items1[2:] + items1[:2])
+        assert mp1 != DataAPIMap(items1[1:] + [([1], "z")])
+        assert mp1 != DataAPIMap(items1[1:] + [([9], "z")])
         # map operations
         assert list(mp1.keys()) == [[1], [2], [3]]
         assert list(mp1.values()) == ["a", "b", "c"]

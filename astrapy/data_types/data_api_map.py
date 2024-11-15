@@ -68,7 +68,7 @@ class DataAPIMap(Generic[T, U], Mapping[T, U]):
             for idx, k in enumerate(self._keys):
                 if k == key:
                     return self._values[idx]
-            raise KeyError(str(key))
+            raise KeyError(str(key) + "//" + str(self._keys) + "//" + str(self._values))
 
     def __iter__(self) -> Iterator[T]:
         return iter(self._keys)
@@ -77,10 +77,19 @@ class DataAPIMap(Generic[T, U], Mapping[T, U]):
         return len(self._keys)
 
     def __eq__(self, other: object) -> bool:
+        if isinstance(other, DataAPIMap):
+            if len(self) == len(other):
+                if all(o_k in self for o_k in other):
+                    return all(other[k] == self[k] for k in self)
+            return False
         try:
             dother = dict(other)  # type: ignore[call-overload]
-            return len(dother) == len(self._keys) and all(
-                dother[k] == v for k, v in zip(self._keys, self._values)
+            return all(
+                [
+                    len(dother) == len(self),
+                    all(o_k in self for o_k in dother),
+                    all(dother[k] == self[k] for k in self),
+                ]
             )
         except KeyError:
             return False
