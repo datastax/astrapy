@@ -83,6 +83,17 @@ class TestTableVectorizeAsync:
         assert len(all_rows) == len(VECTORIZE_TEXTS)
         assert all(isinstance(row["p_vector"], DataAPIVector) for row in all_rows)
 
+        # include sort vector and include similarity
+        cur_isv = aauthenticated_table.find(
+            sort={"p_vector": "This is a fact."},
+            include_sort_vector=True,
+            include_similarity=True,
+        )
+        assert isinstance(await cur_isv.get_sort_vector(), DataAPIVector)
+        match0 = await cur_isv.__anext__()
+        assert match0 is not None
+        assert isinstance(match0["$similarity"], float)
+
     @pytest.mark.skipif(
         not IS_ASTRA_DB,
         reason="KMS vectorize is available only on Astra DB",
@@ -135,3 +146,14 @@ class TestTableVectorizeAsync:
         all_rows = await async_empty_table_kms_vectorize.find({}).to_list()
         assert len(all_rows) == len(VECTORIZE_TEXTS)
         assert all(isinstance(row["p_vector"], DataAPIVector) for row in all_rows)
+
+        # include sort vector and include similarity
+        cur_isv = async_empty_table_kms_vectorize.find(
+            sort={"p_vector": "This is a fact."},
+            include_sort_vector=True,
+            include_similarity=True,
+        )
+        assert isinstance(await cur_isv.get_sort_vector(), DataAPIVector)
+        match0 = await cur_isv.__anext__()
+        assert match0 is not None
+        assert isinstance(match0["$similarity"], float)
