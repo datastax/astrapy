@@ -154,14 +154,14 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
     """
 
     column_type: TableVectorColumnType
-    dimension: int
+    dimension: int | None
     service: VectorServiceOptions | None
 
     def __init__(
         self,
         *,
         column_type: str | TableVectorColumnType,
-        dimension: int,
+        dimension: int | None,
         service: VectorServiceOptions | None,
     ) -> None:
         self.dimension = dimension
@@ -172,7 +172,7 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
         not_null_pieces = [
             pc
             for pc in [
-                f"dimension={self.dimension}",
+                f"dimension={self.dimension}" if self.dimension is not None else None,
                 None if self.service is None else f"service={self.service}",
             ]
             if pc is not None
@@ -204,7 +204,7 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
         warn_residual_keys(cls, raw_dict, {"type", "dimension", "service"})
         return TableVectorColumnTypeDescriptor(
             column_type=raw_dict["type"],
-            dimension=raw_dict["dimension"],
+            dimension=raw_dict.get("dimension"),
             service=VectorServiceOptions.coerce(raw_dict.get("service")),
         )
 

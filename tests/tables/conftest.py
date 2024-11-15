@@ -35,6 +35,7 @@ from astrapy.info import (
     TableVectorColumnTypeDescriptor,
     TableVectorIndexDefinition,
     TableVectorIndexOptions,
+    VectorServiceOptions,
 )
 
 from ..conftest import (
@@ -144,6 +145,82 @@ TEST_COMPOSITE_TABLE_DEFINITION = TableDefinition(
 TEST_COMPOSITE_TABLE_VECTOR_INDEX_NAME = "test_table_composite_p_vector_idx"
 TEST_COMPOSITE_TABLE_VECTOR_INDEX_DEFINITION = TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION
 
+TEST_VECTORIZE_TABLE_NAME = "test_table_vectorize"
+TEST_VECTORIZE_TABLE_DEFINITION = TableDefinition(
+    columns={
+        "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
+        "p_vector": TableVectorColumnTypeDescriptor(
+            column_type="vector",
+            dimension=64,
+            service=VectorServiceOptions(
+                provider="openai",
+                model_name="text-embedding-3-small",
+            ),
+        ),
+    },
+    primary_key=TablePrimaryKeyDescriptor(
+        partition_by=["p_text"],
+        partition_sort={},
+    ),
+)
+TEST_VECTORIZE_TABLE_VECTOR_INDEX_NAME = "test_table_vectorize_p_vector_idx"
+TEST_VECTORIZE_TABLE_VECTOR_INDEX_DEFINITION = TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION
+
+TEST_KMS_VECTORIZE_TABLE_NAME = "test_table_kms_vectorize"
+TEST_KMS_VECTORIZE_TABLE_DEFINITION = TableDefinition(
+    columns={
+        "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
+        "p_vector": TableVectorColumnTypeDescriptor(
+            column_type="vector",
+            dimension=64,
+            service=VectorServiceOptions(
+                provider="openai",
+                model_name="text-embedding-3-small",
+                authentication={
+                    "providerKey": "SHARED_SECRET_EMBEDDING_API_KEY_OPENAI"
+                },
+            ),
+        ),
+    },
+    primary_key=TablePrimaryKeyDescriptor(
+        partition_by=["p_text"],
+        partition_sort={},
+    ),
+)
+TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_NAME = "test_table_kms_vectorize_p_vector_idx"
+TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_DEFINITION = (
+    TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION
+)
+
+VECTORIZE_TEXTS = [
+    "The world is the totality of facts, not of things.",
+    "The world is determined by the facts, and by these being all the facts.",
+    "For the totality of facts determines both what is the case, and also all that is not the case.",
+    "The facts in logical space are the world.",
+    "The world divides into facts.",
+    "Any one can either be the case or not be the case, and everything else remain the same.",
+    "What is the case, the fact, is the existence of atomic facts.",
+    "An atomic fact is a combination of objects (entities, things).",
+    "It is essential to a thing that it can be a constituent part of an atomic fact.",
+    "In logic nothing is accidental: if a thing can occur in an atomic fact the possibility of that atomic fact must already be prejudged in the thing.",
+    "It would, so to speak, appear as an accident, when to a thing that could exist alone on its own account, subsequently a state of affairs could be made to fit.",
+    "If things can occur in atomic facts, this possibility must already lie in them.",
+    "(A logical entity cannot be merely possible. Logic treats of every possibility, and all possibilities are its facts.)",
+    "Just as we cannot think of spatial objects at all apart from space, or temporal objects apart from time, so we cannot think of any object apart from the possibility of its connection with other things.",
+    "If I can think of an object in the context of an atomic fact, I cannot think of it apart from the possibility of this context.",
+    "The thing is independent, in so far as it can occur in all possible circumstances, but this form of independence is a form of connection with the atomic fact, a form of dependence. (It is impossible for words to occur in two different ways, alone and in the proposition.)",
+    "If I know an object, then I also know all the possibilities of its occurrence in atomic facts.",
+    "(Every such possibility must lie in the nature of the object.)",
+    "A new possibility cannot subsequently be found.",
+    "In order to know an object, I must know not its external but all its internal qualities.",
+    "If all objects are given, then thereby are all possible atomic facts also given.",
+    "Every thing is, as it were, in a space of possible atomic facts. I can think of this space as empty, but not of the thing without the space.",
+    "A spatial object must lie in infinite space. (A point in space is an argument place.)",
+    "A speck in a visual field need not be red, but it must have a colour; it has, so to speak, a colour space round it. A tone must have a pitch, the object of the sense of touch a hardness, etc.",
+    "Objects contain the possibility of all states of affairs.",
+    "The possibility of its occurrence in atomic facts is the form of the object.",
+    "The object is simple.",
+]
 
 _NaN = object()
 _DNaN = object()
@@ -336,6 +413,94 @@ def async_empty_table_composite(
 ) -> Iterable[DefaultAsyncTable]:
     """Emptied for each test function"""
     yield sync_empty_table_composite.to_async()
+
+
+@pytest.fixture(scope="session")
+def sync_table_vectorize(
+    data_api_credentials_kwargs: DataAPICredentials,
+    sync_database: Database,
+) -> Iterable[DefaultTable]:
+    """An actual table on DB, in the main keyspace"""
+    table = sync_database.create_table(
+        TEST_VECTORIZE_TABLE_NAME,
+        definition=TEST_VECTORIZE_TABLE_DEFINITION,
+    )
+    table.create_vector_index(
+        TEST_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
+        definition=TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION,
+    )
+    yield table
+
+    sync_database.drop_table(TEST_VECTORIZE_TABLE_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_table_vectorize(
+    sync_table_vectorize: DefaultTable,
+) -> Iterable[DefaultTable]:
+    """Emptied for each test function"""
+    sync_table_vectorize.delete_many({})
+    yield sync_table_vectorize
+
+
+@pytest.fixture(scope="function")
+def async_table_vectorize(
+    sync_table_vectorize: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """An actual table on DB, the same as the sync counterpart"""
+    yield sync_table_vectorize.to_async()
+
+
+@pytest.fixture(scope="function")
+def async_empty_table_vectorize(
+    sync_empty_table_vectorize: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """Emptied for each test function"""
+    yield sync_empty_table_vectorize.to_async()
+
+
+@pytest.fixture(scope="session")
+def sync_table_kms_vectorize(
+    data_api_credentials_kwargs: DataAPICredentials,
+    sync_database: Database,
+) -> Iterable[DefaultTable]:
+    """An actual table on DB, in the main keyspace"""
+    table = sync_database.create_table(
+        TEST_KMS_VECTORIZE_TABLE_NAME,
+        definition=TEST_KMS_VECTORIZE_TABLE_DEFINITION,
+    )
+    table.create_vector_index(
+        TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
+        definition=TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION,
+    )
+    yield table
+
+    sync_database.drop_table(TEST_KMS_VECTORIZE_TABLE_NAME)
+
+
+@pytest.fixture(scope="function")
+def sync_empty_table_kms_vectorize(
+    sync_table_kms_vectorize: DefaultTable,
+) -> Iterable[DefaultTable]:
+    """Emptied for each test function"""
+    sync_table_kms_vectorize.delete_many({})
+    yield sync_table_kms_vectorize
+
+
+@pytest.fixture(scope="function")
+def async_table_kms_vectorize(
+    sync_table_kms_vectorize: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """An actual table on DB, the same as the sync counterpart"""
+    yield sync_table_kms_vectorize.to_async()
+
+
+@pytest.fixture(scope="function")
+def async_empty_table_kms_vectorize(
+    sync_empty_table_kms_vectorize: DefaultTable,
+) -> Iterable[DefaultAsyncTable]:
+    """Emptied for each test function"""
+    yield sync_empty_table_kms_vectorize.to_async()
 
 
 __all__ = [
