@@ -36,6 +36,7 @@ from astrapy.exceptions import (
     InvalidEnvironmentException,
     UnexpectedDataAPIResponseException,
     _TimeoutContext,
+    first_valid_timeout,
 )
 from astrapy.info import (
     AstraDBDatabaseInfo,
@@ -56,7 +57,6 @@ from astrapy.utils.api_options import (
     FullAPIOptions,
     TimeoutOptions,
 )
-from astrapy.utils.request_tools import first_valid_timeout
 from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
@@ -473,10 +473,10 @@ class Database:
             between the `region` and the `raw["region"]` attributes.
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         logger.info("getting database info")
         database_info = fetch_database_info(
@@ -848,17 +848,22 @@ class Database:
             default_id_type=default_id_type,
             additional_options=additional_options,
         )
-        _collection_admin_timeout_ms = first_valid_timeout(
-            collection_admin_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.collection_admin_timeout_ms,
+        _collection_admin_timeout_ms, _ca_label = first_valid_timeout(
+            (collection_admin_timeout_ms, "collection_admin_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.collection_admin_timeout_ms,
+                "collection_admin_timeout_ms",
+            ),
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {"createCollection": {"name": name, "options": cc_options}}
         logger.info(f"createCollection('{name}')")
         cc_response = driver_commander.request(
             payload=cc_payload,
-            timeout_context=_TimeoutContext(request_ms=_collection_admin_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_collection_admin_timeout_ms, label=_ca_label
+            ),
         )
         if cc_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -908,10 +913,13 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.collection import Collection
 
-        _collection_admin_timeout_ms = first_valid_timeout(
-            collection_admin_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.collection_admin_timeout_ms,
+        _collection_admin_timeout_ms, _ca_label = first_valid_timeout(
+            (collection_admin_timeout_ms, "collection_admin_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.collection_admin_timeout_ms,
+                "collection_admin_timeout_ms",
+            ),
         )
         _keyspace: str | None
         _collection_name: str
@@ -926,7 +934,9 @@ class Database:
         logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = driver_commander.request(
             payload=dc_payload,
-            timeout_context=_TimeoutContext(request_ms=_collection_admin_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_collection_admin_timeout_ms, label=_ca_label
+            ),
         )
         if dc_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -966,17 +976,19 @@ class Database:
             CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload = {"findCollections": {"options": {"explain": True}}}
         logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         if "collections" not in gc_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -1016,17 +1028,19 @@ class Database:
             ['a_collection', 'another_col']
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload: dict[str, Any] = {"findCollections": {}}
         logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         if "collections" not in gc_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -1279,10 +1293,13 @@ class Database:
         else:
             ct_options = {}
         ct_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
-        _table_admin_timeout_ms = first_valid_timeout(
-            table_admin_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.table_admin_timeout_ms,
+        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
+            (table_admin_timeout_ms, "table_admin_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.table_admin_timeout_ms,
+                "table_admin_timeout_ms",
+            ),
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {
@@ -1300,7 +1317,9 @@ class Database:
         logger.info(f"createTable('{name}')")
         ct_response = driver_commander.request(
             payload=cc_payload,
-            timeout_context=_TimeoutContext(request_ms=_table_admin_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_table_admin_timeout_ms, label=_ta_label
+            ),
         )
         if ct_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -1360,10 +1379,13 @@ class Database:
             >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
-        _table_admin_timeout_ms = first_valid_timeout(
-            table_admin_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.table_admin_timeout_ms,
+        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
+            (table_admin_timeout_ms, "table_admin_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.table_admin_timeout_ms,
+                "table_admin_timeout_ms",
+            ),
         )
         di_options: dict[str, bool]
         if if_exists is not None:
@@ -1385,7 +1407,9 @@ class Database:
         logger.info(f"dropIndex('{name}')")
         di_response = driver_commander.request(
             payload=di_payload,
-            timeout_context=_TimeoutContext(request_ms=_table_admin_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_table_admin_timeout_ms, label=_ta_label
+            ),
         )
         if di_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -1430,10 +1454,13 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.table import Table
 
-        _table_admin_timeout_ms = first_valid_timeout(
-            table_admin_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.table_admin_timeout_ms,
+        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
+            (table_admin_timeout_ms, "table_admin_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.table_admin_timeout_ms,
+                "table_admin_timeout_ms",
+            ),
         )
         _keyspace: str | None
         _table_name: str
@@ -1463,7 +1490,9 @@ class Database:
         logger.info(f"dropTable('{_table_name}')")
         dt_response = driver_commander.request(
             payload=dt_payload,
-            timeout_context=_TimeoutContext(request_ms=_table_admin_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_table_admin_timeout_ms, label=_ta_label
+            ),
         )
         if dt_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -1503,17 +1532,19 @@ class Database:
             TableDescriptor(name='my_table', options=TableOptions())
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload = {"listTables": {"options": {"explain": True}}}
         logger.info("listTables")
         lt_response = driver_commander.request(
             payload=lt_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         if "tables" not in lt_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -1553,17 +1584,19 @@ class Database:
             ['a_table', 'another_table']
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload: dict[str, Any] = {"listTables": {}}
         logger.info("listTables")
         lt_response = driver_commander.request(
             payload=lt_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         if "tables" not in lt_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -1617,10 +1650,10 @@ class Database:
             {'status': {'count': 123}}
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         _keyspace: str | None
         if keyspace is None:
@@ -1664,7 +1697,9 @@ class Database:
         req_response = command_commander.request(
             payload=body,
             raise_api_errors=raise_api_errors,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
         return req_response
@@ -2111,10 +2146,10 @@ class AsyncDatabase:
             between the `region` and the `raw["region"]` attributes.
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         logger.info("getting database info")
         database_info = await async_fetch_database_info(
@@ -2493,17 +2528,22 @@ class AsyncDatabase:
             default_id_type=default_id_type,
             additional_options=additional_options,
         )
-        _collection_admin_timeout_ms = first_valid_timeout(
-            collection_admin_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.collection_admin_timeout_ms,
+        _collection_admin_timeout_ms, _ca_label = first_valid_timeout(
+            (collection_admin_timeout_ms, "collection_admin_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.collection_admin_timeout_ms,
+                "collection_admin_timeout_ms",
+            ),
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {"createCollection": {"name": name, "options": cc_options}}
         logger.info(f"createCollection('{name}')")
         cc_response = await driver_commander.async_request(
             payload=cc_payload,
-            timeout_context=_TimeoutContext(request_ms=_collection_admin_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_collection_admin_timeout_ms, label=_ca_label
+            ),
         )
         if cc_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -2553,10 +2593,13 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.collection import AsyncCollection
 
-        _collection_admin_timeout_ms = first_valid_timeout(
-            collection_admin_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.collection_admin_timeout_ms,
+        _collection_admin_timeout_ms, _ca_label = first_valid_timeout(
+            (collection_admin_timeout_ms, "collection_admin_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.collection_admin_timeout_ms,
+                "collection_admin_timeout_ms",
+            ),
         )
         keyspace: str | None
         _collection_name: str
@@ -2571,7 +2614,9 @@ class AsyncDatabase:
         logger.info(f"deleteCollection('{_collection_name}')")
         dc_response = await driver_commander.async_request(
             payload=dc_payload,
-            timeout_context=_TimeoutContext(request_ms=_collection_admin_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_collection_admin_timeout_ms, label=_ca_label
+            ),
         )
         if dc_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -2613,17 +2658,19 @@ class AsyncDatabase:
             * coll: CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload = {"findCollections": {"options": {"explain": True}}}
         logger.info("findCollections")
         gc_response = await driver_commander.async_request(
             payload=gc_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         if "collections" not in gc_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -2663,17 +2710,19 @@ class AsyncDatabase:
             ['a_collection', 'another_col']
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload: dict[str, Any] = {"findCollections": {}}
         logger.info("findCollections")
         gc_response = await driver_commander.async_request(
             payload=gc_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         if "collections" not in gc_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -2928,10 +2977,13 @@ class AsyncDatabase:
         else:
             ct_options = {}
         ct_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
-        _table_admin_timeout_ms = first_valid_timeout(
-            table_admin_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.table_admin_timeout_ms,
+        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
+            (table_admin_timeout_ms, "table_admin_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.table_admin_timeout_ms,
+                "table_admin_timeout_ms",
+            ),
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {
@@ -2949,7 +3001,9 @@ class AsyncDatabase:
         logger.info(f"createTable('{name}')")
         ct_response = await driver_commander.async_request(
             payload=cc_payload,
-            timeout_context=_TimeoutContext(request_ms=_table_admin_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_table_admin_timeout_ms, label=_ta_label
+            ),
         )
         if ct_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -3009,10 +3063,13 @@ class AsyncDatabase:
             >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
-        _table_admin_timeout_ms = first_valid_timeout(
-            table_admin_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.table_admin_timeout_ms,
+        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
+            (table_admin_timeout_ms, "table_admin_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.table_admin_timeout_ms,
+                "table_admin_timeout_ms",
+            ),
         )
         di_options: dict[str, bool]
         if if_exists is not None:
@@ -3034,7 +3091,9 @@ class AsyncDatabase:
         logger.info(f"dropIndex('{name}')")
         di_response = await driver_commander.async_request(
             payload=di_payload,
-            timeout_context=_TimeoutContext(request_ms=_table_admin_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_table_admin_timeout_ms, label=_ta_label
+            ),
         )
         if di_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -3079,10 +3138,13 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.table import AsyncTable
 
-        _table_admin_timeout_ms = first_valid_timeout(
-            table_admin_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.table_admin_timeout_ms,
+        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
+            (table_admin_timeout_ms, "table_admin_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.table_admin_timeout_ms,
+                "table_admin_timeout_ms",
+            ),
         )
         _keyspace: str | None
         _table_name: str
@@ -3112,7 +3174,9 @@ class AsyncDatabase:
         logger.info(f"dropTable('{_table_name}')")
         dt_response = await driver_commander.async_request(
             payload=dt_payload,
-            timeout_context=_TimeoutContext(request_ms=_table_admin_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_table_admin_timeout_ms, label=_ta_label
+            ),
         )
         if dt_response.get("status") != {"ok": 1}:
             raise UnexpectedDataAPIResponseException(
@@ -3155,17 +3219,19 @@ class AsyncDatabase:
             * table_desc: TableDescriptor(name='my_table', options=TableOptions())
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload = {"listTables": {"options": {"explain": True}}}
         logger.info("listTables")
         lt_response = driver_commander.request(
             payload=lt_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         if "tables" not in lt_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -3211,17 +3277,19 @@ class AsyncDatabase:
             ['a_table', 'another_tab']
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload: dict[str, Any] = {"listTables": {}}
         logger.info("listTables")
         lt_response = await driver_commander.async_request(
             payload=lt_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         if "tables" not in lt_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -3275,10 +3343,10 @@ class AsyncDatabase:
             {'status': {'count': 123}}
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         _keyspace: str | None
         if keyspace is None:
@@ -3322,7 +3390,9 @@ class AsyncDatabase:
         req_response = await command_commander.async_request(
             payload=body,
             raise_api_errors=raise_api_errors,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"command={_cmd_desc} on {self.__class__.__name__}")
         return req_response

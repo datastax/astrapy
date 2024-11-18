@@ -519,6 +519,8 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     _query_engine: _CollectionQueryEngine[TRAW]
     _request_timeout_ms: int | None
     _overall_timeout_ms: int | None
+    _request_timeout_label: str | None
+    _overall_timeout_label: str | None
     _timeout_manager: MultiCallTimeoutManager
     _filter: FilterType | None
     _projection: ProjectionType | None
@@ -535,6 +537,8 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         collection: Collection[TRAW],
         request_timeout_ms: int | None,
         overall_timeout_ms: int | None,
+        request_timeout_label: str | None = None,
+        overall_timeout_label: str | None = None,
         filter: FilterType | None = None,
         projection: ProjectionType | None = None,
         sort: dict[str, Any] | None = None,
@@ -554,6 +558,8 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
         self._overall_timeout_ms = overall_timeout_ms
+        self._request_timeout_label = request_timeout_label
+        self._overall_timeout_label = overall_timeout_label
         self._query_engine = _CollectionQueryEngine(
             collection=collection,
             async_collection=None,
@@ -568,6 +574,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         FindCursor.__init__(self)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
+            timeout_label=self._overall_timeout_label,
         )
 
     def _copy(
@@ -575,6 +582,8 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         *,
         request_timeout_ms: int | None | UnsetType = _UNSET,
         overall_timeout_ms: int | None | UnsetType = _UNSET,
+        request_timeout_label: str | None | UnsetType = _UNSET,
+        overall_timeout_label: str | None | UnsetType = _UNSET,
         filter: FilterType | None | UnsetType = _UNSET,
         projection: ProjectionType | None | UnsetType = _UNSET,
         sort: dict[str, Any] | None | UnsetType = _UNSET,
@@ -593,6 +602,12 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             overall_timeout_ms=self._overall_timeout_ms
             if isinstance(overall_timeout_ms, UnsetType)
             else overall_timeout_ms,
+            request_timeout_label=self._request_timeout_label
+            if isinstance(request_timeout_label, UnsetType)
+            else request_timeout_label,
+            overall_timeout_label=self._overall_timeout_label
+            if isinstance(overall_timeout_label, UnsetType)
+            else overall_timeout_label,
             filter=self._filter if isinstance(filter, UnsetType) else filter,
             projection=self._projection
             if isinstance(projection, UnsetType)
@@ -624,6 +639,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
                         page_state=self._next_page_state,
                         timeout_context=self._timeout_manager.remaining_timeout(
                             cap_time_ms=self._request_timeout_ms,
+                            cap_timeout_label=self._request_timeout_label,
                         ),
                     )
                 )
@@ -671,6 +687,8 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             collection=self._query_engine.collection,
             request_timeout_ms=self._request_timeout_ms,
             overall_timeout_ms=self._overall_timeout_ms,
+            request_timeout_label=self._request_timeout_label,
+            overall_timeout_label=self._overall_timeout_label,
             filter=self._filter,
             projection=self._projection,
             sort=self._sort,
@@ -745,6 +763,8 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             collection=self._query_engine.collection,
             request_timeout_ms=self._request_timeout_ms,
             overall_timeout_ms=self._overall_timeout_ms,
+            request_timeout_label=self._request_timeout_label,
+            overall_timeout_label=self._overall_timeout_label,
             filter=self._filter,
             projection=self._projection,
             sort=self._sort,
@@ -826,6 +846,8 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     _query_engine: _CollectionQueryEngine[TRAW]
     _request_timeout_ms: int | None
     _overall_timeout_ms: int | None
+    _request_timeout_label: str | None
+    _overall_timeout_label: str | None
     _timeout_manager: MultiCallTimeoutManager
     _filter: FilterType | None
     _projection: ProjectionType | None
@@ -842,6 +864,8 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         collection: AsyncCollection[TRAW],
         request_timeout_ms: int | None,
         overall_timeout_ms: int | None,
+        request_timeout_label: str | None = None,
+        overall_timeout_label: str | None = None,
         filter: FilterType | None = None,
         projection: ProjectionType | None = None,
         sort: dict[str, Any] | None = None,
@@ -861,6 +885,8 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
         self._overall_timeout_ms = overall_timeout_ms
+        self._request_timeout_label = request_timeout_label
+        self._overall_timeout_label = overall_timeout_label
         self._query_engine = _CollectionQueryEngine(
             collection=None,
             async_collection=collection,
@@ -875,6 +901,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         FindCursor.__init__(self)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
+            timeout_label=self._overall_timeout_label,
         )
 
     def _copy(
@@ -882,6 +909,8 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         *,
         request_timeout_ms: int | None | UnsetType = _UNSET,
         overall_timeout_ms: int | None | UnsetType = _UNSET,
+        request_timeout_label: str | None | UnsetType = _UNSET,
+        overall_timeout_label: str | None | UnsetType = _UNSET,
         filter: FilterType | None | UnsetType = _UNSET,
         projection: ProjectionType | None | UnsetType = _UNSET,
         sort: dict[str, Any] | None | UnsetType = _UNSET,
@@ -900,6 +929,12 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             overall_timeout_ms=self._overall_timeout_ms
             if isinstance(overall_timeout_ms, UnsetType)
             else overall_timeout_ms,
+            request_timeout_label=self._request_timeout_label
+            if isinstance(request_timeout_label, UnsetType)
+            else request_timeout_label,
+            overall_timeout_label=self._overall_timeout_label
+            if isinstance(overall_timeout_label, UnsetType)
+            else overall_timeout_label,
             filter=self._filter if isinstance(filter, UnsetType) else filter,
             projection=self._projection
             if isinstance(projection, UnsetType)
@@ -934,6 +969,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
                     page_state=self._next_page_state,
                     timeout_context=self._timeout_manager.remaining_timeout(
                         cap_time_ms=self._request_timeout_ms,
+                        cap_timeout_label=self._request_timeout_label,
                     ),
                 )
                 self._next_page_state = next_page_state
@@ -982,6 +1018,8 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             collection=self._query_engine.async_collection,
             request_timeout_ms=self._request_timeout_ms,
             overall_timeout_ms=self._overall_timeout_ms,
+            request_timeout_label=self._request_timeout_label,
+            overall_timeout_label=self._overall_timeout_label,
             filter=self._filter,
             projection=self._projection,
             sort=self._sort,
@@ -1056,6 +1094,8 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             collection=self._query_engine.async_collection,
             request_timeout_ms=self._request_timeout_ms,
             overall_timeout_ms=self._overall_timeout_ms,
+            request_timeout_label=self._request_timeout_label,
+            overall_timeout_label=self._overall_timeout_label,
             filter=self._filter,
             projection=self._projection,
             sort=self._sort,
@@ -1137,6 +1177,8 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     _query_engine: _TableQueryEngine[TRAW]
     _request_timeout_ms: int | None
     _overall_timeout_ms: int | None
+    _request_timeout_label: str | None
+    _overall_timeout_label: str | None
     _timeout_manager: MultiCallTimeoutManager
     _filter: FilterType | None
     _projection: ProjectionType | None
@@ -1153,6 +1195,8 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         table: Table[TRAW],
         request_timeout_ms: int | None,
         overall_timeout_ms: int | None,
+        request_timeout_label: str | None = None,
+        overall_timeout_label: str | None = None,
         filter: FilterType | None = None,
         projection: ProjectionType | None = None,
         sort: dict[str, Any] | None = None,
@@ -1172,6 +1216,8 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
         self._overall_timeout_ms = overall_timeout_ms
+        self._request_timeout_label = request_timeout_label
+        self._overall_timeout_label = overall_timeout_label
         self._query_engine = _TableQueryEngine(
             table=table,
             async_table=None,
@@ -1186,6 +1232,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         FindCursor.__init__(self)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
+            timeout_label=self._overall_timeout_label,
         )
 
     def _copy(
@@ -1193,6 +1240,8 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         *,
         request_timeout_ms: int | None | UnsetType = _UNSET,
         overall_timeout_ms: int | None | UnsetType = _UNSET,
+        request_timeout_label: str | None | UnsetType = _UNSET,
+        overall_timeout_label: str | None | UnsetType = _UNSET,
         filter: FilterType | None | UnsetType = _UNSET,
         projection: ProjectionType | None | UnsetType = _UNSET,
         sort: dict[str, Any] | None | UnsetType = _UNSET,
@@ -1211,6 +1260,12 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             overall_timeout_ms=self._overall_timeout_ms
             if isinstance(overall_timeout_ms, UnsetType)
             else overall_timeout_ms,
+            request_timeout_label=self._request_timeout_label
+            if isinstance(request_timeout_label, UnsetType)
+            else request_timeout_label,
+            overall_timeout_label=self._overall_timeout_label
+            if isinstance(overall_timeout_label, UnsetType)
+            else overall_timeout_label,
             filter=self._filter if isinstance(filter, UnsetType) else filter,
             projection=self._projection
             if isinstance(projection, UnsetType)
@@ -1242,6 +1297,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
                         page_state=self._next_page_state,
                         timeout_context=self._timeout_manager.remaining_timeout(
                             cap_time_ms=self._request_timeout_ms,
+                            cap_timeout_label=self._request_timeout_label,
                         ),
                     )
                 )
@@ -1289,6 +1345,8 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             table=self._query_engine.table,
             request_timeout_ms=self._request_timeout_ms,
             overall_timeout_ms=self._overall_timeout_ms,
+            request_timeout_label=self._request_timeout_label,
+            overall_timeout_label=self._overall_timeout_label,
             filter=self._filter,
             projection=self._projection,
             sort=self._sort,
@@ -1361,6 +1419,8 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             table=self._query_engine.table,
             request_timeout_ms=self._request_timeout_ms,
             overall_timeout_ms=self._overall_timeout_ms,
+            request_timeout_label=self._request_timeout_label,
+            overall_timeout_label=self._overall_timeout_label,
             filter=self._filter,
             projection=self._projection,
             sort=self._sort,
@@ -1442,6 +1502,8 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
     _query_engine: _TableQueryEngine[TRAW]
     _request_timeout_ms: int | None
     _overall_timeout_ms: int | None
+    _request_timeout_label: str | None
+    _overall_timeout_label: str | None
     _timeout_manager: MultiCallTimeoutManager
     _filter: FilterType | None
     _projection: ProjectionType | None
@@ -1458,6 +1520,8 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         table: AsyncTable[TRAW],
         request_timeout_ms: int | None,
         overall_timeout_ms: int | None,
+        request_timeout_label: str | None = None,
+        overall_timeout_label: str | None = None,
         filter: FilterType | None = None,
         projection: ProjectionType | None = None,
         sort: dict[str, Any] | None = None,
@@ -1477,6 +1541,8 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         self._mapper = mapper
         self._request_timeout_ms = request_timeout_ms
         self._overall_timeout_ms = overall_timeout_ms
+        self._request_timeout_label = request_timeout_label
+        self._overall_timeout_label = overall_timeout_label
         self._query_engine = _TableQueryEngine(
             table=None,
             async_table=table,
@@ -1491,6 +1557,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         FindCursor.__init__(self)
         self._timeout_manager = MultiCallTimeoutManager(
             overall_timeout_ms=self._overall_timeout_ms,
+            timeout_label=self._overall_timeout_label,
         )
 
     def _copy(
@@ -1498,6 +1565,8 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         *,
         request_timeout_ms: int | None | UnsetType = _UNSET,
         overall_timeout_ms: int | None | UnsetType = _UNSET,
+        request_timeout_label: str | None | UnsetType = _UNSET,
+        overall_timeout_label: str | None | UnsetType = _UNSET,
         filter: FilterType | None | UnsetType = _UNSET,
         projection: ProjectionType | None | UnsetType = _UNSET,
         sort: dict[str, Any] | None | UnsetType = _UNSET,
@@ -1516,6 +1585,12 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             overall_timeout_ms=self._overall_timeout_ms
             if isinstance(overall_timeout_ms, UnsetType)
             else overall_timeout_ms,
+            request_timeout_label=self._request_timeout_label
+            if isinstance(request_timeout_label, UnsetType)
+            else request_timeout_label,
+            overall_timeout_label=self._overall_timeout_label
+            if isinstance(overall_timeout_label, UnsetType)
+            else overall_timeout_label,
             filter=self._filter if isinstance(filter, UnsetType) else filter,
             projection=self._projection
             if isinstance(projection, UnsetType)
@@ -1550,6 +1625,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
                     page_state=self._next_page_state,
                     timeout_context=self._timeout_manager.remaining_timeout(
                         cap_time_ms=self._request_timeout_ms,
+                        cap_timeout_label=self._request_timeout_label,
                     ),
                 )
                 self._next_page_state = next_page_state
@@ -1598,6 +1674,8 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             table=self._query_engine.async_table,
             request_timeout_ms=self._request_timeout_ms,
             overall_timeout_ms=self._overall_timeout_ms,
+            request_timeout_label=self._request_timeout_label,
+            overall_timeout_label=self._overall_timeout_label,
             filter=self._filter,
             projection=self._projection,
             sort=self._sort,
@@ -1672,6 +1750,8 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             table=self._query_engine.async_table,
             request_timeout_ms=self._request_timeout_ms,
             overall_timeout_ms=self._overall_timeout_ms,
+            request_timeout_label=self._request_timeout_label,
+            overall_timeout_label=self._overall_timeout_label,
             filter=self._filter,
             projection=self._projection,
             sort=self._sort,

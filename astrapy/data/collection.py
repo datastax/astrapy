@@ -48,6 +48,7 @@ from astrapy.exceptions import (
     TooManyDocumentsToCountException,
     UnexpectedDataAPIResponseException,
     _TimeoutContext,
+    first_valid_timeout,
 )
 from astrapy.info import CollectionInfo, CollectionOptions
 from astrapy.results import (
@@ -63,7 +64,7 @@ from astrapy.settings.defaults import (
 )
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import APIOptions, FullAPIOptions, TimeoutOptions
-from astrapy.utils.request_tools import HttpMethod, first_valid_timeout
+from astrapy.utils.request_tools import HttpMethod
 from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
@@ -479,10 +480,10 @@ class Collection(Generic[DOC]):
             CollectionOptions(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         logger.info(f"getting collections in search of '{self.name}'")
         self_descriptors = [
@@ -641,16 +642,18 @@ class Collection(Generic[DOC]):
             the insertion fails.
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         io_payload = {"insertOne": {"document": document}}
         logger.info(f"insertOne on '{self.name}'")
         io_response = self._converted_request(
             payload=io_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished insertOne on '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
@@ -761,17 +764,17 @@ class Collection(Generic[DOC]):
             have made their way to the database.
         """
 
-        _general_method_timeout_ms = first_valid_timeout(
-            general_method_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.general_method_timeout_ms,
-        )
-        _request_timeout_ms = min(
-            _general_method_timeout_ms,
-            first_valid_timeout(
-                request_timeout_ms,
-                self.api_options.timeout_options.request_timeout_ms,
+        _general_method_timeout_ms, _gmt_label = first_valid_timeout(
+            (general_method_timeout_ms, "general_method_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.general_method_timeout_ms,
+                "general_method_timeout_ms",
             ),
+        )
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         if concurrency is None:
             if ordered:
@@ -790,7 +793,8 @@ class Collection(Generic[DOC]):
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(
-            overall_timeout_ms=_general_method_timeout_ms
+            overall_timeout_ms=_general_method_timeout_ms,
+            timeout_label=_gmt_label,
         )
         if ordered:
             options = {"ordered": True}
@@ -807,7 +811,8 @@ class Collection(Generic[DOC]):
                     payload=im_payload,
                     raise_api_errors=False,
                     timeout_context=timeout_manager.remaining_timeout(
-                        cap_time_ms=_request_timeout_ms
+                        cap_time_ms=_request_timeout_ms,
+                        cap_timeout_label=_rt_label,
                     ),
                 )
                 logger.info(f"finished insertMany(chunk) on '{self.name}'")
@@ -859,7 +864,8 @@ class Collection(Generic[DOC]):
                             payload=im_payload,
                             raise_api_errors=False,
                             timeout_context=timeout_manager.remaining_timeout(
-                                cap_time_ms=_request_timeout_ms
+                                cap_time_ms=_request_timeout_ms,
+                                cap_timeout_label=_rt_label,
                             ),
                         )
                         logger.info(f"finished insertMany(chunk) on '{self.name}'")
@@ -887,7 +893,8 @@ class Collection(Generic[DOC]):
                         payload=im_payload,
                         raise_api_errors=False,
                         timeout_context=timeout_manager.remaining_timeout(
-                            cap_time_ms=_request_timeout_ms
+                            cap_time_ms=_request_timeout_ms,
+                            cap_timeout_label=_rt_label,
                         ),
                     )
                     logger.info(f"finished insertMany(chunk) on '{self.name}'")
@@ -1102,10 +1109,10 @@ class Collection(Generic[DOC]):
         # lazy-import here to avoid circular import issues
         from astrapy.cursors import CollectionFindCursor
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         if include_similarity is not None and not _is_vector_sort(sort):
             raise ValueError(
@@ -1116,6 +1123,7 @@ class Collection(Generic[DOC]):
                 collection=self,
                 request_timeout_ms=_request_timeout_ms,
                 overall_timeout_ms=None,
+                request_timeout_label=_rt_label,
             )
             .filter(filter)
             .project(projection)
@@ -1202,10 +1210,10 @@ class Collection(Generic[DOC]):
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         if include_similarity is not None and not _is_vector_sort(sort):
             raise ValueError(
@@ -1230,7 +1238,9 @@ class Collection(Generic[DOC]):
         }
         fo_response = self._converted_request(
             payload=fo_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         if "document" not in (fo_response.get("data") or {}):
             raise UnexpectedDataAPIResponseException(
@@ -1320,17 +1330,17 @@ class Collection(Generic[DOC]):
         # lazy-import here to avoid circular import issues
         from astrapy.cursors import CollectionFindCursor
 
-        _general_method_timeout_ms = first_valid_timeout(
-            general_method_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.general_method_timeout_ms,
-        )
-        _request_timeout_ms = min(
-            _general_method_timeout_ms,
-            first_valid_timeout(
-                request_timeout_ms,
-                self.api_options.timeout_options.request_timeout_ms,
+        _general_method_timeout_ms, _gmt_label = first_valid_timeout(
+            (general_method_timeout_ms, "general_method_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.general_method_timeout_ms,
+                "general_method_timeout_ms",
             ),
+        )
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
@@ -1346,6 +1356,8 @@ class Collection(Generic[DOC]):
                 collection=self,
                 request_timeout_ms=_request_timeout_ms,
                 overall_timeout_ms=_general_method_timeout_ms,
+                request_timeout_label=_rt_label,
+                overall_timeout_label=_gmt_label,
             )  # type: ignore[assignment]
             .filter(filter)
             .project({_key: True})
@@ -1420,16 +1432,18 @@ class Collection(Generic[DOC]):
             by this method if this limit is encountered.
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         cd_payload = {"countDocuments": {"filter": filter}}
         logger.info(f"countDocuments on '{self.name}'")
         cd_response = self._converted_request(
             payload=cd_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished countDocuments on '{self.name}'")
         if "count" in cd_response.get("status", {}):
@@ -1476,16 +1490,18 @@ class Collection(Generic[DOC]):
             >>> my_coll.estimated_document_count()
             35700
         """
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         ed_payload: dict[str, Any] = {"estimatedDocumentCount": {}}
         logger.info(f"estimatedDocumentCount on '{self.name}'")
         ed_response = self._converted_request(
             payload=ed_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished estimatedDocumentCount on '{self.name}'")
         if "count" in ed_response.get("status", {}):
@@ -1594,10 +1610,10 @@ class Collection(Generic[DOC]):
             {'text': 'F=ma'}
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         options = {
             "returnDocument": return_document,
@@ -1619,7 +1635,9 @@ class Collection(Generic[DOC]):
         logger.info(f"findOneAndReplace on '{self.name}'")
         fo_response = self._converted_request(
             payload=fo_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1688,10 +1706,10 @@ class Collection(Generic[DOC]):
             CollectionUpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '931b47d6-...'})
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         options = {
             "upsert": upsert,
@@ -1711,7 +1729,9 @@ class Collection(Generic[DOC]):
         logger.info(f"findOneAndReplace on '{self.name}'")
         fo_response = self._converted_request(
             payload=fo_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1830,10 +1850,10 @@ class Collection(Generic[DOC]):
             {'_id': 'cb4ef2ab-...', 'name': 'Johnny', 'rank': 0}
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         options = {
             "returnDocument": return_document,
@@ -1855,7 +1875,9 @@ class Collection(Generic[DOC]):
         logger.info(f"findOneAndUpdate on '{self.name}'")
         fo_response = self._converted_request(
             payload=fo_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished findOneAndUpdate on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -1928,10 +1950,10 @@ class Collection(Generic[DOC]):
             CollectionUpdateResult(raw_results=..., update_info={'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '2a45ff60-...'})
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         options = {
             "upsert": upsert,
@@ -1951,7 +1973,9 @@ class Collection(Generic[DOC]):
         logger.info(f"updateOne on '{self.name}'")
         uo_response = self._converted_request(
             payload=uo_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished updateOne on '{self.name}'")
         if "status" in uo_response:
@@ -2036,17 +2060,17 @@ class Collection(Generic[DOC]):
             newly-inserted document will be picked up by the update_many command or not.
         """
 
-        _general_method_timeout_ms = first_valid_timeout(
-            general_method_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.general_method_timeout_ms,
-        )
-        _request_timeout_ms = min(
-            _general_method_timeout_ms,
-            first_valid_timeout(
-                request_timeout_ms,
-                self.api_options.timeout_options.request_timeout_ms,
+        _general_method_timeout_ms, _gmt_label = first_valid_timeout(
+            (general_method_timeout_ms, "general_method_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.general_method_timeout_ms,
+                "general_method_timeout_ms",
             ),
+        )
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         api_options = {
             "upsert": upsert,
@@ -2057,7 +2081,8 @@ class Collection(Generic[DOC]):
         must_proceed = True
         logger.info(f"starting update_many on '{self.name}'")
         timeout_manager = MultiCallTimeoutManager(
-            overall_timeout_ms=_general_method_timeout_ms
+            overall_timeout_ms=_general_method_timeout_ms,
+            timeout_label=_gmt_label,
         )
         while must_proceed:
             options = {**api_options, **page_state_options}
@@ -2076,7 +2101,8 @@ class Collection(Generic[DOC]):
             this_um_response = self._converted_request(
                 payload=this_um_payload,
                 timeout_context=timeout_manager.remaining_timeout(
-                    cap_time_ms=_request_timeout_ms
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
                 ),
             )
             logger.info(f"finished updateMany on '{self.name}'")
@@ -2184,10 +2210,10 @@ class Collection(Generic[DOC]):
             >>> # (returns None for no matches)
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         _projection = normalize_optional_projection(projection)
         fo_payload = {
@@ -2204,7 +2230,9 @@ class Collection(Generic[DOC]):
         logger.info(f"findOneAndDelete on '{self.name}'")
         fo_response = self._converted_request(
             payload=fo_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished findOneAndDelete on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -2271,10 +2299,10 @@ class Collection(Generic[DOC]):
             CollectionDeleteResult(raw_results=..., deleted_count=0)
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         do_payload = {
             "deleteOne": {
@@ -2289,7 +2317,9 @@ class Collection(Generic[DOC]):
         logger.info(f"deleteOne on '{self.name}'")
         do_response = self._converted_request(
             payload=do_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished deleteOne on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
@@ -2358,23 +2388,24 @@ class Collection(Generic[DOC]):
             An exception is the `filter={}` case, whereby the operation is atomic.
         """
 
-        _general_method_timeout_ms = first_valid_timeout(
-            general_method_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.general_method_timeout_ms,
-        )
-        _request_timeout_ms = min(
-            _general_method_timeout_ms,
-            first_valid_timeout(
-                request_timeout_ms,
-                self.api_options.timeout_options.request_timeout_ms,
+        _general_method_timeout_ms, _gmt_label = first_valid_timeout(
+            (general_method_timeout_ms, "general_method_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.general_method_timeout_ms,
+                "general_method_timeout_ms",
             ),
+        )
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         dm_responses: list[dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
         timeout_manager = MultiCallTimeoutManager(
-            overall_timeout_ms=_general_method_timeout_ms
+            overall_timeout_ms=_general_method_timeout_ms,
+            timeout_label=_gmt_label,
         )
         this_dm_payload = {"deleteMany": {"filter": filter}}
         logger.info(f"starting delete_many on '{self.name}'")
@@ -2384,7 +2415,8 @@ class Collection(Generic[DOC]):
                 payload=this_dm_payload,
                 raise_api_errors=False,
                 timeout_context=timeout_manager.remaining_timeout(
-                    cap_time_ms=_request_timeout_ms
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
                 ),
             )
             logger.info(f"finished deleteMany on '{self.name}'")
@@ -2455,14 +2487,11 @@ class Collection(Generic[DOC]):
             which avoids using a deceased collection any further.
         """
 
-        _collection_admin_timeout_ms = first_valid_timeout(
-            collection_admin_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.collection_admin_timeout_ms,
-        )
         logger.info(f"dropping collection '{self.name}' (self)")
         self.database.drop_collection(
-            self, collection_admin_timeout_ms=_collection_admin_timeout_ms
+            self,
+            collection_admin_timeout_ms=collection_admin_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info(f"finished dropping collection '{self.name}' (self)")
 
@@ -2495,10 +2524,10 @@ class Collection(Generic[DOC]):
             {'status': {'count': 123}}
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         _cmd_desc: str
         if body:
@@ -2509,7 +2538,9 @@ class Collection(Generic[DOC]):
         command_result = self._api_commander.request(
             payload=body,
             raise_api_errors=raise_api_errors,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished command={_cmd_desc} on '{self.name}'")
         return command_result
@@ -2901,10 +2932,10 @@ class AsyncCollection(Generic[DOC]):
             CollectionOptions(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         logger.info(f"getting collections in search of '{self.name}'")
         self_descriptors = [
@@ -3067,16 +3098,18 @@ class AsyncCollection(Generic[DOC]):
             the insertion fails.
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         io_payload = {"insertOne": {"document": document}}
         logger.info(f"insertOne on '{self.name}'")
         io_response = await self._converted_request(
             payload=io_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished insertOne on '{self.name}'")
         if "insertedIds" in io_response.get("status", {}):
@@ -3197,17 +3230,17 @@ class AsyncCollection(Generic[DOC]):
             have made their way to the database.
         """
 
-        _general_method_timeout_ms = first_valid_timeout(
-            general_method_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.general_method_timeout_ms,
-        )
-        _request_timeout_ms = min(
-            _general_method_timeout_ms,
-            first_valid_timeout(
-                request_timeout_ms,
-                self.api_options.timeout_options.request_timeout_ms,
+        _general_method_timeout_ms, _gmt_label = first_valid_timeout(
+            (general_method_timeout_ms, "general_method_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.general_method_timeout_ms,
+                "general_method_timeout_ms",
             ),
+        )
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         if concurrency is None:
             if ordered:
@@ -3226,7 +3259,8 @@ class AsyncCollection(Generic[DOC]):
         logger.info(f"inserting {len(_documents)} documents in '{self.name}'")
         raw_results: list[dict[str, Any]] = []
         timeout_manager = MultiCallTimeoutManager(
-            overall_timeout_ms=_general_method_timeout_ms
+            overall_timeout_ms=_general_method_timeout_ms,
+            timeout_label=_gmt_label,
         )
         if ordered:
             options = {"ordered": True}
@@ -3243,7 +3277,8 @@ class AsyncCollection(Generic[DOC]):
                     payload=im_payload,
                     raise_api_errors=False,
                     timeout_context=timeout_manager.remaining_timeout(
-                        cap_time_ms=_request_timeout_ms
+                        cap_time_ms=_request_timeout_ms,
+                        cap_timeout_label=_rt_label,
                     ),
                 )
                 logger.info(f"finished insertMany(chunk) on '{self.name}'")
@@ -3296,7 +3331,8 @@ class AsyncCollection(Generic[DOC]):
                         payload=im_payload,
                         raise_api_errors=False,
                         timeout_context=timeout_manager.remaining_timeout(
-                            cap_time_ms=_request_timeout_ms
+                            cap_time_ms=_request_timeout_ms,
+                            cap_timeout_label=_rt_label,
                         ),
                     )
                     logger.info(f"finished insertMany(chunk) on '{self.name}'")
@@ -3536,10 +3572,10 @@ class AsyncCollection(Generic[DOC]):
         # lazy-import here to avoid circular import issues
         from astrapy.cursors import AsyncCollectionFindCursor
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         if include_similarity is not None and not _is_vector_sort(sort):
             raise ValueError(
@@ -3550,6 +3586,7 @@ class AsyncCollection(Generic[DOC]):
                 collection=self,
                 request_timeout_ms=_request_timeout_ms,
                 overall_timeout_ms=None,
+                request_timeout_label=_rt_label,
             )
             .filter(filter)
             .project(projection)
@@ -3652,10 +3689,10 @@ class AsyncCollection(Generic[DOC]):
             (whereas `skip` and `limit` are not valid parameters for `find_one`).
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         if include_similarity is not None and not _is_vector_sort(sort):
             raise ValueError(
@@ -3680,7 +3717,9 @@ class AsyncCollection(Generic[DOC]):
         }
         fo_response = await self._converted_request(
             payload=fo_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         if "document" not in (fo_response.get("data") or {}):
             raise UnexpectedDataAPIResponseException(
@@ -3778,17 +3817,17 @@ class AsyncCollection(Generic[DOC]):
         # lazy-import here to avoid circular import issues
         from astrapy.cursors import AsyncCollectionFindCursor
 
-        _general_method_timeout_ms = first_valid_timeout(
-            general_method_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.general_method_timeout_ms,
-        )
-        _request_timeout_ms = min(
-            _general_method_timeout_ms,
-            first_valid_timeout(
-                request_timeout_ms,
-                self.api_options.timeout_options.request_timeout_ms,
+        _general_method_timeout_ms, _gmt_label = first_valid_timeout(
+            (general_method_timeout_ms, "general_method_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.general_method_timeout_ms,
+                "general_method_timeout_ms",
             ),
+        )
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         # preparing cursor:
         _extractor = _create_document_key_extractor(key)
@@ -3804,6 +3843,8 @@ class AsyncCollection(Generic[DOC]):
                 collection=self,
                 request_timeout_ms=_request_timeout_ms,
                 overall_timeout_ms=_general_method_timeout_ms,
+                request_timeout_label=_rt_label,
+                overall_timeout_label=_gmt_label,
             )  # type: ignore[assignment]
             .filter(filter)
             .project({_key: True})
@@ -3883,16 +3924,18 @@ class AsyncCollection(Generic[DOC]):
             by this method if this limit is encountered.
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         cd_payload = {"countDocuments": {"filter": filter}}
         logger.info(f"countDocuments on '{self.name}'")
         cd_response = await self._converted_request(
             payload=cd_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished countDocuments on '{self.name}'")
         if "count" in cd_response.get("status", {}):
@@ -3939,16 +3982,18 @@ class AsyncCollection(Generic[DOC]):
             >>> asyncio.run(my_async_coll.estimated_document_count())
             35700
         """
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         ed_payload: dict[str, Any] = {"estimatedDocumentCount": {}}
         logger.info(f"estimatedDocumentCount on '{self.name}'")
         ed_response = await self._converted_request(
             payload=ed_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished estimatedDocumentCount on '{self.name}'")
         if "count" in ed_response.get("status", {}):
@@ -4063,10 +4108,10 @@ class AsyncCollection(Generic[DOC]):
             result3 {'text': 'F=ma'}
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         options = {
             "returnDocument": return_document,
@@ -4088,7 +4133,9 @@ class AsyncCollection(Generic[DOC]):
         logger.info(f"findOneAndReplace on '{self.name}'")
         fo_response = await self._converted_request(
             payload=fo_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -4173,10 +4220,10 @@ class AsyncCollection(Generic[DOC]):
             result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '30e34e00-...'}
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         options = {
             "upsert": upsert,
@@ -4196,7 +4243,9 @@ class AsyncCollection(Generic[DOC]):
         logger.info(f"findOneAndReplace on '{self.name}'")
         fo_response = await self._converted_request(
             payload=fo_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished findOneAndReplace on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -4321,10 +4370,10 @@ class AsyncCollection(Generic[DOC]):
             result3 {'_id': 'db3d678d-14d4-4caa-82d2-d5fb77dab7ec', 'name': 'Johnny', 'rank': 0}
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         options = {
             "returnDocument": return_document,
@@ -4346,7 +4395,9 @@ class AsyncCollection(Generic[DOC]):
         logger.info(f"findOneAndUpdate on '{self.name}'")
         fo_response = await self._converted_request(
             payload=fo_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished findOneAndUpdate on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -4434,10 +4485,10 @@ class AsyncCollection(Generic[DOC]):
             result2.update_info {'n': 1, 'updatedExisting': False, 'ok': 1.0, 'nModified': 0, 'upserted': '75748092-...'}
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         options = {
             "upsert": upsert,
@@ -4457,7 +4508,9 @@ class AsyncCollection(Generic[DOC]):
         logger.info(f"updateOne on '{self.name}'")
         uo_response = await self._converted_request(
             payload=uo_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished updateOne on '{self.name}'")
         if "status" in uo_response:
@@ -4553,17 +4606,17 @@ class AsyncCollection(Generic[DOC]):
             newly-inserted document will be picked up by the update_many command or not.
         """
 
-        _general_method_timeout_ms = first_valid_timeout(
-            general_method_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.general_method_timeout_ms,
-        )
-        _request_timeout_ms = min(
-            _general_method_timeout_ms,
-            first_valid_timeout(
-                request_timeout_ms,
-                self.api_options.timeout_options.request_timeout_ms,
+        _general_method_timeout_ms, _gmt_label = first_valid_timeout(
+            (general_method_timeout_ms, "general_method_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.general_method_timeout_ms,
+                "general_method_timeout_ms",
             ),
+        )
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         api_options = {
             "upsert": upsert,
@@ -4574,7 +4627,8 @@ class AsyncCollection(Generic[DOC]):
         must_proceed = True
         logger.info(f"starting update_many on '{self.name}'")
         timeout_manager = MultiCallTimeoutManager(
-            overall_timeout_ms=_general_method_timeout_ms
+            overall_timeout_ms=_general_method_timeout_ms,
+            timeout_label=_gmt_label,
         )
         while must_proceed:
             options = {**api_options, **page_state_options}
@@ -4593,7 +4647,8 @@ class AsyncCollection(Generic[DOC]):
             this_um_response = await self._converted_request(
                 payload=this_um_payload,
                 timeout_context=timeout_manager.remaining_timeout(
-                    cap_time_ms=_request_timeout_ms
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
                 ),
             )
             logger.info(f"finished updateMany on '{self.name}'")
@@ -4709,10 +4764,10 @@ class AsyncCollection(Generic[DOC]):
             delete_result1 None
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         _projection = normalize_optional_projection(projection)
         fo_payload = {
@@ -4729,7 +4784,9 @@ class AsyncCollection(Generic[DOC]):
         logger.info(f"findOneAndDelete on '{self.name}'")
         fo_response = await self._converted_request(
             payload=fo_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished findOneAndDelete on '{self.name}'")
         if "document" in fo_response.get("data", {}):
@@ -4798,10 +4855,10 @@ class AsyncCollection(Generic[DOC]):
             CollectionDeleteResult(raw_results=..., deleted_count=0)
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         do_payload = {
             "deleteOne": {
@@ -4816,7 +4873,9 @@ class AsyncCollection(Generic[DOC]):
         logger.info(f"deleteOne on '{self.name}'")
         do_response = await self._converted_request(
             payload=do_payload,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished deleteOne on '{self.name}'")
         if "deletedCount" in do_response.get("status", {}):
@@ -4890,23 +4949,24 @@ class AsyncCollection(Generic[DOC]):
             An exception is the `filter={}` case, whereby the operation is atomic.
         """
 
-        _general_method_timeout_ms = first_valid_timeout(
-            general_method_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.general_method_timeout_ms,
-        )
-        _request_timeout_ms = min(
-            _general_method_timeout_ms,
-            first_valid_timeout(
-                request_timeout_ms,
-                self.api_options.timeout_options.request_timeout_ms,
+        _general_method_timeout_ms, _gmt_label = first_valid_timeout(
+            (general_method_timeout_ms, "general_method_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (
+                self.api_options.timeout_options.general_method_timeout_ms,
+                "general_method_timeout_ms",
             ),
+        )
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         dm_responses: list[dict[str, Any]] = []
         deleted_count = 0
         must_proceed = True
         timeout_manager = MultiCallTimeoutManager(
-            overall_timeout_ms=_general_method_timeout_ms
+            overall_timeout_ms=_general_method_timeout_ms,
+            timeout_label=_gmt_label,
         )
         this_dm_payload = {"deleteMany": {"filter": filter}}
         logger.info(f"starting delete_many on '{self.name}'")
@@ -4916,7 +4976,8 @@ class AsyncCollection(Generic[DOC]):
                 payload=this_dm_payload,
                 raise_api_errors=False,
                 timeout_context=timeout_manager.remaining_timeout(
-                    cap_time_ms=_request_timeout_ms
+                    cap_time_ms=_request_timeout_ms,
+                    cap_timeout_label=_rt_label,
                 ),
             )
             logger.info(f"finished deleteMany on '{self.name}'")
@@ -4991,14 +5052,11 @@ class AsyncCollection(Generic[DOC]):
             which avoids using a deceased collection any further.
         """
 
-        _collection_admin_timeout_ms = first_valid_timeout(
-            collection_admin_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.collection_admin_timeout_ms,
-        )
         logger.info(f"dropping collection '{self.name}' (self)")
         await self.database.drop_collection(
-            self, collection_admin_timeout_ms=_collection_admin_timeout_ms
+            self,
+            collection_admin_timeout_ms=collection_admin_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info(f"finished dropping collection '{self.name}' (self)")
 
@@ -5031,10 +5089,10 @@ class AsyncCollection(Generic[DOC]):
             {'status': {'count': 123}}
         """
 
-        _request_timeout_ms = first_valid_timeout(
-            request_timeout_ms,
-            timeout_ms,
-            self.api_options.timeout_options.request_timeout_ms,
+        _request_timeout_ms, _rt_label = first_valid_timeout(
+            (request_timeout_ms, "request_timeout_ms"),
+            (timeout_ms, "timeout_ms"),
+            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
         _cmd_desc: str
         if body:
@@ -5045,7 +5103,9 @@ class AsyncCollection(Generic[DOC]):
         command_result = await self._api_commander.async_request(
             payload=body,
             raise_api_errors=raise_api_errors,
-            timeout_context=_TimeoutContext(request_ms=_request_timeout_ms),
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
         )
         logger.info(f"finished command={_cmd_desc} on '{self.name}'")
         return command_result

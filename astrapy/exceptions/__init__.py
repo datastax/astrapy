@@ -50,6 +50,19 @@ from astrapy.exceptions.table_exceptions import (
 )
 
 
+def first_valid_timeout(
+    *items: tuple[int | None, str | None],
+) -> tuple[int, str | None]:
+    # items are: (timeout ms, label)
+    not_nulls = [itm for itm in items if itm[0] is not None]
+    if not_nulls:
+        return not_nulls[0]  # type: ignore[return-value]
+    else:
+        # If no non-nulls provided, return zero
+        # (a timeout of zero will stand for 'no timeout' later on to the request).
+        return 0, None
+
+
 class InvalidEnvironmentException(ValueError):
     """
     An operation was attempted, that is not available on the specified
@@ -67,8 +80,12 @@ def to_dataapi_timeout_exception(
     text: str
     text_0 = str(httpx_timeout) or "timed out"
     timeout_ms = timeout_context.nominal_ms or timeout_context.request_ms
+    timeout_label = timeout_context.label
     if timeout_ms:
-        text = f"{text_0} (timeout honoured: {timeout_ms} ms)"
+        if timeout_label:
+            text = f"{text_0} (timeout honoured: {timeout_label} = {timeout_ms} ms)"
+        else:
+            text = f"{text_0} (timeout honoured: {timeout_ms} ms)"
     else:
         text = text_0
     if isinstance(httpx_timeout, httpx.ConnectTimeout):
@@ -105,10 +122,12 @@ def to_devopsapi_timeout_exception(
     text: str
     text_0 = str(httpx_timeout) or "timed out"
     timeout_ms = timeout_context.nominal_ms or timeout_context.request_ms
+    timeout_label = timeout_context.label
     if timeout_ms:
-        text = f"{text_0} (timeout honoured: {timeout_ms} ms)"
-    else:
-        text = text_0
+        if timeout_label:
+            text = f"{text_0} (timeout honoured: {timeout_label} = {timeout_ms} ms)"
+        else:
+            text = f"{text_0} (timeout honoured: {timeout_ms} ms)"
     if isinstance(httpx_timeout, httpx.ConnectTimeout):
         timeout_type = "connect"
     elif isinstance(httpx_timeout, httpx.ReadTimeout):
@@ -144,15 +163,18 @@ class _TimeoutContext:
 
     nominal_ms: int | None
     request_ms: int | None
+    label: str | None
 
     def __init__(
         self,
         *,
         request_ms: int | None,
         nominal_ms: int | None = None,
+        label: str | None = None,
     ) -> None:
         self.nominal_ms = nominal_ms
         self.request_ms = request_ms
+        self.label = label
 
     def __bool__(self) -> bool:
         return self.nominal_ms is not None or self.request_ms is not None
@@ -172,16 +194,22 @@ class MultiCallTimeoutManager:
         overall_timeout_ms: an optional max duration to track (milliseconds)
         started_ms: timestamp of the instance construction (milliseconds)
         deadline_ms: optional deadline in milliseconds (computed by the class).
+        timeout_label: TODO
     """
 
     overall_timeout_ms: int | None
     started_ms: int = -1
     deadline_ms: int | None
+    timeout_label: str | None
 
     def __init__(
-        self, overall_timeout_ms: int | None, dev_ops_api: bool = False
+        self,
+        overall_timeout_ms: int | None,
+        dev_ops_api: bool = False,
+        timeout_label: str | None = None,
     ) -> None:
         self.started_ms = int(time.time() * 1000)
+        self.timeout_label = timeout_label
         # zero timeouts provided internally are mapped to None for deadline mgmt:
         self.overall_timeout_ms = overall_timeout_ms or None
         self.dev_ops_api = dev_ops_api
@@ -190,7 +218,9 @@ class MultiCallTimeoutManager:
         else:
             self.deadline_ms = None
 
-    def remaining_timeout(self, cap_time_ms: int | None = None) -> _TimeoutContext:
+    def remaining_timeout(
+        self, cap_time_ms: int | None = None, cap_timeout_label: str | None = None
+    ) -> _TimeoutContext:
         """
         Ensure the deadline, if any, is not yet in the past.
         If it is, raise an appropriate timeout error.
@@ -201,6 +231,7 @@ class MultiCallTimeoutManager:
             cap_time_ms: an additional timeout constraint to cap the result of
                 this method. If the remaining timeout from this manager exceeds
                 the provided cap, the cap is returned.
+            cap_timeout_label: TODO
 
         Returns:
             TODO
@@ -216,23 +247,40 @@ class MultiCallTimeoutManager:
                     return _TimeoutContext(
                         nominal_ms=self.overall_timeout_ms,
                         request_ms=remaining,
+                        label=self.timeout_label,
                     )
                 else:
-                    return _TimeoutContext(
-                        nominal_ms=self.overall_timeout_ms,
-                        request_ms=min(remaining, _cap_time_ms),
-                    )
+                    if remaining > _cap_time_ms:
+                        return _TimeoutContext(
+                            nominal_ms=_cap_time_ms,
+                            request_ms=_cap_time_ms,
+                            label=cap_timeout_label,
+                        )
+                    else:
+                        return _TimeoutContext(
+                            nominal_ms=self.overall_timeout_ms,
+                            request_ms=remaining,
+                            label=self.timeout_label,
+                        )
             else:
+                err_msg: str
+                if self.timeout_label:
+                    err_msg = (
+                        f"Operation timed out (timeout honoured: {self.timeout_label} "
+                        f"= {self.overall_timeout_ms} ms)."
+                    )
+                else:
+                    err_msg = f"Operation timed out (timeout honoured: {self.overall_timeout_ms} ms)."
                 if not self.dev_ops_api:
                     raise DataAPITimeoutException(
-                        text="Operation timed out.",
+                        text=err_msg,
                         timeout_type="generic",
                         endpoint=None,
                         raw_payload=None,
                     )
                 else:
                     raise DevOpsAPITimeoutException(
-                        text="Operation timed out.",
+                        text=err_msg,
                         timeout_type="generic",
                         endpoint=None,
                         raw_payload=None,
@@ -242,11 +290,13 @@ class MultiCallTimeoutManager:
                 return _TimeoutContext(
                     nominal_ms=self.overall_timeout_ms,
                     request_ms=None,
+                    label=self.timeout_label,
                 )
             else:
                 return _TimeoutContext(
-                    nominal_ms=self.overall_timeout_ms,
+                    nominal_ms=_cap_time_ms,
                     request_ms=_cap_time_ms,
+                    label=cap_timeout_label,
                 )
 
 

@@ -114,6 +114,12 @@ class TestCollectionTimeouts:
         with pytest.raises(DataAPITimeoutException):
             await cur1.__anext__()
 
+    @pytest.mark.describe("test of collection find_one timeouts, async")
+    async def test_collection_find_one_timeouts_async(
+        self,
+        httpserver: HTTPServer,
+        mock_acollection: DefaultAsyncCollection,
+    ) -> None:
         httpserver.expect_oneshot_request(
             f"/{BASE_PATH}/{PATH_SUFFIX}",
             method=HttpMethod.POST,
@@ -148,6 +154,12 @@ class TestCollectionTimeouts:
         with pytest.raises(DataAPITimeoutException):
             cur1.__next__()
 
+    @pytest.mark.describe("test of collection find_one timeouts, sync")
+    def test_collection_find_one_timeouts_sync(
+        self,
+        httpserver: HTTPServer,
+        mock_collection: DefaultCollection,
+    ) -> None:
         httpserver.expect_oneshot_request(
             f"/{BASE_PATH}/{PATH_SUFFIX}",
             method=HttpMethod.POST,

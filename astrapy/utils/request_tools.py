@@ -82,13 +82,3 @@ def to_httpx_timeout(timeout_context: _TimeoutContext) -> httpx.Timeout | None:
         return None
     else:
         return httpx.Timeout(timeout_context.request_ms / 1000)
-
-
-def first_valid_timeout(*items: int | None) -> int:
-    not_nulls = [itm for itm in items if itm is not None]
-    if not_nulls:
-        return not_nulls[0]
-    else:
-        # If no non-nulls provided, return zero
-        # (a timeout of zero will stand for 'no timeout' later on to the request).
-        return 0
