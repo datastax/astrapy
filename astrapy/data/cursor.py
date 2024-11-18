@@ -913,6 +913,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             if isinstance(include_sort_vector, UnsetType)
             else include_sort_vector,
             skip=self._skip if isinstance(skip, UnsetType) else skip,
+            mapper=self._mapper,
         )
 
     async def _try_ensure_fill_buffer(self) -> None:
@@ -1528,6 +1529,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             if isinstance(include_sort_vector, UnsetType)
             else include_sort_vector,
             skip=self._skip if isinstance(skip, UnsetType) else skip,
+            mapper=self._mapper,
         )
 
     async def _try_ensure_fill_buffer(self) -> None:
