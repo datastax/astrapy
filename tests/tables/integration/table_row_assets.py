@@ -107,18 +107,37 @@ DISTINCT_AR_ROWS = [
         "p_set_int": {200, 300},
     },
 ]
-DISTINCT_AR_ROWS_PKS = [
+
+INSMANY_AR_ROW_HALFN = 250
+INSMANY_AR_ROWS = [
+    {
+        "p_ascii": "A",
+        "p_bigint": (PART_I + 1) * 100,
+        "p_int": i,
+        "p_boolean": i % 2 == 0,
+        #
+        "p_float": 0.2 + i,
+        "p_text": f"b{i}",
+        "p_timestamp": DataAPITimestamp.from_string(f"1{i:03}-01-01T01:01:01Z"),
+        "p_list_int": [3 + i, 1, i],
+        "p_map_text_text": {"a": f"V{i}A", "b": f"V{i}B"},
+        "p_set_int": {200 + i, 300, i},
+    }
+    for PART_I in range(2)
+    for i in range(INSMANY_AR_ROW_HALFN)
+]
+INSMANY_AR_ROWS_PKS = [
     {
         "p_ascii": ar_row["p_ascii"],
         "p_bigint": ar_row["p_bigint"],
         "p_int": ar_row["p_int"],
         "p_boolean": ar_row["p_boolean"],
     }
-    for ar_row in DISTINCT_AR_ROWS
+    for ar_row in INSMANY_AR_ROWS
 ]
-DISTINCT_AR_ROWS_PK_TUPLES = [
+INSMANY_AR_ROWS_PK_TUPLES = [
     (ar_row["p_ascii"], ar_row["p_bigint"], ar_row["p_int"], ar_row["p_boolean"])
-    for ar_row in DISTINCT_AR_ROWS
+    for ar_row in INSMANY_AR_ROWS
 ]
 
 SIMPLE_FULL_ROWS = [

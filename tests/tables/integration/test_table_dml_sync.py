@@ -14,9 +14,12 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from astrapy.api_options import APIOptions, SerdesOptions
+from astrapy.constants import SortMode
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.exceptions import DataAPIException, TableInsertManyException
 from astrapy.results import TableInsertManyResult
@@ -34,8 +37,9 @@ from .table_row_assets import (
     COMPOSITE_VECTOR_ROWS,
     COMPOSITE_VECTOR_ROWS_N,
     DISTINCT_AR_ROWS,
-    DISTINCT_AR_ROWS_PK_TUPLES,
-    DISTINCT_AR_ROWS_PKS,
+    INSMANY_AR_ROWS,
+    INSMANY_AR_ROWS_PK_TUPLES,
+    INSMANY_AR_ROWS_PKS,
     SIMPLE_FULL_ROWS,
     SIMPLE_SEVEN_ROWS_F2,
     SIMPLE_SEVEN_ROWS_F4,
@@ -129,10 +133,10 @@ class TestTableDMLSync:
         self,
         sync_empty_table_all_returns: DefaultTable,
     ) -> None:
-        im_result = sync_empty_table_all_returns.insert_many(DISTINCT_AR_ROWS)
-        assert im_result.inserted_ids == DISTINCT_AR_ROWS_PKS
+        im_result = sync_empty_table_all_returns.insert_many(INSMANY_AR_ROWS)
+        assert im_result.inserted_ids == INSMANY_AR_ROWS_PKS
         assert [_typify_tuple(tpl) for tpl in im_result.inserted_id_tuples] == [
-            _typify_tuple(tpl) for tpl in DISTINCT_AR_ROWS_PK_TUPLES
+            _typify_tuple(tpl) for tpl in INSMANY_AR_ROWS_PK_TUPLES
         ]
 
     @pytest.mark.describe("test of table distinct, sync")
@@ -483,8 +487,8 @@ class TestTableDMLSync:
     def test_table_find_sync(
         self,
         sync_empty_table_composite: DefaultTable,
+        sync_empty_table_all_returns: DefaultTable,
     ) -> None:
-        # TODO do more than just pagination (distinct, maps etc)
         sync_empty_table_composite.insert_many(
             [
                 {
@@ -540,7 +544,62 @@ class TestTableDMLSync:
         ).to_list()
         assert all(row.keys() == projected_fields for row in rows_proj_a)
 
-        # find_one and ANN
+        # (nonvector) sorting
+        sync_empty_table_all_returns.insert_many(INSMANY_AR_ROWS)
+        # sorting as per clustering column
+        srows_in_part = sync_empty_table_all_returns.find(
+            filter={"p_ascii": "A", "p_bigint": 100},
+            sort={"p_int": SortMode.DESCENDING},
+            limit=20,  # TODO: reinstate next line once nextPageState stops coming back erroneously
+            # limit=INSMANY_AR_ROW_HALFN + 1,
+        ).to_list()
+        # sorted finds return at most one page and that's it:
+        assert len(srows_in_part) == 20
+        srows_in_part_pints = [row["p_int"] for row in srows_in_part]
+        assert sorted(srows_in_part_pints) == srows_in_part_pints[::-1]
+        # sorting by any regular column
+        srows_anycol = sync_empty_table_all_returns.find(
+            filter={"p_ascii": "A", "p_bigint": 100},
+            sort={"p_float": SortMode.DESCENDING},
+            limit=20,  # TODO: reinstate next line once nextPageState stops coming back erroneously
+            # limit=INSMANY_AR_ROW_HALFN + 1,
+        ).to_list()
+        # sorted finds return at most one page and that's it:
+        assert len(srows_anycol) == 20
+        srows_anycol_pints = [row["p_int"] for row in srows_anycol]
+        assert sorted(srows_anycol_pints) == srows_anycol_pints[::-1]
+
+        # use of limit+skip: two ways of getting the first 30 items
+        ls_rows_A0 = sync_empty_table_all_returns.find(
+            filter={"p_ascii": "A", "p_bigint": 200},
+            sort={"p_int": SortMode.DESCENDING},
+            skip=0,
+            limit=20,
+        ).to_list()
+        ls_rows_A1 = sync_empty_table_all_returns.find(
+            filter={"p_ascii": "A", "p_bigint": 200},
+            sort={"p_int": SortMode.DESCENDING},
+            skip=20,
+            limit=10,
+        ).to_list()
+        ls_rows_B0 = sync_empty_table_all_returns.find(
+            filter={"p_ascii": "A", "p_bigint": 200},
+            sort={"p_int": SortMode.DESCENDING},
+            skip=0,
+            limit=10,
+        ).to_list()
+        ls_rows_B1 = sync_empty_table_all_returns.find(
+            filter={"p_ascii": "A", "p_bigint": 200},
+            sort={"p_int": SortMode.DESCENDING},
+            skip=10,
+            limit=20,
+        ).to_list()
+        ls_rows_A = ls_rows_A0 + ls_rows_A1
+        ls_rows_B = ls_rows_B0 + ls_rows_B1
+        assert len(ls_rows_A) == 30
+        assert ls_rows_A == ls_rows_B
+
+        # find with ANN
         sync_empty_table_composite.delete_many({})
         sync_empty_table_composite.insert_many(COMPOSITE_VECTOR_ROWS)
         # in a partition
@@ -572,6 +631,22 @@ class TestTableDMLSync:
         ints = [row["p_int"] for row in vrows_in_part]
         assert all(i % 2 == 0 for i in ints)
         assert sorted(ints, reverse=True) == ints
+
+        # mapper and to_list at once
+        def _mapping(dct: dict[str, Any]) -> dict[str, str]:
+            return {k: str(v) for k, v in dct.items()}
+
+        mapped_cursor = sync_empty_table_composite.find(
+            sort={"p_vector": DataAPIVector([1, 0, 0])},
+            limit=COMPOSITE_VECTOR_ROWS_N,
+        ).map(_mapping)
+        unmapped_list = sync_empty_table_composite.find(
+            sort={"p_vector": DataAPIVector([1, 0, 0])},
+            limit=COMPOSITE_VECTOR_ROWS_N,
+        ).to_list()
+        postmapped_list = [_mapping(row) for row in unmapped_list]
+        premapped_list = [mrow for mrow in mapped_cursor]
+        assert postmapped_list == premapped_list
 
     @pytest.mark.describe("test of table command, sync")
     def test_table_command_sync(
