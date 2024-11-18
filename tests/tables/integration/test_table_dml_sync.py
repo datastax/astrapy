@@ -52,10 +52,9 @@ class TestTableDMLSync:
     def test_table_insert_one_find_one_sync(
         self,
         sync_empty_table_all_returns: DefaultTable,
+        sync_empty_table_composite: DefaultTable,
     ) -> None:
-        # TODO enlarge the test with all values + a partial row,
         # TODO + the different custom/nonocustom types and serdes options interplay
-        # TODO cross check with CQL direct (!), astra only
         no_row_0a = sync_empty_table_all_returns.find_one(filter=AR_ROW_PK_0)
         assert no_row_0a is None
         ins1_res_0 = sync_empty_table_all_returns.insert_one(row=AR_ROW_0)
@@ -91,6 +90,81 @@ class TestTableDMLSync:
         sync_empty_table_all_returns.delete_one(filter=AR_ROW_PK_0)
         no_row_0b = sync_empty_table_all_returns.find_one(filter=AR_ROW_PK_0)
         assert no_row_0b is None
+
+        # ANN and non-ANN sorting in find_one
+        sync_empty_table_composite.insert_many(
+            [
+                {
+                    "p_text": "pA",
+                    "p_int": i,
+                    "p_int_regular": i,
+                    "p_vector": DataAPIVector([i, 1, 0]),
+                }
+                for i in range(3)
+            ]
+        )
+        sync_empty_table_composite.insert_many(
+            [
+                {
+                    "p_text": "pB",
+                    "p_int": 100 - i,
+                    "p_int_regular": 100 - i,
+                    "p_vector": DataAPIVector([i + 0.1, 1, 0]),
+                }
+                for i in range(3)
+            ]
+        )
+        # sort by just ANN
+        fo_unf_ann_row = sync_empty_table_composite.find_one(
+            sort={"p_vector": DataAPIVector([-0.1, 1, 0])}
+        )
+        assert fo_unf_ann_row is not None
+        assert (fo_unf_ann_row["p_text"], fo_unf_ann_row["p_int"]) == ("pA", 0)
+        # sort by ANN, filtered
+        fo_fil_ann_row = sync_empty_table_composite.find_one(
+            filter={"p_text": "pB"}, sort={"p_vector": DataAPIVector([-0.1, 1, 0])}
+        )
+        assert fo_fil_ann_row is not None
+        assert (fo_fil_ann_row["p_text"], fo_fil_ann_row["p_int"]) == ("pB", 100)
+        # just regular sort
+        fo_unf_srt_row = sync_empty_table_composite.find_one(
+            sort={
+                "p_int_regular": SortMode.DESCENDING
+            }  # TODO: replace with p_int when ok
+        )
+        assert fo_unf_srt_row is not None
+        assert (fo_unf_srt_row["p_text"], fo_unf_srt_row["p_int"]) == ("pB", 100)
+        # regular sort, filtered
+        fo_fil_srt_row = sync_empty_table_composite.find_one(
+            filter={"p_text": "pA"},
+            sort={
+                "p_int_regular": SortMode.DESCENDING
+            },  # TODO: replace with p_int when ok
+        )
+        assert fo_fil_srt_row is not None
+        assert (fo_fil_srt_row["p_text"], fo_fil_srt_row["p_int"]) == ("pA", 2)
+
+        # serdes options obeyance check
+        noncustom_compo_table = sync_empty_table_composite.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=False),
+            )
+        )
+        custom_compo_table = sync_empty_table_composite.with_options(
+            api_options=APIOptions(
+                serdes_options=SerdesOptions(custom_datatypes_in_reading=True),
+            )
+        )
+        noncustom_row = noncustom_compo_table.find_one(
+            sort={"p_vector": [-0.1, 1, 0]}  # both would actually work (as arguments)
+        )
+        custom_row = custom_compo_table.find_one(
+            sort={"p_vector": [-0.1, 1, 0]}  # both would actually work (as arguments)
+        )
+        assert noncustom_row is not None
+        assert isinstance(noncustom_row["p_vector"], list)
+        assert custom_row is not None
+        assert isinstance(custom_row["p_vector"], DataAPIVector)
 
     @pytest.mark.describe("test of table delete_one, sync")
     def test_table_delete_one_sync(

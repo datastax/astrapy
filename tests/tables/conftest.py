@@ -138,6 +138,9 @@ TEST_COMPOSITE_TABLE_DEFINITION = TableDefinition(
             dimension=3,
             service=None,
         ),
+        "p_int_regular": TableScalarColumnTypeDescriptor(
+            column_type="int"
+        ),  # TODO: remove->p_int
     },
     primary_key=TablePrimaryKeyDescriptor(
         partition_by=["p_text"],
