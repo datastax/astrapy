@@ -42,10 +42,10 @@ from astrapy.exceptions import (
     TableInsertManyException,
     TooManyRowsToCountException,
     UnexpectedDataAPIResponseException,
-    _TimeoutContext,
     _first_valid_timeout,
     _select_singlereq_timeout_gm,
     _select_singlereq_timeout_ta,
+    _TimeoutContext,
 )
 from astrapy.info import (
     TableBaseIndexDefinition,
@@ -133,7 +133,9 @@ class Table(Generic[ROW]):
         if _keyspace is None:
             raise ValueError("Attempted to create Table with 'keyspace' unset.")
 
-        self._database = database._copy(keyspace=_keyspace, api_options=self.api_options)
+        self._database = database._copy(
+            keyspace=_keyspace, api_options=self.api_options
+        )
         self._commander_headers = {
             **{DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token()},
             **self.api_options.embedding_api_key.get_headers(),
@@ -321,7 +323,8 @@ class Table(Generic[ROW]):
             table_desc
             for table_desc in self.database._list_tables_ctx(
                 timeout_context=_TimeoutContext(
-                    request_ms=_table_admin_timeout_ms, label=_ta_label,
+                    request_ms=_table_admin_timeout_ms,
+                    label=_ta_label,
                 ),
             )
             if table_desc.name == self.name
@@ -1681,7 +1684,9 @@ class AsyncTable(Generic[ROW]):
         if _keyspace is None:
             raise ValueError("Attempted to create Table with 'keyspace' unset.")
 
-        self._database = database._copy(keyspace=_keyspace, api_options=self.api_options)
+        self._database = database._copy(
+            keyspace=_keyspace, api_options=self.api_options
+        )
         self._commander_headers = {
             **{DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token()},
             **self.api_options.embedding_api_key.get_headers(),
@@ -1885,7 +1890,8 @@ class AsyncTable(Generic[ROW]):
             table_desc
             for table_desc in await self.database._list_tables_ctx(
                 timeout_context=_TimeoutContext(
-                    request_ms=_table_admin_timeout_ms, label=_ta_label,
+                    request_ms=_table_admin_timeout_ms,
+                    label=_ta_label,
                 ),
             )
             if table_desc.name == self.name
@@ -2340,7 +2346,7 @@ class AsyncTable(Generic[ROW]):
         TODO
         """
 
-        _request_timeout_ms, _ta_label = _select_singlereq_timeout_gm(
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
             timeout_options=self.api_options.timeout_options,
             general_method_timeout_ms=general_method_timeout_ms,
             request_timeout_ms=request_timeout_ms,

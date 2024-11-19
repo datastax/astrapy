@@ -47,10 +47,10 @@ from astrapy.exceptions import (
     MultiCallTimeoutManager,
     TooManyDocumentsToCountException,
     UnexpectedDataAPIResponseException,
-    _TimeoutContext,
     _first_valid_timeout,
     _select_singlereq_timeout_ca,
     _select_singlereq_timeout_gm,
+    _TimeoutContext,
 )
 from astrapy.info import CollectionInfo, CollectionOptions
 from astrapy.results import (
@@ -171,7 +171,9 @@ class Collection(Generic[DOC]):
         if _keyspace is None:
             raise ValueError("Attempted to create Collection with 'keyspace' unset.")
 
-        self._database = database._copy(keyspace=_keyspace, api_options=self.api_options)
+        self._database = database._copy(
+            keyspace=_keyspace, api_options=self.api_options
+        )
         self._commander_headers = {
             **{DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token()},
             **self.api_options.embedding_api_key.get_headers(),
@@ -495,7 +497,8 @@ class Collection(Generic[DOC]):
             coll_desc
             for coll_desc in self.database._list_collections_ctx(
                 timeout_context=_TimeoutContext(
-                    request_ms=_collection_admin_timeout_ms, label=_ca_label,
+                    request_ms=_collection_admin_timeout_ms,
+                    label=_ca_label,
                 ),
             )
             if coll_desc.name == self.name
@@ -2654,7 +2657,9 @@ class AsyncCollection(Generic[DOC]):
         if _keyspace is None:
             raise ValueError("Attempted to create Collection with 'keyspace' unset.")
 
-        self._database = database._copy(keyspace=_keyspace, api_options=self.api_options)
+        self._database = database._copy(
+            keyspace=_keyspace, api_options=self.api_options
+        )
         self._commander_headers = {
             **{DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token()},
             **self.api_options.embedding_api_key.get_headers(),
@@ -2994,7 +2999,8 @@ class AsyncCollection(Generic[DOC]):
             coll_desc
             for coll_desc in await self.database._list_collections_ctx(
                 timeout_context=_TimeoutContext(
-                    request_ms=_collection_admin_timeout_ms, label=_ca_label,
+                    request_ms=_collection_admin_timeout_ms,
+                    label=_ca_label,
                 ),
             )
             if coll_desc.name == self.name

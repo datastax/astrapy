@@ -34,8 +34,10 @@ from astrapy.exceptions import (
     InvalidEnvironmentException,
     MultiCallTimeoutManager,
     UnexpectedDataAPIResponseException,
-    _TimeoutContext,
     _first_valid_timeout,
+    _select_singlereq_timeout_da,
+    _select_singlereq_timeout_ka,
+    _TimeoutContext,
 )
 from astrapy.info import (
     AstraDBAdminDatabaseInfo,
@@ -593,6 +595,7 @@ class AstraDBAdmin:
         include: str | None = None,
         provider: str | None = None,
         page_size: int | None = None,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[AstraDBAdminDatabaseInfo]:
@@ -607,6 +610,7 @@ class AstraDBAdmin:
                 As per DevOps API, defaults to "ALL". Pass e.g. "AWS" to
                 restrict the results.
             page_size: number of results per page from the DevOps API.
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying API request(s).
             timeout_ms: an alias for `request_timeout_ms`.
@@ -626,17 +630,18 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         return self._list_databases_ctx(
             include=include,
             provider=provider,
             page_size=page_size,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_database_admin_timeout_ms, label=_da_label
             ),
         )
 
@@ -717,6 +722,7 @@ class AstraDBAdmin:
         include: str | None = None,
         provider: str | None = None,
         page_size: int | None = None,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[AstraDBAdminDatabaseInfo]:
@@ -732,6 +738,7 @@ class AstraDBAdmin:
                 As per DevOps API, defaults to "ALL". Pass e.g. "AWS" to
                 restrict the results.
             page_size: number of results per page from the DevOps API.
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying API request(s).
             timeout_ms: an alias for `request_timeout_ms`.
@@ -750,17 +757,18 @@ class AstraDBAdmin:
             False
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         return await self._async_list_databases_ctx(
             include=include,
             provider=provider,
             page_size=page_size,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_database_admin_timeout_ms, label=_da_label
             ),
         )
 
@@ -839,6 +847,7 @@ class AstraDBAdmin:
         self,
         id: str,
         *,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AstraDBAdminDatabaseInfo:
@@ -848,6 +857,7 @@ class AstraDBAdmin:
         Args:
             id: the ID of the target database, e. g.
                 "01234567-89ab-cdef-0123-456789abcdef".
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying API request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -865,15 +875,16 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         return self._database_info_ctx(
             id=id,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_database_admin_timeout_ms, label=_da_label
             ),
         )
 
@@ -900,6 +911,7 @@ class AstraDBAdmin:
         self,
         id: str,
         *,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AstraDBAdminDatabaseInfo:
@@ -910,6 +922,7 @@ class AstraDBAdmin:
         Args:
             id: the ID of the target database, e. g.
                 "01234567-89ab-cdef-0123-456789abcdef".
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying API request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -926,15 +939,16 @@ class AstraDBAdmin:
             True
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         return await self._async_database_info_ctx(
             id=id,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_database_admin_timeout_ms, label=_da_label
             ),
         )
 
@@ -965,8 +979,8 @@ class AstraDBAdmin:
         region: str,
         keyspace: str | None = None,
         wait_until_active: bool = True,
-        request_timeout_ms: int | None = None,
         database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         database_admin_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
@@ -984,13 +998,13 @@ class AstraDBAdmin:
                 usually). If False, it will return right after issuing the
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status before working with it.
-            request_timeout_ms: a timeout, in milliseconds, for
-                each underlying DevOps API HTTP request.
             database_admin_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation to complete. This is used only
                 if `wait_until_active` is true, i.e. if the method call must
                 wait and keep querying the DevOps API for the status of the
                 newly-created database.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
             timeout_ms: an alias for *both* the `request_timeout_ms` and
                 `database_admin_timeout_ms` timeout parameters. In practice,
                 regardless of `wait_until_active`, this parameter dictates an
@@ -1116,8 +1130,8 @@ class AstraDBAdmin:
         region: str,
         keyspace: str | None = None,
         wait_until_active: bool = True,
-        request_timeout_ms: int | None = None,
         database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AstraDBDatabaseAdmin:
         """
@@ -1135,13 +1149,13 @@ class AstraDBAdmin:
                 usually). If False, it will return right after issuing the
                 creation request to the DevOps API, and it will be responsibility
                 of the caller to check the database status before working with it.
-            request_timeout_ms: a timeout, in milliseconds, for
-                each underlying DevOps API HTTP request.
             database_admin_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation to complete. This is used only
                 if `wait_until_active` is true, i.e. if the method call must
                 wait and keep querying the DevOps API for the status of the
                 newly-created database.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
             timeout_ms: an alias for *both* the `request_timeout_ms` and
                 `database_admin_timeout_ms` timeout parameters. In practice,
                 regardless of `wait_until_active`, this parameter dictates an
@@ -1261,8 +1275,8 @@ class AstraDBAdmin:
         id: str,
         *,
         wait_until_active: bool = True,
-        request_timeout_ms: int | None = None,
         database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -1277,13 +1291,13 @@ class AstraDBAdmin:
                 drop request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/availability
                 after that, if desired.
-            request_timeout_ms: a timeout, in milliseconds, for
-                each underlying DevOps API HTTP request.
             database_admin_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation to complete. This is used only
                 if `wait_until_active` is true, i.e. if the method call must
                 wait and keep querying the DevOps API for the status of the
                 newly-deleted database.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
             timeout_ms: an alias for *both* the `request_timeout_ms` and
                 `database_admin_timeout_ms` timeout parameters. In practice,
                 regardless of `wait_until_active`, this parameter dictates an
@@ -1375,8 +1389,8 @@ class AstraDBAdmin:
         id: str,
         *,
         wait_until_active: bool = True,
-        request_timeout_ms: int | None = None,
         database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -1392,13 +1406,13 @@ class AstraDBAdmin:
                 drop request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/availability
                 after that, if desired.
-            request_timeout_ms: a timeout, in milliseconds, for
-                each underlying DevOps API HTTP request.
             database_admin_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation to complete. This is used only
                 if `wait_until_active` is true, i.e. if the method call must
                 wait and keep querying the DevOps API for the status of the
                 newly-deleted database.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
             timeout_ms: an alias for *both* the `request_timeout_ms` and
                 `database_admin_timeout_ms` timeout parameters. In practice,
                 regardless of `wait_until_active`, this parameter dictates an
@@ -1488,6 +1502,7 @@ class AstraDBAdmin:
         api_endpoint: str | None = None,
         id: str | None = None,
         region: str | None = None,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         database_admin_api_options: APIOptions | UnsetType = _UNSET,
@@ -1510,6 +1525,7 @@ class AstraDBAdmin:
                 If this parameter is not passed, and cannot be inferred
                 from the API endpoint, an additional DevOps API request is made
                 to determine the default region and use it subsequently.
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the DevOps API HTTP request, should it be necessary
                 (see the `region` argument).
@@ -1538,10 +1554,12 @@ class AstraDBAdmin:
             `create_database` method.
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        # TODO: restructure so as to use _da_label in the region normalization
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         _api_endpoint_p, _id_p = check_id_endpoint_parg_kwargs(
             p_arg=api_endpoint_or_id, api_endpoint=api_endpoint, id=id
@@ -1564,7 +1582,7 @@ class AstraDBAdmin:
                 database_id=_id_p,
                 environment=self.api_options.environment,
                 region_param=region,
-                request_timeout_ms=_request_timeout_ms,
+                request_timeout_ms=_database_admin_timeout_ms,
                 api_options=self.api_options,
             )
             return AstraDBDatabaseAdmin.from_astra_db_admin(
@@ -1588,6 +1606,7 @@ class AstraDBAdmin:
         region: str | None = None,
         api_path: str | UnsetType = _UNSET,
         api_version: str | UnsetType = _UNSET,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         database_request_timeout_ms: int | UnsetType = _UNSET,
@@ -1624,6 +1643,7 @@ class AstraDBAdmin:
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the DevOps API HTTP request, should it be necessary
                 (see the `region` and `keyspace` arguments).
@@ -1655,10 +1675,13 @@ class AstraDBAdmin:
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        # TODO: restructure so as to use _da_label in the region normalization
+        # TODO, also for the database_info in the endpoint-but-no-keyspace case
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         _api_endpoint_p, _id_p = check_id_endpoint_parg_kwargs(
             p_arg=api_endpoint_or_id, api_endpoint=api_endpoint, id=id
@@ -1710,7 +1733,7 @@ class AstraDBAdmin:
                     (
                         self.database_info(
                             parsed_api_endpoint.database_id,
-                            timeout_ms=_request_timeout_ms,
+                            timeout_ms=_database_admin_timeout_ms,
                         ).raw
                         or {}
                     ).get("info")
@@ -1729,7 +1752,7 @@ class AstraDBAdmin:
                 database_id=_id_p,
                 environment=self.api_options.environment,
                 region_param=region,
-                request_timeout_ms=_request_timeout_ms,
+                request_timeout_ms=_database_admin_timeout_ms,
                 api_options=self.api_options,
             )
             if keyspace:
@@ -1737,7 +1760,9 @@ class AstraDBAdmin:
             else:
                 _keyspace = (
                     (
-                        self.database_info(_id_p, timeout_ms=_request_timeout_ms).raw
+                        self.database_info(
+                            _id_p, timeout_ms=_database_admin_timeout_ms
+                        ).raw
                         or {}
                     ).get("info")
                     or {}
@@ -1763,6 +1788,7 @@ class AstraDBAdmin:
         region: str | None = None,
         api_path: str | UnsetType = _UNSET,
         api_version: str | UnsetType = _UNSET,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         database_request_timeout_ms: int | UnsetType = _UNSET,
@@ -1799,6 +1825,7 @@ class AstraDBAdmin:
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the DevOps API HTTP request, should it be necessary
                 (see the `region` and `keyspace` arguments).
@@ -1853,6 +1880,7 @@ class AstraDBAdmin:
             region=region,
             api_path=api_path,
             api_version=api_version,
+            database_admin_timeout_ms=database_admin_timeout_ms,
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
             database_request_timeout_ms=database_request_timeout_ms,
@@ -2293,6 +2321,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def info(
         self,
         *,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AstraDBAdminDatabaseInfo:
@@ -2300,6 +2329,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Query the DevOps API for the full info on this database.
 
         Args:
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying DevOps API HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -2315,15 +2345,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             'us-east1'
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
-        )
         logger.info(f"getting info ('{self._database_id}')")
         req_response = self._astra_db_admin.database_info(
             id=self._database_id,
-            timeout_ms=_request_timeout_ms,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info(f"finished getting info ('{self._database_id}')")
         return req_response
@@ -2331,6 +2358,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     async def async_info(
         self,
         *,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AstraDBAdminDatabaseInfo:
@@ -2339,6 +2367,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Async version of the method, for use in an asyncio context.
 
         Args:
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying DevOps API HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -2356,15 +2385,12 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             >>> asyncio.run(wait_until_active(admin_for_my_db))
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
-        )
         logger.info(f"getting info ('{self._database_id}'), async")
         req_response = await self._astra_db_admin.async_database_info(
             id=self._database_id,
-            timeout_ms=_request_timeout_ms,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info(f"finished getting info ('{self._database_id}'), async")
         return req_response
@@ -2372,6 +2398,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def list_keyspaces(
         self,
         *,
+        keyspace_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[str]:
@@ -2379,6 +2406,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Query the DevOps API for a list of the keyspaces in the database.
 
         Args:
+            keyspace_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying DevOps API HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -2391,13 +2419,14 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_keyspace']
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
-        )
         logger.info(f"getting keyspaces ('{self._database_id}')")
-        info = self.info(timeout_ms=_request_timeout_ms)
+        # note: this use of the .info method uses the k.timeout as its db.timeout
+        # TODO: verify this is the best choice - nonzero chance of misleading errmsg.
+        info = self.info(
+            database_admin_timeout_ms=keyspace_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
         logger.info(f"finished getting keyspaces ('{self._database_id}')")
         if info.raw is None:
             raise DevOpsAPIException("Could not get the keyspace list.")
@@ -2407,6 +2436,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     async def async_list_keyspaces(
         self,
         *,
+        keyspace_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[str]:
@@ -2415,6 +2445,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Async version of the method, for use in an asyncio context.
 
         Args:
+            keyspace_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying DevOps API HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -2435,13 +2466,14 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             True
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
-        )
         logger.info(f"getting keyspaces ('{self._database_id}'), async")
-        info = await self.async_info(timeout_ms=_request_timeout_ms)
+        # note: this use of the .info method uses the k.timeout as its db.timeout
+        # TODO: verify this is the best choice - nonzero chance of misleading errmsg.
+        info = await self.async_info(
+            database_admin_timeout_ms=keyspace_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
+        )
         logger.info(f"finished getting keyspaces ('{self._database_id}'), async")
         if info.raw is None:
             raise DevOpsAPIException("Could not get the keyspace list.")
@@ -2454,8 +2486,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         *,
         wait_until_active: bool = True,
         update_db_keyspace: bool | None = None,
-        request_timeout_ms: int | None = None,
         keyspace_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         **kwargs: Any,
     ) -> None:
@@ -2476,13 +2508,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
                 the newly-created keyspace starting when this method returns.
-            request_timeout_ms: a timeout, in milliseconds, for
-                each underlying DevOps API HTTP request.
             keyspace_admin_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation to complete. This is used only
                 if `wait_until_active` is true, i.e. if the method call must
                 wait and keep querying the DevOps API for the status of the
                 database during keyspace creation.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
             timeout_ms: an alias for *both* the `request_timeout_ms` and
                 `keyspace_admin_timeout_ms` timeout parameters. In practice,
                 regardless of `wait_until_active`, this parameter dictates an
@@ -2571,8 +2603,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         *,
         wait_until_active: bool = True,
         update_db_keyspace: bool | None = None,
-        request_timeout_ms: int | None = None,
         keyspace_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         **kwargs: Any,
     ) -> None:
@@ -2594,13 +2626,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
                 the newly-created keyspace starting when this method returns.
-            request_timeout_ms: a timeout, in milliseconds, for
-                each underlying DevOps API HTTP request.
             keyspace_admin_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation to complete. This is used only
                 if `wait_until_active` is true, i.e. if the method call must
                 wait and keep querying the DevOps API for the status of the
                 database during keyspace creation.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
             timeout_ms: an alias for *both* the `request_timeout_ms` and
                 `keyspace_admin_timeout_ms` timeout parameters. In practice,
                 regardless of `wait_until_active`, this parameter dictates an
@@ -2690,8 +2722,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
-        request_timeout_ms: int | None = None,
         keyspace_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -2707,13 +2739,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 deletion request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/keyspace availability
                 before working with it.
-            request_timeout_ms: a timeout, in milliseconds, for
-                each underlying DevOps API HTTP request.
             keyspace_admin_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation to complete. This is used only
                 if `wait_until_active` is true, i.e. if the method call must
                 wait and keep querying the DevOps API for the status of the
                 database during keyspace deletion.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
             timeout_ms: an alias for *both* the `request_timeout_ms` and
                 `keyspace_admin_timeout_ms` timeout parameters. In practice,
                 regardless of `wait_until_active`, this parameter dictates an
@@ -2799,8 +2831,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         name: str,
         *,
         wait_until_active: bool = True,
-        request_timeout_ms: int | None = None,
         keyspace_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -2817,13 +2849,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 deletion request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/keyspace availability
                 before working with it.
-            request_timeout_ms: a timeout, in milliseconds, for
-                each underlying DevOps API HTTP request.
             keyspace_admin_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation to complete. This is used only
                 if `wait_until_active` is true, i.e. if the method call must
                 wait and keep querying the DevOps API for the status of the
                 database during keyspace deletion.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
             timeout_ms: an alias for *both* the `request_timeout_ms` and
                 `keyspace_admin_timeout_ms` timeout parameters. In practice,
                 regardless of `wait_until_active`, this parameter dictates an
@@ -2910,8 +2942,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         wait_until_active: bool = True,
-        request_timeout_ms: int | None = None,
         database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -2927,13 +2959,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 drop request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/availability
                 after that, if desired.
-            request_timeout_ms: a timeout, in milliseconds, for
-                each underlying DevOps API HTTP request.
             database_admin_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation to complete. This is used only
                 if `wait_until_active` is true, i.e. if the method call must
                 wait and keep querying the DevOps API for the status of the
                 newly-deleted database.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
             timeout_ms: an alias for *both* the `request_timeout_ms` and
                 `database_admin_timeout_ms` timeout parameters. In practice,
                 regardless of `wait_until_active`, this parameter dictates an
@@ -2961,8 +2993,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         return self._astra_db_admin.drop_database(
             id=self._database_id,
             wait_until_active=wait_until_active,
-            request_timeout_ms=request_timeout_ms,
             database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
         logger.info(f"finished dropping this database ('{self._database_id}')")
@@ -2971,8 +3003,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         self,
         *,
         wait_until_active: bool = True,
-        request_timeout_ms: int | None = None,
         database_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -2989,13 +3021,13 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 drop request to the DevOps API, and it will be responsibility
                 of the caller to check the database status/availability
                 after that, if desired.
-            request_timeout_ms: a timeout, in milliseconds, for
-                each underlying DevOps API HTTP request.
             database_admin_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation to complete. This is used only
                 if `wait_until_active` is true, i.e. if the method call must
                 wait and keep querying the DevOps API for the status of the
                 newly-deleted database.
+            request_timeout_ms: a timeout, in milliseconds, for
+                each underlying DevOps API HTTP request.
             timeout_ms: an alias for *both* the `request_timeout_ms` and
                 `database_admin_timeout_ms` timeout parameters. In practice,
                 regardless of `wait_until_active`, this parameter dictates an
@@ -3020,8 +3052,8 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         return await self._astra_db_admin.async_drop_database(
             id=self._database_id,
             wait_until_active=wait_until_active,
-            request_timeout_ms=request_timeout_ms,
             database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
         logger.info(f"finished dropping this database ('{self._database_id}'), async")
@@ -3033,6 +3065,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         keyspace: str | None = None,
         api_path: str | UnsetType = _UNSET,
         api_version: str | UnsetType = _UNSET,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         database_request_timeout_ms: int | UnsetType = _UNSET,
@@ -3054,6 +3087,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the DevOps API HTTP request, should it be necessary
                 (see the `region` argument).
@@ -3093,6 +3127,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             keyspace=keyspace,
             api_path=api_path,
             api_version=api_version,
+            database_admin_timeout_ms=database_admin_timeout_ms,
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
             database_request_timeout_ms=database_request_timeout_ms,
@@ -3107,6 +3142,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         keyspace: str | None = None,
         api_path: str | UnsetType = _UNSET,
         api_version: str | UnsetType = _UNSET,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         database_request_timeout_ms: int | UnsetType = _UNSET,
@@ -3129,6 +3165,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 should be left to its default of "/api/json".
             api_version: version specifier to append to the API path. In typical
                 usage, this should be left to its default of "v1".
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the DevOps API HTTP request, should it be necessary
                 (see the `region` argument).
@@ -3159,6 +3196,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             keyspace=keyspace,
             api_path=api_path,
             api_version=api_version,
+            database_admin_timeout_ms=database_admin_timeout_ms,
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
             database_request_timeout_ms=database_request_timeout_ms,
@@ -3169,6 +3207,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def find_embedding_providers(
         self,
         *,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> FindEmbeddingProvidersResult:
@@ -3176,6 +3215,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Query the API for the full information on available embedding providers.
 
         Args:
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
 
@@ -3199,16 +3239,17 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info("findEmbeddingProviders")
         fe_response = self._api_commander.request(
             payload={"findEmbeddingProviders": {}},
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_database_admin_timeout_ms, label=_da_label
             ),
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
@@ -3223,6 +3264,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     async def async_find_embedding_providers(
         self,
         *,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> FindEmbeddingProvidersResult:
@@ -3231,6 +3273,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         Async version of the method, for use in an asyncio context.
 
         Args:
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
 
@@ -3254,16 +3297,17 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info("findEmbeddingProviders, async")
         fe_response = await self._api_commander.async_request(
             payload={"findEmbeddingProviders": {}},
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_database_admin_timeout_ms, label=_da_label
             ),
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
@@ -3464,6 +3508,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     def list_keyspaces(
         self,
         *,
+        keyspace_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[str]:
@@ -3471,8 +3516,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         Query the API for a list of the keyspaces in the database.
 
         Args:
+            keyspace_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
-                the underlying DevOps API HTTP request.
+                the underlying API HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
@@ -3483,16 +3529,17 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_keyspace']
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _keyspace_admin_timeout_ms, _ka_label = _select_singlereq_timeout_ka(
+            timeout_options=self.api_options.timeout_options,
+            keyspace_admin_timeout_ms=keyspace_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info("getting list of keyspaces")
         fn_response = self._api_commander.request(
             payload={"findKeyspaces": {}},
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_keyspace_admin_timeout_ms, label=_ka_label
             ),
         )
         if "keyspaces" not in fn_response.get("status", {}):
@@ -3510,6 +3557,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         *,
         replication_options: dict[str, Any] | None = None,
         update_db_keyspace: bool | None = None,
+        keyspace_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         **kwargs: Any,
@@ -3528,8 +3576,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
                 the newly-created keyspace starting when this method returns.
+            keyspace_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
-                each underlying DevOps API HTTP request.
+                each underlying API HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
 
         Note: a timeout event is no guarantee at all that the
@@ -3544,10 +3593,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'that_other_one']
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _keyspace_admin_timeout_ms, _ka_label = _select_singlereq_timeout_ka(
+            timeout_options=self.api_options.timeout_options,
+            keyspace_admin_timeout_ms=keyspace_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         options = {
             k: v
@@ -3566,7 +3616,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         cn_response = self._api_commander.request(
             payload=payload,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_keyspace_admin_timeout_ms, label=_ka_label
             ),
         )
         if (cn_response.get("status") or {}).get("ok") != 1:
@@ -3583,6 +3633,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         name: str,
         *,
+        keyspace_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
@@ -3592,8 +3643,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         Args:
             name: the keyspace to delete. If it does not exist in this database,
                 an error is raised.
+            keyspace_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
-                each underlying DevOps API HTTP request.
+                each underlying API HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
 
         Note: a timeout event is no guarantee at all that the
@@ -3608,16 +3660,17 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace']
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _keyspace_admin_timeout_ms, _ka_label = _select_singlereq_timeout_ka(
+            timeout_options=self.api_options.timeout_options,
+            keyspace_admin_timeout_ms=keyspace_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info("dropping keyspace")
         dn_response = self._api_commander.request(
             payload={"dropKeyspace": {"name": name}},
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_keyspace_admin_timeout_ms, label=_ka_label
             ),
         )
         if (dn_response.get("status") or {}).get("ok") != 1:
@@ -3631,6 +3684,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     async def async_list_keyspaces(
         self,
         *,
+        keyspace_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[str]:
@@ -3639,8 +3693,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         Async version of the method, for use in an asyncio context.
 
         Args:
+            keyspace_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
-                the underlying DevOps API HTTP request.
+                the underlying API HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
@@ -3651,16 +3706,17 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_keyspace']
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _keyspace_admin_timeout_ms, _ka_label = _select_singlereq_timeout_ka(
+            timeout_options=self.api_options.timeout_options,
+            keyspace_admin_timeout_ms=keyspace_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info("getting list of keyspaces, async")
         fn_response = await self._api_commander.async_request(
             payload={"findKeyspaces": {}},
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_keyspace_admin_timeout_ms, label=_ka_label
             ),
         )
         if "keyspaces" not in fn_response.get("status", {}):
@@ -3678,6 +3734,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         *,
         replication_options: dict[str, Any] | None = None,
         update_db_keyspace: bool | None = None,
+        keyspace_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         **kwargs: Any,
@@ -3697,8 +3754,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             update_db_keyspace: if True, the `Database` or `AsyncDatabase` class
                 that spawned this DatabaseAdmin, if any, gets updated to work on
                 the newly-created keyspace starting when this method returns.
+            keyspace_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
-                each underlying DevOps API HTTP request.
+                each underlying API HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
 
         Note: a timeout event is no guarantee at all that the
@@ -3715,10 +3773,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'that_other_one']
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _keyspace_admin_timeout_ms, _ka_label = _select_singlereq_timeout_ka(
+            timeout_options=self.api_options.timeout_options,
+            keyspace_admin_timeout_ms=keyspace_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         options = {
             k: v
@@ -3737,7 +3796,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         cn_response = await self._api_commander.async_request(
             payload=payload,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_keyspace_admin_timeout_ms, label=_ka_label
             ),
         )
         if (cn_response.get("status") or {}).get("ok") != 1:
@@ -3754,6 +3813,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         self,
         name: str,
         *,
+        keyspace_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
@@ -3764,8 +3824,9 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         Args:
             name: the keyspace to delete. If it does not exist in this database,
                 an error is raised.
+            keyspace_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
-                each underlying DevOps API HTTP request.
+                each underlying API HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
 
         Note: a timeout event is no guarantee at all that the
@@ -3782,16 +3843,17 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace']
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _keyspace_admin_timeout_ms, _ka_label = _select_singlereq_timeout_ka(
+            timeout_options=self.api_options.timeout_options,
+            keyspace_admin_timeout_ms=keyspace_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info("dropping keyspace, async")
         dn_response = await self._api_commander.async_request(
             payload={"dropKeyspace": {"name": name}},
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_keyspace_admin_timeout_ms, label=_ka_label
             ),
         )
         if (dn_response.get("status") or {}).get("ok") != 1:
@@ -3958,6 +4020,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     def find_embedding_providers(
         self,
         *,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> FindEmbeddingProvidersResult:
@@ -3965,6 +4028,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         Query the API for the full information on available embedding providers.
 
         Args:
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
 
@@ -3988,16 +4052,17 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info("findEmbeddingProviders")
         fe_response = self._api_commander.request(
             payload={"findEmbeddingProviders": {}},
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_database_admin_timeout_ms, label=_da_label
             ),
         )
         if "embeddingProviders" not in fe_response.get("status", {}):
@@ -4012,6 +4077,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     async def async_find_embedding_providers(
         self,
         *,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> FindEmbeddingProvidersResult:
@@ -4020,6 +4086,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         Async version of the method, for use in an asyncio context.
 
         Args:
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
 
@@ -4043,16 +4110,17 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        _request_timeout_ms, _rt_label = _first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info("findEmbeddingProviders, async")
         fe_response = await self._api_commander.async_request(
             payload={"findEmbeddingProviders": {}},
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_database_admin_timeout_ms, label=_da_label
             ),
         )
         if "embeddingProviders" not in fe_response.get("status", {}):

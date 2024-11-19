@@ -35,10 +35,12 @@ from astrapy.exceptions import (
     DevOpsAPIException,
     InvalidEnvironmentException,
     UnexpectedDataAPIResponseException,
-    _TimeoutContext,
     _first_valid_timeout,
     _select_singlereq_timeout_ca,
     _select_singlereq_timeout_da,
+    _select_singlereq_timeout_gm,
+    _select_singlereq_timeout_ta,
+    _TimeoutContext,
 )
 from astrapy.info import (
     AstraDBDatabaseInfo,
@@ -2722,7 +2724,7 @@ class AsyncDatabase:
         return await self._list_collections_ctx(
             keyspace=keyspace,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_collection_admin_timeout_ms, label=_ca_label
             ),
         )
 
@@ -2791,7 +2793,7 @@ class AsyncDatabase:
         gc_response = await driver_commander.async_request(
             payload=gc_payload,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_collection_admin_timeout_ms, label=_ca_label
             ),
         )
         if "collections" not in gc_response.get("status", {}):
