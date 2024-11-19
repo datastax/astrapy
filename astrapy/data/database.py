@@ -36,7 +36,9 @@ from astrapy.exceptions import (
     InvalidEnvironmentException,
     UnexpectedDataAPIResponseException,
     _TimeoutContext,
-    first_valid_timeout,
+    _first_valid_timeout,
+    _select_singlereq_timeout_ca,
+    _select_singlereq_timeout_da,
 )
 from astrapy.info import (
     AstraDBDatabaseInfo,
@@ -447,6 +449,7 @@ class Database:
     def info(
         self,
         *,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AstraDBDatabaseInfo:
@@ -458,6 +461,7 @@ class Database:
         each invocation of this method triggers a new request to the DevOps API.
 
         Args:
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for the DevOps API request.
             timeout_ms: an alias for `request_timeout_ms`.
 
@@ -473,16 +477,19 @@ class Database:
             between the `region` and the `raw["region"]` attributes.
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        # TODO check env and raise the right exception here
+        # TODO refactor the call to manage _da_label
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info("getting database info")
         database_info = fetch_database_info(
             self.api_endpoint,
             keyspace=self.keyspace,
-            request_timeout_ms=_request_timeout_ms,
+            request_timeout_ms=_database_admin_timeout_ms,
             api_options=self.api_options,
         )
         if database_info is not None:
@@ -796,7 +803,8 @@ class Database:
                 be added to the "options" part of the payload when sending
                 the Data API command to create a collection.
             collection_admin_timeout_ms: a timeout, in milliseconds, for the
-                createCollection HTTP request.
+                createCollection HTTP request. If not provided, the corresponding
+                setting from this class' APIOptions is used
             timeout_ms: an alias for `collection_admin_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
@@ -848,7 +856,7 @@ class Database:
             default_id_type=default_id_type,
             additional_options=additional_options,
         )
-        _collection_admin_timeout_ms, _ca_label = first_valid_timeout(
+        _collection_admin_timeout_ms, _ca_label = _first_valid_timeout(
             (collection_admin_timeout_ms, "collection_admin_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (
@@ -886,6 +894,7 @@ class Database:
         name_or_collection: str | Collection[DOC],
         *,
         collection_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -896,6 +905,7 @@ class Database:
                 a `Collection` instance.
             collection_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
+            request_timeout_ms: TODO
             timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
@@ -913,13 +923,11 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.collection import Collection
 
-        _collection_admin_timeout_ms, _ca_label = first_valid_timeout(
-            (collection_admin_timeout_ms, "collection_admin_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (
-                self.api_options.timeout_options.collection_admin_timeout_ms,
-                "collection_admin_timeout_ms",
-            ),
+        _collection_admin_timeout_ms, _ca_label = _select_singlereq_timeout_ca(
+            timeout_options=self.api_options.timeout_options,
+            collection_admin_timeout_ms=collection_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         _keyspace: str | None
         _collection_name: str
@@ -950,6 +958,7 @@ class Database:
         self,
         *,
         keyspace: str | None = None,
+        collection_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[CollectionDescriptor]:
@@ -959,6 +968,7 @@ class Database:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
+            collection_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -976,19 +986,31 @@ class Database:
             CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _collection_admin_timeout_ms, _ca_label = _select_singlereq_timeout_ca(
+            timeout_options=self.api_options.timeout_options,
+            collection_admin_timeout_ms=collection_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
+        return self._list_collections_ctx(
+            keyspace=keyspace,
+            timeout_context=_TimeoutContext(
+                request_ms=_collection_admin_timeout_ms, label=_ca_label
+            ),
+        )
+
+    def _list_collections_ctx(
+        self,
+        *,
+        keyspace: str | None = None,
+        timeout_context: _TimeoutContext,
+    ) -> list[CollectionDescriptor]:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload = {"findCollections": {"options": {"explain": True}}}
         logger.info("findCollections")
         gc_response = driver_commander.request(
             payload=gc_payload,
-            timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
-            ),
+            timeout_context=timeout_context,
         )
         if "collections" not in gc_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -1007,6 +1029,7 @@ class Database:
         self,
         *,
         keyspace: str | None = None,
+        collection_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[str]:
@@ -1016,6 +1039,7 @@ class Database:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
+            collection_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -1028,10 +1052,11 @@ class Database:
             ['a_collection', 'another_col']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _collection_admin_timeout_ms, _ca_label = _select_singlereq_timeout_ca(
+            timeout_options=self.api_options.timeout_options,
+            collection_admin_timeout_ms=collection_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload: dict[str, Any] = {"findCollections": {}}
@@ -1039,7 +1064,7 @@ class Database:
         gc_response = driver_commander.request(
             payload=gc_payload,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_collection_admin_timeout_ms, label=_ca_label
             ),
         )
         if "collections" not in gc_response.get("status", {}):
@@ -1183,6 +1208,7 @@ class Database:
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -1200,6 +1226,7 @@ class Database:
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -1216,6 +1243,7 @@ class Database:
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -1246,6 +1274,7 @@ class Database:
                 i.e. an error is raised by the API in case of table-name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, for the
                 createTable HTTP request.
+            request_timeout_ms: TODO
             timeout_ms: an alias for `table_admin_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the table.
                 If an embedding service is configured, and this parameter is not None,
@@ -1293,13 +1322,11 @@ class Database:
         else:
             ct_options = {}
         ct_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
-        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
-            (table_admin_timeout_ms, "table_admin_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (
-                self.api_options.timeout_options.table_admin_timeout_ms,
-                "table_admin_timeout_ms",
-            ),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {
@@ -1344,6 +1371,7 @@ class Database:
         keyspace: str | None = None,
         if_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -1365,6 +1393,7 @@ class Database:
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, for the
                 dropIndex HTTP request.
+            request_timeout_ms: TODO
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
@@ -1379,13 +1408,11 @@ class Database:
             >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
-        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
-            (table_admin_timeout_ms, "table_admin_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (
-                self.api_options.timeout_options.table_admin_timeout_ms,
-                "table_admin_timeout_ms",
-            ),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         di_options: dict[str, bool]
         if if_exists is not None:
@@ -1424,6 +1451,7 @@ class Database:
         *,
         if_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -1437,6 +1465,7 @@ class Database:
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
+            request_timeout_ms: TODO
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
@@ -1454,13 +1483,11 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.table import Table
 
-        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
-            (table_admin_timeout_ms, "table_admin_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (
-                self.api_options.timeout_options.table_admin_timeout_ms,
-                "table_admin_timeout_ms",
-            ),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         _keyspace: str | None
         _table_name: str
@@ -1506,6 +1533,7 @@ class Database:
         self,
         *,
         keyspace: str | None = None,
+        table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[TableDescriptor]:
@@ -1515,6 +1543,7 @@ class Database:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
+            table_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -1532,19 +1561,31 @@ class Database:
             TableDescriptor(name='my_table', options=TableOptions())
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
+        return self._list_tables_ctx(
+            keyspace=keyspace,
+            timeout_context=_TimeoutContext(
+                request_ms=_table_admin_timeout_ms, label=_ta_label
+            ),
+        )
+
+    def _list_tables_ctx(
+        self,
+        *,
+        keyspace: str | None = None,
+        timeout_context: _TimeoutContext,
+    ) -> list[TableDescriptor]:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload = {"listTables": {"options": {"explain": True}}}
         logger.info("listTables")
         lt_response = driver_commander.request(
             payload=lt_payload,
-            timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
-            ),
+            timeout_context=timeout_context,
         )
         if "tables" not in lt_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -1563,6 +1604,7 @@ class Database:
         self,
         *,
         keyspace: str | None = None,
+        table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[str]:
@@ -1572,6 +1614,7 @@ class Database:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
+            table_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -1584,10 +1627,11 @@ class Database:
             ['a_table', 'another_table']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload: dict[str, Any] = {"listTables": {}}
@@ -1595,7 +1639,7 @@ class Database:
         lt_response = driver_commander.request(
             payload=lt_payload,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_table_admin_timeout_ms, label=_ta_label
             ),
         )
         if "tables" not in lt_response.get("status", {}):
@@ -1614,6 +1658,7 @@ class Database:
         keyspace: str | None | UnsetType = _UNSET,
         collection_or_table_name: str | None = None,
         raise_api_errors: bool = True,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> dict[str, Any]:
@@ -1636,6 +1681,7 @@ class Database:
                 This parameter cannot be used if `keyspace=None` is explicitly provided.
             raise_api_errors: if True, responses with a nonempty 'errors' field
                 result in an astrapy exception being raised.
+            general_method_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -1650,10 +1696,11 @@ class Database:
             {'status': {'count': 123}}
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         _keyspace: str | None
         if keyspace is None:
@@ -2120,6 +2167,7 @@ class AsyncDatabase:
     async def info(
         self,
         *,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AstraDBDatabaseInfo:
@@ -2131,6 +2179,7 @@ class AsyncDatabase:
         each invocation of this method triggers a new request to the DevOps API.
 
         Args:
+            database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for the DevOps API request.
             timeout_ms: an alias for `request_timeout_ms`.
 
@@ -2146,16 +2195,19 @@ class AsyncDatabase:
             between the `region` and the `raw["region"]` attributes.
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        # TODO check env and raise the right exception here
+        # TODO refactor the call to manage _da_label
+        _database_admin_timeout_ms, _da_label = _select_singlereq_timeout_da(
+            timeout_options=self.api_options.timeout_options,
+            database_admin_timeout_ms=database_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info("getting database info")
         database_info = await async_fetch_database_info(
             self.api_endpoint,
             keyspace=self.keyspace,
-            request_timeout_ms=_request_timeout_ms,
+            request_timeout_ms=_database_admin_timeout_ms,
             api_options=self.api_options,
         )
         if database_info is not None:
@@ -2472,7 +2524,8 @@ class AsyncDatabase:
                 be added to the "options" part of the payload when sending
                 the Data API command to create a collection.
             collection_admin_timeout_ms: a timeout, in milliseconds, for the
-                createCollection HTTP request.
+                createCollection HTTP request. If not provided, the corresponding
+                setting from this class' APIOptions is used
             timeout_ms: an alias for `collection_admin_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
@@ -2528,7 +2581,7 @@ class AsyncDatabase:
             default_id_type=default_id_type,
             additional_options=additional_options,
         )
-        _collection_admin_timeout_ms, _ca_label = first_valid_timeout(
+        _collection_admin_timeout_ms, _ca_label = _first_valid_timeout(
             (collection_admin_timeout_ms, "collection_admin_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (
@@ -2566,6 +2619,7 @@ class AsyncDatabase:
         name_or_collection: str | AsyncCollection[DOC],
         *,
         collection_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -2576,6 +2630,7 @@ class AsyncDatabase:
                 an `AsyncCollection` instance.
             collection_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
+            request_timeout_ms: TODO
             timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
@@ -2593,13 +2648,11 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.collection import AsyncCollection
 
-        _collection_admin_timeout_ms, _ca_label = first_valid_timeout(
-            (collection_admin_timeout_ms, "collection_admin_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (
-                self.api_options.timeout_options.collection_admin_timeout_ms,
-                "collection_admin_timeout_ms",
-            ),
+        _collection_admin_timeout_ms, _ca_label = _select_singlereq_timeout_ca(
+            timeout_options=self.api_options.timeout_options,
+            collection_admin_timeout_ms=collection_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         keyspace: str | None
         _collection_name: str
@@ -2630,6 +2683,7 @@ class AsyncDatabase:
         self,
         *,
         keyspace: str | None = None,
+        collection_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[CollectionDescriptor]:
@@ -2639,6 +2693,7 @@ class AsyncDatabase:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
+            collection_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -2658,19 +2713,31 @@ class AsyncDatabase:
             * coll: CollectionDescriptor(name='my_v_col', options=CollectionOptions())
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _collection_admin_timeout_ms, _ca_label = _select_singlereq_timeout_ca(
+            timeout_options=self.api_options.timeout_options,
+            collection_admin_timeout_ms=collection_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
+        return await self._list_collections_ctx(
+            keyspace=keyspace,
+            timeout_context=_TimeoutContext(
+                request_ms=_request_timeout_ms, label=_rt_label
+            ),
+        )
+
+    async def _list_collections_ctx(
+        self,
+        *,
+        keyspace: str | None = None,
+        timeout_context: _TimeoutContext,
+    ) -> list[CollectionDescriptor]:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload = {"findCollections": {"options": {"explain": True}}}
         logger.info("findCollections")
         gc_response = await driver_commander.async_request(
             payload=gc_payload,
-            timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
-            ),
+            timeout_context=timeout_context,
         )
         if "collections" not in gc_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -2689,6 +2756,7 @@ class AsyncDatabase:
         self,
         *,
         keyspace: str | None = None,
+        collection_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[str]:
@@ -2698,6 +2766,7 @@ class AsyncDatabase:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
+            collection_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -2710,10 +2779,11 @@ class AsyncDatabase:
             ['a_collection', 'another_col']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _collection_admin_timeout_ms, _ca_label = _select_singlereq_timeout_ca(
+            timeout_options=self.api_options.timeout_options,
+            collection_admin_timeout_ms=collection_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         gc_payload: dict[str, Any] = {"findCollections": {}}
@@ -2865,6 +2935,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -2882,6 +2953,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -2898,6 +2970,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         table_request_timeout_ms: int | UnsetType = _UNSET,
@@ -2928,6 +3001,7 @@ class AsyncDatabase:
                 i.e. an error is raised by the API in case of table-name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, for the
                 createTable HTTP request.
+            request_timeout_ms: TODO
             timeout_ms: an alias for `table_admin_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the table.
                 If an embedding service is configured, and this parameter is not None,
@@ -2977,13 +3051,11 @@ class AsyncDatabase:
         else:
             ct_options = {}
         ct_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
-        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
-            (table_admin_timeout_ms, "table_admin_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (
-                self.api_options.timeout_options.table_admin_timeout_ms,
-                "table_admin_timeout_ms",
-            ),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         cc_payload = {
@@ -3028,6 +3100,7 @@ class AsyncDatabase:
         keyspace: str | None = None,
         if_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -3049,6 +3122,7 @@ class AsyncDatabase:
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, for the
                 dropIndex HTTP request.
+            request_timeout_ms: TODO
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
@@ -3063,13 +3137,11 @@ class AsyncDatabase:
             >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
-        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
-            (table_admin_timeout_ms, "table_admin_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (
-                self.api_options.timeout_options.table_admin_timeout_ms,
-                "table_admin_timeout_ms",
-            ),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         di_options: dict[str, bool]
         if if_exists is not None:
@@ -3108,6 +3180,7 @@ class AsyncDatabase:
         *,
         if_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -3121,6 +3194,7 @@ class AsyncDatabase:
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
+            request_timeout_ms: TODO
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
@@ -3138,13 +3212,11 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.table import AsyncTable
 
-        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
-            (table_admin_timeout_ms, "table_admin_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (
-                self.api_options.timeout_options.table_admin_timeout_ms,
-                "table_admin_timeout_ms",
-            ),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         _keyspace: str | None
         _table_name: str
@@ -3190,6 +3262,7 @@ class AsyncDatabase:
         self,
         *,
         keyspace: str | None = None,
+        table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[TableDescriptor]:
@@ -3199,6 +3272,7 @@ class AsyncDatabase:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
+            table_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -3219,19 +3293,31 @@ class AsyncDatabase:
             * table_desc: TableDescriptor(name='my_table', options=TableOptions())
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
+        return await self._list_tables_ctx(
+            keyspace=keyspace,
+            timeout_context=_TimeoutContext(
+                request_ms=_table_admin_timeout_ms, label=_ta_label
+            ),
+        )
+
+    async def _list_tables_ctx(
+        self,
+        *,
+        keyspace: str | None = None,
+        timeout_context: _TimeoutContext,
+    ) -> list[TableDescriptor]:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload = {"listTables": {"options": {"explain": True}}}
         logger.info("listTables")
         lt_response = driver_commander.request(
             payload=lt_payload,
-            timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
-            ),
+            timeout_context=timeout_context,
         )
         if "tables" not in lt_response.get("status", {}):
             raise UnexpectedDataAPIResponseException(
@@ -3250,6 +3336,7 @@ class AsyncDatabase:
         self,
         *,
         keyspace: str | None = None,
+        table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[str]:
@@ -3259,6 +3346,7 @@ class AsyncDatabase:
         Args:
             keyspace: the keyspace to be inspected. If not specified,
                 the general setting for this database is assumed.
+            table_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -3277,10 +3365,11 @@ class AsyncDatabase:
             ['a_table', 'another_tab']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload: dict[str, Any] = {"listTables": {}}
@@ -3288,7 +3377,7 @@ class AsyncDatabase:
         lt_response = await driver_commander.async_request(
             payload=lt_payload,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_table_admin_timeout_ms, label=_ta_label
             ),
         )
         if "tables" not in lt_response.get("status", {}):
@@ -3307,6 +3396,7 @@ class AsyncDatabase:
         keyspace: str | None | UnsetType = _UNSET,
         collection_or_table_name: str | None = None,
         raise_api_errors: bool = True,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> dict[str, Any]:
@@ -3329,6 +3419,7 @@ class AsyncDatabase:
                 This parameter cannot be used if `keyspace=None` is explicitly provided.
             raise_api_errors: if True, responses with a nonempty 'errors' field
                 result in an astrapy exception being raised.
+            general_method_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -3343,10 +3434,11 @@ class AsyncDatabase:
             {'status': {'count': 123}}
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         _keyspace: str | None
         if keyspace is None:

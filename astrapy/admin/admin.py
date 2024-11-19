@@ -35,7 +35,7 @@ from astrapy.exceptions import (
     MultiCallTimeoutManager,
     UnexpectedDataAPIResponseException,
     _TimeoutContext,
-    first_valid_timeout,
+    _first_valid_timeout,
 )
 from astrapy.info import (
     AstraDBAdminDatabaseInfo,
@@ -626,7 +626,7 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -750,7 +750,7 @@ class AstraDBAdmin:
             False
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -865,7 +865,7 @@ class AstraDBAdmin:
             'eu-west-1'
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -926,7 +926,7 @@ class AstraDBAdmin:
             True
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -1020,7 +1020,7 @@ class AstraDBAdmin:
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.2]})
         """
 
-        _database_admin_timeout_ms, _da_label = first_valid_timeout(
+        _database_admin_timeout_ms, _da_label = _first_valid_timeout(
             (database_admin_timeout_ms, "database_admin_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (
@@ -1028,7 +1028,7 @@ class AstraDBAdmin:
                 "database_admin_timeout_ms",
             ),
         )
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -1165,7 +1165,7 @@ class AstraDBAdmin:
             AstraDBDatabaseAdmin(id=...)
         """
 
-        _database_admin_timeout_ms, _da_label = first_valid_timeout(
+        _database_admin_timeout_ms, _da_label = _first_valid_timeout(
             (database_admin_timeout_ms, "database_admin_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (
@@ -1173,7 +1173,7 @@ class AstraDBAdmin:
                 "database_admin_timeout_ms",
             ),
         )
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -1303,7 +1303,7 @@ class AstraDBAdmin:
             2
         """
 
-        _database_admin_timeout_ms, _da_label = first_valid_timeout(
+        _database_admin_timeout_ms, _da_label = _first_valid_timeout(
             (database_admin_timeout_ms, "database_admin_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (
@@ -1311,7 +1311,7 @@ class AstraDBAdmin:
                 "database_admin_timeout_ms",
             ),
         )
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -1414,7 +1414,7 @@ class AstraDBAdmin:
             ... )
         """
 
-        _database_admin_timeout_ms, _da_label = first_valid_timeout(
+        _database_admin_timeout_ms, _da_label = _first_valid_timeout(
             (database_admin_timeout_ms, "database_admin_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (
@@ -1422,7 +1422,7 @@ class AstraDBAdmin:
                 "database_admin_timeout_ms",
             ),
         )
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -1538,7 +1538,7 @@ class AstraDBAdmin:
             `create_database` method.
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -1655,7 +1655,7 @@ class AstraDBAdmin:
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -2315,7 +2315,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             'us-east1'
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -2356,7 +2356,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             >>> asyncio.run(wait_until_active(admin_for_my_db))
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -2391,7 +2391,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_keyspace']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -2435,7 +2435,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             True
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -2500,7 +2500,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'that_other_one']
         """
 
-        _keyspace_admin_timeout_ms, _ka_label = first_valid_timeout(
+        _keyspace_admin_timeout_ms, _ka_label = _first_valid_timeout(
             (keyspace_admin_timeout_ms, "keyspace_admin_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (
@@ -2508,7 +2508,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 "keyspace_admin_timeout_ms",
             ),
         )
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -2616,7 +2616,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ... )
         """
 
-        _keyspace_admin_timeout_ms, _ka_label = first_valid_timeout(
+        _keyspace_admin_timeout_ms, _ka_label = _first_valid_timeout(
             (keyspace_admin_timeout_ms, "keyspace_admin_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (
@@ -2624,7 +2624,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 "keyspace_admin_timeout_ms",
             ),
         )
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -2731,7 +2731,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace']
         """
 
-        _keyspace_admin_timeout_ms, _ka_label = first_valid_timeout(
+        _keyspace_admin_timeout_ms, _ka_label = _first_valid_timeout(
             (keyspace_admin_timeout_ms, "keyspace_admin_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (
@@ -2739,7 +2739,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 "keyspace_admin_timeout_ms",
             ),
         )
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -2839,7 +2839,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             ... )
         """
 
-        _keyspace_admin_timeout_ms, _ka_label = first_valid_timeout(
+        _keyspace_admin_timeout_ms, _ka_label = _first_valid_timeout(
             (keyspace_admin_timeout_ms, "keyspace_admin_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (
@@ -2847,7 +2847,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 "keyspace_admin_timeout_ms",
             ),
         )
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -3199,7 +3199,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -3254,7 +3254,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -3483,7 +3483,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_keyspace']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -3544,7 +3544,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'that_other_one']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -3608,7 +3608,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -3651,7 +3651,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'staging_keyspace']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -3715,7 +3715,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace', 'that_other_one']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -3782,7 +3782,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             ['default_keyspace']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -3988,7 +3988,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
@@ -4043,7 +4043,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             }
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),

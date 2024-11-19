@@ -43,7 +43,9 @@ from astrapy.exceptions import (
     TooManyRowsToCountException,
     UnexpectedDataAPIResponseException,
     _TimeoutContext,
-    first_valid_timeout,
+    _first_valid_timeout,
+    _select_singlereq_timeout_gm,
+    _select_singlereq_timeout_ta,
 )
 from astrapy.info import (
     TableBaseIndexDefinition,
@@ -131,7 +133,7 @@ class Table(Generic[ROW]):
         if _keyspace is None:
             raise ValueError("Attempted to create Table with 'keyspace' unset.")
 
-        self._database = database._copy(keyspace=_keyspace)
+        self._database = database._copy(keyspace=_keyspace, api_options=self.api_options)
         self._commander_headers = {
             **{DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token()},
             **self.api_options.embedding_api_key.get_headers(),
@@ -300,6 +302,7 @@ class Table(Generic[ROW]):
     def definition(
         self,
         *,
+        table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> TableDefinition:
@@ -307,15 +310,20 @@ class Table(Generic[ROW]):
         TODO
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info(f"getting tables in search of '{self.name}'")
         self_descriptors = [
             table_desc
-            for table_desc in self.database.list_tables(timeout_ms=_request_timeout_ms)
+            for table_desc in self.database._list_tables_ctx(
+                timeout_context=_TimeoutContext(
+                    request_ms=_table_admin_timeout_ms, label=_ta_label,
+                ),
+            )
             if table_desc.name == self.name
         ]
         logger.info(f"finished getting tables in search of '{self.name}'")
@@ -329,6 +337,7 @@ class Table(Generic[ROW]):
     def info(
         self,
         *,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> TableInfo:
@@ -338,6 +347,7 @@ class Table(Generic[ROW]):
 
         return TableInfo(
             database_info=self.database.info(
+                database_admin_timeout_ms=database_admin_timeout_ms,
                 request_timeout_ms=request_timeout_ms,
                 timeout_ms=timeout_ms,
             ),
@@ -400,6 +410,7 @@ class Table(Generic[ROW]):
         ci_command: str,
         if_not_exists: bool | None,
         table_admin_timeout_ms: int | None,
+        request_timeout_ms: int | None,
         timeout_ms: int | None,
     ) -> None:
         ci_options: dict[str, bool]
@@ -407,13 +418,11 @@ class Table(Generic[ROW]):
             ci_options = {"ifNotExists": if_not_exists}
         else:
             ci_options = {}
-        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
-            (table_admin_timeout_ms, "table_admin_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (
-                self.api_options.timeout_options.table_admin_timeout_ms,
-                "table_admin_timeout_ms",
-            ),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         ci_payload = {
             ci_command: {
@@ -443,6 +452,7 @@ class Table(Generic[ROW]):
         definition: TableIndexDefinition | dict[str, Any],
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -465,6 +475,7 @@ class Table(Generic[ROW]):
                 i.e. an error is raised by the API in case of index-name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, for the
                 createIndex HTTP request.
+            request_timeout_ms: TODO
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
@@ -489,6 +500,7 @@ class Table(Generic[ROW]):
             ci_command=ci_command,
             if_not_exists=if_not_exists,
             table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
 
@@ -499,6 +511,7 @@ class Table(Generic[ROW]):
         definition: TableVectorIndexDefinition | dict[str, Any],
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -522,6 +535,7 @@ class Table(Generic[ROW]):
                 i.e. an error is raised by the API in case of index-name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, for the
                 createVectorIndex HTTP request.
+            request_timeout_ms: TODO
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
@@ -546,12 +560,14 @@ class Table(Generic[ROW]):
             ci_command=ci_command,
             if_not_exists=if_not_exists,
             table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
 
     def list_index_names(
         self,
         *,
+        table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[str]:
@@ -559,6 +575,7 @@ class Table(Generic[ROW]):
         List the names of all indexes existing on this table.
 
         Args:
+            table_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -571,18 +588,18 @@ class Table(Generic[ROW]):
             ['text_idx', 'vector_idx']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
-
         li_payload: dict[str, Any] = {"listIndexes": {"options": {}}}
         logger.info("listIndexes")
         li_response = self._api_commander.request(
             payload=li_payload,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_table_admin_timeout_ms, label=_ta_label
             ),
         )
         if "indexes" not in li_response.get("status", {}):
@@ -597,6 +614,7 @@ class Table(Generic[ROW]):
     def list_indexes(
         self,
         *,
+        table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> dict[str, TableBaseIndexDefinition]:
@@ -604,6 +622,7 @@ class Table(Generic[ROW]):
         List the full definitions of all indexes existing on this table.
 
         Args:
+            table_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -618,18 +637,18 @@ class Table(Generic[ROW]):
             ['text_idx', 'vector_idx']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
-
         li_payload: dict[str, Any] = {"listIndexes": {"options": {"explain": True}}}
         logger.info("listIndexes")
         li_response = self._api_commander.request(
             payload=li_payload,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_table_admin_timeout_ms, label=_ta_label
             ),
         )
         if "indexes" not in li_response.get("status", {}):
@@ -652,6 +671,7 @@ class Table(Generic[ROW]):
         operation: AlterTableOperation | dict[str, Any],
         *,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> Table[DefaultRowType]: ...
 
@@ -662,6 +682,7 @@ class Table(Generic[ROW]):
         *,
         row_type: type[NEW_ROW],
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> Table[NEW_ROW]: ...
 
@@ -671,6 +692,7 @@ class Table(Generic[ROW]):
         *,
         row_type: type[Any] = DefaultRowType,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> Table[NEW_ROW]:
         """
@@ -687,6 +709,7 @@ class Table(Generic[ROW]):
             row_type: TODO
             table_admin_timeout_ms: a timeout, in milliseconds, for the
                 schema-altering HTTP request.
+            request_timeout_ms: TODO
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
@@ -706,13 +729,11 @@ class Table(Generic[ROW]):
             n_operation = operation
         else:
             n_operation = AlterTableOperation.from_full_dict(operation)
-        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
-            (table_admin_timeout_ms, "table_admin_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (
-                self.api_options.timeout_options.table_admin_timeout_ms,
-                "table_admin_timeout_ms",
-            ),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         at_operation_name = n_operation._name
         at_payload = {
@@ -746,6 +767,7 @@ class Table(Generic[ROW]):
         self,
         row: ROW,
         *,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> TableInsertOneResult:
@@ -753,10 +775,11 @@ class Table(Generic[ROW]):
         TODO
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         io_payload = self._converter_agent.preprocess_payload(
             {"insertOne": {"document": row}}
@@ -846,8 +869,8 @@ class Table(Generic[ROW]):
         ordered: bool = False,
         chunk_size: int | None = None,
         concurrency: int | None = None,
-        request_timeout_ms: int | None = None,
         general_method_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> TableInsertManyResult:
         """
@@ -878,6 +901,7 @@ class Table(Generic[ROW]):
             general_method_timeout_ms: a timeout, in milliseconds, for the whole
                 requested operation (which may involve multiple API requests).
                 If not passed, the table-level setting is used instead.
+                TODO: note (here and equivalent methods) on req-can-timeout even if setting this to high
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
@@ -913,7 +937,7 @@ class Table(Generic[ROW]):
             have made their way to the database.
         """
 
-        _general_method_timeout_ms, _gmt_label = first_valid_timeout(
+        _general_method_timeout_ms, _gmt_label = _first_valid_timeout(
             (general_method_timeout_ms, "general_method_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (
@@ -921,7 +945,7 @@ class Table(Generic[ROW]):
                 "general_method_timeout_ms",
             ),
         )
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
@@ -1115,12 +1139,12 @@ class Table(Generic[ROW]):
         # lazy-import here to avoid circular import issues
         from astrapy.cursors import TableFindCursor
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
-        # TODO reinstate vectors
+        # TODO reinstate vectors?
         # if include_similarity is not None and not _is_vector_sort(sort):
         #     raise ValueError(
         #         "Cannot use `include_similarity` unless for vector search."
@@ -1148,6 +1172,7 @@ class Table(Generic[ROW]):
         projection: ProjectionType | None = None,
         include_similarity: bool | None = None,
         sort: SortType | None = None,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> ROW | None:
@@ -1155,10 +1180,11 @@ class Table(Generic[ROW]):
         TODO
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         fo_options = (
             None
@@ -1209,8 +1235,8 @@ class Table(Generic[ROW]):
         key: str,
         *,
         filter: FilterType | None = None,
-        request_timeout_ms: int | None = None,
         general_method_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[Any]:
         """
@@ -1220,7 +1246,7 @@ class Table(Generic[ROW]):
         # lazy-import here to avoid circular import issues
         from astrapy.cursors import TableFindCursor
 
-        _general_method_timeout_ms, _gmt_label = first_valid_timeout(
+        _general_method_timeout_ms, _gmt_label = _first_valid_timeout(
             (general_method_timeout_ms, "general_method_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (
@@ -1228,7 +1254,7 @@ class Table(Generic[ROW]):
                 "general_method_timeout_ms",
             ),
         )
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
@@ -1272,6 +1298,7 @@ class Table(Generic[ROW]):
         filter: FilterType,
         *,
         upper_bound: int,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> int:
@@ -1292,6 +1319,7 @@ class Table(Generic[ROW]):
                 Furthermore, if the actual number of rows exceeds the maximum
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
+            general_method_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the table-level setting is used instead.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -1322,10 +1350,11 @@ class Table(Generic[ROW]):
             by this method if this limit is encountered.
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         cd_payload = {"countDocuments": {"filter": filter}}
         logger.info(f"countDocuments on '{self.name}'")
@@ -1360,6 +1389,7 @@ class Table(Generic[ROW]):
     def estimated_document_count(
         self,
         *,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> int:
@@ -1369,6 +1399,7 @@ class Table(Generic[ROW]):
         Contrary to `count_documents`, this method has no filtering parameters.
 
         Args:
+            general_method_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the table-level setting is used instead.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -1380,10 +1411,12 @@ class Table(Generic[ROW]):
             >>> my_table.estimated_document_count()
             5820
         """
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         ed_payload: dict[str, Any] = {"estimatedDocumentCount": {}}
         logger.info(f"estimatedDocumentCount on '{self.name}'")
@@ -1408,6 +1441,7 @@ class Table(Generic[ROW]):
         filter: FilterType,
         update: dict[str, Any],
         *,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
@@ -1428,6 +1462,7 @@ class Table(Generic[ROW]):
                 Primary key fields cannot be provided for a "$set" operation.
                 For Tables, a limited set of update operators apply.
                 See the Data API documentation for more details.
+            general_method_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the table-level setting is used instead.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -1441,10 +1476,11 @@ class Table(Generic[ROW]):
             >>> my_table.update_one({"country": "ES", "year": 2020}, update={"$set": {"colours": ["amarillo"]}})
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         uo_payload = {
             "updateOne": {
@@ -1477,6 +1513,7 @@ class Table(Generic[ROW]):
         self,
         filter: FilterType,
         *,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
@@ -1484,10 +1521,11 @@ class Table(Generic[ROW]):
         TODO
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         do_payload = self._converter_agent.preprocess_payload(
             {
@@ -1520,6 +1558,7 @@ class Table(Generic[ROW]):
         self,
         filter: FilterType,
         *,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
@@ -1527,10 +1566,11 @@ class Table(Generic[ROW]):
         TODO
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         dm_payload = self._converter_agent.preprocess_payload(
             {
@@ -1564,6 +1604,7 @@ class Table(Generic[ROW]):
         *,
         if_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -1579,6 +1620,7 @@ class Table(Generic[ROW]):
             self,
             if_exists=if_exists,
             table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
         logger.info(f"finished dropping table '{self.name}' (self)")
@@ -1588,6 +1630,7 @@ class Table(Generic[ROW]):
         body: dict[str, Any] | None,
         *,
         raise_api_errors: bool = True,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> dict[str, Any]:
@@ -1595,10 +1638,11 @@ class Table(Generic[ROW]):
         TODO
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         _cmd_desc: str
         if body:
@@ -1637,7 +1681,7 @@ class AsyncTable(Generic[ROW]):
         if _keyspace is None:
             raise ValueError("Attempted to create Table with 'keyspace' unset.")
 
-        self._database = database._copy(keyspace=_keyspace)
+        self._database = database._copy(keyspace=_keyspace, api_options=self.api_options)
         self._commander_headers = {
             **{DEFAULT_DATA_API_AUTH_HEADER: self.api_options.token.get_token()},
             **self.api_options.embedding_api_key.get_headers(),
@@ -1822,6 +1866,7 @@ class AsyncTable(Generic[ROW]):
     async def definition(
         self,
         *,
+        table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> TableDefinition:
@@ -1829,16 +1874,19 @@ class AsyncTable(Generic[ROW]):
         TODO
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         logger.info(f"getting tables in search of '{self.name}'")
         self_descriptors = [
             table_desc
-            for table_desc in await self.database.list_tables(
-                timeout_ms=_request_timeout_ms
+            for table_desc in await self.database._list_tables_ctx(
+                timeout_context=_TimeoutContext(
+                    request_ms=_table_admin_timeout_ms, label=_ta_label,
+                ),
             )
             if table_desc.name == self.name
         ]
@@ -1853,6 +1901,7 @@ class AsyncTable(Generic[ROW]):
     async def info(
         self,
         *,
+        database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> TableInfo:
@@ -1861,6 +1910,7 @@ class AsyncTable(Generic[ROW]):
         """
 
         db_info = await self.database.info(
+            database_admin_timeout_ms=database_admin_timeout_ms,
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
@@ -1925,6 +1975,7 @@ class AsyncTable(Generic[ROW]):
         ci_command: str,
         if_not_exists: bool | None,
         table_admin_timeout_ms: int | None,
+        request_timeout_ms: int | None,
         timeout_ms: int | None,
     ) -> None:
         ci_options: dict[str, bool]
@@ -1932,13 +1983,11 @@ class AsyncTable(Generic[ROW]):
             ci_options = {"ifNotExists": if_not_exists}
         else:
             ci_options = {}
-        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
-            (table_admin_timeout_ms, "table_admin_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (
-                self.api_options.timeout_options.table_admin_timeout_ms,
-                "table_admin_timeout_ms",
-            ),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         ci_payload = {
             ci_command: {
@@ -1968,6 +2017,7 @@ class AsyncTable(Generic[ROW]):
         definition: TableIndexDefinition | dict[str, Any],
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -1990,6 +2040,7 @@ class AsyncTable(Generic[ROW]):
                 i.e. an error is raised by the API in case of index-name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, for the
                 createIndex HTTP request.
+            request_timeout_ms: TODO
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
@@ -2014,6 +2065,7 @@ class AsyncTable(Generic[ROW]):
             ci_command=ci_command,
             if_not_exists=if_not_exists,
             table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
 
@@ -2024,6 +2076,7 @@ class AsyncTable(Generic[ROW]):
         definition: TableVectorIndexDefinition | dict[str, Any],
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
@@ -2047,6 +2100,7 @@ class AsyncTable(Generic[ROW]):
                 i.e. an error is raised by the API in case of index-name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, for the
                 createVectorIndex HTTP request.
+            request_timeout_ms: TODO
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
@@ -2071,12 +2125,14 @@ class AsyncTable(Generic[ROW]):
             ci_command=ci_command,
             if_not_exists=if_not_exists,
             table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
 
     async def list_index_names(
         self,
         *,
+        table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> list[str]:
@@ -2084,6 +2140,7 @@ class AsyncTable(Generic[ROW]):
         List the names of all indexes existing on this table.
 
         Args:
+            table_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -2097,18 +2154,18 @@ class AsyncTable(Generic[ROW]):
             ['text_idx', 'vector_idx']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
-
         li_payload: dict[str, Any] = {"listIndexes": {"options": {}}}
         logger.info("listIndexes")
         li_response = await self._api_commander.async_request(
             payload=li_payload,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_table_admin_timeout_ms, label=_ta_label
             ),
         )
         if "indexes" not in li_response.get("status", {}):
@@ -2123,6 +2180,7 @@ class AsyncTable(Generic[ROW]):
     async def list_indexes(
         self,
         *,
+        table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> dict[str, TableBaseIndexDefinition]:
@@ -2130,6 +2188,7 @@ class AsyncTable(Generic[ROW]):
         List the full definitions of all indexes existing on this table.
 
         Args:
+            table_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the underlying HTTP request.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -2144,18 +2203,18 @@ class AsyncTable(Generic[ROW]):
             ['text_idx', 'vector_idx']
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
-
         li_payload: dict[str, Any] = {"listIndexes": {"options": {"explain": True}}}
         logger.info("listIndexes")
         li_response = await self._api_commander.async_request(
             payload=li_payload,
             timeout_context=_TimeoutContext(
-                request_ms=_request_timeout_ms, label=_rt_label
+                request_ms=_table_admin_timeout_ms, label=_ta_label
             ),
         )
         if "indexes" not in li_response.get("status", {}):
@@ -2178,6 +2237,7 @@ class AsyncTable(Generic[ROW]):
         operation: AlterTableOperation | dict[str, Any],
         *,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AsyncTable[DefaultRowType]: ...
 
@@ -2188,6 +2248,7 @@ class AsyncTable(Generic[ROW]):
         *,
         row_type: type[NEW_ROW],
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AsyncTable[NEW_ROW]: ...
 
@@ -2197,6 +2258,7 @@ class AsyncTable(Generic[ROW]):
         *,
         row_type: type[Any] = DefaultRowType,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> AsyncTable[NEW_ROW]:
         """
@@ -2232,13 +2294,11 @@ class AsyncTable(Generic[ROW]):
             n_operation = operation
         else:
             n_operation = AlterTableOperation.from_full_dict(operation)
-        _table_admin_timeout_ms, _ta_label = first_valid_timeout(
-            (table_admin_timeout_ms, "table_admin_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (
-                self.api_options.timeout_options.table_admin_timeout_ms,
-                "table_admin_timeout_ms",
-            ),
+        _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
+            timeout_options=self.api_options.timeout_options,
+            table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         at_operation_name = n_operation._name
         at_payload = {
@@ -2272,6 +2332,7 @@ class AsyncTable(Generic[ROW]):
         self,
         row: ROW,
         *,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> TableInsertOneResult:
@@ -2279,10 +2340,11 @@ class AsyncTable(Generic[ROW]):
         TODO
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _ta_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         io_payload = self._converter_agent.preprocess_payload(
             {"insertOne": {"document": row}}
@@ -2436,7 +2498,7 @@ class AsyncTable(Generic[ROW]):
             have made their way to the database.
         """
 
-        _general_method_timeout_ms, _gmt_label = first_valid_timeout(
+        _general_method_timeout_ms, _gmt_label = _first_valid_timeout(
             (general_method_timeout_ms, "general_method_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (
@@ -2444,7 +2506,7 @@ class AsyncTable(Generic[ROW]):
                 "general_method_timeout_ms",
             ),
         )
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
@@ -2623,12 +2685,12 @@ class AsyncTable(Generic[ROW]):
         # lazy-import here to avoid circular import issues
         from astrapy.cursors import AsyncTableFindCursor
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
-        # TODO reinstate vectors
+        # TODO reinstate vectors?
         # if include_similarity is not None and not _is_vector_sort(sort):
         #     raise ValueError(
         #         "Cannot use `include_similarity` unless for vector search."
@@ -2656,6 +2718,7 @@ class AsyncTable(Generic[ROW]):
         projection: ProjectionType | None = None,
         include_similarity: bool | None = None,
         sort: SortType | None = None,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> ROW | None:
@@ -2663,10 +2726,11 @@ class AsyncTable(Generic[ROW]):
         TODO
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         fo_options = (
             None
@@ -2728,7 +2792,7 @@ class AsyncTable(Generic[ROW]):
         # lazy-import here to avoid circular import issues
         from astrapy.cursors import AsyncTableFindCursor
 
-        _general_method_timeout_ms, _gmt_label = first_valid_timeout(
+        _general_method_timeout_ms, _gmt_label = _first_valid_timeout(
             (general_method_timeout_ms, "general_method_timeout_ms"),
             (timeout_ms, "timeout_ms"),
             (
@@ -2736,7 +2800,7 @@ class AsyncTable(Generic[ROW]):
                 "general_method_timeout_ms",
             ),
         )
-        _request_timeout_ms, _rt_label = first_valid_timeout(
+        _request_timeout_ms, _rt_label = _first_valid_timeout(
             (request_timeout_ms, "request_timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
@@ -2780,6 +2844,7 @@ class AsyncTable(Generic[ROW]):
         filter: FilterType,
         *,
         upper_bound: int,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> int:
@@ -2800,6 +2865,7 @@ class AsyncTable(Generic[ROW]):
                 Furthermore, if the actual number of rows exceeds the maximum
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
+            general_method_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the table-level setting is used instead.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -2830,10 +2896,11 @@ class AsyncTable(Generic[ROW]):
             by this method if this limit is encountered.
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         cd_payload = {"countDocuments": {"filter": filter}}
         logger.info(f"countDocuments on '{self.name}'")
@@ -2868,6 +2935,7 @@ class AsyncTable(Generic[ROW]):
     async def estimated_document_count(
         self,
         *,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> int:
@@ -2877,6 +2945,7 @@ class AsyncTable(Generic[ROW]):
         Contrary to `count_documents`, this method has no filtering parameters.
 
         Args:
+            general_method_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the table-level setting is used instead.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -2888,10 +2957,12 @@ class AsyncTable(Generic[ROW]):
             >>> my_table.estimated_document_count()
             5820
         """
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         ed_payload: dict[str, Any] = {"estimatedDocumentCount": {}}
         logger.info(f"estimatedDocumentCount on '{self.name}'")
@@ -2916,6 +2987,7 @@ class AsyncTable(Generic[ROW]):
         filter: FilterType,
         update: dict[str, Any],
         *,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
@@ -2936,6 +3008,7 @@ class AsyncTable(Generic[ROW]):
                 Primary key fields cannot be provided for a "$set" operation.
                 For Tables, a limited set of update operators apply.
                 See the Data API documentation for more details.
+            general_method_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
                 If not passed, the table-level setting is used instead.
             timeout_ms: an alias for `request_timeout_ms`.
@@ -2944,10 +3017,11 @@ class AsyncTable(Generic[ROW]):
             TODO async
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         uo_payload = {
             "updateOne": {
@@ -2980,6 +3054,7 @@ class AsyncTable(Generic[ROW]):
         self,
         filter: FilterType,
         *,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
@@ -2987,10 +3062,11 @@ class AsyncTable(Generic[ROW]):
         TODO
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         do_payload = self._converter_agent.preprocess_payload(
             {
@@ -3023,6 +3099,7 @@ class AsyncTable(Generic[ROW]):
         self,
         filter: FilterType,
         *,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
@@ -3030,10 +3107,11 @@ class AsyncTable(Generic[ROW]):
         TODO
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         dm_payload = self._converter_agent.preprocess_payload(
             {
@@ -3067,6 +3145,7 @@ class AsyncTable(Generic[ROW]):
         *,
         if_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
+        request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """
@@ -3082,6 +3161,7 @@ class AsyncTable(Generic[ROW]):
             self,
             if_exists=if_exists,
             table_admin_timeout_ms=table_admin_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
         logger.info(f"finished dropping table '{self.name}' (self)")
@@ -3092,6 +3172,7 @@ class AsyncTable(Generic[ROW]):
         body: dict[str, Any] | None,
         *,
         raise_api_errors: bool = True,
+        general_method_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> dict[str, Any]:
@@ -3099,10 +3180,11 @@ class AsyncTable(Generic[ROW]):
         TODO
         """
 
-        _request_timeout_ms, _rt_label = first_valid_timeout(
-            (request_timeout_ms, "request_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
+        _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
+            timeout_options=self.api_options.timeout_options,
+            general_method_timeout_ms=general_method_timeout_ms,
+            request_timeout_ms=request_timeout_ms,
+            timeout_ms=timeout_ms,
         )
         _cmd_desc: str
         if body:
