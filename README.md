@@ -101,7 +101,7 @@ from astrapy.authentication import UsernamePasswordTokenProvider
 tp = UsernamePasswordTokenProvider("username", "password")
 
 # Initialize the client and get a "Database" object
-client = DataAPIClient(token=tp, environment=Environment.HCD)
+client = DataAPIClient(environment=Environment.HCD)
 database = client.get_database("http://localhost:8181", token=tp)
 ```
 

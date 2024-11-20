@@ -167,9 +167,10 @@ class Database:
 
     Example:
         >>> from astrapy import DataAPIClient
-        >>> my_client = astrapy.DataAPIClient("AstraCS:...")
+        >>> my_client = astrapy.DataAPIClient()
         >>> my_db = my_client.get_database(
-        ...    "https://01234567-....apps.astra.datastax.com"
+        ...     "https://01234567-....apps.astra.datastax.com",
+        ...     token="AstraCS:...",
         ... )
 
     Note:
@@ -1870,9 +1871,10 @@ class AsyncDatabase:
 
     Example:
         >>> from astrapy import DataAPIClient
-        >>> my_client = astrapy.DataAPIClient("AstraCS:...")
+        >>> my_client = astrapy.DataAPIClient()
         >>> my_db = my_client.get_async_database(
-        ...    "https://01234567-....apps.astra.datastax.com"
+        ...    "https://01234567-....apps.astra.datastax.com",
+        ...     token="AstraCS:...",
         ... )
 
     Note:

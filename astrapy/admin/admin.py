@@ -467,6 +467,11 @@ class AstraDBAdmin:
         >>> my_db_admin = my_astra_db_admin.get_database_admin("01234567-...")
         >>> my_db_admin.list_keyspaces()
         ['default_keyspace', 'staging_keyspace']
+
+    Note:
+        a more powerful token may be required than the one sufficient for working
+        in the Database, Collection and Table classes. Check the provided token
+        if "Unauthorized" errors are encountered.
     """
 
     def __init__(
@@ -2026,6 +2031,11 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         creating an instance of AstraDBDatabaseAdmin does not trigger actual creation
         of the database itself, which should exist beforehand. To create databases,
         see the AstraDBAdmin class.
+
+    Note:
+        a more powerful token may be required than the one sufficient for working
+        in the Database, Collection and Table classes. Check the provided token
+        if "Unauthorized" errors are encountered.
     """
 
     def __init__(
@@ -3360,6 +3370,11 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         >>>
         >>> admin_for_my_db.list_keyspaces()
         ['keyspace1', 'keyspace2']
+
+    Note:
+        a more powerful token may be required than the one sufficient for working
+        in the Database, Collection and Table classes. Check the provided token
+        if "Unauthorized" errors are encountered.
     """
 
     def __init__(

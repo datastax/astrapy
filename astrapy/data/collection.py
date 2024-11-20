@@ -136,19 +136,19 @@ class Collection(Generic[DOC]):
 
     Examples:
         >>> from astrapy import DataAPIClient, Collection
-        >>> my_client = astrapy.DataAPIClient("AstraCS:...")
+        >>> my_client = astrapy.DataAPIClient()
         >>> my_db = my_client.get_database(
-        ...    "https://01234567-....apps.astra.datastax.com"
+        ...     "https://01234567-....apps.astra.datastax.com",
+        ...      token="AstraCS:...",
         ... )
-        >>> my_coll_1 = Collection(database=my_db, name="my_collection")
-        >>> my_coll_2 = my_db.create_collection(
+        >>> my_coll_1 = my_db.create_collection(
         ...     "my_v_collection",
         ...     dimension=3,
         ...     metric="cosine",
         ... )
-        >>> my_coll_3a = my_db.get_collection("my_already_existing_collection")
-        >>> my_coll_3b = my_db.my_already_existing_collection
-        >>> my_coll_3c = my_db["my_already_existing_collection"]
+        >>> my_coll_2a = my_db.get_collection("my_already_existing_collection")
+        >>> my_coll_2b = my_db.my_already_existing_collection
+        >>> my_coll_2c = my_db["my_already_existing_collection"]
 
     Note:
         creating an instance of Collection does not trigger actual creation
@@ -2607,21 +2607,21 @@ class AsyncCollection(Generic[DOC]):
 
     Examples:
         >>> from astrapy import DataAPIClient, AsyncCollection
-        >>> my_client = astrapy.DataAPIClient("AstraCS:...")
+        >>> my_client = astrapy.DataAPIClient()
         >>> my_async_db = my_client.get_async_database(
-        ...    "https://01234567-....apps.astra.datastax.com"
+        ...    "https://01234567-....apps.astra.datastax.com",
+        ...     token="AstraCS:...",
         ... )
-        >>> my_async_coll_1 = AsyncCollection(database=my_async_db, name="my_collection")
-        >>> my_async coll_2 = asyncio.run(my_async_db.create_collection(
+        >>> my_async coll_1 = asyncio.run(my_async_db.create_collection(
         ...     "my_v_collection",
         ...     dimension=3,
         ...     metric="cosine",
         ... ))
-        >>> my_async_coll_3a = asyncio.run(my_async_db.get_collection(
+        >>> my_async_coll_2a = asyncio.run(my_async_db.get_collection(
         ...     "my_already_existing_collection",
         ... ))
-        >>> my_async_coll_3b = my_async_db.my_already_existing_collection
-        >>> my_async_coll_3c = my_async_db["my_already_existing_collection"]
+        >>> my_async_coll_2b = my_async_db.my_already_existing_collection
+        >>> my_async_coll_2c = my_async_db["my_already_existing_collection"]
 
     Note:
         creating an instance of AsyncCollection does not trigger actual creation

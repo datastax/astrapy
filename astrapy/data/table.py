@@ -96,11 +96,11 @@ class Table(Generic[ROW]):
 
     Examples:
         >>> from astrapy import DataAPIClient, Table
-        >>> my_client = astrapy.DataAPIClient("AstraCS:...")
+        >>> my_client = astrapy.DataAPIClient()
         >>> my_db = my_client.get_database(
-        ...    "https://01234567-....apps.astra.datastax.com"
+        ...     "https://01234567-....apps.astra.datastax.com",
+        ...     token="AstraCS:..."
         ... )
-        >>> my_table_0 = Table(database=my_db, name="my_v_table_0")
 
         >>> from astrapy.constants import SortMode
         >>> from astrapy.info import (
@@ -155,6 +155,8 @@ class Table(Generic[ROW]):
         ...     "my_v_table_3",
         ...     definition=table_definition_3,
         ... )
+
+        >>> my_table_4 = my_db.get_table("my_already_existing_table")
 
     Note:
         creating an instance of Table does not trigger actual creation
@@ -1716,11 +1718,11 @@ class AsyncTable(Generic[ROW]):
 
     Examples:
         >>> from astrapy import DataAPIClient, Table
-        >>> my_client = astrapy.DataAPIClient("AstraCS:...")
+        >>> my_client = astrapy.DataAPIClient()
         >>> my_async_db = my_client.get_async_database(
-        ...    "https://01234567-....apps.astra.datastax.com"
+        ...     "https://01234567-....apps.astra.datastax.com",
+        ...     token="AstraCS:..."
         ... )
-        >>> my_async_table_0 = AsyncTable(database=my_async_db, name="my_v_table_0")
 
         >>> from astrapy.constants import SortMode
         >>> from astrapy.info import (
@@ -1775,6 +1777,8 @@ class AsyncTable(Generic[ROW]):
         ...     "my_v_table_3",
         ...     definition=table_definition_3,
         ... ))
+
+        >>> my_table_4 = asyncio.run(my_db.get_table("my_already_existing_table"))
 
     Note:
         creating an instance of Table does not trigger actual creation

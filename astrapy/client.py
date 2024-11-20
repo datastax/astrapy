@@ -57,6 +57,13 @@ class DataAPIClient:
         token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
             This can be either a literal token string or a subclass of
             `astrapy.authentication.TokenProvider`.
+            Note that generally one should pass the token later, when spawning
+            Database instances from the client (with the `get_database`) method
+            of DataAPIClient; the reason is that the typical tokens are scoped
+            to a single database. However, when performing administrative tasks
+            at the AstraDBAdmin level (such as creating databases), an org-wide
+            token is required -- then it makes sense to provide it when creating
+            the DataAPIClient instance.
         environment: a string representing the target Data API environment.
             It can be left unspecified for the default value of `Environment.PROD`;
             other values include `Environment.OTHER`, `Environment.DSE`.
@@ -72,9 +79,10 @@ class DataAPIClient:
 
     Example:
         >>> from astrapy import DataAPIClient
-        >>> my_client = DataAPIClient("AstraCS:...")
+        >>> my_client = DataAPIClient()
         >>> my_db0 = my_client.get_database(
-        ...     "https://01234567-....apps.astra.datastax.com"
+        ...     "https://01234567-....apps.astra.datastax.com",
+        ...     token="AstraCS:...",
         ... )
         >>> my_coll = my_db0.create_collection("movies", dimension=2)
         >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.3]})
