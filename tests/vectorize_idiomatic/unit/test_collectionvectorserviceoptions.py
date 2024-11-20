@@ -26,7 +26,7 @@ class TestVectorServiceOptions:
             "provider": "PRO",
             "modelName": "MOD",
         }
-        from_dict0 = VectorServiceOptions.from_dict(dict0)
+        from_dict0 = VectorServiceOptions._from_dict(dict0)
         assert from_dict0 == VectorServiceOptions(
             provider="PRO",
             model_name="MOD",
@@ -43,7 +43,7 @@ class TestVectorServiceOptions:
                 "field": "value",
             },
         }
-        from_dict_a = VectorServiceOptions.from_dict(dict_a)
+        from_dict_a = VectorServiceOptions._from_dict(dict_a)
         assert from_dict_a == VectorServiceOptions(
             provider="PRO",
             model_name="MOD",
@@ -68,7 +68,7 @@ class TestVectorServiceOptions:
                 "field6": {"a": 1},
             },
         }
-        from_dict_p = VectorServiceOptions.from_dict(dict_p)
+        from_dict_p = VectorServiceOptions._from_dict(dict_p)
         assert from_dict_p == VectorServiceOptions(
             provider="PRO",
             model_name="MOD",
@@ -103,7 +103,7 @@ class TestVectorServiceOptions:
                 "field6": {"a": 1},
             },
         }
-        from_dict_ap = VectorServiceOptions.from_dict(dict_ap)
+        from_dict_ap = VectorServiceOptions._from_dict(dict_ap)
         assert from_dict_ap == VectorServiceOptions(
             provider="PRO",
             model_name="MOD",

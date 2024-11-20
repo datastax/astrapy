@@ -53,7 +53,7 @@ class TestDDLAsync:
         )
         lc_response = await async_database.list_collections()
         #
-        expected_coll_descriptor = CollectionDescriptor.from_dict(
+        expected_coll_descriptor = CollectionDescriptor._from_dict(
             {
                 "name": TEST_LOCAL_COLLECTION_NAME,
                 "options": {
@@ -66,7 +66,7 @@ class TestDDLAsync:
                 },
             },
         )
-        expected_coll_descriptor_b = CollectionDescriptor.from_dict(
+        expected_coll_descriptor_b = CollectionDescriptor._from_dict(
             {
                 "name": TEST_LOCAL_COLLECTION_NAME_B,
                 "options": {

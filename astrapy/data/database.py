@@ -1023,7 +1023,7 @@ class Database:
             # we know this is a list of dicts, to marshal into "descriptors"
             logger.info("finished findCollections")
             return [
-                CollectionDescriptor.from_dict(col_dict)
+                CollectionDescriptor._from_dict(col_dict)
                 for col_dict in gc_response["status"]["collections"]
             ]
 
@@ -2752,7 +2752,7 @@ class AsyncDatabase:
             # we know this is a list of dicts, to marshal into "descriptors"
             logger.info("finished findCollections")
             return [
-                CollectionDescriptor.from_dict(col_dict)
+                CollectionDescriptor._from_dict(col_dict)
                 for col_dict in gc_response["status"]["collections"]
             ]
 

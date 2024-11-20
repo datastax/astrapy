@@ -59,7 +59,9 @@ class CollectionDefaultIDOptions:
         return {"type": self.default_id_type}
 
     @staticmethod
-    def from_dict(raw_dict: dict[str, Any] | None) -> CollectionDefaultIDOptions | None:
+    def _from_dict(
+        raw_dict: dict[str, Any] | None,
+    ) -> CollectionDefaultIDOptions | None:
         """
         Create an instance of CollectionDefaultIDOptions from a dictionary
         such as one from the Data API.
@@ -108,7 +110,7 @@ class CollectionVectorOptions:
         }
 
     @staticmethod
-    def from_dict(raw_dict: dict[str, Any] | None) -> CollectionVectorOptions | None:
+    def _from_dict(raw_dict: dict[str, Any] | None) -> CollectionVectorOptions | None:
         """
         Create an instance of CollectionVectorOptions from a dictionary
         such as one from the Data API.
@@ -119,7 +121,7 @@ class CollectionVectorOptions:
                 dimension=raw_dict.get("dimension"),
                 metric=raw_dict.get("metric"),
                 source_model=raw_dict.get("sourceModel"),
-                service=VectorServiceOptions.from_dict(raw_dict.get("service")),
+                service=VectorServiceOptions._from_dict(raw_dict.get("service")),
             )
         else:
             return None
@@ -217,16 +219,16 @@ class CollectionDefinition:
         }
 
     @staticmethod
-    def from_dict(raw_dict: dict[str, Any]) -> CollectionDefinition:
+    def _from_dict(raw_dict: dict[str, Any]) -> CollectionDefinition:
         """
         Create an instance of CollectionDefinition from a dictionary
         such as one from the Data API.
         """
 
         return CollectionDefinition(
-            vector=CollectionVectorOptions.from_dict(raw_dict.get("vector")),
+            vector=CollectionVectorOptions._from_dict(raw_dict.get("vector")),
             indexing=raw_dict.get("indexing"),
-            default_id=CollectionDefaultIDOptions.from_dict(raw_dict.get("defaultId")),
+            default_id=CollectionDefaultIDOptions._from_dict(raw_dict.get("defaultId")),
         )
 
 
@@ -291,7 +293,7 @@ class CollectionDescriptor:
         }
 
     @staticmethod
-    def from_dict(raw_dict: dict[str, Any]) -> CollectionDescriptor:
+    def _from_dict(raw_dict: dict[str, Any]) -> CollectionDescriptor:
         """
         Create an instance of CollectionDescriptor from a dictionary
         such as one from the Data API.
@@ -299,6 +301,6 @@ class CollectionDescriptor:
 
         return CollectionDescriptor(
             name=raw_dict["name"],
-            options=CollectionDefinition.from_dict(raw_dict.get("options") or {}),
+            options=CollectionDefinition._from_dict(raw_dict.get("options") or {}),
             raw_descriptor=raw_dict,
         )

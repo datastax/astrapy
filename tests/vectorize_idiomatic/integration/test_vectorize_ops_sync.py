@@ -39,7 +39,7 @@ class TestVectorizeOpsSync:
         )
 
         reconstructed = {
-            ep_name: EmbeddingProvider.from_dict(emb_prov.as_dict())
+            ep_name: EmbeddingProvider._from_dict(emb_prov.as_dict())
             for ep_name, emb_prov in ep_result.embedding_providers.items()
         }
         assert reconstructed == ep_result.embedding_providers

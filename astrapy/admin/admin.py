@@ -3259,7 +3259,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished findEmbeddingProviders")
-            return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
+            return FindEmbeddingProvidersResult._from_dict(fe_response["status"])
 
     async def async_find_embedding_providers(
         self,
@@ -3317,7 +3317,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished findEmbeddingProviders, async")
-            return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
+            return FindEmbeddingProvidersResult._from_dict(fe_response["status"])
 
 
 class DataAPIDatabaseAdmin(DatabaseAdmin):
@@ -4072,7 +4072,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished findEmbeddingProviders")
-            return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
+            return FindEmbeddingProvidersResult._from_dict(fe_response["status"])
 
     async def async_find_embedding_providers(
         self,
@@ -4130,7 +4130,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
             )
         else:
             logger.info("finished findEmbeddingProviders, async")
-            return FindEmbeddingProvidersResult.from_dict(fe_response["status"])
+            return FindEmbeddingProvidersResult._from_dict(fe_response["status"])
 
 
 __all__ = [

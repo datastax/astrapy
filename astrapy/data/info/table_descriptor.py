@@ -841,7 +841,7 @@ class TableBaseIndexDefinition(ABC):
     def as_dict(self) -> dict[str, Any]: ...
 
     @classmethod
-    def from_dict(cls, raw_input: dict[str, Any]) -> TableBaseIndexDefinition:
+    def _from_dict(cls, raw_input: dict[str, Any]) -> TableBaseIndexDefinition:
         if "options" not in raw_input:
             if raw_input["column"] == "UNKNOWN" and "apiSupport" in raw_input:
                 return TableUnsupportedIndexDefinition.coerce(raw_input)
@@ -1067,7 +1067,7 @@ class TableIndexDescriptor:
         warn_residual_keys(cls, raw_dict, {"name", "definition"})
         return TableIndexDescriptor(
             name=raw_dict["name"],
-            definition=TableBaseIndexDefinition.from_dict(raw_dict["definition"]),
+            definition=TableBaseIndexDefinition._from_dict(raw_dict["definition"]),
         )
 
     def coerce(

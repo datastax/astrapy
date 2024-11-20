@@ -54,7 +54,7 @@ class VectorServiceOptions:
         }
 
     @staticmethod
-    def from_dict(
+    def _from_dict(
         raw_dict: dict[str, Any] | None,
     ) -> VectorServiceOptions | None:
         """
@@ -79,7 +79,7 @@ class VectorServiceOptions:
         if isinstance(raw_input, VectorServiceOptions):
             return raw_input
         else:
-            return VectorServiceOptions.from_dict(raw_input)
+            return VectorServiceOptions._from_dict(raw_input)
 
 
 @dataclass
@@ -128,7 +128,7 @@ class EmbeddingProviderParameter:
         }
 
     @staticmethod
-    def from_dict(raw_dict: dict[str, Any]) -> EmbeddingProviderParameter:
+    def _from_dict(raw_dict: dict[str, Any]) -> EmbeddingProviderParameter:
         """
         Create an instance of EmbeddingProviderParameter from a dictionary
         such as one from the Data API.
@@ -193,7 +193,7 @@ class EmbeddingProviderModel:
         }
 
     @staticmethod
-    def from_dict(raw_dict: dict[str, Any]) -> EmbeddingProviderModel:
+    def _from_dict(raw_dict: dict[str, Any]) -> EmbeddingProviderModel:
         """
         Create an instance of EmbeddingProviderModel from a dictionary
         such as one from the Data API.
@@ -212,7 +212,7 @@ class EmbeddingProviderModel:
         return EmbeddingProviderModel(
             name=raw_dict["name"],
             parameters=[
-                EmbeddingProviderParameter.from_dict(param_dict)
+                EmbeddingProviderParameter._from_dict(param_dict)
                 for param_dict in raw_dict["parameters"]
             ],
             vector_dimension=raw_dict["vectorDimension"],
@@ -249,7 +249,7 @@ class EmbeddingProviderToken:
         }
 
     @staticmethod
-    def from_dict(raw_dict: dict[str, Any]) -> EmbeddingProviderToken:
+    def _from_dict(raw_dict: dict[str, Any]) -> EmbeddingProviderToken:
         """
         Create an instance of EmbeddingProviderToken from a dictionary
         such as one from the Data API.
@@ -301,7 +301,7 @@ class EmbeddingProviderAuthentication:
         }
 
     @staticmethod
-    def from_dict(raw_dict: dict[str, Any]) -> EmbeddingProviderAuthentication:
+    def _from_dict(raw_dict: dict[str, Any]) -> EmbeddingProviderAuthentication:
         """
         Create an instance of EmbeddingProviderAuthentication from a dictionary
         such as one from the Data API.
@@ -319,7 +319,7 @@ class EmbeddingProviderAuthentication:
         return EmbeddingProviderAuthentication(
             enabled=raw_dict["enabled"],
             tokens=[
-                EmbeddingProviderToken.from_dict(token_dict)
+                EmbeddingProviderToken._from_dict(token_dict)
                 for token_dict in raw_dict["tokens"]
             ],
         )
@@ -369,7 +369,7 @@ class EmbeddingProvider:
         }
 
     @staticmethod
-    def from_dict(raw_dict: dict[str, Any]) -> EmbeddingProvider:
+    def _from_dict(raw_dict: dict[str, Any]) -> EmbeddingProvider:
         """
         Create an instance of EmbeddingProvider from a dictionary
         such as one from the Data API.
@@ -390,15 +390,15 @@ class EmbeddingProvider:
         return EmbeddingProvider(
             display_name=raw_dict["displayName"],
             models=[
-                EmbeddingProviderModel.from_dict(model_dict)
+                EmbeddingProviderModel._from_dict(model_dict)
                 for model_dict in raw_dict["models"]
             ],
             parameters=[
-                EmbeddingProviderParameter.from_dict(param_dict)
+                EmbeddingProviderParameter._from_dict(param_dict)
                 for param_dict in raw_dict["parameters"]
             ],
             supported_authentication={
-                sa_name: EmbeddingProviderAuthentication.from_dict(sa_dict)
+                sa_name: EmbeddingProviderAuthentication._from_dict(sa_dict)
                 for sa_name, sa_dict in raw_dict["supportedAuthentication"].items()
             },
             url=raw_dict["url"],
@@ -436,7 +436,7 @@ class FindEmbeddingProvidersResult:
         }
 
     @staticmethod
-    def from_dict(raw_dict: dict[str, Any]) -> FindEmbeddingProvidersResult:
+    def _from_dict(raw_dict: dict[str, Any]) -> FindEmbeddingProvidersResult:
         """
         Create an instance of FindEmbeddingProvidersResult from a dictionary
         such as one from the Data API.
@@ -453,7 +453,7 @@ class FindEmbeddingProvidersResult:
         return FindEmbeddingProvidersResult(
             raw_info=raw_dict,
             embedding_providers={
-                ep_name: EmbeddingProvider.from_dict(ep_body)
+                ep_name: EmbeddingProvider._from_dict(ep_body)
                 for ep_name, ep_body in raw_dict["embeddingProviders"].items()
             },
         )

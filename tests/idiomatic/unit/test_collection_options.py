@@ -359,5 +359,7 @@ def test_recast_api_collection_dict() -> None:
         ),
     ]
     for api_coll_desc, flattened_dict in api_coll_descs:
-        assert CollectionDescriptor.from_dict(api_coll_desc).as_dict() == api_coll_desc
-        assert CollectionDescriptor.from_dict(api_coll_desc).flatten() == flattened_dict
+        assert CollectionDescriptor._from_dict(api_coll_desc).as_dict() == api_coll_desc
+        assert (
+            CollectionDescriptor._from_dict(api_coll_desc).flatten() == flattened_dict
+        )
