@@ -279,12 +279,14 @@ class TestTableCursorSync:
         # full to_list
         tl_cur = filled_composite_table.find()
         assert tl_cur.to_list() == base_rows
+        assert tl_cur.state == CursorState.CLOSED
 
         # partially-consumed to_list
         ptl_cur = filled_composite_table.find()
         for _ in range(15):
             next(ptl_cur)
-        assert ptl_cur.to_list() == base_rows  # TODO: reinstate? [15:]
+        assert ptl_cur.to_list() == base_rows[15:]
+        assert ptl_cur.state == CursorState.CLOSED
 
         # mapped to_list
 
@@ -294,9 +296,8 @@ class TestTableCursorSync:
         mtl_cur = filled_composite_table.find().map(mint)
         for _ in range(13):
             next(mtl_cur)
-        assert mtl_cur.to_list() == [
-            mint(row) for row in base_rows
-        ]  # TODO: reinstate? [13:]]
+        assert mtl_cur.to_list() == [mint(row) for row in base_rows[13:]]
+        assert mtl_cur.state == CursorState.CLOSED
 
         # full for_each
         accum0: list[dict[str, Any]] = []
@@ -307,6 +308,7 @@ class TestTableCursorSync:
         fe_cur = filled_composite_table.find()
         fe_cur.for_each(marker0)
         assert accum0 == base_rows
+        assert fe_cur.state == CursorState.CLOSED
 
         # partially-consumed for_each
         accum1: list[dict[str, Any]] = []
@@ -318,7 +320,8 @@ class TestTableCursorSync:
         for _ in range(11):
             next(pfe_cur)
         pfe_cur.for_each(marker1)
-        assert accum1 == base_rows  # TODO: reinstate? [11:]
+        assert accum1 == base_rows[11:]
+        assert pfe_cur.state == CursorState.CLOSED
 
         # mapped for_each
         accum2: list[int] = []
@@ -330,7 +333,8 @@ class TestTableCursorSync:
         for _ in range(17):
             next(mfe_cur)
         mfe_cur.for_each(marker2)
-        assert accum2 == [mint(row) for row in base_rows]  # TODO: reinstate? [17:]]
+        assert accum2 == [mint(row) for row in base_rows[17:]]
+        assert mfe_cur.state == CursorState.CLOSED
 
     @pytest.mark.describe("test of table cursors, serdes options obeyance, sync")
     def test_table_cursors_serdes_options_sync(

@@ -137,6 +137,15 @@ class FindCursor(Generic[TRAW]):
     def __init__(self) -> None:
         self.rewind()
 
+    def _imprint_internal_state(self, other: FindCursor[TRAW]) -> None:
+        """Mutably copy the internal state of this cursor onto another one."""
+        other._state = self._state
+        other._buffer = self._buffer
+        other._pages_retrieved = self._pages_retrieved
+        other._consumed = self._consumed
+        other._next_page_state = self._next_page_state
+        other._last_response_status = self._last_response_status
+
     def _ensure_alive(self) -> None:
         if not self.alive:
             raise CursorException(
@@ -792,9 +801,10 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             request_timeout_ms=copy_req_ms,
             overall_timeout_ms=copy_ovr_ms,
         )
+        self._imprint_internal_state(_cursor)
         for document in _cursor:
             function(document)
-        self.close()
+        _cursor._imprint_internal_state(self)
 
     def to_list(
         self,
@@ -812,8 +822,9 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             request_timeout_ms=copy_req_ms,
             overall_timeout_ms=copy_ovr_ms,
         )
+        self._imprint_internal_state(_cursor)
         documents = [document for document in _cursor]
-        self.close()
+        _cursor._imprint_internal_state(self)
         return documents
 
     def has_next(self) -> bool:
@@ -1123,9 +1134,10 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             request_timeout_ms=copy_req_ms,
             overall_timeout_ms=copy_ovr_ms,
         )
+        self._imprint_internal_state(_cursor)
         async for document in _cursor:
             function(document)
-        self.close()
+        _cursor._imprint_internal_state(self)
 
     async def to_list(
         self,
@@ -1143,8 +1155,9 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             request_timeout_ms=copy_req_ms,
             overall_timeout_ms=copy_ovr_ms,
         )
+        self._imprint_internal_state(_cursor)
         documents = [document async for document in _cursor]
-        self.close()
+        _cursor._imprint_internal_state(self)
         return documents
 
     async def has_next(self) -> bool:
@@ -1448,9 +1461,10 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             request_timeout_ms=copy_req_ms,
             overall_timeout_ms=copy_ovr_ms,
         )
+        self._imprint_internal_state(_cursor)
         for document in _cursor:
             function(document)
-        self.close()
+        _cursor._imprint_internal_state(self)
 
     def to_list(
         self,
@@ -1468,8 +1482,9 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             request_timeout_ms=copy_req_ms,
             overall_timeout_ms=copy_ovr_ms,
         )
+        self._imprint_internal_state(_cursor)
         documents = [document for document in _cursor]
-        self.close()
+        _cursor._imprint_internal_state(self)
         return documents
 
     def has_next(self) -> bool:
@@ -1779,9 +1794,10 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             request_timeout_ms=copy_req_ms,
             overall_timeout_ms=copy_ovr_ms,
         )
+        self._imprint_internal_state(_cursor)
         async for document in _cursor:
             function(document)
-        self.close()
+        _cursor._imprint_internal_state(self)
 
     async def to_list(
         self,
@@ -1799,8 +1815,9 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
             request_timeout_ms=copy_req_ms,
             overall_timeout_ms=copy_ovr_ms,
         )
+        self._imprint_internal_state(_cursor)
         documents = [document async for document in _cursor]
-        self.close()
+        _cursor._imprint_internal_state(self)
         return documents
 
     async def has_next(self) -> bool:
