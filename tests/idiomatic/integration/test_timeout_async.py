@@ -163,4 +163,4 @@ class TestTimeoutAsync:
 
         cur_fe = async_empty_collection.find()
         with pytest.raises(DataAPITimeoutException):
-            await cur_fe.for_each(lambda doc: doc, general_method_timeout_ms=1)
+            await cur_fe.for_each(lambda doc: None, general_method_timeout_ms=1)

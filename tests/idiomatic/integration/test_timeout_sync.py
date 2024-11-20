@@ -161,4 +161,4 @@ class TestTimeoutSync:
 
         cur_fe = sync_empty_collection.find()
         with pytest.raises(DataAPITimeoutException):
-            cur_fe.for_each(lambda doc: doc, general_method_timeout_ms=1)
+            cur_fe.for_each(lambda doc: None, general_method_timeout_ms=1)

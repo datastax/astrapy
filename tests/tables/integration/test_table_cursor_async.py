@@ -55,6 +55,8 @@ class TestTableCursorSync:
         cur = filled_composite_atable.find()
         assert cur.state == CursorState.IDLE
 
+        assert cur.data_source == filled_composite_atable
+
         assert cur.consumed == 0
         assert cur.consume_buffer(3) == []
         assert cur.buffered_count == 0

@@ -653,9 +653,8 @@ class TestDMLAsync:
         # for each
         accum: list[int] = []
 
-        def ingest(doc: DefaultDocumentType, acc: list[int] = accum) -> str:
+        def ingest(doc: DefaultDocumentType, acc: list[int] = accum) -> None:
             acc += [doc["ternary"]]
-            return "done."
 
         await async_empty_collection.find(filter={"seq": {"$gte": 10}}).for_each(ingest)
         assert len(accum) == 65
