@@ -454,7 +454,7 @@ class TablePrimaryKeyDescriptor:
 
 
 @dataclass
-class TableDefinition:
+class BaseTableDefinition:
     """
     A structure expressing the definition ("schema") of a table.
     See the Data API specifications for detailed specification and allowed values.
@@ -495,14 +495,14 @@ class TableDefinition:
         }
 
     @classmethod
-    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableDefinition:
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> BaseTableDefinition:
         """
-        Create an instance of TableDefinition from a dictionary
+        Create an instance of BaseTableDefinition from a dictionary
         such as one from the Data API.
         """
 
         warn_residual_keys(cls, raw_dict, {"columns", "primaryKey"})
-        return TableDefinition(
+        return BaseTableDefinition(
             columns={
                 col_n: TableColumnTypeDescriptor.coerce(col_v)
                 for col_n, col_v in raw_dict["columns"].items()
@@ -511,15 +511,17 @@ class TableDefinition:
         )
 
     @classmethod
-    def coerce(cls, raw_input: TableDefinition | dict[str, Any]) -> TableDefinition:
-        if isinstance(raw_input, TableDefinition):
+    def coerce(
+        cls, raw_input: BaseTableDefinition | dict[str, Any]
+    ) -> BaseTableDefinition:
+        if isinstance(raw_input, BaseTableDefinition):
             return raw_input
         else:
             return cls._from_dict(raw_input)
 
     @staticmethod
-    def zero() -> TableDefinition:
-        return TableDefinition(
+    def zero() -> BaseTableDefinition:
+        return BaseTableDefinition(
             columns={},
             primary_key=TablePrimaryKeyDescriptor(
                 partition_by=[],
@@ -529,8 +531,8 @@ class TableDefinition:
 
     def add_primitive_column(
         self, column_name: str, column_type: str
-    ) -> TableDefinition:
-        return TableDefinition(
+    ) -> BaseTableDefinition:
+        return BaseTableDefinition(
             columns={
                 **self.columns,
                 **{
@@ -542,13 +544,13 @@ class TableDefinition:
             primary_key=self.primary_key,
         )
 
-    def add_column(self, column_name: str, column_type: str) -> TableDefinition:
+    def add_column(self, column_name: str, column_type: str) -> BaseTableDefinition:
         return self.add_primitive_column(
             column_name=column_name, column_type=column_type
         )
 
-    def add_set_column(self, column_name: str, column_type: str) -> TableDefinition:
-        return TableDefinition(
+    def add_set_column(self, column_name: str, column_type: str) -> BaseTableDefinition:
+        return BaseTableDefinition(
             columns={
                 **self.columns,
                 **{
@@ -560,8 +562,8 @@ class TableDefinition:
             primary_key=self.primary_key,
         )
 
-    def add_list_column(self, column_name: str, value_type: str) -> TableDefinition:
-        return TableDefinition(
+    def add_list_column(self, column_name: str, value_type: str) -> BaseTableDefinition:
+        return BaseTableDefinition(
             columns={
                 **self.columns,
                 **{
@@ -575,8 +577,8 @@ class TableDefinition:
 
     def add_map_column(
         self, column_name: str, key_type: str, value_type: str
-    ) -> TableDefinition:
-        return TableDefinition(
+    ) -> BaseTableDefinition:
+        return BaseTableDefinition(
             columns={
                 **self.columns,
                 **{
@@ -594,8 +596,8 @@ class TableDefinition:
         *,
         dimension: int,
         service: VectorServiceOptions | dict[str, Any] | None = None,
-    ) -> TableDefinition:
-        return TableDefinition(
+    ) -> BaseTableDefinition:
+        return BaseTableDefinition(
             columns={
                 **self.columns,
                 **{
@@ -609,8 +611,8 @@ class TableDefinition:
             primary_key=self.primary_key,
         )
 
-    def add_partition_by(self, partition_columns: list[str]) -> TableDefinition:
-        return TableDefinition(
+    def add_partition_by(self, partition_columns: list[str]) -> BaseTableDefinition:
+        return BaseTableDefinition(
             columns=self.columns,
             primary_key=TablePrimaryKeyDescriptor(
                 partition_by=self.primary_key.partition_by + partition_columns,
@@ -618,8 +620,8 @@ class TableDefinition:
             ),
         )
 
-    def add_partition_sort(self, partition_sort: dict[str, int]) -> TableDefinition:
-        return TableDefinition(
+    def add_partition_sort(self, partition_sort: dict[str, int]) -> BaseTableDefinition:
+        return BaseTableDefinition(
             columns=self.columns,
             primary_key=TablePrimaryKeyDescriptor(
                 partition_by=self.primary_key.partition_by,
@@ -629,19 +631,19 @@ class TableDefinition:
 
 
 @dataclass
-class TableDescriptor:
+class BaseTableDescriptor:
     """
     A structure expressing full description of a table as the Data API
     returns it, i.e. its name and its `definition` sub-structure.
 
     Attributes:
         name: the name of the table.
-        definition: a TableDefinition instance.
+        definition: a BaseTableDefinition instance.
         raw_descriptor: the raw response from the Data API.
     """
 
     name: str
-    definition: TableDefinition
+    definition: BaseTableDefinition
     raw_descriptor: dict[str, Any] | None
 
     def __repr__(self) -> str:
@@ -672,22 +674,24 @@ class TableDescriptor:
         }
 
     @classmethod
-    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableDescriptor:
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> BaseTableDescriptor:
         """
-        Create an instance of TableDescriptor from a dictionary
+        Create an instance of BaseTableDescriptor from a dictionary
         such as one from the Data API.
         """
 
         warn_residual_keys(cls, raw_dict, {"name", "definition"})
-        return TableDescriptor(
+        return BaseTableDescriptor(
             name=raw_dict["name"],
-            definition=TableDefinition.coerce(raw_dict.get("definition") or {}),
+            definition=BaseTableDefinition.coerce(raw_dict.get("definition") or {}),
             raw_descriptor=raw_dict,
         )
 
     @classmethod
-    def coerce(cls, raw_input: TableDescriptor | dict[str, Any]) -> TableDescriptor:
-        if isinstance(raw_input, TableDescriptor):
+    def coerce(
+        cls, raw_input: BaseTableDescriptor | dict[str, Any]
+    ) -> BaseTableDescriptor:
+        if isinstance(raw_input, BaseTableDescriptor):
             return raw_input
         else:
             return cls._from_dict(raw_input)
@@ -1159,3 +1163,10 @@ class AlterTableDropVectorize(AlterTableOperation):
             return raw_input
         else:
             return cls._from_dict(raw_input)
+
+
+# aliases
+ListTableDescriptor = BaseTableDescriptor
+CreateTableDescriptor = BaseTableDescriptor
+ListTableDefinition = BaseTableDefinition
+CreateTableDefinition = BaseTableDefinition

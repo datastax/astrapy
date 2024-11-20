@@ -747,12 +747,6 @@ class TestDMLSync:
         assert "$similarity" in f1doc_wi_s
         assert f1doc_wi_s["$similarity"] > 0.0
 
-        with pytest.raises(ValueError):
-            sync_empty_collection.find({}, include_similarity=True)
-
-        with pytest.raises(ValueError):
-            sync_empty_collection.find_one({}, include_similarity=True)
-
     @pytest.mark.describe("test of include_sort_vector in collection find, sync")
     def test_collection_include_sort_vector_find_sync(
         self,

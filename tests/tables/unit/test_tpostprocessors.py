@@ -41,7 +41,7 @@ from astrapy.data_types import (
 )
 from astrapy.data_types.data_api_vector import bytes_to_floats
 from astrapy.ids import UUID, ObjectId
-from astrapy.info import TableDescriptor, TableScalarColumnTypeDescriptor
+from astrapy.info import ListTableDescriptor, TableScalarColumnTypeDescriptor
 from astrapy.utils.api_options import FullSerdesOptions
 
 from ..conftest import _repaint_NaNs
@@ -365,7 +365,7 @@ EXPECTED_PREPROCESSED_ROW = {
 class TestTableConverters:
     @pytest.mark.describe("test of row postprocessors from schema")
     def test_row_postprocessors_from_schema(self) -> None:
-        col_desc = TableDescriptor.coerce(TABLE_DESCRIPTION)
+        col_desc = ListTableDescriptor.coerce(TABLE_DESCRIPTION)
         tpostprocessor = create_row_tpostprocessor(
             columns=col_desc.definition.columns,
             options=FullSerdesOptions(
@@ -387,7 +387,7 @@ class TestTableConverters:
 
     @pytest.mark.describe("test of row postprocessors from schema, no custom types")
     def test_row_postprocessors_from_schema_nocustom(self) -> None:
-        col_desc = TableDescriptor.coerce(TABLE_DESCRIPTION)
+        col_desc = ListTableDescriptor.coerce(TABLE_DESCRIPTION)
         tpostprocessor = create_row_tpostprocessor(
             columns={
                 c_n: c_d
@@ -417,7 +417,7 @@ class TestTableConverters:
         # Careful in the different input format for blobs
         primary_key_schema = {
             col_name: col_dict
-            for col_name, col_dict in TableDescriptor.coerce(
+            for col_name, col_dict in ListTableDescriptor.coerce(
                 TABLE_DESCRIPTION
             ).definition.columns.items()
         }
@@ -455,7 +455,7 @@ class TestTableConverters:
     def test_pk_postprocessors_from_schema_nocustom(self) -> None:
         primary_key_schema = {
             col_name: col_dict
-            for col_name, col_dict in TableDescriptor.coerce(
+            for col_name, col_dict in ListTableDescriptor.coerce(
                 TABLE_DESCRIPTION
             ).definition.columns.items()
             if col_name in EXPECTED_NONCUSTOMTYPES_POSTPROCESSED_ROW
@@ -545,7 +545,7 @@ class TestTableConverters:
 
     @pytest.mark.describe("test of row postprocessors from schema, fillers")
     def test_row_postprocessors_from_schema_fillers(self) -> None:
-        col_desc = TableDescriptor.coerce(TABLE_DESCRIPTION)
+        col_desc = ListTableDescriptor.coerce(TABLE_DESCRIPTION)
         tpostprocessor = create_row_tpostprocessor(
             columns=col_desc.definition.columns,
             options=FullSerdesOptions(
@@ -566,7 +566,7 @@ class TestTableConverters:
         "test of row postprocessors from schema, fillers, no custom types"
     )
     def test_row_postprocessors_from_schema_fillers_nocustom(self) -> None:
-        col_desc = TableDescriptor.coerce(TABLE_DESCRIPTION)
+        col_desc = ListTableDescriptor.coerce(TABLE_DESCRIPTION)
         tpostprocessor = create_row_tpostprocessor(
             columns=col_desc.definition.columns,
             options=FullSerdesOptions(

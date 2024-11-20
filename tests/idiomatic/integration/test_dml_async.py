@@ -804,9 +804,6 @@ class TestDMLAsync:
         assert "$similarity" in f1doc_wi_s
         assert f1doc_wi_s["$similarity"] > 0.0
 
-        with pytest.raises(ValueError):
-            await async_empty_collection.find_one({}, include_similarity=True)
-
     @pytest.mark.describe("test of include_sort_vector in collection find, async")
     async def test_collection_include_sort_vector_find_async(
         self,

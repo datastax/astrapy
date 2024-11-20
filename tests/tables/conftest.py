@@ -27,7 +27,7 @@ from astrapy.api_options import APIOptions
 from astrapy.constants import SortMode
 from astrapy.data_types import DataAPIMap, DataAPISet
 from astrapy.info import (
-    TableDefinition,
+    CreateTableDefinition,
     TableIndexDefinition,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
@@ -50,7 +50,7 @@ DefaultTable = Table[dict[str, Any]]
 DefaultAsyncTable = AsyncTable[dict[str, Any]]
 
 TEST_ALL_RETURNS_TABLE_NAME = "test_table_all_returns"
-TEST_ALL_RETURNS_TABLE_DEFINITION = TableDefinition(
+TEST_ALL_RETURNS_TABLE_DEFINITION = CreateTableDefinition(
     columns={
         "p_ascii": TableScalarColumnTypeDescriptor(column_type="ascii"),
         "p_bigint": TableScalarColumnTypeDescriptor(column_type="bigint"),
@@ -103,7 +103,7 @@ TEST_ALL_RETURNS_TABLE_DEFINITION = TableDefinition(
 
 
 TEST_SIMPLE_TABLE_NAME = "test_table_simple"
-TEST_SIMPLE_TABLE_DEFINITION = TableDefinition(
+TEST_SIMPLE_TABLE_DEFINITION = CreateTableDefinition(
     columns={
         "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
         "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
@@ -128,7 +128,7 @@ TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION = TableVectorIndexDefinition(
 
 
 TEST_COMPOSITE_TABLE_NAME = "test_table_composite"
-TEST_COMPOSITE_TABLE_DEFINITION = TableDefinition(
+TEST_COMPOSITE_TABLE_DEFINITION = CreateTableDefinition(
     columns={
         "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
         "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
@@ -153,7 +153,7 @@ TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_NAME = "test_table_composite_p_boolean_idx"
 TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_DEFINITION = TableIndexDefinition(column="p_boolean")
 
 TEST_VECTORIZE_TABLE_NAME = "test_table_vectorize"
-TEST_VECTORIZE_TABLE_DEFINITION = TableDefinition(
+TEST_VECTORIZE_TABLE_DEFINITION = CreateTableDefinition(
     columns={
         "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
         "p_vector": TableVectorColumnTypeDescriptor(
@@ -174,7 +174,7 @@ TEST_VECTORIZE_TABLE_VECTOR_INDEX_NAME = "test_table_vectorize_p_vector_idx"
 TEST_VECTORIZE_TABLE_VECTOR_INDEX_DEFINITION = TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION
 
 TEST_KMS_VECTORIZE_TABLE_NAME = "test_table_kms_vectorize"
-TEST_KMS_VECTORIZE_TABLE_DEFINITION = TableDefinition(
+TEST_KMS_VECTORIZE_TABLE_DEFINITION = CreateTableDefinition(
     columns={
         "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
         "p_vector": TableVectorColumnTypeDescriptor(

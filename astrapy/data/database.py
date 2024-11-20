@@ -45,8 +45,8 @@ from astrapy.exceptions import (
 from astrapy.info import (
     AstraDBDatabaseInfo,
     CollectionDescriptor,
-    TableDefinition,
-    TableDescriptor,
+    CreateTableDefinition,
+    ListTableDescriptor,
     VectorServiceOptions,
 )
 from astrapy.settings.defaults import (
@@ -1206,7 +1206,7 @@ class Database:
         self,
         name: str,
         *,
-        definition: TableDefinition | dict[str, Any],
+        definition: CreateTableDefinition | dict[str, Any],
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
@@ -1223,7 +1223,7 @@ class Database:
         self,
         name: str,
         *,
-        definition: TableDefinition | dict[str, Any],
+        definition: CreateTableDefinition | dict[str, Any],
         row_type: type[ROW],
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
@@ -1240,7 +1240,7 @@ class Database:
         self,
         name: str,
         *,
-        definition: TableDefinition | dict[str, Any],
+        definition: CreateTableDefinition | dict[str, Any],
         row_type: type[Any] = DefaultRowType,
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
@@ -1263,9 +1263,9 @@ class Database:
         Args:
             name: the name of the table.
             definition: a complete table definition for the table. This can be an
-                instance of `TableDefinition` or an equivalent (nested) dictionary,
-                in which case it will be parsed into a `TableDefinition`.
-                See the `astrapy.info.TableDefinition` class for more details
+                instance of `CreateTableDefinition` or an equivalent (nested) dictionary,
+                in which case it will be parsed into a `CreateTableDefinition`.
+                See the `astrapy.info.CreateTableDefinition` class for more details
                 and ways to construct this object.
             row_type: TODO
             keyspace: the keyspace where the table is to be created.
@@ -1308,7 +1308,7 @@ class Database:
 
         Example:
             >>> table_def = (
-            ...     TableDefinition.zero()
+            ...     CreateTableDefinition.zero()
             ...     .add_column("id", "text")
             ...     .add_column("name", "text")
             ...     .add_partition_by(["id"])
@@ -1323,7 +1323,9 @@ class Database:
             ct_options = {"ifNotExists": if_not_exists}
         else:
             ct_options = {}
-        ct_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
+        ct_definition: dict[str, Any] = CreateTableDefinition.coerce(
+            definition
+        ).as_dict()
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
             timeout_options=self.api_options.timeout_options,
             table_admin_timeout_ms=table_admin_timeout_ms,
@@ -1401,7 +1403,7 @@ class Database:
         Example:
             TODO
             >>> table_def = (
-            ...     TableDefinition.zero()
+            ...     CreateTableDefinition.zero()
             ...     .add_column("id", "text")
             ...     .add_column("name", "text")
             ...     .add_partition_by(["id"])
@@ -1538,7 +1540,7 @@ class Database:
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> list[TableDescriptor]:
+    ) -> list[ListTableDescriptor]:
         """
         List all tables in a given keyspace for this database.
 
@@ -1551,16 +1553,16 @@ class Database:
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            a list of TableDescriptor instances, one for each table.
+            a list of ListTableDescriptor instances, one for each table.
 
         Example:
             >>> table_list = my_db.list_tables()
             >>> table_list
-            [TableDescriptor(name='my_table', options=TableOptions())]
+            [ListTableDescriptor(name='my_table', options=TableOptions())]
             >>> for table_desc in my_db.list_tables():
             ...     print(table_desc)
             ...
-            TableDescriptor(name='my_table', options=TableOptions())
+            ListTableDescriptor(name='my_table', options=TableOptions())
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -1581,7 +1583,7 @@ class Database:
         *,
         keyspace: str | None = None,
         timeout_context: _TimeoutContext,
-    ) -> list[TableDescriptor]:
+    ) -> list[ListTableDescriptor]:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload = {"listTables": {"options": {"explain": True}}}
         logger.info("listTables")
@@ -1598,7 +1600,7 @@ class Database:
             # we know this is a list of dicts, to marshal into "descriptors"
             logger.info("finished listTables")
             return [
-                TableDescriptor.coerce(tab_dict)
+                ListTableDescriptor.coerce(tab_dict)
                 for tab_dict in lt_response["status"]["tables"]
             ]
 
@@ -2933,7 +2935,7 @@ class AsyncDatabase:
         self,
         name: str,
         *,
-        definition: TableDefinition | dict[str, Any],
+        definition: CreateTableDefinition | dict[str, Any],
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
@@ -2950,7 +2952,7 @@ class AsyncDatabase:
         self,
         name: str,
         *,
-        definition: TableDefinition | dict[str, Any],
+        definition: CreateTableDefinition | dict[str, Any],
         row_type: type[ROW],
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
@@ -2967,7 +2969,7 @@ class AsyncDatabase:
         self,
         name: str,
         *,
-        definition: TableDefinition | dict[str, Any],
+        definition: CreateTableDefinition | dict[str, Any],
         row_type: type[Any] = DefaultRowType,
         keyspace: str | None = None,
         if_not_exists: bool | None = None,
@@ -2990,9 +2992,9 @@ class AsyncDatabase:
         Args:
             name: the name of the table.
             definition: a complete table definition for the table. This can be an
-                instance of `TableDefinition` or an equivalent (nested) dictionary,
-                in which case it will be parsed into a `TableDefinition`.
-                See the `astrapy.info.TableDefinition` class for more details
+                instance of `CreateTableDefinition` or an equivalent (nested) dictionary,
+                in which case it will be parsed into a `CreateTableDefinition`.
+                See the `astrapy.info.CreateTableDefinition` class for more details
                 and ways to construct this object.
             row_type: TODO
             keyspace: the keyspace where the table is to be created.
@@ -3035,7 +3037,7 @@ class AsyncDatabase:
 
         Example:
             >>> table_def = (
-            ...     TableDefinition.zero()
+            ...     CreateTableDefinition.zero()
             ...     .add_column("id", "text")
             ...     .add_column("name", "text")
             ...     .add_partition_by(["id"])
@@ -3052,7 +3054,9 @@ class AsyncDatabase:
             ct_options = {"ifNotExists": if_not_exists}
         else:
             ct_options = {}
-        ct_definition: dict[str, Any] = TableDefinition.coerce(definition).as_dict()
+        ct_definition: dict[str, Any] = CreateTableDefinition.coerce(
+            definition
+        ).as_dict()
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
             timeout_options=self.api_options.timeout_options,
             table_admin_timeout_ms=table_admin_timeout_ms,
@@ -3130,7 +3134,7 @@ class AsyncDatabase:
         Example:
             TODO
             >>> table_def = (
-            ...     TableDefinition.zero()
+            ...     CreateTableDefinition.zero()
             ...     .add_column("id", "text")
             ...     .add_column("name", "text")
             ...     .add_partition_by(["id"])
@@ -3267,7 +3271,7 @@ class AsyncDatabase:
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> list[TableDescriptor]:
+    ) -> list[ListTableDescriptor]:
         """
         List all tables in a given keyspace for this database.
 
@@ -3280,7 +3284,7 @@ class AsyncDatabase:
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            a list of TableDescriptor instances, one for each table.
+            a list of ListTableDescriptor instances, one for each table.
 
         Example:
             TODO
@@ -3291,8 +3295,8 @@ class AsyncDatabase:
             ...         print("* table_desc:", table_desc)
             ...
             >>> asyncio.run(a_list_tables(my_async_db))
-            * list: [TableDescriptor(name='my_table', options=TableOptions())]
-            * table_desc: TableDescriptor(name='my_table', options=TableOptions())
+            * list: [ListTableDescriptor(name='my_table', options=TableOptions())]
+            * table_desc: ListTableDescriptor(name='my_table', options=TableOptions())
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -3313,7 +3317,7 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         timeout_context: _TimeoutContext,
-    ) -> list[TableDescriptor]:
+    ) -> list[ListTableDescriptor]:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
         lt_payload = {"listTables": {"options": {"explain": True}}}
         logger.info("listTables")
@@ -3330,7 +3334,7 @@ class AsyncDatabase:
             # we know this is a list of dicts, to marshal into "descriptors"
             logger.info("finished listTables")
             return [
-                TableDescriptor.coerce(tab_dict)
+                ListTableDescriptor.coerce(tab_dict)
                 for tab_dict in lt_response["status"]["tables"]
             ]
 

@@ -23,8 +23,9 @@ from astrapy.info import (
     AlterTableAddVectorize,
     AlterTableDropColumns,
     AlterTableDropVectorize,
-    TableDefinition,
-    TableDescriptor,
+    CreateTableDefinition,
+    ListTableDefinition,
+    ListTableDescriptor,
     TableIndexDefinition,
     TableIndexOptions,
     TablePrimaryKeyDescriptor,
@@ -190,19 +191,22 @@ VECTOR_INDEX_OPTIONS_DICT_COERCEABLE_MINIMAL = {
 }
 
 
-class TestTableDescriptors:
-    @pytest.mark.describe("test of parsing table descriptors, fully dict")
-    def test_tabledescriptor_parsing_fulldict(self) -> None:
-        table_descs = [TableDescriptor.coerce(table_dict) for table_dict in TABLE_DICTS]
+class TestListTableDescriptors:
+    @pytest.mark.describe("test of parsing list-table descriptors, fully dict")
+    def test_listtabledescriptor_parsing_fulldict(self) -> None:
+        table_descs = [
+            ListTableDescriptor.coerce(table_dict) for table_dict in TABLE_DICTS
+        ]
         assert all(
             table_desc.as_dict() == table_dict
             for table_desc, table_dict in zip(table_descs, TABLE_DICTS)
         )
 
-    @pytest.mark.describe("test of parsing table descriptors with hybrid inputs")
-    def test_tabledescriptor_hybrid_parsing(self) -> None:
-        from_dict_def = TableDefinition.coerce(DICT_DEFINITION)
-        from_hyb_def = TableDefinition.coerce(HYBRID_DEFINITION)
+    @pytest.mark.describe("test of parsing list-table descriptors with hybrid inputs")
+    def test_listtabledescriptor_hybrid_parsing(self) -> None:
+        from_dict_def = ListTableDefinition.coerce(DICT_DEFINITION)
+        from_hyb_def = ListTableDefinition.coerce(HYBRID_DEFINITION)
+        # TODO add unsupported and parse with ListX and CreateX, checking
         assert from_dict_def == from_hyb_def
 
     @pytest.mark.describe("test of parsing short forms for column types")
@@ -221,7 +225,7 @@ class TestTableDescriptors:
     def test_tabledefinition_fluent(self) -> None:
         # TODO refine this test (assets, etc)
         def0 = (
-            TableDefinition.zero()
+            CreateTableDefinition.zero()
             .add_column("p_text", "text")
             .add_column("p_int", "int")
             .add_column("p_boolean", "boolean")
@@ -240,7 +244,7 @@ class TestTableDescriptors:
             .add_partition_by(["p_text", "p_int"])
             .add_partition_sort({"p_boolean": -1, "p_float": 1})
         )
-        def1 = TableDefinition.coerce(
+        def1 = CreateTableDefinition.coerce(
             {
                 "columns": {
                     "p_text": {"type": "text"},
@@ -271,7 +275,7 @@ class TestTableDescriptors:
         assert def0 == def1
 
         adef0 = (
-            TableDefinition.zero()
+            CreateTableDefinition.zero()
             .add_list_column("p_list", "tinyint")
             .add_vector_column(
                 "p_vectorize",
@@ -282,7 +286,7 @@ class TestTableDescriptors:
                 },
             )
         )
-        adef1 = TableDefinition.coerce(
+        adef1 = CreateTableDefinition.coerce(
             {
                 "columns": {
                     "p_list": {"type": "list", "valueType": "tinyint"},

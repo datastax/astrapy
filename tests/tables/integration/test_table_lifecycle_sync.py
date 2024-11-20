@@ -23,7 +23,7 @@ from astrapy.info import (
     AlterTableAddColumns,
     AlterTableAddVectorize,
     AlterTableDropVectorize,
-    TableDefinition,
+    CreateTableDefinition,
     TableIndexDefinition,
     TableIndexOptions,
     TableKeyValuedColumnTypeDescriptor,
@@ -57,7 +57,7 @@ class TestTableLifecycle:
         }
         assert set(pre_tables) & created_table_names == set()
 
-        table_whole_obj_definition = TableDefinition(
+        table_whole_obj_definition = CreateTableDefinition(
             columns={
                 "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
                 "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
@@ -157,7 +157,7 @@ class TestTableLifecycle:
         )
 
         ct_fluent_definition = (
-            TableDefinition.zero()
+            CreateTableDefinition.zero()
             .add_column("p_text", "text")
             .add_column("p_int", "int")
             .add_column("p_boolean", "boolean")
@@ -225,7 +225,7 @@ class TestTableLifecycle:
         # TODO add test of list indexes once endpoint available
         table = sync_database.create_table(
             "table_for_indexes",
-            definition=TableDefinition(
+            definition=CreateTableDefinition(
                 columns={
                     "p_key": TableScalarColumnTypeDescriptor(column_type="text"),
                     "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
@@ -332,7 +332,7 @@ class TestTableLifecycle:
         self,
         sync_database: Database,
     ) -> None:
-        orig_table_def = TableDefinition(
+        orig_table_def = CreateTableDefinition(
             columns={
                 "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
                 "p_int": TableScalarColumnTypeDescriptor(column_type="int"),

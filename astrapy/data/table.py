@@ -67,7 +67,7 @@ if TYPE_CHECKING:
     from astrapy.authentication import EmbeddingHeadersProvider
     from astrapy.cursors import AsyncTableFindCursor, TableFindCursor
     from astrapy.data.info.table_descriptor import AlterTableOperation
-    from astrapy.info import TableDefinition
+    from astrapy.info import ListTableDefinition
 
 
 logger = logging.getLogger(__name__)
@@ -307,7 +307,7 @@ class Table(Generic[ROW]):
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> TableDefinition:
+    ) -> ListTableDefinition:
         """
         TODO
         """
@@ -484,7 +484,7 @@ class Table(Generic[ROW]):
         Example:
             TODO
             >>> table_def = (
-            ...     TableDefinition.zero()
+            ...     ListTableDefinition.zero()
             ...     .add_column("id", "text")
             ...     .add_column("name", "text")
             ...     .add_partition_by(["id"])
@@ -544,7 +544,7 @@ class Table(Generic[ROW]):
         Example:
             TODO
             >>> table_def = (
-            ...     TableDefinition.zero()
+            ...     ListTableDefinition.zero()
             ...     .add_column("id", "text")
             ...     .add_column("name", "text")
             ...     .add_partition_by(["id"])
@@ -718,7 +718,7 @@ class Table(Generic[ROW]):
         Example:
             TODO
             >>> table_def = (
-            ...     TableDefinition.zero()
+            ...     ListTableDefinition.zero()
             ...     .add_column("id", "text")
             ...     .add_column("name", "text")
             ...     .add_partition_by(["id"])
@@ -1874,7 +1874,7 @@ class AsyncTable(Generic[ROW]):
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> TableDefinition:
+    ) -> ListTableDefinition:
         """
         TODO
         """
@@ -2052,7 +2052,7 @@ class AsyncTable(Generic[ROW]):
         Example:
             TODO
             >>> table_def = (
-            ...     TableDefinition.zero()
+            ...     ListTableDefinition.zero()
             ...     .add_column("id", "text")
             ...     .add_column("name", "text")
             ...     .add_partition_by(["id"])
@@ -2112,7 +2112,7 @@ class AsyncTable(Generic[ROW]):
         Example:
             TODO
             >>> table_def = (
-            ...     TableDefinition.zero()
+            ...     ListTableDefinition.zero()
             ...     .add_column("id", "text")
             ...     .add_column("name", "text")
             ...     .add_partition_by(["id"])
@@ -2286,7 +2286,7 @@ class AsyncTable(Generic[ROW]):
         Example:
             TODO
             >>> table_def = (
-            ...     TableDefinition.zero()
+            ...     ListTableDefinition.zero()
             ...     .add_column("id", "text")
             ...     .add_column("name", "text")
             ...     .add_partition_by(["id"])
