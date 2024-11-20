@@ -338,6 +338,30 @@ class TestTableCursorSync:
         assert accum2 == [mint(row) for row in base_rows[17:]]
         assert mfe_cur.state == CursorState.CLOSED
 
+        # breaking (early) for_each
+        accum3: list[dict[str, Any]] = []
+
+        def marker3(row: dict[str, Any], acc: list[dict[str, Any]] = accum3) -> bool:
+            acc += [row]
+            return len(acc) < 5
+
+        bfe_cur = filled_composite_atable.find()
+        await bfe_cur.for_each(marker3)
+        assert accum3 == base_rows[:5]
+        assert bfe_cur.state == CursorState.STARTED
+
+        # nonbool-nonbreaking for_each
+        accum4: list[dict[str, Any]] = []
+
+        def marker4(row: dict[str, Any], acc: list[dict[str, Any]] = accum4) -> int:
+            acc += [row]
+            return 8 if len(acc) < 5 else 0
+
+        nbfe_cur = filled_composite_atable.find()
+        await nbfe_cur.for_each(marker4)  # type: ignore[arg-type]
+        assert accum4 == base_rows
+        assert nbfe_cur.state == CursorState.CLOSED
+
     @pytest.mark.describe("test of table cursors, serdes options obeyance, async")
     async def test_table_cursors_serdes_options_async(
         self,

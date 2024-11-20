@@ -786,7 +786,7 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
     def for_each(
         self,
-        function: Callable[[T], Any],
+        function: Callable[[T], bool | None],
         *,
         general_method_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -803,7 +803,9 @@ class CollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         )
         self._imprint_internal_state(_cursor)
         for document in _cursor:
-            function(document)
+            res = function(document)
+            if res is False:
+                break
         _cursor._imprint_internal_state(self)
 
     def to_list(
@@ -1119,7 +1121,7 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
     async def for_each(
         self,
-        function: Callable[[T], Any],
+        function: Callable[[T], bool | None],
         *,
         general_method_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -1136,7 +1138,9 @@ class AsyncCollectionFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         )
         self._imprint_internal_state(_cursor)
         async for document in _cursor:
-            function(document)
+            res = function(document)
+            if res is False:
+                break
         _cursor._imprint_internal_state(self)
 
     async def to_list(
@@ -1446,7 +1450,7 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
     def for_each(
         self,
-        function: Callable[[T], Any],
+        function: Callable[[T], bool | None],
         *,
         general_method_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -1463,7 +1467,9 @@ class TableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         )
         self._imprint_internal_state(_cursor)
         for document in _cursor:
-            function(document)
+            res = function(document)
+            if res is False:
+                break
         _cursor._imprint_internal_state(self)
 
     def to_list(
@@ -1779,7 +1785,7 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
 
     async def for_each(
         self,
-        function: Callable[[T], Any],
+        function: Callable[[T], bool | None],
         *,
         general_method_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
@@ -1796,7 +1802,9 @@ class AsyncTableFindCursor(Generic[TRAW, T], FindCursor[TRAW]):
         )
         self._imprint_internal_state(_cursor)
         async for document in _cursor:
-            function(document)
+            res = function(document)
+            if res is False:
+                break
         _cursor._imprint_internal_state(self)
 
     async def to_list(
