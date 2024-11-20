@@ -1126,11 +1126,6 @@ class Collection(Generic[DOC]):
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
-        # TODO reinstate vectors?
-        # if include_similarity is not None and not _is_vector_sort(sort):
-        #     raise ValueError(
-        #         "Cannot use `include_similarity` unless for vector search."
-        #     )
         return (
             CollectionFindCursor(
                 collection=self,
@@ -1231,11 +1226,6 @@ class Collection(Generic[DOC]):
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
-        # TODO reinstate vectors?
-        # if include_similarity is not None and not _is_vector_sort(sort):
-        #     raise ValueError(
-        #         "Cannot use `include_similarity` unless for vector search."
-        #     )
         fo_options = (
             None
             if include_similarity is None
@@ -3755,11 +3745,6 @@ class AsyncCollection(Generic[DOC]):
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
         )
-        # TODO reinstate vectors?
-        # if include_similarity is not None and not _is_vector_sort(sort):
-        #     raise ValueError(
-        #         "Cannot use `include_similarity` unless for vector search."
-        #     )
         fo_options = (
             None
             if include_similarity is None

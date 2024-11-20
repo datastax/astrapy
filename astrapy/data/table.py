@@ -77,45 +77,89 @@ NEW_ROW = TypeVar("NEW_ROW")
 
 class Table(Generic[ROW]):
     """
-    TODO
-    A Data API collection, the main object to interact with the Data API,
-    especially for DDL operations.
-    This class has a synchronous interface.
+    A Data API table, the object to interact with the Data API for structured data,
+    especially for DDL operations. This class has a synchronous interface.
 
     This class is not meant for direct instantiation by the user, rather
-    it is obtained by invoking methods such as `get_collection` of Database,
-    wherefrom the Collection inherits its API options such as authentication
+    it is obtained by invoking methods such as `get_table` of Database,
+    wherefrom the Table inherits its API options such as authentication
     token and API endpoint.
 
     Args:
         database: a Database object, instantiated earlier. This represents
-            the database the collection belongs to.
-        name: the collection name. This parameter should match an existing
-            collection on the database.
-        keyspace: this is the keyspace to which the collection belongs.
+            the database the table belongs to.
+        name: the table name. This parameter should match an existing
+            table on the database.
+        keyspace: this is the keyspace to which the table belongs.
             If nothing is specified, the database's working keyspace is used.
         api_options: a complete specification of the API Options for this instance.
 
     Examples:
-        >>> from astrapy import DataAPIClient, Collection
+        >>> from astrapy import DataAPIClient, Table
         >>> my_client = astrapy.DataAPIClient("AstraCS:...")
         >>> my_db = my_client.get_database(
         ...    "https://01234567-....apps.astra.datastax.com"
         ... )
-        >>> my_coll_1 = Collection(database=my_db, name="my_collection")
-        >>> my_coll_2 = my_db.create_collection(
-        ...     "my_v_collection",
-        ...     dimension=3,
-        ...     metric="cosine",
+        >>> my_table_0 = Table(database=my_db, name="my_v_table_0")
+
+        >>> from astrapy.constants import SortMode
+        >>> from astrapy.info import (
+        ...     CreateTableDefinition,
+        ...     TablePrimaryKeyDescriptor,
+        ...     TableScalarColumnTypeDescriptor,
+        ...     TableVectorColumnTypeDescriptor,
         ... )
-        >>> my_coll_3a = my_db.get_collection("my_already_existing_collection")
-        >>> my_coll_3b = my_db.my_already_existing_collection
-        >>> my_coll_3c = my_db["my_already_existing_collection"]
+        >>> table_definition_1 = CreateTableDefinition(
+        ...     columns={
+        ...         "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
+        ...         "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
+        ...         "p_vector": TableVectorColumnTypeDescriptor(
+        ...             column_type="vector", dimension=3, service=None
+        ...         ),
+        ...     },
+        ...     primary_key=TablePrimaryKeyDescriptor(
+        ...         partition_by=["p_text"],
+        ...         partition_sort={"p_int": SortMode.ASCENDING},
+        ...     ),
+        ... )
+        >>> my_table_1 = my_db.create_table(
+        ...     "my_v_table_1",
+        ...     definition=table_definition_1,
+        ... )
+
+        >>> table_definition_2 = {
+        ...     'columns': {
+        ...         'p_text': {'type': 'text'},
+        ...         'p_int': {'type': 'int'},
+        ...         'p_vector': {'type': 'vector', 'dimension': 3}
+        ...     },
+        ...     'primaryKey': {
+        ...         'partitionBy': ['p_text'],
+        ...         'partitionSort': {'p_int': SortMode.ASCENDING}
+        ...     }
+        ... }
+        >>> my_table_2 = my_db.create_table(
+        ...     "my_v_table_2",
+        ...     definition=table_definition_2,
+        ... )
+
+        >>> table_definition_3 = (
+        ...     CreateTableDefinition.zero()
+        ...     .add_column("p_text", "text")
+        ...     .add_column("p_int", "int")
+        ...     .add_vector_column("p_vector", dimension=3)
+        ...     .add_partition_by(["p_text"])
+        ...     .add_partition_sort({"p_int": SortMode.ASCENDING})
+        ... )
+        >>> my_table_3 = my_db.create_table(
+        ...     "my_v_table_3",
+        ...     definition=table_definition_3,
+        ... )
 
     Note:
-        creating an instance of Collection does not trigger actual creation
-        of the collection on the database. The latter should have been created
-        beforehand, e.g. through the `create_collection` method of a Database.
+        creating an instance of Table does not trigger actual creation
+        of the table on the database. The latter should have been created
+        beforehand, e.g. through the `create_table` method of a Database.
     """
 
     def __init__(
@@ -483,14 +527,6 @@ class Table(Generic[ROW]):
 
         Example:
             TODO
-            >>> table_def = (
-            ...     ListTableDefinition.zero()
-            ...     .add_column("id", "text")
-            ...     .add_column("name", "text")
-            ...     .add_partition_by(["id"])
-            ... )
-            ...
-            >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
         ci_definition: dict[str, Any] = TableIndexDefinition.coerce(
@@ -1664,7 +1700,90 @@ class Table(Generic[ROW]):
 
 class AsyncTable(Generic[ROW]):
     """
-    TODO
+    A Data API table, the object to interact with the Data API for structured data,
+    especially for DDL operations.
+    This class has an asynchronous interface for use with asyncio.
+
+    This class is not meant for direct instantiation by the user, rather
+    it is obtained by invoking methods such as `get_table` of AsyncDatabase,
+    wherefrom the Table inherits its API options such as authentication
+    token and API endpoint.
+
+    Args:
+        database: an AsyncDatabase object, instantiated earlier. This represents
+            the database the table belongs to.
+        name: the table name. This parameter should match an existing
+            table on the database.
+        keyspace: this is the keyspace to which the table belongs.
+            If nothing is specified, the database's working keyspace is used.
+        api_options: a complete specification of the API Options for this instance.
+
+    Examples:
+        >>> from astrapy import DataAPIClient, Table
+        >>> my_client = astrapy.DataAPIClient("AstraCS:...")
+        >>> my_async_db = my_client.get_async_database(
+        ...    "https://01234567-....apps.astra.datastax.com"
+        ... )
+        >>> my_async_table_0 = AsyncTable(database=my_async_db, name="my_v_table_0")
+
+        >>> from astrapy.constants import SortMode
+        >>> from astrapy.info import (
+        ...     CreateTableDefinition,
+        ...     TablePrimaryKeyDescriptor,
+        ...     TableScalarColumnTypeDescriptor,
+        ...     TableVectorColumnTypeDescriptor,
+        ... )
+        >>> table_definition_1 = CreateTableDefinition(
+        ...     columns={
+        ...         "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
+        ...         "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
+        ...         "p_vector": TableVectorColumnTypeDescriptor(
+        ...             column_type="vector", dimension=3, service=None
+        ...         ),
+        ...     },
+        ...     primary_key=TablePrimaryKeyDescriptor(
+        ...         partition_by=["p_text"],
+        ...         partition_sort={"p_int": SortMode.ASCENDING},
+        ...     ),
+        ... )
+        >>> my_async_table_1 = asyncio.run(my_async_db.create_table(
+        ...     "my_v_table_1",
+        ...     definition=table_definition_1,
+        ... ))
+
+        >>> table_definition_2 = {
+        ...     'columns': {
+        ...         'p_text': {'type': 'text'},
+        ...         'p_int': {'type': 'int'},
+        ...         'p_vector': {'type': 'vector', 'dimension': 3}
+        ...     },
+        ...     'primaryKey': {
+        ...         'partitionBy': ['p_text'],
+        ...         'partitionSort': {'p_int': SortMode.ASCENDING}
+        ...     }
+        ... }
+        >>> my_async_table_2 = asyncio.run(my_async_db.create_table(
+        ...     "my_v_table_2",
+        ...     definition=table_definition_2,
+        ... ))
+
+        >>> table_definition_3 = (
+        ...     CreateTableDefinition.zero()
+        ...     .add_column("p_text", "text")
+        ...     .add_column("p_int", "int")
+        ...     .add_vector_column("p_vector", dimension=3)
+        ...     .add_partition_by(["p_text"])
+        ...     .add_partition_sort({"p_int": SortMode.ASCENDING})
+        ... )
+        >>> my_async_table_3 = asyncio.run(my_async_db.create_table(
+        ...     "my_v_table_3",
+        ...     definition=table_definition_3,
+        ... ))
+
+    Note:
+        creating an instance of Table does not trigger actual creation
+        of the table on the database. The latter should have been created
+        beforehand, e.g. through the `create_table` method of a Database.
     """
 
     def __init__(
