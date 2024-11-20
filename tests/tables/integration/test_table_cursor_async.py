@@ -349,6 +349,8 @@ class TestTableCursorSync:
         await bfe_cur.for_each(marker3)
         assert accum3 == base_rows[:5]
         assert bfe_cur.state == CursorState.STARTED
+        bfe_another = await bfe_cur.__anext__()
+        assert bfe_another == base_rows[5]
 
         # nonbool-nonbreaking for_each
         accum4: list[dict[str, Any]] = []
