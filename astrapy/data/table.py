@@ -366,6 +366,7 @@ class Table(Generic[ROW]):
         self_descriptors = [
             table_desc
             for table_desc in self.database._list_tables_ctx(
+                keyspace=None,
                 timeout_context=_TimeoutContext(
                     request_ms=_table_admin_timeout_ms,
                     label=_ta_label,
@@ -1181,11 +1182,6 @@ class Table(Generic[ROW]):
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
-        # TODO reinstate vectors?
-        # if include_similarity is not None and not _is_vector_sort(sort):
-        #     raise ValueError(
-        #         "Cannot use `include_similarity` unless for vector search."
-        #     )
         return (
             TableFindCursor(
                 table=self,
@@ -2006,6 +2002,7 @@ class AsyncTable(Generic[ROW]):
         self_descriptors = [
             table_desc
             for table_desc in await self.database._list_tables_ctx(
+                keyspace=None,
                 timeout_context=_TimeoutContext(
                     request_ms=_table_admin_timeout_ms,
                     label=_ta_label,
@@ -2811,11 +2808,6 @@ class AsyncTable(Generic[ROW]):
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
-        # TODO reinstate vectors?
-        # if include_similarity is not None and not _is_vector_sort(sort):
-        #     raise ValueError(
-        #         "Cannot use `include_similarity` unless for vector search."
-        #     )
         return (
             AsyncTableFindCursor(
                 table=self,

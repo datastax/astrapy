@@ -1004,7 +1004,7 @@ class Database:
     def _list_collections_ctx(
         self,
         *,
-        keyspace: str | None = None,
+        keyspace: str | None,
         timeout_context: _TimeoutContext,
     ) -> list[CollectionDescriptor]:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
@@ -1581,7 +1581,7 @@ class Database:
     def _list_tables_ctx(
         self,
         *,
-        keyspace: str | None = None,
+        keyspace: str | None,
         timeout_context: _TimeoutContext,
     ) -> list[ListTableDescriptor]:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
@@ -2733,7 +2733,7 @@ class AsyncDatabase:
     async def _list_collections_ctx(
         self,
         *,
-        keyspace: str | None = None,
+        keyspace: str | None,
         timeout_context: _TimeoutContext,
     ) -> list[CollectionDescriptor]:
         driver_commander = self._get_driver_commander(keyspace=keyspace)
@@ -3315,7 +3315,7 @@ class AsyncDatabase:
     async def _list_tables_ctx(
         self,
         *,
-        keyspace: str | None = None,
+        keyspace: str | None,
         timeout_context: _TimeoutContext,
     ) -> list[ListTableDescriptor]:
         driver_commander = self._get_driver_commander(keyspace=keyspace)

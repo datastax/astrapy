@@ -492,6 +492,7 @@ class Collection(Generic[DOC]):
         self_descriptors = [
             coll_desc
             for coll_desc in self.database._list_collections_ctx(
+                keyspace=None,
                 timeout_context=_TimeoutContext(
                     request_ms=_collection_admin_timeout_ms,
                     label=_ca_label,
@@ -2980,6 +2981,7 @@ class AsyncCollection(Generic[DOC]):
         self_descriptors = [
             coll_desc
             for coll_desc in await self.database._list_collections_ctx(
+                keyspace=None,
                 timeout_context=_TimeoutContext(
                     request_ms=_collection_admin_timeout_ms,
                     label=_ca_label,
@@ -3625,10 +3627,6 @@ class AsyncCollection(Generic[DOC]):
             (timeout_ms, "timeout_ms"),
             (self.api_options.timeout_options.request_timeout_ms, "request_timeout_ms"),
         )
-        if include_similarity is not None and not _is_vector_sort(sort):
-            raise ValueError(
-                "Cannot use `include_similarity` unless for vector search."
-            )
         return (
             AsyncCollectionFindCursor(
                 collection=self,
