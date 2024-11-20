@@ -277,7 +277,6 @@ class Collection(Generic[DOC]):
     def _copy(
         self: Collection[DOC],
         *,
-        database: Database | None = None,
         name: str | None = None,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
@@ -305,7 +304,7 @@ class Collection(Generic[DOC]):
             .with_override(arg_api_options_2)
         )
         return Collection(
-            database=database or self.database,
+            database=self.database,
             name=name or self.name,
             keyspace=keyspace or self.keyspace,
             api_options=final_api_options,
@@ -376,7 +375,6 @@ class Collection(Generic[DOC]):
     def to_async(
         self: Collection[DOC],
         *,
-        database: AsyncDatabase | None = None,
         name: str | None = None,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
@@ -392,8 +390,6 @@ class Collection(Generic[DOC]):
         an async object).
 
         Args:
-            database: an AsyncDatabase object, instantiated earlier.
-                This represents the database the new collection belongs to.
             name: the collection name. This parameter should match an existing
                 collection on the database.
             keyspace: this is the keyspace to which the collection belongs.
@@ -451,7 +447,7 @@ class Collection(Generic[DOC]):
             .with_override(arg_api_options_2)
         )
         return AsyncCollection(
-            database=database or self.database.to_async(),
+            database=self.database.to_async(),
             name=name or self.name,
             keyspace=keyspace or self.keyspace,
             api_options=final_api_options,
@@ -2779,7 +2775,6 @@ class AsyncCollection(Generic[DOC]):
     def _copy(
         self: AsyncCollection[DOC],
         *,
-        database: AsyncDatabase | None = None,
         name: str | None = None,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
@@ -2807,7 +2802,7 @@ class AsyncCollection(Generic[DOC]):
             .with_override(arg_api_options_2)
         )
         return AsyncCollection(
-            database=database or self.database,
+            database=self.database,
             name=name or self.name,
             keyspace=keyspace or self.keyspace,
             api_options=final_api_options,
@@ -2878,7 +2873,6 @@ class AsyncCollection(Generic[DOC]):
     def to_sync(
         self: AsyncCollection[DOC],
         *,
-        database: Database | None = None,
         name: str | None = None,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
@@ -2894,8 +2888,6 @@ class AsyncCollection(Generic[DOC]):
         a sync object).
 
         Args:
-            database: a Database object, instantiated earlier.
-                This represents the database the new collection belongs to.
             name: the collection name. This parameter should match an existing
                 collection on the database.
             keyspace: this is the keyspace to which the collection belongs.
@@ -2953,7 +2945,7 @@ class AsyncCollection(Generic[DOC]):
             .with_override(arg_api_options_2)
         )
         return Collection(
-            database=database or self.database.to_sync(),
+            database=self.database.to_sync(),
             name=name or self.name,
             keyspace=keyspace or self.keyspace,
             api_options=final_api_options,

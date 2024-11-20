@@ -87,13 +87,11 @@ class TestCollectionsAsync:
             keyspace=None,
             api_options=_wrapCallers(async_database, callers=callers0),
         )
-        assert col1 != col1._copy(database=async_database._copy(token="x_t"))
         assert col1 != col1._copy(name="o")
         assert col1 != col1._copy(keyspace="o")
         assert col1 != col1._copy(callers=callers1)
 
         col2 = col1._copy(
-            database=async_database._copy(token="x_t"),
             name="other_name",
             keyspace="other_keyspace",
             callers=callers1,
@@ -136,18 +134,11 @@ class TestCollectionsAsync:
             keyspace="the_ks",
             api_options=_wrapCallers(async_database, callers=callers0),
         )
-        assert (
-            col1
-            != col1.to_sync(
-                database=async_database._copy(token="x_t").to_sync()
-            ).to_async()
-        )
         assert col1 != col1.to_sync(name="o").to_async()
         assert col1 != col1.to_sync(keyspace="o").to_async()
         assert col1 != col1.to_sync(callers=callers1).to_async()
 
         col2s = col1.to_sync(
-            database=async_database._copy(token="x_t").to_sync(),
             name="other_name",
             keyspace="other_keyspace",
             callers=callers1,
@@ -155,7 +146,6 @@ class TestCollectionsAsync:
         assert col2s.to_async() != col1
 
         col3 = col2s.to_async(
-            database=async_database._copy(),
             name="id_test_collection",
             keyspace="the_ks",
             callers=callers0,

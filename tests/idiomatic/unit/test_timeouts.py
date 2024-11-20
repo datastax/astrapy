@@ -297,25 +297,7 @@ class TestTimeouts:
         dmr_LS_zrq = collection_L_S.delete_many({}, general_method_timeout_ms=0)
         assert dmr_LS_zrq.deleted_count == 12
 
-        # remove the timeout completely with a zero per-method 'timeout_ms' catch-all
-        httpserver.expect_oneshot_request(
-            expected_url,
-            method="POST",
-        ).respond_with_handler(
-            delayed_response_handler(
-                delay_ms=1200,
-                response_json={
-                    "status": {
-                        "deletedCount": 12,
-                        "moreData": False,
-                    },
-                },
-            )
-        )
-        dmr_SL_zgrq = collection_S_L.delete_many({}, timeout_ms=0)
-        assert dmr_SL_zgrq.deleted_count == 12
-
-        # remove the timeout completely with a zero per-method 'timeout_ms' catch-all
+        # remove the timeout completely with a zero per-method 'timeout_ms' shorthand
         httpserver.expect_oneshot_request(
             expected_url,
             method="POST",
@@ -508,25 +490,7 @@ class TestTimeouts:
         dmr_LS_zrq = await acollection_L_S.delete_many({}, general_method_timeout_ms=0)
         assert dmr_LS_zrq.deleted_count == 12
 
-        # remove the timeout completely with a zero per-method 'timeout_ms' catch-all
-        httpserver.expect_oneshot_request(
-            expected_url,
-            method="POST",
-        ).respond_with_handler(
-            delayed_response_handler(
-                delay_ms=1200,
-                response_json={
-                    "status": {
-                        "deletedCount": 12,
-                        "moreData": False,
-                    },
-                },
-            )
-        )
-        dmr_SL_zgrq = await acollection_S_L.delete_many({}, timeout_ms=0)
-        assert dmr_SL_zgrq.deleted_count == 12
-
-        # remove the timeout completely with a zero per-method 'timeout_ms' catch-all
+        # remove the timeout completely with a zero per-method 'timeout_ms' shorthand
         httpserver.expect_oneshot_request(
             expected_url,
             method="POST",

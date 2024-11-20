@@ -1,5 +1,6 @@
 v 2.0.0
 =======
+Remove 'database' parameter to the `to_sync()` and `to_async()` conversion methods for collections
 Renamed parameter 'collection_name' to `collection_or_table_name` and allowed for `keyspace=None` in database `command()` method
 Rename `astrapy.constants.SortDocuments` to `SortMode` (keeping the old name as an alias)
 Add `source_model` parameter to create_collection methods
