@@ -126,7 +126,7 @@ class CollectionVectorOptions:
 
 
 @dataclass
-class CollectionOptions:
+class CollectionDefinition:
     """
     A structure expressing the options of a collection.
     See the Data API specifications for detailed specification and allowed values.
@@ -217,13 +217,13 @@ class CollectionOptions:
         }
 
     @staticmethod
-    def from_dict(raw_dict: dict[str, Any]) -> CollectionOptions:
+    def from_dict(raw_dict: dict[str, Any]) -> CollectionDefinition:
         """
-        Create an instance of CollectionOptions from a dictionary
+        Create an instance of CollectionDefinition from a dictionary
         such as one from the Data API.
         """
 
-        return CollectionOptions(
+        return CollectionDefinition(
             vector=CollectionVectorOptions.from_dict(raw_dict.get("vector")),
             indexing=raw_dict.get("indexing"),
             default_id=CollectionDefaultIDOptions.from_dict(raw_dict.get("defaultId")),
@@ -238,12 +238,12 @@ class CollectionDescriptor:
 
     Attributes:
         name: the name of the collection.
-        options: a CollectionOptions instance.
+        options: a CollectionDefinition instance.
         raw_descriptor: the raw response from the Data API.
     """
 
     name: str
-    options: CollectionOptions
+    options: CollectionDefinition
     raw_descriptor: dict[str, Any] | None
 
     def __repr__(self) -> str:
@@ -299,6 +299,6 @@ class CollectionDescriptor:
 
         return CollectionDescriptor(
             name=raw_dict["name"],
-            options=CollectionOptions.from_dict(raw_dict.get("options") or {}),
+            options=CollectionDefinition.from_dict(raw_dict.get("options") or {}),
             raw_descriptor=raw_dict,
         )

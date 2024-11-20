@@ -981,11 +981,11 @@ class Database:
         Example:
             >>> coll_list = my_db.list_collections()
             >>> coll_list
-            [CollectionDescriptor(name='my_v_col', options=CollectionOptions())]
+            [CollectionDescriptor(name='my_v_col', options=CollectionDefinition())]
             >>> for coll_dict in my_db.list_collections():
             ...     print(coll_dict)
             ...
-            CollectionDescriptor(name='my_v_col', options=CollectionOptions())
+            CollectionDescriptor(name='my_v_col', options=CollectionDefinition())
         """
 
         _collection_admin_timeout_ms, _ca_label = _select_singlereq_timeout_ca(
@@ -2713,8 +2713,8 @@ class AsyncDatabase:
             ...         print("* coll:", coll)
             ...
             >>> asyncio.run(a_list_colls(my_async_db))
-            * list: [CollectionDescriptor(name='my_v_col', options=CollectionOptions())]
-            * coll: CollectionDescriptor(name='my_v_col', options=CollectionOptions())
+            * list: [CollectionDescriptor(name='my_v_col', options=CollectionDefinition())]
+            * coll: CollectionDescriptor(name='my_v_col', options=CollectionDefinition())
         """
 
         _collection_admin_timeout_ms, _ca_label = _select_singlereq_timeout_ca(

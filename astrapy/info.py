@@ -16,9 +16,9 @@ from __future__ import annotations
 
 from astrapy.data.info.collection_descriptor import (
     CollectionDefaultIDOptions,
+    CollectionDefinition,
     CollectionDescriptor,
     CollectionInfo,
-    CollectionOptions,
     CollectionVectorOptions,
 )
 from astrapy.data.info.database_info import (
@@ -68,9 +68,9 @@ __all__ = [
     "AlterTableDropVectorize",
     "AstraDBAdminDatabaseInfo",
     "CollectionDefaultIDOptions",
+    "CollectionDefinition",
     "CollectionDescriptor",
     "CollectionInfo",
-    "CollectionOptions",
     "CollectionVectorOptions",
     "CreateTableDefinition",
     "CreateTableDescriptor",

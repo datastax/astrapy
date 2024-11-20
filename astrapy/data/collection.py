@@ -52,7 +52,7 @@ from astrapy.exceptions import (
     _select_singlereq_timeout_gm,
     _TimeoutContext,
 )
-from astrapy.info import CollectionInfo, CollectionOptions
+from astrapy.info import CollectionDefinition, CollectionInfo
 from astrapy.results import (
     CollectionDeleteResult,
     CollectionInsertManyResult,
@@ -459,7 +459,7 @@ class Collection(Generic[DOC]):
         collection_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> CollectionOptions:
+    ) -> CollectionDefinition:
         """
         Get the collection options, i.e. its configuration as read from the database.
 
@@ -474,12 +474,12 @@ class Collection(Generic[DOC]):
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            a CollectionOptions instance describing the collection.
+            a CollectionDefinition instance describing the collection.
             (See also the database `list_collections` method.)
 
         Example:
             >>> my_coll.options()
-            CollectionOptions(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
+            CollectionDefinition(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
 
         _collection_admin_timeout_ms, _ca_label = _select_singlereq_timeout_ca(
@@ -2957,7 +2957,7 @@ class AsyncCollection(Generic[DOC]):
         collection_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> CollectionOptions:
+    ) -> CollectionDefinition:
         """
         Get the collection options, i.e. its configuration as read from the database.
 
@@ -2972,12 +2972,12 @@ class AsyncCollection(Generic[DOC]):
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
-            a CollectionOptions instance describing the collection.
+            a CollectionDefinition instance describing the collection.
             (See also the database `list_collections` method.)
 
         Example:
             >>> asyncio.run(my_async_coll.options())
-            CollectionOptions(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
+            CollectionDefinition(vector=CollectionVectorOptions(dimension=3, metric='cosine'))
         """
 
         _collection_admin_timeout_ms, _ca_label = _select_singlereq_timeout_ca(

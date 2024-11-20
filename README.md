@@ -473,9 +473,9 @@ Info/metadata classes:
 from astrapy.info import (
     AstraDBAdminDatabaseInfo,
     CollectionDefaultIDOptions,
+    CollectionDefinition,
     CollectionDescriptor,
     CollectionInfo,
-    CollectionOptions,
     CollectionVectorOptions,
     AstraDBDatabaseInfo,
     EmbeddingProvider,
