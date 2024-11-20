@@ -25,6 +25,7 @@ from astrapy.info import (
     AlterTableDropVectorize,
     CreateTableDefinition,
     TableIndexDefinition,
+    TableIndexDescriptor,
     TableIndexOptions,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
@@ -288,38 +289,52 @@ class TestTableLifecycle:
             "tfi_idx_p_vector_sm",
         }
         assert set(table.list_index_names()) == expected_indexes
-        # this map needs metric and source_model always specified
+        # this data needs metric and source_model always specified
         # to match how the API behaves. Also metric is auto-selected based
         # on sourceModel for example.
-        expected_index_map = {
-            "tfi_idx_p_text": TableIndexDefinition(
-                column="p_text",
-                options=TableIndexOptions(
-                    ascii=False,
-                    normalize=True,
-                    case_sensitive=False,
+        expected_index_list = [
+            TableIndexDescriptor(
+                name="tfi_idx_p_text",
+                definition=TableIndexDefinition(
+                    column="p_text",
+                    options=TableIndexOptions(
+                        ascii=False,
+                        normalize=True,
+                        case_sensitive=False,
+                    ),
                 ),
             ),
-            "tfi_idx_p_int": TableIndexDefinition(
-                column="p_int",
-                options=TableIndexOptions(),
-            ),
-            "tfi_idx_p_vector_sm": TableVectorIndexDefinition(
-                column="p_vector_sm",
-                options=TableVectorIndexOptions(
-                    metric="cosine",
-                    source_model="other",
+            TableIndexDescriptor(
+                name="tfi_idx_p_int",
+                definition=TableIndexDefinition(
+                    column="p_int",
+                    options=TableIndexOptions(),
                 ),
             ),
-            "tfi_idx_p_vector": TableVectorIndexDefinition(
-                column="p_vector",
-                options=TableVectorIndexOptions(
-                    metric="dot_product",
-                    source_model="openai-v3-large",
+            TableIndexDescriptor(
+                name="tfi_idx_p_vector_sm",
+                definition=TableVectorIndexDefinition(
+                    column="p_vector_sm",
+                    options=TableVectorIndexOptions(
+                        metric="cosine",
+                        source_model="other",
+                    ),
                 ),
             ),
-        }
-        assert table.list_indexes() == expected_index_map
+            TableIndexDescriptor(
+                name="tfi_idx_p_vector",
+                definition=TableVectorIndexDefinition(
+                    column="p_vector",
+                    options=TableVectorIndexOptions(
+                        metric="dot_product",
+                        source_model="openai-v3-large",
+                    ),
+                ),
+            ),
+        ]
+        assert sorted(table.list_indexes(), key=lambda id: id.name) == sorted(
+            expected_index_list, key=lambda id: id.name
+        )
 
         sync_database.drop_table_index("tfi_idx_p_text")
         sync_database.drop_table_index("tfi_idx_p_int")

@@ -48,8 +48,8 @@ from astrapy.exceptions import (
     _TimeoutContext,
 )
 from astrapy.info import (
-    TableBaseIndexDefinition,
     TableIndexDefinition,
+    TableIndexDescriptor,
     TableInfo,
     TableVectorIndexDefinition,
 )
@@ -620,7 +620,7 @@ class Table(Generic[ROW]):
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> dict[str, TableBaseIndexDefinition]:
+    ) -> list[TableIndexDescriptor]:
         """
         List the full definitions of all indexes existing on this table.
 
@@ -661,12 +661,10 @@ class Table(Generic[ROW]):
             )
         else:
             logger.info("finished listIndexes")
-            return {
-                index_object["name"]: TableBaseIndexDefinition.from_dict(
-                    index_object["definition"],
-                )
+            return [
+                TableIndexDescriptor.coerce(index_object)
                 for index_object in li_response["status"]["indexes"]
-            }
+            ]
 
     @overload
     def alter(
@@ -2189,7 +2187,7 @@ class AsyncTable(Generic[ROW]):
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-    ) -> dict[str, TableBaseIndexDefinition]:
+    ) -> list[TableIndexDescriptor]:
         """
         List the full definitions of all indexes existing on this table.
 
@@ -2230,12 +2228,10 @@ class AsyncTable(Generic[ROW]):
             )
         else:
             logger.info("finished listIndexes")
-            return {
-                index_object["name"]: TableBaseIndexDefinition.from_dict(
-                    index_object["definition"],
-                )
+            return [
+                TableIndexDescriptor.coerce(index_object)
                 for index_object in li_response["status"]["indexes"]
-            }
+            ]
 
     @overload
     async def alter(

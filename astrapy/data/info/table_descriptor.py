@@ -830,17 +830,23 @@ class TableVectorIndexOptions:
 
 
 @dataclass
-class TableBaseIndexDefinition:
+class TableBaseIndexDefinition(ABC):
     """
     TODO
     """
 
     column: str
 
+    @abstractmethod
+    def as_dict(self) -> dict[str, Any]: ...
+
     @classmethod
     def from_dict(cls, raw_input: dict[str, Any]) -> TableBaseIndexDefinition:
         if "options" not in raw_input:
-            return TableIndexDefinition.coerce(raw_input)
+            if raw_input["column"] == "UNKNOWN" and "apiSupport" in raw_input:
+                return TableUnsupportedIndexDefinition.coerce(raw_input)
+            else:
+                return TableIndexDefinition.coerce(raw_input)
         else:
             if "metric" in raw_input["options"]:
                 return TableVectorIndexDefinition.coerce(raw_input)
@@ -942,6 +948,135 @@ class TableVectorIndexDefinition(TableBaseIndexDefinition):
         else:
             _filled_raw_input = {**{"options": {}}, **raw_input}
             return cls._from_dict(_filled_raw_input)
+
+
+@dataclass
+class TableAPIIndexSupportDescriptor:
+    """
+    TODO
+    """
+
+    cql_definition: str
+    create_index: bool
+    filter: bool
+
+    def __repr__(self) -> str:
+        desc = ", ".join(
+            [
+                f'"{self.cql_definition}"',
+                f"create_index={self.create_index}",
+                f"filter={self.filter}",
+            ]
+        )
+        return f"{self.__class__.__name__}({desc})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            "cqlDefinition": self.cql_definition,
+            "createIndex": self.create_index,
+            "filter": self.filter,
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableAPIIndexSupportDescriptor:
+        """
+        Create an instance of TableAPIIndexSupportDescriptor from a dictionary
+        such as one from the Data API.
+        """
+
+        warn_residual_keys(
+            cls,
+            raw_dict,
+            {"cqlDefinition", "createIndex", "filter"},
+        )
+        return TableAPIIndexSupportDescriptor(
+            cql_definition=raw_dict["cqlDefinition"],
+            create_index=raw_dict["createIndex"],
+            filter=raw_dict["filter"],
+        )
+
+
+@dataclass
+class TableUnsupportedIndexDefinition(TableBaseIndexDefinition):
+    """
+    TODO
+    """
+
+    api_support: TableAPIIndexSupportDescriptor
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.api_support.cql_definition})"
+
+    def as_dict(self) -> dict[str, Any]:
+        """Recast this object into a dictionary."""
+
+        return {
+            "column": self.column,
+            "apiSupport": self.api_support.as_dict(),
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableUnsupportedIndexDefinition:
+        """
+        Create an instance of TableIndexDefinition from a dictionary
+        such as one from the Data API.
+        """
+
+        warn_residual_keys(cls, raw_dict, {"column", "apiSupport"})
+        return TableUnsupportedIndexDefinition(
+            column=raw_dict["column"],
+            api_support=TableAPIIndexSupportDescriptor._from_dict(
+                raw_dict["apiSupport"]
+            ),
+        )
+
+    @classmethod
+    def coerce(
+        cls, raw_input: TableUnsupportedIndexDefinition | dict[str, Any]
+    ) -> TableUnsupportedIndexDefinition:
+        if isinstance(raw_input, TableUnsupportedIndexDefinition):
+            return raw_input
+        else:
+            return cls._from_dict(raw_input)
+
+
+@dataclass
+class TableIndexDescriptor:
+    """
+    TODO
+    """
+
+    name: str
+    definition: TableBaseIndexDefinition
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "definition": self.definition.as_dict(),
+        }
+
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> TableIndexDescriptor:
+        """
+        Create an instance of TableIndexDescriptor from a dictionary
+        such as one from the Data API.
+        """
+
+        warn_residual_keys(cls, raw_dict, {"name", "definition"})
+        return TableIndexDescriptor(
+            name=raw_dict["name"],
+            definition=TableBaseIndexDefinition.from_dict(raw_dict["definition"]),
+        )
+
+    def coerce(
+        raw_input: TableIndexDescriptor | dict[str, Any],
+    ) -> TableIndexDescriptor:
+        if isinstance(raw_input, TableIndexDescriptor):
+            return raw_input
+        else:
+            return TableIndexDescriptor._from_dict(raw_input)
 
 
 @dataclass
