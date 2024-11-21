@@ -28,7 +28,6 @@ from astrapy.constants import SortMode
 from astrapy.data_types import DataAPIMap, DataAPISet
 from astrapy.info import (
     CreateTableDefinition,
-    TableIndexOptions,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
@@ -149,7 +148,7 @@ TEST_COMPOSITE_TABLE_VECTOR_INDEX_COLUMN = TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN
 TEST_COMPOSITE_TABLE_VECTOR_INDEX_OPTIONS = TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS
 TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_NAME = "test_table_composite_p_boolean_idx"
 TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_COLUMN = "p_boolean"
-TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_OPTIONS = TableIndexOptions()
+TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_OPTIONS = None
 
 TEST_VECTORIZE_TABLE_NAME = "test_table_vectorize"
 TEST_VECTORIZE_TABLE_DEFINITION = CreateTableDefinition(

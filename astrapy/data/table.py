@@ -505,7 +505,7 @@ class Table(Generic[ROW]):
         name: str,
         *,
         column: str,
-        options: TableIndexOptions | dict[str, Any],
+        options: TableIndexOptions | dict[str, Any] | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
@@ -542,7 +542,7 @@ class Table(Generic[ROW]):
 
         ci_definition: dict[str, Any] = TableIndexDefinition(
             column=column,
-            options=TableIndexOptions.coerce(options),
+            options=TableIndexOptions.coerce(options or {}),
         ).as_dict()
         ci_command = "createIndex"
         return self._create_generic_index(
@@ -2155,7 +2155,7 @@ class AsyncTable(Generic[ROW]):
         name: str,
         *,
         column: str,
-        options: TableIndexOptions | dict[str, Any],
+        options: TableIndexOptions | dict[str, Any] | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
@@ -2200,7 +2200,7 @@ class AsyncTable(Generic[ROW]):
 
         ci_definition: dict[str, Any] = TableIndexDefinition(
             column=column,
-            options=TableIndexOptions.coerce(options),
+            options=TableIndexOptions.coerce(options or {}),
         ).as_dict()
         ci_command = "createIndex"
         return await self._create_generic_index(

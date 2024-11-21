@@ -257,7 +257,6 @@ class TestTableLifecycle:
         await table.create_index(
             "tfi_idx_p_int",
             column="p_int",
-            options=TableIndexOptions(),
         )
         await table.create_vector_index(
             "tfi_idx_p_vector_sm",
