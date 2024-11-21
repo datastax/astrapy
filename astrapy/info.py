@@ -60,6 +60,7 @@ from astrapy.data.info.vectorize import (
     FindEmbeddingProvidersResult,
     VectorServiceOptions,
 )
+from astrapy.data.utils.table_types import TableScalarColumnType
 
 __all__ = [
     "AlterTableAddColumns",
@@ -93,6 +94,7 @@ __all__ = [
     "TableInfo",
     "TableKeyValuedColumnTypeDescriptor",
     "TablePrimaryKeyDescriptor",
+    "TableScalarColumnType",
     "TableScalarColumnTypeDescriptor",
     "TableUnsupportedColumnTypeDescriptor",
     "TableUnsupportedIndexDefinition",

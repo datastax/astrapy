@@ -247,38 +247,30 @@ class TestTableLifecycle:
 
         await table.create_index(
             "tfi_idx_p_text",
-            definition=TableIndexDefinition(
-                column="p_text",
-                options=TableIndexOptions(
-                    ascii=False,
-                    normalize=True,
-                    case_sensitive=False,
-                ),
+            column="p_text",
+            options=TableIndexOptions(
+                ascii=False,
+                normalize=True,
+                case_sensitive=False,
             ),
         )
         await table.create_index(
             "tfi_idx_p_int",
-            definition=TableIndexDefinition(
-                column="p_int",
-                options=TableIndexOptions(),
-            ),
+            column="p_int",
+            options=TableIndexOptions(),
         )
         await table.create_vector_index(
             "tfi_idx_p_vector_sm",
-            definition=TableVectorIndexDefinition(
-                column="p_vector_sm",
-                options=TableVectorIndexOptions(
-                    metric="cosine",
-                ),
+            column="p_vector_sm",
+            options=TableVectorIndexOptions(
+                metric="cosine",
             ),
         )
         await table.create_vector_index(
             "tfi_idx_p_vector",
-            definition=TableVectorIndexDefinition(
-                column="p_vector",
-                options=TableVectorIndexOptions(
-                    source_model="openai-v3-large",
-                ),
+            column="p_vector",
+            options=TableVectorIndexOptions(
+                source_model="openai-v3-large",
             ),
         )
 

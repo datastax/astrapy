@@ -50,8 +50,10 @@ from astrapy.exceptions import (
 from astrapy.info import (
     TableIndexDefinition,
     TableIndexDescriptor,
+    TableIndexOptions,
     TableInfo,
     TableVectorIndexDefinition,
+    TableVectorIndexOptions,
 )
 from astrapy.results import TableInsertManyResult, TableInsertOneResult
 from astrapy.settings.defaults import (
@@ -84,6 +86,9 @@ class Table(Generic[ROW]):
     it is obtained by invoking methods such as `get_table` of Database,
     wherefrom the Table inherits its API options such as authentication
     token and API endpoint.
+    In order to create a table, instead, one should call the `create_table`
+    method of Database, providing a table definition parameter that can be built
+    in different ways (see the `CreateTableDefinition` object and examples below).
 
     Args:
         database: a Database object, instantiated earlier. This represents
@@ -499,14 +504,15 @@ class Table(Generic[ROW]):
         self,
         name: str,
         *,
-        definition: TableIndexDefinition | dict[str, Any],
+        column: str,
+        options: TableIndexOptions | dict[str, Any],
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
-        Creates an index on a non-vector column of the table.
+        Create an index on a non-vector column of the table.
 
         This is a blocking operation: the method returns once the index
         is created and ready to use.
@@ -515,7 +521,9 @@ class Table(Generic[ROW]):
 
         Args:
             name: the name of the index.
-            definition: a complete definition for the index. This can be an instance
+            column: TODO
+            options: TODO
+            TODO definition: a complete definition for the index. This can be an instance
                 of `TableIndexDefinition` or an equivalent (nested) dictionary,
                 in which case it will be parsed into a `TableIndexDefinition`.
                 See the `astrapy.info.TableIndexDefinition` class for more details.
@@ -532,8 +540,9 @@ class Table(Generic[ROW]):
             TODO
         """
 
-        ci_definition: dict[str, Any] = TableIndexDefinition.coerce(
-            definition
+        ci_definition: dict[str, Any] = TableIndexDefinition(
+            column=column,
+            options=TableIndexOptions.coerce(options),
         ).as_dict()
         ci_command = "createIndex"
         return self._create_generic_index(
@@ -550,14 +559,15 @@ class Table(Generic[ROW]):
         self,
         name: str,
         *,
-        definition: TableVectorIndexDefinition | dict[str, Any],
+        column: str,
+        options: TableVectorIndexOptions | dict[str, Any],
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
-        Creates a vector index on a vector column of the table, enabling vector
+        Create a vector index on a vector column of the table, enabling vector
         similarity search operations on it.
 
         This is a blocking operation: the method returns once the index
@@ -567,7 +577,9 @@ class Table(Generic[ROW]):
 
         Args:
             name: the name of the index.
-            definition: a complete definition for the index. This can be an instance
+            column: TODO
+            options: TODO
+            TODO definition: a complete definition for the index. This can be an instance
                 of `TableVectorIndexDefinition` or an equivalent (nested) dictionary,
                 in which case it will be parsed into a `TableVectorIndexDefinition`.
                 See the `astrapy.info.TableVectorIndexDefinition` class for more details.
@@ -592,8 +604,9 @@ class Table(Generic[ROW]):
             >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
-        ci_definition: dict[str, Any] = TableVectorIndexDefinition.coerce(
-            definition
+        ci_definition: dict[str, Any] = TableVectorIndexDefinition(
+            column=column,
+            options=TableVectorIndexOptions.coerce(options),
         ).as_dict()
         ci_command = "createVectorIndex"
         return self._create_generic_index(
@@ -1706,6 +1719,9 @@ class AsyncTable(Generic[ROW]):
     it is obtained by invoking methods such as `get_table` of AsyncDatabase,
     wherefrom the Table inherits its API options such as authentication
     token and API endpoint.
+    In order to create a table, instead, one should call the `create_table`
+    method of AsyncDatabase, providing a table definition parameter that can be built
+    in different ways (see the `CreateTableDefinition` object and examples below).
 
     Args:
         database: an AsyncDatabase object, instantiated earlier. This represents
@@ -2138,14 +2154,15 @@ class AsyncTable(Generic[ROW]):
         self,
         name: str,
         *,
-        definition: TableIndexDefinition | dict[str, Any],
+        column: str,
+        options: TableIndexOptions | dict[str, Any],
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
-        Creates an index on a non-vector column of the table.
+        Create an index on a non-vector column of the table.
 
         This is a blocking operation: the method returns once the index
         is created and ready to use.
@@ -2154,7 +2171,9 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             name: the name of the index.
-            definition: a complete definition for the index. This can be an instance
+            column: TODO
+            options: TODO
+            TODO definition: a complete definition for the index. This can be an instance
                 of `TableIndexDefinition` or an equivalent (nested) dictionary,
                 in which case it will be parsed into a `TableIndexDefinition`.
                 See the `astrapy.info.TableIndexDefinition` class for more details.
@@ -2179,8 +2198,9 @@ class AsyncTable(Generic[ROW]):
             >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
-        ci_definition: dict[str, Any] = TableIndexDefinition.coerce(
-            definition
+        ci_definition: dict[str, Any] = TableIndexDefinition(
+            column=column,
+            options=TableIndexOptions.coerce(options),
         ).as_dict()
         ci_command = "createIndex"
         return await self._create_generic_index(
@@ -2197,14 +2217,15 @@ class AsyncTable(Generic[ROW]):
         self,
         name: str,
         *,
-        definition: TableVectorIndexDefinition | dict[str, Any],
+        column: str,
+        options: TableVectorIndexOptions | dict[str, Any],
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
     ) -> None:
         """
-        Creates a vector index on a vector column of the table, enabling vector
+        Create a vector index on a vector column of the table, enabling vector
         similarity search operations on it.
 
         This is a blocking operation: the method returns once the index
@@ -2214,7 +2235,9 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             name: the name of the index.
-            definition: a complete definition for the index. This can be an instance
+            column: TODO
+            options: TODO
+            TODO definition: a complete definition for the index. This can be an instance
                 of `TableVectorIndexDefinition` or an equivalent (nested) dictionary,
                 in which case it will be parsed into a `TableVectorIndexDefinition`.
                 See the `astrapy.info.TableVectorIndexDefinition` class for more details.
@@ -2239,8 +2262,9 @@ class AsyncTable(Generic[ROW]):
             >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
-        ci_definition: dict[str, Any] = TableVectorIndexDefinition.coerce(
-            definition
+        ci_definition: dict[str, Any] = TableVectorIndexDefinition(
+            column=column,
+            options=TableVectorIndexOptions.coerce(options),
         ).as_dict()
         ci_command = "createVectorIndex"
         return await self._create_generic_index(

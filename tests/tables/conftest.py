@@ -28,13 +28,12 @@ from astrapy.constants import SortMode
 from astrapy.data_types import DataAPIMap, DataAPISet
 from astrapy.info import (
     CreateTableDefinition,
-    TableIndexDefinition,
+    TableIndexOptions,
     TableKeyValuedColumnTypeDescriptor,
     TablePrimaryKeyDescriptor,
     TableScalarColumnTypeDescriptor,
     TableValuedColumnTypeDescriptor,
     TableVectorColumnTypeDescriptor,
-    TableVectorIndexDefinition,
     TableVectorIndexOptions,
     VectorServiceOptions,
 )
@@ -119,11 +118,9 @@ TEST_SIMPLE_TABLE_DEFINITION = CreateTableDefinition(
     ),
 )
 TEST_SIMPLE_TABLE_VECTOR_INDEX_NAME = "test_table_simple_p_vector_idx"
-TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION = TableVectorIndexDefinition(
-    column="p_vector",
-    options=TableVectorIndexOptions(
-        metric="cosine",
-    ),
+TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN = "p_vector"
+TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS = TableVectorIndexOptions(
+    metric="cosine",
 )
 
 
@@ -148,9 +145,11 @@ TEST_COMPOSITE_TABLE_DEFINITION = CreateTableDefinition(
     ),
 )
 TEST_COMPOSITE_TABLE_VECTOR_INDEX_NAME = "test_table_composite_p_vector_idx"
-TEST_COMPOSITE_TABLE_VECTOR_INDEX_DEFINITION = TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION
+TEST_COMPOSITE_TABLE_VECTOR_INDEX_COLUMN = TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN
+TEST_COMPOSITE_TABLE_VECTOR_INDEX_OPTIONS = TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS
 TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_NAME = "test_table_composite_p_boolean_idx"
-TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_DEFINITION = TableIndexDefinition(column="p_boolean")
+TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_COLUMN = "p_boolean"
+TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_OPTIONS = TableIndexOptions()
 
 TEST_VECTORIZE_TABLE_NAME = "test_table_vectorize"
 TEST_VECTORIZE_TABLE_DEFINITION = CreateTableDefinition(
@@ -171,7 +170,8 @@ TEST_VECTORIZE_TABLE_DEFINITION = CreateTableDefinition(
     ),
 )
 TEST_VECTORIZE_TABLE_VECTOR_INDEX_NAME = "test_table_vectorize_p_vector_idx"
-TEST_VECTORIZE_TABLE_VECTOR_INDEX_DEFINITION = TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION
+TEST_VECTORIZE_TABLE_VECTOR_INDEX_COLUMN = TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN
+TEST_VECTORIZE_TABLE_VECTOR_INDEX_OPTIONS = TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS
 
 TEST_KMS_VECTORIZE_TABLE_NAME = "test_table_kms_vectorize"
 TEST_KMS_VECTORIZE_TABLE_DEFINITION = CreateTableDefinition(
@@ -195,8 +195,9 @@ TEST_KMS_VECTORIZE_TABLE_DEFINITION = CreateTableDefinition(
     ),
 )
 TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_NAME = "test_table_kms_vectorize_p_vector_idx"
+TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_COLUMN = TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN
 TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_DEFINITION = (
-    TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION
+    TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS
 )
 
 VECTORIZE_TEXTS = [
@@ -346,7 +347,8 @@ def sync_table_simple(
     )
     table.create_vector_index(
         TEST_SIMPLE_TABLE_VECTOR_INDEX_NAME,
-        definition=TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION,
+        column=TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
+        options=TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS,
     )
     yield table
 
@@ -390,11 +392,13 @@ def sync_table_composite(
     )
     table.create_vector_index(
         TEST_COMPOSITE_TABLE_VECTOR_INDEX_NAME,
-        definition=TEST_COMPOSITE_TABLE_VECTOR_INDEX_DEFINITION,
+        column=TEST_COMPOSITE_TABLE_VECTOR_INDEX_COLUMN,
+        options=TEST_COMPOSITE_TABLE_VECTOR_INDEX_OPTIONS,
     )
     table.create_index(
         TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_NAME,
-        definition=TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_DEFINITION,
+        column=TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_COLUMN,
+        options=TEST_COMPOSITE_TABLE_BOOLEAN_INDEX_OPTIONS,
     )
     yield table
 
@@ -438,7 +442,8 @@ def sync_table_vectorize(
     )
     table.create_vector_index(
         TEST_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
-        definition=TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION,
+        column=TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
+        options=TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS,
     )
     yield table
 
@@ -482,7 +487,8 @@ def sync_table_kms_vectorize(
     )
     table.create_vector_index(
         TEST_KMS_VECTORIZE_TABLE_VECTOR_INDEX_NAME,
-        definition=TEST_SIMPLE_TABLE_VECTOR_INDEX_DEFINITION,
+        column=TEST_SIMPLE_TABLE_VECTOR_INDEX_COLUMN,
+        options=TEST_SIMPLE_TABLE_VECTOR_INDEX_OPTIONS,
     )
     yield table
 

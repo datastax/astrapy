@@ -116,8 +116,8 @@ def _is_vector_sort(sort: SortType | None) -> bool:
 
 class Collection(Generic[DOC]):
     """
-    A Data API collection, the main object to interact with the Data API,
-    especially for DDL operations.
+    A Data API collection, the object to interact with the Data API for unstructured
+    (schemaless) data, especially for DDL operations.
     This class has a synchronous interface.
 
     This class is not meant for direct instantiation by the user, rather
@@ -2587,8 +2587,8 @@ class Collection(Generic[DOC]):
 
 class AsyncCollection(Generic[DOC]):
     """
-    A Data API collection, the main object to interact with the Data API,
-    especially for DDL operations.
+    A Data API collection, the object to interact with the Data API for unstructured
+    (schemaless) data, especially for DDL operations.
     This class has an asynchronous interface for use with asyncio.
 
     This class is not meant for direct instantiation by the user, rather
