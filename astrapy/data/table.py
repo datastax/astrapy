@@ -300,8 +300,48 @@ class Table(Generic[ROW]):
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
-        TODO
+        Create a clone of this table with some changed attributes.
+
+        Args:
+            name: the name of the table. This parameter is useful to
+                quickly spawn Table instances each pointing to a different
+                table existing in the same keyspace.
+            embedding_api_key: optional API key(s) for interacting with the table.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
+                For some vectorize providers/models, if using header-based authentication,
+                specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
+                should be supplied.
+            callers: a list of caller identities, i.e. applications, or frameworks,
+                on behalf of which the Data API calls are performed. These end up
+                in the request user-agent.`
+                Each caller identity is a ("caller_name", "caller_version") pair.
+            request_timeout_ms: a default timeout, in millisecond, for the duration of
+                each API request on the table.  For a more fine-grained
+                control of table timeouts (suggested e.g. with regard to
+                methods involving multiple requests, such as `find`), use of the
+                `api_options` parameter is suggested; alternatively,
+                bear in mind that individual table methods also accept timeout
+                parameters.
+            table_timeout_ms: an alias for `request_timeout_ms`.
+            api_options: any additional options to set for the clone, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
+
+        Returns:
+            a new Table instance.
+
+        Example:
+            >>> my_other_table = my_table.with_options(
+            ...     name="the_other_table",
+            ...     callers=[("caller_identity", "0.1.2")],
+            ... )
         """
+
         return self._copy(
             name=name,
             embedding_api_key=embedding_api_key,
@@ -361,6 +401,12 @@ class Table(Generic[ROW]):
     ) -> ListTableDefinition:
         """
         TODO
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -521,23 +567,38 @@ class Table(Generic[ROW]):
 
         Args:
             name: the name of the index.
-            column: TODO
-            options: TODO
-            TODO definition: a complete definition for the index. This can be an instance
-                of `TableIndexDefinition` or an equivalent (nested) dictionary,
-                in which case it will be parsed into a `TableIndexDefinition`.
-                See the `astrapy.info.TableIndexDefinition` class for more details.
+            column: the table column on which the index is to be created.
+            options: if passed, it must be an instance of `TableIndexOptions`,
+                or an equivalent dictionary, which specifies index settings
+                such as -- for a text column -- case-sensitivity and so on.
+                See the `astrapy.info.TableIndexOptions` class for more details.
             if_not_exists: if set to True, the command will succeed even if an index
                 with the specified name already exists (in which case no actual
-                index creation takes place on the database). Defaults to False,
-                i.e. an error is raised by the API in case of index-name collision.
-            table_admin_timeout_ms: a timeout, in milliseconds, for the
-                createIndex HTTP request.
-            request_timeout_ms: TODO
+                index creation takes place on the database). The API default of False
+                means that an error is raised by the API in case of name collision.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
-            TODO
+            >>> from astrapy.info import TableIndexOptions
+            >>> my_table.create_index(
+            ...     "score_index",
+            ...     column="score",
+            ... )
+            >>>
+            >>> my_table.create_index(
+            ...     "winner_index",
+            ...     column="winner",
+            ...     options=TableIndexOptions(
+            ...         ascii=False,
+            ...         normalize=True,
+            ...         case_sensitive=False,
+            ...     ),
+            ... )
         """
 
         ci_definition: dict[str, Any] = TableIndexDefinition(
@@ -577,31 +638,31 @@ class Table(Generic[ROW]):
 
         Args:
             name: the name of the index.
-            column: TODO
-            options: TODO
-            TODO definition: a complete definition for the index. This can be an instance
-                of `TableVectorIndexDefinition` or an equivalent (nested) dictionary,
-                in which case it will be parsed into a `TableVectorIndexDefinition`.
-                See the `astrapy.info.TableVectorIndexDefinition` class for more details.
+            column: the table column, of type "vector" on which to create the index.
+            options: an instance of `TableVectorIndexOptions`, or an equivalent
+                dictionary, which specifies settings for the vector index,
+                such as the metric to use or, if desired, a "source model" setting.
+                See the `astrapy.info.TableVectorIndexOptions` class for more details.
             if_not_exists: if set to True, the command will succeed even if an index
                 with the specified name already exists (in which case no actual
-                index creation takes place on the database). Defaults to False,
-                i.e. an error is raised by the API in case of index-name collision.
-            table_admin_timeout_ms: a timeout, in milliseconds, for the
-                createVectorIndex HTTP request.
-            request_timeout_ms: TODO
+                index creation takes place on the database). The API default of False
+                means that an error is raised by the API in case of name collision.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
-            TODO
-            >>> table_def = (
-            ...     ListTableDefinition.zero()
-            ...     .add_column("id", "text")
-            ...     .add_column("name", "text")
-            ...     .add_partition_by(["id"])
+            >>> from astrapy.constants import VectorMetric
+            >>> from astrapy.info import TableVectorIndexOptions
+            >>>
+            >>> my_table.create_vector_index(
+            ...     "m_vector_index",
+            ...     column="m_vector",
+            ...     options=TableVectorIndexOptions(metric=VectorMetric.DOT_PRODUCT),
             ... )
-            ...
-            >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
         ci_definition: dict[str, Any] = TableVectorIndexDefinition(
@@ -630,17 +691,19 @@ class Table(Generic[ROW]):
         List the names of all indexes existing on this table.
 
         Args:
-            table_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for
-                the underlying HTTP request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Returns:
             a list of the index names as strings, in no particular order.
 
         Example:
             >>> my_table.list_index_names()
-            ['text_idx', 'vector_idx']
+            ['m_vector_index', 'winner_index', 'score_index']
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -677,19 +740,25 @@ class Table(Generic[ROW]):
         List the full definitions of all indexes existing on this table.
 
         Args:
-            table_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for
-                the underlying HTTP request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Returns:
-            a dictionary associating each of the index names to
-            the corresponding TableBaseIndexDefinition instance.
+            a list of `astrapy.info.TableIndexDescriptor` objects in no particular
+            order, each providing the details of an index present on the table.
 
         Example:
-            TODO
-            >>> my_table.list_index_names()
-            ['text_idx', 'vector_idx']
+            >>> indexes = my_table.list_indexes()
+            >>> indexes
+            [TableIndexDescriptor(name='m_vector_index', definition=...)...]  # Note: shortened
+            >>> indexes[1].definition.column
+            'winner'
+            >>> indexes[1].definition.options.case_sensitive
+            False
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -757,24 +826,73 @@ class Table(Generic[ROW]):
 
         Args:
             operation: an instance of one of the `astrapy.info.AlterTable*` classes,
-                or an equivalent (nested) dictionary such as {"add": ...} -- in which
-                case it will be parsed into the appropriate operation instance.
-            row_type: TODO
-            table_admin_timeout_ms: a timeout, in milliseconds, for the
-                schema-altering HTTP request.
-            request_timeout_ms: TODO
+                representing which alter operation to perform and the details thereof.
+                A regular dictionary can also be provided, but then it must have the
+                alter operation name at its top level: {"add": {"columns": ...}}.
+            row_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting Table is implicitly a `Table[dict[str, Any]]`.
+                If provided, it must match the type hint specified in the assignment.
+                See the examples below.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
-            TODO
-            >>> table_def = (
-            ...     ListTableDefinition.zero()
-            ...     .add_column("id", "text")
-            ...     .add_column("name", "text")
-            ...     .add_partition_by(["id"])
+            >>> from astrapy.info import (
+            ...     AlterTableAddColumns,
+            ...     AlterTableAddVectorize,
+            ...     AlterTableDropColumns,
+            ...     AlterTableDropVectorize,
+            ...     TableScalarColumnTypeDescriptor,
+            ...     VectorServiceOptions,
             ... )
+            >>>
+            >>> new_table_1 = my_table.alter(
+            ...     AlterTableAddColumns(
+            ...         columns={
+            ...             "tie_break": TableScalarColumnTypeDescriptor(
+            ...                 column_type="boolean",
+            ...             ),
+            ...         }
+            ...     )
+            ... )
+            >>>
+            >>> new_table_2 = new_table_1.alter(
+            ...     AlterTableDropColumns(columns=["tie_break"]),
+            ... )
+            >>>
+            >>> new_table_3 = new_table_2.alter(
+            ...     AlterTableAddVectorize(
+            ...         columns={
+            ...             "m_vector": VectorServiceOptions(
+            ...                 provider="openai",
+            ...                 model_name="text-embedding-3-small",
+            ...                 authentication={
+            ...                     "providerKey": "MY_API_KEY_STORED_SECRET_NAME",
+            ...                 },
+            ...             ),
+            ...         }
+            ...     )
+            ... )
+            >>>
+            >>> from typing import TypedDict
+            >>> from astrapy import Table
+            >>> from astrapy.data_types import DataAPITimestamp
+            >>>
+            >>> class MyCustomDictClass(TypedDict):
+            ...     match_no: int
+            ...     round: str
+            ...     winner: str
+            ...     score: int
+            ...     when: DataAPITimestamp
             ...
-            >>> my_table = my_db.create_table("my_table", definition=table_def)
+            >>> new_table_4: Table[MyCustomDictClass] = new_table_3.alter(
+            ...     AlterTableDropVectorize(columns=["m_vector"]),
+            ...     row_type=MyCustomDictClass,
+            ... )
         """
 
         n_operation: AlterTableOperation
@@ -1661,6 +1779,12 @@ class Table(Generic[ROW]):
             if_exists: if passed as True, trying to drop a non-existing table
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
         """
 
         logger.info(f"dropping table '{self.name}' (self)")
@@ -1760,10 +1884,10 @@ class AsyncTable(Generic[ROW]):
         ...         partition_sort={"p_int": SortMode.ASCENDING},
         ...     ),
         ... )
-        >>> my_async_table_1 = asyncio.run(my_async_db.create_table(
+        >>> my_async_table_1 = await my_async_db.create_table(
         ...     "my_v_table_1",
         ...     definition=table_definition_1,
-        ... ))
+        ... )
 
         >>> table_definition_2 = {
         ...     'columns': {
@@ -1776,10 +1900,10 @@ class AsyncTable(Generic[ROW]):
         ...         'partitionSort': {'p_int': SortMode.ASCENDING}
         ...     }
         ... }
-        >>> my_async_table_2 = asyncio.run(my_async_db.create_table(
+        >>> my_async_table_2 = await my_async_db.create_table(
         ...     "my_v_table_2",
         ...     definition=table_definition_2,
-        ... ))
+        ... )
 
         >>> table_definition_3 = (
         ...     CreateTableDefinition.zero()
@@ -1789,12 +1913,12 @@ class AsyncTable(Generic[ROW]):
         ...     .add_partition_by(["p_text"])
         ...     .add_partition_sort({"p_int": SortMode.ASCENDING})
         ... )
-        >>> my_async_table_3 = asyncio.run(my_async_db.create_table(
+        >>> my_async_table_3 = await my_async_db.create_table(
         ...     "my_v_table_3",
         ...     definition=table_definition_3,
-        ... ))
+        ... )
 
-        >>> my_table_4 = asyncio.run(my_db.get_table("my_already_existing_table"))
+        >>> my_table_4 = await my_db.get_table("my_already_existing_table")
 
     Note:
         creating an instance of Table does not trigger actual creation
@@ -1949,8 +2073,48 @@ class AsyncTable(Generic[ROW]):
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
-        TODO
+        Create a clone of this table with some changed attributes.
+
+        Args:
+            name: the name of the table. This parameter is useful to
+                quickly spawn AsyncTable instances each pointing to a different
+                table existing in the same keyspace.
+            embedding_api_key: optional API key(s) for interacting with the table.
+                If an embedding service is configured, and this parameter is not None,
+                each Data API call will include the necessary embedding-related headers
+                as specified by this parameter. If a string is passed, it translates
+                into the one "embedding api key" header
+                (i.e. `astrapy.authentication.EmbeddingAPIKeyHeaderProvider`).
+                For some vectorize providers/models, if using header-based authentication,
+                specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
+                should be supplied.
+            callers: a list of caller identities, i.e. applications, or frameworks,
+                on behalf of which the Data API calls are performed. These end up
+                in the request user-agent.`
+                Each caller identity is a ("caller_name", "caller_version") pair.
+            request_timeout_ms: a default timeout, in millisecond, for the duration of
+                each API request on the table.  For a more fine-grained
+                control of table timeouts (suggested e.g. with regard to
+                methods involving multiple requests, such as `find`), use of the
+                `api_options` parameter is suggested; alternatively,
+                bear in mind that individual table methods also accept timeout
+                parameters.
+            table_timeout_ms: an alias for `request_timeout_ms`.
+            api_options: any additional options to set for the clone, in the form of
+                an APIOptions instance (where one can set just the needed attributes).
+                In case the same setting is also provided as named parameter,
+                the latter takes precedence.
+
+        Returns:
+            a new AsyncTable instance.
+
+        Example:
+            >>> my_other_async_table = my_async_table.with_options(
+            ...     name="the_other_table",
+            ...     callers=[("caller_identity", "0.1.2")],
+            ... )
         """
+
         return self._copy(
             name=name,
             embedding_api_key=embedding_api_key,
@@ -2010,6 +2174,12 @@ class AsyncTable(Generic[ROW]):
     ) -> ListTableDefinition:
         """
         TODO
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -2171,31 +2341,38 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             name: the name of the index.
-            column: TODO
-            options: TODO
-            TODO definition: a complete definition for the index. This can be an instance
-                of `TableIndexDefinition` or an equivalent (nested) dictionary,
-                in which case it will be parsed into a `TableIndexDefinition`.
-                See the `astrapy.info.TableIndexDefinition` class for more details.
+            column: the table column on which the index is to be created.
+            options: if passed, it must be an instance of `TableIndexOptions`,
+                or an equivalent dictionary, which specifies index settings
+                such as -- for a text column -- case-sensitivity and so on.
+                See the `astrapy.info.TableIndexOptions` class for more details.
             if_not_exists: if set to True, the command will succeed even if an index
                 with the specified name already exists (in which case no actual
-                index creation takes place on the database). Defaults to False,
-                i.e. an error is raised by the API in case of index-name collision.
-            table_admin_timeout_ms: a timeout, in milliseconds, for the
-                createIndex HTTP request.
-            request_timeout_ms: TODO
+                index creation takes place on the database). The API default of False
+                means that an error is raised by the API in case of name collision.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
-            TODO
-            >>> table_def = (
-            ...     ListTableDefinition.zero()
-            ...     .add_column("id", "text")
-            ...     .add_column("name", "text")
-            ...     .add_partition_by(["id"])
+            >>> from astrapy.info import TableIndexOptions
+            >>> await my_table.create_index(
+            ...     "score_index",
+            ...     column="score",
             ... )
-            ...
-            >>> my_table = my_db.create_table("my_table", definition=table_def)
+            >>>
+            >>> await my_table.create_index(
+            ...     "winner_index",
+            ...     column="winner",
+            ...     options=TableIndexOptions(
+            ...         ascii=False,
+            ...         normalize=True,
+            ...         case_sensitive=False,
+            ...     ),
+            ... )
         """
 
         ci_definition: dict[str, Any] = TableIndexDefinition(
@@ -2235,31 +2412,31 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             name: the name of the index.
-            column: TODO
-            options: TODO
-            TODO definition: a complete definition for the index. This can be an instance
-                of `TableVectorIndexDefinition` or an equivalent (nested) dictionary,
-                in which case it will be parsed into a `TableVectorIndexDefinition`.
-                See the `astrapy.info.TableVectorIndexDefinition` class for more details.
+            column: the table column, of type "vector" on which to create the index.
+            options: an instance of `TableVectorIndexOptions`, or an equivalent
+                dictionary, which specifies settings for the vector index,
+                such as the metric to use or, if desired, a "source model" setting.
+                See the `astrapy.info.TableVectorIndexOptions` class for more details.
             if_not_exists: if set to True, the command will succeed even if an index
                 with the specified name already exists (in which case no actual
-                index creation takes place on the database). Defaults to False,
-                i.e. an error is raised by the API in case of index-name collision.
-            table_admin_timeout_ms: a timeout, in milliseconds, for the
-                createVectorIndex HTTP request.
-            request_timeout_ms: TODO
+                index creation takes place on the database). The API default of False
+                means that an error is raised by the API in case of name collision.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
-            TODO
-            >>> table_def = (
-            ...     ListTableDefinition.zero()
-            ...     .add_column("id", "text")
-            ...     .add_column("name", "text")
-            ...     .add_partition_by(["id"])
+            >>> from astrapy.constants import VectorMetric
+            >>> from astrapy.info import TableVectorIndexOptions
+            >>>
+            >>> await my_table.create_vector_index(
+            ...     "m_vector_index",
+            ...     column="m_vector",
+            ...     options=TableVectorIndexOptions(metric=VectorMetric.DOT_PRODUCT),
             ... )
-            ...
-            >>> my_table = my_db.create_table("my_table", definition=table_def)
         """
 
         ci_definition: dict[str, Any] = TableVectorIndexDefinition(
@@ -2288,18 +2465,19 @@ class AsyncTable(Generic[ROW]):
         List the names of all indexes existing on this table.
 
         Args:
-            table_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for
-                the underlying HTTP request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Returns:
             a list of the index names as strings, in no particular order.
 
         Example:
-            TODO async
-            >>> my_table.list_index_names()
-            ['text_idx', 'vector_idx']
+            >>> await my_table.list_index_names()
+            ['m_vector_index', 'winner_index', 'score_index']
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -2336,19 +2514,25 @@ class AsyncTable(Generic[ROW]):
         List the full definitions of all indexes existing on this table.
 
         Args:
-            table_admin_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for
-                the underlying HTTP request.
-            timeout_ms: an alias for `request_timeout_ms`.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Returns:
-            a dictionary associating each of the index names to
-            the corresponding TableBaseIndexDefinition instance.
+            a list of `astrapy.info.TableIndexDescriptor` objects in no particular
+            order, each providing the details of an index present on the table.
 
         Example:
-            TODO
-            >>> my_table.list_index_names()
-            ['text_idx', 'vector_idx']
+            >>> indexes = await my_table.list_indexes()
+            >>> indexes
+            [TableIndexDescriptor(name='m_vector_index', definition=...)...]  # Note: shortened
+            >>> indexes[1].definition.column
+            'winner'
+            >>> indexes[1].definition.options.case_sensitive
+            False
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -2416,23 +2600,73 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             operation: an instance of one of the `astrapy.info.AlterTable*` classes,
-                or an equivalent (nested) dictionary such as {"add": ...} -- in which
-                case it will be parsed into the appropriate operation instance.
-            row_type: TODO
-            table_admin_timeout_ms: a timeout, in milliseconds, for the
-                schema-altering HTTP request.
+                representing which alter operation to perform and the details thereof.
+                A regular dictionary can also be provided, but then it must have the
+                alter operation name at its top level: {"add": {"columns": ...}}.
+            row_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting Table is implicitly a `Table[dict[str, Any]]`.
+                If provided, it must match the type hint specified in the assignment.
+                See the examples below.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
-            TODO
-            >>> table_def = (
-            ...     ListTableDefinition.zero()
-            ...     .add_column("id", "text")
-            ...     .add_column("name", "text")
-            ...     .add_partition_by(["id"])
+            >>> from astrapy.info import (
+            ...     AlterTableAddColumns,
+            ...     AlterTableAddVectorize,
+            ...     AlterTableDropColumns,
+            ...     AlterTableDropVectorize,
+            ...     TableScalarColumnTypeDescriptor,
+            ...     VectorServiceOptions,
             ... )
+            >>>
+            >>> new_table_1 = await my_table.alter(
+            ...     AlterTableAddColumns(
+            ...         columns={
+            ...             "tie_break": TableScalarColumnTypeDescriptor(
+            ...                 column_type="boolean",
+            ...             ),
+            ...         }
+            ...     )
+            ... )
+            >>>
+            >>> new_table_2 = await new_table_1.alter(
+            ...     AlterTableDropColumns(columns=["tie_break"]),
+            ... )
+            >>>
+            >>> new_table_3 = await new_table_2.alter(
+            ...     AlterTableAddVectorize(
+            ...         columns={
+            ...             "m_vector": VectorServiceOptions(
+            ...                 provider="openai",
+            ...                 model_name="text-embedding-3-small",
+            ...                 authentication={
+            ...                     "providerKey": "MY_API_KEY_STORED_SECRET_NAME",
+            ...                 },
+            ...             ),
+            ...         }
+            ...     )
+            ... )
+            >>>
+            >>> from typing import TypedDict
+            >>> from astrapy import Table
+            >>> from astrapy.data_types import DataAPITimestamp
+            >>>
+            >>> class MyCustomDictClass(TypedDict):
+            ...     match_no: int
+            ...     round: str
+            ...     winner: str
+            ...     score: int
+            ...     when: DataAPITimestamp
             ...
-            >>> my_table = my_db.create_table("my_table", definition=table_def)
+            >>> new_table_4: Table[MyCustomDictClass] = await new_table_3.alter(
+            ...     AlterTableDropVectorize(columns=["m_vector"]),
+            ...     row_type=MyCustomDictClass,
+            ... )
         """
 
         n_operation: AlterTableOperation
@@ -3295,6 +3529,12 @@ class AsyncTable(Generic[ROW]):
             if_exists: if passed as True, trying to drop a non-existing table
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
         """
 
         logger.info(f"dropping table '{self.name}' (self)")

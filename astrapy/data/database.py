@@ -1308,15 +1308,25 @@ class Database:
             newly-created table.
 
         Example:
-            >>> table_def = (
-            ...     CreateTableDefinition.zero()
-            ...     .add_column("id", "text")
-            ...     .add_column("name", "text")
-            ...     .add_partition_by(["id"])
+            >>> from astrapy.constants import SortMode
+            >>> from astrapy.info import (
+            ...     CreateTableDefinition,
+            ...     TableScalarColumnType,
             ... )
-            ...
-            >>> my_table = my_db.create_table("my_table", definition=table_def)
-            TODO add usage
+            >>> my_table = database.create_table(
+            ...     "games",
+            ...     definition=CreateTableDefinition.zero()
+            ...     .add_column("match_no", TableScalarColumnType.INT)
+            ...     .add_column("round", TableScalarColumnType.TEXT)
+            ...     .add_column("winner", TableScalarColumnType.TEXT)
+            ...     .add_column("score", TableScalarColumnType.INT)
+            ...     .add_column("when", TableScalarColumnType.TIMESTAMP)
+            ...     .add_vector_column("m_vector", dimension=3)
+            ...     .add_partition_by(["match_no"])
+            ...     .add_partition_sort({"round": SortMode.ASCENDING}),
+            ... )
+            >>> my_table
+            Table(name="games", keyspace="default_keyspace", ...)  # Note: shortened
         """
 
         ct_options: dict[str, bool]

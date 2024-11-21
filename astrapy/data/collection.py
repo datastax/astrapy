@@ -2814,7 +2814,7 @@ class AsyncCollection(Generic[DOC]):
 
         Args:
             name: the name of the collection. This parameter is useful to
-                quickly spawn Collection instances each pointing to a different
+                quickly spawn AsyncCollection instances each pointing to a different
                 collection existing in the same keyspace.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
