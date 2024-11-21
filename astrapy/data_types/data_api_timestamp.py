@@ -103,6 +103,9 @@ class DataAPITimestamp:
     ) -> datetime.datetime:
         return datetime.datetime.fromtimestamp(self.timestamp_ms / 1000.0, tz=tz)
 
+    def to_naive_datetime(self) -> datetime.datetime:
+        return self.to_datetime().astimezone().replace(tzinfo=None)
+
     @staticmethod
     def from_datetime(dt: datetime.datetime) -> DataAPITimestamp:
         return DataAPITimestamp(timestamp_ms=int(dt.timestamp() * 1000.0))

@@ -84,9 +84,105 @@ Next steps:
 - [AstraPy reference](https://docs.datastax.com/en/astra-api-docs/_attachments/python-client/astrapy/index.html)
 - Package on [PyPI](https://pypi.org/project/astrapy/)
 
+### Using Tables
+
+The example above uses a _collection_, where schemaless "documents" can be stored and retrieved.
+Here is an equivalent code that uses Tables, i.e. uniform, structured data where each _row_ has the
+same _columns_, which are of a specific type:
+
+```python
+from astrapy import DataAPIClient
+from astrapy.constants import VectorMetric
+from astrapy.data_types import DataAPIVector
+from astrapy.info import (
+    CreateTableDefinition,
+    TableScalarColumnType,
+    TableVectorIndexDefinition,
+    TableVectorIndexOptions,
+)
+
+
+ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
+ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
+
+my_client = DataAPIClient()
+my_database = my_client.get_database(
+    ASTRA_DB_API_ENDPOINT,
+    token=ASTRA_DB_APPLICATION_TOKEN,
+)
+
+table_definition = (
+    CreateTableDefinition.zero()
+    .add_column("id", TableScalarColumnType.INT)
+    .add_column("summary", TableScalarColumnType.TEXT)
+    .add_set_column("tags", TableScalarColumnType.TEXT)
+    .add_vector_column("dream_vector", dimension=3)
+    .add_partition_by(["id"])
+)
+index_options=TableVectorIndexOptions(
+    metric=VectorMetric.COSINE,
+)
+my_table = my_database.create_table("dreams_table", definition=table_definition)
+my_table.create_vector_index("dreams_table_vec_idx", column="dream_vector", options=index_options)
+
+my_table.insert_one({
+    "id": 101,
+    "summary": "I was flying",
+    "dream_vector": DataAPIVector([-0.4, 0.7, 0]),
+})
+
+my_table.insert_many(
+    [
+        {
+            "id": 102,
+            "summary": "A dinner on the Moon",
+            "dream_vector": DataAPIVector([0.2, -0.3, -0.5]),
+        },
+        {
+            "id": 103,
+            "summary": "Riding the waves",
+            "tags": ["sport"],
+            "dream_vector": DataAPIVector([0, 0.2, 1]),
+        },
+        {
+            "id": 119,
+            "summary": "Friendly aliens in town",
+            "tags": ["scifi"],
+            "dream_vector": DataAPIVector([-0.3, 0, 0.8]),
+        },
+        {
+            "id": 37,
+            "summary": "Meeting Beethoven at the dentist",
+            "dream_vector": DataAPIVector([0.2, 0.6, 0]),
+        },
+    ],
+)
+
+my_table.update_one(
+    {"id": 103},
+    {"$set": {"summary": "Surfers' paradise"}},
+)
+
+cursor = my_table.find(
+    {},
+    sort={"dream_vector": DataAPIVector([0, 0.2, 0.4])},
+    limit=2,
+    include_similarity=True,
+)
+
+for result in cursor:
+    print(f"{result['summary']}: {result['$similarity']}")
+
+# This would print:
+#   Surfers' paradise: 0.98238194
+#   Friendly aliens in town: 0.91873914
+```
+
+For more on Tables, consult the [Data API documentation about Tables](https://docs.datastax.com/en/astra-db-serverless/api-reference/tables.html).
+
 ### Usage with HCD and other non-Astra installations
 
-The main difference to target e.g. a Hyper-Converged Database (HCD)
+The main difference when targeting e.g. a Hyper-Converged Database (HCD)
 installation is how the client is
 initialized. Here is a short example showing just how to get to a `Database`
 (what comes next is unchaged compared to using Astra DB).
@@ -149,10 +245,12 @@ The package comes with its own set of exceptions, arranged in this hierarchy:
 For more information, and code examples, check out the docstrings and consult
 the API reference linked above.
 
-### Working with dates
+
+### Working with dates in Collections
 
 Date and datetime objects, i.e. instances of the standard library
-`datetime.datetime` and `datetime.date` classes, can be used anywhere in documents:
+`datetime.datetime` and `datetime.date` classes, can be used
+anywhere when sending documents and queries to the API:
 
 ```python
 import datetime
@@ -177,21 +275,57 @@ my_collection.update_one(
     {"$set": {"message": "happy Sunday!"}},
 )
 
-print(
-    my_collection.find_one(
-        {"date_of_birth": {"$lt": datetime.date(2001, 1, 1)}},
-        projection={"_id": False},
-    )
+result_doc = my_collection.find_one(
+    {"date_of_birth": {"$lt": datetime.date(2001, 1, 1)}},
+    projection={"_id": False},
 )
-# This would print:
-#    {'date_of_birth': datetime.datetime(2000, 1, 1, 0, 0)}
+print(result_doc)
+# This would print (depending on the timezone Python detects!):
+#    {'date_of_birth': DataAPITimestamp(timestamp_ms=946681200000 [1999-12-31T23:00:00.000Z])}
 ```
 
-_**Note**: reads from a collection will always_
-_return the `datetime` class regardless of wheter a `date` or a `datetime` was provided_
-_in the insertion._
+Storing timezone-naive datetimes is discouraged, since what effectively gets
+written to DB is a _timestamp_ whose value depends on the implied timezone used
+in the conversion: one should always use timezone-aware quantities.
 
-### Working with ObjectIds and UUIDs
+As can be seen above, however, AstraPy by default uses its own
+`astrapy.data_types.DataAPITimestamp` class to represent responses:
+This class covers a much wider year range so as to be fully compatible with the API.
+`DataAPITimestamp` objects can be converted into
+standard-library objects with the `.to_datetime()` and `.to_naive_datetime()` methods,
+if the year range allows for that.
+
+```python
+result_doc['date_of_birth']
+# DataAPITimestamp(timestamp_ms=946681200000 [1999-12-31T23:00:00.000Z])
+result_doc['date_of_birth'].to_datetime()
+# datetime.datetime(1999, 12, 31, 23, 0, tzinfo=datetime.timezone.utc)
+result_doc['date_of_birth'].to_naive_datetime()
+# datetime.datetime(2000, 1, 1, 0, 0)
+```
+
+Alternatively, one can configure the collection to
+always fall back to standard-library classes for responses (in which case it will always
+be `datetime.datetime` and never `datetime.date`):
+
+```python
+from astrapy.api_options import APIOptions, SerdesOptions
+
+my_stdlibtypes_collection = my_collection.with_options(
+    api_options=APIOptions(serdes_options=SerdesOptions(
+        custom_datatypes_in_reading=False,
+    ))
+)
+
+my_stdlibtypes_collection.find_one(
+    {"date_of_birth": {"$lt": datetime.date(2001, 1, 1)}},
+    projection={"_id": False},
+)
+# {'date_of_birth': datetime.datetime(2000, 1, 1, 0, 0)}
+# TODO adjust timezone here
+```
+
+### Working with ObjectIds and UUIDs in Collections
 
 Astrapy repackages the ObjectId from `bson` and the UUID class and utilities
 from the `uuid` package and its `uuidv6` extension. You can also use them directly.
@@ -250,7 +384,8 @@ naming convention and module structure).
 
 Tests are grouped in three _blocks_ (in as many subdirs of `tests/`):
 
-- **idiomatic**: all 1.0+ classes and APIs, except...
+- **idiomatic**: all 2.0+ classes and APIs, except...
+- **tables**: the "tables" part only; and,
 - **vectorize**: ... everything making use of `$vectorize` (within the idiomatic classes)
 
 Actually, for convenience, _sub-blocks_ of tests are considered:
@@ -258,6 +393,7 @@ Actually, for convenience, _sub-blocks_ of tests are considered:
 - **idiomatic regular**: everything except the admin parts
 - **idiomatic admin Astra**: the Astra-specific admin operations
 - **idiomatic admin nonAstra**: the nonAstra-specific admin operations
+- **tables**: everything around just tables
 - **vectorize in-depth**: many Data API interactions for a single choice of provider/model. This is mostly test the client
 - **vectorize all-providers**: a slightly more shallow test repeated for all providers, models, auth methods etc. This is mostly testing the API
 
@@ -365,7 +501,7 @@ poetry run pytest [...] -o log_cli=1 --log-cli-level=10
 
 ### Appendix A: quick reference for imports
 
-Client, data and admin abstractions:
+Client, data and admin abstractions (_Note: table-related imports to be added_):
 
 ```python
 from astrapy import (
