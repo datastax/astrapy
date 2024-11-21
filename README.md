@@ -14,33 +14,33 @@ Get the *API Endpoint* and the *Token* to your Astra DB instance at [astra.datas
 Try the following code after replacing the connection parameters:
 
 ```python
-import astrapy
+from astrapy import DataAPIClient
+from astrapy.constants import VectorMetric
+from astrapy.ids import UUID
+
 
 ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
 ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
 
+# Connect and create the Database object
 my_client = astrapy.DataAPIClient()
 my_database = my_client.get_database(
     ASTRA_DB_API_ENDPOINT,
     token=ASTRA_DB_APPLICATION_TOKEN,
 )
 
+# Create a vector collection
 my_collection = my_database.create_collection(
-    "dreams",
+    "dreams_collection",
     dimension=3,
-    metric=astrapy.constants.VectorMetric.COSINE,
+    metric=VectorMetric.COSINE,
 )
 
-my_collection.insert_one({"summary": "I was flying", "$vector": [-0.4, 0.7, 0]})
-
+# Populate the collection with some documents
 my_collection.insert_many(
     [
         {
-            "_id": astrapy.ids.UUID("018e65c9-e33d-749b-9386-e848739582f0"),
-            "summary": "A dinner on the Moon",
-            "$vector": [0.2, -0.3, -0.5],
-        },
-        {
+            "_id": UUID("018e65c9-e33d-749b-9386-e848739582f0"),
             "summary": "Riding the waves",
             "tags": ["sport"],
             "$vector": [0, 0.2, 1],
@@ -62,6 +62,7 @@ my_collection.update_one(
     {"$set": {"summary": "Surfers' paradise"}},
 )
 
+# Run a vector search
 cursor = my_collection.find(
     {},
     sort={"$vector": [0, 0.2, 0.4]},
@@ -75,6 +76,9 @@ for result in cursor:
 # This would print:
 #   Surfers' paradise: 0.98238194
 #   Friendly aliens in town: 0.91873914
+
+# Resource cleanup
+my_collection.drop()
 ```
 
 Next steps:
@@ -105,12 +109,14 @@ from astrapy.info import (
 ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
 ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
 
+# Connect and create the Database object
 my_client = DataAPIClient()
 my_database = my_client.get_database(
     ASTRA_DB_API_ENDPOINT,
     token=ASTRA_DB_APPLICATION_TOKEN,
 )
 
+# Create a table and a vector index on it
 table_definition = (
     CreateTableDefinition.zero()
     .add_column("id", TableScalarColumnType.INT)
@@ -122,22 +128,12 @@ table_definition = (
 index_options=TableVectorIndexOptions(
     metric=VectorMetric.COSINE,
 )
-my_table = my_database.create_table("dreams_table", definition=table_definition)
-my_table.create_vector_index("dreams_table_vec_idx", column="dream_vector", options=index_options)
+my_table = my_database.create_table("dreams_table", definition=table_definition, if_not_exists=True)
+my_table.create_vector_index("dreams_table_vec_idx", column="dream_vector", options=index_options, if_not_exists=True)
 
-my_table.insert_one({
-    "id": 101,
-    "summary": "I was flying",
-    "dream_vector": DataAPIVector([-0.4, 0.7, 0]),
-})
-
+# Populate the table with some rows
 my_table.insert_many(
     [
-        {
-            "id": 102,
-            "summary": "A dinner on the Moon",
-            "dream_vector": DataAPIVector([0.2, -0.3, -0.5]),
-        },
         {
             "id": 103,
             "summary": "Riding the waves",
@@ -163,6 +159,7 @@ my_table.update_one(
     {"$set": {"summary": "Surfers' paradise"}},
 )
 
+# Run a vector search
 cursor = my_table.find(
     {},
     sort={"dream_vector": DataAPIVector([0, 0.2, 0.4])},
@@ -176,6 +173,9 @@ for result in cursor:
 # This would print:
 #   Surfers' paradise: 0.98238194
 #   Friendly aliens in town: 0.91873914
+
+# Resource cleanup
+my_table.drop()
 ```
 
 For more on Tables, consult the [Data API documentation about Tables](https://docs.datastax.com/en/astra-db-serverless/api-reference/tables.html).
