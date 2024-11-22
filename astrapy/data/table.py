@@ -100,72 +100,111 @@ class Table(Generic[ROW]):
         api_options: a complete specification of the API Options for this instance.
 
     Examples:
-        >>> from astrapy import DataAPIClient, Table
-        >>> my_client = astrapy.DataAPIClient()
-        >>> my_db = my_client.get_database(
+        >>> from astrapy import DataAPIClient
+        >>> my_client = DataAPIClient()
+        >>> my_database = my_client.get_database(
         ...     "https://01234567-....apps.astra.datastax.com",
         ...     token="AstraCS:..."
         ... )
+        >>>
 
+        >>> # Create a table using the fluent syntax for definition
         >>> from astrapy.constants import SortMode
+        >>> from astrapy.info import (
+        ...     CreateTableDefinition,
+        ...     TableScalarColumnType,
+        ... )
+        >>> table_definition = (
+        ...     CreateTableDefinition.zero()
+        ...     .add_column("match_id", TableScalarColumnType.TEXT)
+        ...     .add_column("round", TableScalarColumnType.INT)
+        ...     .add_vector_column("m_vector", dimension=3)
+        ...     .add_column("score", TableScalarColumnType.INT)
+        ...     .add_column("when", TableScalarColumnType.TIMESTAMP)
+        ...     .add_column("winner", TableScalarColumnType.TEXT)
+        ...     .add_set_column("fighters", TableScalarColumnType.UUID)
+        ...     .add_partition_by(["match_id"])
+        ...     .add_partition_sort({"round": SortMode.ASCENDING})
+        ... )
+        >>> my_table = my_database.create_table(
+        ...     "games",
+        ...     definition=table_definition,
+        ... )
+
+        >>> # Create a table with the definition as object
         >>> from astrapy.info import (
         ...     CreateTableDefinition,
         ...     TablePrimaryKeyDescriptor,
         ...     TableScalarColumnTypeDescriptor,
+        ...     TableValuedColumnType,
+        ...     TableValuedColumnTypeDescriptor,
         ...     TableVectorColumnTypeDescriptor,
         ... )
         >>> table_definition_1 = CreateTableDefinition(
         ...     columns={
-        ...         "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
-        ...         "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
-        ...         "p_vector": TableVectorColumnTypeDescriptor(
-        ...             column_type="vector", dimension=3, service=None
+        ...         "match_id": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.TEXT,
+        ...         ),
+        ...         "round": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.INT,
+        ...         ),
+        ...         "m_vector": TableVectorColumnTypeDescriptor(
+        ...             column_type="vector", dimension=3
+        ...         ),
+        ...         "score": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.INT,
+        ...         ),
+        ...         "when": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.TIMESTAMP,
+        ...         ),
+        ...         "winner": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.TEXT,
+        ...         ),
+        ...         "fighters": TableValuedColumnTypeDescriptor(
+        ...             column_type=TableValuedColumnType.SET,
+        ...             value_type=TableScalarColumnType.UUID,
         ...         ),
         ...     },
         ...     primary_key=TablePrimaryKeyDescriptor(
-        ...         partition_by=["p_text"],
-        ...         partition_sort={"p_int": SortMode.ASCENDING},
+        ...         partition_by=["match_id"],
+        ...         partition_sort={"round": SortMode.ASCENDING},
         ...     ),
         ... )
-        >>> my_table_1 = my_db.create_table(
-        ...     "my_v_table_1",
+        >>> my_table_1 = my_database.create_table(
+        ...     "games",
         ...     definition=table_definition_1,
+        ...     if_not_exists=True,
         ... )
 
+        >>> # Create a table with the definition as plain dictionary
         >>> table_definition_2 = {
-        ...     'columns': {
-        ...         'p_text': {'type': 'text'},
-        ...         'p_int': {'type': 'int'},
-        ...         'p_vector': {'type': 'vector', 'dimension': 3}
+        ...     "columns": {
+        ...         "match_id": {"type": "text"},
+        ...         "round": {"type": "int"},
+        ...         "m_vector": {"type": "vector", "dimension": 3},
+        ...         "score": {"type": "int"},
+        ...         "when": {"type": "timestamp"},
+        ...         "winner": {"type": "text"},
+        ...         "fighters": {"type": "set", "valueType": "uuid"},
         ...     },
-        ...     'primaryKey': {
-        ...         'partitionBy': ['p_text'],
-        ...         'partitionSort': {'p_int': SortMode.ASCENDING}
-        ...     }
+        ...     "primaryKey": {
+        ...         "partitionBy": ["match_id"],
+        ...         "partitionSort": {"round": 1},
+        ...     },
         ... }
-        >>> my_table_2 = my_db.create_table(
-        ...     "my_v_table_2",
+        >>> my_table_2 = my_database.create_table(
+        ...     "games",
         ...     definition=table_definition_2,
+        ...     if_not_exists=True,
         ... )
 
-        >>> table_definition_3 = (
-        ...     CreateTableDefinition.zero()
-        ...     .add_column("p_text", "text")
-        ...     .add_column("p_int", "int")
-        ...     .add_vector_column("p_vector", dimension=3)
-        ...     .add_partition_by(["p_text"])
-        ...     .add_partition_sort({"p_int": SortMode.ASCENDING})
-        ... )
-        >>> my_table_3 = my_db.create_table(
-        ...     "my_v_table_3",
-        ...     definition=table_definition_3,
-        ... )
-
-        >>> my_table_4 = my_db.get_table("my_already_existing_table")
+        >>> # Get a reference to an existing table
+        >>> # (no checks are performed on DB)
+        >>> my_table_3 = my_database.get_table("games")
 
     Note:
-        creating an instance of Table does not trigger actual creation
-        of the table on the database. The latter should have been created
+        creating an instance of Table does not trigger, in itself, actual
+        creation of the table on the database. The latter should have been created
         beforehand, e.g. through the `create_table` method of a Database.
     """
 
@@ -491,7 +530,7 @@ class Table(Generic[ROW]):
 
         Example:
             >>> my_table.name
-            'my_table'
+            'games'
         """
 
         return self._name
@@ -585,6 +624,7 @@ class Table(Generic[ROW]):
 
         Example:
             >>> from astrapy.info import TableIndexOptions
+            >>>
             >>> my_table.create_index(
             ...     "score_index",
             ...     column="score",
@@ -661,7 +701,9 @@ class Table(Generic[ROW]):
             >>> my_table.create_vector_index(
             ...     "m_vector_index",
             ...     column="m_vector",
-            ...     options=TableVectorIndexOptions(metric=VectorMetric.DOT_PRODUCT),
+            ...     options=TableVectorIndexOptions(
+            ...         metric=VectorMetric.DOT_PRODUCT,
+            ...     ),
             ... )
         """
 
@@ -850,6 +892,7 @@ class Table(Generic[ROW]):
             ...     VectorServiceOptions,
             ... )
             >>>
+            >>> # Add a column
             >>> new_table_1 = my_table.alter(
             ...     AlterTableAddColumns(
             ...         columns={
@@ -860,38 +903,49 @@ class Table(Generic[ROW]):
             ...     )
             ... )
             >>>
-            >>> new_table_2 = new_table_1.alter(
-            ...     AlterTableDropColumns(columns=["tie_break"]),
-            ... )
+            >>> # Drop a column
+            >>> new_table_2 = new_table_1.alter(AlterTableDropColumns(
+            ...     columns=["tie_break"]
+            ... ))
             >>>
+            >>> # Add vectorize to a (vector) column
             >>> new_table_3 = new_table_2.alter(
             ...     AlterTableAddVectorize(
             ...         columns={
             ...             "m_vector": VectorServiceOptions(
             ...                 provider="openai",
             ...                 model_name="text-embedding-3-small",
-            ...                 authentication={
-            ...                     "providerKey": "MY_API_KEY_STORED_SECRET_NAME",
-            ...                 },
+            ...                 # authentication={
+            ...                     # "providerKey": "MY_API_KEY_STORED_SECRET_NAME",
+            ...                 # },
             ...             ),
             ...         }
             ...     )
             ... )
             >>>
+            >>> # Drop vectorize from a (vector) column
+            >>> # (Also demonstrates type hint usage)
             >>> from typing import TypedDict
             >>> from astrapy import Table
-            >>> from astrapy.data_types import DataAPITimestamp
+            >>> from astrapy.data_types import (
+            ...     DataAPISet,
+            ...     DataAPITimestamp,
+            ...     DataAPIVector,
+            ... )
+            >>> from astrapy.ids import UUID
             >>>
-            >>> class MyCustomDictClass(TypedDict):
-            ...     match_no: int
-            ...     round: str
-            ...     winner: str
+            >>> class MyMatch(TypedDict):
+            ...     match_id: str
+            ...     round: int
+            ...     m_vector: DataAPIVector
             ...     score: int
             ...     when: DataAPITimestamp
+            ...     winner: str
+            ...     fighters: DataAPISet[UUID]
             ...
-            >>> new_table_4: Table[MyCustomDictClass] = new_table_3.alter(
+            >>> new_table_4: Table[MyMatch] = new_table_3.alter(
             ...     AlterTableDropVectorize(columns=["m_vector"]),
-            ...     row_type=MyCustomDictClass,
+            ...     row_type=MyMatch,
             ... )
         """
 
@@ -972,55 +1026,66 @@ class Table(Generic[ROW]):
             of the inserted row both in the form of a dictionary and of a tuple.
 
         Examples:
-            >>> # a full-row insert using astrapy's datatypes when available
+            >>> # a full-row insert using astrapy's datatypes
             >>> from astrapy.data_types import (
             ...     DataAPISet,
             ...     DataAPITimestamp,
             ...     DataAPIVector,
             ... )
+            >>> from astrapy.ids import UUID
+            >>>
             >>> insert_result = my_table.insert_one(
             ...     {
-            ...         "match_no": 1012,
-            ...         "round": "A",
-            ...         "winner": "Victor",
+            ...         "match_id": "mtch_0",
+            ...         "round": 1,
+            ...         "m_vector": DataAPIVector([0.4, -0.6, 0.2]),
             ...         "score": 18,
             ...         "when": DataAPITimestamp.from_string("2024-11-28T11:30:00Z"),
-            ...         "tags": DataAPISet(["worldcup", "placeholder_tag"]),
-            ...         "m_vector": DataAPIVector([0.4, -0.6, 0.2]),
+            ...         "winner": "Victor",
+            ...         "fighters": DataAPISet([
+            ...             UUID("0193539a-2770-8c09-a32a-111111111111"),
+            ...         ]),
             ...     },
             ... )
             >>> insert_result.inserted_id
-            {'match_no': 1012, 'round': 'A'}
+            {'match_id': 'mtch_0', 'round': 1}
             >>> insert_result.inserted_id_tuple
-            (1012, 'A')
-
-            >>> # a partial-row overwrite
+            ('mtch_0', 1)
+            >>>
+            >>> # a partial-row (which in this case overwrites some of the values)
             >>> my_table.insert_one(
             ...     {
-            ...         "match_no": 1012,
-            ...         "round": "A",
+            ...         "match_id": "mtch_0",
+            ...         "round": 1,
             ...         "winner": "Victor Vector",
-            ...         "tags": DataAPISet(["worldcup", "championship"]),
+            ...         "fighters": DataAPISet([
+            ...             UUID("0193539a-2770-8c09-a32a-111111111111"),
+            ...             UUID("0193539a-2880-8875-9f07-222222222222"),
+            ...         ]),
             ...     },
             ... )
-            TableInsertOneResult(inserted_id={'match_no': 1012, ...)  # Note: shortened
-
-            >>> # an insert using only standard library data types
-            >>> from datetime import datetime, timezone
+            TableInsertOneResult(inserted_id={'match_id': 'mtch_0', 'round': 1} ...
+            >>>
+            >>> # another insertion demonstrating standard-library datatypes in values
+            >>> import datetime
+            >>>
             >>> my_table.insert_one(
             ...     {
-            ...         "match_no": 975,
-            ...         "round": "B",
+            ...         "match_id": "mtch_0",
+            ...         "round": 2,
             ...         "winner": "Angela",
             ...         "score": 25,
-            ...         "when": datetime(
-            ...             2024, 7, 13, 12, 55, 30, 889, tzinfo=timezone.utc
+            ...         "when": datetime.datetime(
+            ...             2024, 7, 13, 12, 55, 30, 889,
+            ...             tzinfo=datetime.timezone.utc,
             ...         ),
-            ...         "tags": {"tiebreak", "epic"},
+            ...         "fighters": {
+            ...             UUID("019353cb-8e01-8276-a190-333333333333"),
+            ...         },
             ...         "m_vector": [0.4, -0.6, 0.2],
             ...     },
             ... )
-            TableInsertOneResult(inserted_id={'match_no': 975, ...)  # Note: shortened
+            TableInsertOneResult(inserted_id={'match_id': 'mtch_0', 'round': 2}, ...
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -1160,75 +1225,77 @@ class Table(Generic[ROW]):
             of the inserted rows both in the form of dictionaries and of tuples.
 
         Examples:
-            >>> from datetime import datetime, timezone
-            >>> from astrapy.data_types import DataAPISet, DataAPITimestamp, DataAPIVector
+            >>> # Insert complete and partial rows at once (concurrently)
+            >>> from astrapy.data_types import (
+            ...     DataAPISet,
+            ...     DataAPITimestamp,
+            ...     DataAPIVector,
+            ... )
+            >>> from astrapy.ids import UUID
             >>>
-            >>> # Unordered insertion (with concurrency for performance)
             >>> insert_result = my_table.insert_many(
             ...     [
             ...         {
-            ...             "match_no": 1012,
-            ...             "round": "A",
+            ...             "match_id": "fight4",
+            ...             "round": 1,
             ...             "winner": "Victor",
             ...             "score": 18,
             ...             "when": DataAPITimestamp.from_string(
             ...                 "2024-11-28T11:30:00Z",
             ...             ),
-            ...             "tags": DataAPISet(["worldcup", "placeholder_tag"]),
+            ...             "fighters": DataAPISet([
+            ...                 UUID("0193539a-2770-8c09-a32a-111111111111"),
+            ...                 UUID('019353e3-00b4-83f9-a127-222222222222'),
+            ...             ]),
             ...             "m_vector": DataAPIVector([0.4, -0.6, 0.2]),
             ...         },
-            ...         {"match_no": 991, "round": "A", "winner": "Adam"},
-            ...         {"match_no": 991, "round": "B", "winner": "Betta"},
-            ...         {"match_no": 991, "round": "C", "winner": "Caio"},
+            ...         {"match_id": "fight5", "round": 1, "winner": "Adam"},
+            ...         {"match_id": "fight5", "round": 2, "winner": "Betta"},
+            ...         {"match_id": "fight5", "round": 3, "winner": "Caio"},
             ...         {
-            ...             "match_no": 995,
-            ...             "round": "A",
+            ...             "match_id": "challenge6",
+            ...             "round": 1,
             ...             "winner": "Donna",
             ...             "m_vector": [0.9, -0.1, -0.3],
             ...         },
-            ...         {"match_no": 995, "round": "B", "winner": "Erick"},
-            ...         {"match_no": 995, "round": "C", "winner": "Fiona"},
-            ...         {"match_no": 997, "round": "A", "winner": "Gael"},
-            ...         {"match_no": 997, "round": "B", "winner": "Hanna"},
+            ...         {"match_id": "challenge6", "round": 2, "winner": "Erick"},
+            ...         {"match_id": "challenge6", "round": 3, "winner": "Fiona"},
+            ...         {"match_id": "tournamentA", "round": 1, "winner": "Gael"},
+            ...         {"match_id": "tournamentA", "round": 2, "winner": "Hanna"},
             ...         {
-            ...             "match_no": 997,
-            ...             "round": "C",
+            ...             "match_id": "tournamentA",
+            ...             "round": 3,
             ...             "winner": "Ian",
-            ...             "when": datetime(
-            ...                 2023, 9, 28, 18, 12, 45, tzinfo=timezone.utc
-            ...             ),
-            ...             "tags": {"dull"},
+            ...             "fighters": DataAPISet([
+            ...                 UUID("0193539a-2770-8c09-a32a-111111111111"),
+            ...             ]),
             ...         },
-            ...         {"match_no": 443, "round": "A", "winner": "Joy"},
-            ...         {"match_no": 443, "round": "B", "winner": "Kevin"},
-            ...         {"match_no": 443, "round": "C", "winner": "Lauretta"},
+            ...         {"match_id": "fight7", "round": 1, "winner": "Joy"},
+            ...         {"match_id": "fight7", "round": 2, "winner": "Kevin"},
+            ...         {"match_id": "fight7", "round": 3, "winner": "Lauretta"},
             ...     ],
             ...     concurrency=10,
+            ...     chunk_size=3,
             ... )
             >>> insert_result.inserted_ids
-            [{'match_no': 1012, 'round': 'A'}, {'match_no': 991, ...}, ...]  # Note: shortened
+            [{'match_id': 'fight4', 'round': 1}, {'match_id': 'fight5', ...
             >>> insert_result.inserted_id_tuples
-            [(1012, 'A'), (991, 'A'), (991, 'B'), (991, 'C'), (995, 'A'), ...]  # Note: shortened
-
-            >>> # Ordered insertion (stop on first failure and predictable end result on DB)
+            [('fight4', 1), ('fight5', 1), ('fight5', 2), ('fight5', 3), ...
+            >>>
+            >>> # Ordered insertion
+            >>> # (would stop on first failure; predictable end result on DB)
             >>> my_table.insert_many(
             ...     [
-            ...         {"match_no": 991, "round": "A", "winner": "Adam0"},
-            ...         {"match_no": 991, "round": "B", "winner": "Bett0a"},
-            ...         {"match_no": 991, "round": "C", "winner": "Caio0"},
-            ...         {"match_no": 991, "round": "A", "winner": "Adam1"},
-            ...         {"match_no": 991, "round": "B", "winner": "Betta1"},
-            ...         {"match_no": 991, "round": "C", "winner": "Caio1"},
-            ...         {"match_no": 991, "round": "A", "winner": "Adam2"},
-            ...         {"match_no": 991, "round": "B", "winner": "Betta2"},
-            ...         {"match_no": 991, "round": "C", "winner": "Caio2"},
-            ...         {"match_no": 991, "round": "A", "winner": "Adam3"},
-            ...         {"match_no": 991, "round": "B", "winner": "Betta3"},
-            ...         {"match_no": 991, "round": "C", "winner": "Caio3"},
+            ...         {"match_id": "fight5", "round": 1, "winner": "Adam0"},
+            ...         {"match_id": "fight5", "round": 2, "winner": "Betta0"},
+            ...         {"match_id": "fight5", "round": 3, "winner": "Caio0"},
+            ...         {"match_id": "fight5", "round": 1, "winner": "Adam Zuul"},
+            ...         {"match_id": "fight5", "round": 2, "winner": "Betta Vigo"},
+            ...         {"match_id": "fight5", "round": 3, "winner": "Caio Gozer"},
             ...     ],
             ...     ordered=True,
             ... )
-            TableInsertManyResult(inserted_ids=[{'match_no': 991, ...}, ...]  # Note: shortened
+            TableInsertManyResult(inserted_ids=[{'match_id': 'fight5', 'round': 1}, ...
 
         Note:
             Unordered insertions are executed with some degree of concurrency,
@@ -1463,9 +1530,10 @@ class Table(Generic[ROW]):
             filter: a dictionary expressing which condition must the returned rows
                 satisfy. The filter can use operators, such as "$eq" for equality,
                 and require columns to compare with literal values. Simple examples
-                are `{}` (zero filter), `{"match_no": 123}` (a shorthand for
-                `{"match_no": {"$eq": 123}}`, or `{"match_no": 123, "round": "C"}`
-                (multiple conditions are implicitly combined with "$and").
+                are `{}` (zero filter, not recommended for large tables),
+                `{"match_no": 123}` (a shorthand for `{"match_no": {"$eq": 123}}`,
+                or `{"match_no": 123, "round": "C"}` (multiple conditions are
+                implicitly combined with "$and").
                 Please consult the Data API documentation for a more detailed
                 explanation of table search filters and tips on their usage.
             projection: a prescription on which columns to return for the matching rows.
@@ -1473,14 +1541,41 @@ class Table(Generic[ROW]):
                 `{"*": True}` (i.e. return the whole row), or the complementary
                 form that excludes columns: `{"column1": False, "column2": False}`.
                 To optimize bandwidth usage, it is recommended to use a projection,
-                especially for columns of type vector with high-dimensional embeddings.
-            skip: X,
-            limit: X,
-            include_similarity: X,
-            include_sort_vector: X,
-            sort: X,
-            request_timeout_ms: X,
-            timeout_ms: X,
+                especially to avoid unnecessary columns of type vector with
+                high-dimensional embeddings.
+            skip: if provided, it is a number of rows that would be obtained first
+                in the response and are instead skipped.
+            limit: a maximum amount of rows to get from the table. The returned cursor
+                will stop yielding rows when either this number is reached or there
+                really are no more matches in the table.
+            include_similarity: a boolean to request the numeric value of the
+                similarity to be returned as an added "$similarity" key in each returned
+                row. It can be used meaningfully only in a vector search (see `sort`).
+            include_sort_vector: a boolean to request the search query vector.
+                If set to True (and if the search is a vector search), calling
+                the `get_sort_vector` method on the returned cursor will yield
+                the vector used for the ANN search.
+            sort: this dictionary parameter controls the order in which the rows
+                are returned. The sort parameter can express either a vector search or
+                a regular (ascending/descending, even hierarchical) sorting.
+                * For a vector search the parameter takes the form
+                `{"vector_column": qv}`, with the query vector `qv` of the appropriate
+                type (list of floats or DataAPIVector). If the table has automatic
+                embedding generation ("vectorize") enabled on that column, the form
+                `{"vectorize_enabled_column": "query text"}` is also valid.
+                * In the case of non-vector sorting, the parameter specifies the
+                column(s) and the ascending/descending ordering required.
+                If multiple columns are provided, the sorting applies them
+                hierarchically to the rows. Examples are `{"score": SortMode.ASCENDING}`
+                (equivalently `{"score": +1}`), {"score": +1, "when": -1}`.
+                Note that, depending on the column(s) chosen for sorting, the table
+                partitioning structure, and the presence of indexes, the sorting
+                may be done in-memory by the API. In that case, there may be performance
+                implications and limitations on the amount of items returned.
+                Consult the Data API documentation for more details on this topic.
+            request_timeout_ms: a timeout, in milliseconds, to impose on each
+                individual HTTP request to the Data API to accomplish the operation.
+            timeout_ms: an alias for `request_timeout_ms`.
 
         Note:
             As the rows are retrieved in chunks progressively, while the cursor
@@ -1490,113 +1585,114 @@ class Table(Generic[ROW]):
 
         Examples:
             >>> # Iterate over results:
-            >>> for row in my_table.find({"match_no": 995}):
-            ...     print(f"({row['match_no']}/{row['round']}): winner {row['winner']}")
+            >>> for row in my_table.find({"match_id": "challenge6"}):
+            ...     print(f"(R:{row['round']}): winner {row['winner']}")
             ...
-            (995/A): winner Donna
-            (995/B): winner Erick
-            (995/C): winner Fiona
-
+            (R:1): winner Donna
+            (R:2): winner Erick
+            (R:3): winner Fiona
             >>> # Optimize bandwidth using a projection:
-            >>> projection = {"round": True, "winner": True}
-            >>> for row in my_table.find({"match_no": 995}, projection=projection):
-            ...     print(f"(995/{row['round']}): winner {row['winner']}")
+            >>> proj = {"round": True, "winner": True}
+            >>> for row in my_table.find({"match_id": "challenge6"}, projection=proj):
+            ...     print(f"(R:{row['round']}): winner {row['winner']}")
             ...
-            (995/A): winner Donna
-            (995/B): winner Erick
-            (995/C): winner Fiona
-
+            (R:1): winner Donna
+            (R:2): winner Erick
+            (R:3): winner Fiona
             >>> # Filter on the partition key:
-            >>> my_table.find({"match_no": 991}).to_list()
-            [{'match_no': 991, 'round': 'A', ...}, ...]  # Note: shortened
-
+            >>> my_table.find({"match_id": "challenge6"}).to_list()
+            [{'match_id': 'challenge6', 'round': 1, 'fighters': DataAPISet([]), ...
+            >>>
             >>> # Filter on primary key:
-            >>> my_table.find({"match_no": 991, "round": "C"}).to_list()
-            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
-
+            >>> my_table.find({"match_id": "challenge6", "round": 1}).to_list()
+            [{'match_id': 'challenge6', 'round': 1, 'fighters': DataAPISet([]), ...
+            >>>
             >>> # Filter on a regular indexed column:
-            >>> my_table.find({"winner": "Caio3"}).to_list()
-            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
-
+            >>> my_table.find({"winner": "Caio Gozer"}).to_list()
+            [{'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
+            >>>
             >>> # Non-equality filter on a regular indexed column:
             >>> my_table.find({"score": {"$gte": 15}}).to_list()
-            [{'match_no': 1012, 'round': 'A', ...}, ...]  # Note: shortened
-
+            [{'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
+            >>>
             >>> # Filter on a regular non-indexed column:
+            >>> # (not recommended performance-wise)
             >>> my_table.find(
-            ...     {"when": DataAPITimestamp.from_string("1999-12-31T01:23:44Z")}
+            ...     {"when": {
+            ...         "$gte": DataAPITimestamp.from_string("1999-12-31T01:23:44Z")
+            ...     }}
             ... ).to_list()
             The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
-            []
-
+            [{'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
+            >>>
             >>> # Empty filter (not recommended performance-wise):
             >>> my_table.find({}).to_list()
             The Data API returned a warning: {'errorCode': 'ZERO_FILTER_OPERATIONS', ...
-            [{'match_no': 123, 'round': 'A', ...}, ...]  # Note: shortened
-
+            [{'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
+            >>>
             >>> # Filter on the primary key and a regular non-indexed column:
             >>> # (not recommended performance-wise)
             >>> my_table.find(
-            ...     {"match_no": 991, "round": "C", "winner": "Caio3"}
+            ...     {"match_id": "fight5", "round": 3, "winner": "Caio Gozer"}
             ... ).to_list()
-            The Data API returned a warning: {'errorCode': 'MISSING_INDEX',...
-            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
-
-            >>> # Filter on a regular non-indexed column, omitting part of the pr. key:
-            >>> # (not recommended performance-wise)
-            >>> my_table.find({"round": "C", "winner": "Caio3"}).to_list()
             The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
-            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
-
-            >>> # Vector search with "sort" (on a vector column with an index on it):
+            [{'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
+            >>>
+            >>> # Filter on a regular non-indexed column (and incomplete primary key)
+            >>> # (not recommended performance-wise)
+            >>> my_table.find({"round": 3, "winner": "Caio Gozer"}).to_list()
+            The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
+            [{'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
+            >>>
+            >>> # Vector search with "sort" (on an appropriately-indexed vector column):
             >>> my_table.find(
             ...     {},
-            ...     sort={'m_vector': DataAPIVector([0.2, 0.3, 0.4])},
+            ...     sort={"m_vector": DataAPIVector([0.2,0.3,0.4])},
             ...     projection={"winner": True},
             ...     limit=3,
             ... ).to_list()
-            [{'winner': 'Donna'}, {'winner': 'Victor'}, {'winner': 'Angela'}]
-
+            [{'winner': 'Donna'}, {'winner': 'Victor'}]
+            >>>
             >>> # Return the numeric value of the vector similarity
             >>> # (also demonstrating that one can pass a plain list for a vector):
             >>> my_table.find(
             ...     {},
-            ...     sort={'m_vector': [0.2, 0.3, 0.4]},
+            ...     sort={"m_vector": [0.2,0.3,0.4]},
             ...     projection={"winner": True},
             ...     limit=3,
             ...     include_similarity=True,
             ... ).to_list()
-            [{'winner': 'Donna', '$similarity': 0.515}, ...]  # Note: shortened
-
+            [{'winner': 'Donna', '$similarity': 0.515}, {'winner': 'Victor', ...
+            >>>
             >>> # Regular sorting on a column:
             >>> my_table.find(
-            ...     {"match_no": 991},
-            ...     sort={'round': SortMode.DESCENDING},
+            ...     {"match_id": "fight5"},
+            ...     sort={"round": SortMode.DESCENDING},
             ...     projection={"winner": True},
             ... ).to_list()
-            [{'winner': 'Caio3'}, {'winner': 'Betta3'}, {'winner': 'Adam3'}]
-
+            [{'winner': 'Caio Gozer'}, {'winner': 'Betta Vigo'}, ...
+            >>>
             >>> # Using `skip` and `limit`:
             >>> my_table.find(
-            ...     {"match_no": 991},
-            ...     sort={'round': SortMode.DESCENDING},
+            ...     {"match_id": "fight5"},
+            ...     sort={"round": SortMode.DESCENDING},
             ...     projection={"winner": True},
             ...     skip=1,
             ...     limit=2,
             ... ).to_list()
             The Data API returned a warning: {'errorCode': 'IN_MEMORY_SORTING...
-            [{'winner': 'Betta3'}, {'winner': 'Adam3'}]
-
+            [{'winner': 'Betta Vigo'}, {'winner': 'Adam Zuul'}]
+            >>>
             >>> # Using `.map()` on a cursor:
             >>> winner_cursor = my_table.find(
-            ...     {"match_no": 991},
-            ...     sort={'round': SortMode.DESCENDING},
+            ...     {"match_id": "fight5"},
+            ...     sort={"round": SortMode.DESCENDING},
             ...     projection={"winner": True},
             ...     limit=5,
             ... )
             >>> print("/".join(winner_cursor.map(lambda row: row["winner"].upper())))
-            CAIO3/BETTA3/ADAM3
-
+            CAIO GOZER/BETTA VIGO/ADAM ZUUL
+            >>>
             >>> # Some other examples of cursor manipulation
             >>> matches_cursor = my_table.find(
             ...     sort={"m_vector": DataAPIVector([-0.1, 0.15, 0.3])}
@@ -1604,7 +1700,7 @@ class Table(Generic[ROW]):
             >>> matches_cursor.has_next()
             True
             >>> next(matches_cursor)
-            {'match_no': 1012, 'round': 'A', 'm_vector':...}  # Note: shortened
+            {'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
             >>> matches_cursor.consumed
             1
             >>> matches_cursor.rewind()
@@ -1613,8 +1709,12 @@ class Table(Generic[ROW]):
             >>> matches_cursor.has_next()
             True
             >>> matches_cursor.close()
-            >>> next(matches_cursor)
-            StopIteration  # Exception raised
+            >>> try:
+            ...     next(matches_cursor)
+            ... except StopIteration:
+            ...     print("StopIteration triggered.")
+            ...
+            StopIteration triggered.
         """
 
         # lazy-import here to avoid circular import issues
@@ -1653,7 +1753,62 @@ class Table(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> ROW | None:
         """
-        TODO
+        Run a search according to the given filtering and sorting criteria
+        and return the top row matching it, or nothing if there are none.
+
+        The parameters are analogous to some of the parameters to the `find` method
+        (which has a few more that do not make sense in this case, such as `limit`).
+
+        Args:
+            filter: a dictionary expressing which condition must the returned row
+                satisfy. The filter can use operators, such as "$eq" for equality,
+                and require columns to compare with literal values. Simple examples
+                are `{}` (zero filter), `{"match_no": 123}` (a shorthand for
+                `{"match_no": {"$eq": 123}}`, or `{"match_no": 123, "round": "C"}`
+                (multiple conditions are implicitly combined with "$and").
+                Please consult the Data API documentation for a more detailed
+                explanation of table search filters and tips on their usage.
+            projection: a prescription on which columns to return for the matching row.
+                The projection can take the form `{"column1": True, "column2": True}`.
+                `{"*": True}` (i.e. return the whole row), or the complementary
+                form that excludes columns: `{"column1": False, "column2": False}`.
+                To optimize bandwidth usage, it is recommended to use a projection,
+                especially to avoid unnecessary columns of type vector with
+                high-dimensional embeddings.
+            include_similarity: a boolean to request the numeric value of the
+                similarity to be returned as an added "$similarity" key in the returned
+                row. It can be used meaningfully only in a vector search (see `sort`).
+            sort: this dictionary parameter controls the sorting order, hence determines
+                which row is being returned.
+                The sort parameter can express either a vector search or
+                a regular (ascending/descending, even hierarchical) sorting.
+                * For a vector search the parameter takes the form
+                `{"vector_column": qv}`, with the query vector `qv` of the appropriate
+                type (list of floats or DataAPIVector). If the table has automatic
+                embedding generation ("vectorize") enabled on that column, the form
+                `{"vectorize_enabled_column": "query text"}` is also valid.
+                * In the case of non-vector sorting, the parameter specifies the
+                column(s) and the ascending/descending ordering required.
+                If multiple columns are provided, the sorting applies them
+                hierarchically to the rows. Examples are `{"score": SortMode.ASCENDING}`
+                (equivalently `{"score": +1}`), {"score": +1, "when": -1}`.
+                Note that, depending on the column(s) chosen for sorting, the table
+                partitioning structure, and the presence of indexes, the sorting
+                may be done in-memory by the API. In that case, there may be performance
+                implications.
+                Consult the Data API documentation for more details on this topic.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
+            timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Returns:
+            a dictionary expressing resulting row if a match is found, otherwise None.
+
+        Examples:
+            TODO
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -2231,8 +2386,8 @@ class AsyncTable(Generic[ROW]):
         >>> my_table_4 = await my_db.get_table("my_already_existing_table")
 
     Note:
-        creating an instance of Table does not trigger actual creation
-        of the table on the database. The latter should have been created
+        creating an instance of Table does not trigger, in itself, actual
+        creation of the table on the database. The latter should have been created
         beforehand, e.g. through the `create_table` method of a Database.
     """
 
@@ -3297,15 +3452,9 @@ class AsyncTable(Generic[ROW]):
             ...         {"match_no": 991, "round": "A", "winner": "Adam0"},
             ...         {"match_no": 991, "round": "B", "winner": "Bett0a"},
             ...         {"match_no": 991, "round": "C", "winner": "Caio0"},
-            ...         {"match_no": 991, "round": "A", "winner": "Adam1"},
-            ...         {"match_no": 991, "round": "B", "winner": "Betta1"},
-            ...         {"match_no": 991, "round": "C", "winner": "Caio1"},
-            ...         {"match_no": 991, "round": "A", "winner": "Adam2"},
-            ...         {"match_no": 991, "round": "B", "winner": "Betta2"},
-            ...         {"match_no": 991, "round": "C", "winner": "Caio2"},
-            ...         {"match_no": 991, "round": "A", "winner": "Adam3"},
-            ...         {"match_no": 991, "round": "B", "winner": "Betta3"},
-            ...         {"match_no": 991, "round": "C", "winner": "Caio3"},
+            ...         {"match_id": "fight5", "round": 1, "winner": "Adam Zuul"},
+            ...         {"match_id": "fight5", "round": 2, "winner": "Betta Vigo"},
+            ...         {"match_id": "fight5", "round": 3, "winner": "Caio Gozer"},
             ...     ],
             ...     ordered=True,
             ... )
@@ -3511,7 +3660,208 @@ class AsyncTable(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> AsyncTableFindCursor[ROW, ROW]:
         """
-        TODO
+        Find rows on the table matching the provided filters
+        and according to sorting criteria including vector similarity.
+
+        The returned AsyncTableFindCursor object, representing the stream of results,
+        can be iterated over, or consumed and manipulated in several other ways
+        (see the examples below and the `AsyncTableFindCursor` docs for details).
+        Since the amount of returned items can be large, AsyncTableFindCursor is a lazy
+        object, that fetches new data while it is being read using the Data API
+        pagination mechanism.
+
+        Invoking `.to_list()` on a AsyncTableFindCursor will cause it to consume all
+        rows and materialize the entire result set as a list. This is not recommended
+        if the amount of results is very large.
+
+        Args:
+            filter: a dictionary expressing which condition must the returned rows
+                satisfy. The filter can use operators, such as "$eq" for equality,
+                and require columns to compare with literal values. Simple examples
+                are `{}` (zero filter, not recommended for large tables),
+                `{"match_no": 123}` (a shorthand for `{"match_no": {"$eq": 123}}`,
+                or `{"match_no": 123, "round": "C"}` (multiple conditions are
+                implicitly combined with "$and").
+                Please consult the Data API documentation for a more detailed
+                explanation of table search filters and tips on their usage.
+            projection: a prescription on which columns to return for the matching rows.
+                The projection can take the form `{"column1": True, "column2": True}`.
+                `{"*": True}` (i.e. return the whole row), or the complementary
+                form that excludes columns: `{"column1": False, "column2": False}`.
+                To optimize bandwidth usage, it is recommended to use a projection,
+                especially for columns of type vector with high-dimensional embeddings.
+            skip: if provided, it is a number of rows that would be obtained first
+                in the response and are instead skipped.
+            limit: a maximum amount of rows to get from the table. The returned cursor
+                will stop yielding rows when either this number is reached or there
+                really are no more matches in the table.
+            include_similarity: a boolean to request the numeric value of the
+                similarity to be returned as an added "$similarity" key in each returned
+                row. It can be used meaningfully only in a vector search (see `sort`).
+            include_sort_vector: a boolean to request the search query vector.
+                If set to True (and if the search is a vector search), calling
+                the `get_sort_vector` method on the returned cursor will yield
+                the vector used for the ANN search.
+            sort: this dictionary parameter controls the order in which the documents
+                are returned. The sort parameter can express either a vector search or
+                a regular (ascending/descending, even hierarchical) sorting.
+                * For a vector search the parameter takes the form
+                `{"vector_column": qv}`, with the query vector `qv` of the appropriate
+                type (list of floats or DataAPIVector). If the table has automatic
+                embedding generation ("vectorize") enabled on that column, the form
+                `{"vectorize_enabled_column": "query text"}` is also valid.
+                * In the case of non-vector sorting, the parameter specifies the
+                column(s) and the ascending/descending ordering required.
+                If multiple columns are provided, the sorting applies them
+                hierarchically to the rows. Examples are `{"score": SortMode.ASCENDING}`
+                (equivalently `{"score": +1}`), {"score": +1, "when": -1}`.
+                Note that, depending on the column(s) chosen for sorting, the table
+                partitioning structure, and the presence of indexes, the sorting
+                may be done in-memory by the API. In that case, there may be performance
+                implications and limitations on the amount of items returned.
+                Consult the Data API documentation for more details on this topic.
+            request_timeout_ms: a timeout, in milliseconds, to impose on each
+                individual HTTP request to the Data API to accomplish the operation.
+            timeout_ms: an alias for `request_timeout_ms`.
+
+        Note:
+            As the rows are retrieved in chunks progressively, while the cursor
+            is being iterated over, it is possible that the actual results
+            obtained will reflect changes occurring to the table contents in
+            real time.
+
+        Examples:
+            >>> # Iterate over results:
+            >>> async for row in my_table.find({"match_no": 995}):
+            ...     print(f"({row['match_no']}/{row['round']}): winner {row['winner']}")
+            ...
+            (995/A): winner Donna
+            (995/B): winner Erick
+            (995/C): winner Fiona
+
+            >>> # Optimize bandwidth using a projection:
+            >>> proj = {"round": True, "winner": True}
+            >>> async for row in my_table.find({"match_no": 995}, projection=proj):
+            ...     print(f"(995/{row['round']}): winner {row['winner']}")
+            ...
+            (995/A): winner Donna
+            (995/B): winner Erick
+            (995/C): winner Fiona
+
+            >>> # Filter on the partition key:
+            >>> await my_table.find({"match_no": 991}).to_list()
+            [{'match_no': 991, 'round': 'A', ...}, ...]  # Note: shortened
+
+            >>> # Filter on primary key:
+            >>> await my_table.find({"match_no": 991, "round": "C"}).to_list()
+            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
+
+            >>> # Filter on a regular indexed column:
+            >>> await my_table.find({"winner": "Caio3"}).to_list()
+            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
+
+            >>> # Non-equality filter on a regular indexed column:
+            >>> await my_table.find({"score": {"$gte": 15}}).to_list()
+            [{'match_no': 1012, 'round': 'A', ...}, ...]  # Note: shortened
+
+            >>> # Filter on a regular non-indexed column:
+            >>> await my_table.find(
+            ...     {"when": DataAPITimestamp.from_string("1999-12-31T01:23:44Z")}
+            ... ).to_list()
+            The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
+            []
+
+            >>> # Empty filter (not recommended performance-wise):
+            >>> await my_table.find({}).to_list()
+            The Data API returned a warning: {'errorCode': 'ZERO_FILTER_OPERATIONS', ...
+            [{'match_no': 123, 'round': 'A', ...}, ...]  # Note: shortened
+
+            >>> # Filter on the primary key and a regular non-indexed column:
+            >>> # (not recommended performance-wise)
+            >>> await my_table.find(
+            ...     {"match_no": 991, "round": "C", "winner": "Caio3"}
+            ... ).to_list()
+            The Data API returned a warning: {'errorCode': 'MISSING_INDEX',...
+            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
+
+            >>> # Filter on a regular non-indexed column, omitting part of the pr. key:
+            >>> # (not recommended performance-wise)
+            >>> await my_table.find({"round": "C", "winner": "Caio3"}).to_list()
+            The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
+            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
+
+            >>> # Vector search with "sort" (on a vector column with an index on it):
+            >>> await my_table.find(
+            ...     {},
+            ...     sort={'m_vector': DataAPIVector([0.2, 0.3, 0.4])},
+            ...     projection={"winner": True},
+            ...     limit=3,
+            ... ).to_list()
+            [{'winner': 'Donna'}, {'winner': 'Victor'}, {'winner': 'Angela'}]
+
+            >>> # Return the numeric value of the vector similarity
+            >>> # (also demonstrating that one can pass a plain list for a vector):
+            >>> await my_table.find(
+            ...     {},
+            ...     sort={'m_vector': [0.2, 0.3, 0.4]},
+            ...     projection={"winner": True},
+            ...     limit=3,
+            ...     include_similarity=True,
+            ... ).to_list()
+            [{'winner': 'Donna', '$similarity': 0.515}, ...]  # Note: shortened
+
+            >>> # Regular sorting on a column:
+            >>> await my_table.find(
+            ...     {"match_no": 991},
+            ...     sort={'round': SortMode.DESCENDING},
+            ...     projection={"winner": True},
+            ... ).to_list()
+            [{'winner': 'Caio3'}, {'winner': 'Betta3'}, {'winner': 'Adam3'}]
+
+            >>> # Using `skip` and `limit`:
+            >>> await my_table.find(
+            ...     {"match_no": 991},
+            ...     sort={'round': SortMode.DESCENDING},
+            ...     projection={"winner": True},
+            ...     skip=1,
+            ...     limit=2,
+            ... ).to_list()
+            The Data API returned a warning: {'errorCode': 'IN_MEMORY_SORTING...
+            [{'winner': 'Betta3'}, {'winner': 'Adam3'}]
+
+            >>> # Using `.map()` on a cursor:
+            >>> winner_cursor = my_table.find(
+            ...     {"match_no": 991},
+            ...     sort={'round': SortMode.DESCENDING},
+            ...     projection={"winner": True},
+            ...     limit=5,
+            ... )
+            >>> print("/".join(
+            ...     winner
+            ...     async for winner in winner_cursor.map(
+            ...         lambda row: row["winner"].upper()
+            ...     )
+            ... ))
+            CAIO3/BETTA3/ADAM3
+
+            >>> # Some other examples of cursor manipulation
+            >>> matches_cursor = my_table.find(
+            ...     sort={"m_vector": DataAPIVector([-0.1, 0.15, 0.3])}
+            ... )
+            >>> await matches_cursor.has_next()
+            True
+            >>> await matches_cursor._anext__()
+            {'match_no': 1012, 'round': 'A', 'm_vector':...}  # Note: shortened
+            >>> matches_cursor.consumed
+            1
+            >>> matches_cursor.rewind()
+            >>> matches_cursor.consumed
+            0
+            >>> await matches_cursor.has_next()
+            True
+            >>> matches_cursor.close()
+            >>> matches_cursor.__anext_()
+            StopAsyncIteration  # Exception raised
         """
 
         # lazy-import here to avoid circular import issues

@@ -1007,7 +1007,7 @@ class Collection(Generic[DOC]):
                 returned document. Can only be used for vector ANN search, i.e.
                 when either `vector` is supplied or the `sort` parameter has the
                 shape {"$vector": ...}.
-            include_sort_vector: a boolean to request query vector used in this search.
+            include_sort_vector: a boolean to request the search query vector.
                 If set to True (and if the invocation is a vector search), calling
                 the `get_sort_vector` method on the returned cursor will yield
                 the vector used for the ANN search.
@@ -3497,7 +3497,7 @@ class AsyncCollection(Generic[DOC]):
                 returned document. Can only be used for vector ANN search, i.e.
                 when either `vector` is supplied or the `sort` parameter has the
                 shape {"$vector": ...}.
-            include_sort_vector: a boolean to request query vector used in this search.
+            include_sort_vector: a boolean to request the search query vector.
                 If set to True (and if the invocation is a vector search), calling
                 the `get_sort_vector` method on the returned cursor will yield
                 the vector used for the ANN search.

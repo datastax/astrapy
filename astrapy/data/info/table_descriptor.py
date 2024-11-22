@@ -122,7 +122,7 @@ class TableScalarColumnTypeDescriptor(TableColumnTypeDescriptor):
 
     column_type: TableScalarColumnType
 
-    def __init__(self, *, column_type: str | TableScalarColumnType) -> None:
+    def __init__(self, column_type: str | TableScalarColumnType) -> None:
         self.column_type = TableScalarColumnType.coerce(column_type)
 
     def __repr__(self) -> str:
@@ -162,7 +162,7 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
         *,
         column_type: str | TableVectorColumnType,
         dimension: int | None,
-        service: VectorServiceOptions | None,
+        service: VectorServiceOptions | None = None,
     ) -> None:
         self.dimension = dimension
         self.service = service
