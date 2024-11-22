@@ -943,7 +943,84 @@ class Table(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> TableInsertOneResult:
         """
-        TODO
+        Insert a single row in the table,
+        with implied overwrite in case of primary key collision.
+
+        Inserting a row whose primary key correspond to an entry alredy stored
+        in the table has the effect of an in-place update: the row is overwritten.
+        However, if the row being inserted is partially provided, i.e. some columns
+        are not specified, these are left unchanged on the database. To explicitly
+        reset them, specify their value as appropriate to their data type,
+        i.e. `None`, `{}` or analogous.
+
+        Args:
+            row: a dictionary expressing the row to insert. The primary key
+                must be specified in full, while any other column may be omitted
+                if desired.
+                The values for the various columns supplied in the row must
+                be of the right data type for the insertion to succeed.
+                Non-primary-key columns can also be explicitly set to null.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
+
+        Returns:
+            a TableInsertOneResult object, whose attributes are the primary key
+            of the inserted row both in the form of a dictionary and of a tuple.
+
+        Examples:
+            >>> # a full-row insert using astrapy's datatypes when available
+            >>> from astrapy.data_types import (
+            ...     DataAPISet,
+            ...     DataAPITimestamp,
+            ...     DataAPIVector,
+            ... )
+            >>> insert_result = my_table.insert_one(
+            ...     {
+            ...         "match_no": 1012,
+            ...         "round": "A",
+            ...         "winner": "Victor",
+            ...         "score": 18,
+            ...         "when": DataAPITimestamp.from_string("2024-11-28T11:30:00Z"),
+            ...         "tags": DataAPISet(["worldcup", "placeholder_tag"]),
+            ...         "m_vector": DataAPIVector([0.4, -0.6, 0.2]),
+            ...     },
+            ... )
+            >>> insert_result.inserted_id
+            {'match_no': 1012, 'round': 'A'}
+            >>> insert_result.inserted_id_tuple
+            (1012, 'A')
+
+            >>> # a partial-row overwrite
+            >>> my_table.insert_one(
+            ...     {
+            ...         "match_no": 1012,
+            ...         "round": "A",
+            ...         "winner": "Victor Vector",
+            ...         "tags": DataAPISet(["worldcup", "championship"]),
+            ...     },
+            ... )
+            TableInsertOneResult(inserted_id={'match_no': 1012, ...)  # Note: shortened
+
+            >>> # an insert using only standard library data types
+            >>> from datetime import datetime, timezone
+            >>> my_table.insert_one(
+            ...     {
+            ...         "match_no": 975,
+            ...         "round": "B",
+            ...         "winner": "Angela",
+            ...         "score": 25,
+            ...         "when": datetime(
+            ...             2024, 7, 13, 12, 55, 30, 889, tzinfo=timezone.utc
+            ...         ),
+            ...         "tags": {"tiebreak", "epic"},
+            ...         "m_vector": [0.4, -0.6, 0.2],
+            ...     },
+            ... )
+            TableInsertOneResult(inserted_id={'match_no': 975, ...)  # Note: shortened
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -1045,41 +1122,113 @@ class Table(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> TableInsertManyResult:
         """
-        Insert a list of rows into the table.
-        This is not an atomic operation.
+        Insert a number of rows into the table,
+        with implied overwrite in case of primary key collision.
 
         Inserting rows whose primary key correspond to entries alredy stored
         in the table has the effect of an in-place update: the rows are overwritten.
-        However, tf the rows being inserted are partially provided, i.e. some columns
+        However, if the rows being inserted are partially provided, i.e. some columns
         are not specified, these are left unchanged on the database. To explicitly
-        reset them in a row, specify their value as appropriate to their data type,
+        reset them, specify their value as appropriate to their data type,
         i.e. `None`, `{}` or analogous.
 
         Args:
-            rows: an iterable of dictionaries, each a row to insert.
-                Each row must at least fully specify the primary key column values.
+            rows: an iterable of dictionaries, each expressing a row to insert.
+                Each row must at least fully specify the primary key column values,
+                while any other column may be omitted if desired.
+                The values for the various columns supplied in each row must
+                be of the right data type for the insertion to succeed.
+                Non-primary-key columns can also be explicitly set to null.
             ordered: if False (default), the insertions can occur in arbitrary order
                 and possibly concurrently. If True, they are processed sequentially.
-                If there are no specific reasons against it, unordered insertions are to
-                be preferred as they complete much faster.
-            chunk_size: how many rows to include in a single API request.
+                If there are no specific reasons against it, unordered insertions
+                re to be preferred as they complete much faster.
+            chunk_size: how many rows to include in each single API request.
                 Exceeding the server maximum allowed value results in an error.
                 Leave it unspecified (recommended) to use the system default.
             concurrency: maximum number of concurrent requests to the API at
                 a given time. It cannot be more than one for ordered insertions.
-            request_timeout_ms: a timeout, in milliseconds, for each API request.
-                If not passed, the table-level setting is used instead.
-            general_method_timeout_ms: a timeout, in milliseconds, for the whole
-                requested operation (which may involve multiple API requests).
-                If not passed, the table-level setting is used instead.
-                TODO: note (here and equivalent methods) on req-can-timeout even if setting this to high
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                whole operation, which may consist of several API requests.
+                If not provided, the corresponding Table defaults apply.
+            request_timeout_ms: a timeout, in milliseconds, to impose on each
+                individual HTTP request to the Data API to accomplish the operation.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
-            a TableInsertManyResult object.
+            a TableInsertManyResult object, whose attributes are the primary key
+            of the inserted rows both in the form of dictionaries and of tuples.
 
         Examples:
-            TODO
+            >>> from datetime import datetime, timezone
+            >>> from astrapy.data_types import DataAPISet, DataAPITimestamp, DataAPIVector
+            >>>
+            >>> # Unordered insertion (with concurrency for performance)
+            >>> insert_result = my_table.insert_many(
+            ...     [
+            ...         {
+            ...             "match_no": 1012,
+            ...             "round": "A",
+            ...             "winner": "Victor",
+            ...             "score": 18,
+            ...             "when": DataAPITimestamp.from_string(
+            ...                 "2024-11-28T11:30:00Z",
+            ...             ),
+            ...             "tags": DataAPISet(["worldcup", "placeholder_tag"]),
+            ...             "m_vector": DataAPIVector([0.4, -0.6, 0.2]),
+            ...         },
+            ...         {"match_no": 991, "round": "A", "winner": "Adam"},
+            ...         {"match_no": 991, "round": "B", "winner": "Betta"},
+            ...         {"match_no": 991, "round": "C", "winner": "Caio"},
+            ...         {
+            ...             "match_no": 995,
+            ...             "round": "A",
+            ...             "winner": "Donna",
+            ...             "m_vector": [0.9, -0.1, -0.3],
+            ...         },
+            ...         {"match_no": 995, "round": "B", "winner": "Erick"},
+            ...         {"match_no": 995, "round": "C", "winner": "Fiona"},
+            ...         {"match_no": 997, "round": "A", "winner": "Gael"},
+            ...         {"match_no": 997, "round": "B", "winner": "Hanna"},
+            ...         {
+            ...             "match_no": 997,
+            ...             "round": "C",
+            ...             "winner": "Ian",
+            ...             "when": datetime(
+            ...                 2023, 9, 28, 18, 12, 45, tzinfo=timezone.utc
+            ...             ),
+            ...             "tags": {"dull"},
+            ...         },
+            ...         {"match_no": 443, "round": "A", "winner": "Joy"},
+            ...         {"match_no": 443, "round": "B", "winner": "Kevin"},
+            ...         {"match_no": 443, "round": "C", "winner": "Lauretta"},
+            ...     ],
+            ...     concurrency=10,
+            ... )
+            >>> insert_result.inserted_ids
+            [{'match_no': 1012, 'round': 'A'}, {'match_no': 991, ...}, ...]  # Note: shortened
+            >>> insert_result.inserted_id_tuples
+            [(1012, 'A'), (991, 'A'), (991, 'B'), (991, 'C'), (995, 'A'), ...]  # Note: shortened
+
+            >>> # Ordered insertion (stop on first failure and predictable end result on DB)
+            >>> my_table.insert_many(
+            ...     [
+            ...         {"match_no": 991, "round": "A", "winner": "Adam0"},
+            ...         {"match_no": 991, "round": "B", "winner": "Bett0a"},
+            ...         {"match_no": 991, "round": "C", "winner": "Caio0"},
+            ...         {"match_no": 991, "round": "A", "winner": "Adam1"},
+            ...         {"match_no": 991, "round": "B", "winner": "Betta1"},
+            ...         {"match_no": 991, "round": "C", "winner": "Caio1"},
+            ...         {"match_no": 991, "round": "A", "winner": "Adam2"},
+            ...         {"match_no": 991, "round": "B", "winner": "Betta2"},
+            ...         {"match_no": 991, "round": "C", "winner": "Caio2"},
+            ...         {"match_no": 991, "round": "A", "winner": "Adam3"},
+            ...         {"match_no": 991, "round": "B", "winner": "Betta3"},
+            ...         {"match_no": 991, "round": "C", "winner": "Caio3"},
+            ...     ],
+            ...     ordered=True,
+            ... )
+            TableInsertManyResult(inserted_ids=[{'match_no': 991, ...}, ...]  # Note: shortened
 
         Note:
             Unordered insertions are executed with some degree of concurrency,
@@ -1087,25 +1236,17 @@ class Table(Generic[ROW]):
             row sequence is important.
 
         Note:
-            A failure mode for this command is related to certain faulty rows
-            found among those to insert: a row dictionary may feature,
-            for instance, the wrong data type for a column, a mismatched
-            vector dimension or other problems.
-
-            For an ordered insertion, the method will raise an exception about
-            the first such faulty row -- and a certain amount of rows, sent to the
-            API in the same batch, will end up not being inserted.
-
-            For unordered insertions, if the error stems from faulty rows
-            the insertion proceeds until exhausting the input rows: then,
-            an exception is raised -- and all insertable rows will have been
-            written to the database, including those "after" the troublesome ones.
-
-            If, on the other hand, there are errors not related to individual
-            rows (such as a network connectivity error), the whole
-            `insert_many` operation will stop in mid-way, an exception will be raised,
-            and only a certain amount of the input rows will
-            have made their way to the database.
+            If some of the rows are unsuitable for insertion, for instance
+            have the wrong data type for a column or lack the primary key,
+            the Data API validation check will fail for those specific requests
+            that contain the faulty rows. Depending on concurrency and the value
+            of the `ordered` parameter, a number of rows in general could have
+            been successfully inserted.
+            It is possible to capture such a scenario, and inspect which rows
+            actually got inserted, by catching an error of type
+            `astrapy.exceptions.TableInsertManyException`: its `partial_result`
+            attribute is precisely a `TableInsertManyResult`, encoding details
+            on the successful writes.
         """
 
         _general_method_timeout_ms, _gmt_label = _first_valid_timeout(
@@ -1304,7 +1445,176 @@ class Table(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> TableFindCursor[ROW, ROW]:
         """
-        TODO
+        Find rows on the table matching the provided filters
+        and according to sorting criteria including vector similarity.
+
+        The returned TableFindCursor object, representing the stream of results,
+        can be iterated over, or consumed and manipulated in several other ways
+        (see the examples below and the `TableFindCursor` documentation for details).
+        Since the amount of returned items can be large, TableFindCursor is a lazy
+        object, that fetches new data while it is being read using the Data API
+        pagination mechanism.
+
+        Invoking `.to_list()` on a TableFindCursor will cause it to consume all
+        rows and materialize the entire result set as a list. This is not recommended
+        if the amount of results is very large.
+
+        Args:
+            filter: a dictionary expressing which condition must the returned rows
+                satisfy. The filter can use operators, such as "$eq" for equality,
+                and require columns to compare with literal values. Simple examples
+                are `{}` (zero filter), `{"match_no": 123}` (a shorthand for
+                `{"match_no": {"$eq": 123}}`, or `{"match_no": 123, "round": "C"}`
+                (multiple conditions are implicitly combined with "$and").
+                Please consult the Data API documentation for a more detailed
+                explanation of table search filters and tips on their usage.
+            projection: a prescription on which columns to return for the matching rows.
+                The projection can take the form `{"column1": True, "column2": True}`.
+                `{"*": True}` (i.e. return the whole row), or the complementary
+                form that excludes columns: `{"column1": False, "column2": False}`.
+                To optimize bandwidth usage, it is recommended to use a projection,
+                especially for columns of type vector with high-dimensional embeddings.
+            skip: X,
+            limit: X,
+            include_similarity: X,
+            include_sort_vector: X,
+            sort: X,
+            request_timeout_ms: X,
+            timeout_ms: X,
+
+        Note:
+            As the rows are retrieved in chunks progressively, while the cursor
+            is being iterated over, it is possible that the actual results
+            obtained will reflect changes occurring to the table contents in
+            real time.
+
+        Examples:
+            >>> # Iterate over results:
+            >>> for row in my_table.find({"match_no": 995}):
+            ...     print(f"({row['match_no']}/{row['round']}): winner {row['winner']}")
+            ...
+            (995/A): winner Donna
+            (995/B): winner Erick
+            (995/C): winner Fiona
+
+            >>> # Optimize bandwidth using a projection:
+            >>> projection = {"round": True, "winner": True}
+            >>> for row in my_table.find({"match_no": 995}, projection=projection):
+            ...     print(f"(995/{row['round']}): winner {row['winner']}")
+            ...
+            (995/A): winner Donna
+            (995/B): winner Erick
+            (995/C): winner Fiona
+
+            >>> # Filter on the partition key:
+            >>> my_table.find({"match_no": 991}).to_list()
+            [{'match_no': 991, 'round': 'A', ...}, ...]  # Note: shortened
+
+            >>> # Filter on primary key:
+            >>> my_table.find({"match_no": 991, "round": "C"}).to_list()
+            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
+
+            >>> # Filter on a regular indexed column:
+            >>> my_table.find({"winner": "Caio3"}).to_list()
+            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
+
+            >>> # Non-equality filter on a regular indexed column:
+            >>> my_table.find({"score": {"$gte": 15}}).to_list()
+            [{'match_no': 1012, 'round': 'A', ...}, ...]  # Note: shortened
+
+            >>> # Filter on a regular non-indexed column:
+            >>> my_table.find(
+            ...     {"when": DataAPITimestamp.from_string("1999-12-31T01:23:44Z")}
+            ... ).to_list()
+            The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
+            []
+
+            >>> # Empty filter (not recommended performance-wise):
+            >>> my_table.find({}).to_list()
+            The Data API returned a warning: {'errorCode': 'ZERO_FILTER_OPERATIONS', ...
+            [{'match_no': 123, 'round': 'A', ...}, ...]  # Note: shortened
+
+            >>> # Filter on the primary key and a regular non-indexed column:
+            >>> # (not recommended performance-wise)
+            >>> my_table.find(
+            ...     {"match_no": 991, "round": "C", "winner": "Caio3"}
+            ... ).to_list()
+            The Data API returned a warning: {'errorCode': 'MISSING_INDEX',...
+            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
+
+            >>> # Filter on a regular non-indexed column, omitting part of the pr. key:
+            >>> # (not recommended performance-wise)
+            >>> my_table.find({"round": "C", "winner": "Caio3"}).to_list()
+            The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
+            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
+
+            >>> # Vector search with "sort" (on a vector column with an index on it):
+            >>> my_table.find(
+            ...     {},
+            ...     sort={'m_vector': DataAPIVector([0.2, 0.3, 0.4])},
+            ...     projection={"winner": True},
+            ...     limit=3,
+            ... ).to_list()
+            [{'winner': 'Donna'}, {'winner': 'Victor'}, {'winner': 'Angela'}]
+
+            >>> # Return the numeric value of the vector similarity
+            >>> # (also demonstrating that one can pass a plain list for a vector):
+            >>> my_table.find(
+            ...     {},
+            ...     sort={'m_vector': [0.2, 0.3, 0.4]},
+            ...     projection={"winner": True},
+            ...     limit=3,
+            ...     include_similarity=True,
+            ... ).to_list()
+            [{'winner': 'Donna', '$similarity': 0.515}, ...]  # Note: shortened
+
+            >>> # Regular sorting on a column:
+            >>> my_table.find(
+            ...     {"match_no": 991},
+            ...     sort={'round': SortMode.DESCENDING},
+            ...     projection={"winner": True},
+            ... ).to_list()
+            [{'winner': 'Caio3'}, {'winner': 'Betta3'}, {'winner': 'Adam3'}]
+
+            >>> # Using `skip` and `limit`:
+            >>> my_table.find(
+            ...     {"match_no": 991},
+            ...     sort={'round': SortMode.DESCENDING},
+            ...     projection={"winner": True},
+            ...     skip=1,
+            ...     limit=2,
+            ... ).to_list()
+            The Data API returned a warning: {'errorCode': 'IN_MEMORY_SORTING...
+            [{'winner': 'Betta3'}, {'winner': 'Adam3'}]
+
+            >>> # Using `.map()` on a cursor:
+            >>> winner_cursor = my_table.find(
+            ...     {"match_no": 991},
+            ...     sort={'round': SortMode.DESCENDING},
+            ...     projection={"winner": True},
+            ...     limit=5,
+            ... )
+            >>> print("/".join(winner_cursor.map(lambda row: row["winner"].upper())))
+            CAIO3/BETTA3/ADAM3
+
+            >>> # Some other examples of cursor manipulation
+            >>> matches_cursor = my_table.find(
+            ...     sort={"m_vector": DataAPIVector([-0.1, 0.15, 0.3])}
+            ... )
+            >>> matches_cursor.has_next()
+            True
+            >>> next(matches_cursor)
+            {'match_no': 1012, 'round': 'A', 'm_vector':...}  # Note: shortened
+            >>> matches_cursor.consumed
+            1
+            >>> matches_cursor.rewind()
+            >>> matches_cursor.consumed
+            0
+            >>> matches_cursor.has_next()
+            True
+            >>> matches_cursor.close()
+            >>> next(matches_cursor)
+            StopIteration  # Exception raised
         """
 
         # lazy-import here to avoid circular import issues
@@ -2717,7 +3027,84 @@ class AsyncTable(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> TableInsertOneResult:
         """
-        TODO
+        Insert a single row in the table,
+        with implied overwrite in case of primary key collision.
+
+        Inserting a row whose primary key correspond to an entry alredy stored
+        in the table has the effect of an in-place update: the row is overwritten.
+        However, if the row being inserted is partially provided, i.e. some columns
+        are not specified, these are left unchanged on the database. To explicitly
+        reset them, specify their value as appropriate to their data type,
+        i.e. `None`, `{}` or analogous.
+
+        Args:
+            row: a dictionary expressing the row to insert. The primary key
+                must be specified in full, while any other column may be omitted
+                if desired.
+                The values for the various columns supplied in the row must
+                be of the right data type for the insertion to succeed.
+                Non-primary-key columns can also be explicitly set to null.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the AsyncTable defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
+
+        Returns:
+            a TableInsertOneResult object, whose attributes are the primary key
+            of the inserted row both in the form of a dictionary and of a tuple.
+
+        Examples:
+            >>> # a full-row insert using astrapy's datatypes when available
+            >>> from astrapy.data_types import (
+            ...     DataAPISet,
+            ...     DataAPITimestamp,
+            ...     DataAPIVector,
+            ... )
+            >>> insert_result = await my_table.insert_one(
+            ...     {
+            ...         "match_no": 1012,
+            ...         "round": "A",
+            ...         "winner": "Victor",
+            ...         "score": 18,
+            ...         "when": DataAPITimestamp.from_string("2024-11-28T11:30:00Z"),
+            ...         "tags": DataAPISet(["worldcup", "placeholder_tag"]),
+            ...         "m_vector": DataAPIVector([0.4, -0.6, 0.2]),
+            ...     },
+            ... )
+            >>> insert_result.inserted_id
+            {'match_no': 1012, 'round': 'A'}
+            >>> insert_result.inserted_id_tuple
+            (1012, 'A')
+
+            >>> # a partial-row overwrite
+            >>> await my_table.insert_one(
+            ...     {
+            ...         "match_no": 1012,
+            ...         "round": "A",
+            ...         "winner": "Victor Vector",
+            ...         "tags": DataAPISet(["worldcup", "championship"]),
+            ...     },
+            ... )
+            TableInsertOneResult(inserted_id={'match_no': 1012, ...)  # Note: shortened
+
+            >>> # an insert using only standard library data types
+            >>> from datetime import datetime, timezone
+            >>> await my_table.insert_one(
+            ...     {
+            ...         "match_no": 975,
+            ...         "round": "B",
+            ...         "winner": "Angela",
+            ...         "score": 25,
+            ...         "when": datetime(
+            ...             2024, 7, 13, 12, 55, 30, 889, tzinfo=timezone.utc
+            ...         ),
+            ...         "tags": {"tiebreak", "epic"},
+            ...         "m_vector": [0.4, -0.6, 0.2],
+            ...     },
+            ... )
+            TableInsertOneResult(inserted_id={'match_no': 975, ...)  # Note: shortened
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -2816,40 +3203,113 @@ class AsyncTable(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> TableInsertManyResult:
         """
-        Insert a list of rows into the table.
-        This is not an atomic operation.
+        Insert a number of rows into the table,
+        with implied overwrite in case of primary key collision.
 
         Inserting rows whose primary key correspond to entries alredy stored
         in the table has the effect of an in-place update: the rows are overwritten.
-        However, tf the rows being inserted are partially provided, i.e. some columns
+        However, if the rows being inserted are partially provided, i.e. some columns
         are not specified, these are left unchanged on the database. To explicitly
-        reset them in a row, specify their value as appropriate to their data type,
+        reset them, specify their value as appropriate to their data type,
         i.e. `None`, `{}` or analogous.
 
         Args:
-            rows: an iterable of dictionaries, each a row to insert.
-                Each row must at least fully specify the primary key column values.
+            rows: an iterable of dictionaries, each expressing a row to insert.
+                Each row must at least fully specify the primary key column values,
+                while any other column may be omitted if desired.
+                The values for the various columns supplied in each row must
+                be of the right data type for the insertion to succeed.
+                Non-primary-key columns can also be explicitly set to null.
             ordered: if False (default), the insertions can occur in arbitrary order
                 and possibly concurrently. If True, they are processed sequentially.
-                If there are no specific reasons against it, unordered insertions are to
-                be preferred as they complete much faster.
-            chunk_size: how many rows to include in a single API request.
+                If there are no specific reasons against it, unordered insertions
+                re to be preferred as they complete much faster.
+            chunk_size: how many rows to include in each single API request.
                 Exceeding the server maximum allowed value results in an error.
                 Leave it unspecified (recommended) to use the system default.
             concurrency: maximum number of concurrent requests to the API at
                 a given time. It cannot be more than one for ordered insertions.
-            request_timeout_ms: a timeout, in milliseconds, for each API request.
-                If not passed, the table-level setting is used instead.
-            general_method_timeout_ms: a timeout, in milliseconds, for the whole
-                requested operation (which may involve multiple API requests).
-                If not passed, the table-level setting is used instead.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                whole operation, which may consist of several API requests.
+                If not provided, the corresponding AsyncTable defaults apply.
+            request_timeout_ms: a timeout, in milliseconds, to impose on each
+                individual HTTP request to the Data API to accomplish the operation.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
-            a TableInsertManyResult object.
+            a TableInsertManyResult object, whose attributes are the primary key
+            of the inserted rows both in the form of dictionaries and of tuples.
 
         Examples:
-            TODO
+            >>> from datetime import datetime, timezone
+            >>> from astrapy.data_types import DataAPISet, DataAPITimestamp, DataAPIVector
+            >>>
+            >>> # Unordered insertion (with concurrency for performance)
+            >>> insert_result = await my_table.insert_many(
+            ...     [
+            ...         {
+            ...             "match_no": 1012,
+            ...             "round": "A",
+            ...             "winner": "Victor",
+            ...             "score": 18,
+            ...             "when": DataAPITimestamp.from_string(
+            ...                 "2024-11-28T11:30:00Z",
+            ...             ),
+            ...             "tags": DataAPISet(["worldcup", "placeholder_tag"]),
+            ...             "m_vector": DataAPIVector([0.4, -0.6, 0.2]),
+            ...         },
+            ...         {"match_no": 991, "round": "A", "winner": "Adam"},
+            ...         {"match_no": 991, "round": "B", "winner": "Betta"},
+            ...         {"match_no": 991, "round": "C", "winner": "Caio"},
+            ...         {
+            ...             "match_no": 995,
+            ...             "round": "A",
+            ...             "winner": "Donna",
+            ...             "m_vector": [0.9, -0.1, -0.3],
+            ...         },
+            ...         {"match_no": 995, "round": "B", "winner": "Erick"},
+            ...         {"match_no": 995, "round": "C", "winner": "Fiona"},
+            ...         {"match_no": 997, "round": "A", "winner": "Gael"},
+            ...         {"match_no": 997, "round": "B", "winner": "Hanna"},
+            ...         {
+            ...             "match_no": 997,
+            ...             "round": "C",
+            ...             "winner": "Ian",
+            ...             "when": datetime(
+            ...                 2023, 9, 28, 18, 12, 45, tzinfo=timezone.utc
+            ...             ),
+            ...             "tags": {"dull"},
+            ...         },
+            ...         {"match_no": 443, "round": "A", "winner": "Joy"},
+            ...         {"match_no": 443, "round": "B", "winner": "Kevin"},
+            ...         {"match_no": 443, "round": "C", "winner": "Lauretta"},
+            ...     ],
+            ...     concurrency=10,
+            ... )
+            >>> insert_result.inserted_ids
+            [{'match_no': 1012, 'round': 'A'}, {'match_no': 991, ...}, ...]  # Note: shortened
+            >>> insert_result.inserted_id_tuples
+            [(1012, 'A'), (991, 'A'), (991, 'B'), (991, 'C'), (995, 'A'), ...]  # Note: shortened
+
+            >>> # Ordered insertion (stop on first failure and predictable end result on DB)
+            >>> await my_table.insert_many(
+            ...     [
+            ...         {"match_no": 991, "round": "A", "winner": "Adam0"},
+            ...         {"match_no": 991, "round": "B", "winner": "Bett0a"},
+            ...         {"match_no": 991, "round": "C", "winner": "Caio0"},
+            ...         {"match_no": 991, "round": "A", "winner": "Adam1"},
+            ...         {"match_no": 991, "round": "B", "winner": "Betta1"},
+            ...         {"match_no": 991, "round": "C", "winner": "Caio1"},
+            ...         {"match_no": 991, "round": "A", "winner": "Adam2"},
+            ...         {"match_no": 991, "round": "B", "winner": "Betta2"},
+            ...         {"match_no": 991, "round": "C", "winner": "Caio2"},
+            ...         {"match_no": 991, "round": "A", "winner": "Adam3"},
+            ...         {"match_no": 991, "round": "B", "winner": "Betta3"},
+            ...         {"match_no": 991, "round": "C", "winner": "Caio3"},
+            ...     ],
+            ...     ordered=True,
+            ... )
+            TableInsertManyResult(inserted_ids=[{'match_no': 991, ...}, ...]  # Note: shortened
 
         Note:
             Unordered insertions are executed with some degree of concurrency,
@@ -2857,25 +3317,17 @@ class AsyncTable(Generic[ROW]):
             row sequence is important.
 
         Note:
-            A failure mode for this command is related to certain faulty rows
-            found among those to insert: a row dictionary may feature,
-            for instance, the wrong data type for a column, a mismatched
-            vector dimension or other problems.
-
-            For an ordered insertion, the method will raise an exception about
-            the first such faulty row -- and a certain amount of rows, sent to the
-            API in the same batch, will end up not being inserted.
-
-            For unordered insertions, if the error stems from faulty rows
-            the insertion proceeds until exhausting the input rows: then,
-            an exception is raised -- and all insertable rows will have been
-            written to the database, including those "after" the troublesome ones.
-
-            If, on the other hand, there are errors not related to individual
-            rows (such as a network connectivity error), the whole
-            `insert_many` operation will stop in mid-way, an exception will be raised,
-            and only a certain amount of the input rows will
-            have made their way to the database.
+            If some of the rows are unsuitable for insertion, for instance
+            have the wrong data type for a column or lack the primary key,
+            the Data API validation check will fail for those specific requests
+            that contain the faulty rows. Depending on concurrency and the value
+            of the `ordered` parameter, a number of rows in general could have
+            been successfully inserted.
+            It is possible to capture such a scenario, and inspect which rows
+            actually got inserted, by catching an error of type
+            `astrapy.exceptions.TableInsertManyException`: its `partial_result`
+            attribute is precisely a `TableInsertManyResult`, encoding details
+            on the successful writes.
         """
 
         _general_method_timeout_ms, _gmt_label = _first_valid_timeout(

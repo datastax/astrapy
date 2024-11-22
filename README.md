@@ -119,11 +119,11 @@ my_database = my_client.get_database(
 # Create a table and a vector index on it
 table_definition = (
     CreateTableDefinition.zero()
-    .add_column("id", TableScalarColumnType.INT)
+    .add_column("dream_id", TableScalarColumnType.INT)
     .add_column("summary", TableScalarColumnType.TEXT)
     .add_set_column("tags", TableScalarColumnType.TEXT)
     .add_vector_column("dream_vector", dimension=3)
-    .add_partition_by(["id"])
+    .add_partition_by(["dream_id"])
 )
 index_options=TableVectorIndexOptions(
     metric=VectorMetric.COSINE,
@@ -135,19 +135,19 @@ my_table.create_vector_index("dreams_table_vec_idx", column="dream_vector", opti
 my_table.insert_many(
     [
         {
-            "id": 103,
+            "dream_id": 103,
             "summary": "Riding the waves",
             "tags": ["sport"],
             "dream_vector": DataAPIVector([0, 0.2, 1]),
         },
         {
-            "id": 119,
+            "dream_id": 119,
             "summary": "Friendly aliens in town",
             "tags": ["scifi"],
             "dream_vector": DataAPIVector([-0.3, 0, 0.8]),
         },
         {
-            "id": 37,
+            "dream_id": 37,
             "summary": "Meeting Beethoven at the dentist",
             "dream_vector": DataAPIVector([0.2, 0.6, 0]),
         },
@@ -155,7 +155,7 @@ my_table.insert_many(
 )
 
 my_table.update_one(
-    {"id": 103},
+    {"dream_id": 103},
     {"$set": {"summary": "Surfers' paradise"}},
 )
 
