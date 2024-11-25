@@ -1567,13 +1567,19 @@ class Database:
             a list of ListTableDescriptor instances, one for each table.
 
         Example:
-            >>> table_list = my_db.list_tables()
-            >>> table_list
-            [ListTableDescriptor(name='my_table', options=TableOptions())]
-            >>> for table_desc in my_db.list_tables():
-            ...     print(table_desc)
-            ...
-            ListTableDescriptor(name='my_table', options=TableOptions())
+            >>> tables = my_database.list_tables()
+            >>> tables
+            [BaseTableDescriptor(name='fighters', definition=BaseTableDefinition(...
+            >>> tables[1].name
+            'games'
+            >>> tables[1].definition.columns
+            {'match_id': TableScalarColumnTypeDescriptor(TableScalarColumnType.TEXT),...
+            >>> tables[1].definition.columns['score']
+            TableScalarColumnTypeDescriptor(TableScalarColumnType.INT)
+            >>> tables[1].definition.primary_key.partition_by
+            ['match_id']
+            >>> tables[1].definition.primary_key.partition_sort
+            {'round': 1}
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -1638,8 +1644,8 @@ class Database:
             a list of the table names as strings, in no particular order.
 
         Example:
-            >>> my_db.list_table_names()
-            ['a_table', 'another_table']
+            >>> database.list_table_names()
+            ['fighters', 'games']
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -3306,7 +3312,7 @@ class AsyncDatabase:
             ...     for table_desc in await adb.list_tables():
             ...         print("* table_desc:", table_desc)
             ...
-            >>> asyncio.run(a_list_tables(my_async_db))
+            >>> asyncio.run(a_list_tables(async_database))
             * list: [ListTableDescriptor(name='my_table', options=TableOptions())]
             * table_desc: ListTableDescriptor(name='my_table', options=TableOptions())
         """
@@ -3378,9 +3384,9 @@ class AsyncDatabase:
             ...     await async_db.drop_table("my_v_tab")
             ...     print(await async_db.list_table_names())
             ...
-            >>> asyncio.run(destroy_temp_table(my_async_db))
-            ['a_table', 'my_v_tab', 'another_tab']
-            ['a_table', 'another_tab']
+            >>> asyncio.run(destroy_temp_table(async_database))
+            ['fighters', 'my_v_tab', 'games']
+            ['fighters', 'games']
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(

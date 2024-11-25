@@ -101,8 +101,8 @@ class Table(Generic[ROW]):
 
     Examples:
         >>> from astrapy import DataAPIClient
-        >>> my_client = DataAPIClient()
-        >>> my_database = my_client.get_database(
+        >>> client = DataAPIClient()
+        >>> database = client.get_database(
         ...     "https://01234567-....apps.astra.datastax.com",
         ...     token="AstraCS:..."
         ... )
@@ -126,7 +126,7 @@ class Table(Generic[ROW]):
         ...     .add_partition_by(["match_id"])
         ...     .add_partition_sort({"round": SortMode.ASCENDING})
         ... )
-        >>> my_table = my_database.create_table(
+        >>> my_table = database.create_table(
         ...     "games",
         ...     definition=table_definition,
         ... )
@@ -170,7 +170,7 @@ class Table(Generic[ROW]):
         ...         partition_sort={"round": SortMode.ASCENDING},
         ...     ),
         ... )
-        >>> my_table_1 = my_database.create_table(
+        >>> my_table_1 = database.create_table(
         ...     "games",
         ...     definition=table_definition_1,
         ...     if_not_exists=True,
@@ -192,7 +192,7 @@ class Table(Generic[ROW]):
         ...         "partitionSort": {"round": 1},
         ...     },
         ... }
-        >>> my_table_2 = my_database.create_table(
+        >>> my_table_2 = database.create_table(
         ...     "games",
         ...     definition=table_definition_2,
         ...     if_not_exists=True,
@@ -200,7 +200,7 @@ class Table(Generic[ROW]):
 
         >>> # Get a reference to an existing table
         >>> # (no checks are performed on DB)
-        >>> my_table_3 = my_database.get_table("games")
+        >>> my_table_3 = database.get_table("games")
 
     Note:
         creating an instance of Table does not trigger, in itself, actual
@@ -605,7 +605,7 @@ class Table(Generic[ROW]):
         For creation of a vector index, see method `create_vector_index` instead.
 
         Args:
-            name: the name of the index.
+            name: the name of the index. Index names must be unique across the keyspace.
             column: the table column on which the index is to be created.
             options: if passed, it must be an instance of `TableIndexOptions`,
                 or an equivalent dictionary, which specifies index settings
@@ -625,11 +625,13 @@ class Table(Generic[ROW]):
         Examples:
             >>> from astrapy.info import TableIndexOptions
             >>>
+            >>> # create an index on a column
             >>> my_table.create_index(
             ...     "score_index",
             ...     column="score",
             ... )
             >>>
+            >>> # create an index on a textual column, specifying indexing options
             >>> my_table.create_index(
             ...     "winner_index",
             ...     column="winner",
@@ -661,7 +663,7 @@ class Table(Generic[ROW]):
         name: str,
         *,
         column: str,
-        options: TableVectorIndexOptions | dict[str, Any],
+        options: TableVectorIndexOptions | dict[str, Any] | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
@@ -677,11 +679,12 @@ class Table(Generic[ROW]):
         For creation of a non-vector index, see method `create_index` instead.
 
         Args:
-            name: the name of the index.
+            name: the name of the index. Index names must be unique across the keyspace.
             column: the table column, of type "vector" on which to create the index.
             options: an instance of `TableVectorIndexOptions`, or an equivalent
                 dictionary, which specifies settings for the vector index,
                 such as the metric to use or, if desired, a "source model" setting.
+                If omitted, the Data API defaults will apply for the index.
                 See the `astrapy.info.TableVectorIndexOptions` class for more details.
             if_not_exists: if set to True, the command will succeed even if an index
                 with the specified name already exists (in which case no actual
@@ -698,12 +701,32 @@ class Table(Generic[ROW]):
             >>> from astrapy.constants import VectorMetric
             >>> from astrapy.info import TableVectorIndexOptions
             >>>
+            >>> # create a vector index with dot-product similarity
             >>> my_table.create_vector_index(
             ...     "m_vector_index",
             ...     column="m_vector",
             ...     options=TableVectorIndexOptions(
             ...         metric=VectorMetric.DOT_PRODUCT,
             ...     ),
+            ... )
+            >>> # specify a source_model (since the previous statement
+            >>> # succeeded, this will do nothing because of `if_not_exists`):
+            >>> my_table.create_vector_index(
+            ...     "m_vector_index",
+            ...     column="m_vector",
+            ...     options=TableVectorIndexOptions(
+            ...         metric=VectorMetric.DOT_PRODUCT,
+            ...         source_model="nv-qa-4",
+            ...     ),
+            ...     if_not_exists=True,
+            ... )
+            >>> # leave the settings to the Data API defaults of cosine
+            >>> # similarity metric (since the previous statement
+            >>> # succeeded, this will do nothing because of `if_not_exists`):
+            >>> my_table.create_vector_index(
+            ...     "m_vector_index",
+            ...     column="m_vector",
+            ...     if_not_exists=True,
             ... )
         """
 
@@ -2662,8 +2685,8 @@ class AsyncTable(Generic[ROW]):
 
     Examples:
         >>> from astrapy import DataAPIClient, AsyncTable
-        >>> my_client = astrapy.DataAPIClient()
-        >>> my_async_db = my_client.get_async_database(
+        >>> client = astrapy.DataAPIClient()
+        >>> my_async_db = client.get_async_database(
         ...     "https://01234567-....apps.astra.datastax.com",
         ...     token="AstraCS:..."
         ... )
@@ -3144,7 +3167,7 @@ class AsyncTable(Generic[ROW]):
         For creation of a vector index, see method `create_vector_index` instead.
 
         Args:
-            name: the name of the index.
+            name: the name of the index. Index names must be unique across the keyspace.
             column: the table column on which the index is to be created.
             options: if passed, it must be an instance of `TableIndexOptions`,
                 or an equivalent dictionary, which specifies index settings
@@ -3166,11 +3189,13 @@ class AsyncTable(Generic[ROW]):
             >>>
             >>> from astrapy.info import TableIndexOptions
             >>>
+            >>> # create an index on a column
             >>> await my_async_table.create_index(
             ...     "score_index",
             ...     column="score",
             ... )
             >>>
+            >>> # create an index on a textual column, specifying indexing options
             >>> await my_async_table.create_index(
             ...     "winner_index",
             ...     column="winner",
@@ -3202,7 +3227,7 @@ class AsyncTable(Generic[ROW]):
         name: str,
         *,
         column: str,
-        options: TableVectorIndexOptions | dict[str, Any],
+        options: TableVectorIndexOptions | dict[str, Any] | None = None,
         if_not_exists: bool | None = None,
         table_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
@@ -3218,11 +3243,12 @@ class AsyncTable(Generic[ROW]):
         For creation of a non-vector index, see method `create_index` instead.
 
         Args:
-            name: the name of the index.
+            name: the name of the index. Index names must be unique across the keyspace.
             column: the table column, of type "vector" on which to create the index.
             options: an instance of `TableVectorIndexOptions`, or an equivalent
                 dictionary, which specifies settings for the vector index,
                 such as the metric to use or, if desired, a "source model" setting.
+                If omitted, the Data API defaults will apply for the index.
                 See the `astrapy.info.TableVectorIndexOptions` class for more details.
             if_not_exists: if set to True, the command will succeed even if an index
                 with the specified name already exists (in which case no actual
@@ -3241,12 +3267,32 @@ class AsyncTable(Generic[ROW]):
             >>> from astrapy.constants import VectorMetric
             >>> from astrapy.info import TableVectorIndexOptions
             >>>
+            >>> # create a vector index with dot-product similarity
             >>> await my_async_table.create_vector_index(
             ...     "m_vector_index",
             ...     column="m_vector",
             ...     options=TableVectorIndexOptions(
             ...         metric=VectorMetric.DOT_PRODUCT,
             ...     ),
+            ... )
+            >>> # specify a source_model (since the previous statement
+            >>> # succeeded, this will do nothing because of `if_not_exists`):
+            >>> await my_async_table.create_vector_index(
+            ...     "m_vector_index",
+            ...     column="m_vector",
+            ...     options=TableVectorIndexOptions(
+            ...         metric=VectorMetric.DOT_PRODUCT,
+            ...         source_model="nv-qa-4",
+            ...     ),
+            ...     if_not_exists=True,
+            ... )
+            >>> # leave the settings to the Data API defaults of cosine
+            >>> # similarity metric (since the previous statement
+            >>> # succeeded, this will do nothing because of `if_not_exists`):
+            >>> await my_async_table.create_vector_index(
+            ...     "m_vector_index",
+            ...     column="m_vector",
+            ...     if_not_exists=True,
             ... )
         """
 

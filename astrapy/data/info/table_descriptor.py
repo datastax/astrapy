@@ -821,10 +821,12 @@ class TableVectorIndexOptions:
 
     @classmethod
     def coerce(
-        cls, raw_input: TableVectorIndexOptions | dict[str, Any]
+        cls, raw_input: TableVectorIndexOptions | dict[str, Any] | None
     ) -> TableVectorIndexOptions:
         if isinstance(raw_input, TableVectorIndexOptions):
             return raw_input
+        elif raw_input is None:
+            return cls(metric=_UNSET, source_model=_UNSET)
         else:
             return cls._from_dict(raw_input)
 
