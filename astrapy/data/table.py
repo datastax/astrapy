@@ -1575,6 +1575,7 @@ class Table(Generic[ROW]):
                 Consult the Data API documentation for more details on this topic.
             request_timeout_ms: a timeout, in milliseconds, to impose on each
                 individual HTTP request to the Data API to accomplish the operation.
+                If not provided, the Table defaults apply.
             timeout_ms: an alias for `request_timeout_ms`.
 
         Note:
@@ -2000,6 +2001,7 @@ class Table(Generic[ROW]):
                 requested operation (which may involve multiple API requests).
                 This method, being based on `find` (see) may entail successive HTTP API
                 requests, depending on the amount of involved rows.
+                If not provided, the Table defaults apply.
             request_timeout_ms: a timeout, in milliseconds, for each API request.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
@@ -2900,7 +2902,7 @@ class AsyncTable(Generic[ROW]):
                 methods involving multiple requests, such as `find`), use of the
                 `api_options` parameter is suggested; alternatively,
                 bear in mind that individual table methods also accept timeout
-                parameters.
+                parameters. If not provided, the Table defaults apply.
             table_timeout_ms: an alias for `request_timeout_ms`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
@@ -3160,6 +3162,8 @@ class AsyncTable(Generic[ROW]):
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Examples:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> from astrapy.info import TableIndexOptions
             >>>
             >>> await my_async_table.create_index(
@@ -3232,6 +3236,8 @@ class AsyncTable(Generic[ROW]):
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> from astrapy.constants import VectorMetric
             >>> from astrapy.info import TableVectorIndexOptions
             >>>
@@ -3281,6 +3287,8 @@ class AsyncTable(Generic[ROW]):
             a list of the index names as strings, in no particular order.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> asyncio.run(my_async_table.list_index_names())
             ['m_vector_index', 'winner_index', 'score_index']
         """
@@ -3331,6 +3339,8 @@ class AsyncTable(Generic[ROW]):
             order, each providing the details of an index present on the table.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> indexes = asyncio.run(my_async_table.list_indexes())
             >>> indexes
             [TableIndexDescriptor(name='m_vector_index', definition=...)...]  # Note: shortened
@@ -3421,6 +3431,8 @@ class AsyncTable(Generic[ROW]):
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Examples:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> from astrapy.info import (
             ...     AlterTableAddColumns,
             ...     AlterTableAddVectorize,
@@ -3564,6 +3576,8 @@ class AsyncTable(Generic[ROW]):
             of the inserted row both in the form of a dictionary and of a tuple.
 
         Examples:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> # a full-row insert using astrapy's datatypes
             >>> from astrapy.data_types import (
             ...     DataAPISet,
@@ -3760,6 +3774,8 @@ class AsyncTable(Generic[ROW]):
             of the inserted rows both in the form of dictionaries and of tuples.
 
         Examples:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> # Insert complete and partial rows at once (concurrently)
             >>> from astrapy.data_types import (
             ...     DataAPISet,
@@ -4095,6 +4111,7 @@ class AsyncTable(Generic[ROW]):
                 Consult the Data API documentation for more details on this topic.
             request_timeout_ms: a timeout, in milliseconds, to impose on each
                 individual HTTP request to the Data API to accomplish the operation.
+                If not provided, the AsyncTable defaults apply.
             timeout_ms: an alias for `request_timeout_ms`.
 
         Note:
@@ -4104,6 +4121,8 @@ class AsyncTable(Generic[ROW]):
             real time.
 
         Examples:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> # Iterate over results:
             >>> async def loop1():
             ...     async for row in my_async_table.find({"match_id": "challenge6"}):
@@ -4360,6 +4379,8 @@ class AsyncTable(Generic[ROW]):
             a dictionary expressing resulting row if a match is found, otherwise None.
 
         Examples:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> from astrapy.constants import SortMode
             >>> from astrapy.data_types import DataAPITimestamp, DataAPIVector
             >>>
@@ -4546,6 +4567,7 @@ class AsyncTable(Generic[ROW]):
                 requested operation (which may involve multiple API requests).
                 This method, being based on `find` (see) may entail successive HTTP API
                 requests, depending on the amount of involved rows.
+                If not provided, the AsyncTable defaults apply.
             request_timeout_ms: a timeout, in milliseconds, for each API request.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
@@ -4554,6 +4576,8 @@ class AsyncTable(Generic[ROW]):
             that match the filter. The result list has no repeated items.
 
         Examples:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> asyncio.run(my_async_table.distinct(
             ...     "winner",
             ...     filter={"match_id": "challenge6"},
@@ -4672,13 +4696,15 @@ class AsyncTable(Generic[ROW]):
                 an exception will be raised.
             general_method_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the table-level setting is used instead.
+                If not provided, the Table defaults apply.
             timeout_ms: an alias for `request_timeout_ms`.
 
         Returns:
             the exact count of matching rows.
 
         Examples:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> asyncio.run(my_async_table.insert_many([{"seq": i} for i in range(20)]))
             TableInsertManyResult(...)
             >>> asyncio.run(my_async_table.count_documents({}, upper_bound=100))
@@ -4759,6 +4785,8 @@ class AsyncTable(Generic[ROW]):
             a server-provided estimate count of the documents in the table.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> asyncio.run(my_async_table.estimated_document_count())
             5820
         """
@@ -4820,6 +4848,8 @@ class AsyncTable(Generic[ROW]):
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Examples:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> from astrapy.data_types import DataAPISet
             >>>
             >>> # Set a new value for a column
@@ -4933,6 +4963,8 @@ class AsyncTable(Generic[ROW]):
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Examples:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> # Count the rows matching a certain filter
             >>> len(asyncio.run(my_async_table.find({"match_id": "fight7"}).to_list()))
             3
@@ -5036,6 +5068,8 @@ class AsyncTable(Generic[ROW]):
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Examples:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> # Delete a single row (full primary key specified):
             >>> await my_async_table.delete_many({"match_id": "fight4", "round": 1})
             >>>
@@ -5107,6 +5141,8 @@ class AsyncTable(Generic[ROW]):
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
+            >>> # NOTE: may require slight adaptation to an async context.
+            >>>
             >>> # List tables:
             >>> asyncio.run(my_async_table.database.list_table_names())
             ['games']
