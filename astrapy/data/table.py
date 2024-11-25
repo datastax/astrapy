@@ -2372,7 +2372,39 @@ class Table(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> None:
         """
-        TODO
+        Delete a row, matching the provided value of the primary key.
+        If no row is found with that primary key, the method does nothing.
+
+        Args:
+            filter: a predicate expressing the table primary key in full,
+                i.e. a dictionary defining values for all columns that form the
+                primary key. A row (at most one) is deleted if it matches that primary
+                key. An example filter may be `{"match_id": "fight4", "round": 1}`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
+
+        Example:
+            >>> # Count the rows matching a certain filter
+            >>> len(my_table.find({"match_id": "fight7"}).to_list())
+            3
+            >>>
+            >>> # Delete a row belonging to the group
+            >>> my_table.delete_one({"match_id": "fight7", "round": 2})
+            >>>
+            >>> # Count again
+            >>> len(my_table.find({"match_id": "fight7"}).to_list())
+            2
+            >>>
+            >>> # Attempt the delete again (nothing to delete)
+            >>> my_table.delete_one({"match_id": "fight7", "round": 2})
+            >>>
+            >>> # The count is unchanged
+            >>> len(my_table.find({"match_id": "fight7"}).to_list())
+            2
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -2417,7 +2449,61 @@ class Table(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> None:
         """
-        TODO
+        Delete all rows matching a provided filter condition.
+        This operation can target from a single row to the entirety of the table.
+
+        Args:
+            filter: a filter dictionary to specify which row(s) must be deleted.
+                1. If the filter is in the form `{"pk1": val1, "pk2": val2 ...}`
+                and specified the primary key in full, at most one row is deleted,
+                the one with that primary key.
+                2. If the table has "partitionSort" columns, some or all of them
+                may be left out (the least significant of them can also employ
+                an inequality, or range, predicate): a range of rows, but always
+                within a single partition, will be deleted.
+                3. If an empty filter, `{}`, is passed, this operation empties
+                the table completely. *USE WITH CARE*.
+                4. Other kinds of filtering clauses are forbidden.
+                In the following examples, the table is partitioned
+                by columns ["pa1", "pa2"] and has partitionSort "ps1" and "ps2" in that
+                order.
+                Valid filter examples:
+                - `{"pa1": x, "pa2": y, "ps1": z, "ps2": t}`: deletes one row
+                - `{"pa1": x, "pa2": y, "ps1": z}`: deletes multiple rows
+                - `{"pa1": x, "pa2": y, "ps1": z, "ps2": {"$lt": q}}`: del. multiple rows
+                - `{"pa1": x, "pa2": y}`: deletes all rows in the partition
+                - `{}`: empties the table (*CAUTION*)
+                Invalid filter examples:
+                - `{"pa1": x}`: incomplete partition key
+                - `{"pa1": x, "ps1" z}`: incomplete partition key (whatever is added)
+                - `{"pa1": x, "pa2": y, "ps1": {"$lt": r}, "ps2": t}`: inequality on
+                  a non-least-significant partitionSort column provided.
+                - `{"pa1": x, "pa2": y, "ps2": t}`: cannot skip "ps1"
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
+
+        Example:
+            >>> # Count the rows matching a certain filter
+            >>> len(my_table.find({"match_id": "fight7"}).to_list())
+            3
+            >>>
+            >>> # Delete a row belonging to the group
+            >>> my_table.delete_one({"match_id": "fight7", "round": 2})
+            >>>
+            >>> # Count again
+            >>> len(my_table.find({"match_id": "fight7"}).to_list())
+            2
+            >>>
+            >>> # Attempt the delete again (nothing to delete)
+            >>> my_table.delete_one({"match_id": "fight7", "round": 2})
+            >>>
+            >>> # The count is unchanged
+            >>> len(my_table.find({"match_id": "fight7"}).to_list())
+            2
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -2462,8 +2548,10 @@ class Table(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> None:
         """
-        TODO
+        Drop the table, i.e. delete it from the database along with
+        all the rows stored therein.
 
+        Args:
             if_exists: if passed as True, trying to drop a non-existing table
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
@@ -2473,6 +2561,37 @@ class Table(Generic[ROW]):
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Example:
+            >>> # List tables:
+            >>> my_table.database.list_table_names()
+            ['games']
+            >>>
+            >>> # Drop this table:
+            >>> my_table.drop()
+            >>>
+            >>> # List tables again:
+            >>> my_table.database.list_table_names()
+            []
+            >>>
+            >>> # Try working on the table now:
+            >>> from astrapy.exceptions import DataAPIResponseException
+            >>> try:
+            ...     my_table.find_one({})
+            ... except DataAPIResponseException as err:
+            ...     print(str(err))
+            ...
+            Collection does not exist [...] (COLLECTION_NOT_EXIST)
+
+        Note:
+            Use with caution.
+
+        Note:
+            Once the method succeeds, methods on this object can still be invoked:
+            however, this hardly makes sense as the underlying actual table
+            is no more.
+            It is responsibility of the developer to design a correct flow
+            which avoids using a deceased collection any further.
         """
 
         logger.info(f"dropping table '{self.name}' (self)")
