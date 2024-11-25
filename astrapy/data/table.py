@@ -622,7 +622,7 @@ class Table(Generic[ROW]):
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
-        Example:
+        Examples:
             >>> from astrapy.info import TableIndexOptions
             >>>
             >>> my_table.create_index(
@@ -882,7 +882,7 @@ class Table(Generic[ROW]):
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
-        Example:
+        Examples:
             >>> from astrapy.info import (
             ...     AlterTableAddColumns,
             ...     AlterTableAddVectorize,
@@ -2007,7 +2007,7 @@ class Table(Generic[ROW]):
             a list of all different values for `key` found across the rows
             that match the filter. The result list has no repeated items.
 
-        Example:
+        Examples:
             >>> my_table.distinct("winner", filter={"match_id": "challenge6"})
             ['Donna', 'Erick', 'Fiona']
             >>>
@@ -2131,7 +2131,7 @@ class Table(Generic[ROW]):
         Returns:
             the exact count of matching rows.
 
-        Example:
+        Examples:
             >>> my_table.insert_many([{"seq": i} for i in range(20)])
             TableInsertManyResult(...)
             >>> my_table.count_documents({}, upper_bound=100)
@@ -2274,7 +2274,7 @@ class Table(Generic[ROW]):
             request_timeout_ms: an alias for `general_method_timeout_ms`.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
-        Example:
+        Examples:
             >>> from astrapy.data_types import DataAPISet
             >>>
             >>> # Set a new value for a column
@@ -2387,7 +2387,7 @@ class Table(Generic[ROW]):
             request_timeout_ms: an alias for `general_method_timeout_ms`.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
-        Example:
+        Examples:
             >>> # Count the rows matching a certain filter
             >>> len(my_table.find({"match_id": "fight7"}).to_list())
             3
@@ -2486,24 +2486,19 @@ class Table(Generic[ROW]):
             request_timeout_ms: an alias for `general_method_timeout_ms`.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
-        Example:
-            >>> # Count the rows matching a certain filter
-            >>> len(my_table.find({"match_id": "fight7"}).to_list())
-            3
+        Examples:
+            >>> # Delete a single row (full primary key specified):
+            >>> my_table.delete_many({"match_id": "fight4", "round": 1})
             >>>
-            >>> # Delete a row belonging to the group
-            >>> my_table.delete_one({"match_id": "fight7", "round": 2})
+            >>> # Delete part of a partition (inequality on the
+            >>> # last-mentioned 'partitionSort' column):
+            >>> my_table.delete_many({"match_id": "fight5", "round": {"$gte": 5}})
             >>>
-            >>> # Count again
-            >>> len(my_table.find({"match_id": "fight7"}).to_list())
-            2
+            >>> # Delete a whole partition (leave 'partitionSort' unspecified):
+            >>> my_table.delete_many({"match_id": "fight7"})
             >>>
-            >>> # Attempt the delete again (nothing to delete)
-            >>> my_table.delete_one({"match_id": "fight7", "round": 2})
-            >>>
-            >>> # The count is unchanged
-            >>> len(my_table.find({"match_id": "fight7"}).to_list())
-            2
+            >>> # empty the table entirely with empty filter (*CAUTION*):
+            >>> my_table.delete_many({})
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -2648,7 +2643,7 @@ class AsyncTable(Generic[ROW]):
 
     This class is not meant for direct instantiation by the user, rather
     it is obtained by invoking methods such as `get_table` of AsyncDatabase,
-    wherefrom the Table inherits its API options such as authentication
+    wherefrom the AsyncTable inherits its API options such as authentication
     token and API endpoint.
     In order to create a table, instead, one should call the `create_table`
     method of AsyncDatabase, providing a table definition parameter that can be built
@@ -2664,7 +2659,7 @@ class AsyncTable(Generic[ROW]):
         api_options: a complete specification of the API Options for this instance.
 
     Examples:
-        >>> from astrapy import DataAPIClient, Table
+        >>> from astrapy import DataAPIClient, AsyncTable
         >>> my_client = astrapy.DataAPIClient()
         >>> my_async_db = my_client.get_async_database(
         ...     "https://01234567-....apps.astra.datastax.com",
@@ -2728,7 +2723,7 @@ class AsyncTable(Generic[ROW]):
         >>> my_table_4 = await my_db.get_table("my_already_existing_table")
 
     Note:
-        creating an instance of Table does not trigger, in itself, actual
+        creating an instance of AsyncTable does not trigger, in itself, actual
         creation of the table on the database. The latter should have been created
         beforehand, e.g. through the `create_table` method of a Database.
     """
@@ -2746,7 +2741,7 @@ class AsyncTable(Generic[ROW]):
         _keyspace = keyspace if keyspace is not None else database.keyspace
 
         if _keyspace is None:
-            raise ValueError("Attempted to create Table with 'keyspace' unset.")
+            raise ValueError("Attempted to create AsyncTable with 'keyspace' unset.")
 
         self._database = database._copy(
             keyspace=_keyspace, api_options=self.api_options
@@ -2982,7 +2977,7 @@ class AsyncTable(Generic[ROW]):
         """
         TODO
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, the AsyncTable defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -3158,20 +3153,21 @@ class AsyncTable(Generic[ROW]):
                 index creation takes place on the database). The API default of False
                 means that an error is raised by the API in case of name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, the AsyncTable defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
-        Example:
+        Examples:
             >>> from astrapy.info import TableIndexOptions
-            >>> await my_table.create_index(
+            >>>
+            >>> await my_async_table.create_index(
             ...     "score_index",
             ...     column="score",
             ... )
             >>>
-            >>> await my_table.create_index(
+            >>> await my_async_table.create_index(
             ...     "winner_index",
             ...     column="winner",
             ...     options=TableIndexOptions(
@@ -3229,7 +3225,7 @@ class AsyncTable(Generic[ROW]):
                 index creation takes place on the database). The API default of False
                 means that an error is raised by the API in case of name collision.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, the AsyncTable defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -3239,10 +3235,12 @@ class AsyncTable(Generic[ROW]):
             >>> from astrapy.constants import VectorMetric
             >>> from astrapy.info import TableVectorIndexOptions
             >>>
-            >>> await my_table.create_vector_index(
+            >>> await my_async_table.create_vector_index(
             ...     "m_vector_index",
             ...     column="m_vector",
-            ...     options=TableVectorIndexOptions(metric=VectorMetric.DOT_PRODUCT),
+            ...     options=TableVectorIndexOptions(
+            ...         metric=VectorMetric.DOT_PRODUCT,
+            ...     ),
             ... )
         """
 
@@ -3273,7 +3271,7 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, the AsyncTable defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -3283,7 +3281,7 @@ class AsyncTable(Generic[ROW]):
             a list of the index names as strings, in no particular order.
 
         Example:
-            >>> await my_table.list_index_names()
+            >>> asyncio.run(my_async_table.list_index_names())
             ['m_vector_index', 'winner_index', 'score_index']
         """
 
@@ -3322,7 +3320,7 @@ class AsyncTable(Generic[ROW]):
 
         Args:
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, the AsyncTable defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
@@ -3333,7 +3331,7 @@ class AsyncTable(Generic[ROW]):
             order, each providing the details of an index present on the table.
 
         Example:
-            >>> indexes = await my_table.list_indexes()
+            >>> indexes = asyncio.run(my_async_table.list_indexes())
             >>> indexes
             [TableIndexDescriptor(name='m_vector_index', definition=...)...]  # Note: shortened
             >>> indexes[1].definition.column
@@ -3411,17 +3409,18 @@ class AsyncTable(Generic[ROW]):
                 A regular dictionary can also be provided, but then it must have the
                 alter operation name at its top level: {"add": {"columns": ...}}.
             row_type: this parameter acts a formal specifier for the type checker.
-                If omitted, the resulting Table is implicitly a `Table[dict[str, Any]]`.
+                If omitted, the resulting AsyncTable is implicitly an
+                `AsyncTable[dict[str, Any]]`.
                 If provided, it must match the type hint specified in the assignment.
                 See the examples below.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, the AsyncTable defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
-        Example:
+        Examples:
             >>> from astrapy.info import (
             ...     AlterTableAddColumns,
             ...     AlterTableAddVectorize,
@@ -3431,6 +3430,7 @@ class AsyncTable(Generic[ROW]):
             ...     VectorServiceOptions,
             ... )
             >>>
+            >>> # Add a column
             >>> new_table_1 = await my_table.alter(
             ...     AlterTableAddColumns(
             ...         columns={
@@ -3441,38 +3441,49 @@ class AsyncTable(Generic[ROW]):
             ...     )
             ... )
             >>>
-            >>> new_table_2 = await new_table_1.alter(
-            ...     AlterTableDropColumns(columns=["tie_break"]),
-            ... )
+            >>> # Drop a column
+            >>> new_table_2 = await new_table_1.alter(AlterTableDropColumns(
+            ...     columns=["tie_break"]
+            ... ))
             >>>
+            >>> # Add vectorize to a (vector) column
             >>> new_table_3 = await new_table_2.alter(
             ...     AlterTableAddVectorize(
             ...         columns={
             ...             "m_vector": VectorServiceOptions(
             ...                 provider="openai",
             ...                 model_name="text-embedding-3-small",
-            ...                 authentication={
-            ...                     "providerKey": "MY_API_KEY_STORED_SECRET_NAME",
-            ...                 },
+            ...                 # authentication={
+            ...                     # "providerKey": "MY_API_KEY_STORED_SECRET_NAME",
+            ...                 # },
             ...             ),
             ...         }
             ...     )
             ... )
             >>>
+            >>> # Drop vectorize from a (vector) column
+            >>> # (Also demonstrates type hint usage)
             >>> from typing import TypedDict
-            >>> from astrapy import Table
-            >>> from astrapy.data_types import DataAPITimestamp
+            >>> from astrapy import AsyncTable
+            >>> from astrapy.data_types import (
+            ...     DataAPISet,
+            ...     DataAPITimestamp,
+            ...     DataAPIVector,
+            ... )
+            >>> from astrapy.ids import UUID
             >>>
-            >>> class MyCustomDictClass(TypedDict):
-            ...     match_no: int
-            ...     round: str
-            ...     winner: str
+            >>> class MyMatch(TypedDict):
+            ...     match_id: str
+            ...     round: int
+            ...     m_vector: DataAPIVector
             ...     score: int
             ...     when: DataAPITimestamp
+            ...     winner: str
+            ...     fighters: DataAPISet[UUID]
             ...
-            >>> new_table_4: Table[MyCustomDictClass] = await new_table_3.alter(
+            >>> new_table_4: AsyncTable[MyMatch] = await new_table_3.alter(
             ...     AlterTableDropVectorize(columns=["m_vector"]),
-            ...     row_type=MyCustomDictClass,
+            ...     row_type=MyMatch,
             ... )
         """
 
@@ -3553,55 +3564,66 @@ class AsyncTable(Generic[ROW]):
             of the inserted row both in the form of a dictionary and of a tuple.
 
         Examples:
-            >>> # a full-row insert using astrapy's datatypes when available
+            >>> # a full-row insert using astrapy's datatypes
             >>> from astrapy.data_types import (
             ...     DataAPISet,
             ...     DataAPITimestamp,
             ...     DataAPIVector,
             ... )
-            >>> insert_result = await my_table.insert_one(
+            >>> from astrapy.ids import UUID
+            >>>
+            >>> insert_result = asyncio.run(my_async_table.insert_one(
             ...     {
-            ...         "match_no": 1012,
-            ...         "round": "A",
-            ...         "winner": "Victor",
+            ...         "match_id": "mtch_0",
+            ...         "round": 1,
+            ...         "m_vector": DataAPIVector([0.4, -0.6, 0.2]),
             ...         "score": 18,
             ...         "when": DataAPITimestamp.from_string("2024-11-28T11:30:00Z"),
-            ...         "tags": DataAPISet(["worldcup", "placeholder_tag"]),
-            ...         "m_vector": DataAPIVector([0.4, -0.6, 0.2]),
+            ...         "winner": "Victor",
+            ...         "fighters": DataAPISet([
+            ...             UUID("0193539a-2770-8c09-a32a-111111111111"),
+            ...         ]),
             ...     },
-            ... )
+            ... ))
             >>> insert_result.inserted_id
-            {'match_no': 1012, 'round': 'A'}
+            {'match_id': 'mtch_0', 'round': 1}
             >>> insert_result.inserted_id_tuple
-            (1012, 'A')
-
-            >>> # a partial-row overwrite
-            >>> await my_table.insert_one(
+            ('mtch_0', 1)
+            >>>
+            >>> # a partial-row (which in this case overwrites some of the values)
+            >>> asyncio.run(my_async_table.insert_one(
             ...     {
-            ...         "match_no": 1012,
-            ...         "round": "A",
+            ...         "match_id": "mtch_0",
+            ...         "round": 1,
             ...         "winner": "Victor Vector",
-            ...         "tags": DataAPISet(["worldcup", "championship"]),
+            ...         "fighters": DataAPISet([
+            ...             UUID("0193539a-2770-8c09-a32a-111111111111"),
+            ...             UUID("0193539a-2880-8875-9f07-222222222222"),
+            ...         ]),
             ...     },
-            ... )
-            TableInsertOneResult(inserted_id={'match_no': 1012, ...)  # Note: shortened
-
-            >>> # an insert using only standard library data types
-            >>> from datetime import datetime, timezone
-            >>> await my_table.insert_one(
+            ... ))
+            TableInsertOneResult(inserted_id={'match_id': 'mtch_0', 'round': 1} ...
+            >>>
+            >>> # another insertion demonstrating standard-library datatypes in values
+            >>> import datetime
+            >>>
+            >>> asyncio.run(my_async_table.insert_one(
             ...     {
-            ...         "match_no": 975,
-            ...         "round": "B",
+            ...         "match_id": "mtch_0",
+            ...         "round": 2,
             ...         "winner": "Angela",
             ...         "score": 25,
-            ...         "when": datetime(
-            ...             2024, 7, 13, 12, 55, 30, 889, tzinfo=timezone.utc
+            ...         "when": datetime.datetime(
+            ...             2024, 7, 13, 12, 55, 30, 889,
+            ...             tzinfo=datetime.timezone.utc,
             ...         ),
-            ...         "tags": {"tiebreak", "epic"},
+            ...         "fighters": {
+            ...             UUID("019353cb-8e01-8276-a190-333333333333"),
+            ...         },
             ...         "m_vector": [0.4, -0.6, 0.2],
             ...     },
-            ... )
-            TableInsertOneResult(inserted_id={'match_no': 975, ...)  # Note: shortened
+            ... ))
+            TableInsertOneResult(inserted_id={'match_id': 'mtch_0', 'round': 2}, ...
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -3738,69 +3760,77 @@ class AsyncTable(Generic[ROW]):
             of the inserted rows both in the form of dictionaries and of tuples.
 
         Examples:
-            >>> from datetime import datetime, timezone
-            >>> from astrapy.data_types import DataAPISet, DataAPITimestamp, DataAPIVector
+            >>> # Insert complete and partial rows at once (concurrently)
+            >>> from astrapy.data_types import (
+            ...     DataAPISet,
+            ...     DataAPITimestamp,
+            ...     DataAPIVector,
+            ... )
+            >>> from astrapy.ids import UUID
             >>>
-            >>> # Unordered insertion (with concurrency for performance)
-            >>> insert_result = await my_table.insert_many(
+            >>> insert_result = asyncio.run(my_async_table.insert_many(
             ...     [
             ...         {
-            ...             "match_no": 1012,
-            ...             "round": "A",
+            ...             "match_id": "fight4",
+            ...             "round": 1,
             ...             "winner": "Victor",
             ...             "score": 18,
             ...             "when": DataAPITimestamp.from_string(
             ...                 "2024-11-28T11:30:00Z",
             ...             ),
-            ...             "tags": DataAPISet(["worldcup", "placeholder_tag"]),
+            ...             "fighters": DataAPISet([
+            ...                 UUID("0193539a-2770-8c09-a32a-111111111111"),
+            ...                 UUID('019353e3-00b4-83f9-a127-222222222222'),
+            ...             ]),
             ...             "m_vector": DataAPIVector([0.4, -0.6, 0.2]),
             ...         },
-            ...         {"match_no": 991, "round": "A", "winner": "Adam"},
-            ...         {"match_no": 991, "round": "B", "winner": "Betta"},
-            ...         {"match_no": 991, "round": "C", "winner": "Caio"},
+            ...         {"match_id": "fight5", "round": 1, "winner": "Adam"},
+            ...         {"match_id": "fight5", "round": 2, "winner": "Betta"},
+            ...         {"match_id": "fight5", "round": 3, "winner": "Caio"},
             ...         {
-            ...             "match_no": 995,
-            ...             "round": "A",
+            ...             "match_id": "challenge6",
+            ...             "round": 1,
             ...             "winner": "Donna",
             ...             "m_vector": [0.9, -0.1, -0.3],
             ...         },
-            ...         {"match_no": 995, "round": "B", "winner": "Erick"},
-            ...         {"match_no": 995, "round": "C", "winner": "Fiona"},
-            ...         {"match_no": 997, "round": "A", "winner": "Gael"},
-            ...         {"match_no": 997, "round": "B", "winner": "Hanna"},
+            ...         {"match_id": "challenge6", "round": 2, "winner": "Erick"},
+            ...         {"match_id": "challenge6", "round": 3, "winner": "Fiona"},
+            ...         {"match_id": "tournamentA", "round": 1, "winner": "Gael"},
+            ...         {"match_id": "tournamentA", "round": 2, "winner": "Hanna"},
             ...         {
-            ...             "match_no": 997,
-            ...             "round": "C",
+            ...             "match_id": "tournamentA",
+            ...             "round": 3,
             ...             "winner": "Ian",
-            ...             "when": datetime(
-            ...                 2023, 9, 28, 18, 12, 45, tzinfo=timezone.utc
-            ...             ),
-            ...             "tags": {"dull"},
+            ...             "fighters": DataAPISet([
+            ...                 UUID("0193539a-2770-8c09-a32a-111111111111"),
+            ...             ]),
             ...         },
-            ...         {"match_no": 443, "round": "A", "winner": "Joy"},
-            ...         {"match_no": 443, "round": "B", "winner": "Kevin"},
-            ...         {"match_no": 443, "round": "C", "winner": "Lauretta"},
+            ...         {"match_id": "fight7", "round": 1, "winner": "Joy"},
+            ...         {"match_id": "fight7", "round": 2, "winner": "Kevin"},
+            ...         {"match_id": "fight7", "round": 3, "winner": "Lauretta"},
             ...     ],
             ...     concurrency=10,
-            ... )
+            ...     chunk_size=3,
+            ... ))
             >>> insert_result.inserted_ids
-            [{'match_no': 1012, 'round': 'A'}, {'match_no': 991, ...}, ...]  # Note: shortened
+            [{'match_id': 'fight4', 'round': 1}, {'match_id': 'fight5', ...
             >>> insert_result.inserted_id_tuples
-            [(1012, 'A'), (991, 'A'), (991, 'B'), (991, 'C'), (995, 'A'), ...]  # Note: shortened
-
-            >>> # Ordered insertion (stop on first failure and predictable end result on DB)
-            >>> await my_table.insert_many(
+            [('fight4', 1), ('fight5', 1), ('fight5', 2), ('fight5', 3), ...
+            >>>
+            >>> # Ordered insertion
+            >>> # (would stop on first failure; predictable end result on DB)
+            >>> asyncio.run(my_async_table.insert_many(
             ...     [
-            ...         {"match_no": 991, "round": "A", "winner": "Adam0"},
-            ...         {"match_no": 991, "round": "B", "winner": "Bett0a"},
-            ...         {"match_no": 991, "round": "C", "winner": "Caio0"},
+            ...         {"match_id": "fight5", "round": 1, "winner": "Adam0"},
+            ...         {"match_id": "fight5", "round": 2, "winner": "Betta0"},
+            ...         {"match_id": "fight5", "round": 3, "winner": "Caio0"},
             ...         {"match_id": "fight5", "round": 1, "winner": "Adam Zuul"},
             ...         {"match_id": "fight5", "round": 2, "winner": "Betta Vigo"},
             ...         {"match_id": "fight5", "round": 3, "winner": "Caio Gozer"},
             ...     ],
             ...     ordered=True,
-            ... )
-            TableInsertManyResult(inserted_ids=[{'match_no': 991, ...}, ...]  # Note: shortened
+            ... ))
+            TableInsertManyResult(inserted_ids=[{'match_id': 'fight5', 'round': 1}, ...
 
         Note:
             Unordered insertions are executed with some degree of concurrency,
@@ -4005,14 +4035,14 @@ class AsyncTable(Generic[ROW]):
         Find rows on the table matching the provided filters
         and according to sorting criteria including vector similarity.
 
-        The returned AsyncTableFindCursor object, representing the stream of results,
+        The returned TableFindCursor object, representing the stream of results,
         can be iterated over, or consumed and manipulated in several other ways
-        (see the examples below and the `AsyncTableFindCursor` docs for details).
-        Since the amount of returned items can be large, AsyncTableFindCursor is a lazy
+        (see the examples below and the `TableFindCursor` documentation for details).
+        Since the amount of returned items can be large, TableFindCursor is a lazy
         object, that fetches new data while it is being read using the Data API
         pagination mechanism.
 
-        Invoking `.to_list()` on a AsyncTableFindCursor will cause it to consume all
+        Invoking `.to_list()` on a TableFindCursor will cause it to consume all
         rows and materialize the entire result set as a list. This is not recommended
         if the amount of results is very large.
 
@@ -4031,7 +4061,8 @@ class AsyncTable(Generic[ROW]):
                 `{"*": True}` (i.e. return the whole row), or the complementary
                 form that excludes columns: `{"column1": False, "column2": False}`.
                 To optimize bandwidth usage, it is recommended to use a projection,
-                especially for columns of type vector with high-dimensional embeddings.
+                especially to avoid unnecessary columns of type vector with
+                high-dimensional embeddings.
             skip: if provided, it is a number of rows that would be obtained first
                 in the response and are instead skipped.
             limit: a maximum amount of rows to get from the table. The returned cursor
@@ -4044,7 +4075,7 @@ class AsyncTable(Generic[ROW]):
                 If set to True (and if the search is a vector search), calling
                 the `get_sort_vector` method on the returned cursor will yield
                 the vector used for the ANN search.
-            sort: this dictionary parameter controls the order in which the documents
+            sort: this dictionary parameter controls the order in which the rows
                 are returned. The sort parameter can express either a vector search or
                 a regular (ascending/descending, even hierarchical) sorting.
                 * For a vector search the parameter takes the form
@@ -4074,136 +4105,168 @@ class AsyncTable(Generic[ROW]):
 
         Examples:
             >>> # Iterate over results:
-            >>> async for row in my_table.find({"match_no": 995}):
-            ...     print(f"({row['match_no']}/{row['round']}): winner {row['winner']}")
+            >>> async def loop1():
+            ...     async for row in my_async_table.find({"match_id": "challenge6"}):
+            ...         print(f"(R:{row['round']}): winner {row['winner']}")
             ...
-            (995/A): winner Donna
-            (995/B): winner Erick
-            (995/C): winner Fiona
+            >>> asyncio.run(loop1())
+            (R:1): winner Donna
+            (R:2): winner Erick
+            (R:3): winner Fiona
 
             >>> # Optimize bandwidth using a projection:
             >>> proj = {"round": True, "winner": True}
-            >>> async for row in my_table.find({"match_no": 995}, projection=proj):
-            ...     print(f"(995/{row['round']}): winner {row['winner']}")
+            >>> async def loop2():
+            ...     async for row in my_async_table.find(
+            ...           {"match_id": "challenge6"},
+            ...           projection=proj,
+            ...     ):
+            ...         print(f"(R:{row['round']}): winner {row['winner']}")
             ...
-            (995/A): winner Donna
-            (995/B): winner Erick
-            (995/C): winner Fiona
+            >>> asyncio.run(loop2())
+            (R:1): winner Donna
+            (R:2): winner Erick
+            (R:3): winner Fiona
 
-            >>> # Filter on the partitioning:
-            >>> await my_table.find({"match_no": 991}).to_list()
-            [{'match_no': 991, 'round': 'A', ...}, ...]  # Note: shortened
+            # Filter on the partitioning:
+            >>> asyncio.run(
+            ...     my_async_table.find({"match_id": "challenge6"}).to_list()
+            ... )
+            [{'match_id': 'challenge6', 'round': 1, 'fighters': DataAPISet([]), ...
 
-            >>> # Filter on primary key:
-            >>> await my_table.find({"match_no": 991, "round": "C"}).to_list()
-            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
+            # Filter on primary key:
+            >>> asyncio.run(
+            ...     my_async_table.find(
+            ...         {"match_id": "challenge6", "round": 1}
+            ...     ).to_list()
+            ... )
+            [{'match_id': 'challenge6', 'round': 1, 'fighters': DataAPISet([]), ...
 
-            >>> # Filter on a regular indexed column:
-            >>> await my_table.find({"winner": "Caio3"}).to_list()
-            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
+            # Filter on a regular indexed column:
+            >>> asyncio.run(my_async_table.find({"winner": "Caio Gozer"}).to_list())
+            [{'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
 
-            >>> # Non-equality filter on a regular indexed column:
-            >>> await my_table.find({"score": {"$gte": 15}}).to_list()
-            [{'match_no': 1012, 'round': 'A', ...}, ...]  # Note: shortened
+            # Non-equality filter on a regular indexed column:
+            >>> asyncio.run(my_async_table.find({"score": {"$gte": 15}}).to_list())
+            [{'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
 
-            >>> # Filter on a regular non-indexed column:
-            >>> await my_table.find(
-            ...     {"when": DataAPITimestamp.from_string("1999-12-31T01:23:44Z")}
-            ... ).to_list()
+              # Filter on a regular non-indexed column:
+            # (not recommended performance-wise)
+            >>> asyncio.run(my_async_table.find(
+            ...     {"when": {
+            ...         "$gte": DataAPITimestamp.from_string("1999-12-31T01:23:44Z")
+            ...     }}
+            ... ).to_list())
             The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
-            []
+            [{'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
 
-            >>> # Empty filter (not recommended performance-wise):
-            >>> await my_table.find({}).to_list()
+            # Empty filter (not recommended performance-wise):
+            >>> asyncio.run(my_async_table.find({}).to_list())
             The Data API returned a warning: {'errorCode': 'ZERO_FILTER_OPERATIONS', ...
-            [{'match_no': 123, 'round': 'A', ...}, ...]  # Note: shortened
+            [{'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
 
-            >>> # Filter on the primary key and a regular non-indexed column:
-            >>> # (not recommended performance-wise)
-            >>> await my_table.find(
-            ...     {"match_no": 991, "round": "C", "winner": "Caio3"}
-            ... ).to_list()
-            The Data API returned a warning: {'errorCode': 'MISSING_INDEX',...
-            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
-
-            >>> # Filter on a regular non-indexed column, omitting part of the pr. key:
-            >>> # (not recommended performance-wise)
-            >>> await my_table.find({"round": "C", "winner": "Caio3"}).to_list()
+              # Filter on the primary key and a regular non-indexed column:
+            # (not recommended performance-wise)
+            >>> asyncio.run(my_async_table.find(
+            ...     {"match_id": "fight5", "round": 3, "winner": "Caio Gozer"}
+            ... ).to_list())
             The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
-            [{'match_no': 991, 'round': 'C', ...}, ...]  # Note: shortened
+            [{'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
 
-            >>> # Vector search with "sort" (on a vector column with an index on it):
-            >>> await my_table.find(
+            # Filter on a regular non-indexed column (and incomplete primary key)
+            # (not recommended performance-wise)
+            >>> asyncio.run(my_async_table.find(
+            ...     {"round": 3, "winner": "Caio Gozer"}
+            ... ).to_list())
+            The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
+            [{'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
+
+            # Vector search with "sort" (on an appropriately-indexed vector column):
+            >>> asyncio.run(my_async_table.find(
             ...     {},
-            ...     sort={'m_vector': DataAPIVector([0.2, 0.3, 0.4])},
+            ...     sort={"m_vector": DataAPIVector([0.2, 0.3, 0.4])},
             ...     projection={"winner": True},
             ...     limit=3,
-            ... ).to_list()
-            [{'winner': 'Donna'}, {'winner': 'Victor'}, {'winner': 'Angela'}]
+            ... ).to_list())
+            [{'winner': 'Donna'}, {'winner': 'Victor'}]
 
-            >>> # Return the numeric value of the vector similarity
-            >>> # (also demonstrating that one can pass a plain list for a vector):
-            >>> await my_table.find(
+            # Return the numeric value of the vector similarity
+            # (also demonstrating that one can pass a plain list for a vector):
+            >>> asyncio.run(my_async_table.find(
             ...     {},
-            ...     sort={'m_vector': [0.2, 0.3, 0.4]},
+            ...     sort={"m_vector": [0.2, 0.3, 0.4]},
             ...     projection={"winner": True},
             ...     limit=3,
             ...     include_similarity=True,
-            ... ).to_list()
-            [{'winner': 'Donna', '$similarity': 0.515}, ...]  # Note: shortened
+            ... ).to_list())
+            [{'winner': 'Donna', '$similarity': 0.515}, {'winner': 'Victor', ...
 
-            >>> # Regular sorting on a column:
-            >>> await my_table.find(
-            ...     {"match_no": 991},
-            ...     sort={'round': SortMode.DESCENDING},
+            # Non-vector sorting on a 'partitionSort' column:
+            >>> asyncio.run(my_async_table.find(
+            ...     {"match_id": "fight5"},
+            ...     sort={"round": SortMode.DESCENDING},
             ...     projection={"winner": True},
-            ... ).to_list()
-            [{'winner': 'Caio3'}, {'winner': 'Betta3'}, {'winner': 'Adam3'}]
+            ... ).to_list())
+            [{'winner': 'Caio Gozer'}, {'winner': 'Betta Vigo'}, ...
 
-            >>> # Using `skip` and `limit`:
-            >>> await my_table.find(
-            ...     {"match_no": 991},
-            ...     sort={'round': SortMode.DESCENDING},
+            # Using `skip` and `limit`:
+            >>> asyncio.run(my_async_table.find(
+            ...     {"match_id": "fight5"},
+            ...     sort={"round": SortMode.DESCENDING},
             ...     projection={"winner": True},
             ...     skip=1,
             ...     limit=2,
-            ... ).to_list()
+            ... ).to_list())
             The Data API returned a warning: {'errorCode': 'IN_MEMORY_SORTING...
-            [{'winner': 'Betta3'}, {'winner': 'Adam3'}]
+            [{'winner': 'Betta Vigo'}, {'winner': 'Adam Zuul'}]
 
-            >>> # Using `.map()` on a cursor:
-            >>> winner_cursor = my_table.find(
-            ...     {"match_no": 991},
-            ...     sort={'round': SortMode.DESCENDING},
+            # Non-vector sorting on a regular column:
+            # (not recommended performance-wise)
+            >>> asyncio.run(my_async_table.find(
+            ...     {"match_id": "fight5"},
+            ...     sort={"winner": SortMode.ASCENDING},
+            ...     projection={"winner": True},
+            ... ).to_list())
+            The Data API returned a warning: {'errorCode': 'IN_MEMORY_SORTING...
+            [{'winner': 'Adam Zuul'}, {'winner': 'Betta Vigo'}, ...
+
+            # Using `.map()` on a cursor:
+            >>> winner_cursor = my_async_table.find(
+            ...     {"match_id": "fight5"},
+            ...     sort={"round": SortMode.DESCENDING},
             ...     projection={"winner": True},
             ...     limit=5,
             ... )
-            >>> print("/".join(
-            ...     winner
-            ...     async for winner in winner_cursor.map(
-            ...         lambda row: row["winner"].upper()
-            ...     )
+            >>> print("/".join(asyncio.run(
+            ...     winner_cursor.map(lambda row: row["winner"].upper()).to_list())
             ... ))
-            CAIO3/BETTA3/ADAM3
+            CAIO GOZER/BETTA VIGO/ADAM ZUUL
 
-            >>> # Some other examples of cursor manipulation
-            >>> matches_cursor = my_table.find(
+            # Some other examples of cursor manipulation
+            >>> matches_async_cursor = my_async_table.find(
             ...     sort={"m_vector": DataAPIVector([-0.1, 0.15, 0.3])}
             ... )
-            >>> await matches_cursor.has_next()
+            >>> asyncio.run(matches_async_cursor.has_next())
             True
-            >>> await matches_cursor._anext__()
-            {'match_no': 1012, 'round': 'A', 'm_vector':...}  # Note: shortened
-            >>> matches_cursor.consumed
+            >>> asyncio.run(matches_async_cursor.__anext__())
+            {'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
+            >>> matches_async_cursor.consumed
             1
-            >>> matches_cursor.rewind()
-            >>> matches_cursor.consumed
+            >>> matches_async_cursor.rewind()
+            >>> matches_async_cursor.consumed
             0
-            >>> await matches_cursor.has_next()
+            >>> asyncio.run(matches_async_cursor.has_next())
             True
-            >>> matches_cursor.close()
-            >>> matches_cursor.__anext_()
-            StopAsyncIteration  # Exception raised
+            >>> matches_async_cursor.close()
+            >>>
+            >>> async def try_consume():
+            ...     try:
+            ...         await matches_async_cursor.__anext__()
+            ...     except StopAsyncIteration:
+            ...         print("StopAsyncIteration triggered.")
+            ...
+            >>> asyncio.run(try_consume())
+            StopAsyncIteration triggered.
         """
 
         # lazy-import here to avoid circular import issues
@@ -4242,7 +4305,159 @@ class AsyncTable(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> ROW | None:
         """
-        TODO
+        Run a search according to the given filtering and sorting criteria
+        and return the top row matching it, or nothing if there are none.
+
+        The parameters are analogous to some of the parameters to the `find` method
+        (which has a few more that do not make sense in this case, such as `limit`).
+
+        Args:
+            filter: a dictionary expressing which condition the returned row
+                must satisfy. The filter can use operators, such as "$eq" for equality,
+                and require columns to compare with literal values. Simple examples
+                are `{}` (zero filter), `{"match_no": 123}` (a shorthand for
+                `{"match_no": {"$eq": 123}}`, or `{"match_no": 123, "round": "C"}`
+                (multiple conditions are implicitly combined with "$and").
+                Please consult the Data API documentation for a more detailed
+                explanation of table search filters and tips on their usage.
+            projection: a prescription on which columns to return for the matching row.
+                The projection can take the form `{"column1": True, "column2": True}`.
+                `{"*": True}` (i.e. return the whole row), or the complementary
+                form that excludes columns: `{"column1": False, "column2": False}`.
+                To optimize bandwidth usage, it is recommended to use a projection,
+                especially to avoid unnecessary columns of type vector with
+                high-dimensional embeddings.
+            include_similarity: a boolean to request the numeric value of the
+                similarity to be returned as an added "$similarity" key in the returned
+                row. It can be used meaningfully only in a vector search (see `sort`).
+            sort: this dictionary parameter controls the sorting order, hence determines
+                which row is being returned.
+                The sort parameter can express either a vector search or
+                a regular (ascending/descending, even hierarchical) sorting.
+                * For a vector search the parameter takes the form
+                `{"vector_column": qv}`, with the query vector `qv` of the appropriate
+                type (list of floats or DataAPIVector). If the table has automatic
+                embedding generation ("vectorize") enabled on that column, the form
+                `{"vectorize_enabled_column": "query text"}` is also valid.
+                * In the case of non-vector sorting, the parameter specifies the
+                column(s) and the ascending/descending ordering required.
+                If multiple columns are provided, the sorting applies them
+                hierarchically to the rows. Examples are `{"score": SortMode.ASCENDING}`
+                (equivalently `{"score": +1}`), {"score": +1, "when": -1}`.
+                Note that, depending on the column(s) chosen for sorting, the table
+                partitioning structure, and the presence of indexes, the sorting
+                may be done in-memory by the API. In that case, there may be performance
+                implications.
+                Consult the Data API documentation for more details on this topic.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the AsyncTable defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
+
+        Returns:
+            a dictionary expressing resulting row if a match is found, otherwise None.
+
+        Examples:
+            >>> from astrapy.constants import SortMode
+            >>> from astrapy.data_types import DataAPITimestamp, DataAPIVector
+            >>>
+            >>> # Filter on the partitioning:
+            >>> asyncio.run(my_async_table.find_one({"match_id": "challenge6"}))
+            {'match_id': 'challenge6', 'round': 1, 'fighters': DataAPISet([]), ...
+            >>>
+            >>> # A find with no matches:
+            >>> str(asyncio.run(my_async_table.find_one({"match_id": "not_real"})))
+            'None'
+            >>>
+            >>> # Optimize bandwidth using a projection:
+            >>> asyncio.run(my_async_table.find_one(
+            ...     {"match_id": "challenge6"},
+            ...     projection={"round": True, "winner": True},
+            ... ))
+            {'round': 1, 'winner': 'Donna'}
+            >>>
+            >>> # Filter on primary key:
+            >>> asyncio.run(
+            ...     my_async_table.find_one({"match_id": "challenge6", "round": 1})
+            ... )
+            {'match_id': 'challenge6', 'round': 1, 'fighters': DataAPISet([]), ...
+            >>>
+            >>> # Filter on a regular indexed column:
+            >>> asyncio.run(my_async_table.find_one({"winner": "Caio Gozer"}))
+            {'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
+            >>>
+            >>> # Non-equality filter on a regular indexed column:
+            >>> asyncio.run(my_async_table.find_one({"score": {"$gte": 15}}))
+            {'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
+            >>>
+            >>> # Filter on a regular non-indexed column:
+            >>> # (not recommended performance-wise)
+            >>> asyncio.run(my_async_table.find_one(
+            ...     {"when": {
+            ...         "$gte": DataAPITimestamp.from_string("1999-12-31T01:23:44Z")
+            ...     }}
+            ... ))
+            The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
+            {'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
+            >>>
+            >>> # Empty filter:
+            >>> asyncio.run(my_async_table.find_one({}))
+            The Data API returned a warning: {'errorCode': 'ZERO_FILTER_OPERATIONS', ...
+            {'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
+            >>>
+            >>> # Filter on the primary key and a regular non-indexed column:
+            >>> # (not recommended performance-wise)
+            >>> asyncio.run(my_async_table.find_one(
+            ...     {"match_id": "fight5", "round": 3, "winner": "Caio Gozer"}
+            ... ))
+            The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
+            {'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
+            >>>
+            >>> # Filter on a regular non-indexed column (and incomplete primary key)
+            >>> # (not recommended performance-wise)
+            >>> asyncio.run(
+            ...     my_async_table.find_one({"round": 3, "winner": "Caio Gozer"})
+            ... )
+            The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
+            {'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
+            >>>
+            >>> # Vector search with "sort" (on an appropriately-indexed vector column):
+            >>> asyncio.run(my_async_table.find_one(
+            ...     {},
+            ...     sort={"m_vector": DataAPIVector([0.2, 0.3, 0.4])},
+            ...     projection={"winner": True},
+            ... ))
+            {'winner': 'Donna'}
+            >>>
+            >>> # Return the numeric value of the vector similarity
+            >>> # (also demonstrating that one can pass a plain list for a vector):
+            >>> asyncio.run(my_async_table.find_one(
+            ...     {},
+            ...     sort={"m_vector": [0.2, 0.3, 0.4]},
+            ...     projection={"winner": True},
+            ...     include_similarity=True,
+            ... ))
+            {'winner': 'Donna', '$similarity': 0.515}
+            >>>
+            >>> # Non-vector sorting on a 'partitionSort' column:
+            >>> asyncio.run(my_async_table.find_one(
+            ...     {"match_id": "fight5"},
+            ...     sort={"round": SortMode.DESCENDING},
+            ...     projection={"winner": True},
+            ... ))
+            {'winner': 'Caio Gozer'}
+            >>>
+            >>> # Non-vector sorting on a regular column:
+            >>> # (not recommended performance-wise)
+            >>> asyncio.run(my_async_table.find_one(
+            ...     {"match_id": "fight5"},
+            ...     sort={"winner": SortMode.ASCENDING},
+            ...     projection={"winner": True},
+            ... ))
+            The Data API returned a warning: {'errorCode': 'IN_MEMORY_SORTING...
+            {'winner': 'Adam Zuul'}
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -4305,7 +4520,78 @@ class AsyncTable(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> list[Any]:
         """
-        TODO
+        Return a list of the unique values of `key` across the rows
+        in the table that match the provided filter.
+
+        Args:
+            key: the name of the field whose value is inspected across rows.
+                Keys are typically just column names, although they can use
+                the dot notation to select particular entries in map columns.
+                For set and list columns, individual entries are "unrolled"
+                automatically; in particular, for lists, numeric indices
+                can be used in the key dot-notation syntax.
+                Example of acceptable `key` values:
+                    "a_column"
+                    "map_column.map_key"
+                    "list_column.2"
+            filter: a dictionary expressing which condition the inspected rows
+                must satisfy. The filter can use operators, such as "$eq" for equality,
+                and require columns to compare with literal values. Simple examples
+                are `{}` (zero filter), `{"match_no": 123}` (a shorthand for
+                `{"match_no": {"$eq": 123}}`, or `{"match_no": 123, "round": "C"}`
+                (multiple conditions are implicitly combined with "$and").
+                Please consult the Data API documentation for a more detailed
+                explanation of table search filters and tips on their usage.
+            general_method_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation (which may involve multiple API requests).
+                This method, being based on `find` (see) may entail successive HTTP API
+                requests, depending on the amount of involved rows.
+            request_timeout_ms: a timeout, in milliseconds, for each API request.
+            timeout_ms: an alias for `general_method_timeout_ms`.
+
+        Returns:
+            a list of all different values for `key` found across the rows
+            that match the filter. The result list has no repeated items.
+
+        Examples:
+            >>> asyncio.run(my_async_table.distinct(
+            ...     "winner",
+            ...     filter={"match_id": "challenge6"},
+            ... ))
+            ['Donna', 'Erick', 'Fiona']
+            >>>
+            >>> # distinct values across the whole table:
+            >>> # (not recommended performance-wise)
+            >>> asyncio.run(my_async_table.distinct("winner"))
+            The Data API returned a warning: {'errorCode': 'ZERO_FILTER_OPERATIONS', ...
+            ['Victor', 'Adam Zuul', 'Betta Vigo', 'Caio Gozer', 'Donna', 'Erick', ...
+            >>>
+            >>> # Over a column containing null values
+            >>> # (also with composite filter):
+            >>> asyncio.run(my_async_table.distinct(
+            ...     "score",
+            ...     filter={"match_id": {"$in": ["fight4", "tournamentA"]}},
+            ... ))
+            [18, None]
+            >>>
+            >>> # distinct over a set column (automatically "unrolled"):
+            >>> asyncio.run(my_async_table.distinct(
+            ...     "fighters",
+            ...     filter={"match_id": {"$in": ["fight4", "tournamentA"]}},
+            ... ))
+            [UUID('0193539a-2770-8c09-a32a-111111111111'), UUID('019353e3-00b4-...
+
+        Note:
+            It must be kept in mind that `distinct` is a client-side operation,
+            which effectively browses all required rows using the logic
+            of the `find` method and collects the unique values found for `key`.
+            As such, there may be performance, latency and ultimately
+            billing implications if the amount of matching rows is large.
+
+        Note:
+            For details on the behaviour of "distinct" in conjunction with
+            real-time changes in the table contents, see the
+            Note of the `find` command.
         """
 
         # lazy-import here to avoid circular import issues
@@ -4392,14 +4678,14 @@ class AsyncTable(Generic[ROW]):
         Returns:
             the exact count of matching rows.
 
-        Example:
-            >>> my_table.insert_many([{"seq": i} for i in range(20)])
+        Examples:
+            >>> asyncio.run(my_async_table.insert_many([{"seq": i} for i in range(20)]))
             TableInsertManyResult(...)
-            >>> my_table.count_documents({}, upper_bound=100)
+            >>> asyncio.run(my_async_table.count_documents({}, upper_bound=100))
             20
-            >>> my_table.count_documents({"seq":{"$gt": 15}}, upper_bound=100)
+            >>> asyncio.run(my_async_table.count_documents({"seq":{"$gt": 15}}, upper_bound=100))
             4
-            >>> my_table.count_documents({}, upper_bound=10)
+            >>> asyncio.run(my_async_table.count_documents({}, upper_bound=10))
             Traceback (most recent call last):
                 ... ...
             astrapy.exceptions.TooManyRowsToCountException
@@ -4473,7 +4759,7 @@ class AsyncTable(Generic[ROW]):
             a server-provided estimate count of the documents in the table.
 
         Example:
-            >>> my_table.estimated_document_count()
+            >>> asyncio.run(my_async_table.estimated_document_count())
             5820
         """
 
@@ -4511,29 +4797,82 @@ class AsyncTable(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> None:
         """
-        Update a single document on the table as requested,
-        with the implicit behaviour of inserting a new one if no match is found.
+        Update a single document on the table, changing some or all of the columns,
+        with the implicit behaviour of inserting a new row if no match is found.
 
         Args:
-            filter: a predicate expressing in full a primary key, i.e. a dictionary
-                defining values for all columns that form the table's primary key.
-                Examples:
-                    {"code": 123}
-                    {"country": "UK", "year": 2024}
+            filter: a predicate expressing the table primary key in full,
+                i.e. a dictionary defining values for all columns that form the
+                primary key. An example may be `{"match_id": "fight4", "round": 1}`.
             update: the update prescription to apply to the row, expressed
-                as a dictionary as per Data API syntax. Examples are:
-                    {"$set": {"field": "value}}
-                    {"$unset": {"field": ""}}
-                Primary key fields cannot be provided for a "$set" operation.
-                For Tables, a limited set of update operators apply.
+                as a dictionary conforming to the per Data API syntax. The update
+                operators for tables are `$set` and `$unset` (in particular,
+                setting a column to None has the same effect as the $unset operator).
+                Examples are `{"$set": {"round": 12}}` and
+                `{"$unset": {"winner": "", "score": ""}}`.
+                Note that the update operation cannot alter the primary key columns.
                 See the Data API documentation for more details.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the table-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the AsyncTable defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
-        Example:
-            TODO async
+        Examples:
+            >>> from astrapy.data_types import DataAPISet
+            >>>
+            >>> # Set a new value for a column
+            >>> await my_async_table.update_one(
+            ...     {"match_id": "fight4", "round": 1},
+            ...     update={"$set": {"winner": "Winona"}},
+            ... )
+            >>>
+            >>> # Set a new value for a column while unsetting another colum
+            >>> await my_async_table.update_one(
+            ...     {"match_id": "fight4", "round": 1},
+            ...     update={"$set": {"winner": None, "score": 24}},
+            ... )
+            >>>
+            >>> # Set a 'set' column to empty
+            >>> await my_async_table.update_one(
+            ...     {"match_id": "fight4", "round": 1},
+            ...     update={"$set": {"fighters": DataAPISet()}},
+            ... )
+            >>>
+            >>> # Set a 'set' column to empty using None
+            >>> await my_async_table.update_one(
+            ...     {"match_id": "fight4", "round": 1},
+            ...     update={"$set": {"fighters": None}},
+            ... )
+            >>>
+            >>> # Set a 'set' column to empty using a regular (empty) set
+            >>> await my_async_table.update_one(
+            ...     {"match_id": "fight4", "round": 1},
+            ...     update={"$set": {"fighters": set()}},
+            ... )
+            >>>
+            >>> # Set a 'set' column to empty using $unset
+            >>> await my_async_table.update_one(
+            ...     {"match_id": "fight4", "round": 1},
+            ...     update={"$unset": {"fighters": None}},
+            ... )
+            >>>
+            >>> # A non-existing primary key creates a new row
+            >>> await my_async_table.update_one(
+            ...     {"match_id": "bar_fight", "round": 4},
+            ...     update={"$set": {"score": 8, "winner": "Jack"}},
+            ... )
+            >>>
+            >>> # Delete column values for a row (they'll read as None now)
+            >>> await my_async_table.update_one(
+            ...     {"match_id": "challenge6", "round": 2},
+            ...     update={"$unset": {"winner": None, "score": None}},
+            ... )
+
+        Note:
+            a row created entirely with update operations (as opposed to insertions)
+            may, correspondingly, be deleted by means of an $unset update on all columns.
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -4578,7 +4917,43 @@ class AsyncTable(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> None:
         """
-        TODO
+        Delete a row, matching the provided value of the primary key.
+        If no row is found with that primary key, the method does nothing.
+
+        Args:
+            filter: a predicate expressing the table primary key in full,
+                i.e. a dictionary defining values for all columns that form the
+                primary key. A row (at most one) is deleted if it matches that primary
+                key. An example filter may be `{"match_id": "fight4", "round": 1}`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the AsyncTable defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
+
+        Examples:
+            >>> # Count the rows matching a certain filter
+            >>> len(asyncio.run(my_async_table.find({"match_id": "fight7"}).to_list()))
+            3
+            >>>
+            >>> # Delete a row belonging to the group
+            >>> asyncio.run(
+            ...     my_async_table.delete_one({"match_id": "fight7", "round": 2})
+            ... )
+            >>>
+            >>> # Count again
+            >>> len(asyncio.run(my_async_table.find({"match_id": "fight7"}).to_list()))
+            2
+            >>>
+            >>> # Attempt the delete again (nothing to delete)
+            >>> asyncio.run(
+            ...     my_async_table.delete_one({"match_id": "fight7", "round": 2})
+            ... )
+            >>>
+            >>> # The count is unchanged
+            >>> len(asyncio.run(my_async_table.find({"match_id": "fight7"}).to_list()))
+            2
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -4623,7 +4998,56 @@ class AsyncTable(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> None:
         """
-        TODO
+        Delete all rows matching a provided filter condition.
+        This operation can target from a single row to the entirety of the table.
+
+        Args:
+            filter: a filter dictionary to specify which row(s) must be deleted.
+                1. If the filter is in the form `{"pk1": val1, "pk2": val2 ...}`
+                and specified the primary key in full, at most one row is deleted,
+                the one with that primary key.
+                2. If the table has "partitionSort" columns, some or all of them
+                may be left out (the least significant of them can also employ
+                an inequality, or range, predicate): a range of rows, but always
+                within a single partition, will be deleted.
+                3. If an empty filter, `{}`, is passed, this operation empties
+                the table completely. *USE WITH CARE*.
+                4. Other kinds of filtering clauses are forbidden.
+                In the following examples, the table is partitioned
+                by columns ["pa1", "pa2"] and has partitionSort "ps1" and "ps2" in that
+                order.
+                Valid filter examples:
+                - `{"pa1": x, "pa2": y, "ps1": z, "ps2": t}`: deletes one row
+                - `{"pa1": x, "pa2": y, "ps1": z}`: deletes multiple rows
+                - `{"pa1": x, "pa2": y, "ps1": z, "ps2": {"$lt": q}}`: del. multiple rows
+                - `{"pa1": x, "pa2": y}`: deletes all rows in the partition
+                - `{}`: empties the table (*CAUTION*)
+                Invalid filter examples:
+                - `{"pa1": x}`: incomplete partition key
+                - `{"pa1": x, "ps1" z}`: incomplete partition key (whatever is added)
+                - `{"pa1": x, "pa2": y, "ps1": {"$lt": r}, "ps2": t}`: inequality on
+                  a non-least-significant partitionSort column provided.
+                - `{"pa1": x, "pa2": y, "ps2": t}`: cannot skip "ps1"
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the AsyncTable defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
+
+        Examples:
+            >>> # Delete a single row (full primary key specified):
+            >>> await my_async_table.delete_many({"match_id": "fight4", "round": 1})
+            >>>
+            >>> # Delete part of a partition (inequality on the
+            >>> # last-mentioned 'partitionSort' column):
+            >>> await my_async_table.delete_many({"match_id": "fight5", "round": {"$gte": 5}})
+            >>>
+            >>> # Delete a whole partition (leave 'partitionSort' unspecified):
+            >>> await my_async_table.delete_many({"match_id": "fight7"})
+            >>>
+            >>> # empty the table entirely with empty filter (*CAUTION*):
+            >>> await my_async_table.delete_many({})
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -4668,17 +5092,53 @@ class AsyncTable(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """
-        TODO
+        Drop the table, i.e. delete it from the database along with
+        all the rows stored therein.
 
+        Args:
             if_exists: if passed as True, trying to drop a non-existing table
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
-                underlying API request. If not provided, the Table defaults apply.
+                underlying API request. If not provided, the AsyncTable defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
             request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
+
+        Example:
+            >>> # List tables:
+            >>> asyncio.run(my_async_table.database.list_table_names())
+            ['games']
+            >>>
+            >>> # Drop this table:
+            >>> asyncio.run(my_table.drop())
+            >>>
+            >>> # List tables again:
+            >>> asyncio.run(my_table.database.list_table_names())
+            []
+            >>>
+            >>> # Try working on the table now:
+            >>> from astrapy.exceptions import DataAPIResponseException
+            >>>
+            >>> async def try_use_table():
+            ...     try:
+            ...         my_table.find_one({})
+            ...     except DataAPIResponseException as err:
+            ...         print(str(err))
+            ...
+            >>> asyncio.run(try_use_table())
+            Collection does not exist [...] (COLLECTION_NOT_EXIST)
+
+        Note:
+            Use with caution.
+
+        Note:
+            Once the method succeeds, methods on this object can still be invoked:
+            however, this hardly makes sense as the underlying actual table
+            is no more.
+            It is responsibility of the developer to design a correct flow
+            which avoids using a deceased collection any further.
         """
 
         logger.info(f"dropping table '{self.name}' (self)")
