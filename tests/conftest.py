@@ -20,9 +20,11 @@ from __future__ import annotations
 
 import functools
 import warnings
+from collections.abc import Iterator
 from typing import Any, Awaitable, Callable, TypedDict
 
 import pytest
+from blockbuster import BlockBuster, blockbuster_ctx
 from deprecation import UnsupportedWarning
 
 from astrapy import DataAPIClient
@@ -49,6 +51,12 @@ from .preprocess_env import (
     LOCAL_DATA_API_USERNAME,
     SECONDARY_KEYSPACE,
 )
+
+
+@pytest.fixture(autouse=True)
+def blockbuster() -> Iterator[BlockBuster]:
+    with blockbuster_ctx() as bb:
+        yield bb
 
 
 class DataAPICredentials(TypedDict):
