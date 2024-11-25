@@ -1527,8 +1527,8 @@ class Table(Generic[ROW]):
         if the amount of results is very large.
 
         Args:
-            filter: a dictionary expressing which condition must the returned rows
-                satisfy. The filter can use operators, such as "$eq" for equality,
+            filter: a dictionary expressing which condition the returned rows
+                must satisfy. The filter can use operators, such as "$eq" for equality,
                 and require columns to compare with literal values. Simple examples
                 are `{}` (zero filter, not recommended for large tables),
                 `{"match_no": 123}` (a shorthand for `{"match_no": {"$eq": 123}}`,
@@ -1599,7 +1599,7 @@ class Table(Generic[ROW]):
             (R:1): winner Donna
             (R:2): winner Erick
             (R:3): winner Fiona
-            >>> # Filter on the partition key:
+            >>> # Filter on the partitioning:
             >>> my_table.find({"match_id": "challenge6"}).to_list()
             [{'match_id': 'challenge6', 'round': 1, 'fighters': DataAPISet([]), ...
             >>>
@@ -1647,7 +1647,7 @@ class Table(Generic[ROW]):
             >>> # Vector search with "sort" (on an appropriately-indexed vector column):
             >>> my_table.find(
             ...     {},
-            ...     sort={"m_vector": DataAPIVector([0.2,0.3,0.4])},
+            ...     sort={"m_vector": DataAPIVector([0.2, 0.3, 0.4])},
             ...     projection={"winner": True},
             ...     limit=3,
             ... ).to_list()
@@ -1657,14 +1657,14 @@ class Table(Generic[ROW]):
             >>> # (also demonstrating that one can pass a plain list for a vector):
             >>> my_table.find(
             ...     {},
-            ...     sort={"m_vector": [0.2,0.3,0.4]},
+            ...     sort={"m_vector": [0.2, 0.3, 0.4]},
             ...     projection={"winner": True},
             ...     limit=3,
             ...     include_similarity=True,
             ... ).to_list()
             [{'winner': 'Donna', '$similarity': 0.515}, {'winner': 'Victor', ...
             >>>
-            >>> # Regular sorting on a column:
+            >>> # Non-vector sorting on a 'partitionSort' column:
             >>> my_table.find(
             ...     {"match_id": "fight5"},
             ...     sort={"round": SortMode.DESCENDING},
@@ -1682,6 +1682,16 @@ class Table(Generic[ROW]):
             ... ).to_list()
             The Data API returned a warning: {'errorCode': 'IN_MEMORY_SORTING...
             [{'winner': 'Betta Vigo'}, {'winner': 'Adam Zuul'}]
+            >>>
+            >>> # Non-vector sorting on a regular column:
+            >>> # (not recommended performance-wise)
+            >>> my_table.find(
+            ...     {"match_id": "fight5"},
+            ...     sort={"winner": SortMode.ASCENDING},
+            ...     projection={"winner": True},
+            ... ).to_list()
+            The Data API returned a warning: {'errorCode': 'IN_MEMORY_SORTING...
+            [{'winner': 'Adam Zuul'}, {'winner': 'Betta Vigo'}, ...
             >>>
             >>> # Using `.map()` on a cursor:
             >>> winner_cursor = my_table.find(
@@ -1760,8 +1770,8 @@ class Table(Generic[ROW]):
         (which has a few more that do not make sense in this case, such as `limit`).
 
         Args:
-            filter: a dictionary expressing which condition must the returned row
-                satisfy. The filter can use operators, such as "$eq" for equality,
+            filter: a dictionary expressing which condition the returned row
+                must satisfy. The filter can use operators, such as "$eq" for equality,
                 and require columns to compare with literal values. Simple examples
                 are `{}` (zero filter), `{"match_no": 123}` (a shorthand for
                 `{"match_no": {"$eq": 123}}`, or `{"match_no": 123, "round": "C"}`
@@ -1801,14 +1811,107 @@ class Table(Generic[ROW]):
                 underlying API request. If not provided, the Table defaults apply.
                 (This method issues a single API request, hence all timeout parameters
                 are treated the same.)
-            request_timeout_ms: an alias for `table_admin_timeout_ms`.
-            timeout_ms: an alias for `table_admin_timeout_ms`.
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a dictionary expressing resulting row if a match is found, otherwise None.
 
         Examples:
-            TODO
+            >>> from astrapy.constants import SortMode
+            >>> from astrapy.data_types import DataAPITimestamp, DataAPIVector
+            >>>
+            >>> # Filter on the partitioning:
+            >>> my_table.find_one({"match_id": "challenge6"})
+            {'match_id': 'challenge6', 'round': 1, 'fighters': DataAPISet([]), ...
+            >>>
+            >>> # A find with no matches:
+            >>> str(my_table.find_one({"match_id": "not_real"}))
+            'None'
+            >>>
+            >>> # Optimize bandwidth using a projection:
+            >>> my_table.find_one(
+            ...     {"match_id": "challenge6"},
+            ...     projection={"round": True, "winner": True},
+            ... )
+            {'round': 1, 'winner': 'Donna'}
+            >>>
+            >>> # Filter on primary key:
+            >>> my_table.find_one({"match_id": "challenge6", "round": 1})
+            {'match_id': 'challenge6', 'round': 1, 'fighters': DataAPISet([]), ...
+            >>>
+            >>> # Filter on a regular indexed column:
+            >>> my_table.find_one({"winner": "Caio Gozer"})
+            {'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
+            >>>
+            >>> # Non-equality filter on a regular indexed column:
+            >>> my_table.find_one({"score": {"$gte": 15}})
+            {'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
+            >>>
+            >>> # Filter on a regular non-indexed column:
+            >>> # (not recommended performance-wise)
+            >>> my_table.find_one(
+            ...     {"when": {
+            ...         "$gte": DataAPITimestamp.from_string("1999-12-31T01:23:44Z")
+            ...     }}
+            ... )
+            The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
+            {'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
+            >>>
+            >>> # Empty filter:
+            >>> my_table.find_one({})
+            The Data API returned a warning: {'errorCode': 'ZERO_FILTER_OPERATIONS', ...
+            {'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
+            >>>
+            >>> # Filter on the primary key and a regular non-indexed column:
+            >>> # (not recommended performance-wise)
+            >>> my_table.find_one(
+            ...     {"match_id": "fight5", "round": 3, "winner": "Caio Gozer"}
+            ... )
+            The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
+            {'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
+            >>>
+            >>> # Filter on a regular non-indexed column (and incomplete primary key)
+            >>> # (not recommended performance-wise)
+            >>> my_table.find_one({"round": 3, "winner": "Caio Gozer"})
+            The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
+            {'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
+            >>>
+            >>> # Vector search with "sort" (on an appropriately-indexed vector column):
+            >>> my_table.find_one(
+            ...     {},
+            ...     sort={"m_vector": DataAPIVector([0.2, 0.3, 0.4])},
+            ...     projection={"winner": True},
+            ... )
+            {'winner': 'Donna'}
+            >>>
+            >>> # Return the numeric value of the vector similarity
+            >>> # (also demonstrating that one can pass a plain list for a vector):
+            >>> my_table.find_one(
+            ...     {},
+            ...     sort={"m_vector": [0.2, 0.3, 0.4]},
+            ...     projection={"winner": True},
+            ...     include_similarity=True,
+            ... )
+            {'winner': 'Donna', '$similarity': 0.515}
+            >>>
+            >>> # Non-vector sorting on a 'partitionSort' column:
+            >>> my_table.find_one(
+            ...     {"match_id": "fight5"},
+            ...     sort={"round": SortMode.DESCENDING},
+            ...     projection={"winner": True},
+            ... )
+            {'winner': 'Caio Gozer'}
+            >>>
+            >>> # Non-vector sorting on a regular column:
+            >>> # (not recommended performance-wise)
+            >>> my_table.find_one(
+            ...     {"match_id": "fight5"},
+            ...     sort={"winner": SortMode.ASCENDING},
+            ...     projection={"winner": True},
+            ... )
+            The Data API returned a warning: {'errorCode': 'IN_MEMORY_SORTING...
+            {'winner': 'Adam Zuul'}
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -1871,7 +1974,75 @@ class Table(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> list[Any]:
         """
-        TODO
+        Return a list of the unique values of `key` across the rows
+        in the table that match the provided filter.
+
+        Args:
+            key: the name of the field whose value is inspected across rows.
+                Keys are typically just column names, although they can use
+                the dot notation to select particular entries in map columns.
+                For set and list columns, individual entries are "unrolled"
+                automatically; in particular, for lists, numeric indices
+                can be used in the key dot-notation syntax.
+                Example of acceptable `key` values:
+                    "a_column"
+                    "map_column.map_key"
+                    "list_column.2"
+            filter: a dictionary expressing which condition the inspected rows
+                must satisfy. The filter can use operators, such as "$eq" for equality,
+                and require columns to compare with literal values. Simple examples
+                are `{}` (zero filter), `{"match_no": 123}` (a shorthand for
+                `{"match_no": {"$eq": 123}}`, or `{"match_no": 123, "round": "C"}`
+                (multiple conditions are implicitly combined with "$and").
+                Please consult the Data API documentation for a more detailed
+                explanation of table search filters and tips on their usage.
+            general_method_timeout_ms: a timeout, in milliseconds, for the whole
+                requested operation (which may involve multiple API requests).
+                This method, being based on `find` (see) may entail successive HTTP API
+                requests, depending on the amount of involved rows.
+            request_timeout_ms: a timeout, in milliseconds, for each API request.
+            timeout_ms: an alias for `general_method_timeout_ms`.
+
+        Returns:
+            a list of all different values for `key` found across the rows
+            that match the filter. The result list has no repeated items.
+
+        Example:
+            >>> my_table.distinct("winner", filter={"match_id": "challenge6"})
+            ['Donna', 'Erick', 'Fiona']
+            >>>
+            >>> # distinct values across the whole table:
+            >>> # (not recommended performance-wise)
+            >>> my_table.distinct("winner")
+            The Data API returned a warning: {'errorCode': 'ZERO_FILTER_OPERATIONS', ...
+            ['Victor', 'Adam Zuul', 'Betta Vigo', 'Caio Gozer', 'Donna', 'Erick', ...
+            >>>
+            >>> # Over a column containing null values
+            >>> # (also with composite filter):
+            >>> my_table.distinct(
+            ...     "score",
+            ...     filter={"match_id": {"$in": ["fight4", "tournamentA"]}},
+            ... )
+            [18, None]
+            >>>
+            >>> # distinct over a set column (automatically "unrolled"):
+            >>> my_table.distinct(
+            ...     "fighters",
+            ...     filter={"match_id": {"$in": ["fight4", "tournamentA"]}},
+            ... )
+            [UUID('0193539a-2770-8c09-a32a-111111111111'), UUID('019353e3-00b4-...
+
+        Note:
+            It must be kept in mind that `distinct` is a client-side operation,
+            which effectively browses all required rows using the logic
+            of the `find` method and collects the unique values found for `key`.
+            As such, there may be performance, latency and ultimately
+            billing implications if the amount of matching rows is large.
+
+        Note:
+            For details on the behaviour of "distinct" in conjunction with
+            real-time changes in the table contents, see the
+            Note of the `find` command.
         """
 
         # lazy-import here to avoid circular import issues
@@ -1950,10 +2121,12 @@ class Table(Generic[ROW]):
                 Furthermore, if the actual number of rows exceeds the maximum
                 count that the Data API can reach (regardless of upper_bound),
                 an exception will be raised.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the table-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             the exact count of matching rows.
@@ -2030,10 +2203,12 @@ class Table(Generic[ROW]):
         Contrary to `count_documents`, this method has no filtering parameters.
 
         Args:
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the table-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
             a server-provided estimate count of the documents in the table.
@@ -2077,34 +2252,82 @@ class Table(Generic[ROW]):
         timeout_ms: int | None = None,
     ) -> None:
         """
-        Update a single document on the table as requested,
-        with the implicit behaviour of inserting a new one if no match is found.
+        Update a single document on the table, changing some or all of the columns,
+        with the implicit behaviour of inserting a new row if no match is found.
 
         Args:
-            filter: a predicate expressing in full a primary key, i.e. a dictionary
-                defining values for all columns that form the table's primary key.
-                Examples:
-                    {"code": 123}
-                    {"country": "UK", "year": 2024}
+            filter: a predicate expressing the table primary key in full,
+                i.e. a dictionary defining values for all columns that form the
+                primary key. An example may be `{"match_id": "fight4", "round": 1}`.
             update: the update prescription to apply to the row, expressed
-                as a dictionary as per Data API syntax. Examples are:
-                    {"$set": {"field": "value}}
-                    {"$unset": {"field": ""}}
-                Primary key fields cannot be provided for a "$set" operation.
-                For Tables, a limited set of update operators apply.
+                as a dictionary conforming to the per Data API syntax. The update
+                operators for tables are `$set` and `$unset` (in particular,
+                setting a column to None has the same effect as the $unset operator).
+                Examples are `{"$set": {"round": 12}}` and
+                `{"$unset": {"winner": "", "score": ""}}`.
+                Note that the update operation cannot alter the primary key columns.
                 See the Data API documentation for more details.
-            general_method_timeout_ms: TODO
-            request_timeout_ms: a timeout, in milliseconds, for the API HTTP request.
-                If not passed, the table-level setting is used instead.
-            timeout_ms: an alias for `request_timeout_ms`.
+            general_method_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `general_method_timeout_ms`.
+            timeout_ms: an alias for `general_method_timeout_ms`.
 
         Example:
-            >>> # Assume "country" and "year" make the primary key and the table starts empty.
-            >>> my_table.insert_one({"country": "UK", "year": 2024, "colours": ["yellow", "blue"]})
-            TableInsertOneResult(...)
-            >>> my_table.update_one({"country": "UK", "year": 2024}, update={"$set": {"colours": []}})
-            >>> # the following will create a new row:
-            >>> my_table.update_one({"country": "ES", "year": 2020}, update={"$set": {"colours": ["amarillo"]}})
+            >>> from astrapy.data_types import DataAPISet
+            >>>
+            >>> # Set a new value for a column
+            >>> my_table.update_one(
+            ...     {"match_id": "fight4", "round": 1},
+            ...     update={"$set": {"winner": "Winona"}},
+            ... )
+            >>>
+            >>> # Set a new value for a column while unsetting another colum
+            >>> my_table.update_one(
+            ...     {"match_id": "fight4", "round": 1},
+            ...     update={"$set": {"winner": None, "score": 24}},
+            ... )
+            >>>
+            >>> # Set a 'set' column to empty
+            >>> my_table.update_one(
+            ...     {"match_id": "fight4", "round": 1},
+            ...     update={"$set": {"fighters": DataAPISet()}},
+            ... )
+            >>>
+            >>> # Set a 'set' column to empty using None
+            >>> my_table.update_one(
+            ...     {"match_id": "fight4", "round": 1},
+            ...     update={"$set": {"fighters": None}},
+            ... )
+            >>>
+            >>> # Set a 'set' column to empty using a regular (empty) set
+            >>> my_table.update_one(
+            ...     {"match_id": "fight4", "round": 1},
+            ...     update={"$set": {"fighters": set()}},
+            ... )
+            >>>
+            >>> # Set a 'set' column to empty using $unset
+            >>> my_table.update_one(
+            ...     {"match_id": "fight4", "round": 1},
+            ...     update={"$unset": {"fighters": None}},
+            ... )
+            >>>
+            >>> # A non-existing primary key creates a new row
+            >>> my_table.update_one(
+            ...     {"match_id": "bar_fight", "round": 4},
+            ...     update={"$set": {"score": 8, "winner": "Jack"}},
+            ... )
+            >>>
+            >>> # Delete column values for a row (they'll read as None now)
+            >>> my_table.update_one(
+            ...     {"match_id": "challenge6", "round": 2},
+            ...     update={"$unset": {"winner": None, "score": None}},
+            ... )
+
+        Note:
+            a row created entirely with update operations (as opposed to insertions)
+            may, correspondingly, be deleted by means of an $unset update on all columns.
         """
 
         _request_timeout_ms, _rt_label = _select_singlereq_timeout_gm(
@@ -3675,8 +3898,8 @@ class AsyncTable(Generic[ROW]):
         if the amount of results is very large.
 
         Args:
-            filter: a dictionary expressing which condition must the returned rows
-                satisfy. The filter can use operators, such as "$eq" for equality,
+            filter: a dictionary expressing which condition the returned rows
+                must satisfy. The filter can use operators, such as "$eq" for equality,
                 and require columns to compare with literal values. Simple examples
                 are `{}` (zero filter, not recommended for large tables),
                 `{"match_no": 123}` (a shorthand for `{"match_no": {"$eq": 123}}`,
@@ -3748,7 +3971,7 @@ class AsyncTable(Generic[ROW]):
             (995/B): winner Erick
             (995/C): winner Fiona
 
-            >>> # Filter on the partition key:
+            >>> # Filter on the partitioning:
             >>> await my_table.find({"match_no": 991}).to_list()
             [{'match_no': 991, 'round': 'A', ...}, ...]  # Note: shortened
 
