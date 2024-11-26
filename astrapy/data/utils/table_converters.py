@@ -54,6 +54,7 @@ from astrapy.data_types import (
     DataAPIVector,
 )
 from astrapy.ids import UUID, ObjectId
+from astrapy.settings.error_messages import CANNOT_ENCODE_NAIVE_DATETIME_ERROR_MESSAGE
 from astrapy.utils.api_options import FullSerdesOptions
 from astrapy.utils.date_utils import _get_datetime_offset
 
@@ -199,7 +200,8 @@ def _create_scalar_tpostprocessor(
             ) -> datetime.datetime | None:
                 if raw_value is None:
                     return None
-                return DataAPITimestamp.from_string(raw_value).to_datetime()
+                da_timestamp = DataAPITimestamp.from_string(raw_value)
+                return da_timestamp.to_datetime(tz=options.datetime_tzinfo)
 
             return _tpostprocessor_timestamp_stdlib
 
@@ -602,9 +604,9 @@ def preprocess_table_payload_value(
         # is not in all supported Python versions).
         offset_tuple = _get_datetime_offset(value)
         if offset_tuple is None:
-            raise ValueError(
-                "Cannot encode a datetime without timezone information ('tzinfo')."
-            )
+            if options.accept_naive_datetimes:
+                return DataAPITimestamp(int(value.timestamp() * 1000)).to_string()
+            raise ValueError(CANNOT_ENCODE_NAIVE_DATETIME_ERROR_MESSAGE)
         date_part_str = value.strftime(DATETIME_DATETIME_FORMAT)
         offset_h, offset_m = offset_tuple
         offset_part_str = f"{offset_h:+03}:{offset_m:02}"

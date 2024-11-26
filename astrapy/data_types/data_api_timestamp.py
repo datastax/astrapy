@@ -98,13 +98,11 @@ class DataAPITimestamp:
         else:
             return NotImplemented
 
-    def to_datetime(
-        self, *, tz: datetime.timezone = datetime.timezone.utc
-    ) -> datetime.datetime:
+    def to_datetime(self, *, tz: datetime.timezone | None) -> datetime.datetime:
         return datetime.datetime.fromtimestamp(self.timestamp_ms / 1000.0, tz=tz)
 
     def to_naive_datetime(self) -> datetime.datetime:
-        return self.to_datetime().astimezone().replace(tzinfo=None)
+        return datetime.datetime.fromtimestamp(self.timestamp_ms / 1000.0, tz=None)
 
     @staticmethod
     def from_datetime(dt: datetime.datetime) -> DataAPITimestamp:

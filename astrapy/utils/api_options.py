@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -29,10 +30,12 @@ from astrapy.constants import CallerType, Environment
 from astrapy.settings.defaults import (
     API_PATH_ENV_MAP,
     API_VERSION_ENV_MAP,
+    DEFAULT_ACCEPT_NAIVE_DATETIMES,
     DEFAULT_BINARY_ENCODE_VECTORS,
     DEFAULT_COLLECTION_ADMIN_TIMEOUT_MS,
     DEFAULT_CUSTOM_DATATYPES_IN_READING,
     DEFAULT_DATABASE_ADMIN_TIMEOUT_MS,
+    DEFAULT_DATETIME_TZINFO,
     DEFAULT_GENERAL_METHOD_TIMEOUT_MS,
     DEFAULT_KEYSPACE_ADMIN_TIMEOUT_MS,
     DEFAULT_REQUEST_TIMEOUT_MS,
@@ -161,6 +164,8 @@ class SerdesOptions:
     custom_datatypes_in_reading: bool | UnsetType = _UNSET
     unroll_iterables_to_lists: bool | UnsetType = _UNSET
     use_decimals_in_collections: bool | UnsetType = _UNSET
+    accept_naive_datetimes: bool | UnsetType = _UNSET
+    datetime_tzinfo: datetime.timezone | None | UnsetType = _UNSET
 
 
 @dataclass
@@ -169,6 +174,8 @@ class FullSerdesOptions(SerdesOptions):
     custom_datatypes_in_reading: bool
     unroll_iterables_to_lists: bool
     use_decimals_in_collections: bool
+    accept_naive_datetimes: bool
+    datetime_tzinfo: datetime.timezone | None
 
     def __init__(
         self,
@@ -177,6 +184,8 @@ class FullSerdesOptions(SerdesOptions):
         custom_datatypes_in_reading: bool,
         unroll_iterables_to_lists: bool,
         use_decimals_in_collections: bool,
+        accept_naive_datetimes: bool,
+        datetime_tzinfo: datetime.timezone | None,
     ) -> None:
         SerdesOptions.__init__(
             self,
@@ -184,6 +193,8 @@ class FullSerdesOptions(SerdesOptions):
             custom_datatypes_in_reading=custom_datatypes_in_reading,
             unroll_iterables_to_lists=unroll_iterables_to_lists,
             use_decimals_in_collections=use_decimals_in_collections,
+            accept_naive_datetimes=accept_naive_datetimes,
+            datetime_tzinfo=datetime_tzinfo,
         )
 
     def with_override(self, other: SerdesOptions) -> FullSerdesOptions:
@@ -207,6 +218,16 @@ class FullSerdesOptions(SerdesOptions):
                 other.use_decimals_in_collections
                 if not isinstance(other.use_decimals_in_collections, UnsetType)
                 else self.use_decimals_in_collections
+            ),
+            accept_naive_datetimes=(
+                other.accept_naive_datetimes
+                if not isinstance(other.accept_naive_datetimes, UnsetType)
+                else self.accept_naive_datetimes
+            ),
+            datetime_tzinfo=(
+                other.datetime_tzinfo
+                if not isinstance(other.datetime_tzinfo, UnsetType)
+                else self.datetime_tzinfo
             ),
         )
 
@@ -567,6 +588,8 @@ defaultSerdesOptions = FullSerdesOptions(
     custom_datatypes_in_reading=DEFAULT_CUSTOM_DATATYPES_IN_READING,
     unroll_iterables_to_lists=DEFAULT_UNROLL_ITERABLES_TO_LISTS,
     use_decimals_in_collections=DEFAULT_USE_DECIMALS_IN_COLLECTIONS,
+    accept_naive_datetimes=DEFAULT_ACCEPT_NAIVE_DATETIMES,
+    datetime_tzinfo=DEFAULT_DATETIME_TZINFO,
 )
 
 

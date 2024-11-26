@@ -49,9 +49,9 @@ def convert_to_ejson_objectid_object(objectid_value: ObjectId) -> dict[str, str]
 
 
 def convert_ejson_date_object_to_datetime(
-    date_object: dict[str, int],
+    date_object: dict[str, int], tz: datetime.timezone | None
 ) -> datetime.datetime:
-    return datetime.datetime.fromtimestamp(date_object["$date"] / 1000.0)
+    return datetime.datetime.fromtimestamp(date_object["$date"] / 1000.0, tz=tz)
 
 
 def convert_ejson_date_object_to_apitimestamp(

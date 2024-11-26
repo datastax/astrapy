@@ -246,84 +246,42 @@ For more information, and code examples, check out the docstrings and consult
 the API reference linked above.
 
 
-### Working with dates in Collections
+### Working with dates in Collections and Tables
 
 Date and datetime objects, i.e. instances of the standard library
 `datetime.datetime` and `datetime.date` classes, can be used
-anywhere when sending documents and queries to the API:
+anywhere when sending documents and queries to the API.
 
-```python
-import datetime
-import astrapy
+By default, what you get back is an instance of `astrapy.data_types.DataAPITimestamp`
+(which has a much wider range of expressable timestamps than Python's stdlib).
+If you want to revert to using the standard library `datetime.datetime`, you can do so
+by turn on the `APIOptions.SerdesOptions.custom_datatypes_in_reading` API Options setting for the
+collection/table object (note that this setting affects the returned format for several other table data types).
 
+If you choose to have timestamps returned as standard-library `datetime.datetime` objects,
+both for collections and tables, you may supply a specific timezone for these
+(the default is UTC). You do so by providing an appropriate `datetime.timezone` value
+to the `APIOptions.SerdesOptions.datetime_tz` API Options setting for the
+collection/table object. You can also specify `None` for a timezone, in which case
+the resulting values will be timezone-unaware (or "naive") datetimes.
 
-ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
-ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
+_Naive_ datetimes (i.e. those without a timezone information attached)
+are inherently ambiguous when it comes to translating them into a unambiguous timestamp.
+For this reason, if you want to work with naive datetimes, and in particular you want
+AstraPy to accept them for writes, you need to explicitly
+turn on the `APIOptions.SerdesOptions.accept_naive_datetimes` API Options setting for the
+collection/table object, otherwise AstraPy will raise an error.
 
-my_client = astrapy.DataAPIClient()
-my_database = my_client.get_database(
-    ASTRA_DB_API_ENDPOINT,
-    token=ASTRA_DB_APPLICATION_TOKEN,
-)
-my_collection = my_database.dreams
+_Remember that what effectively gets_
+_written to DB is always a (numeric) **timestamp**: for naive quantities, this timestamp value depends_
+_on the implied timezone used in the conversion, potentially leading to unexpected results_
+_e.g. if multiple applications are running with different locale settings._
 
-my_collection.insert_one({"when": datetime.datetime.now()})
-my_collection.insert_one({"date_of_birth": datetime.date(2000, 1, 1)})
+The following diagram summarized the behaviour of the write and read paths for datetime objects,
+depending on the `SerdesOptions` settings:
 
-my_collection.update_one(
-    {"registered_at": datetime.date(1999, 11, 14)},
-    {"$set": {"message": "happy Sunday!"}},
-)
+![AstraPy, abstractions chart](https://raw.githubusercontent.com/datastax/astrapy/main/pictures/astrapy_datetime_serdes_options.png)
 
-result_doc = my_collection.find_one(
-    {"date_of_birth": {"$lt": datetime.date(2001, 1, 1)}},
-    projection={"_id": False},
-)
-print(result_doc)
-# This would print (depending on the timezone Python detects!):
-#    {'date_of_birth': DataAPITimestamp(timestamp_ms=946681200000 [1999-12-31T23:00:00.000Z])}
-```
-
-Storing timezone-naive datetimes is discouraged, since what effectively gets
-written to DB is a _timestamp_ whose value depends on the implied timezone used
-in the conversion: one should always use timezone-aware quantities.
-
-As can be seen above, however, AstraPy by default uses its own
-`astrapy.data_types.DataAPITimestamp` class to represent responses:
-This class covers a much wider year range so as to be fully compatible with the API.
-`DataAPITimestamp` objects can be converted into
-standard-library objects with the `.to_datetime()` and `.to_naive_datetime()` methods,
-if the year range allows for that.
-
-```python
-result_doc['date_of_birth']
-# DataAPITimestamp(timestamp_ms=946681200000 [1999-12-31T23:00:00.000Z])
-result_doc['date_of_birth'].to_datetime()
-# datetime.datetime(1999, 12, 31, 23, 0, tzinfo=datetime.timezone.utc)
-result_doc['date_of_birth'].to_naive_datetime()
-# datetime.datetime(2000, 1, 1, 0, 0)
-```
-
-Alternatively, one can configure the collection to
-always fall back to standard-library classes for responses (in which case it will always
-be `datetime.datetime` and never `datetime.date`):
-
-```python
-from astrapy.api_options import APIOptions, SerdesOptions
-
-my_stdlibtypes_collection = my_collection.with_options(
-    api_options=APIOptions(serdes_options=SerdesOptions(
-        custom_datatypes_in_reading=False,
-    ))
-)
-
-my_stdlibtypes_collection.find_one(
-    {"date_of_birth": {"$lt": datetime.date(2001, 1, 1)}},
-    projection={"_id": False},
-)
-# {'date_of_birth': datetime.datetime(2000, 1, 1, 0, 0)}
-# TODO adjust timezone here
-```
 
 ### Working with ObjectIds and UUIDs in Collections
 

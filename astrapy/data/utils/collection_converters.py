@@ -37,6 +37,7 @@ from astrapy.data.utils.vector_coercion import (
 )
 from astrapy.data_types import DataAPITimestamp, DataAPIVector
 from astrapy.ids import UUID, ObjectId
+from astrapy.settings.error_messages import CANNOT_ENCODE_NAIVE_DATETIME_ERROR_MESSAGE
 from astrapy.utils.api_options import FullSerdesOptions
 
 
@@ -87,7 +88,12 @@ def preprocess_collection_payload_value(
             preprocess_collection_payload_value(path + [""], list_item, options=options)
             for list_item in _value
         ]
-    elif isinstance(_value, datetime.datetime) or isinstance(_value, datetime.date):
+    elif isinstance(_value, datetime.datetime):
+        if _value.utcoffset() is None and not options.accept_naive_datetimes:
+            raise ValueError(CANNOT_ENCODE_NAIVE_DATETIME_ERROR_MESSAGE)
+        return convert_to_ejson_date_object(_value)
+    elif isinstance(_value, datetime.date):
+        # Note: since 'datetime' subclasses 'date', this must come after the previous.
         return convert_to_ejson_date_object(_value)
     elif isinstance(_value, bytes):
         return convert_to_ejson_bytes(_value)
@@ -158,7 +164,9 @@ def postprocess_collection_response_value(
             if options.custom_datatypes_in_reading:
                 return convert_ejson_date_object_to_apitimestamp(value)
             else:
-                return convert_ejson_date_object_to_datetime(value)
+                return convert_ejson_date_object_to_datetime(
+                    value, tz=options.datetime_tzinfo
+                )
         elif value_keys == {"$uuid"}:
             # this is `{"$uuid": "abc123..."}`, restore to UUID
             return convert_ejson_uuid_object_to_uuid(value)

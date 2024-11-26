@@ -14,6 +14,8 @@
 
 from __future__ import annotations
 
+import datetime
+
 # whether to go the extra mile and ensure the "decimal escape trick" is
 # not colliding with legitimate user-provided (extremely rare) strings.
 # A system setting, off at this time
@@ -61,6 +63,9 @@ DEFAULT_USE_DECIMALS_IN_COLLECTIONS = False
 DEFAULT_BINARY_ENCODE_VECTORS = True
 DEFAULT_CUSTOM_DATATYPES_IN_READING = True
 DEFAULT_UNROLL_ITERABLES_TO_LISTS = False
+
+DEFAULT_ACCEPT_NAIVE_DATETIMES = False
+DEFAULT_DATETIME_TZINFO = datetime.timezone.utc
 
 DEFAULT_INSERT_MANY_CHUNK_SIZE = 50
 DEFAULT_INSERT_MANY_CONCURRENCY = 20

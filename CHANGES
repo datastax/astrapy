@@ -17,6 +17,7 @@ Collections default to using custom types for lossless and full-range expression
     - e.g. instead of 'datetime.datetime', instances of `DataAPITimestamp` are returned
     - Exception: numbers are treated by default as ints and floats. To have them all Decimal, set serdes_option.use_decimals_in_collections to True.
     - Use the options' serdes_option to opt out and revert to non-custom data types
+    - For datetimes, fine control over naive-datetime tolerance and timezone is introduced. Usage of naive datetime is now OPT-IN.
 Renamed (collection-specific) "Result" classes like this:
     - 'DeleteResult' => `CollectionDeleteResult`
     - 'InsertOneResult' => `CollectionInsertOneResult`

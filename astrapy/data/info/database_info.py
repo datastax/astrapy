@@ -24,7 +24,9 @@ from astrapy.data_types import DataAPITimestamp
 
 def _failsafe_parse_date(date_string: str | None) -> datetime.datetime | None:
     try:
-        return DataAPITimestamp.from_string(date_string or "").to_datetime()
+        return DataAPITimestamp.from_string(date_string or "").to_datetime(
+            tz=datetime.timezone.utc
+        )
     except ValueError:
         return None
 
