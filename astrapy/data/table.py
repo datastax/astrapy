@@ -911,6 +911,7 @@ class Table(Generic[ROW]):
             ...     AlterTableAddVectorize,
             ...     AlterTableDropColumns,
             ...     AlterTableDropVectorize,
+            ...     TableScalarColumnType,
             ...     TableScalarColumnTypeDescriptor,
             ...     VectorServiceOptions,
             ... )
@@ -920,7 +921,7 @@ class Table(Generic[ROW]):
             ...     AlterTableAddColumns(
             ...         columns={
             ...             "tie_break": TableScalarColumnTypeDescriptor(
-            ...                 column_type="boolean",
+            ...                 column_type=TableScalarColumnType.BOOLEAN,
             ...             ),
             ...         }
             ...     )
@@ -939,7 +940,7 @@ class Table(Generic[ROW]):
             ...                 provider="openai",
             ...                 model_name="text-embedding-3-small",
             ...                 # authentication={
-            ...                     # "providerKey": "MY_API_KEY_STORED_SECRET_NAME",
+            ...                     # "providerKey": "ASTRA_KMS_API_KEY_NAME",
             ...                 # },
             ...             ),
             ...         }
@@ -1033,7 +1034,7 @@ class Table(Generic[ROW]):
         Args:
             row: a dictionary expressing the row to insert. The primary key
                 must be specified in full, while any other column may be omitted
-                if desired.
+                if desired (in which case it is left as is on DB).
                 The values for the various columns supplied in the row must
                 be of the right data type for the insertion to succeed.
                 Non-primary-key columns can also be explicitly set to null.
@@ -1223,7 +1224,8 @@ class Table(Generic[ROW]):
         Args:
             rows: an iterable of dictionaries, each expressing a row to insert.
                 Each row must at least fully specify the primary key column values,
-                while any other column may be omitted if desired.
+                while any other column may be omitted if desired (in which case
+                it is left as is on DB).
                 The values for the various columns supplied in each row must
                 be of the right data type for the insertion to succeed.
                 Non-primary-key columns can also be explicitly set to null.
@@ -1241,6 +1243,7 @@ class Table(Generic[ROW]):
                 If not provided, the corresponding Table defaults apply.
             request_timeout_ms: a timeout, in milliseconds, to impose on each
                 individual HTTP request to the Data API to accomplish the operation.
+                If not provided, the corresponding Table defaults apply.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
@@ -1590,7 +1593,7 @@ class Table(Generic[ROW]):
                 column(s) and the ascending/descending ordering required.
                 If multiple columns are provided, the sorting applies them
                 hierarchically to the rows. Examples are `{"score": SortMode.ASCENDING}`
-                (equivalently `{"score": +1}`), {"score": +1, "when": -1}`.
+                (equivalently `{"score": +1}`), `{"score": +1, "when": -1}`.
                 Note that, depending on the column(s) chosen for sorting, the table
                 partitioning structure, and the presence of indexes, the sorting
                 may be done in-memory by the API. In that case, there may be performance
@@ -1600,6 +1603,11 @@ class Table(Generic[ROW]):
                 individual HTTP request to the Data API to accomplish the operation.
                 If not provided, the Table defaults apply.
             timeout_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a TableFindCursor object, that can be iterated over (and manipulated
+            in several ways), that if needed handles pagination under the hood
+            as the rows are consumed.
 
         Note:
             As the rows are retrieved in chunks progressively, while the cursor
@@ -1676,6 +1684,15 @@ class Table(Generic[ROW]):
             ...     limit=3,
             ... ).to_list()
             [{'winner': 'Donna'}, {'winner': 'Victor'}]
+            >>>
+            >>> # Hybrid search with vector sort and non-vector filtering:
+            >>> my_table.find(
+            ...     {"match_id": "fight4"},
+            ...     sort={"m_vector": DataAPIVector([0.2, 0.3, 0.4])},
+            ...     projection={"winner": True},
+            ...     limit=3,
+            ... ).to_list()
+            [{'winner': 'Victor'}]
             >>>
             >>> # Return the numeric value of the vector similarity
             >>> # (also demonstrating that one can pass a plain list for a vector):
@@ -1825,7 +1842,7 @@ class Table(Generic[ROW]):
                 column(s) and the ascending/descending ordering required.
                 If multiple columns are provided, the sorting applies them
                 hierarchically to the rows. Examples are `{"score": SortMode.ASCENDING}`
-                (equivalently `{"score": +1}`), {"score": +1, "when": -1}`.
+                (equivalently `{"score": +1}`), `{"score": +1, "when": -1}`.
                 Note that, depending on the column(s) chosen for sorting, the table
                 partitioning structure, and the presence of indexes, the sorting
                 may be done in-memory by the API. In that case, there may be performance
@@ -1839,7 +1856,7 @@ class Table(Generic[ROW]):
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
-            a dictionary expressing resulting row if a match is found, otherwise None.
+            a dictionary expressing the result if a row is found, otherwise None.
 
         Examples:
             >>> from astrapy.constants import SortMode
@@ -1908,6 +1925,14 @@ class Table(Generic[ROW]):
             ...     projection={"winner": True},
             ... )
             {'winner': 'Donna'}
+            >>>
+            >>> # Hybrid search with vector sort and non-vector filtering:
+            >>> my_table.find_one(
+            ...     {"match_id": "fight4"},
+            ...     sort={"m_vector": DataAPIVector([0.2, 0.3, 0.4])},
+            ...     projection={"winner": True},
+            ... )
+            {'winner': 'Victor'}
             >>>
             >>> # Return the numeric value of the vector similarity
             >>> # (also demonstrating that one can pass a plain list for a vector):
@@ -2026,6 +2051,7 @@ class Table(Generic[ROW]):
                 requests, depending on the amount of involved rows.
                 If not provided, the Table defaults apply.
             request_timeout_ms: a timeout, in milliseconds, for each API request.
+                If not provided, the corresponding Table defaults apply.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
@@ -2285,7 +2311,7 @@ class Table(Generic[ROW]):
                 i.e. a dictionary defining values for all columns that form the
                 primary key. An example may be `{"match_id": "fight4", "round": 1}`.
             update: the update prescription to apply to the row, expressed
-                as a dictionary conforming to the per Data API syntax. The update
+                as a dictionary conforming to the Data API syntax. The update
                 operators for tables are `$set` and `$unset` (in particular,
                 setting a column to None has the same effect as the $unset operator).
                 Examples are `{"$set": {"round": 12}}` and
@@ -3484,6 +3510,7 @@ class AsyncTable(Generic[ROW]):
             ...     AlterTableAddVectorize,
             ...     AlterTableDropColumns,
             ...     AlterTableDropVectorize,
+            ...     TableScalarColumnType,
             ...     TableScalarColumnTypeDescriptor,
             ...     VectorServiceOptions,
             ... )
@@ -3493,7 +3520,7 @@ class AsyncTable(Generic[ROW]):
             ...     AlterTableAddColumns(
             ...         columns={
             ...             "tie_break": TableScalarColumnTypeDescriptor(
-            ...                 column_type="boolean",
+            ...                 column_type=TableScalarColumnType.BOOLEAN,
             ...             ),
             ...         }
             ...     )
@@ -3512,7 +3539,7 @@ class AsyncTable(Generic[ROW]):
             ...                 provider="openai",
             ...                 model_name="text-embedding-3-small",
             ...                 # authentication={
-            ...                     # "providerKey": "MY_API_KEY_STORED_SECRET_NAME",
+            ...                     # "providerKey": "ASTRA_KMS_API_KEY_NAME",
             ...                 # },
             ...             ),
             ...         }
@@ -3606,7 +3633,7 @@ class AsyncTable(Generic[ROW]):
         Args:
             row: a dictionary expressing the row to insert. The primary key
                 must be specified in full, while any other column may be omitted
-                if desired.
+                if desired (in which case it is left as is on DB).
                 The values for the various columns supplied in the row must
                 be of the right data type for the insertion to succeed.
                 Non-primary-key columns can also be explicitly set to null.
@@ -3795,7 +3822,8 @@ class AsyncTable(Generic[ROW]):
         Args:
             rows: an iterable of dictionaries, each expressing a row to insert.
                 Each row must at least fully specify the primary key column values,
-                while any other column may be omitted if desired.
+                while any other column may be omitted if desired (in which case
+                it is left as is on DB).
                 The values for the various columns supplied in each row must
                 be of the right data type for the insertion to succeed.
                 Non-primary-key columns can also be explicitly set to null.
@@ -3813,6 +3841,7 @@ class AsyncTable(Generic[ROW]):
                 If not provided, the corresponding AsyncTable defaults apply.
             request_timeout_ms: a timeout, in milliseconds, to impose on each
                 individual HTTP request to the Data API to accomplish the operation.
+                If not provided, the corresponding Table defaults apply.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
@@ -4149,7 +4178,7 @@ class AsyncTable(Generic[ROW]):
                 column(s) and the ascending/descending ordering required.
                 If multiple columns are provided, the sorting applies them
                 hierarchically to the rows. Examples are `{"score": SortMode.ASCENDING}`
-                (equivalently `{"score": +1}`), {"score": +1, "when": -1}`.
+                (equivalently `{"score": +1}`), `{"score": +1, "when": -1}`.
                 Note that, depending on the column(s) chosen for sorting, the table
                 partitioning structure, and the presence of indexes, the sorting
                 may be done in-memory by the API. In that case, there may be performance
@@ -4159,6 +4188,11 @@ class AsyncTable(Generic[ROW]):
                 individual HTTP request to the Data API to accomplish the operation.
                 If not provided, the AsyncTable defaults apply.
             timeout_ms: an alias for `request_timeout_ms`.
+
+        Returns:
+            a TableFindCursor object, that can be iterated over (and manipulated
+            in several ways), that if needed handles pagination under the hood
+            as the rows are consumed.
 
         Note:
             As the rows are retrieved in chunks progressively, while the cursor
@@ -4178,7 +4212,7 @@ class AsyncTable(Generic[ROW]):
             (R:1): winner Donna
             (R:2): winner Erick
             (R:3): winner Fiona
-
+            >>>
             >>> # Optimize bandwidth using a projection:
             >>> proj = {"round": True, "winner": True}
             >>> async def loop2():
@@ -4192,31 +4226,31 @@ class AsyncTable(Generic[ROW]):
             (R:1): winner Donna
             (R:2): winner Erick
             (R:3): winner Fiona
-
-            # Filter on the partitioning:
+            >>>
+            >>> # Filter on the partitioning:
             >>> asyncio.run(
             ...     my_async_table.find({"match_id": "challenge6"}).to_list()
             ... )
             [{'match_id': 'challenge6', 'round': 1, 'fighters': DataAPISet([]), ...
-
-            # Filter on primary key:
+            >>>
+            >>> # Filter on primary key:
             >>> asyncio.run(
             ...     my_async_table.find(
             ...         {"match_id": "challenge6", "round": 1}
             ...     ).to_list()
             ... )
             [{'match_id': 'challenge6', 'round': 1, 'fighters': DataAPISet([]), ...
-
-            # Filter on a regular indexed column:
+            >>>
+            >>> # Filter on a regular indexed column:
             >>> asyncio.run(my_async_table.find({"winner": "Caio Gozer"}).to_list())
             [{'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
-
-            # Non-equality filter on a regular indexed column:
+            >>>
+            >>> # Non-equality filter on a regular indexed column:
             >>> asyncio.run(my_async_table.find({"score": {"$gte": 15}}).to_list())
             [{'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
-
-              # Filter on a regular non-indexed column:
-            # (not recommended performance-wise)
+            >>>
+            >>> # Filter on a regular non-indexed column:
+            >>> # (not recommended performance-wise)
             >>> asyncio.run(my_async_table.find(
             ...     {"when": {
             ...         "$gte": DataAPITimestamp.from_string("1999-12-31T01:23:44Z")
@@ -4224,29 +4258,29 @@ class AsyncTable(Generic[ROW]):
             ... ).to_list())
             The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
             [{'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
-
-            # Empty filter (not recommended performance-wise):
+            >>>
+            >>> # Empty filter (not recommended performance-wise):
             >>> asyncio.run(my_async_table.find({}).to_list())
             The Data API returned a warning: {'errorCode': 'ZERO_FILTER_OPERATIONS', ...
             [{'match_id': 'fight4', 'round': 1, 'fighters': DataAPISet([UUID('0193...
-
-              # Filter on the primary key and a regular non-indexed column:
-            # (not recommended performance-wise)
+            >>>
+            >>> # Filter on the primary key and a regular non-indexed column:
+            >>> # (not recommended performance-wise)
             >>> asyncio.run(my_async_table.find(
             ...     {"match_id": "fight5", "round": 3, "winner": "Caio Gozer"}
             ... ).to_list())
             The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
             [{'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
-
-            # Filter on a regular non-indexed column (and incomplete primary key)
-            # (not recommended performance-wise)
+            >>>
+            >>> # Filter on a regular non-indexed column (and incomplete primary key)
+            >>> # (not recommended performance-wise)
             >>> asyncio.run(my_async_table.find(
             ...     {"round": 3, "winner": "Caio Gozer"}
             ... ).to_list())
             The Data API returned a warning: {'errorCode': 'MISSING_INDEX', ...
             [{'match_id': 'fight5', 'round': 3, 'fighters': DataAPISet([]), ...
-
-            # Vector search with "sort" (on an appropriately-indexed vector column):
+            >>>
+            >>> # Vector search with "sort" (on an appropriately-indexed vector column):
             >>> asyncio.run(my_async_table.find(
             ...     {},
             ...     sort={"m_vector": DataAPIVector([0.2, 0.3, 0.4])},
@@ -4254,9 +4288,17 @@ class AsyncTable(Generic[ROW]):
             ...     limit=3,
             ... ).to_list())
             [{'winner': 'Donna'}, {'winner': 'Victor'}]
-
-            # Return the numeric value of the vector similarity
-            # (also demonstrating that one can pass a plain list for a vector):
+            >>>
+            >>> # Hybrid search with vector sort and non-vector filtering:
+            >>> my_table.find(
+            ...     {"match_id": "fight4"},
+            ...     sort={"m_vector": DataAPIVector([0.2, 0.3, 0.4])},
+            ...     projection={"winner": True},
+            ... ).to_list()
+            [{'winner': 'Victor'}]
+            >>>
+            >>> # Return the numeric value of the vector similarity
+            >>> # (also demonstrating that one can pass a plain list for a vector):
             >>> asyncio.run(my_async_table.find(
             ...     {},
             ...     sort={"m_vector": [0.2, 0.3, 0.4]},
@@ -4265,16 +4307,16 @@ class AsyncTable(Generic[ROW]):
             ...     include_similarity=True,
             ... ).to_list())
             [{'winner': 'Donna', '$similarity': 0.515}, {'winner': 'Victor', ...
-
-            # Non-vector sorting on a 'partitionSort' column:
+            >>>
+            >>> # Non-vector sorting on a 'partitionSort' column:
             >>> asyncio.run(my_async_table.find(
             ...     {"match_id": "fight5"},
             ...     sort={"round": SortMode.DESCENDING},
             ...     projection={"winner": True},
             ... ).to_list())
             [{'winner': 'Caio Gozer'}, {'winner': 'Betta Vigo'}, ...
-
-            # Using `skip` and `limit`:
+            >>>
+            >>> # Using `skip` and `limit`:
             >>> asyncio.run(my_async_table.find(
             ...     {"match_id": "fight5"},
             ...     sort={"round": SortMode.DESCENDING},
@@ -4284,9 +4326,9 @@ class AsyncTable(Generic[ROW]):
             ... ).to_list())
             The Data API returned a warning: {'errorCode': 'IN_MEMORY_SORTING...
             [{'winner': 'Betta Vigo'}, {'winner': 'Adam Zuul'}]
-
-            # Non-vector sorting on a regular column:
-            # (not recommended performance-wise)
+            >>>
+            >>> # Non-vector sorting on a regular column:
+            >>> # (not recommended performance-wise)
             >>> asyncio.run(my_async_table.find(
             ...     {"match_id": "fight5"},
             ...     sort={"winner": SortMode.ASCENDING},
@@ -4294,8 +4336,8 @@ class AsyncTable(Generic[ROW]):
             ... ).to_list())
             The Data API returned a warning: {'errorCode': 'IN_MEMORY_SORTING...
             [{'winner': 'Adam Zuul'}, {'winner': 'Betta Vigo'}, ...
-
-            # Using `.map()` on a cursor:
+            >>>
+            >>> # Using `.map()` on a cursor:
             >>> winner_cursor = my_async_table.find(
             ...     {"match_id": "fight5"},
             ...     sort={"round": SortMode.DESCENDING},
@@ -4306,8 +4348,8 @@ class AsyncTable(Generic[ROW]):
             ...     winner_cursor.map(lambda row: row["winner"].upper()).to_list())
             ... ))
             CAIO GOZER/BETTA VIGO/ADAM ZUUL
-
-            # Some other examples of cursor manipulation
+            >>>
+            >>> # Some other examples of cursor manipulation
             >>> matches_async_cursor = my_async_table.find(
             ...     sort={"m_vector": DataAPIVector([-0.1, 0.15, 0.3])}
             ... )
@@ -4408,7 +4450,7 @@ class AsyncTable(Generic[ROW]):
                 column(s) and the ascending/descending ordering required.
                 If multiple columns are provided, the sorting applies them
                 hierarchically to the rows. Examples are `{"score": SortMode.ASCENDING}`
-                (equivalently `{"score": +1}`), {"score": +1, "when": -1}`.
+                (equivalently `{"score": +1}`), `{"score": +1, "when": -1}`.
                 Note that, depending on the column(s) chosen for sorting, the table
                 partitioning structure, and the presence of indexes, the sorting
                 may be done in-memory by the API. In that case, there may be performance
@@ -4422,7 +4464,7 @@ class AsyncTable(Generic[ROW]):
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
-            a dictionary expressing resulting row if a match is found, otherwise None.
+            a dictionary expressing the result if a row is found, otherwise None.
 
         Examples:
             >>> # NOTE: may require slight adaptation to an async context.
@@ -4497,6 +4539,14 @@ class AsyncTable(Generic[ROW]):
             ...     projection={"winner": True},
             ... ))
             {'winner': 'Donna'}
+            >>>
+            >>> # Hybrid search with vector sort and non-vector filtering:
+            >>> asyncio.run(my_table.find_one(
+            ...     {"match_id": "fight4"},
+            ...     sort={"m_vector": DataAPIVector([0.2, 0.3, 0.4])},
+            ...     projection={"winner": True},
+            ... ))
+            {'winner': 'Victor'}
             >>>
             >>> # Return the numeric value of the vector similarity
             >>> # (also demonstrating that one can pass a plain list for a vector):
@@ -4615,6 +4665,7 @@ class AsyncTable(Generic[ROW]):
                 requests, depending on the amount of involved rows.
                 If not provided, the AsyncTable defaults apply.
             request_timeout_ms: a timeout, in milliseconds, for each API request.
+                If not provided, the corresponding Table defaults apply.
             timeout_ms: an alias for `general_method_timeout_ms`.
 
         Returns:
@@ -4879,7 +4930,7 @@ class AsyncTable(Generic[ROW]):
                 i.e. a dictionary defining values for all columns that form the
                 primary key. An example may be `{"match_id": "fight4", "round": 1}`.
             update: the update prescription to apply to the row, expressed
-                as a dictionary conforming to the per Data API syntax. The update
+                as a dictionary conforming to the Data API syntax. The update
                 operators for tables are `$set` and `$unset` (in particular,
                 setting a column to None has the same effect as the $unset operator).
                 Examples are `{"$set": {"round": 12}}` and

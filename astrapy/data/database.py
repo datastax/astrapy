@@ -1406,21 +1406,18 @@ class Database:
             if_exists: if passed as True, trying to drop a non-existing index
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
-            table_admin_timeout_ms: a timeout, in milliseconds, for the
-                dropIndex HTTP request.
-            request_timeout_ms: TODO
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Database defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
-            TODO
-            >>> table_def = (
-            ...     CreateTableDefinition.zero()
-            ...     .add_column("id", "text")
-            ...     .add_column("name", "text")
-            ...     .add_partition_by(["id"])
-            ... )
-            ...
-            >>> my_table = my_db.create_table("my_table", definition=table_def)
+            >>> # Drop an index from the keyspace:
+            >>> database.drop_table_index("score_index")
+            >>> # Drop an index, unless it does not exist already:
+            >>> database.drop_table_index("score_index", if_exists=True)
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -1470,7 +1467,7 @@ class Database:
         timeout_ms: int | None = None,
     ) -> None:
         """
-        Drop a table from the database, along with all documents therein and indexes and indexes.
+        Drop a table from the database, along with all rows therein and related indexes.
 
         Args:
             name_or_table: either the name of a table or
@@ -1480,15 +1477,18 @@ class Database:
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
+                If not provided, the Database defaults apply.
             request_timeout_ms: TODO
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
-            >>> my_db.list_table_names()
-            ['a_table', 'my_v_tab', 'another_tab']
-            >>> my_db.drop_collection("my_v_tab")
-            >>> my_db.list_collection_names()
-            ['a_table', 'another_tab']
+            >>> database.list_table_names()
+            ['fighters', 'games']
+            >>> database.drop_table("fighters")
+            >>> database.list_table_names()
+            ['games']
+            >>> # not erroring because of if_not_exists:
+            >>> database.drop_table("fighters", if_not_exists=True)
 
         Note:
             when providing a table name, it is assumed that the table
@@ -3144,21 +3144,18 @@ class AsyncDatabase:
             if_exists: if passed as True, trying to drop a non-existing index
                 will not error, just silently do nothing instead. If not provided,
                 the API default behaviour will hold.
-            table_admin_timeout_ms: a timeout, in milliseconds, for the
-                dropIndex HTTP request.
-            request_timeout_ms: TODO
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Database defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
-            TODO
-            >>> table_def = (
-            ...     CreateTableDefinition.zero()
-            ...     .add_column("id", "text")
-            ...     .add_column("name", "text")
-            ...     .add_partition_by(["id"])
-            ... )
-            ...
-            >>> my_table = my_db.create_table("my_table", definition=table_def)
+            >>> # Drop an index from the keyspace:
+            >>> await async_database.drop_table_index("score_index")
+            >>> # Drop an index, unless it does not exist already:
+            >>> await async_database.drop_table_index("score_index", if_exists=True)
         """
 
         _table_admin_timeout_ms, _ta_label = _select_singlereq_timeout_ta(
@@ -3208,7 +3205,7 @@ class AsyncDatabase:
         timeout_ms: int | None = None,
     ) -> dict[str, Any]:
         """
-        Drop a table from the database, along with all documents therein and indexes.
+        Drop a table from the database, along with all rows therein and related indexes.
 
         Args:
             name_or_table: either the name of a table or
@@ -3218,15 +3215,18 @@ class AsyncDatabase:
                 the API default behaviour will hold.
             table_admin_timeout_ms: a timeout, in milliseconds, for
                 the underlying schema-changing HTTP request.
+                If not provided, the AsyncDatabase defaults apply.
             request_timeout_ms: TODO
             timeout_ms: an alias for `table_admin_timeout_ms`.
 
         Example:
-            >>> my_db.list_table_names()
-            ['a_table', 'my_v_tab', 'another_tab']
-            >>> my_db.drop_table("my_v_tab")
-            >>> my_db.list_table_names()
-            ['a_table', 'another_tab']
+            >>> asyncio.run(async_database.list_table_names())
+            ['fighters', 'games']
+            >>> asyncio.run(async_database.drop_table("fighters"))
+            >>> asyncio.run(async_database.list_table_names())
+            ['games']
+            >>> # not erroring because of if_not_exists:
+            >>> asyncio.run(async_database.drop_table("fighters", if_not_exists=True))
 
         Note:
             when providing a table name, it is assumed that the table
