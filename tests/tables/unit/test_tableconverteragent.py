@@ -30,6 +30,8 @@ class TestTableConverterAgent:
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
             use_decimals_in_collections=False,
+            accept_naive_datetimes=False,
+            datetime_tzinfo=None,
         )
         agent: _TableConverterAgent[DefaultRowType] = _TableConverterAgent(
             options=options
@@ -82,6 +84,8 @@ class TestTableConverterAgent:
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
             use_decimals_in_collections=False,
+            accept_naive_datetimes=False,
+            datetime_tzinfo=None,
         )
         agent: _TableConverterAgent[DefaultRowType] = _TableConverterAgent(
             options=options
@@ -113,6 +117,8 @@ class TestTableConverterAgent:
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
             use_decimals_in_collections=False,
+            accept_naive_datetimes=False,
+            datetime_tzinfo=None,
         )
         agent: _TableConverterAgent[DefaultRowType] = _TableConverterAgent(
             options=options

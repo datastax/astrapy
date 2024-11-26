@@ -373,6 +373,8 @@ class TestTableConverters:
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
             ),
             similarity_pseudocolumn=None,
         )
@@ -399,6 +401,8 @@ class TestTableConverters:
                 custom_datatypes_in_reading=False,
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
+                accept_naive_datetimes=False,
+                datetime_tzinfo=datetime.timezone.utc,
             ),
             similarity_pseudocolumn=None,
         )
@@ -439,6 +443,8 @@ class TestTableConverters:
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
             ),
         )
 
@@ -478,6 +484,8 @@ class TestTableConverters:
                 custom_datatypes_in_reading=False,
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
+                accept_naive_datetimes=False,
+                datetime_tzinfo=datetime.timezone.utc,
             ),
         )
 
@@ -492,6 +500,8 @@ class TestTableConverters:
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
             use_decimals_in_collections=False,
+            accept_naive_datetimes=False,
+            datetime_tzinfo=None,
         )
         preprocessed_row = preprocess_table_payload(
             INPUT_ROW_TO_PREPROCESS,
@@ -514,6 +524,8 @@ class TestTableConverters:
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
             ),
         )
         assert preprocessed_gen_1 == gen_row_1
@@ -533,6 +545,8 @@ class TestTableConverters:
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=True,
                 use_decimals_in_collections=False,
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
             ),
         )
         assert preprocessed_dvec_1 == {"dvec": vec_data}
@@ -553,6 +567,8 @@ class TestTableConverters:
                 custom_datatypes_in_reading=True,
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
             ),
             similarity_pseudocolumn=None,
         )
@@ -574,6 +590,8 @@ class TestTableConverters:
                 custom_datatypes_in_reading=False,
                 unroll_iterables_to_lists=False,
                 use_decimals_in_collections=False,
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
             ),
             similarity_pseudocolumn=None,
         )

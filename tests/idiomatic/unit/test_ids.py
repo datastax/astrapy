@@ -59,6 +59,8 @@ def test_ids_serdes() -> None:
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
             use_decimals_in_collections=False,
+            accept_naive_datetimes=False,
+            datetime_tzinfo=None,
         ),
     )
     json.dumps(normalized)
@@ -70,6 +72,8 @@ def test_ids_serdes() -> None:
             custom_datatypes_in_reading=True,
             unroll_iterables_to_lists=True,
             use_decimals_in_collections=False,
+            accept_naive_datetimes=False,
+            datetime_tzinfo=None,
         ),
     )
     assert restored == full_structure

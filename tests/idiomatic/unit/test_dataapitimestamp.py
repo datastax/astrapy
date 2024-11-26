@@ -42,22 +42,28 @@ class TestDataAPITimestamp:
 
         assert ts_y00001 == ts_y00001_2
         assert ts_y00001 != ts_y10000
-        assert DataAPITimestamp.from_datetime(ts_y00001.to_datetime()) == ts_y00001
-        assert DataAPITimestamp.from_datetime(ts_y10000.to_datetime()) == ts_y10000
+        assert (
+            DataAPITimestamp.from_datetime(ts_y00001.to_datetime(tz=None)) == ts_y00001
+        )
+        assert (
+            DataAPITimestamp.from_datetime(ts_y10000.to_datetime(tz=None)) == ts_y10000
+        )
 
         # (not: DataAPITimestamp is not supposed to respect sub-millisecond precision.)
         dt1 = datetime.datetime(
             2024, 10, 27, 11, 22, 33, 831000, tzinfo=datetime.timezone.utc
         )
-        assert dt1 == DataAPITimestamp.from_datetime(dt1).to_datetime()
+        assert dt1 == DataAPITimestamp.from_datetime(dt1).to_datetime(
+            tz=datetime.timezone.utc
+        )
 
         # out-of-ranges
         ts_y00009_bc = DataAPITimestamp(Y1_1_1_MILLIS - TEN_YEARS_MILLIS)
         ts_y10010_ad = DataAPITimestamp(Y10K_12_31_MILLIS + TEN_YEARS_MILLIS)
         with pytest.raises(ValueError, match="is out of range"):
-            ts_y00009_bc.to_datetime()
+            ts_y00009_bc.to_datetime(tz=None)
         with pytest.raises(ValueError, match="is out of range"):
-            ts_y10010_ad.to_datetime()
+            ts_y10010_ad.to_datetime(tz=None)
 
         # algebra
         assert ts_y00001 < ts_y10000
@@ -284,7 +290,10 @@ class TestDataAPITimestamp:
                                 assert (
                                     abs(
                                         (
-                                            dapi_ts.to_datetime() - test_dt
+                                            dapi_ts.to_datetime(
+                                                tz=datetime.timezone.utc
+                                            )
+                                            - test_dt
                                         ).total_seconds()
                                     )
                                     <= 0.001

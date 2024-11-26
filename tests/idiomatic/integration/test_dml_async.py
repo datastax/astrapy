@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-import datetime
+from datetime import date, datetime, timezone
 from typing import Any
 
 import pytest
@@ -684,7 +684,7 @@ class TestDMLAsync:
             {"f": [10, 11]},
             {"f": [11, 10]},
             {"f": [10]},
-            {"f": datetime.datetime(2000, 1, 1, 12, 00, 00)},
+            {"f": datetime(2000, 1, 1, 12, 0, 0, tzinfo=timezone.utc)},
             {"f": None},
         ]
         await acol.insert_many(documents * 2)
@@ -696,7 +696,7 @@ class TestDMLAsync:
                 if isinstance(doc["f"], list):
                     for item in doc["f"]:
                         assert item in d_items
-                elif isinstance(doc["f"], datetime.datetime):
+                elif isinstance(doc["f"], datetime):
                     da_ts = DataAPITimestamp.from_datetime(doc["f"])
                     assert da_ts in d_items
                 else:
@@ -715,7 +715,7 @@ class TestDMLAsync:
                 if isinstance(doc["f"], list):
                     for item in doc["f"]:
                         assert item in d_items_noncustom
-                elif isinstance(doc["f"], datetime.datetime):
+                elif isinstance(doc["f"], datetime):
                     assert doc["f"] in d_items_noncustom
                 else:
                     assert doc["f"] in d_items_noncustom
@@ -1127,8 +1127,8 @@ class TestDMLAsync:
                 ),
             ),
         )
-        the_dtime = datetime.datetime(2000, 1, 1, 10, 11, 12, 123000)
-        the_date = datetime.date(1998, 12, 31)
+        the_dtime = datetime(2000, 1, 1, 10, 11, 12, 123000, tzinfo=timezone.utc)
+        the_date = date(1998, 12, 31)
 
         # read path
         await async_empty_collection.insert_one(
@@ -1148,7 +1148,7 @@ class TestDMLAsync:
         date_standard_dtypes = doc_standard_dtypes["the_date"]
         date_custom_dtypes = doc_custom_dtypes["the_date"]
 
-        assert isinstance(dtime_standard_dtypes, datetime.datetime)
+        assert isinstance(dtime_standard_dtypes, datetime)
         assert isinstance(dtime_custom_dtypes, DataAPITimestamp)
         assert (
             DataAPITimestamp.from_datetime(dtime_standard_dtypes) == dtime_custom_dtypes
@@ -1157,7 +1157,7 @@ class TestDMLAsync:
         assert dtime_custom_dtypes == DataAPITimestamp.from_datetime(
             dtime_standard_dtypes
         )
-        assert isinstance(date_standard_dtypes, datetime.datetime)
+        assert isinstance(date_standard_dtypes, datetime)
         assert isinstance(date_custom_dtypes, DataAPITimestamp)
         assert (
             DataAPITimestamp.from_datetime(date_standard_dtypes) == date_custom_dtypes

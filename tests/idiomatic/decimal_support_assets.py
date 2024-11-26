@@ -24,12 +24,16 @@ S_OPTS_NO_DECS = FullSerdesOptions(
     custom_datatypes_in_reading=True,
     unroll_iterables_to_lists=True,
     use_decimals_in_collections=False,
+    accept_naive_datetimes=False,
+    datetime_tzinfo=None,
 )
 S_OPTS_OK_DECS = FullSerdesOptions(
     binary_encode_vectors=False,
     custom_datatypes_in_reading=True,
     unroll_iterables_to_lists=True,
     use_decimals_in_collections=True,
+    accept_naive_datetimes=False,
+    datetime_tzinfo=None,
 )
 _BASELINE_SCALAR_CASES = {
     "_id": "baseline",

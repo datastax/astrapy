@@ -96,6 +96,8 @@ class TestTableDecimalSupportUnit:
                 custom_datatypes_in_reading=colltype_custom,
                 unroll_iterables_to_lists=True,
                 use_decimals_in_collections=True,
+                accept_naive_datetimes=False,
+                datetime_tzinfo=None,
             ),
         )
 
