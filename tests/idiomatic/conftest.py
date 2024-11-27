@@ -102,7 +102,7 @@ def sync_collection(
         dimension=2,
         metric=VectorMetric.COSINE,
         indexing={"deny": ["not_indexed"]},
-        collection_api_options=APIOptions(
+        spawn_api_options=APIOptions(
             serdes_options=SerdesOptions(
                 binary_encode_vectors=True,
                 custom_datatypes_in_reading=True,
