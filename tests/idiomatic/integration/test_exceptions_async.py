@@ -249,9 +249,9 @@ class TestExceptionsAsync:
     @pytest.mark.describe("test of standard exceptions in cursors, async")
     async def test_cursor_standard_exceptions_async(
         self,
-        async_empty_collection: DefaultAsyncCollection,
+        async_database: AsyncDatabase,
     ) -> None:
-        awcol = async_empty_collection._copy(keyspace="nonexisting")
+        awcol = await async_database.get_collection("nonexisting")
         cur1 = awcol.find({})
         cur2 = awcol.find({})
 

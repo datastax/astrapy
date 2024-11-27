@@ -232,11 +232,8 @@ class TestExceptionsSync:
         assert exc.value.cursor_state == CursorState.CLOSED.value
 
     @pytest.mark.describe("test of standard exceptions in cursors, sync")
-    def test_cursor_standard_exceptions_sync(
-        self,
-        sync_empty_collection: DefaultCollection,
-    ) -> None:
-        wcol = sync_empty_collection._copy(keyspace="nonexisting")
+    def test_cursor_standard_exceptions_sync(self, sync_database: Database) -> None:
+        wcol = sync_database.get_collection("nonexisting")
         cur1 = wcol.find({})
         cur2 = wcol.find({})
 
