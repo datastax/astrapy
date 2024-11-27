@@ -1,5 +1,41 @@
 v 2.0.0
 =======
+Systematic revision of spawning and copying methods for abstractions. Several parameters added/removed/renamed (switch to the corresponding parameters inside the APIOptions instead of the removed keyword parameters):
+    DataAPIClient
+        `_copy()`, `with_options()`: removed 'callers'
+        `get_..._database...()`: removed 'api_path', 'api_version'
+        `get_admin()`: removed 'dev_ops_url', 'dev_ops_api_version'
+    AstraDBAdmin
+        `(_copy)`: removed 'environment', 'dev_ops_url', 'dev_ops_api_version', 'callers'
+        `(with_options)`: removed 'callers'
+        `(create..._database)`: added `token`, `spawn_api_options`
+        `(get..._database)`: removed 'api_path', 'api_version', 'database_request_timeout_ms', 'database_timeout_ms'; renamed 'database_api_options' => `spawn_api_options`
+        `(get_database_admin)`: added `token`, `spawn_api_options`
+    AstraDBDatabaseAdmin
+        `_copy()`: removed 'api_endpoint', 'environment', 'dev_ops_url', 'dev_ops_api_version', 'api_path', 'api_version', 'callers'
+        `with_options()`: removed 'api_endpoint', 'callers'
+        `get..._database()`: removed 'api_path', 'api_version', 'database_request_timeout_ms', 'database_timeout_ms'; renamed 'database_api_options' => `spawn_api_options`
+    DataAPIDatabaseAdmin
+        `_copy()`: removed 'api_endpoint', 'environment', 'api_path', 'api_version', 'callers'
+        `with_options()`: removed 'api_endpoint', 'callers'
+        `get..._database()`: removed 'api_path', 'api_version', 'database_request_timeout_ms', 'database_timeout_ms'; renamed 'database_api_options' => `spawn_api_options`
+    Database, AsyncDatabase
+        `_copy()`: removed 'api_endpoint', 'callers', 'environment', 'api_path', 'api_version'
+        `with_options()`: removed 'callers'; added `token`
+        `to_[a]sync()`: removed 'api_endpoint', 'callers', 'environment', 'api_path', 'api_version', 
+        `get_collection()`: removed 'collection_request_timeout_ms', 'collection_timeout_ms'; renamed 'collection_api_options' => `spawn_api_options`
+        `get_table()`: removed 'table_request_timeout_ms', 'table_timeout_ms'; renamed 'table_api_options' => `spawn_api_options`
+        `create_collection()`: removed 'collection_request_timeout_ms', 'collection_timeout_ms'; renamed 'collection_api_options' => `spawn_api_options`
+        `create_table()`: removed 'table_request_timeout_ms', 'table_timeout_ms'; renamed 'table_api_options' => `spawn_api_options`
+        `get_database_admin()`: removed 'dev_ops_url', 'dev_ops_api_version'
+    Collection, AsyncCollection
+        `_copy()`: removed 'request_timeout_ms', 'collection_timeout_ms', 'callers'
+        `with_options`: removed 'request_timeout_ms', 'collection_timeout_ms', 'name', 'callers'
+        `to_[a]sync()`: removed 'request_timeout_ms', 'collection_timeout_ms', 'keyspace', 'name', 'callers'
+    Table, AsyncTable
+        `_copy()`: removed 'database', 'name', 'keyspace', 'request_timeout_ms', 'table_timeout_ms', 'callers'
+        `with_options`: removed 'name', 'request_timeout_ms', 'table_timeout_ms', 'callers'
+        `to_[a]sync()`: removed 'database', 'name', 'keyspace', 'request_timeout_ms', 'table_timeout_ms', 'callers'
 Remove 'database' parameter to the `to_sync()` and `to_async()` conversion methods for collections
 Renamed parameter 'collection_name' to `collection_or_table_name` and allowed for `keyspace=None` in database `command()` method
 Rename `astrapy.constants.SortDocuments` to `SortMode` (keeping the old name as an alias)

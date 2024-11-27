@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Sequence, overload
+from typing import TYPE_CHECKING, Any, overload
 
 from astrapy.admin import (
     async_fetch_database_info,
@@ -26,14 +26,12 @@ from astrapy.admin import (
 from astrapy.constants import (
     DOC,
     ROW,
-    CallerType,
     DefaultDocumentType,
     DefaultRowType,
     Environment,
 )
 from astrapy.exceptions import (
     DevOpsAPIException,
-    InvalidEnvironmentException,
     UnexpectedDataAPIResponseException,
     _first_valid_timeout,
     _select_singlereq_timeout_ca,
@@ -56,10 +54,7 @@ from astrapy.settings.defaults import (
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import (
     APIOptions,
-    DataAPIURLOptions,
-    DevOpsAPIURLOptions,
     FullAPIOptions,
-    TimeoutOptions,
 )
 from astrapy.utils.unset import _UNSET, UnsetType
 
@@ -290,29 +285,18 @@ class Database:
     def _copy(
         self,
         *,
-        api_endpoint: str | None = None,
-        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        environment: str | UnsetType = _UNSET,
-        api_path: str | None | UnsetType = _UNSET,
-        api_version: str | None | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         arg_api_options = APIOptions(
             token=token,
-            callers=callers,
-            environment=environment,
-            data_api_url_options=DataAPIURLOptions(
-                api_path=api_path,
-                api_version=api_version,
-            ),
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
         )
         return Database(
-            api_endpoint=api_endpoint or self.api_endpoint,
+            api_endpoint=self.api_endpoint,
             keyspace=keyspace or self.keyspace,
             api_options=final_api_options,
         )
@@ -321,7 +305,7 @@ class Database:
         self,
         *,
         keyspace: str | None = None,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
@@ -331,10 +315,9 @@ class Database:
             keyspace: this is the keyspace all method calls will target, unless
                 one is explicitly specified in the call. If no keyspace is supplied
                 when creating a Database, the name "default_keyspace" is set.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which the Data API calls are performed. These end up
-                in the request user-agent.
-                Each caller identity is a ("caller_name", "caller_version") pair.
+            token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -346,26 +329,21 @@ class Database:
         Example:
             >>> my_db_2 = my_db.with_options(
             ...     keyspace="the_other_keyspace",
-            ...     callers=[("the_caller", "0.1.0")],
+            ...     token="AstraCS:xyz...",
             ... )
         """
 
         return self._copy(
             keyspace=keyspace,
-            callers=callers,
+            token=token,
             api_options=api_options,
         )
 
     def to_async(
         self,
         *,
-        api_endpoint: str | None = None,
-        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        environment: str | UnsetType = _UNSET,
-        api_path: str | None | UnsetType = _UNSET,
-        api_version: str | None | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
@@ -374,25 +352,12 @@ class Database:
         to this database in the copy.
 
         Args:
-            api_endpoint: the full "API Endpoint" string used to reach the Data API.
-                Example: "https://<database_id>-<region>.apps.astra.datastax.com"
-            token: an Access Token to the database. Example: "AstraCS:xyz..."
-                This can be either a literal token string or a subclass of
-                `astrapy.authentication.TokenProvider`.
             keyspace: this is the keyspace all method calls will target, unless
                 one is explicitly specified in the call. If no keyspace is supplied
                 when creating a Database, the name "default_keyspace" is set.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which the Data API calls are performed. These end up
-                in the request user-agent.
-                Each caller identity is a ("caller_name", "caller_version") pair.
-            environment: a string representing the target Data API environment.
-                Values are, for example, `Environment.PROD`, `Environment.OTHER`,
-                or `Environment.DSE`.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
+            token: an Access Token to the database. Example: "AstraCS:xyz..."
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             api_options: any additional options to set for the result, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -408,18 +373,12 @@ class Database:
 
         arg_api_options = APIOptions(
             token=token,
-            callers=callers,
-            environment=environment,
-            data_api_url_options=DataAPIURLOptions(
-                api_path=api_path,
-                api_version=api_version,
-            ),
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
         )
         return AsyncDatabase(
-            api_endpoint=api_endpoint or self.api_endpoint,
+            api_endpoint=self.api_endpoint,
             keyspace=keyspace or self.keyspace,
             api_options=final_api_options,
         )
@@ -583,9 +542,7 @@ class Database:
         *,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
-        collection_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DefaultDocumentType]: ...
 
     @overload
@@ -596,9 +553,7 @@ class Database:
         document_type: type[DOC],
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
-        collection_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]: ...
 
     def get_collection(
@@ -608,9 +563,7 @@ class Database:
         document_type: type[Any] = DefaultDocumentType,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
-        collection_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         """
         Spawn a `Collection` object instance representing a collection
@@ -636,15 +589,7 @@ class Database:
                 For some vectorize providers/models, if using header-based
                 authentication, specialized subclasses of
                 `astrapy.authentication.EmbeddingHeadersProvider` should be supplied.
-            collection_request_timeout_ms: a default timeout, in millisecond, for the
-                duration of each request in the collection. For a more fine-grained
-                control of collection timeouts (suggested e.g. with regard to
-                methods involving multiple requests, such as `find`), use of the
-                `collection_api_options` parameter is suggested; alternatively,
-                bear in mind that individual collection methods also accept timeout
-                parameters.
-            collection_timeout_ms: an alias for `collection_request_timeout_ms`.
-            collection_api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
                 concerning timeouts; if this is passed together with
@@ -671,26 +616,12 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.collection import Collection
 
-        # this multiple-override implements the alias on timeout params
-        resulting_api_options = (
-            self.api_options.with_override(
-                collection_api_options,
-            )
-            .with_override(
-                APIOptions(
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=collection_timeout_ms,
-                    )
-                ),
-            )
-            .with_override(
-                APIOptions(
-                    embedding_api_key=embedding_api_key,
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=collection_request_timeout_ms,
-                    ),
-                ),
-            )
+        resulting_api_options = self.api_options.with_override(
+            spawn_api_options,
+        ).with_override(
+            APIOptions(
+                embedding_api_key=embedding_api_key,
+            ),
         )
 
         _keyspace = keyspace or self.keyspace
@@ -721,9 +652,7 @@ class Database:
         collection_admin_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
-        collection_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DefaultDocumentType]: ...
 
     @overload
@@ -742,9 +671,7 @@ class Database:
         collection_admin_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
-        collection_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]: ...
 
     def create_collection(
@@ -763,9 +690,7 @@ class Database:
         collection_admin_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
-        collection_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         """
         Creates a collection on the database and return the Collection
@@ -818,15 +743,7 @@ class Database:
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
-            collection_request_timeout_ms: a default timeout, in millisecond, for the
-                duration of each request in the collection. For a more fine-grained
-                control of collection timeouts (suggested e.g. with regard to
-                methods involving multiple requests, such as `find`), use of the
-                `collection_api_options` parameter is suggested; alternatively,
-                bear in mind that individual collection methods also accept timeout
-                parameters.
-            collection_timeout_ms: an alias for `collection_request_timeout_ms`.
-            collection_api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
                 concerning timeouts; if this is passed together with
@@ -887,9 +804,7 @@ class Database:
             document_type=document_type,
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
-            collection_request_timeout_ms=collection_request_timeout_ms,
-            collection_timeout_ms=collection_timeout_ms,
-            collection_api_options=collection_api_options,
+            spawn_api_options=spawn_api_options,
         )
 
     def drop_collection(
@@ -1086,9 +1001,7 @@ class Database:
         *,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
-        table_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[DefaultRowType]: ...
 
     @overload
@@ -1099,9 +1012,7 @@ class Database:
         row_type: type[ROW],
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
-        table_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]: ...
 
     def get_table(
@@ -1111,9 +1022,7 @@ class Database:
         row_type: type[Any] = DefaultRowType,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
-        table_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
         Spawn a `Table` object instance representing a table
@@ -1139,15 +1048,7 @@ class Database:
                 For some vectorize providers/models, if using header-based
                 authentication, specialized subclasses of
                 `astrapy.authentication.EmbeddingHeadersProvider` should be supplied.
-            table_request_timeout_ms: a default timeout, in millisecond, for the
-                duration of each request in the table. For a more fine-grained
-                control of table timeouts (suggested e.g. with regard to
-                methods involving multiple requests, such as `find`), use of the
-                `table_api_options` parameter is suggested; alternatively,
-                bear in mind that individual table methods also accept timeout
-                parameters.
-            table_timeout_ms: an alias for `table_request_timeout_ms`.
-            table_api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the table, e.g.
                 concerning timeouts; if this is passed together with
@@ -1167,26 +1068,12 @@ class Database:
         # lazy importing here against circular-import error
         from astrapy.table import Table
 
-        # this multiple-override implements the alias on timeout params
-        resulting_api_options = (
-            self.api_options.with_override(
-                table_api_options,
-            )
-            .with_override(
-                APIOptions(
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=table_timeout_ms,
-                    )
-                ),
-            )
-            .with_override(
-                APIOptions(
-                    embedding_api_key=embedding_api_key,
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=table_request_timeout_ms,
-                    ),
-                ),
-            )
+        resulting_api_options = self.api_options.with_override(
+            spawn_api_options,
+        ).with_override(
+            APIOptions(
+                embedding_api_key=embedding_api_key,
+            ),
         )
 
         _keyspace = keyspace or self.keyspace
@@ -1214,9 +1101,7 @@ class Database:
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
-        table_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[DefaultRowType]: ...
 
     @overload
@@ -1232,9 +1117,7 @@ class Database:
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
-        table_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]: ...
 
     def create_table(
@@ -1249,9 +1132,7 @@ class Database:
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
-        table_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
         Creates a table on the database and return the Table
@@ -1288,15 +1169,7 @@ class Database:
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
-            table_request_timeout_ms: a default timeout, in millisecond, for the
-                duration of each request in the table. For a more fine-grained
-                control of table timeouts (suggested e.g. with regard to
-                methods involving multiple requests, such as `find`), use of the
-                `table_api_options` parameter is suggested; alternatively,
-                bear in mind that individual table methods also accept timeout
-                parameters.
-            table_timeout_ms: an alias for `table_request_timeout_ms`.
-            table_api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the table, e.g.
                 concerning timeouts; if this is passed together with
@@ -1374,9 +1247,7 @@ class Database:
             row_type=row_type,
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
-            table_request_timeout_ms=table_request_timeout_ms,
-            table_timeout_ms=table_timeout_ms,
-            table_api_options=table_api_options,
+            spawn_api_options=spawn_api_options,
         )
 
     def drop_table_index(
@@ -1776,8 +1647,6 @@ class Database:
         self,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        dev_ops_url: str | UnsetType = _UNSET,
-        dev_ops_api_version: str | None | UnsetType = _UNSET,
         admin_api_options: APIOptions | UnsetType = _UNSET,
     ) -> DatabaseAdmin:
         """
@@ -1793,14 +1662,6 @@ class Database:
                 the token of this Database is used.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            dev_ops_url: in case of custom deployments, this can be used to specify
-                the URL to the DevOps API, such as "https://api.astra.datastax.com".
-                Generally it can be omitted. The environment (prod/dev/...) is
-                determined from the API Endpoint.
-                Note that this parameter is allowed only for Astra DB environments.
-            dev_ops_api_version: this can specify a custom version of the DevOps API
-                (such as "v2"). Generally not needed.
-                Note that this parameter is allowed only for Astra DB environments.
             admin_api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
                 This allows for a deeper configuration of the database admin, e.g.
@@ -1826,10 +1687,6 @@ class Database:
 
         arg_api_options = APIOptions(
             token=token,
-            dev_ops_api_url_options=DevOpsAPIURLOptions(
-                dev_ops_url=dev_ops_url,
-                dev_ops_api_version=dev_ops_api_version,
-            ),
         )
         api_options = self.api_options.with_override(admin_api_options).with_override(
             arg_api_options
@@ -1842,14 +1699,6 @@ class Database:
                 spawner_database=self,
             )
         else:
-            if not isinstance(dev_ops_url, UnsetType):
-                raise InvalidEnvironmentException(
-                    "Parameter `dev_ops_url` not supported outside of Astra DB."
-                )
-            if not isinstance(dev_ops_api_version, UnsetType):
-                raise InvalidEnvironmentException(
-                    "Parameter `dev_ops_api_version` not supported outside of Astra DB."
-                )
             return DataAPIDatabaseAdmin(
                 api_endpoint=self.api_endpoint,
                 api_options=api_options,
@@ -2026,29 +1875,18 @@ class AsyncDatabase:
     def _copy(
         self,
         *,
-        api_endpoint: str | None = None,
-        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        environment: str | UnsetType = _UNSET,
-        api_path: str | None | UnsetType = _UNSET,
-        api_version: str | None | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         arg_api_options = APIOptions(
             token=token,
-            callers=callers,
-            environment=environment,
-            data_api_url_options=DataAPIURLOptions(
-                api_path=api_path,
-                api_version=api_version,
-            ),
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
         )
         return AsyncDatabase(
-            api_endpoint=api_endpoint or self.api_endpoint,
+            api_endpoint=self.api_endpoint,
             keyspace=keyspace or self.keyspace,
             api_options=final_api_options,
         )
@@ -2057,7 +1895,7 @@ class AsyncDatabase:
         self,
         *,
         keyspace: str | None = None,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
@@ -2067,10 +1905,9 @@ class AsyncDatabase:
             keyspace: this is the keyspace all method calls will target, unless
                 one is explicitly specified in the call. If no keyspace is supplied
                 when creating a Database, the name "default_keyspace" is set.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which the Data API calls are performed. These end up
-                in the request user-agent.
-                Each caller identity is a ("caller_name", "caller_version") pair.
+            token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -2082,26 +1919,21 @@ class AsyncDatabase:
         Example:
             >>> my_async_db_2 = my_async_db.with_options(
             ...     keyspace="the_other_keyspace",
-            ...     callers=[("the_caller", "0.1.0")],
+            ...     token="AstraCS:xyz...",
             ... )
         """
 
         return self._copy(
             keyspace=keyspace,
-            callers=callers,
+            token=token,
             api_options=api_options,
         )
 
     def to_sync(
         self,
         *,
-        api_endpoint: str | None = None,
-        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        environment: str | UnsetType = _UNSET,
-        api_path: str | None | UnsetType = _UNSET,
-        api_version: str | None | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
@@ -2110,25 +1942,12 @@ class AsyncDatabase:
         to this database in the copy.
 
         Args:
-            api_endpoint: the full "API Endpoint" string used to reach the Data API.
-                Example: "https://<database_id>-<region>.apps.astra.datastax.com"
-            token: an Access Token to the database. Example: "AstraCS:xyz..."
-                This can be either a literal token string or a subclass of
-                `astrapy.authentication.TokenProvider`.
             keyspace: this is the keyspace all method calls will target, unless
                 one is explicitly specified in the call. If no keyspace is supplied
                 when creating a Database, the name "default_keyspace" is set.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which the Data API calls are performed. These end up
-                in the request user-agent.
-                Each caller identity is a ("caller_name", "caller_version") pair.
-            environment: a string representing the target Data API environment.
-                Values are, for example, `Environment.PROD`, `Environment.OTHER`,
-                or `Environment.DSE`.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
+            token: an Access Token to the database. Example: "AstraCS:xyz..."
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
             api_options: any additional options to set for the result, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -2145,18 +1964,12 @@ class AsyncDatabase:
 
         arg_api_options = APIOptions(
             token=token,
-            callers=callers,
-            environment=environment,
-            data_api_url_options=DataAPIURLOptions(
-                api_path=api_path,
-                api_version=api_version,
-            ),
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
         )
         return Database(
-            api_endpoint=api_endpoint or self.api_endpoint,
+            api_endpoint=self.api_endpoint,
             keyspace=keyspace or self.keyspace,
             api_options=final_api_options,
         )
@@ -2320,9 +2133,7 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
-        collection_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DefaultDocumentType]: ...
 
     @overload
@@ -2333,9 +2144,7 @@ class AsyncDatabase:
         document_type: type[DOC],
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
-        collection_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]: ...
 
     async def get_collection(
@@ -2345,9 +2154,7 @@ class AsyncDatabase:
         document_type: type[Any] = DefaultDocumentType,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
-        collection_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         """
         Spawn an `AsyncCollection` object instance representing a collection
@@ -2373,15 +2180,7 @@ class AsyncDatabase:
                 For some vectorize providers/models, if using header-based
                 authentication, specialized subclasses of
                 `astrapy.authentication.EmbeddingHeadersProvider` should be supplied.
-            collection_request_timeout_ms: a default timeout, in millisecond, for the
-                duration of each request in the collection. For a more fine-grained
-                control of collection timeouts (suggested e.g. with regard to
-                methods involving multiple requests, such as `find`), use of the
-                `collection_api_options` parameter is suggested; alternatively,
-                bear in mind that individual collection methods also accept timeout
-                parameters.
-            collection_timeout_ms: an alias for `collection_request_timeout_ms`.
-            collection_api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
                 concerning timeouts; if this is passed together with
@@ -2411,26 +2210,12 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.collection import AsyncCollection
 
-        # this multiple-override implements the alias on timeout params
-        resulting_api_options = (
-            self.api_options.with_override(
-                collection_api_options,
-            )
-            .with_override(
-                APIOptions(
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=collection_timeout_ms,
-                    )
-                ),
-            )
-            .with_override(
-                APIOptions(
-                    embedding_api_key=embedding_api_key,
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=collection_request_timeout_ms,
-                    ),
-                ),
-            )
+        resulting_api_options = self.api_options.with_override(
+            spawn_api_options,
+        ).with_override(
+            APIOptions(
+                embedding_api_key=embedding_api_key,
+            ),
         )
 
         _keyspace = keyspace or self.keyspace
@@ -2461,9 +2246,7 @@ class AsyncDatabase:
         collection_admin_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
-        collection_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DefaultDocumentType]: ...
 
     @overload
@@ -2482,9 +2265,7 @@ class AsyncDatabase:
         collection_admin_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
-        collection_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]: ...
 
     async def create_collection(
@@ -2503,9 +2284,7 @@ class AsyncDatabase:
         collection_admin_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        collection_request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
-        collection_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         """
         Creates a collection on the database and return the AsyncCollection
@@ -2558,15 +2337,7 @@ class AsyncDatabase:
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
-            collection_request_timeout_ms: a default timeout, in millisecond, for the
-                duration of each request in the collection. For a more fine-grained
-                control of collection timeouts (suggested e.g. with regard to
-                methods involving multiple requests, such as `find`), use of the
-                `collection_api_options` parameter is suggested; alternatively,
-                bear in mind that individual collection methods also accept timeout
-                parameters.
-            collection_timeout_ms: an alias for `collection_request_timeout_ms`.
-            collection_api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the collection, e.g.
                 concerning timeouts; if this is passed together with
@@ -2631,9 +2402,7 @@ class AsyncDatabase:
             document_type=document_type,
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
-            collection_request_timeout_ms=collection_request_timeout_ms,
-            collection_timeout_ms=collection_timeout_ms,
-            collection_api_options=collection_api_options,
+            spawn_api_options=spawn_api_options,
         )
 
     async def drop_collection(
@@ -2832,9 +2601,7 @@ class AsyncDatabase:
         *,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
-        table_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[DefaultRowType]: ...
 
     @overload
@@ -2845,9 +2612,7 @@ class AsyncDatabase:
         row_type: type[ROW],
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
-        table_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]: ...
 
     async def get_table(
@@ -2857,9 +2622,7 @@ class AsyncDatabase:
         row_type: type[Any] = DefaultRowType,
         keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
-        table_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
         Spawn an `AsyncTable` object instance representing a table
@@ -2885,15 +2648,7 @@ class AsyncDatabase:
                 For some vectorize providers/models, if using header-based
                 authentication, specialized subclasses of
                 `astrapy.authentication.EmbeddingHeadersProvider` should be supplied.
-            table_request_timeout_ms: a default timeout, in millisecond, for the
-                duration of each request in the table. For a more fine-grained
-                control of table timeouts (suggested e.g. with regard to
-                methods involving multiple requests, such as `find`), use of the
-                `table_api_options` parameter is suggested; alternatively,
-                bear in mind that individual table methods also accept timeout
-                parameters.
-            table_timeout_ms: an alias for `table_request_timeout_ms`.
-            table_api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the table, e.g.
                 concerning timeouts; if this is passed together with
@@ -2913,26 +2668,12 @@ class AsyncDatabase:
         # lazy importing here against circular-import error
         from astrapy.table import AsyncTable
 
-        # this multiple-override implements the alias on timeout params
-        resulting_api_options = (
-            self.api_options.with_override(
-                table_api_options,
-            )
-            .with_override(
-                APIOptions(
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=table_timeout_ms,
-                    )
-                ),
-            )
-            .with_override(
-                APIOptions(
-                    embedding_api_key=embedding_api_key,
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=table_request_timeout_ms,
-                    ),
-                ),
-            )
+        resulting_api_options = self.api_options.with_override(
+            spawn_api_options,
+        ).with_override(
+            APIOptions(
+                embedding_api_key=embedding_api_key,
+            ),
         )
 
         _keyspace = keyspace or self.keyspace
@@ -2960,9 +2701,7 @@ class AsyncDatabase:
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
-        table_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[DefaultRowType]: ...
 
     @overload
@@ -2978,9 +2717,7 @@ class AsyncDatabase:
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
-        table_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]: ...
 
     async def create_table(
@@ -2995,9 +2732,7 @@ class AsyncDatabase:
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        table_request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
-        table_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
         Creates a table on the database and return the AsyncTable
@@ -3034,15 +2769,7 @@ class AsyncDatabase:
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
-            table_request_timeout_ms: a default timeout, in millisecond, for the
-                duration of each request in the table. For a more fine-grained
-                control of table timeouts (suggested e.g. with regard to
-                methods involving multiple requests, such as `find`), use of the
-                `table_api_options` parameter is suggested; alternatively,
-                bear in mind that individual table methods also accept timeout
-                parameters.
-            table_timeout_ms: an alias for `table_request_timeout_ms`.
-            table_api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the Database.
                 This allows for a deeper configuration of the table, e.g.
                 concerning timeouts; if this is passed together with
@@ -3112,9 +2839,7 @@ class AsyncDatabase:
             row_type=row_type,
             keyspace=keyspace,
             embedding_api_key=embedding_api_key,
-            table_request_timeout_ms=table_request_timeout_ms,
-            table_timeout_ms=table_timeout_ms,
-            table_api_options=table_api_options,
+            spawn_api_options=spawn_api_options,
         )
 
     async def drop_table_index(
@@ -3517,8 +3242,6 @@ class AsyncDatabase:
         self,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        dev_ops_url: str | UnsetType = _UNSET,
-        dev_ops_api_version: str | None | UnsetType = _UNSET,
         admin_api_options: APIOptions | UnsetType = _UNSET,
     ) -> DatabaseAdmin:
         """
@@ -3534,14 +3257,6 @@ class AsyncDatabase:
                 the token of this Database is used.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            dev_ops_url: in case of custom deployments, this can be used to specify
-                the URL to the DevOps API, such as "https://api.astra.datastax.com".
-                Generally it can be omitted. The environment (prod/dev/...) is
-                determined from the API Endpoint.
-                Note that this parameter is allowed only for Astra DB environments.
-            dev_ops_api_version: this can specify a custom version of the DevOps API
-                (such as "v2"). Generally not needed.
-                Note that this parameter is allowed only for Astra DB environments.
             admin_api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
                 This allows for a deeper configuration of the database admin, e.g.
@@ -3567,10 +3282,6 @@ class AsyncDatabase:
 
         arg_api_options = APIOptions(
             token=token,
-            dev_ops_api_url_options=DevOpsAPIURLOptions(
-                dev_ops_url=dev_ops_url,
-                dev_ops_api_version=dev_ops_api_version,
-            ),
         )
         api_options = self.api_options.with_override(admin_api_options).with_override(
             arg_api_options
@@ -3583,14 +3294,6 @@ class AsyncDatabase:
                 spawner_database=self,
             )
         else:
-            if not isinstance(dev_ops_url, UnsetType):
-                raise InvalidEnvironmentException(
-                    "Parameter `dev_ops_url` not supported outside of Astra DB."
-                )
-            if not isinstance(dev_ops_api_version, UnsetType):
-                raise InvalidEnvironmentException(
-                    "Parameter `dev_ops_api_version` not supported outside of Astra DB."
-                )
             return DataAPIDatabaseAdmin(
                 api_endpoint=self.api_endpoint,
                 api_options=api_options,

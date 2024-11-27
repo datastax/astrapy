@@ -18,11 +18,10 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Generic, Iterable, Sequence, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Generic, Iterable, TypeVar, overload
 
 from astrapy.constants import (
     ROW,
-    CallerType,
     DefaultRowType,
     FilterType,
     ProjectionType,
@@ -62,7 +61,7 @@ from astrapy.settings.defaults import (
     DEFAULT_INSERT_MANY_CONCURRENCY,
 )
 from astrapy.utils.api_commander import APICommander
-from astrapy.utils.api_options import APIOptions, FullAPIOptions, TimeoutOptions
+from astrapy.utils.api_options import APIOptions, FullAPIOptions
 from astrapy.utils.unset import _UNSET, UnsetType
 
 if TYPE_CHECKING:
@@ -294,57 +293,32 @@ class Table(Generic[ROW]):
     def _copy(
         self: Table[ROW],
         *,
-        database: Database | None = None,
-        name: str | None = None,
-        keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         arg_api_options = APIOptions(
-            callers=callers,
             embedding_api_key=embedding_api_key,
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=table_timeout_ms,
-            ),
         )
-        # a double override for the timeout aliasing
-        arg_api_options_2 = APIOptions(
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=request_timeout_ms,
-            ),
-        )
-        final_api_options = (
-            self.api_options.with_override(api_options)
-            .with_override(arg_api_options)
-            .with_override(arg_api_options_2)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
         )
         return Table(
-            database=database or self.database,
-            name=name or self.name,
-            keyspace=keyspace or self.keyspace,
+            database=self.database,
+            name=self.name,
+            keyspace=self.keyspace,
             api_options=final_api_options,
         )
 
     def with_options(
         self: Table[ROW],
         *,
-        name: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
         Create a clone of this table with some changed attributes.
 
         Args:
-            name: the name of the table. This parameter is useful to
-                quickly spawn Table instances each pointing to a different
-                table existing in the same keyspace.
             embedding_api_key: optional API key(s) for interacting with the table.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -354,18 +328,6 @@ class Table(Generic[ROW]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which the Data API calls are performed. These end up
-                in the request user-agent.`
-                Each caller identity is a ("caller_name", "caller_version") pair.
-            request_timeout_ms: a default timeout, in millisecond, for the duration of
-                each API request on the table.  For a more fine-grained
-                control of table timeouts (suggested e.g. with regard to
-                methods involving multiple requests, such as `find`), use of the
-                `api_options` parameter is suggested; alternatively,
-                bear in mind that individual table methods also accept timeout
-                parameters.
-            table_timeout_ms: an alias for `request_timeout_ms`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -375,31 +337,20 @@ class Table(Generic[ROW]):
             a new Table instance.
 
         Example:
-            >>> my_other_table = my_table.with_options(
-            ...     name="the_other_table",
-            ...     callers=[("caller_identity", "0.1.2")],
+            >>> table_with_api_key_configured = my_table.with_options(
+            ...     embedding_api_key="secret-key-0123abcd...",
             ... )
         """
 
         return self._copy(
-            name=name,
             embedding_api_key=embedding_api_key,
-            callers=callers,
-            request_timeout_ms=request_timeout_ms,
-            table_timeout_ms=table_timeout_ms,
             api_options=api_options,
         )
 
     def to_async(
         self: Table[ROW],
         *,
-        database: AsyncDatabase | None = None,
-        name: str | None = None,
-        keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
@@ -407,27 +358,15 @@ class Table(Generic[ROW]):
         """
 
         arg_api_options = APIOptions(
-            callers=callers,
             embedding_api_key=embedding_api_key,
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=table_timeout_ms,
-            ),
         )
-        # a double override for the timeout aliasing
-        arg_api_options_2 = APIOptions(
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=request_timeout_ms,
-            ),
-        )
-        final_api_options = (
-            self.api_options.with_override(api_options)
-            .with_override(arg_api_options)
-            .with_override(arg_api_options_2)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
         )
         return AsyncTable(
-            database=database or self.database.to_async(),
-            name=name or self.name,
-            keyspace=keyspace or self.keyspace,
+            database=self.database.to_async(),
+            name=self.name,
+            keyspace=self.keyspace,
             api_options=final_api_options,
         )
 
@@ -2881,57 +2820,32 @@ class AsyncTable(Generic[ROW]):
     def _copy(
         self: AsyncTable[ROW],
         *,
-        database: AsyncDatabase | None = None,
-        name: str | None = None,
-        keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         arg_api_options = APIOptions(
-            callers=callers,
             embedding_api_key=embedding_api_key,
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=table_timeout_ms,
-            ),
         )
-        # a double override for the timeout aliasing
-        arg_api_options_2 = APIOptions(
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=request_timeout_ms,
-            ),
-        )
-        final_api_options = (
-            self.api_options.with_override(api_options)
-            .with_override(arg_api_options)
-            .with_override(arg_api_options_2)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
         )
         return AsyncTable(
-            database=database or self.database,
-            name=name or self.name,
-            keyspace=keyspace or self.keyspace,
+            database=self.database,
+            name=self.name,
+            keyspace=self.keyspace,
             api_options=final_api_options,
         )
 
     def with_options(
         self: AsyncTable[ROW],
         *,
-        name: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]:
         """
         Create a clone of this table with some changed attributes.
 
         Args:
-            name: the name of the table. This parameter is useful to
-                quickly spawn AsyncTable instances each pointing to a different
-                table existing in the same keyspace.
             embedding_api_key: optional API key(s) for interacting with the table.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -2941,18 +2855,6 @@ class AsyncTable(Generic[ROW]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which the Data API calls are performed. These end up
-                in the request user-agent.`
-                Each caller identity is a ("caller_name", "caller_version") pair.
-            request_timeout_ms: a default timeout, in millisecond, for the duration of
-                each API request on the table.  For a more fine-grained
-                control of table timeouts (suggested e.g. with regard to
-                methods involving multiple requests, such as `find`), use of the
-                `api_options` parameter is suggested; alternatively,
-                bear in mind that individual table methods also accept timeout
-                parameters. If not provided, the Table defaults apply.
-            table_timeout_ms: an alias for `request_timeout_ms`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -2962,31 +2864,20 @@ class AsyncTable(Generic[ROW]):
             a new AsyncTable instance.
 
         Example:
-            >>> my_other_async_table = my_async_table.with_options(
-            ...     name="the_other_table",
-            ...     callers=[("caller_identity", "0.1.2")],
+            >>> table_with_api_key_configured = my_async_table.with_options(
+            ...     embedding_api_key="secret-key-0123abcd...",
             ... )
         """
 
         return self._copy(
-            name=name,
             embedding_api_key=embedding_api_key,
-            callers=callers,
-            request_timeout_ms=request_timeout_ms,
-            table_timeout_ms=table_timeout_ms,
             api_options=api_options,
         )
 
     def to_sync(
         self: AsyncTable[ROW],
         *,
-        database: Database | None = None,
-        name: str | None = None,
-        keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        request_timeout_ms: int | UnsetType = _UNSET,
-        table_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Table[ROW]:
         """
@@ -2994,27 +2885,15 @@ class AsyncTable(Generic[ROW]):
         """
 
         arg_api_options = APIOptions(
-            callers=callers,
             embedding_api_key=embedding_api_key,
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=table_timeout_ms,
-            ),
         )
-        # a double override for the timeout aliasing
-        arg_api_options_2 = APIOptions(
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=request_timeout_ms,
-            ),
-        )
-        final_api_options = (
-            self.api_options.with_override(api_options)
-            .with_override(arg_api_options)
-            .with_override(arg_api_options_2)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
         )
         return Table(
-            database=database or self.database.to_sync(),
-            name=name or self.name,
-            keyspace=keyspace or self.keyspace,
+            database=self.database.to_sync(),
+            name=self.name,
+            keyspace=self.keyspace,
             api_options=final_api_options,
         )
 

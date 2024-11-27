@@ -30,13 +30,20 @@ from ..conftest import (
 )
 
 
-def _wrapCallers(
+def _wrapSomeOptions(
     src_database: Database,
+    *,
     callers: Sequence[CallerType] | UnsetType = _UNSET,
+    embedding_api_key: str | UnsetType = _UNSET,
 ) -> FullAPIOptions:
     return defaultAPIOptions(
         environment=src_database.api_options.environment
-    ).with_override(APIOptions(callers=callers))
+    ).with_override(
+        APIOptions(
+            callers=callers,
+            embedding_api_key=embedding_api_key,
+        )
+    )
 
 
 class TestCollectionsSync:
@@ -49,13 +56,13 @@ class TestCollectionsSync:
             database=sync_database,
             name="id_test_collection",
             keyspace=None,
-            api_options=_wrapCallers(sync_database, callers=[("cn", "cv")]),
+            api_options=_wrapSomeOptions(sync_database, callers=[("cn", "cv")]),
         )
         col2: DefaultCollection = Collection(
             database=sync_database,
             name="id_test_collection",
             keyspace=None,
-            api_options=_wrapCallers(sync_database, callers=[("cn", "cv")]),
+            api_options=_wrapSomeOptions(sync_database, callers=[("cn", "cv")]),
         )
         assert col1 == col2
 
@@ -68,7 +75,7 @@ class TestCollectionsSync:
             database=sync_database,
             name="id_test_collection",
             keyspace=None,
-            api_options=_wrapCallers(sync_database, callers=[("cn", "cv")]),
+            api_options=_wrapSomeOptions(sync_database, callers=[("cn", "cv")]),
         )
         assert col1 == col1._copy()
         assert col1 == col1.with_options()
@@ -80,43 +87,28 @@ class TestCollectionsSync:
         sync_database: Database,
     ) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
-        callers1 = [("x", "y")]
         col1: DefaultCollection = Collection(
             database=sync_database,
             name="id_test_collection",
             keyspace=None,
-            api_options=_wrapCallers(sync_database, callers=callers0),
+            api_options=_wrapSomeOptions(
+                sync_database,
+                callers=callers0,
+                embedding_api_key="eak",
+            ),
         )
-        assert col1 != col1._copy(name="o")
-        assert col1 != col1._copy(keyspace="o")
-        assert col1 != col1._copy(callers=callers1)
+        assert col1 != col1._copy(embedding_api_key="zak")
 
         col2 = col1._copy(
-            name="other_name",
-            keyspace="other_keyspace",
-            callers=callers1,
+            embedding_api_key="zak",
         )
         assert col2 != col1
 
-        assert col1.with_options(name="x") != col1
-        assert col1.with_options(callers=callers1) != col1
+        assert col1.with_options(embedding_api_key="zak") != col1
 
         assert (
-            col1.with_options(name="x").with_options(name="id_test_collection") == col1
-        )
-        assert (
-            col1.with_options(callers=callers1).with_options(callers=callers0) == col1
-        )
-
-        assert (
-            col1.with_options(callers=callers1).with_options(
-                api_options=APIOptions(callers=callers0)
-            )
-            == col1
-        )
-        assert (
-            col1.with_options(callers=callers1).with_options(
-                callers=callers0, api_options=APIOptions(callers=callers1)
+            col1.with_options(embedding_api_key="zak").with_options(
+                embedding_api_key="eak"
             )
             == col1
         )
@@ -127,38 +119,27 @@ class TestCollectionsSync:
         sync_database: Database,
     ) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
-        callers1 = [("x", "y")]
         col1: DefaultCollection = Collection(
             database=sync_database,
             name="id_test_collection",
             keyspace="the_ks",
-            api_options=_wrapCallers(sync_database, callers=callers0),
+            api_options=_wrapSomeOptions(
+                sync_database,
+                callers=callers0,
+                embedding_api_key="eak",
+            ),
         )
-        assert col1 != col1.to_async(name="o").to_sync()
-        assert col1 != col1.to_async(keyspace="o").to_sync()
-        assert col1 != col1.to_async(callers=callers1).to_sync()
+        assert col1 != col1.to_async(embedding_api_key="zak").to_sync()
 
         col2a = col1.to_async(
-            name="other_name",
-            keyspace="other_keyspace",
-            callers=callers1,
+            embedding_api_key="zak",
         )
         assert col2a.to_sync() != col1
 
         col3 = col2a.to_sync(
-            name="id_test_collection",
-            keyspace="the_ks",
-            callers=callers0,
+            embedding_api_key="eak",
         )
         assert col3 == col1
-
-        col1_a = col1.to_async(callers=callers1)
-        assert col1_a.to_sync() != col1
-        assert col1_a.to_sync(api_options=APIOptions(callers=callers0)) == col1
-        assert (
-            col1_a.to_sync(callers=callers0, api_options=APIOptions(callers=callers1))
-            == col1
-        )
 
     @pytest.mark.describe("test of Collection database property, sync")
     def test_collection_database_property_sync(

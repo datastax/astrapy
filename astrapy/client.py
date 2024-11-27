@@ -27,8 +27,6 @@ from astrapy.constants import CallerType, Environment
 from astrapy.exceptions import InvalidEnvironmentException
 from astrapy.utils.api_options import (
     APIOptions,
-    DataAPIURLOptions,
-    DevOpsAPIURLOptions,
     defaultAPIOptions,
 )
 from astrapy.utils.unset import _UNSET, UnsetType
@@ -144,22 +142,15 @@ class DataAPIClient:
         self,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        environment: str | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> DataAPIClient:
-        arg_api_options = APIOptions(
-            token=token,
-            environment=environment,
-            callers=callers,
-        )
+        arg_api_options = APIOptions(token=token)
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
         )
         return DataAPIClient(
             token=token,
             environment=final_api_options.environment,
-            callers=callers,
             api_options=final_api_options,
         )
 
@@ -167,7 +158,6 @@ class DataAPIClient:
         self,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> DataAPIClient:
         """
@@ -177,10 +167,6 @@ class DataAPIClient:
             token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which Data API and DevOps API calls are performed.
-                These end up in the request user-agent.
-                Each caller identity is a ("caller_name", "caller_version") pair.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -190,14 +176,13 @@ class DataAPIClient:
             a new DataAPIClient instance.
 
         Example:
-            >>> another_client = my_client.with_options(
-            ...     callers=[("caller_identity", "1.2.0")],
+            >>> other_auth_client = my_client.with_options(
+            ...     token="AstraCS:xyz...",
             ... )
         """
 
         return self._copy(
             token=token,
-            callers=callers,
             api_options=api_options,
         )
 
@@ -207,8 +192,6 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None | UnsetType = _UNSET,
-        api_version: str | None | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
@@ -226,10 +209,6 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
             api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
                 This allows for a deeper configuration of the database, e.g.
@@ -261,13 +240,7 @@ class DataAPIClient:
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
-        arg_api_options = APIOptions(
-            token=token,
-            data_api_url_options=DataAPIURLOptions(
-                api_path=api_path,
-                api_version=api_version,
-            ),
-        )
+        arg_api_options = APIOptions(token=token)
         api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
         )
@@ -308,8 +281,6 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None | UnsetType = _UNSET,
-        api_version: str | None | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
@@ -327,10 +298,6 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
             api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
                 This allows for a deeper configuration of the database, e.g.
@@ -364,8 +331,6 @@ class DataAPIClient:
             api_endpoint=api_endpoint,
             token=token,
             keyspace=keyspace,
-            api_path=api_path,
-            api_version=api_version,
             api_options=api_options,
         ).to_async()
 
@@ -375,8 +340,6 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None | UnsetType = _UNSET,
-        api_version: str | None | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
@@ -396,10 +359,6 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
             api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
                 This allows for a deeper configuration of the database, e.g.
@@ -415,8 +374,6 @@ class DataAPIClient:
             api_endpoint=api_endpoint,
             token=token,
             keyspace=keyspace,
-            api_path=api_path,
-            api_version=api_version,
             api_options=api_options,
         )
 
@@ -426,8 +383,6 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | None | UnsetType = _UNSET,
-        api_version: str | None | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
@@ -447,10 +402,6 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
             api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
                 This allows for a deeper configuration of the database, e.g.
@@ -466,8 +417,6 @@ class DataAPIClient:
             api_endpoint=api_endpoint,
             token=token,
             keyspace=keyspace,
-            api_path=api_path,
-            api_version=api_version,
             api_options=api_options,
         )
 
@@ -475,8 +424,6 @@ class DataAPIClient:
         self,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        dev_ops_url: str | UnsetType = _UNSET,
-        dev_ops_api_version: str | None | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBAdmin:
         """
@@ -489,12 +436,6 @@ class DataAPIClient:
                 admin-capable permission set.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            dev_ops_url: in case of custom deployments, this can be used to specify
-                the URL to the DevOps API, such as "https://api.astra.datastax.com".
-                Generally it can be omitted. The environment (prod/dev/...) is
-                determined from the API Endpoint.
-            dev_ops_api_version: this can specify a custom version of the DevOps API
-                (such as "v2"). Generally not needed.
             api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
                 This allows for a deeper configuration of the admin, e.g.
@@ -522,13 +463,7 @@ class DataAPIClient:
         # lazy importing here to avoid circular dependency
         from astrapy.admin import AstraDBAdmin
 
-        arg_api_options = APIOptions(
-            token=token,
-            dev_ops_api_url_options=DevOpsAPIURLOptions(
-                dev_ops_url=dev_ops_url,
-                dev_ops_api_version=dev_ops_api_version,
-            ),
-        )
+        arg_api_options = APIOptions(token=token)
         api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
         )

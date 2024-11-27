@@ -65,17 +65,7 @@ class TestAdminConversions:
 
         assert dac1 == dac2
         assert dac1 != dac1._copy(token="x")
-        assert dac1 != dac1._copy(environment="test")
-        assert dac1 != dac1._copy(callers=callers1)
         assert dac1 == dac1._copy(token="x")._copy(token="t1")
-        assert dac1 == dac1._copy(environment="test")._copy(environment="dev")
-        assert dac1 == dac1._copy(callers=callers1)._copy(callers=callers0)
-        assert dac1 != dac1.with_options(token="x")
-        assert dac1 != dac1.with_options(callers=callers1)
-        assert dac1 == dac1.with_options(token="x").with_options(token="t1")
-        assert dac1 == dac1.with_options(callers=callers1).with_options(
-            callers=callers0
-        )
         assert dac1 == dac1.with_options(token="x").with_options(
             api_options=APIOptions(token="t1")
         )
@@ -160,7 +150,6 @@ class TestAdminConversions:
     @pytest.mark.describe("test of AstraDBAdmin conversions and comparison functions")
     def test_astradbadmin_conversions(self) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
-        callers1 = [("x", "y")]
         opts0 = defaultAPIOptions(environment="dev").with_override(
             APIOptions(
                 token="t1",
@@ -177,24 +166,11 @@ class TestAdminConversions:
 
         assert adm0 == adm1
         assert adm0 != adm0._copy(token="x")
-        assert adm0 != adm0._copy(environment="test")
-        assert adm0 != adm0._copy(callers=callers1)
-        assert adm0 != adm0._copy(dev_ops_url="x")
-        assert adm0 != adm0._copy(dev_ops_api_version="x")
 
         assert adm0 == adm0._copy(token="x")._copy(token="t1")
-        assert adm0 == adm0._copy(environment="test")._copy(environment="dev")
-        assert adm0 == adm0._copy(callers=callers1)._copy(callers=callers0)
-        assert adm0 == adm0._copy(dev_ops_url="x")._copy(dev_ops_url="dou")
-        assert adm0 == adm0._copy(dev_ops_api_version="x")._copy(
-            dev_ops_api_version="dvv"
-        )
+
         assert adm0 != adm0.with_options(token="x")
-        assert adm0 != adm0.with_options(callers=callers1)
         assert adm0 == adm0.with_options(token="x").with_options(token="t1")
-        assert adm0 == adm0.with_options(callers=callers1).with_options(
-            callers=callers0
-        )
 
         assert adm0 == adm0.with_options(token="x").with_options(
             api_options=APIOptions(token="t1")
@@ -208,7 +184,6 @@ class TestAdminConversions:
     )
     def test_astradbdatabaseadmin_conversions(self) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
-        callers1 = [("x", "y")]
         opts0 = defaultAPIOptions(environment="dev").with_override(
             APIOptions(
                 token="t1",
@@ -234,37 +209,12 @@ class TestAdminConversions:
         )
 
         assert adda1 == adda2
-        assert adda1 != adda1._copy(api_ep9999_test, environment="test")
         assert adda1 != adda1._copy(token="x")
-        assert adda1 != adda1._copy(callers=callers1)
-        assert adda1 != adda1._copy(dev_ops_url="x")
-        assert adda1 != adda1._copy(dev_ops_api_version="x")
-        assert adda1 != adda1._copy(api_path="x")
-        assert adda1 != adda1._copy(api_version="x")
 
         assert adda1 == adda1._copy(token="x")._copy(token="t1")
-        assert adda1 == adda1._copy(api_ep9999_test, environment="test")._copy(
-            api_ep0123_dev, environment="dev"
-        )
-        assert adda1 == adda1._copy(callers=callers1)._copy(callers=callers0)
-        assert adda1 == adda1._copy(dev_ops_url="x")._copy(dev_ops_url="dou")
-        assert adda1 == adda1._copy(dev_ops_api_version="x")._copy(
-            dev_ops_api_version="dvv"
-        )
-        assert adda1 == adda1._copy(api_path="x")._copy(api_path="appi")
-        assert adda1 == adda1._copy(api_version="x")._copy(api_version="vX")
-
-        assert adda1 != adda1.with_options(api_endpoint=api_ep7777_dev)
         assert adda1 != adda1.with_options(token="x")
-        assert adda1 != adda1.with_options(callers=callers1)
 
-        assert adda1 == adda1.with_options(api_endpoint=api_ep7777_dev).with_options(
-            api_endpoint=api_ep0123_dev
-        )
         assert adda1 == adda1.with_options(token="x").with_options(token="t1")
-        assert adda1 == adda1.with_options(callers=callers1).with_options(
-            callers=callers0
-        )
 
         assert adda1 == adda1.with_options(token="x").with_options(
             api_options=APIOptions(token="t1")
@@ -278,7 +228,6 @@ class TestAdminConversions:
     )
     def test_dataapidatabaseadmin_conversions(self) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
-        callers1 = [("x", "y")]
         opts0 = defaultAPIOptions(environment="hcd").with_override(
             APIOptions(
                 token="t1",
@@ -300,33 +249,13 @@ class TestAdminConversions:
         )
         assert dada1 == dada2
 
-        assert dada1 != dada1._copy(api_endpoint="https://x.y.z:9876")
         assert dada1 != dada1._copy(token="tx")
-        assert dada1 != dada1._copy(environment="en")
-        assert dada1 != dada1._copy(api_path="ap")
-        assert dada1 != dada1._copy(api_version="av")
-        assert dada1 != dada1._copy(callers=callers1)
 
-        assert dada1 == dada1._copy(api_endpoint="x")._copy(
-            api_endpoint="http://a.b.c:1234"
-        )
         assert dada1 == dada1._copy(token="x")._copy(token="t1")
-        assert dada1 == dada1._copy(environment="x")._copy(environment="hcd")
-        assert dada1 == dada1._copy(api_path="x")._copy(api_path="appi")
-        assert dada1 == dada1._copy(api_version="x")._copy(api_version="v9")
-        assert dada1 == dada1._copy(callers=callers1)._copy(callers=callers0)
 
-        assert dada1 != dada1.with_options(api_endpoint="https://x.y.z:9876")
         assert dada1 != dada1.with_options(token="x")
-        assert dada1 != dada1.with_options(callers=callers1)
 
-        assert dada1 == dada1.with_options(
-            api_endpoint="https://x.y.z:9876"
-        ).with_options(api_endpoint="http://a.b.c:1234")
         assert dada1 == dada1.with_options(token="x").with_options(token="t1")
-        assert dada1 == dada1.with_options(callers=callers1).with_options(
-            callers=callers0
-        )
 
         assert dada1 == dada1.with_options(token="x").with_options(
             api_options=APIOptions(token="t1")

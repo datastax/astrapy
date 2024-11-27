@@ -92,7 +92,6 @@ class TestDatabasesSync:
         self,
     ) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
-        callers1 = [("x", "y")]
         db1 = Database(
             api_endpoint="api_endpoint",
             keyspace="keyspace",
@@ -107,48 +106,24 @@ class TestDatabasesSync:
                 ),
             ),
         )
-        assert db1 != db1._copy(api_endpoint="x")
         assert db1 != db1._copy(token="x")
         assert db1 != db1._copy(keyspace="x")
-        assert db1 != db1._copy(callers=callers1)
-        assert db1 != db1._copy(api_path="x")
-        assert db1 != db1._copy(api_version="x")
 
         db2 = db1._copy(
-            api_endpoint="x",
             token="x",
             keyspace="x",
-            callers=callers1,
-            api_path="x",
-            api_version="x",
         )
         assert db2 != db1
 
         assert db1.with_options(keyspace="x") != db1
-        assert db1.with_options(callers=callers1) != db1
 
         assert db1.with_options(keyspace="x").with_options(keyspace="keyspace") == db1
-        assert db1.with_options(callers=callers1).with_options(callers=callers0) == db1
-
-        assert (
-            db1.with_options(callers=callers1).with_options(
-                api_options=APIOptions(callers=callers0)
-            )
-            == db1
-        )
-        assert (
-            db1.with_options(callers=callers1).with_options(
-                callers=callers0, api_options=APIOptions(callers=callers1)
-            )
-            == db1
-        )
 
     @pytest.mark.describe("test of Database rich conversions, sync")
     def test_rich_convert_database_sync(
         self,
     ) -> None:
         callers0 = [("cn", "cv"), ("dn", "dv")]
-        callers1 = [("x", "y")]
         db1 = Database(
             api_endpoint="api_endpoint",
             keyspace="keyspace",
@@ -163,40 +138,20 @@ class TestDatabasesSync:
                 ),
             ),
         )
-        assert db1 != db1.to_async(api_endpoint="o").to_sync()
         assert db1 != db1.to_async(token="o").to_sync()
         assert db1 != db1.to_async(keyspace="o").to_sync()
-        assert db1 != db1.to_async(callers=callers1).to_sync()
-        assert db1 != db1.to_async(api_path="o").to_sync()
-        assert db1 != db1.to_async(api_version="o").to_sync()
 
         db2a = db1.to_async(
-            api_endpoint="x",
             token="x",
             keyspace="x",
-            callers=callers1,
-            api_path="x",
-            api_version="x",
         )
         assert db2a.to_sync() != db1
 
         db3 = db2a.to_sync(
-            api_endpoint="api_endpoint",
             token="token",
             keyspace="keyspace",
-            callers=callers0,
-            api_path="api_path",
-            api_version="api_version",
         )
         assert db3 == db1
-
-        db1_a = db1.to_async(callers=callers1)
-        assert db1_a.to_sync() != db1
-        assert db1_a.to_sync(api_options=APIOptions(callers=callers0)) == db1
-        assert (
-            db1_a.to_sync(callers=callers0, api_options=APIOptions(callers=callers1))
-            == db1
-        )
 
     @pytest.mark.describe("test get_collection method, sync")
     def test_database_get_collection_sync(

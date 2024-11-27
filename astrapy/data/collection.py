@@ -19,11 +19,10 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Generic, Iterable, Sequence
+from typing import TYPE_CHECKING, Any, Generic, Iterable
 
 from astrapy.constants import (
     DOC,
-    CallerType,
     FilterType,
     ProjectionType,
     ReturnDocument,
@@ -65,7 +64,7 @@ from astrapy.settings.defaults import (
     DEFAULT_INSERT_MANY_CONCURRENCY,
 )
 from astrapy.utils.api_commander import APICommander
-from astrapy.utils.api_options import APIOptions, FullAPIOptions, TimeoutOptions
+from astrapy.utils.api_options import APIOptions, FullAPIOptions
 from astrapy.utils.request_tools import HttpMethod
 from astrapy.utils.unset import _UNSET, UnsetType
 
@@ -277,56 +276,32 @@ class Collection(Generic[DOC]):
     def _copy(
         self: Collection[DOC],
         *,
-        name: str | None = None,
-        keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         arg_api_options = APIOptions(
-            callers=callers,
             embedding_api_key=embedding_api_key,
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=collection_timeout_ms,
-            ),
         )
-        # a double override for the timeout aliasing
-        arg_api_options_2 = APIOptions(
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=request_timeout_ms,
-            ),
-        )
-        final_api_options = (
-            self.api_options.with_override(api_options)
-            .with_override(arg_api_options)
-            .with_override(arg_api_options_2)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
         )
         return Collection(
             database=self.database,
-            name=name or self.name,
-            keyspace=keyspace or self.keyspace,
+            name=self.name,
+            keyspace=self.keyspace,
             api_options=final_api_options,
         )
 
     def with_options(
         self: Collection[DOC],
         *,
-        name: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         """
         Create a clone of this collection with some changed attributes.
 
         Args:
-            name: the name of the collection. This parameter is useful to
-                quickly spawn Collection instances each pointing to a different
-                collection existing in the same keyspace.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -336,18 +311,6 @@ class Collection(Generic[DOC]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which the Data API calls are performed. These end up
-                in the request user-agent.`
-                Each caller identity is a ("caller_name", "caller_version") pair.
-            request_timeout_ms: a default timeout, in millisecond, for the duration of
-                each API request on the collection.  For a more fine-grained
-                control of collection timeouts (suggested e.g. with regard to
-                methods involving multiple requests, such as `find`), use of the
-                `api_options` parameter is suggested; alternatively,
-                bear in mind that individual collection methods also accept timeout
-                parameters.
-            collection_timeout_ms: an alias for `request_timeout_ms`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -357,30 +320,20 @@ class Collection(Generic[DOC]):
             a new Collection instance.
 
         Example:
-            >>> my_other_coll = my_coll.with_options(
-            ...     name="the_other_coll",
-            ...     callers=[("caller_identity", "0.1.2")],
+            >>> collection_with_api_key_configured = my_collection.with_options(
+            ...     embedding_api_key="secret-key-0123abcd...",
             ... )
         """
 
         return self._copy(
-            name=name,
             embedding_api_key=embedding_api_key,
-            callers=callers,
-            request_timeout_ms=request_timeout_ms,
-            collection_timeout_ms=collection_timeout_ms,
             api_options=api_options,
         )
 
     def to_async(
         self: Collection[DOC],
         *,
-        name: str | None = None,
-        keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         """
@@ -390,10 +343,6 @@ class Collection(Generic[DOC]):
         an async object).
 
         Args:
-            name: the collection name. This parameter should match an existing
-                collection on the database.
-            keyspace: this is the keyspace to which the collection belongs.
-                If not specified, the database's working keyspace is used.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -403,18 +352,6 @@ class Collection(Generic[DOC]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which the Data API calls are performed. These end up
-                in the request user-agent.
-                Each caller identity is a ("caller_name", "caller_version") pair.
-            request_timeout_ms: a default timeout, in millisecond, for the duration of
-                each API request on the collection.  For a more fine-grained
-                control of collection timeouts (suggested e.g. with regard to
-                methods involving multiple requests, such as `find`), use of the
-                `api_options` parameter is suggested; alternatively,
-                bear in mind that individual collection methods also accept timeout
-                parameters.
-            collection_timeout_ms: an alias for `request_timeout_ms`.
             api_options: any additional options to set for the result, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -429,27 +366,15 @@ class Collection(Generic[DOC]):
         """
 
         arg_api_options = APIOptions(
-            callers=callers,
             embedding_api_key=embedding_api_key,
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=collection_timeout_ms,
-            ),
         )
-        # a double override for the timeout aliasing
-        arg_api_options_2 = APIOptions(
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=request_timeout_ms,
-            ),
-        )
-        final_api_options = (
-            self.api_options.with_override(api_options)
-            .with_override(arg_api_options)
-            .with_override(arg_api_options_2)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
         )
         return AsyncCollection(
             database=self.database.to_async(),
-            name=name or self.name,
-            keyspace=keyspace or self.keyspace,
+            name=self.name,
+            keyspace=self.keyspace,
             api_options=final_api_options,
         )
 
@@ -2766,56 +2691,32 @@ class AsyncCollection(Generic[DOC]):
     def _copy(
         self: AsyncCollection[DOC],
         *,
-        name: str | None = None,
-        keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         arg_api_options = APIOptions(
-            callers=callers,
             embedding_api_key=embedding_api_key,
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=collection_timeout_ms,
-            ),
         )
-        # a double override for the timeout aliasing
-        arg_api_options_2 = APIOptions(
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=request_timeout_ms,
-            ),
-        )
-        final_api_options = (
-            self.api_options.with_override(api_options)
-            .with_override(arg_api_options)
-            .with_override(arg_api_options_2)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
         )
         return AsyncCollection(
             database=self.database,
-            name=name or self.name,
-            keyspace=keyspace or self.keyspace,
+            name=self.name,
+            keyspace=self.keyspace,
             api_options=final_api_options,
         )
 
     def with_options(
         self: AsyncCollection[DOC],
         *,
-        name: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
         """
         Create a clone of this collection with some changed attributes.
 
         Args:
-            name: the name of the collection. This parameter is useful to
-                quickly spawn AsyncCollection instances each pointing to a different
-                collection existing in the same keyspace.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -2825,18 +2726,6 @@ class AsyncCollection(Generic[DOC]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which the Data API calls are performed. These end up
-                in the request user-agent.`
-                Each caller identity is a ("caller_name", "caller_version") pair.
-            request_timeout_ms: a default timeout, in millisecond, for the duration of
-                each API request on the collection.  For a more fine-grained
-                control of collection timeouts (suggested e.g. with regard to
-                methods involving multiple requests, such as `find`), use of the
-                `api_options` parameter is suggested; alternatively,
-                bear in mind that individual collection methods also accept timeout
-                parameters.
-            collection_timeout_ms: an alias for `request_timeout_ms`.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -2846,30 +2735,20 @@ class AsyncCollection(Generic[DOC]):
             a new AsyncCollection instance.
 
         Example:
-            >>> my_other_async_coll = my_async_coll.with_options(
-            ...     name="the_other_coll",
-            ...     callers=[("caller_identity", "0.1.2")],
+            >>> collection_with_api_key_configured = my_async_collection.with_options(
+            ...     embedding_api_key="secret-key-0123abcd...",
             ... )
         """
 
         return self._copy(
-            name=name,
             embedding_api_key=embedding_api_key,
-            callers=callers,
-            request_timeout_ms=request_timeout_ms,
-            collection_timeout_ms=collection_timeout_ms,
             api_options=api_options,
         )
 
     def to_sync(
         self: AsyncCollection[DOC],
         *,
-        name: str | None = None,
-        keyspace: str | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        request_timeout_ms: int | UnsetType = _UNSET,
-        collection_timeout_ms: int | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
         """
@@ -2879,10 +2758,6 @@ class AsyncCollection(Generic[DOC]):
         a sync object).
 
         Args:
-            name: the collection name. This parameter should match an existing
-                collection on the database.
-            keyspace: this is the keyspace to which the collection belongs.
-                If not specified, the database's working keyspace is used.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -2892,18 +2767,6 @@ class AsyncCollection(Generic[DOC]):
                 For some vectorize providers/models, if using header-based authentication,
                 specialized subclasses of `astrapy.authentication.EmbeddingHeadersProvider`
                 should be supplied.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which the Data API calls are performed. These end up
-                in the request user-agent.
-                Each caller identity is a ("caller_name", "caller_version") pair.
-            request_timeout_ms: a default timeout, in millisecond, for the duration of
-                each API request on the collection.  For a more fine-grained
-                control of collection timeouts (suggested e.g. with regard to
-                methods involving multiple requests, such as `find`), use of the
-                `api_options` parameter is suggested; alternatively,
-                bear in mind that individual collection methods also accept timeout
-                parameters.
-            collection_timeout_ms: an alias for `request_timeout_ms`.
             api_options: any additional options to set for the result, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -2918,27 +2781,15 @@ class AsyncCollection(Generic[DOC]):
         """
 
         arg_api_options = APIOptions(
-            callers=callers,
             embedding_api_key=embedding_api_key,
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=collection_timeout_ms,
-            ),
         )
-        # a double override for the timeout aliasing
-        arg_api_options_2 = APIOptions(
-            timeout_options=TimeoutOptions(
-                request_timeout_ms=request_timeout_ms,
-            ),
-        )
-        final_api_options = (
-            self.api_options.with_override(api_options)
-            .with_override(arg_api_options)
-            .with_override(arg_api_options_2)
+        final_api_options = self.api_options.with_override(api_options).with_override(
+            arg_api_options
         )
         return Collection(
             database=self.database.to_sync(),
-            name=name or self.name,
-            keyspace=keyspace or self.keyspace,
+            name=self.name,
+            keyspace=self.keyspace,
             api_options=final_api_options,
         )
 

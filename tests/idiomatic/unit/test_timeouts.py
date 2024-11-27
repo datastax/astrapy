@@ -138,7 +138,7 @@ class TestTimeouts:
         # S_L = short timeout for request; long timeout for general-method
         collection_S_L = database.get_collection(
             "xcollt",
-            collection_api_options=APIOptions(
+            spawn_api_options=APIOptions(
                 timeout_options=TimeoutOptions(
                     request_timeout_ms=1,
                     general_method_timeout_ms=10000,
@@ -147,7 +147,7 @@ class TestTimeouts:
         )
         collection_L_S = database.get_collection(
             "xcollt",
-            collection_api_options=APIOptions(
+            spawn_api_options=APIOptions(
                 timeout_options=TimeoutOptions(
                     request_timeout_ms=10000,
                     general_method_timeout_ms=1,
@@ -207,7 +207,7 @@ class TestTimeouts:
         # S_L = short timeout for request; long timeout for general-method
         collection_S_L = database.get_collection(
             "xcoll",
-            collection_api_options=APIOptions(
+            spawn_api_options=APIOptions(
                 timeout_options=TimeoutOptions(
                     request_timeout_ms=1,
                     general_method_timeout_ms=10000,
@@ -216,7 +216,7 @@ class TestTimeouts:
         )
         collection_L_S = database.get_collection(
             "xcoll",
-            collection_api_options=APIOptions(
+            spawn_api_options=APIOptions(
                 timeout_options=TimeoutOptions(
                     request_timeout_ms=10000,
                     general_method_timeout_ms=1,
@@ -327,7 +327,7 @@ class TestTimeouts:
         # S_L = short timeout for request; long timeout for general-method
         acollection_S_L = await database.to_async().get_collection(
             "xcollt",
-            collection_api_options=APIOptions(
+            spawn_api_options=APIOptions(
                 timeout_options=TimeoutOptions(
                     request_timeout_ms=1,
                     general_method_timeout_ms=10000,
@@ -336,7 +336,7 @@ class TestTimeouts:
         )
         acollection_L_S = await database.to_async().get_collection(
             "xcollt",
-            collection_api_options=APIOptions(
+            spawn_api_options=APIOptions(
                 timeout_options=TimeoutOptions(
                     request_timeout_ms=10000,
                     general_method_timeout_ms=1,
@@ -398,7 +398,7 @@ class TestTimeouts:
         # S_L = short timeout for request; long timeout for general-method
         acollection_S_L = await database.to_async().get_collection(
             "xcoll",
-            collection_api_options=APIOptions(
+            spawn_api_options=APIOptions(
                 timeout_options=TimeoutOptions(
                     request_timeout_ms=1,
                     general_method_timeout_ms=10000,
@@ -407,7 +407,7 @@ class TestTimeouts:
         )
         acollection_L_S = await database.to_async().get_collection(
             "xcoll",
-            collection_api_options=APIOptions(
+            spawn_api_options=APIOptions(
                 timeout_options=TimeoutOptions(
                     request_timeout_ms=10000,
                     general_method_timeout_ms=1,

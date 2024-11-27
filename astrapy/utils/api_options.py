@@ -240,6 +240,14 @@ class DataAPIURLOptions:
 
 @dataclass
 class FullDataAPIURLOptions(DataAPIURLOptions):
+    """
+    TODO
+    api_path: path to append to the API Endpoint. In typical usage, this
+        should be left to its default of "/api/json".
+    api_version: version specifier to append to the API path. In typical
+        usage, this should be left to its default of "v1".
+    """
+
     api_path: str | None
     api_version: str | None
 
@@ -272,6 +280,16 @@ class FullDataAPIURLOptions(DataAPIURLOptions):
 
 @dataclass
 class DevOpsAPIURLOptions:
+    """
+    TODO
+    dev_ops_url: in case of custom deployments, this can be used to specify
+        the URL to the DevOps API, such as "https://api.astra.datastax.com".
+        Generally it can be omitted. The environment (prod/dev/...) is
+        determined from the API Endpoint.
+    dev_ops_api_version: this can specify a custom version of the DevOps API
+        (such as "v2"). Generally not needed.
+    """
+
     dev_ops_url: str | UnsetType = _UNSET
     dev_ops_api_version: str | None | UnsetType = _UNSET
 

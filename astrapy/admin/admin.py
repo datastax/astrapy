@@ -19,7 +19,7 @@ import logging
 import re
 import time
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Any
 
 from astrapy.admin.endpoints import (
     ParsedAPIEndpoint,
@@ -28,7 +28,7 @@ from astrapy.admin.endpoints import (
     database_id_matcher,
     parse_api_endpoint,
 )
-from astrapy.constants import CallerType, Environment
+from astrapy.constants import Environment
 from astrapy.exceptions import (
     DevOpsAPIException,
     InvalidEnvironmentException,
@@ -63,8 +63,6 @@ from astrapy.settings.defaults import (
 from astrapy.utils.api_commander import APICommander
 from astrapy.utils.api_options import (
     APIOptions,
-    DataAPIURLOptions,
-    DevOpsAPIURLOptions,
     FullAPIOptions,
     TimeoutOptions,
     defaultAPIOptions,
@@ -536,20 +534,10 @@ class AstraDBAdmin:
         self,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        environment: str | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        dev_ops_url: str | UnsetType = _UNSET,
-        dev_ops_api_version: str | None | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBAdmin:
         arg_api_options = APIOptions(
             token=token,
-            environment=environment,
-            callers=callers,
-            dev_ops_api_url_options=DevOpsAPIURLOptions(
-                dev_ops_url=dev_ops_url,
-                dev_ops_api_version=dev_ops_api_version,
-            ),
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
@@ -560,7 +548,6 @@ class AstraDBAdmin:
         self,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBAdmin:
         """
@@ -570,10 +557,6 @@ class AstraDBAdmin:
             token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which DevOps API calls are performed. These end up in
-                the request user-agent.
-                Each caller identity is a ("caller_name", "caller_version") pair.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -583,14 +566,13 @@ class AstraDBAdmin:
             a new AstraDBAdmin instance.
 
         Example:
-            >>> another_astra_db_admin = my_astra_db_admin.with_options(
-            ...     callers=[("caller_identity", "1.2.0")],
+            >>> different_auth_astra_db_admin = my_astra_db_admin.with_options(
+            ...     token="AstraCS:xyz...",
             ... )
         """
 
         return self._copy(
             token=token,
-            callers=callers,
             api_options=api_options,
         )
 
@@ -987,7 +969,8 @@ class AstraDBAdmin:
         database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-        database_admin_api_options: APIOptions | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         """
         Create a database as requested, optionally waiting for it to be ready.
@@ -1014,7 +997,11 @@ class AstraDBAdmin:
                 `database_admin_timeout_ms` timeout parameters. In practice,
                 regardless of `wait_until_active`, this parameter dictates an
                 overall timeout on this method call.
-            database_admin_api_options: : a specification - complete or partial - of the
+            token: if supplied, is passed to the returned Database instead of
+                the one set for this object.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the AstraDBAdmin.
                 This allows for a deeper configuration of the database admin, e.g.
                 concerning timeouts; if this is passed together with
@@ -1117,6 +1104,9 @@ class AstraDBAdmin:
             f"finished creating database '{new_database_id}' = "
             f"{name}/({cloud_provider}, {region}) (DevOps API)"
         )
+        _final_api_options = self.api_options.with_override(
+            spawn_api_options
+        ).with_override(APIOptions(token=token))
         return AstraDBDatabaseAdmin.from_astra_db_admin(
             api_endpoint=build_api_endpoint(
                 environment=self.api_options.environment,
@@ -1124,7 +1114,7 @@ class AstraDBAdmin:
                 region=region,
             ),
             astra_db_admin=self,
-            api_options=database_admin_api_options,
+            api_options=_final_api_options,
         )
 
     async def async_create_database(
@@ -1138,6 +1128,8 @@ class AstraDBAdmin:
         database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         """
         Create a database as requested, optionally waiting for it to be ready.
@@ -1165,6 +1157,16 @@ class AstraDBAdmin:
                 `database_admin_timeout_ms` timeout parameters. In practice,
                 regardless of `wait_until_active`, this parameter dictates an
                 overall timeout on this method call.
+            token: if supplied, is passed to the returned Database instead of
+                the one set for this object.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
+            spawn_api_options: a specification - complete or partial - of the
+                API Options to override the defaults inherited from the AstraDBAdmin.
+                This allows for a deeper configuration of the database admin, e.g.
+                concerning timeouts; if this is passed together with
+                the named timeout parameters, the latter will take precedence
+                in their respective settings.
 
         Returns:
             An AstraDBDatabaseAdmin instance.
@@ -1266,6 +1268,9 @@ class AstraDBAdmin:
             f"finished creating database '{new_database_id}' = "
             f"{name}/({cloud_provider}, {region}) (DevOps API), async"
         )
+        _final_api_options = self.api_options.with_override(
+            spawn_api_options
+        ).with_override(APIOptions(token=token))
         return AstraDBDatabaseAdmin.from_astra_db_admin(
             api_endpoint=build_api_endpoint(
                 environment=self.api_options.environment,
@@ -1273,6 +1278,7 @@ class AstraDBAdmin:
                 region=region,
             ),
             astra_db_admin=self,
+            api_options=_final_api_options,
         )
 
     def drop_database(
@@ -1510,7 +1516,8 @@ class AstraDBAdmin:
         database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-        database_admin_api_options: APIOptions | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         """
         Create an AstraDBDatabaseAdmin object for admin work within a certain database.
@@ -1535,7 +1542,11 @@ class AstraDBAdmin:
                 the DevOps API HTTP request, should it be necessary
                 (see the `region` argument).
             timeout_ms: an alias for `request_timeout_ms`.
-            database_admin_api_options: : a specification - complete or partial - of the
+            token: if supplied, is passed to the Database instead of
+                the one set for this object.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the AstraDBAdmin.
                 This allows for a deeper configuration of the database admin, e.g.
                 concerning timeouts; if this is passed together with
@@ -1569,6 +1580,9 @@ class AstraDBAdmin:
         _api_endpoint_p, _id_p = check_id_endpoint_parg_kwargs(
             p_arg=api_endpoint_or_id, api_endpoint=api_endpoint, id=id
         )
+        _final_api_options = self.api_options.with_override(
+            spawn_api_options
+        ).with_override(APIOptions(token=token))
         # handle the "endpoint passed as id" case first:
         if _api_endpoint_p is not None:
             if region is not None:
@@ -1578,7 +1592,7 @@ class AstraDBAdmin:
             return AstraDBDatabaseAdmin.from_astra_db_admin(
                 api_endpoint=_api_endpoint_p,
                 astra_db_admin=self,
-                api_options=database_admin_api_options,
+                api_options=_final_api_options,
             )
         else:
             if _id_p is None:
@@ -1597,7 +1611,7 @@ class AstraDBAdmin:
                     region=_region,
                 ),
                 astra_db_admin=self,
-                api_options=database_admin_api_options,
+                api_options=_final_api_options,
             )
 
     def get_database(
@@ -1605,18 +1619,14 @@ class AstraDBAdmin:
         api_endpoint_or_id: str | None = None,
         *,
         api_endpoint: str | None = None,
-        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
         id: str | None = None,
         region: str | None = None,
-        api_path: str | UnsetType = _UNSET,
-        api_version: str | UnsetType = _UNSET,
         database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-        database_request_timeout_ms: int | UnsetType = _UNSET,
-        database_timeout_ms: int | UnsetType = _UNSET,
-        database_api_options: APIOptions | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
         Create a Database instance for a specific database, to be used
@@ -1630,10 +1640,6 @@ class AstraDBAdmin:
                 The database must exist already for the resulting object
                 to be effectively used; in other words, this invocation
                 does not create the database, just the object instance.
-            token: if supplied, is passed to the Database instead of
-                the one set for this object.
-                This can be either a literal token string or a subclass of
-                `astrapy.authentication.TokenProvider`.
             keyspace: used to specify a certain keyspace the resulting
                 Database will primarily work on. If not specified, an additional
                 DevOps API call reveals the default keyspace for the target database.
@@ -1644,24 +1650,16 @@ class AstraDBAdmin:
                 If this parameter is not passed, and cannot be inferred
                 from the API endpoint, an additional DevOps API request is made
                 to determine the default region and use it subsequently.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
             database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the DevOps API HTTP request, should it be necessary
                 (see the `region` and `keyspace` arguments).
             timeout_ms: an alias for `request_timeout_ms`.
-            database_request_timeout_ms: a default timeout, in millisecond, for the
-                duration of each request in the database. For a more fine-grained
-                control of database timeouts (suggested e.g. with regard to methods
-                involving schema changes, such as create_collection), use of the
-                `database_api_options` parameter is suggested; alternatively,
-                bear in mind that individual collection methods also accept timeout
-                parameters.
-            database_timeout_ms: an alias for `database_request_timeout_ms`.
-            database_api_options: a specification - complete or partial - of the
+            token: if supplied, is passed to the Database instead of
+                the one set for this object.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the AstraDBAdmin.
                 This allows for a deeper configuration of the database, e.g.
                 concerning timeouts; if this is passed together with
@@ -1694,30 +1692,10 @@ class AstraDBAdmin:
         # lazy importing here to avoid circular dependency
         from astrapy import Database
 
-        # this multiple-override implements the alias on timeout params
-        resulting_api_options = (
-            self.api_options.with_override(
-                database_api_options,
-            )
-            .with_override(
-                APIOptions(
-                    token=token,
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=database_timeout_ms,
-                    ),
-                    data_api_url_options=DataAPIURLOptions(
-                        api_path=api_path,
-                        api_version=api_version,
-                    ),
-                ),
-            )
-            .with_override(
-                APIOptions(
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=database_request_timeout_ms,
-                    ),
-                ),
-            )
+        _final_api_options = self.api_options.with_override(
+            spawn_api_options
+        ).with_override(
+            APIOptions(token=token),
         )
 
         _keyspace: str | None
@@ -1747,7 +1725,7 @@ class AstraDBAdmin:
             return Database(
                 api_endpoint=_api_endpoint_p,
                 keyspace=_keyspace,
-                api_options=resulting_api_options,
+                api_options=_final_api_options,
             )
         else:
             # the case where an ID is passed:
@@ -1779,7 +1757,7 @@ class AstraDBAdmin:
                     region=_region,
                 ),
                 keyspace=_keyspace,
-                api_options=resulting_api_options,
+                api_options=_final_api_options,
             )
 
     def get_async_database(
@@ -1787,18 +1765,14 @@ class AstraDBAdmin:
         api_endpoint_or_id: str | None = None,
         *,
         api_endpoint: str | None = None,
-        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
         id: str | None = None,
         region: str | None = None,
-        api_path: str | UnsetType = _UNSET,
-        api_version: str | UnsetType = _UNSET,
         database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-        database_request_timeout_ms: int | UnsetType = _UNSET,
-        database_timeout_ms: int | UnsetType = _UNSET,
-        database_api_options: APIOptions | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Create an AsyncDatabase instance for a specific database, to be used
@@ -1812,10 +1786,6 @@ class AstraDBAdmin:
                 The database must exist already for the resulting object
                 to be effectively used; in other words, this invocation
                 does not create the database, just the object instance.
-            token: if supplied, is passed to the Database instead of
-                the one set for this object.
-                This can be either a literal token string or a subclass of
-                `astrapy.authentication.TokenProvider`.
             keyspace: used to specify a certain keyspace the resulting
                 AsyncDatabase will primarily work on. If not specified, an additional
                 DevOps API call reveals the default keyspace for the target database.
@@ -1826,24 +1796,16 @@ class AstraDBAdmin:
                 If this parameter is not passed, and cannot be inferred
                 from the API endpoint, an additional DevOps API request is made
                 to determine the default region and use it subsequently.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
             database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the DevOps API HTTP request, should it be necessary
                 (see the `region` and `keyspace` arguments).
             timeout_ms: an alias for `request_timeout_ms`.
-            database_request_timeout_ms: a default timeout, in millisecond, for the
-                duration of each request in the database. For a more fine-grained
-                control of database timeouts (suggested e.g. with regard to methods
-                involving schema changes, such as create_collection), use of the
-                `database_api_options` parameter is suggested; alternatively,
-                bear in mind that individual collection methods also accept timeout
-                parameters.
-            database_timeout_ms: an alias for `database_request_timeout_ms`.
-            database_api_options: a specification - complete or partial - of the
+            token: if supplied, is passed to the Database instead of
+                the one set for this object.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the AstraDBAdmin.
                 This allows for a deeper configuration of the database, e.g.
                 concerning timeouts; if this is passed together with
@@ -1883,14 +1845,10 @@ class AstraDBAdmin:
             keyspace=keyspace,
             id=id,
             region=region,
-            api_path=api_path,
-            api_version=api_version,
             database_admin_timeout_ms=database_admin_timeout_ms,
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
-            database_request_timeout_ms=database_request_timeout_ms,
-            database_timeout_ms=database_timeout_ms,
-            database_api_options=database_api_options,
+            spawn_api_options=spawn_api_options,
         ).to_async()
 
 
@@ -2178,35 +2136,18 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
     def _copy(
         self,
-        api_endpoint: str | None = None,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        environment: str | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        dev_ops_url: str | UnsetType = _UNSET,
-        dev_ops_api_version: str | None | UnsetType = _UNSET,
-        api_path: str | UnsetType = _UNSET,
-        api_version: str | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         arg_api_options = APIOptions(
             token=token,
-            callers=callers,
-            environment=environment,
-            data_api_url_options=DataAPIURLOptions(
-                api_path=api_path,
-                api_version=api_version,
-            ),
-            dev_ops_api_url_options=DevOpsAPIURLOptions(
-                dev_ops_url=dev_ops_url,
-                dev_ops_api_version=dev_ops_api_version,
-            ),
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
         )
         return AstraDBDatabaseAdmin(
-            api_endpoint=api_endpoint or self.api_endpoint,
+            api_endpoint=self.api_endpoint,
             api_options=final_api_options,
             spawner_database=self.spawner_database,
             spawner_astra_db_admin=self._astra_db_admin,
@@ -2215,27 +2156,16 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def with_options(
         self,
         *,
-        api_endpoint: str | None = None,
         token: str | TokenProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         """
         Create a clone of this AstraDBDatabaseAdmin with some changed attributes.
 
         Args:
-            api_endpoint: the API Endpoint for the target database
-                (e.g. `https://<ID>-<REGION>.apps.astra.datastax.com`).
-                The database must exist already for the resulting object
-                to be effectively used; in other words, this invocation
-                does not create the database, just the object instance.
             token: an Access Token to the database. Example: `"AstraCS:xyz..."`.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which Data API and DevOps API calls are performed.
-                These end up in the request user-agent.
-                Each caller identity is a ("caller_name", "caller_version") pair.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -2251,9 +2181,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         """
 
         return self._copy(
-            api_endpoint=api_endpoint,
             token=token,
-            callers=callers,
             api_options=api_options,
         )
 
@@ -3071,46 +2999,30 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
     def get_database(
         self,
         *,
-        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | UnsetType = _UNSET,
-        api_version: str | UnsetType = _UNSET,
         database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-        database_request_timeout_ms: int | UnsetType = _UNSET,
-        database_timeout_ms: int | UnsetType = _UNSET,
-        database_api_options: APIOptions | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
         Create a Database instance from this database admin, for data-related tasks.
 
         Args:
-            token: if supplied, is passed to the Database instead of
-                the one set for this object. Useful if one wants to work in
-                a least-privilege manner, limiting the permissions for non-admin work.
-                This can be either a literal token string or a subclass of
-                `astrapy.authentication.TokenProvider`.
             keyspace: an optional keyspace to set in the resulting Database.
                 The same default logic as for `AstraDBAdmin.get_database` applies.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
             database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the DevOps API HTTP request, should it be necessary
                 (see the `region` argument).
             timeout_ms: an alias for `request_timeout_ms`.
-            database_request_timeout_ms: a default timeout, in millisecond, for the
-                duration of each request in the database. For a more fine-grained
-                control of database timeouts (suggested e.g. with regard to methods
-                involving schema changes, such as create_collection), use of the
-                `database_api_options` parameter is suggested; alternatively,
-                bear in mind that individual collection methods also accept timeout
-                parameters.
-            database_timeout_ms: an alias for `database_request_timeout_ms`.
-            database_api_options: : a specification - complete or partial - of the
+            token: if supplied, is passed to the Database instead of
+                the one set for this object. Useful if one wants to work in
+                a least-privilege manner, limiting the permissions for non-admin work.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the database admin.
                 This allows for a deeper configuration of the database admin, e.g.
                 concerning timeouts; if this is passed together with
@@ -3135,60 +3047,40 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             api_endpoint=self.api_endpoint,
             token=token,
             keyspace=keyspace,
-            api_path=api_path,
-            api_version=api_version,
             database_admin_timeout_ms=database_admin_timeout_ms,
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
-            database_request_timeout_ms=database_request_timeout_ms,
-            database_timeout_ms=database_timeout_ms,
-            database_api_options=database_api_options,
+            spawn_api_options=spawn_api_options,
         )
 
     def get_async_database(
         self,
         *,
-        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | UnsetType = _UNSET,
-        api_version: str | UnsetType = _UNSET,
         database_admin_timeout_ms: int | None = None,
         request_timeout_ms: int | None = None,
         timeout_ms: int | None = None,
-        database_request_timeout_ms: int | UnsetType = _UNSET,
-        database_timeout_ms: int | UnsetType = _UNSET,
-        database_api_options: APIOptions | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Create an AsyncDatabase instance from this database admin,
         for data-related tasks.
 
         Args:
-            token: if supplied, is passed to the AsyncDatabase instead of
-                the one set for this object. Useful if one wants to work in
-                a least-privilege manner, limiting the permissions for non-admin work.
-                This can be either a literal token string or a subclass of
-                `astrapy.authentication.TokenProvider`.
             keyspace: an optional keyspace to set in the resulting AsyncDatabase.
                 The same default logic as for `AstraDBAdmin.get_database` applies.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
             database_admin_timeout_ms: TODO
             request_timeout_ms: a timeout, in milliseconds, for
                 the DevOps API HTTP request, should it be necessary
                 (see the `region` argument).
             timeout_ms: an alias for `request_timeout_ms`.
-            database_request_timeout_ms: a default timeout, in millisecond, for the
-                duration of each request in the database. For a more fine-grained
-                control of database timeouts (suggested e.g. with regard to methods
-                involving schema changes, such as create_collection), use of the
-                `database_api_options` parameter is suggested; alternatively,
-                bear in mind that individual collection methods also accept timeout
-                parameters.
-            database_timeout_ms: an alias for `database_request_timeout_ms`.
-            database_api_options: : a specification - complete or partial - of the
+            token: if supplied, is passed to the AsyncDatabase instead of
+                the one set for this object. Useful if one wants to work in
+                a least-privilege manner, limiting the permissions for non-admin work.
+                This can be either a literal token string or a subclass of
+                `astrapy.authentication.TokenProvider`.
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the database admin.
                 This allows for a deeper configuration of the database admin, e.g.
                 concerning timeouts; if this is passed together with
@@ -3204,14 +3096,10 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
             api_endpoint=self.api_endpoint,
             token=token,
             keyspace=keyspace,
-            api_path=api_path,
-            api_version=api_version,
             database_admin_timeout_ms=database_admin_timeout_ms,
             request_timeout_ms=request_timeout_ms,
             timeout_ms=timeout_ms,
-            database_request_timeout_ms=database_request_timeout_ms,
-            database_timeout_ms=database_timeout_ms,
-            database_api_options=database_api_options,
+            spawn_api_options=spawn_api_options,
         ).to_async()
 
     def find_embedding_providers(
@@ -3451,29 +3339,18 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
 
     def _copy(
         self,
-        api_endpoint: str | None = None,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        environment: str | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
-        api_path: str | UnsetType = _UNSET,
-        api_version: str | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> DataAPIDatabaseAdmin:
         arg_api_options = APIOptions(
             token=token,
-            callers=callers,
-            environment=environment,
-            data_api_url_options=DataAPIURLOptions(
-                api_path=api_path,
-                api_version=api_version,
-            ),
         )
         final_api_options = self.api_options.with_override(api_options).with_override(
             arg_api_options
         )
         return DataAPIDatabaseAdmin(
-            api_endpoint=api_endpoint or self.api_endpoint,
+            api_endpoint=self.api_endpoint,
             api_options=final_api_options,
             spawner_database=self.spawner_database,
         )
@@ -3481,24 +3358,16 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     def with_options(
         self,
         *,
-        api_endpoint: str | None = None,
         token: str | TokenProvider | UnsetType = _UNSET,
-        callers: Sequence[CallerType] | UnsetType = _UNSET,
         api_options: APIOptions | UnsetType = _UNSET,
     ) -> DataAPIDatabaseAdmin:
         """
         Create a clone of this DataAPIDatabaseAdmin with some changed attributes.
 
         Args:
-            api_endpoint: the full URI to access the Data API,
-                e.g. "http://localhost:8181".
             token: an access token with enough permission to perform admin tasks.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            callers: a list of caller identities, i.e. applications, or frameworks,
-                on behalf of which Data API calls are performed. These end up in the
-                request user-agent.
-                Each caller identity is a ("caller_name", "caller_version") pair.
             api_options: any additional options to set for the clone, in the form of
                 an APIOptions instance (where one can set just the needed attributes).
                 In case the same setting is also provided as named parameter,
@@ -3514,9 +3383,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         """
 
         return self._copy(
-            api_endpoint=api_endpoint,
             token=token,
-            callers=callers,
             api_options=api_options,
         )
 
@@ -3882,40 +3749,24 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     def get_database(
         self,
         *,
-        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | UnsetType = _UNSET,
-        api_version: str | UnsetType = _UNSET,
-        database_request_timeout_ms: int | UnsetType = _UNSET,
-        database_timeout_ms: int | UnsetType = _UNSET,
-        database_api_options: APIOptions | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
         Create a Database instance for a specific database, to be used
         when doing data-level work (such as creating/managing collections).
 
         Args:
+            keyspace: an optional keyspace to set in the resulting Database.
+                If not set, the keyspace remains unspecified and must be set later
+                with the `use_keyspace` method.
             token: if supplied, is passed to the Database instead of
                 the one set for this object. Useful if one wants to work in
                 a least-privilege manner, limiting the permissions for non-admin work.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            keyspace: an optional keyspace to set in the resulting Database.
-                If not set, the keyspace remains unspecified and must be set later
-                with the `use_keyspace` method.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
-            database_request_timeout_ms: a default timeout, in millisecond, for the
-                duration of each request in the database. For a more fine-grained
-                control of database timeouts (suggested e.g. with regard to methods
-                involving schema changes, such as create_collection), use of the
-                `database_api_options` parameter is suggested; alternatively,
-                bear in mind that individual collection methods also accept timeout
-                parameters.
-            database_timeout_ms: an alias for `database_request_timeout_ms`.
-            database_api_options: : a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the database admin.
                 This allows for a deeper configuration of the database admin, e.g.
                 concerning timeouts; if this is passed together with
@@ -3939,29 +3790,12 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         from astrapy import Database
 
         # this multiple-override implements the alias on timeout params
-        resulting_api_options = (
-            self.api_options.with_override(
-                database_api_options,
-            )
-            .with_override(
-                APIOptions(
-                    token=token,
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=database_timeout_ms,
-                    ),
-                    data_api_url_options=DataAPIURLOptions(
-                        api_path=api_path,
-                        api_version=api_version,
-                    ),
-                ),
-            )
-            .with_override(
-                APIOptions(
-                    timeout_options=TimeoutOptions(
-                        request_timeout_ms=database_request_timeout_ms,
-                    ),
-                ),
-            )
+        resulting_api_options = self.api_options.with_override(
+            spawn_api_options,
+        ).with_override(
+            APIOptions(
+                token=token,
+            ),
         )
 
         return Database(
@@ -3973,40 +3807,24 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
     def get_async_database(
         self,
         *,
-        token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_path: str | UnsetType = _UNSET,
-        api_version: str | UnsetType = _UNSET,
-        database_request_timeout_ms: int | UnsetType = _UNSET,
-        database_timeout_ms: int | UnsetType = _UNSET,
-        database_api_options: APIOptions | UnsetType = _UNSET,
+        token: str | TokenProvider | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Create an AsyncDatabase instance for a specific database, to be used
         when doing data-level work (such as creating/managing collections).
 
         Args:
+            keyspace: an optional keyspace to set in the resulting AsyncDatabase.
+                If not set, the keyspace remains unspecified and must be set later
+                with the `use_keyspace` method.
             token: if supplied, is passed to the AsyncDatabase instead of
                 the one set for this object. Useful if one wants to work in
                 a least-privilege manner, limiting the permissions for non-admin work.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            keyspace: an optional keyspace to set in the resulting AsyncDatabase.
-                If not set, the keyspace remains unspecified and must be set later
-                with the `use_keyspace` method.
-            api_path: path to append to the API Endpoint. In typical usage, this
-                should be left to its default of "/api/json".
-            api_version: version specifier to append to the API path. In typical
-                usage, this should be left to its default of "v1".
-            database_request_timeout_ms: a default timeout, in millisecond, for the
-                duration of each request in the database. For a more fine-grained
-                control of database timeouts (suggested e.g. with regard to methods
-                involving schema changes, such as create_collection), use of the
-                `database_api_options` parameter is suggested; alternatively,
-                bear in mind that individual collection methods also accept timeout
-                parameters.
-            database_timeout_ms: an alias for `database_request_timeout_ms`.
-            database_api_options: : a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the database admin.
                 This allows for a deeper configuration of the database admin, e.g.
                 concerning timeouts; if this is passed together with
@@ -4025,11 +3843,7 @@ class DataAPIDatabaseAdmin(DatabaseAdmin):
         return self.get_database(
             token=token,
             keyspace=keyspace,
-            api_path=api_path,
-            api_version=api_version,
-            database_request_timeout_ms=database_request_timeout_ms,
-            database_timeout_ms=database_timeout_ms,
-            database_api_options=database_api_options,
+            spawn_api_options=spawn_api_options,
         ).to_async()
 
     def find_embedding_providers(
