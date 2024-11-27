@@ -19,6 +19,7 @@ from typing import Any
 import pytest
 
 from astrapy import Database
+from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import DataAPIResponseException
 
 from ..conftest import DefaultCollection
@@ -137,7 +138,11 @@ class TestVectorizeMethodsSync:
         q_text = "A sentence for searching."
 
         def _is_vector(v: Any) -> bool:
-            return isinstance(v, list) and isinstance(v[0], float)
+            if isinstance(v, list) and isinstance(v[0], float):
+                return True
+            if isinstance(v, DataAPIVector):
+                return True
+            return False
 
         for include_sv in [False, True]:
             for sort_cl_label in ["vze"]:

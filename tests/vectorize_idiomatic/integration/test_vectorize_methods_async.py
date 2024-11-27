@@ -21,6 +21,7 @@ import pytest
 from astrapy import AsyncDatabase
 from astrapy.constants import DefaultDocumentType
 from astrapy.cursors import AsyncCollectionFindCursor
+from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import DataAPIResponseException
 
 from ..conftest import DefaultAsyncCollection
@@ -142,7 +143,11 @@ class TestVectorizeMethodsAsync:
         q_text = "A sentence for searching."
 
         def _is_vector(v: Any) -> bool:
-            return isinstance(v, list) and isinstance(v[0], float)
+            if isinstance(v, list) and isinstance(v[0], float):
+                return True
+            if isinstance(v, DataAPIVector):
+                return True
+            return False
 
         async def _alist(
             acursor: AsyncCollectionFindCursor[
