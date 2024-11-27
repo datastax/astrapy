@@ -19,6 +19,7 @@ from typing import Any
 
 from astrapy.data.info.database_info import AstraDBDatabaseInfo
 from astrapy.data.info.vectorize import VectorServiceOptions
+from astrapy.utils.parsing import _warn_residual_keys
 
 
 @dataclass
@@ -178,74 +179,53 @@ class CollectionDefinition:
             if v is not None
         }
 
-    def flatten(self) -> dict[str, Any]:
-        """
-        Recast this object as a flat key-value pair suitable for
-        use as kwargs in a create_collection method call (including recasts).
-        """
-
-        _dimension: int | None
-        _metric: str | None
-        _indexing: dict[str, Any] | None
-        _service: dict[str, Any] | None
-        _default_id_type: str | None
-        if self.vector is not None:
-            _dimension = self.vector.dimension
-            _metric = self.vector.metric
-            if self.vector.service is None:
-                _service = None
-            else:
-                _service = self.vector.service.as_dict()
-        else:
-            _dimension = None
-            _metric = None
-            _service = None
-        _indexing = self.indexing
-        if self.default_id is not None:
-            _default_id_type = self.default_id.default_id_type
-        else:
-            _default_id_type = None
-
-        return {
-            k: v
-            for k, v in {
-                "dimension": _dimension,
-                "metric": _metric,
-                "service": _service,
-                "indexing": _indexing,
-                "default_id_type": _default_id_type,
-            }.items()
-            if v is not None
-        }
-
-    @staticmethod
-    def _from_dict(raw_dict: dict[str, Any]) -> CollectionDefinition:
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> CollectionDefinition:
         """
         Create an instance of CollectionDefinition from a dictionary
         such as one from the Data API.
         """
 
+        _warn_residual_keys(cls, raw_dict, {"vector", "indexing", "defaultId"})
         return CollectionDefinition(
             vector=CollectionVectorOptions._from_dict(raw_dict.get("vector")),
             indexing=raw_dict.get("indexing"),
             default_id=CollectionDefaultIDOptions._from_dict(raw_dict.get("defaultId")),
         )
 
+    @classmethod
+    def coerce(
+        cls, raw_input: CollectionDefinition | dict[str, Any]
+    ) -> CollectionDefinition:
+        if isinstance(raw_input, CollectionDefinition):
+            return raw_input
+        else:
+            return cls._from_dict(raw_input)
+
 
 @dataclass
 class CollectionDescriptor:
     """
     A structure expressing full description of a collection as the Data API
-    returns it, i.e. its name and its `options` sub-structure.
+    returns it, i.e. its name and its definition.
 
     Attributes:
         name: the name of the collection.
-        options: a CollectionDefinition instance.
+        definition: a CollectionDefinition instance.
         raw_descriptor: the raw response from the Data API.
+
+    Note:
+        although the API format has the collection settings in a field called
+        "options" (both in payloads and in responses, consistently), the corresponding
+        attribute of this object is called `definition` to keep consistency with the
+        TableDescriptor class and the attribute's data type (`CollectionDefinition`).
+        As a consequence, when coercing a plain dictionary into this class, care must
+        be taken that the plain dictionary key be "options", as could a response from
+        the API have it.
     """
 
     name: str
-    options: CollectionDefinition
+    definition: CollectionDefinition
     raw_descriptor: dict[str, Any] | None
 
     def __repr__(self) -> str:
@@ -253,7 +233,7 @@ class CollectionDescriptor:
             pc
             for pc in [
                 f"name={self.name.__repr__()}",
-                f"options={self.options.__repr__()}",
+                f"definition={self.definition.__repr__()}",
                 None if self.raw_descriptor is None else "raw_descriptor=...",
             ]
             if pc is not None
@@ -262,45 +242,44 @@ class CollectionDescriptor:
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, CollectionDescriptor):
-            return self.name == other.name and self.options == other.options
+            return self.name == other.name and self.definition == other.definition
         else:
             return False
 
     def as_dict(self) -> dict[str, Any]:
         """
         Recast this object into a dictionary.
-        Empty `options` will not be returned at all.
+        Empty `definition` will not be returned at all.
         """
 
         return {
             k: v
             for k, v in {
                 "name": self.name,
-                "options": self.options.as_dict(),
+                "options": self.definition.as_dict(),
             }.items()
             if v
         }
 
-    def flatten(self) -> dict[str, Any]:
-        """
-        Recast this object as a flat key-value pair suitable for
-        use as kwargs in a create_collection method call (including recasts).
-        """
-
-        return {
-            **(self.options.flatten()),
-            **{"name": self.name},
-        }
-
-    @staticmethod
-    def _from_dict(raw_dict: dict[str, Any]) -> CollectionDescriptor:
+    @classmethod
+    def _from_dict(cls, raw_dict: dict[str, Any]) -> CollectionDescriptor:
         """
         Create an instance of CollectionDescriptor from a dictionary
         such as one from the Data API.
         """
 
+        _warn_residual_keys(cls, raw_dict, {"name", "options"})
         return CollectionDescriptor(
             name=raw_dict["name"],
-            options=CollectionDefinition._from_dict(raw_dict.get("options") or {}),
+            definition=CollectionDefinition._from_dict(raw_dict.get("options") or {}),
             raw_descriptor=raw_dict,
         )
+
+    @classmethod
+    def coerce(
+        cls, raw_input: CollectionDescriptor | dict[str, Any]
+    ) -> CollectionDescriptor:
+        if isinstance(raw_input, CollectionDescriptor):
+            return raw_input
+        else:
+            return cls._from_dict(raw_input)

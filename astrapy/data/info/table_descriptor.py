@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, cast
@@ -28,18 +27,8 @@ from astrapy.data.utils.table_types import (
     TableValuedColumnType,
     TableVectorColumnType,
 )
+from astrapy.utils.parsing import _warn_residual_keys
 from astrapy.utils.unset import _UNSET, UnsetType
-
-
-def warn_residual_keys(
-    klass: type, raw_dict: dict[str, Any], known_keys: set[str]
-) -> None:
-    residual_keys = raw_dict.keys() - known_keys
-    if residual_keys:
-        warnings.warn(
-            "Unexpected key(s) encountered parsing a dictionary into "
-            f"a `{klass.__name__}`: '{','.join(sorted(residual_keys))}'"
-        )
 
 
 @dataclass
@@ -97,7 +86,7 @@ class TableColumnTypeDescriptor(ABC):
         elif raw_dict["type"] == "UNSUPPORTED":
             return TableUnsupportedColumnTypeDescriptor._from_dict(raw_dict)
         else:
-            warn_residual_keys(cls, raw_dict, {"type"})
+            _warn_residual_keys(cls, raw_dict, {"type"})
             return TableScalarColumnTypeDescriptor(
                 column_type=raw_dict["type"],
             )
@@ -141,7 +130,7 @@ class TableScalarColumnTypeDescriptor(TableColumnTypeDescriptor):
         TODO
         """
 
-        warn_residual_keys(cls, raw_dict, {"type"})
+        _warn_residual_keys(cls, raw_dict, {"type"})
         return TableScalarColumnTypeDescriptor(
             column_type=raw_dict["type"],
         )
@@ -201,7 +190,7 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"type", "dimension", "service"})
+        _warn_residual_keys(cls, raw_dict, {"type", "dimension", "service"})
         return TableVectorColumnTypeDescriptor(
             column_type=raw_dict["type"],
             dimension=raw_dict.get("dimension"),
@@ -245,7 +234,7 @@ class TableValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"type", "valueType"})
+        _warn_residual_keys(cls, raw_dict, {"type", "valueType"})
         return TableValuedColumnTypeDescriptor(
             column_type=raw_dict["type"],
             value_type=raw_dict["valueType"],
@@ -292,7 +281,7 @@ class TableKeyValuedColumnTypeDescriptor(TableColumnTypeDescriptor):
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"type", "keyType", "valueType"})
+        _warn_residual_keys(cls, raw_dict, {"type", "keyType", "valueType"})
         return TableKeyValuedColumnTypeDescriptor(
             column_type=raw_dict["type"],
             key_type=raw_dict["keyType"],
@@ -339,7 +328,7 @@ class TableAPISupportDescriptor:
         such as one from the Data API.
         """
 
-        warn_residual_keys(
+        _warn_residual_keys(
             cls,
             raw_dict,
             {"cqlDefinition", "createTable", "insert", "read"},
@@ -391,7 +380,7 @@ class TableUnsupportedColumnTypeDescriptor(TableColumnTypeDescriptor):
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"type", "apiSupport"})
+        _warn_residual_keys(cls, raw_dict, {"type", "apiSupport"})
         return TableUnsupportedColumnTypeDescriptor(
             column_type=raw_dict["type"],
             api_support=TableAPISupportDescriptor._from_dict(raw_dict["apiSupport"]),
@@ -435,7 +424,7 @@ class TablePrimaryKeyDescriptor:
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"partitionBy", "partitionSort"})
+        _warn_residual_keys(cls, raw_dict, {"partitionBy", "partitionSort"})
         return TablePrimaryKeyDescriptor(
             partition_by=raw_dict["partitionBy"],
             partition_sort=raw_dict["partitionSort"],
@@ -501,7 +490,7 @@ class BaseTableDefinition:
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"columns", "primaryKey"})
+        _warn_residual_keys(cls, raw_dict, {"columns", "primaryKey"})
         return BaseTableDefinition(
             columns={
                 col_n: TableColumnTypeDescriptor.coerce(col_v)
@@ -680,7 +669,7 @@ class BaseTableDescriptor:
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"name", "definition"})
+        _warn_residual_keys(cls, raw_dict, {"name", "definition"})
         return BaseTableDescriptor(
             name=raw_dict["name"],
             definition=BaseTableDefinition.coerce(raw_dict.get("definition") or {}),
@@ -748,7 +737,7 @@ class TableIndexOptions:
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"ascii", "normalize", "caseSensitive"})
+        _warn_residual_keys(cls, raw_dict, {"ascii", "normalize", "caseSensitive"})
         return TableIndexOptions(
             ascii=raw_dict["ascii"] if raw_dict.get("ascii") is not None else _UNSET,
             normalize=raw_dict["normalize"]
@@ -811,7 +800,7 @@ class TableVectorIndexOptions:
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"metric", "sourceModel"})
+        _warn_residual_keys(cls, raw_dict, {"metric", "sourceModel"})
         return TableVectorIndexOptions(
             metric=raw_dict["metric"] if raw_dict.get("metric") is not None else _UNSET,
             source_model=raw_dict["sourceModel"]
@@ -892,7 +881,7 @@ class TableIndexDefinition(TableBaseIndexDefinition):
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"column", "options"})
+        _warn_residual_keys(cls, raw_dict, {"column", "options"})
         return TableIndexDefinition(
             column=raw_dict["column"],
             options=TableIndexOptions.coerce(raw_dict["options"]),
@@ -935,7 +924,7 @@ class TableVectorIndexDefinition(TableBaseIndexDefinition):
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"column", "options"})
+        _warn_residual_keys(cls, raw_dict, {"column", "options"})
         return TableVectorIndexDefinition(
             column=raw_dict["column"],
             options=TableVectorIndexOptions.coerce(raw_dict["options"]),
@@ -988,7 +977,7 @@ class TableAPIIndexSupportDescriptor:
         such as one from the Data API.
         """
 
-        warn_residual_keys(
+        _warn_residual_keys(
             cls,
             raw_dict,
             {"cqlDefinition", "createIndex", "filter"},
@@ -1026,7 +1015,7 @@ class TableUnsupportedIndexDefinition(TableBaseIndexDefinition):
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"column", "apiSupport"})
+        _warn_residual_keys(cls, raw_dict, {"column", "apiSupport"})
         return TableUnsupportedIndexDefinition(
             column=raw_dict["column"],
             api_support=TableAPIIndexSupportDescriptor._from_dict(
@@ -1066,7 +1055,7 @@ class TableIndexDescriptor:
         such as one from the Data API.
         """
 
-        warn_residual_keys(cls, raw_dict, {"name", "definition"})
+        _warn_residual_keys(cls, raw_dict, {"name", "definition"})
         return TableIndexDescriptor(
             name=raw_dict["name"],
             definition=TableBaseIndexDefinition._from_dict(raw_dict["definition"]),
@@ -1139,7 +1128,7 @@ class AlterTableAddColumns(AlterTableOperation):
         such as one suitable as (partial) command payload.
         """
 
-        warn_residual_keys(cls, raw_dict, {"columns"})
+        _warn_residual_keys(cls, raw_dict, {"columns"})
         return AlterTableAddColumns(
             columns={
                 col_n: TableColumnTypeDescriptor.coerce(col_v)
@@ -1185,7 +1174,7 @@ class AlterTableDropColumns(AlterTableOperation):
         Create an instance of AlterTableDropColumns from a dictionary
         such as one suitable as (partial) command payload.
         """
-        warn_residual_keys(cls, raw_dict, {"columns"})
+        _warn_residual_keys(cls, raw_dict, {"columns"})
         return AlterTableDropColumns(
             columns=raw_dict["columns"],
         )
@@ -1233,7 +1222,7 @@ class AlterTableAddVectorize(AlterTableOperation):
         Create an instance of AlterTableAddVectorize from a dictionary
         such as one suitable as (partial) command payload.
         """
-        warn_residual_keys(cls, raw_dict, {"columns"})
+        _warn_residual_keys(cls, raw_dict, {"columns"})
         _columns: dict[str, VectorServiceOptions | None] = {
             col_n: VectorServiceOptions.coerce(col_v)
             for col_n, col_v in raw_dict["columns"].items()
@@ -1287,7 +1276,7 @@ class AlterTableDropVectorize(AlterTableOperation):
         Create an instance of AlterTableDropVectorize from a dictionary
         such as one suitable as (partial) command payload.
         """
-        warn_residual_keys(cls, raw_dict, {"columns"})
+        _warn_residual_keys(cls, raw_dict, {"columns"})
         return AlterTableDropVectorize(
             columns=raw_dict["columns"],
         )

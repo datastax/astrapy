@@ -427,7 +427,7 @@ class Collection(Generic[DOC]):
         ]
         logger.info(f"finished getting collections in search of '{self.name}'")
         if self_descriptors:
-            return self_descriptors[0].options
+            return self_descriptors[0].definition
         else:
             raise ValueError(
                 f"Collection {self.keyspace}.{self.name} not found.",
@@ -2842,7 +2842,7 @@ class AsyncCollection(Generic[DOC]):
         ]
         logger.info(f"finished getting collections in search of '{self.name}'")
         if self_descriptors:
-            return self_descriptors[0].options
+            return self_descriptors[0].definition
         else:
             raise ValueError(
                 f"Collection {self.keyspace}.{self.name} not found.",

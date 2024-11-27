@@ -96,7 +96,8 @@ Signature change from `-> {"ok": 1}` to `-> None` for some admin and schema meth
 Support for arbitrary 'database' and 'admin' headers throughout the object chain
 Rename `CollectionVectorServiceOptions` class to `VectorServiceOptions`
 Renamed 'CollectionOptions' class to `CollectionDefinition` (return type of `Collection.options()`):
-    - also removed its "raw_options" attribute (redundant w.r.t `CollectionDescriptor.raw_descriptor`)
+    - renamed its 'options' attribute into `definition` (although the API payload calls it "options")
+    - removed its "raw_options" attribute (redundant w.r.t `CollectionDescriptor.raw_descriptor`)
 Reworked the options system:
     - an APIOptions object inherited at each "spawn" operation, with overrides
     - environment-dependent defaults if nothing supplied
