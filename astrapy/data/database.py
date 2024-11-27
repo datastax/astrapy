@@ -367,8 +367,8 @@ class Database:
             the new copy, an `AsyncDatabase` instance.
 
         Example:
-            >>> my_async_db = my_db.to_async()
-            >>> asyncio.run(my_async_db.list_collection_names())
+            >>> async_database = my_db.to_async()
+            >>> asyncio.run(async_database.list_collection_names())
         """
 
         arg_api_options = APIOptions(
@@ -577,7 +577,11 @@ class Database:
 
         Args:
             name: the name of the collection.
-            document_type: TODO
+            document_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting Collection is implicitly
+                a `Collection[dict[str, Any]]`. If provided, it must match the
+                type hint specified in the assignment.
+                See the examples below.
             keyspace: the keyspace containing the collection. If no keyspace
                 is specified, the general setting for this database is used.
             embedding_api_key: optional API key(s) for interacting with the collection.
@@ -702,7 +706,11 @@ class Database:
 
         Args:
             name: the name of the collection.
-            document_type: TODO
+            document_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting Collection is implicitly
+                a `Collection[dict[str, Any]]`. If provided, it must match the
+                type hint specified in the assignment.
+                See the examples below.
             keyspace: the keyspace where the collection is to be created.
                 If not specified, the general setting for this database is used.
             dimension: for vector collections, the dimension of the vectors
@@ -1036,7 +1044,10 @@ class Database:
 
         Args:
             name: the name of the table.
-            row_type: TODO
+            row_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting Table is implicitly a `Table[dict[str, Any]]`.
+                If provided, it must match the type hint specified in the assignment.
+                See the examples below.
             keyspace: the keyspace containing the table. If no keyspace
                 is specified, the general setting for this database is used.
             embedding_api_key: optional API key(s) for interacting with the table.
@@ -1060,9 +1071,27 @@ class Database:
                 (but without any form of validation).
 
         Example:
-            >>> my_tab = my_db.get_table("my_table")
-            >>> my_tab.count_documents({}, upper_bound=100)
-            41
+            >>> # Get a Table object (and read a property of it as an example):
+            >>> my_table = database.get_table("games")
+            >>> my_table.full_name
+            'default_keyspace.games'
+            >>>
+            >>> # Get a Table object in a specific keyspace,
+            >>> # and set an embedding API key to it:
+            >>> my_other_table = database.get_table(
+            ...     "tournaments",
+            ...     keyspace="the_other_keyspace",
+            ...     embedding_api_key="secret-012abc...",
+            ... )
+            >>>
+            >>> from astrapy import Table
+            >>> MyCustomDictType = dict[str, int]
+            >>>
+            >>> # Get a Table object typed with a specific type for its rows:
+            >>> my_typed_table: Table[MyCustomDictType] = database.get_table(
+            ...     "games",
+            ...     row_type=MyCustomDictType,
+            ... )
         """
 
         # lazy importing here against circular-import error
@@ -1147,18 +1176,23 @@ class Database:
             definition: a complete table definition for the table. This can be an
                 instance of `CreateTableDefinition` or an equivalent (nested) dictionary,
                 in which case it will be parsed into a `CreateTableDefinition`.
-                See the `astrapy.info.CreateTableDefinition` class for more details
-                and ways to construct this object.
-            row_type: TODO
+                See the `astrapy.info.CreateTableDefinition` class and the
+                `Table` class for more details and ways to construct this object.
+            row_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting Table is implicitly a `Table[dict[str, Any]]`.
+                If provided, it must match the type hint specified in the assignment.
+                See the examples below.
             keyspace: the keyspace where the table is to be created.
                 If not specified, the general setting for this database is used.
             if_not_exists: if set to True, the command will succeed even if a table
                 with the specified name already exists (in which case no actual
                 table creation takes place on the database). Defaults to False,
                 i.e. an error is raised by the API in case of table-name collision.
-            table_admin_timeout_ms: a timeout, in milliseconds, for the
-                createTable HTTP request.
-            request_timeout_ms: TODO
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the table.
                 If an embedding service is configured, and this parameter is not None,
@@ -1181,25 +1215,97 @@ class Database:
             newly-created table.
 
         Example:
+            >>> # Create a table using the fluent syntax for definition
             >>> from astrapy.constants import SortMode
             >>> from astrapy.info import (
             ...     CreateTableDefinition,
             ...     TableScalarColumnType,
             ... )
-            >>> my_table = database.create_table(
-            ...     "games",
-            ...     definition=CreateTableDefinition.zero()
-            ...     .add_column("match_no", TableScalarColumnType.INT)
-            ...     .add_column("round", TableScalarColumnType.TEXT)
-            ...     .add_column("winner", TableScalarColumnType.TEXT)
+            >>> table_definition = (
+            ...     CreateTableDefinition.zero()
+            ...     .add_column("match_id", TableScalarColumnType.TEXT)
+            ...     .add_column("round", TableScalarColumnType.INT)
+            ...     .add_vector_column("m_vector", dimension=3)
             ...     .add_column("score", TableScalarColumnType.INT)
             ...     .add_column("when", TableScalarColumnType.TIMESTAMP)
-            ...     .add_vector_column("m_vector", dimension=3)
-            ...     .add_partition_by(["match_no"])
-            ...     .add_partition_sort({"round": SortMode.ASCENDING}),
+            ...     .add_column("winner", TableScalarColumnType.TEXT)
+            ...     .add_set_column("fighters", TableScalarColumnType.UUID)
+            ...     .add_partition_by(["match_id"])
+            ...     .add_partition_sort({"round": SortMode.ASCENDING})
             ... )
-            >>> my_table
-            Table(name="games", keyspace="default_keyspace", ...)  # Note: shortened
+            >>> my_table = database.create_table(
+            ...     "games",
+            ...     definition=table_definition,
+            ... )
+            >>>
+            >>> # Create a table with the definition as object
+            >>> # (and do not raise an error if the table exists already)
+            >>> from astrapy.info import (
+            ...     CreateTableDefinition,
+            ...     TablePrimaryKeyDescriptor,
+            ...     TableScalarColumnTypeDescriptor,
+            ...     TableValuedColumnType,
+            ...     TableValuedColumnTypeDescriptor,
+            ...     TableVectorColumnTypeDescriptor,
+            ... )
+            >>> table_definition_1 = CreateTableDefinition(
+            ...     columns={
+            ...         "match_id": TableScalarColumnTypeDescriptor(
+            ...             TableScalarColumnType.TEXT,
+            ...         ),
+            ...         "round": TableScalarColumnTypeDescriptor(
+            ...             TableScalarColumnType.INT,
+            ...         ),
+            ...         "m_vector": TableVectorColumnTypeDescriptor(
+            ...             column_type="vector", dimension=3
+            ...         ),
+            ...         "score": TableScalarColumnTypeDescriptor(
+            ...             TableScalarColumnType.INT,
+            ...         ),
+            ...         "when": TableScalarColumnTypeDescriptor(
+            ...             TableScalarColumnType.TIMESTAMP,
+            ...         ),
+            ...         "winner": TableScalarColumnTypeDescriptor(
+            ...             TableScalarColumnType.TEXT,
+            ...         ),
+            ...         "fighters": TableValuedColumnTypeDescriptor(
+            ...             column_type=TableValuedColumnType.SET,
+            ...             value_type=TableScalarColumnType.UUID,
+            ...         ),
+            ...     },
+            ...     primary_key=TablePrimaryKeyDescriptor(
+            ...         partition_by=["match_id"],
+            ...         partition_sort={"round": SortMode.ASCENDING},
+            ...     ),
+            ... )
+            >>> my_table_1 = database.create_table(
+            ...     "games",
+            ...     definition=table_definition_1,
+            ...     if_not_exists=True,
+            ... )
+            >>>
+            >>> # Create a table with the definition as plain dictionary
+            >>> # (and do not raise an error if the table exists already)
+            >>> table_definition_2 = {
+            ...     "columns": {
+            ...         "match_id": {"type": "text"},
+            ...         "round": {"type": "int"},
+            ...         "m_vector": {"type": "vector", "dimension": 3},
+            ...         "score": {"type": "int"},
+            ...         "when": {"type": "timestamp"},
+            ...         "winner": {"type": "text"},
+            ...         "fighters": {"type": "set", "valueType": "uuid"},
+            ...     },
+            ...     "primaryKey": {
+            ...         "partitionBy": ["match_id"],
+            ...         "partitionSort": {"round": 1},
+            ...     },
+            ... }
+            >>> my_table_2 = database.create_table(
+            ...     "games",
+            ...     definition=table_definition_2,
+            ...     if_not_exists=True,
+            ... )
         """
 
         ct_options: dict[str, bool]
@@ -1917,7 +2023,7 @@ class AsyncDatabase:
             a new `AsyncDatabase` instance.
 
         Example:
-            >>> my_async_db_2 = my_async_db.with_options(
+            >>> async_database_2 = async_database.with_options(
             ...     keyspace="the_other_keyspace",
             ...     token="AstraCS:xyz...",
             ... )
@@ -1957,7 +2063,7 @@ class AsyncDatabase:
             the new copy, a `Database` instance.
 
         Example:
-            >>> my_sync_db = my_async_db.to_sync()
+            >>> my_sync_db = async_database.to_sync()
             >>> my_sync_db.list_collection_names()
             ['a_collection', 'another_collection']
         """
@@ -1989,10 +2095,10 @@ class AsyncDatabase:
             None.
 
         Example:
-            >>> asyncio.run(my_async_db.list_collection_names())
+            >>> asyncio.run(async_database.list_collection_names())
             ['coll_1', 'coll_2']
-            >>> my_async_db.use_keyspace("an_empty_keyspace")
-            >>> asyncio.run(my_async_db.list_collection_names())
+            >>> async_database.use_keyspace("an_empty_keyspace")
+            >>> asyncio.run(async_database.list_collection_names())
             []
         """
         logger.info(f"switching to keyspace '{keyspace}'")
@@ -2019,10 +2125,10 @@ class AsyncDatabase:
             timeout_ms: an alias for `request_timeout_ms`.
 
         Example:
-            >>> asyncio.run(my_async_db.info()).region
+            >>> asyncio.run(async_database.info()).region
             'eu-west-1'
 
-            >>> asyncio.run(my_async_db.info()).raw_info['datacenters'][0]['dateCreated']
+            >>> asyncio.run(async_database.info()).raw_info['datacenters'][0]['dateCreated']
             '2023-01-30T12:34:56Z'
 
         Note:
@@ -2059,7 +2165,7 @@ class AsyncDatabase:
         The ID of this database.
 
         Example:
-            >>> my_async_db.id
+            >>> async_database.id
             '01234567-89ab-cdef-0123-456789abcdef'
         """
 
@@ -2102,7 +2208,7 @@ class AsyncDatabase:
         See the `info()` method for more details.
 
         Example:
-            >>> asyncio.run(my_async_db.name())
+            >>> asyncio.run(async_database.name())
             'the_application_database'
         """
 
@@ -2120,7 +2226,7 @@ class AsyncDatabase:
             the working keyspace (a string), or None if not set.
 
         Example:
-            >>> my_async_db.keyspace
+            >>> async_database.keyspace
             'the_keyspace'
         """
 
@@ -2168,7 +2274,11 @@ class AsyncDatabase:
 
         Args:
             name: the name of the collection.
-            document_type: TODO
+            document_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting AsyncCollection is implicitly
+                an `AsyncCollection[dict[str, Any]]`. If provided, it must match the
+                type hint specified in the assignment.
+                See the examples below.
             keyspace: the keyspace containing the collection. If no keyspace
                 is specified, the setting for this database is used.
             embedding_api_key: optional API key(s) for interacting with the collection.
@@ -2196,15 +2306,15 @@ class AsyncDatabase:
             ...    async_col = await adb.get_collection(c_name)
             ...    return await async_col.count_documents({}, upper_bound=100)
             ...
-            >>> asyncio.run(count_docs(my_async_db, "my_collection"))
+            >>> asyncio.run(count_docs(async_database, "my_collection"))
             45
 
         Note: the attribute and indexing syntax forms achieve the same effect
             as this method, returning an AsyncCollection, albeit
             in a synchronous way. In other words, the following are equivalent:
-                await my_async_db.get_collection("coll_name")
-                my_async_db.coll_name
-                my_async_db["coll_name"]
+                await async_database.get_collection("coll_name")
+                async_database.coll_name
+                async_database["coll_name"]
         """
 
         # lazy importing here against circular-import error
@@ -2296,7 +2406,11 @@ class AsyncDatabase:
 
         Args:
             name: the name of the collection.
-            document_type: TODO
+            document_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting AsyncCollection is implicitly
+                an `AsyncCollection[dict[str, Any]]`. If provided, it must match the
+                type hint specified in the assignment.
+                See the examples below.
             keyspace: the keyspace where the collection is to be created.
                 If not specified, the general setting for this database is used.
             dimension: for vector collections, the dimension of the vectors
@@ -2354,7 +2468,7 @@ class AsyncDatabase:
             ...         {"name": "the_row", "$vector": [0.4, 0.5, 0.7]},
             ...     )
             ...
-            >>> asyncio.run(create_and_insert(my_async_db))
+            >>> asyncio.run(create_and_insert(async_database))
             InsertOneResult(raw_results=..., inserted_id='08f05ecf-...-...-...')
 
         Note:
@@ -2425,10 +2539,10 @@ class AsyncDatabase:
             timeout_ms: an alias for `collection_admin_timeout_ms`.
 
         Example:
-            >>> asyncio.run(my_async_db.list_collection_names())
+            >>> asyncio.run(async_database.list_collection_names())
             ['a_collection', 'my_v_col', 'another_col']
-            >>> asyncio.run(my_async_db.drop_collection("my_v_col"))
-            >>> asyncio.run(my_async_db.list_collection_names())
+            >>> asyncio.run(async_database.drop_collection("my_v_col"))
+            >>> asyncio.run(async_database.list_collection_names())
             ['a_collection', 'another_col']
 
         Note:
@@ -2499,7 +2613,7 @@ class AsyncDatabase:
             ...     for coll in await adb.list_collections():
             ...         print("* coll:", coll)
             ...
-            >>> asyncio.run(a_list_colls(my_async_db))
+            >>> asyncio.run(a_list_colls(async_database))
             * list: [CollectionDescriptor(name='my_v_col', options=CollectionDefinition())]
             * coll: CollectionDescriptor(name='my_v_col', options=CollectionDefinition())
         """
@@ -2566,7 +2680,7 @@ class AsyncDatabase:
             a list of the collection names as strings, in no particular order.
 
         Example:
-            >>> asyncio.run(my_async_db.list_collection_names())
+            >>> asyncio.run(async_database.list_collection_names())
             ['a_collection', 'another_col']
         """
 
@@ -2636,7 +2750,11 @@ class AsyncDatabase:
 
         Args:
             name: the name of the table.
-            row_type: TODO
+            row_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting AsyncTable is implicitly
+                an `AsyncTable[dict[str, Any]]`. If provided, it must match
+                the type hint specified in the assignment.
+                See the examples below.
             keyspace: the keyspace containing the table. If no keyspace
                 is specified, the general setting for this database is used.
             embedding_api_key: optional API key(s) for interacting with the table.
@@ -2660,9 +2778,26 @@ class AsyncDatabase:
                 (but without any form of validation).
 
         Example:
-            >>> my_async_tab = my_async_db.get_table("my_table")
-            >>> asyncio.run(my_async_tab.count_documents({}, upper_bound=100))
-            41
+            >>> # Get an AsyncTable object (and read a property of it as an example):
+            >>> my_async_table = asyncio.run(async_database.get_table("games"))
+            >>> my_async_table.full_name
+            'default_keyspace.games'
+            >>>
+            >>> # Get an AsyncTable object in a specific keyspace,
+            >>> # and set an embedding API key to it:
+            >>> my_other_async_table = async_database.get_table(
+            ...     "tournaments",
+            ...     keyspace="the_other_keyspace",
+            ...     embedding_api_key="secret-012abc...",
+            ... )
+            >>> from astrapy import AsyncTable
+            >>> MyCustomDictType = dict[str, int]
+            >>>
+            >>> # Get an AsyncTable object typed with a specific type for its rows:
+            >>> my_typed_async_table: AsyncTable[MyCustomDictType] = async_database.get_table(
+            ...     "games",
+            ...     row_type=MyCustomDictType,
+            ... )
         """
 
         # lazy importing here against circular-import error
@@ -2747,18 +2882,24 @@ class AsyncDatabase:
             definition: a complete table definition for the table. This can be an
                 instance of `CreateTableDefinition` or an equivalent (nested) dictionary,
                 in which case it will be parsed into a `CreateTableDefinition`.
-                See the `astrapy.info.CreateTableDefinition` class for more details
-                and ways to construct this object.
-            row_type: TODO
+                See the `astrapy.info.CreateTableDefinition` class and the
+                `AsyncTable` class for more details and ways to construct this object.
+            row_type: this parameter acts a formal specifier for the type checker.
+                If omitted, the resulting AsyncTable is implicitly
+                an `AsyncTable[dict[str, Any]]`. If provided, it must match
+                the type hint specified in the assignment.
+                See the examples below.
             keyspace: the keyspace where the table is to be created.
                 If not specified, the general setting for this database is used.
             if_not_exists: if set to True, the command will succeed even if a table
                 with the specified name already exists (in which case no actual
                 table creation takes place on the database). Defaults to False,
                 i.e. an error is raised by the API in case of table-name collision.
-            table_admin_timeout_ms: a timeout, in milliseconds, for the
-                createTable HTTP request.
-            request_timeout_ms: TODO
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Table defaults apply.
+                (This method issues a single API request, hence all timeout parameters
+                are treated the same.)
+            request_timeout_ms: an alias for `table_admin_timeout_ms`.
             timeout_ms: an alias for `table_admin_timeout_ms`.
             embedding_api_key: optional API key(s) for interacting with the table.
                 If an embedding service is configured, and this parameter is not None,
@@ -2781,17 +2922,97 @@ class AsyncDatabase:
             newly-created table.
 
         Example:
-            >>> table_def = (
+            >>> # Create a table using the fluent syntax for definition
+            >>> from astrapy.constants import SortMode
+            >>> from astrapy.info import (
+            ...     CreateTableDefinition,
+            ...     TableScalarColumnType,
+            ... )
+            >>> table_definition = (
             ...     CreateTableDefinition.zero()
-            ...     .add_column("id", "text")
-            ...     .add_column("name", "text")
-            ...     .add_partition_by(["id"])
+            ...     .add_column("match_id", TableScalarColumnType.TEXT)
+            ...     .add_column("round", TableScalarColumnType.INT)
+            ...     .add_vector_column("m_vector", dimension=3)
+            ...     .add_column("score", TableScalarColumnType.INT)
+            ...     .add_column("when", TableScalarColumnType.TIMESTAMP)
+            ...     .add_column("winner", TableScalarColumnType.TEXT)
+            ...     .add_set_column("fighters", TableScalarColumnType.UUID)
+            ...     .add_partition_by(["match_id"])
+            ...     .add_partition_sort({"round": SortMode.ASCENDING})
             ... )
-            ...
-            >>> async_table = asyncio.run(
-            ...     async_db.create_table("my_table", definition=table_def)
+            >>> my_async_table = asyncio.run(async_database.create_table(
+            ...     "games",
+            ...     definition=table_definition,
+            ... ))
+            >>>
+            >>> # Create a table with the definition as object
+            >>> # (and do not raise an error if the table exists already)
+            >>> from astrapy.info import (
+            ...     CreateTableDefinition,
+            ...     TablePrimaryKeyDescriptor,
+            ...     TableScalarColumnTypeDescriptor,
+            ...     TableValuedColumnType,
+            ...     TableValuedColumnTypeDescriptor,
+            ...     TableVectorColumnTypeDescriptor,
             ... )
-            TODO add usage
+            >>> table_definition_1 = CreateTableDefinition(
+            ...     columns={
+            ...         "match_id": TableScalarColumnTypeDescriptor(
+            ...             TableScalarColumnType.TEXT,
+            ...         ),
+            ...         "round": TableScalarColumnTypeDescriptor(
+            ...             TableScalarColumnType.INT,
+            ...         ),
+            ...         "m_vector": TableVectorColumnTypeDescriptor(
+            ...             column_type="vector", dimension=3
+            ...         ),
+            ...         "score": TableScalarColumnTypeDescriptor(
+            ...             TableScalarColumnType.INT,
+            ...         ),
+            ...         "when": TableScalarColumnTypeDescriptor(
+            ...             TableScalarColumnType.TIMESTAMP,
+            ...         ),
+            ...         "winner": TableScalarColumnTypeDescriptor(
+            ...             TableScalarColumnType.TEXT,
+            ...         ),
+            ...         "fighters": TableValuedColumnTypeDescriptor(
+            ...             column_type=TableValuedColumnType.SET,
+            ...             value_type=TableScalarColumnType.UUID,
+            ...         ),
+            ...     },
+            ...     primary_key=TablePrimaryKeyDescriptor(
+            ...         partition_by=["match_id"],
+            ...         partition_sort={"round": SortMode.ASCENDING},
+            ...     ),
+            ... )
+            >>> my_async_table_1 = asyncio.run(async_database.create_table(
+            ...     "games",
+            ...     definition=table_definition_1,
+            ...     if_not_exists=True,
+            ... ))
+            >>>
+            >>> # Create a table with the definition as plain dictionary
+            >>> # (and do not raise an error if the table exists already)
+            >>> table_definition_2 = {
+            ...     "columns": {
+            ...         "match_id": {"type": "text"},
+            ...         "round": {"type": "int"},
+            ...         "m_vector": {"type": "vector", "dimension": 3},
+            ...         "score": {"type": "int"},
+            ...         "when": {"type": "timestamp"},
+            ...         "winner": {"type": "text"},
+            ...         "fighters": {"type": "set", "valueType": "uuid"},
+            ...     },
+            ...     "primaryKey": {
+            ...         "partitionBy": ["match_id"],
+            ...         "partitionSort": {"round": 1},
+            ...     },
+            ... }
+            >>> my_async_table_2 = asyncio.run(async_database.create_table(
+            ...     "games",
+            ...     definition=table_definition_2,
+            ...     if_not_exists=True,
+            ... ))
         """
 
         ct_options: dict[str, bool]
@@ -3270,7 +3491,7 @@ class AsyncDatabase:
             for other environments, an instance of `DataAPIDatabaseAdmin` is returned.
 
         Example:
-            >>> my_db_admin = my_async_db.get_database_admin()
+            >>> my_db_admin = async_database.get_database_admin()
             >>> if "new_keyspace" not in my_db_admin.list_keyspaces():
             ...     my_db_admin.create_keyspace("new_keyspace")
             >>> my_db_admin.list_keyspaces()

@@ -3370,9 +3370,9 @@ class AsyncTable(Generic[ROW]):
                 A regular dictionary can also be provided, but then it must have the
                 alter operation name at its top level: {"add": {"columns": ...}}.
             row_type: this parameter acts a formal specifier for the type checker.
-                If omitted, the resulting AsyncTable is implicitly an
-                `AsyncTable[dict[str, Any]]`.
-                If provided, it must match the type hint specified in the assignment.
+                If omitted, the resulting AsyncTable is implicitly
+                an `AsyncTable[dict[str, Any]]`. If provided, it must match
+                the type hint specified in the assignment.
                 See the examples below.
             table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying API request. If not provided, the AsyncTable defaults apply.

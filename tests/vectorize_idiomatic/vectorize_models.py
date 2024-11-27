@@ -103,6 +103,12 @@ SECRET_NAME_ROOT_MAP = {
     "voyageAI": "VOYAGEAI",
 }
 
+# Any "model tag" listed here is skipped no matter what.
+# (useful for models already from the findEmbProvs but not stable/working yet).
+EXCLUDED_MODEL_QUADRUPLES = {
+    ("jinaAI", "jina-embeddings-v3", "HEADER", "0"),
+}
+
 # this is a way to suppress/limit certain combinations of
 # "full param" testing from the start. If even one of the optional params
 # in a test model is PARAM_SKIP_MARKER, the combination is not emitted at all.
@@ -127,6 +133,8 @@ PARAMETER_VALUE_MAP = {
     ("azureOpenAI", "text-embedding-ada-002", "resourceName"): os.environ[
         "AZURE_OPENAI_RESNAME_ADA2"
     ],
+    ("jinaAI", "jina-embeddings-v3", "late_chunking"): True,
+    ("jinaAI", "jina-embeddings-v3", "task"): "text-matching",
     ("voyageAI", "voyage-2", "autoTruncate"): True,
     ("voyageAI", "voyage-code-2", "autoTruncate"): True,
     ("voyageAI", "voyage-finance-2", "autoTruncate"): True,
@@ -280,30 +288,39 @@ def live_test_models() -> Iterable[dict[str, Any]]:
                         for param_name in optional_nond_params
                     }
 
-                    if optional_dimension or optional_nond_params != set():
-                        # we issue a minimal-params version
-                        model_tag_0 = f"{provider_name}/{model.name}/{auth_type_name}/0"
-                        this_minimal_model = {
-                            "model_tag": model_tag_0,
-                            "simple_tag": _collapse(
-                                "".join(c for c in model_tag_0 if c in alphanum)
-                            ),
-                            "auth_type_name": auth_type_name,
-                            "auth_type_tokens": auth_type_desc.tokens,
-                            "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
-                            "test_assets": TEST_ASSETS_MAP.get(
-                                (provider_name, model.name), DEFAULT_TEST_ASSETS
-                            ),
-                            "use_insert_one": USE_INSERT_ONE_MAP.get(
-                                (provider_name, model.name), False
-                            ),
-                            "service_options": VectorServiceOptions(
-                                provider=provider_name,
-                                model_name=model.name,
-                                parameters=model_parameters,
-                            ),
-                        }
-                        yield this_minimal_model
+                    minimal_model_quadruple = (
+                        provider_name,
+                        model.name,
+                        auth_type_name,
+                        "0",
+                    )
+                    if minimal_model_quadruple not in EXCLUDED_MODEL_QUADRUPLES:
+                        if optional_dimension or optional_nond_params != set():
+                            # we issue a minimal-params version
+                            model_tag_0 = (
+                                f"{provider_name}/{model.name}/{auth_type_name}/0"
+                            )
+                            this_minimal_model = {
+                                "model_tag": model_tag_0,
+                                "simple_tag": _collapse(
+                                    "".join(c for c in model_tag_0 if c in alphanum)
+                                ),
+                                "auth_type_name": auth_type_name,
+                                "auth_type_tokens": auth_type_desc.tokens,
+                                "secret_tag": SECRET_NAME_ROOT_MAP[provider_name],
+                                "test_assets": TEST_ASSETS_MAP.get(
+                                    (provider_name, model.name), DEFAULT_TEST_ASSETS
+                                ),
+                                "use_insert_one": USE_INSERT_ONE_MAP.get(
+                                    (provider_name, model.name), False
+                                ),
+                                "service_options": VectorServiceOptions(
+                                    provider=provider_name,
+                                    model_name=model.name,
+                                    parameters=model_parameters,
+                                ),
+                            }
+                            yield this_minimal_model
 
                     # and in any case we issue a 'full-spec' one ...
                     # ... unless explicitly marked as skipped
@@ -325,20 +342,26 @@ def live_test_models() -> Iterable[dict[str, Any]]:
                         }
 
                         model_tag_f = f"{provider_name}/{model.name}/{auth_type_name}/f"
-
-                        this_model = {
-                            "model_tag": model_tag_f,
-                            "simple_tag": _collapse(
-                                "".join(c for c in model_tag_f if c in alphanum)
-                            ),
-                            "service_options": VectorServiceOptions(
-                                provider=provider_name,
-                                model_name=model.name,
-                                parameters={
-                                    **model_parameters,
-                                    **optional_model_parameters,
-                                },
-                            ),
-                            **root_model,
-                        }
-                        yield this_model
+                        full_model_quadruple = (
+                            provider_name,
+                            model.name,
+                            auth_type_name,
+                            "f",
+                        )
+                        if full_model_quadruple not in EXCLUDED_MODEL_QUADRUPLES:
+                            this_model = {
+                                "model_tag": model_tag_f,
+                                "simple_tag": _collapse(
+                                    "".join(c for c in model_tag_f if c in alphanum)
+                                ),
+                                "service_options": VectorServiceOptions(
+                                    provider=provider_name,
+                                    model_name=model.name,
+                                    parameters={
+                                        **model_parameters,
+                                        **optional_model_parameters,
+                                    },
+                                ),
+                                **root_model,
+                            }
+                            yield this_model
