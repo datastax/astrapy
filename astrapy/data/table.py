@@ -131,6 +131,7 @@ class Table(Generic[ROW]):
         ... )
 
         >>> # Create a table with the definition as object
+        >>> # (and do not raise an error if the table exists already)
         >>> from astrapy.info import (
         ...     CreateTableDefinition,
         ...     TablePrimaryKeyDescriptor,
@@ -176,6 +177,7 @@ class Table(Generic[ROW]):
         ... )
 
         >>> # Create a table with the definition as plain dictionary
+        >>> # (and do not raise an error if the table exists already)
         >>> table_definition_2 = {
         ...     "columns": {
         ...         "match_id": {"type": "text"},
@@ -2651,7 +2653,7 @@ class AsyncTable(Generic[ROW]):
     Examples:
         >>> from astrapy import DataAPIClient, AsyncTable
         >>> client = astrapy.DataAPIClient()
-        >>> my_async_db = client.get_async_database(
+        >>> async_database = client.get_async_database(
         ...     "https://01234567-....apps.astra.datastax.com",
         ...     token="AstraCS:..."
         ... )
@@ -2660,62 +2662,97 @@ class AsyncTable(Generic[ROW]):
         >>> from astrapy.constants import SortMode
         >>> from astrapy.info import (
         ...     CreateTableDefinition,
+        ...     TableScalarColumnType,
+        ... )
+        >>> table_definition = (
+        ...     CreateTableDefinition.zero()
+        ...     .add_column("match_id", TableScalarColumnType.TEXT)
+        ...     .add_column("round", TableScalarColumnType.INT)
+        ...     .add_vector_column("m_vector", dimension=3)
+        ...     .add_column("score", TableScalarColumnType.INT)
+        ...     .add_column("when", TableScalarColumnType.TIMESTAMP)
+        ...     .add_column("winner", TableScalarColumnType.TEXT)
+        ...     .add_set_column("fighters", TableScalarColumnType.UUID)
+        ...     .add_partition_by(["match_id"])
+        ...     .add_partition_sort({"round": SortMode.ASCENDING})
+        ... )
+        >>> my_table = await async_database.create_table(
+        ...     "games",
+        ...     definition=table_definition,
+        ... )
+
+        >>> # Create a table with the definition as object
+        >>> # (and do not raise an error if the table exists already)
+        >>> from astrapy.info import (
+        ...     CreateTableDefinition,
         ...     TablePrimaryKeyDescriptor,
         ...     TableScalarColumnTypeDescriptor,
+        ...     TableValuedColumnType,
+        ...     TableValuedColumnTypeDescriptor,
         ...     TableVectorColumnTypeDescriptor,
         ... )
         >>> table_definition_1 = CreateTableDefinition(
         ...     columns={
-        ...         "p_text": TableScalarColumnTypeDescriptor(column_type="text"),
-        ...         "p_int": TableScalarColumnTypeDescriptor(column_type="int"),
-        ...         "p_vector": TableVectorColumnTypeDescriptor(
-        ...             column_type="vector", dimension=3, service=None
+        ...         "match_id": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.TEXT,
+        ...         ),
+        ...         "round": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.INT,
+        ...         ),
+        ...         "m_vector": TableVectorColumnTypeDescriptor(
+        ...             column_type="vector", dimension=3
+        ...         ),
+        ...         "score": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.INT,
+        ...         ),
+        ...         "when": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.TIMESTAMP,
+        ...         ),
+        ...         "winner": TableScalarColumnTypeDescriptor(
+        ...             TableScalarColumnType.TEXT,
+        ...         ),
+        ...         "fighters": TableValuedColumnTypeDescriptor(
+        ...             column_type=TableValuedColumnType.SET,
+        ...             value_type=TableScalarColumnType.UUID,
         ...         ),
         ...     },
         ...     primary_key=TablePrimaryKeyDescriptor(
-        ...         partition_by=["p_text"],
-        ...         partition_sort={"p_int": SortMode.ASCENDING},
+        ...         partition_by=["match_id"],
+        ...         partition_sort={"round": SortMode.ASCENDING},
         ...     ),
         ... )
-        >>> my_async_table_1 = await my_async_db.create_table(
-        ...     "my_v_table_1",
+        >>> my_table_1 = await async_database.create_table(
+        ...     "games",
         ...     definition=table_definition_1,
-        ... )
-
-        >>> # Create a table with the definition as object
-        >>> table_definition_2 = {
-        ...     'columns': {
-        ...         'p_text': {'type': 'text'},
-        ...         'p_int': {'type': 'int'},
-        ...         'p_vector': {'type': 'vector', 'dimension': 3}
-        ...     },
-        ...     'primaryKey': {
-        ...         'partitionBy': ['p_text'],
-        ...         'partitionSort': {'p_int': SortMode.ASCENDING}
-        ...     }
-        ... }
-        >>> my_async_table_2 = await my_async_db.create_table(
-        ...     "my_v_table_2",
-        ...     definition=table_definition_2,
+        ...     if_not_exists=True,
         ... )
 
         >>> # Create a table with the definition as plain dictionary
-        >>> table_definition_3 = (
-        ...     CreateTableDefinition.zero()
-        ...     .add_column("p_text", "text")
-        ...     .add_column("p_int", "int")
-        ...     .add_vector_column("p_vector", dimension=3)
-        ...     .add_partition_by(["p_text"])
-        ...     .add_partition_sort({"p_int": SortMode.ASCENDING})
-        ... )
-        >>> my_async_table_3 = await my_async_db.create_table(
-        ...     "my_v_table_3",
-        ...     definition=table_definition_3,
+        >>> # (and do not raise an error if the table exists already)
+        >>> table_definition_2 = {
+        ...     "columns": {
+        ...         "match_id": {"type": "text"},
+        ...         "round": {"type": "int"},
+        ...         "m_vector": {"type": "vector", "dimension": 3},
+        ...         "score": {"type": "int"},
+        ...         "when": {"type": "timestamp"},
+        ...         "winner": {"type": "text"},
+        ...         "fighters": {"type": "set", "valueType": "uuid"},
+        ...     },
+        ...     "primaryKey": {
+        ...         "partitionBy": ["match_id"],
+        ...         "partitionSort": {"round": 1},
+        ...     },
+        ... }
+        >>> my_table_2 = await async_database.create_table(
+        ...     "games",
+        ...     definition=table_definition_2,
+        ...     if_not_exists=True,
         ... )
 
         >>> # Get a reference to an existing table
         >>> # (no checks are performed on DB)
-        >>> my_table_4 = await my_db.get_table("my_already_existing_table")
+        >>> my_table_4 = await async_database.get_table("my_already_existing_table")
 
     Note:
         creating an instance of AsyncTable does not trigger, in itself, actual
