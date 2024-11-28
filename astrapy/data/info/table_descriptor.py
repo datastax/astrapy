@@ -149,7 +149,7 @@ class TableVectorColumnTypeDescriptor(TableColumnTypeDescriptor):
     def __init__(
         self,
         *,
-        column_type: str | TableVectorColumnType,
+        column_type: str | TableVectorColumnType = TableVectorColumnType.VECTOR,
         dimension: int | None,
         service: VectorServiceOptions | None = None,
     ) -> None:

@@ -880,9 +880,9 @@ class Table(Generic[ROW]):
             ...             "m_vector": VectorServiceOptions(
             ...                 provider="openai",
             ...                 model_name="text-embedding-3-small",
-            ...                 # authentication={
-            ...                     # "providerKey": "ASTRA_KMS_API_KEY_NAME",
-            ...                 # },
+            ...                 authentication={
+            ...                     "providerKey": "ASTRA_KMS_API_KEY_NAME",
+            ...                 },
             ...             ),
             ...         }
             ...     )
@@ -3459,9 +3459,9 @@ class AsyncTable(Generic[ROW]):
             ...             "m_vector": VectorServiceOptions(
             ...                 provider="openai",
             ...                 model_name="text-embedding-3-small",
-            ...                 # authentication={
-            ...                     # "providerKey": "ASTRA_KMS_API_KEY_NAME",
-            ...                 # },
+            ...                 authentication={
+            ...                     "providerKey": "ASTRA_KMS_API_KEY_NAME",
+            ...                 },
             ...             ),
             ...         }
             ...     )
