@@ -23,7 +23,7 @@ import pytest
 from astrapy import Database
 from astrapy.authentication import AWSEmbeddingHeadersProvider, EmbeddingHeadersProvider
 from astrapy.exceptions import CollectionInsertManyException, DataAPIResponseException
-from astrapy.info import VectorServiceOptions
+from astrapy.info import CollectionDefinition, VectorServiceOptions
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
@@ -125,9 +125,12 @@ class TestVectorizeProviders:
         try:
             collection = db.create_collection(
                 collection_name,
-                dimension=dimension,
-                metric="cosine",
-                service=service_options,
+                definition=(
+                    CollectionDefinition.zero()
+                    .set_vector_dimension(dimension)
+                    .set_vector_metric("cosine")
+                    .set_vector_service(service_options)
+                ),
                 embedding_api_key=embedding_api_key,
             )
             # this is to cope with the Data API normalizing options
@@ -213,9 +216,12 @@ class TestVectorizeProviders:
         try:
             collection = db.create_collection(
                 collection_name,
-                dimension=dimension,
-                metric="cosine",
-                service=service_options,
+                definition=(
+                    CollectionDefinition.zero()
+                    .set_vector_dimension(dimension)
+                    .set_vector_metric("cosine")
+                    .set_vector_service(service_options)
+                ),
             )
             # this is to cope with the Data API normalizing options
             expected_service_options = VectorServiceOptions(
@@ -313,9 +319,12 @@ class TestVectorizeProviders:
         try:
             collection = db.create_collection(
                 collection_name,
-                dimension=dimension,
-                metric="cosine",
-                service=service_options,
+                definition=(
+                    CollectionDefinition.zero()
+                    .set_vector_dimension(dimension)
+                    .set_vector_metric("cosine")
+                    .set_vector_service(service_options)
+                ),
             )
             # test service back from collection info
             c_descriptors = [

@@ -77,12 +77,19 @@ class DataAPIClient:
 
     Example:
         >>> from astrapy import DataAPIClient
+        >>> from astrapy.info import CollectionDefinition
         >>> my_client = DataAPIClient()
         >>> my_db0 = my_client.get_database(
         ...     "https://01234567-....apps.astra.datastax.com",
         ...     token="AstraCS:...",
         ... )
-        >>> my_coll = my_db0.create_collection("movies", dimension=2)
+        >>> my_coll = my_db0.create_collection(
+        ...     "movies",
+        ...     definition=(
+        ...         CollectionDefinition.zero()
+        ...         .set_vector_dimension(2)
+        ...     ),
+        ... )
         >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.3]})
         >>> my_db1 = my_client.get_database("01234567-...")
         >>> my_db2 = my_client.get_database("01234567-...", region="us-east1")
@@ -228,7 +235,13 @@ class DataAPIClient:
             ...     token="AstraCS:...",
             ...     keyspace="prod_keyspace",
             ... )
-            >>> my_coll = my_db1.create_collection("movies", dimension=2)
+            >>> my_coll = my_db0.create_collection(
+            ...     "movies",
+            ...     definition=(
+            ...         CollectionDefinition.zero()
+            ...         .set_vector_dimension(2)
+            ...     ),
+            ... )
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
 
         Note:
@@ -311,7 +324,13 @@ class DataAPIClient:
         Example:
             >>> async def create_use_db(cl: DataAPIClient, api_ep: str) -> None:
             ...     async_db = cl.get_async_database(api_ep)
-            ...     my_a_coll = await async_db.create_collection("movies", dimension=2)
+            ...     my_a_coll = await async_db.create_collection(
+            ...         "movies",
+            ...         definition=(
+            ...             CollectionDefinition.zero()
+            ...             .set_vector_dimension(2)
+            ...         )
+            ...     )
             ...     await my_a_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
             ...
             >>> asyncio.run(

@@ -21,6 +21,8 @@ from astrapy.data.info.database_info import AstraDBDatabaseInfo
 from astrapy.data.info.vectorize import VectorServiceOptions
 from astrapy.utils.parsing import _warn_residual_keys
 
+INDEXING_ALLOWED_MODES = {"allow", "deny"}
+
 
 @dataclass
 class CollectionInfo:
@@ -49,7 +51,12 @@ class CollectionDefaultIDOptions:
     See the Data API specifications for allowed values.
 
     Attributes:
-        default_id_type: string such as `objectId`, `uuid6` and so on.
+        default_id_type: this setting determines what type of IDs the Data API will
+            generate when inserting documents that do not specify their
+            `_id` field explicitly. Can be set to any of the values
+            `DefaultIdType.UUID`, `DefaultIdType.OBJECTID`,
+            `DefaultIdType.UUIDV6`, `DefaultIdType.UUIDV7`,
+            `DefaultIdType.DEFAULT`.
     """
 
     default_id_type: str
@@ -81,20 +88,23 @@ class CollectionVectorOptions:
     See the Data API specifications for allowed values.
 
     Attributes:
-        dimension: an optional positive integer, the dimensionality of the vector space.
-        metric: an optional metric among `VectorMetric.DOT_PRODUCT`,
+        dimension: an optional positive integer, the dimensionality
+            of the vector space (i.e. the number of components in each vector).
+        metric: an optional choice of similarity metric to use in vector search.
+            It must be a (string) value among `VectorMetric.DOT_PRODUCT`,
             `VectorMetric.EUCLIDEAN` and `VectorMetric.COSINE`.
-        source_model: a specification of the embedding model the embeddings come from,
-            which the index uses internally to optimize its internal settings.
-            Defaults to "other".
-        service: an optional VectorServiceOptions object in case a
-            service is configured for the collection.
+        source_model: based on this value, the vector index can tune itself so as
+            to achieve optimal performance for a given embedding model. See the
+            Data API documentation for the allowed values. Defaults to "other".
+        service: an optional VectorServiceOptions object in case a vectorize
+            service is configured to achieve server-side embedding computation
+            on the collection.
     """
 
-    dimension: int | None
-    metric: str | None
-    source_model: str | None
-    service: VectorServiceOptions | None
+    dimension: int | None = None
+    metric: str | None = None
+    source_model: str | None = None
+    service: VectorServiceOptions | None = None
 
     def as_dict(self) -> dict[str, Any]:
         """Recast this object into a dictionary."""
@@ -137,12 +147,16 @@ class CollectionDefinition:
     Attributes:
         vector: an optional CollectionVectorOptions object.
         indexing: an optional dictionary with the "indexing" collection properties.
-        default_id: an optional CollectionDefaultIDOptions object.
+            This is in the form of a dictionary such as `{"deny": [...]}`
+            or `{"allow": [...]}`, with a list of document paths, or alternatively
+            just `["*"]`, to exclude from/include in collection indexing,
+            respectively.
+        default_id: an optional CollectionDefaultIDOptions object (see).
     """
 
-    vector: CollectionVectorOptions | None
-    indexing: dict[str, Any] | None
-    default_id: CollectionDefaultIDOptions | None
+    vector: CollectionVectorOptions | None = None
+    indexing: dict[str, Any] | None = None
+    default_id: CollectionDefaultIDOptions | None = None
 
     def __repr__(self) -> str:
         not_null_pieces = [
@@ -177,6 +191,7 @@ class CollectionDefinition:
                 ),
             }.items()
             if v is not None
+            if v != {}
         }
 
     @classmethod
@@ -201,6 +216,159 @@ class CollectionDefinition:
             return raw_input
         else:
             return cls._from_dict(raw_input)
+
+    @staticmethod
+    def zero() -> CollectionDefinition:
+        return CollectionDefinition()
+
+    def set_indexing(
+        self, indexing_mode: str | None, indexing_target: list[str] | None = None
+    ) -> CollectionDefinition:
+        if indexing_mode is None:
+            if indexing_target is not None:
+                raise ValueError("Cannot pass an indexing target if unsetting indexing")
+            return CollectionDefinition(
+                vector=self.vector,
+                indexing=None,
+                default_id=self.default_id,
+            )
+        _i_mode = indexing_mode.lower()
+        if _i_mode not in INDEXING_ALLOWED_MODES:
+            msg = (
+                f"Unknown indexing mode: '{indexing_mode}'. "
+                f"Allowed values are: {', '.join(INDEXING_ALLOWED_MODES)}."
+            )
+            raise ValueError(msg)
+        _i_target: list[str] = indexing_target or []
+        return CollectionDefinition(
+            vector=self.vector,
+            indexing={indexing_mode: indexing_target},
+            default_id=self.default_id,
+        )
+
+    def set_default_id(self, default_id_type: str | None) -> CollectionDefinition:
+        if default_id_type is None:
+            return CollectionDefinition(
+                vector=self.vector,
+                indexing=self.indexing,
+                default_id=None,
+            )
+
+        return CollectionDefinition(
+            vector=self.vector,
+            indexing=self.indexing,
+            default_id=CollectionDefaultIDOptions(
+                default_id_type=default_id_type,
+            ),
+        )
+
+    def set_vector_dimension(self, dimension: int | None) -> CollectionDefinition:
+        _vector_options = self.vector or CollectionVectorOptions()
+        return CollectionDefinition(
+            vector=CollectionVectorOptions(
+                dimension=dimension,
+                metric=_vector_options.metric,
+                source_model=_vector_options.source_model,
+                service=_vector_options.service,
+            ),
+            indexing=self.indexing,
+            default_id=self.default_id,
+        )
+
+    def set_vector_metric(self, metric: str | None) -> CollectionDefinition:
+        _vector_options = self.vector or CollectionVectorOptions()
+        return CollectionDefinition(
+            vector=CollectionVectorOptions(
+                dimension=_vector_options.dimension,
+                metric=metric,
+                source_model=_vector_options.source_model,
+                service=_vector_options.service,
+            ),
+            indexing=self.indexing,
+            default_id=self.default_id,
+        )
+
+    def set_vector_source_model(self, source_model: str | None) -> CollectionDefinition:
+        _vector_options = self.vector or CollectionVectorOptions()
+        return CollectionDefinition(
+            vector=CollectionVectorOptions(
+                dimension=_vector_options.dimension,
+                metric=_vector_options.metric,
+                source_model=source_model,
+                service=_vector_options.service,
+            ),
+            indexing=self.indexing,
+            default_id=self.default_id,
+        )
+
+    def set_vector_service(
+        self,
+        provider: str | VectorServiceOptions | None,
+        model_name: str | None = None,
+        *,
+        authentication: dict[str, Any] | None = None,
+        parameters: dict[str, Any] | None = None,
+    ) -> CollectionDefinition:
+        """
+        Three valid patterns: (1) pass a ready-made service,
+        (2) pass its attributes, or (3) None, to unset.
+        """
+        _vector_options = self.vector or CollectionVectorOptions()
+        if isinstance(provider, VectorServiceOptions):
+            if (
+                model_name is not None
+                or authentication is not None
+                or parameters is not None
+            ):
+                msg = (
+                    "Parameters 'model_name', 'authentication' and 'parameters' "
+                    "cannot be passed when setting a VectorServiceOptions directly."
+                )
+                raise ValueError(msg)
+            return CollectionDefinition(
+                vector=CollectionVectorOptions(
+                    dimension=_vector_options.dimension,
+                    metric=_vector_options.metric,
+                    source_model=_vector_options.source_model,
+                    service=provider,
+                ),
+                indexing=self.indexing,
+                default_id=self.default_id,
+            )
+        else:
+            new_service: VectorServiceOptions | None
+            if provider is None:
+                if (
+                    model_name is not None
+                    or authentication is not None
+                    or parameters is not None
+                ):
+                    msg = (
+                        "Parameters 'model_name', 'authentication' and 'parameters' "
+                        "cannot be passed when unsetting the vector service."
+                    )
+                    raise ValueError(msg)
+                new_service = None
+            else:
+                new_service = VectorServiceOptions(
+                    provider=provider,
+                    model_name=model_name,
+                    authentication=authentication,
+                    parameters=parameters,
+                )
+            return CollectionDefinition(
+                vector=CollectionVectorOptions(
+                    dimension=_vector_options.dimension,
+                    metric=_vector_options.metric,
+                    source_model=_vector_options.source_model,
+                    service=new_service,
+                ),
+                indexing=self.indexing,
+                default_id=self.default_id,
+            )
+
+    def build(self) -> CollectionDefinition:
+        return self
 
 
 @dataclass

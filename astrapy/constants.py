@@ -84,8 +84,9 @@ SortDocuments = SortMode
 
 class VectorMetric:
     """
-    Admitted values for the "metric" parameter when creating vector collections
-    through the database `create_collection` method.
+    Admitted values for the "metric" parameter to use in CollectionVectorOptions
+    object, needed when creating vector collections through the database
+    `create_collection` method.
     """
 
     def __init__(self) -> None:
@@ -98,7 +99,8 @@ class VectorMetric:
 
 class DefaultIdType:
     """
-    Admitted values for the "default_id_type" parameter when creating collections
+    Admitted values for the "default_id_type" parameter to use in
+    CollectionDefaultIDOptions object, needed when creating collections
     through the database `create_collection` method.
     """
 

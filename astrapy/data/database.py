@@ -33,7 +33,6 @@ from astrapy.constants import (
 from astrapy.exceptions import (
     DevOpsAPIException,
     UnexpectedDataAPIResponseException,
-    _first_valid_timeout,
     _select_singlereq_timeout_ca,
     _select_singlereq_timeout_da,
     _select_singlereq_timeout_gm,
@@ -42,10 +41,10 @@ from astrapy.exceptions import (
 )
 from astrapy.info import (
     AstraDBDatabaseInfo,
+    CollectionDefinition,
     CollectionDescriptor,
     CreateTableDefinition,
     ListTableDescriptor,
-    VectorServiceOptions,
 )
 from astrapy.settings.defaults import (
     DEFAULT_ASTRA_DB_KEYSPACE,
@@ -66,70 +65,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-def _normalize_create_collection_options(
-    dimension: int | None,
-    metric: str | None,
-    source_model: str | None,
-    service: VectorServiceOptions | dict[str, Any] | None,
-    indexing: dict[str, Any] | None,
-    default_id_type: str | None,
-    additional_options: dict[str, Any] | None,
-) -> dict[str, Any]:
-    """Raise errors related to invalid input, and return a ready-to-send payload."""
-    is_vector: bool
-    if service is not None or dimension is not None:
-        is_vector = True
-    else:
-        is_vector = False
-    if not is_vector and metric is not None:
-        raise ValueError(
-            "Cannot specify `metric` for non-vector collections in the "
-            "create_collection method."
-        )
-    if not is_vector and source_model is not None:
-        raise ValueError(
-            "Cannot specify `source_model` for non-vector collections in the "
-            "create_collection method."
-        )
-
-    # prepare the payload
-    service_dict: dict[str, Any] | None
-    if service is not None:
-        service_dict = service if isinstance(service, dict) else service.as_dict()
-    else:
-        service_dict = None
-    vector_options = {
-        k: v
-        for k, v in {
-            "dimension": dimension,
-            "metric": metric,
-            "sourceModel": source_model,
-            "service": service_dict,
-        }.items()
-        if v is not None
-    }
-    full_options0 = {
-        k: v
-        for k, v in {
-            **({"indexing": indexing} if indexing else {}),
-            **({"defaultId": {"type": default_id_type}} if default_id_type else {}),
-            **({"vector": vector_options} if vector_options else {}),
-        }.items()
-        if v
-    }
-    overlap_keys = (full_options0).keys() & (additional_options or {}).keys()
-    if overlap_keys:
-        raise ValueError(
-            "Gotten forbidden key(s) in additional_options: "
-            f"{','.join(sorted(overlap_keys))}."
-        )
-    full_options = {
-        **(additional_options or {}),
-        **full_options0,
-    }
-    return full_options
 
 
 class Database:
@@ -646,15 +581,9 @@ class Database:
         self,
         name: str,
         *,
+        definition: CollectionDefinition | dict[str, Any] | None = None,
         keyspace: str | None = None,
-        dimension: int | None = None,
-        metric: str | None = None,
-        service: VectorServiceOptions | dict[str, Any] | None = None,
-        indexing: dict[str, Any] | None = None,
-        default_id_type: str | None = None,
-        additional_options: dict[str, Any] | None = None,
         collection_admin_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DefaultDocumentType]: ...
@@ -664,16 +593,10 @@ class Database:
         self,
         name: str,
         *,
+        definition: CollectionDefinition | dict[str, Any] | None = None,
         document_type: type[DOC],
         keyspace: str | None = None,
-        dimension: int | None = None,
-        metric: str | None = None,
-        service: VectorServiceOptions | dict[str, Any] | None = None,
-        indexing: dict[str, Any] | None = None,
-        default_id_type: str | None = None,
-        additional_options: dict[str, Any] | None = None,
         collection_admin_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]: ...
@@ -682,17 +605,10 @@ class Database:
         self,
         name: str,
         *,
+        definition: CollectionDefinition | dict[str, Any] | None = None,
         document_type: type[Any] = DefaultDocumentType,
         keyspace: str | None = None,
-        dimension: int | None = None,
-        metric: str | None = None,
-        source_model: str | None = None,
-        service: VectorServiceOptions | dict[str, Any] | None = None,
-        indexing: dict[str, Any] | None = None,
-        default_id_type: str | None = None,
-        additional_options: dict[str, Any] | None = None,
         collection_admin_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Collection[DOC]:
@@ -706,6 +622,11 @@ class Database:
 
         Args:
             name: the name of the collection.
+            definition: a complete collection definition for the table. This can be an
+                instance of `CollectionDefinition` or an equivalent (nested) dictionary,
+                in which case it will be parsed into a `CollectionDefinition`.
+                See the `astrapy.info.CollectionDefinition` class and the
+                `Collection` class for more details and ways to construct this object.
             document_type: this parameter acts a formal specifier for the type checker.
                 If omitted, the resulting Collection is implicitly
                 a `Collection[dict[str, Any]]`. If provided, it must match the
@@ -713,35 +634,8 @@ class Database:
                 See the examples below.
             keyspace: the keyspace where the collection is to be created.
                 If not specified, the general setting for this database is used.
-            dimension: for vector collections, the dimension of the vectors
-                (i.e. the number of their components).
-            metric: the similarity metric used for vector searches.
-                Allowed values are `VectorMetric.DOT_PRODUCT`, `VectorMetric.EUCLIDEAN`
-                or `VectorMetric.COSINE` (default).
-            source_model: a specification of the embedding model the embeddings
-                come from, which the index uses internally to optimize
-                its internal settings. Defaults to "other".
-            service: a dictionary describing a service for
-                embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
-                Alternatively, a VectorServiceOptions object to the same effect.
-            indexing: optional specification of the indexing options for
-                the collection, in the form of a dictionary such as
-                    {"deny": [...]}
-                or
-                    {"allow": [...]}
-            default_id_type: this sets what type of IDs the API server will
-                generate when inserting documents that do not specify their
-                `_id` field explicitly. Can be set to any of the values
-                `DefaultIdType.UUID`, `DefaultIdType.OBJECTID`,
-                `DefaultIdType.UUIDV6`, `DefaultIdType.UUIDV7`,
-                `DefaultIdType.DEFAULT`.
-            additional_options: any further set of key-value pairs that will
-                be added to the "options" part of the payload when sending
-                the Data API command to create a collection.
-            collection_admin_timeout_ms: a timeout, in milliseconds, for the
-                createCollection HTTP request. If not provided, the corresponding
-                setting from this class' APIOptions is used
-            timeout_ms: an alias for `collection_admin_timeout_ms`.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request. If not provided, the Collection defaults apply.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -763,37 +657,78 @@ class Database:
             newly-created collection.
 
         Example:
-            >>> new_col = my_db.create_collection("my_v_col", dimension=3)
-            >>> new_col.insert_one({"name": "the_row", "$vector": [0.4, 0.5, 0.7]})
-            InsertOneResult(raw_results=..., inserted_id='e22dd65e-...-...-...')
+            >>> # Create a collection using the fluent syntax for its definition
+            >>> from astrapy.constants import VectorMetric
+            >>> from astrapy.info import CollectionDefinition
+            >>>
+            >>> collection_definition = (
+            ...     CollectionDefinition.zero()
+            ...     .set_vector_dimension(3)
+            ...     .set_vector_metric(VectorMetric.DOT_PRODUCT)
+            ...     .set_indexing("deny", ["annotations", "logs"])
+            ... )
+            >>> my_collection = database.create_collection(
+            ...     "my_events",
+            ...     definition=collection_definition,
+            ... )
 
-        Note:
-            A collection is considered a vector collection if at least one of
-            `dimension` or `service` are provided and not null. In that case,
-            and only in that case, is `metric` an accepted parameter.
-            Note, moreover, that if passing both these parameters, then
-            the dimension must be compatible with the chosen service.
+            >>>
+            >>> # Create a collection with the definition as object
+            >>> from astrapy.info import CollectionVectorOptions
+            >>>
+            >>> collection_definition_1 = CollectionDefinition(
+            ...     vector=CollectionVectorOptions(
+            ...         dimension=3,
+            ...         metric=VectorMetric.DOT_PRODUCT,
+            ...     ),
+            ...     indexing={"deny": ["annotations", "logs"]},
+            ... )
+            >>> my_collection_1 = database.create_collection(
+            ...     "my_events",
+            ...     definition=collection_definition_1,
+            ... )
+            >>>
+
+            >>> # Create a collection with the definition as plain dictionary
+            >>> collection_definition_2 = {
+            ...     "indexing": {"deny": ["annotations", "logs"]},
+            ...     "vector": {
+            ...         "dimension": 3,
+            ...         "metric": VectorMetric.DOT_PRODUCT,
+            ...     },
+            ... }
+            >>> my_collection_2 = database.create_collection(
+            ...     "my_events",
+            ...     definition=collection_definition_2,
+            ... )
         """
 
-        cc_options = _normalize_create_collection_options(
-            dimension=dimension,
-            metric=metric,
-            source_model=source_model,
-            service=service,
-            indexing=indexing,
-            default_id_type=default_id_type,
-            additional_options=additional_options,
-        )
-        _collection_admin_timeout_ms, _ca_label = _first_valid_timeout(
-            (collection_admin_timeout_ms, "collection_admin_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (
-                self.api_options.timeout_options.collection_admin_timeout_ms,
-                "collection_admin_timeout_ms",
-            ),
-        )
+        cc_definition: dict[str, Any] = CollectionDefinition.coerce(
+            definition or {}
+        ).as_dict()
+        # this method has custom code to pick its timeout
+        _collection_admin_timeout_ms: int
+        _ca_label: str
+        if collection_admin_timeout_ms is not None:
+            _collection_admin_timeout_ms = collection_admin_timeout_ms
+            _ca_label = "collection_admin_timeout_ms"
+        else:
+            _collection_admin_timeout_ms = (
+                self.api_options.timeout_options.collection_admin_timeout_ms
+            )
+            _ca_label = "collection_admin_timeout_ms"
         driver_commander = self._get_driver_commander(keyspace=keyspace)
-        cc_payload = {"createCollection": {"name": name, "options": cc_options}}
+        cc_payload = {
+            "createCollection": {
+                k: v
+                for k, v in {
+                    "name": name,
+                    "options": cc_definition,
+                }.items()
+                if v is not None
+                if v != {}
+            }
+        }
         logger.info(f"createCollection('{name}')")
         cc_response = driver_commander.request(
             payload=cc_payload,
@@ -1323,7 +1258,7 @@ class Database:
             timeout_ms=timeout_ms,
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
-        cc_payload = {
+        ct_payload = {
             "createTable": {
                 k: v
                 for k, v in {
@@ -1337,7 +1272,7 @@ class Database:
         }
         logger.info(f"createTable('{name}')")
         ct_response = driver_commander.request(
-            payload=cc_payload,
+            payload=ct_payload,
             timeout_context=_TimeoutContext(
                 request_ms=_table_admin_timeout_ms, label=_ta_label
             ),
@@ -2346,15 +2281,9 @@ class AsyncDatabase:
         self,
         name: str,
         *,
+        definition: CollectionDefinition | dict[str, Any] | None = None,
         keyspace: str | None = None,
-        dimension: int | None = None,
-        metric: str | None = None,
-        service: VectorServiceOptions | dict[str, Any] | None = None,
-        indexing: dict[str, Any] | None = None,
-        default_id_type: str | None = None,
-        additional_options: dict[str, Any] | None = None,
         collection_admin_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DefaultDocumentType]: ...
@@ -2364,16 +2293,10 @@ class AsyncDatabase:
         self,
         name: str,
         *,
+        definition: CollectionDefinition | dict[str, Any] | None = None,
         document_type: type[DOC],
         keyspace: str | None = None,
-        dimension: int | None = None,
-        metric: str | None = None,
-        service: VectorServiceOptions | dict[str, Any] | None = None,
-        indexing: dict[str, Any] | None = None,
-        default_id_type: str | None = None,
-        additional_options: dict[str, Any] | None = None,
         collection_admin_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]: ...
@@ -2382,17 +2305,10 @@ class AsyncDatabase:
         self,
         name: str,
         *,
+        definition: CollectionDefinition | dict[str, Any] | None = None,
         document_type: type[Any] = DefaultDocumentType,
         keyspace: str | None = None,
-        dimension: int | None = None,
-        metric: str | None = None,
-        source_model: str | None = None,
-        service: VectorServiceOptions | dict[str, Any] | None = None,
-        indexing: dict[str, Any] | None = None,
-        default_id_type: str | None = None,
-        additional_options: dict[str, Any] | None = None,
         collection_admin_timeout_ms: int | None = None,
-        timeout_ms: int | None = None,
         embedding_api_key: str | EmbeddingHeadersProvider | UnsetType = _UNSET,
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]:
@@ -2406,6 +2322,11 @@ class AsyncDatabase:
 
         Args:
             name: the name of the collection.
+            definition: a complete collection definition for the table. This can be an
+                instance of `CollectionDefinition` or an equivalent (nested) dictionary,
+                in which case it will be parsed into a `CollectionDefinition`.
+                See the `astrapy.info.CollectionDefinition` class and the
+                `AsyncCollection` class for more details and ways to construct this object.
             document_type: this parameter acts a formal specifier for the type checker.
                 If omitted, the resulting AsyncCollection is implicitly
                 an `AsyncCollection[dict[str, Any]]`. If provided, it must match the
@@ -2413,35 +2334,9 @@ class AsyncDatabase:
                 See the examples below.
             keyspace: the keyspace where the collection is to be created.
                 If not specified, the general setting for this database is used.
-            dimension: for vector collections, the dimension of the vectors
-                (i.e. the number of their components).
-            metric: the similarity metric used for vector searches.
-                Allowed values are `VectorMetric.DOT_PRODUCT`, `VectorMetric.EUCLIDEAN`
-                or `VectorMetric.COSINE` (default).
-            source_model: a specification of the embedding model the embeddings
-                come from, which the index uses internally to optimize
-                its internal settings. Defaults to "other".
-            service: a dictionary describing a service for
-                embedding computation, e.g. `{"provider": "ab", "modelName": "xy"}`.
-                Alternatively, a VectorServiceOptions object to the same effect.
-            indexing: optional specification of the indexing options for
-                the collection, in the form of a dictionary such as
-                    {"deny": [...]}
-                or
-                    {"allow": [...]}
-            default_id_type: this sets what type of IDs the API server will
-                generate when inserting documents that do not specify their
-                `_id` field explicitly. Can be set to any of the values
-                `DefaultIdType.UUID`, `DefaultIdType.OBJECTID`,
-                `DefaultIdType.UUIDV6`, `DefaultIdType.UUIDV7`,
-                `DefaultIdType.DEFAULT`.
-            additional_options: any further set of key-value pairs that will
-                be added to the "options" part of the payload when sending
-                the Data API command to create a collection.
-            collection_admin_timeout_ms: a timeout, in milliseconds, for the
-                createCollection HTTP request. If not provided, the corresponding
-                setting from this class' APIOptions is used
-            timeout_ms: an alias for `collection_admin_timeout_ms`.
+            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+                underlying API request.
+                If not provided, the AsyncCollection defaults apply.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
                 each Data API call will include the necessary embedding-related headers
@@ -2462,42 +2357,75 @@ class AsyncDatabase:
             an `AsyncCollection` instance, representing the newly-created collection.
 
         Example:
-            >>> async def create_and_insert(adb: AsyncDatabase) -> dict[str, Any]:
-            ...     new_a_col = await adb.create_collection("my_v_col", dimension=3)
-            ...     return await new_a_col.insert_one(
-            ...         {"name": "the_row", "$vector": [0.4, 0.5, 0.7]},
-            ...     )
-            ...
-            >>> asyncio.run(create_and_insert(async_database))
-            InsertOneResult(raw_results=..., inserted_id='08f05ecf-...-...-...')
+            >>> # Create a collection using the fluent syntax for its definition
+            >>> from astrapy.constants import VectorMetric
+            >>> from astrapy.info import CollectionDefinition
+            >>>
+            >>> collection_definition = (
+            ...     CollectionDefinition.zero()
+            ...     .set_vector_dimension(3)
+            ...     .set_vector_metric(VectorMetric.DOT_PRODUCT)
+            ...     .set_indexing("deny", ["annotations", "logs"])
+            ... )
+            >>> my_collection = asyncio.run(async_database.create_collection(
+            ...     "my_events",
+            ...     definition=collection_definition,
+            ... ))
 
-        Note:
-            A collection is considered a vector collection if at least one of
-            `dimension` or `service` are provided and not null. In that case,
-            and only in that case, is `metric` an accepted parameter.
-            Note, moreover, that if passing both these parameters, then
-            the dimension must be compatible with the chosen service.
+            >>>
+            >>> # Create a collection with the definition as object
+            >>> from astrapy.info import CollectionVectorOptions
+            >>>
+            >>> collection_definition_1 = CollectionDefinition(
+            ...     vector=CollectionVectorOptions(
+            ...         dimension=3,
+            ...         metric=VectorMetric.DOT_PRODUCT,
+            ...     ),
+            ...     indexing={"deny": ["annotations", "logs"]},
+            ... )
+            >>> my_collection_1 = asyncio.run(async_database.create_collection(
+            ...     "my_events",
+            ...     definition=collection_definition_1,
+            ... ))
+            >>>
+
+            >>> # Create a collection with the definition as plain dictionary
+            >>> collection_definition_2 = {
+            ...     "indexing": {"deny": ["annotations", "logs"]},
+            ...     "vector": {
+            ...         "dimension": 3,
+            ...         "metric": VectorMetric.DOT_PRODUCT,
+            ...     },
+            ... }
+            >>> my_collection_2 = asyncio.run(async_database.create_collection(
+            ...     "my_events",
+            ...     definition=collection_definition_2,
+            ... ))
         """
 
-        cc_options = _normalize_create_collection_options(
-            dimension=dimension,
-            metric=metric,
-            source_model=source_model,
-            service=service,
-            indexing=indexing,
-            default_id_type=default_id_type,
-            additional_options=additional_options,
-        )
-        _collection_admin_timeout_ms, _ca_label = _first_valid_timeout(
-            (collection_admin_timeout_ms, "collection_admin_timeout_ms"),
-            (timeout_ms, "timeout_ms"),
-            (
-                self.api_options.timeout_options.collection_admin_timeout_ms,
-                "collection_admin_timeout_ms",
-            ),
-        )
+        cc_definition: dict[str, Any] = CollectionDefinition.coerce(
+            definition or {}
+        ).as_dict()
+        if collection_admin_timeout_ms is not None:
+            _collection_admin_timeout_ms = collection_admin_timeout_ms
+            _ca_label = "collection_admin_timeout_ms"
+        else:
+            _collection_admin_timeout_ms = (
+                self.api_options.timeout_options.collection_admin_timeout_ms
+            )
+            _ca_label = "collection_admin_timeout_ms"
         driver_commander = self._get_driver_commander(keyspace=keyspace)
-        cc_payload = {"createCollection": {"name": name, "options": cc_options}}
+        cc_payload = {
+            "createCollection": {
+                k: v
+                for k, v in {
+                    "name": name,
+                    "options": cc_definition,
+                }.items()
+                if v is not None
+                if v != {}
+            }
+        }
         logger.info(f"createCollection('{name}')")
         cc_response = await driver_commander.async_request(
             payload=cc_payload,
@@ -2510,7 +2438,7 @@ class AsyncDatabase:
                 text="Faulty response from createCollection API command.",
                 raw_response=cc_response,
             )
-        logger.info(f"createCollection('{name}')")
+        logger.info(f"finished createCollection('{name}')")
         return await self.get_collection(
             name,
             document_type=document_type,
@@ -3030,7 +2958,7 @@ class AsyncDatabase:
             timeout_ms=timeout_ms,
         )
         driver_commander = self._get_driver_commander(keyspace=keyspace)
-        cc_payload = {
+        ct_payload = {
             "createTable": {
                 k: v
                 for k, v in {
@@ -3044,7 +2972,7 @@ class AsyncDatabase:
         }
         logger.info(f"createTable('{name}')")
         ct_response = await driver_commander.async_request(
-            payload=cc_payload,
+            payload=ct_payload,
             timeout_context=_TimeoutContext(
                 request_ms=_table_admin_timeout_ms, label=_ta_label
             ),

@@ -20,6 +20,7 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase, Collection, Database
 from astrapy.constants import VectorMetric
+from astrapy.info import CollectionDefinition
 
 from ..conftest import DefaultAsyncCollection, DefaultCollection
 
@@ -46,9 +47,12 @@ class TestCollectionTyping:
         # Untyped baseline
         c_co_untyped = sync_database.create_collection(
             sync_empty_collection.name,
-            dimension=2,
-            metric=VectorMetric.COSINE,
-            indexing={"deny": ["not_indexed"]},
+            definition=(
+                CollectionDefinition.zero()
+                .set_vector_dimension(2)
+                .set_vector_metric(VectorMetric.COSINE)
+                .set_indexing("deny", ["not_indexed"])
+            ),
         )
         c_co_untyped.insert_one(DOCUMENT)
         cu_doc = c_co_untyped.find_one(FIND_FILTER)
@@ -69,9 +73,12 @@ class TestCollectionTyping:
         # Typed
         c_co_typed: Collection[TestDoc] = sync_database.create_collection(
             sync_empty_collection.name,
-            dimension=2,
-            metric=VectorMetric.COSINE,
-            indexing={"deny": ["not_indexed"]},
+            definition=(
+                CollectionDefinition.zero()
+                .set_vector_dimension(2)
+                .set_vector_metric(VectorMetric.COSINE)
+                .set_indexing("deny", ["not_indexed"])
+            ),
             document_type=TestDoc,
         )
         c_co_typed.insert_one(TYPED_DOCUMENT)
@@ -267,9 +274,12 @@ class TestCollectionTyping:
         # Untyped baseline
         ac_co_untyped = await async_database.create_collection(
             async_empty_collection.name,
-            dimension=2,
-            metric=VectorMetric.COSINE,
-            indexing={"deny": ["not_indexed"]},
+            definition=(
+                CollectionDefinition.zero()
+                .set_vector_dimension(2)
+                .set_vector_metric(VectorMetric.COSINE)
+                .set_indexing("deny", ["not_indexed"])
+            ),
         )
         await ac_co_untyped.insert_one(DOCUMENT)
         cu_doc = await ac_co_untyped.find_one(FIND_FILTER)
@@ -290,9 +300,12 @@ class TestCollectionTyping:
         # Typed
         ac_co_typed: AsyncCollection[TestDoc] = await async_database.create_collection(
             async_empty_collection.name,
-            dimension=2,
-            metric=VectorMetric.COSINE,
-            indexing={"deny": ["not_indexed"]},
+            definition=(
+                CollectionDefinition.zero()
+                .set_vector_dimension(2)
+                .set_vector_metric(VectorMetric.COSINE)
+                .set_indexing("deny", ["not_indexed"])
+            ),
             document_type=TestDoc,
         )
         await ac_co_typed.insert_one(TYPED_DOCUMENT)

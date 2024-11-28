@@ -25,6 +25,7 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase, Collection, DataAPIClient, Database
 from astrapy.constants import VectorMetric
+from astrapy.info import CollectionDefinition
 
 from ..conftest import (
     IS_ASTRA_DB,
@@ -83,8 +84,14 @@ def sync_service_collection(
     params = service_collection_parameters
     collection = sync_database.create_collection(
         TEST_SERVICE_COLLECTION_NAME,
-        metric=VectorMetric.DOT_PRODUCT,
-        service={"provider": params["provider"], "modelName": params["modelName"]},
+        definition=(
+            CollectionDefinition.zero()
+            .set_vector_metric(VectorMetric.DOT_PRODUCT)
+            .set_vector_service(
+                provider=params["provider"],
+                model_name=params["modelName"],
+            )
+        ),
         embedding_api_key=params["api_key"],
     )
     yield collection

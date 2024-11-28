@@ -275,10 +275,8 @@ class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
 
     Example:
         >>> from astrapy import DataAPIClient
-        >>> from astrapy.authentication import (
-            VectorServiceOptions,
-            EmbeddingAPIKeyHeaderProvider,
-        )
+        >>> from astrapy.authentication import EmbeddingAPIKeyHeaderProvider
+        >>> from astrapy.info import CollectionDefinition, VectorServiceOptions
         >>> my_emb_api_key = EmbeddingAPIKeyHeaderProvider("abc012...")
         >>> service_options = VectorServiceOptions(
         ...     provider="a-certain-provider",
@@ -290,8 +288,11 @@ class EmbeddingAPIKeyHeaderProvider(EmbeddingHeadersProvider):
         ...     token="AstraCS:...",
         ... )
         >>> collection = database.create_collection(
-        ...     "vectorize_collection",
-        ...     service=service_options,
+        ...     "vectorize_aws_collection",
+        ...     definition=(
+        ...         CollectionDefinition.zero()
+        ...         .set_vector_service(service_options)
+        ...     ),
         ...     embedding_api_key=my_emb_api_key,
         ... )
         >>> # likewise:
@@ -331,10 +332,8 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
 
     Example:
         >>> from astrapy import DataAPIClient
-        >>> from astrapy.authentication import (
-            VectorServiceOptions,
-            AWSEmbeddingHeadersProvider,
-        )
+        >>> from astrapy.authentication import AWSEmbeddingHeadersProvider
+        >>> from astrapy.info import CollectionDefinition, VectorServiceOptions
         >>> my_aws_emb_api_key = AWSEmbeddingHeadersProvider(
             embedding_access_id="my-access-id-012...",
             embedding_secret_id="my-secret-id-abc...",
@@ -350,7 +349,10 @@ class AWSEmbeddingHeadersProvider(EmbeddingHeadersProvider):
         ... )
         >>> collection = database.create_collection(
         ...     "vectorize_aws_collection",
-        ...     service=service_options,
+        ...     definition=(
+        ...         CollectionDefinition.zero()
+        ...         .set_vector_service(service_options)
+        ...     ),
         ...     embedding_api_key=my_aws_emb_api_key,
         ... )
         >>> # likewise:

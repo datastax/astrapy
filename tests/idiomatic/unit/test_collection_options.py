@@ -25,7 +25,9 @@ import pytest
 from astrapy.info import CollectionDefinition, CollectionDescriptor
 
 
-@pytest.mark.describe("test of recasting the collection options from the api")
+@pytest.mark.describe(
+    "test of recasting the collection definition options from the api"
+)
 def test_recast_api_collection_dict() -> None:
     api_coll_descs: list[dict[str, Any]] = [
         # minimal:
@@ -59,7 +61,7 @@ def test_recast_api_collection_dict() -> None:
                 "defaultId": {"type": "objectId"},
             },
         },
-        # partial/absent 'vector', w/o service:
+        # partial/absent "vector", w/o service:
         {
             "name": "col_name",
             "options": {
@@ -111,7 +113,6 @@ def test_recast_api_collection_dict() -> None:
         {
             "name": "col_name",
             "options": {
-                "vector": {},
                 "indexing": {"deny": ["a"]},
                 "defaultId": {"type": "objectId"},
             },
@@ -256,3 +257,44 @@ def test_recast_api_collection_dict() -> None:
         if "options" in cd_dict:
             assert CollectionDefinition.coerce(cd_dict["options"]) == definition
         assert CollectionDefinition.coerce(definition) == definition
+
+
+@pytest.mark.describe("test of fluent interface for CollectionDefinition")
+def test_fluent_collection_definition() -> None:
+    zero = CollectionDefinition.zero()
+    assert zero.as_dict() == {}
+
+    rich = (
+        zero.set_indexing("allow", ["a", "b"])
+        .set_default_id("UUID")
+        .set_vector_dimension(123)
+        .set_vector_metric("cosine")
+        .set_vector_service(
+            "prov", "mod", authentication={"a": "u"}, parameters={"p": "a"}
+        )
+    )
+    expected_rich_dict = {
+        "vector": {
+            "dimension": 123,
+            "metric": "cosine",
+            "service": {
+                "provider": "prov",
+                "modelName": "mod",
+                "authentication": {"a": "u"},
+                "parameters": {"p": "a"},
+            },
+        },
+        "indexing": {"allow": ["a", "b"]},
+        "defaultId": {"type": "UUID"},
+    }
+    assert rich.as_dict() == expected_rich_dict
+
+    zero_2 = (
+        rich.set_indexing(None)
+        .set_default_id(None)
+        .set_vector_dimension(None)
+        .set_vector_metric(None)
+        .set_vector_source_model(None)
+        .set_vector_service(None)
+    )
+    assert zero_2.as_dict() == {}

@@ -21,7 +21,13 @@ import pytest
 from astrapy import AsyncDatabase, DataAPIClient
 from astrapy.constants import DefaultIdType, VectorMetric
 from astrapy.ids import UUID, ObjectId
-from astrapy.info import AstraDBDatabaseInfo, CollectionDescriptor
+from astrapy.info import (
+    AstraDBDatabaseInfo,
+    CollectionDefaultIDOptions,
+    CollectionDefinition,
+    CollectionDescriptor,
+    CollectionVectorOptions,
+)
 
 from ..conftest import (
     IS_ASTRA_DB,
@@ -43,13 +49,44 @@ class TestDDLAsync:
         TEST_LOCAL_COLLECTION_NAME_B = "test_local_coll_b"
         col1 = await async_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME,
-            dimension=123,
-            metric=VectorMetric.EUCLIDEAN,
-            indexing={"deny": ["a", "b", "c"]},
+            definition=CollectionDefinition(
+                vector=CollectionVectorOptions(
+                    dimension=123,
+                    metric=VectorMetric.EUCLIDEAN,
+                ),
+                indexing={"deny": ["a", "b", "c"]},
+            ),
         )
+        # test other creation methods (no-op since just created)
+        col1_dict = await async_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME,
+            definition={
+                "vector": {
+                    "dimension": 123,
+                    "metric": VectorMetric.EUCLIDEAN,
+                },
+                "indexing": {"deny": ["a", "b", "c"]},
+            },
+        )
+        assert col1_dict == col1
+        fluent_definition1 = (
+            CollectionDefinition.zero()
+            .set_vector_dimension(123)
+            .set_vector_metric(VectorMetric.EUCLIDEAN)
+            .set_indexing("deny", ["a", "b", "c"])
+            .build()
+        )
+        col1_fluent = await async_database.create_collection(
+            TEST_LOCAL_COLLECTION_NAME,
+            definition=fluent_definition1,
+        )
+        assert col1_fluent == col1
+
         await async_database.create_collection(
             TEST_LOCAL_COLLECTION_NAME_B,
-            indexing={"allow": ["z"]},
+            definition=CollectionDefinition(
+                indexing={"allow": ["z"]},
+            ),
         )
         lc_response = await async_database.list_collections()
         #
@@ -92,7 +129,11 @@ class TestDDLAsync:
 
         acol = await async_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUID,
-            default_id_type=DefaultIdType.UUID,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.UUID,
+                ),
+            ),
         )
         acol_options = await acol.options()
         assert acol_options is not None
@@ -108,7 +149,11 @@ class TestDDLAsync:
         time.sleep(2)
         acol = await async_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV6,
-            default_id_type=DefaultIdType.UUIDV6,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.UUIDV6,
+                ),
+            ),
         )
         acol_options = await acol.options()
         assert acol_options is not None
@@ -126,7 +171,11 @@ class TestDDLAsync:
         time.sleep(2)
         acol = await async_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.UUIDV7,
-            default_id_type=DefaultIdType.UUIDV7,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.UUIDV7,
+                ),
+            ),
         )
         acol_options = await acol.options()
         assert acol_options is not None
@@ -144,7 +193,11 @@ class TestDDLAsync:
         time.sleep(2)
         acol = await async_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.DEFAULT,
-            default_id_type=DefaultIdType.DEFAULT,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.DEFAULT,
+                ),
+            ),
         )
         acol_options = await acol.options()
         assert acol_options is not None
@@ -155,7 +208,11 @@ class TestDDLAsync:
         time.sleep(2)
         acol = await async_database.create_collection(
             ID_TEST_COLLECTION_NAME_ROOT + DefaultIdType.OBJECTID,
-            default_id_type=DefaultIdType.OBJECTID,
+            definition=CollectionDefinition(
+                default_id=CollectionDefaultIDOptions(
+                    default_id_type=DefaultIdType.OBJECTID,
+                ),
+            ),
         )
         acol_options = await acol.options()
         assert acol_options is not None
@@ -171,7 +228,12 @@ class TestDDLAsync:
     @pytest.mark.describe("test of collection drop, async")
     async def test_collection_drop_async(self, async_database: AsyncDatabase) -> None:
         col = await async_database.create_collection(
-            name="async_collection_to_drop", dimension=2
+            name="async_collection_to_drop",
+            definition=CollectionDefinition(
+                vector=CollectionVectorOptions(
+                    dimension=2,
+                ),
+            ),
         )
         await col.drop()
         assert "async_collection_to_drop" not in (

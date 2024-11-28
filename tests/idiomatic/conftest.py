@@ -22,6 +22,7 @@ import pytest
 
 from astrapy import AsyncCollection, AsyncDatabase, Collection, DataAPIClient, Database
 from astrapy.constants import VectorMetric
+from astrapy.info import CollectionDefinition, CollectionVectorOptions
 from astrapy.utils.api_options import APIOptions, SerdesOptions
 
 from ..conftest import (
@@ -99,9 +100,13 @@ def sync_collection(
     """An actual collection on DB, in the main keyspace"""
     collection = sync_database.create_collection(
         TEST_COLLECTION_NAME,
-        dimension=2,
-        metric=VectorMetric.COSINE,
-        indexing={"deny": ["not_indexed"]},
+        definition=CollectionDefinition(
+            indexing={"deny": ["not_indexed"]},
+            vector=CollectionVectorOptions(
+                dimension=2,
+                metric=VectorMetric.COSINE,
+            ),
+        ),
         spawn_api_options=APIOptions(
             serdes_options=SerdesOptions(
                 binary_encode_vectors=True,

@@ -176,6 +176,7 @@ class TestTableLifecycle:
             )
             .add_partition_by(["p_text", "p_int"])
             .add_partition_sort({"p_boolean": -1, "p_float": 1})
+            .build()
         )
         table_fluent = sync_database.create_table(
             "table_fluent",

@@ -17,6 +17,7 @@ Try the following code after replacing the connection parameters:
 from astrapy import DataAPIClient
 from astrapy.constants import VectorMetric
 from astrapy.ids import UUID
+from astrapy.info import CollectionDefinition
 
 
 ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
@@ -32,8 +33,11 @@ my_database = my_client.get_database(
 # Create a vector collection
 my_collection = my_database.create_collection(
     "dreams_collection",
-    dimension=3,
-    metric=VectorMetric.COSINE,
+    definition=(
+        CollectionDefinition.zero()
+        .set_vector_dimension(3)
+        .set_vector_metric(VectorMetric.COSINE)
+    )
 )
 
 # Populate the collection with some documents
@@ -306,7 +310,9 @@ my_database = my_client.get_database(
 
 my_collection = my_database.create_collection(
     "ecommerce",
-    default_id_type=astrapy.constants.DefaultIdType.UUIDV6,
+    definition=CollectionDefinition.zero().set_default_id(
+        astrapy.constants.DefaultIdType.UUIDV6
+    ),
 )
 
 my_collection.insert_one({"_id": astrapy.ids.ObjectId("65fd9b52d7fabba03349d013")})

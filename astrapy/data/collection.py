@@ -134,20 +134,63 @@ class Collection(Generic[DOC]):
         api_options: a complete specification of the API Options for this instance.
 
     Examples:
-        >>> from astrapy import DataAPIClient, Collection
-        >>> my_client = astrapy.DataAPIClient()
-        >>> my_db = my_client.get_database(
+        >>> from astrapy import DataAPIClient
+        >>> client = DataAPIClient()
+        >>> database = client.get_database(
         ...     "https://01234567-....apps.astra.datastax.com",
-        ...      token="AstraCS:...",
+        ...     token="AstraCS:..."
         ... )
-        >>> my_coll_1 = my_db.create_collection(
-        ...     "my_v_collection",
-        ...     dimension=3,
-        ...     metric="cosine",
+
+        >>> # Create a collection using the fluent syntax for its definition
+        >>> from astrapy.constants import VectorMetric
+        >>> from astrapy.info import CollectionDefinition
+        >>>
+        >>> collection_definition = (
+        ...     CollectionDefinition.zero()
+        ...     .set_vector_dimension(3)
+        ...     .set_vector_metric(VectorMetric.DOT_PRODUCT)
+        ...     .set_indexing("deny", ["annotations", "logs"])
         ... )
-        >>> my_coll_2a = my_db.get_collection("my_already_existing_collection")
-        >>> my_coll_2b = my_db.my_already_existing_collection
-        >>> my_coll_2c = my_db["my_already_existing_collection"]
+        >>> my_collection = database.create_collection(
+        ...     "my_events",
+        ...     definition=collection_definition,
+        ... )
+
+        >>>
+        >>> # Create a collection with the definition as object
+        >>> from astrapy.info import CollectionVectorOptions
+        >>>
+        >>> collection_definition_1 = CollectionDefinition(
+        ...     vector=CollectionVectorOptions(
+        ...         dimension=3,
+        ...         metric=VectorMetric.DOT_PRODUCT,
+        ...     ),
+        ...     indexing={"deny": ["annotations", "logs"]},
+        ... )
+        >>> my_collection_1 = database.create_collection(
+        ...     "my_events",
+        ...     definition=collection_definition_1,
+        ... )
+        >>>
+
+        >>> # Create a collection with the definition as plain dictionary
+        >>> collection_definition_2 = {
+        ...     "indexing": {"deny": ["annotations", "logs"]},
+        ...     "vector": {
+        ...         "dimension": 3,
+        ...         "metric": VectorMetric.DOT_PRODUCT,
+        ...     },
+        ... }
+        >>> my_collection_2 = database.create_collection(
+        ...     "my_events",
+        ...     definition=collection_definition_2,
+        ... )
+
+        >>> # Get a reference to an existing collection
+        >>> # (no checks are performed on DB)
+        >>> my_collection_3a = database.get_collection("my_events")
+        >>> my_collection_3b = database.my_events
+        >>> my_collection_3c = database["my_events"]
 
     Note:
         creating an instance of Collection does not trigger actual creation
@@ -2531,22 +2574,63 @@ class AsyncCollection(Generic[DOC]):
         api_options: a complete specification of the API Options for this instance.
 
     Examples:
-        >>> from astrapy import DataAPIClient, AsyncCollection
-        >>> my_client = astrapy.DataAPIClient()
-        >>> my_async_db = my_client.get_async_database(
-        ...    "https://01234567-....apps.astra.datastax.com",
-        ...     token="AstraCS:...",
+        >>> from astrapy import DataAPIClient
+        >>> client = DataAPIClient()
+        >>> async_database = client.get_async_database(
+        ...     "https://01234567-....apps.astra.datastax.com",
+        ...     token="AstraCS:..."
         ... )
-        >>> my_async coll_1 = asyncio.run(my_async_db.create_collection(
-        ...     "my_v_collection",
-        ...     dimension=3,
-        ...     metric="cosine",
-        ... ))
-        >>> my_async_coll_2a = asyncio.run(my_async_db.get_collection(
-        ...     "my_already_existing_collection",
-        ... ))
-        >>> my_async_coll_2b = my_async_db.my_already_existing_collection
-        >>> my_async_coll_2c = my_async_db["my_already_existing_collection"]
+
+        >>> # Create a collection using the fluent syntax for its definition
+        >>> from astrapy.constants import VectorMetric
+        >>> from astrapy.info import CollectionDefinition
+        >>>
+        >>> collection_definition = (
+        ...     CollectionDefinition.zero()
+        ...     .set_vector_dimension(3)
+        ...     .set_vector_metric(VectorMetric.DOT_PRODUCT)
+        ...     .set_indexing("deny", ["annotations", "logs"])
+        ... )
+        >>> my_collection = await async_database.create_collection(
+        ...     "my_events",
+        ...     definition=collection_definition,
+        ... )
+
+        >>>
+        >>> # Create a collection with the definition as object
+        >>> from astrapy.info import CollectionVectorOptions
+        >>>
+        >>> collection_definition_1 = CollectionDefinition(
+        ...     vector=CollectionVectorOptions(
+        ...         dimension=3,
+        ...         metric=VectorMetric.DOT_PRODUCT,
+        ...     ),
+        ...     indexing={"deny": ["annotations", "logs"]},
+        ... )
+        >>> my_collection_1 = await async_database.create_collection(
+        ...     "my_events",
+        ...     definition=collection_definition_1,
+        ... )
+        >>>
+
+        >>> # Create a collection with the definition as plain dictionary
+        >>> collection_definition_2 = {
+        ...     "indexing": {"deny": ["annotations", "logs"]},
+        ...     "vector": {
+        ...         "dimension": 3,
+        ...         "metric": VectorMetric.DOT_PRODUCT,
+        ...     },
+        ... }
+        >>> my_collection_2 = await async_database.create_collection(
+        ...     "my_events",
+        ...     definition=collection_definition_2,
+        ... )
+
+        >>> # Get a reference to an existing collection
+        >>> # (no checks are performed on DB)
+        >>> my_collection_3a = await async_database.get_collection("my_events")
+        >>> my_collection_3b = async_database.my_events
+        >>> my_collection_3c = async_database["my_events"]
 
     Note:
         creating an instance of AsyncCollection does not trigger actual creation

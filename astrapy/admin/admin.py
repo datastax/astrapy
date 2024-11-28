@@ -1022,7 +1022,13 @@ class AstraDBAdmin:
             ...     region="ap-south-1",
             ... )
             >>> my_new_db = my_new_db_admin.get_database()
-            >>> my_coll = my_new_db.create_collection("movies", dimension=2)
+            >>> my_coll = my_new_db.create_collection(
+            ...     "movies",
+            ...     definition=(
+            ...         CollectionDefinition.zero()
+            ...         .set_vector_dimension(2)
+            ...     )
+            ... )
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.1, 0.2]})
         """
 
@@ -1674,7 +1680,13 @@ class AstraDBAdmin:
             ...     "https://<ID>-<REGION>.apps.astra.datastax.com",
             ...     keyspace="my_prod_keyspace",
             ... )
-            >>> coll = my_db.create_collection("movies", dimension=2)
+            >>> coll = my_db.create_collection(
+            ...     "movies",
+            ...     definition=(
+            ...         CollectionDefinition.zero()
+            ...         .set_vector_dimension(2)
+            ...     )
+            ... )
             >>> my_coll.insert_one({"title": "The Title", "$vector": [0.3, 0.4]})
         """
 
@@ -1825,7 +1837,13 @@ class AstraDBAdmin:
             ...         api_endpoint,
             ...         keyspace=keyspace,
             ...     )
-            ...     a_coll = await my_async_db.create_collection("movies", dimension=2)
+            ...     a_coll = await my_async_db.create_collection(
+            ...         "movies",
+            ...         definition=(
+            ...             CollectionDefinition.zero()
+            ...             .set_vector_dimension(2)
+            ...         )
+            ...     )
             ...     await a_coll.insert_one(
             ...         {"title": "The Title", "$vector": [0.3, 0.4]}
             ...     )

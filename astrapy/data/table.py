@@ -2656,6 +2656,7 @@ class AsyncTable(Generic[ROW]):
         ...     token="AstraCS:..."
         ... )
 
+        >>> # Create a table using the fluent syntax for definition
         >>> from astrapy.constants import SortMode
         >>> from astrapy.info import (
         ...     CreateTableDefinition,
@@ -2681,6 +2682,7 @@ class AsyncTable(Generic[ROW]):
         ...     definition=table_definition_1,
         ... )
 
+        >>> # Create a table with the definition as object
         >>> table_definition_2 = {
         ...     'columns': {
         ...         'p_text': {'type': 'text'},
@@ -2697,6 +2699,7 @@ class AsyncTable(Generic[ROW]):
         ...     definition=table_definition_2,
         ... )
 
+        >>> # Create a table with the definition as plain dictionary
         >>> table_definition_3 = (
         ...     CreateTableDefinition.zero()
         ...     .add_column("p_text", "text")
@@ -2710,6 +2713,8 @@ class AsyncTable(Generic[ROW]):
         ...     definition=table_definition_3,
         ... )
 
+        >>> # Get a reference to an existing table
+        >>> # (no checks are performed on DB)
         >>> my_table_4 = await my_db.get_table("my_already_existing_table")
 
     Note:

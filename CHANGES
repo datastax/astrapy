@@ -95,9 +95,14 @@ Signature change from `-> {"ok": 1}` to `-> None` for some admin and schema meth
     - Collection, AsyncCollection: `drop`
 Support for arbitrary 'database' and 'admin' headers throughout the object chain
 Rename `CollectionVectorServiceOptions` class to `VectorServiceOptions`
+Full rework of `[Async]Database.create_collection()`:
+  - added parameter `definition` to method (a CollectionDefinition, plain dictionary or None)
+  - removed 'dimension', 'metric', 'source_model', 'service', 'indexing', 'default_id_type' (all of them subsumed in `definition`)
+  - removed parameters 'additional_options' and 'timeout_ms'
 Renamed 'CollectionOptions' class to `CollectionDefinition` (return type of `Collection.options()`):
     - renamed its 'options' attribute into `definition` (although the API payload calls it "options")
     - removed its "raw_options" attribute (redundant w.r.t `CollectionDescriptor.raw_descriptor`)
+    - CollectionDefinition: implemented fluent interface to build collection definition objects
 Reworked the options system:
     - an APIOptions object inherited at each "spawn" operation, with overrides
     - environment-dependent defaults if nothing supplied

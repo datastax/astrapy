@@ -21,6 +21,7 @@ import pytest
 from astrapy import Database
 from astrapy.data_types import DataAPIVector
 from astrapy.exceptions import DataAPIResponseException
+from astrapy.info import CollectionDefinition
 
 from ..conftest import DefaultCollection
 
@@ -229,9 +230,14 @@ class TestVectorizeMethodsSync:
         with pytest.raises(DataAPIResponseException):
             sync_database.create_collection(
                 "collection_name",
-                dimension=service_collection_parameters["dimension"] + 10,
-                service={
-                    "provider": service_collection_parameters["provider"],
-                    "modelName": service_collection_parameters["modelName"],
-                },
+                definition=(
+                    CollectionDefinition.zero()
+                    .set_vector_dimension(
+                        service_collection_parameters["dimension"] + 10
+                    )
+                    .set_vector_service(
+                        provider=service_collection_parameters["provider"],
+                        model_name=service_collection_parameters["modelName"],
+                    )
+                ),
             )

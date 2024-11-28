@@ -618,6 +618,9 @@ class BaseTableDefinition:
             ),
         )
 
+    def build(self) -> BaseTableDefinition:
+        return self
+
 
 @dataclass
 class BaseTableDescriptor:
