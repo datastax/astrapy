@@ -98,7 +98,9 @@ class DataAPIMap(Generic[T, U], Mapping[T, U]):
         return NotImplemented
 
     def __repr__(self) -> str:
-        _map_repr = ", ".join(f"({k}, {v})" for k, v in zip(self._keys, self._values))
+        _map_repr = ", ".join(
+            f"({repr(k)}, {repr(v)})" for k, v in zip(self._keys, self._values)
+        )
         return f"{self.__class__.__name__}([{_map_repr}])"
 
     def __str__(self) -> str:

@@ -538,13 +538,13 @@ class BaseTableDefinition:
             column_name=column_name, column_type=column_type
         )
 
-    def add_set_column(self, column_name: str, column_type: str) -> BaseTableDefinition:
+    def add_set_column(self, column_name: str, value_type: str) -> BaseTableDefinition:
         return BaseTableDefinition(
             columns={
                 **self.columns,
                 **{
                     column_name: TableValuedColumnTypeDescriptor(
-                        column_type="set", value_type=column_type
+                        column_type="set", value_type=value_type
                     )
                 },
             },
