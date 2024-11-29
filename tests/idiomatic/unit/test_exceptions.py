@@ -180,7 +180,7 @@ async def test_dataapihttpexception_raising_500_async(httpserver: HTTPServer) ->
     root_endpoint = httpserver.url_for("/")
     client = DataAPIClient(environment="other")
     adatabase = client.get_async_database(root_endpoint, keyspace="xkeyspace")
-    acollection = await adatabase.get_collection("xcoll")
+    acollection = adatabase.get_collection("xcoll")
     expected_url = "/v1/xkeyspace/xcoll"
     httpserver.expect_oneshot_request(
         expected_url,
@@ -216,7 +216,7 @@ async def test_dataapihttpexception_raising_404_async(httpserver: HTTPServer) ->
     root_endpoint = httpserver.url_for("/")
     client = DataAPIClient(environment="other")
     adatabase = client.get_async_database(root_endpoint, keyspace="xkeyspace")
-    acollection = await adatabase.get_collection("xcoll")
+    acollection = adatabase.get_collection("xcoll")
     expected_url = "/v1/xkeyspace/xcoll"
     httpserver.expect_oneshot_request(
         expected_url,
@@ -362,7 +362,7 @@ async def test_collections_error_on_decimal_async(httpserver: HTTPServer) -> Non
     root_endpoint = httpserver.url_for("/")
     client = DataAPIClient(environment="other")
     adatabase = client.get_async_database(root_endpoint, keyspace="xkeyspace")
-    acollection = await adatabase.get_collection("xcoll")
+    acollection = adatabase.get_collection("xcoll")
     expected_url = "/v1/xkeyspace/xcoll"
     httpserver.expect_request(
         expected_url,

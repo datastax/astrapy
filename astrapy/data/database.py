@@ -1816,10 +1816,10 @@ class AsyncDatabase:
         self._api_commander = self._get_api_commander(keyspace=self.keyspace)
 
     def __getattr__(self, collection_name: str) -> AsyncCollection[DefaultDocumentType]:
-        return self.to_sync().get_collection(name=collection_name).to_async()
+        return self.get_collection(name=collection_name)
 
     def __getitem__(self, collection_name: str) -> AsyncCollection[DefaultDocumentType]:
-        return self.to_sync().get_collection(name=collection_name).to_async()
+        return self.get_collection(name=collection_name)
 
     def __repr__(self) -> str:
         ep_desc = f'api_endpoint="{self.api_endpoint}"'
@@ -2168,7 +2168,7 @@ class AsyncDatabase:
         return self._using_keyspace
 
     @overload
-    async def get_collection(
+    def get_collection(
         self,
         name: str,
         *,
@@ -2178,7 +2178,7 @@ class AsyncDatabase:
     ) -> AsyncCollection[DefaultDocumentType]: ...
 
     @overload
-    async def get_collection(
+    def get_collection(
         self,
         name: str,
         *,
@@ -2188,7 +2188,7 @@ class AsyncDatabase:
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncCollection[DOC]: ...
 
-    async def get_collection(
+    def get_collection(
         self,
         name: str,
         *,
@@ -2238,16 +2238,16 @@ class AsyncDatabase:
 
         Example:
             >>> async def count_docs(adb: AsyncDatabase, c_name: str) -> int:
-            ...    async_col = await adb.get_collection(c_name)
+            ...    async_col = adb.get_collection(c_name)
             ...    return await async_col.count_documents({}, upper_bound=100)
             ...
             >>> asyncio.run(count_docs(async_database, "my_collection"))
             45
 
         Note: the attribute and indexing syntax forms achieve the same effect
-            as this method, returning an AsyncCollection, albeit
-            in a synchronous way. In other words, the following are equivalent:
-                await async_database.get_collection("coll_name")
+            as this method, returning an AsyncCollection.
+            In other words, the following are equivalent:
+                async_database.get_collection("coll_name")
                 async_database.coll_name
                 async_database["coll_name"]
         """
@@ -2439,7 +2439,7 @@ class AsyncDatabase:
                 raw_response=cc_response,
             )
         logger.info(f"finished createCollection('{name}')")
-        return await self.get_collection(
+        return self.get_collection(
             name,
             document_type=document_type,
             keyspace=keyspace,
@@ -2637,7 +2637,7 @@ class AsyncDatabase:
             return gc_response["status"]["collections"]  # type: ignore[no-any-return]
 
     @overload
-    async def get_table(
+    def get_table(
         self,
         name: str,
         *,
@@ -2647,7 +2647,7 @@ class AsyncDatabase:
     ) -> AsyncTable[DefaultRowType]: ...
 
     @overload
-    async def get_table(
+    def get_table(
         self,
         name: str,
         *,
@@ -2657,7 +2657,7 @@ class AsyncDatabase:
         spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncTable[ROW]: ...
 
-    async def get_table(
+    def get_table(
         self,
         name: str,
         *,
@@ -2707,7 +2707,7 @@ class AsyncDatabase:
 
         Example:
             >>> # Get an AsyncTable object (and read a property of it as an example):
-            >>> my_async_table = asyncio.run(async_database.get_table("games"))
+            >>> my_async_table = async_database.get_table("games")
             >>> my_async_table.full_name
             'default_keyspace.games'
             >>>
@@ -2983,7 +2983,7 @@ class AsyncDatabase:
                 raw_response=ct_response,
             )
         logger.info(f"finished createTable('{name}')")
-        return await self.get_table(
+        return self.get_table(
             name,
             row_type=row_type,
             keyspace=keyspace,

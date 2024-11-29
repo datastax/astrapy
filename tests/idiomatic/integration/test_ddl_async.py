@@ -114,7 +114,7 @@ class TestDDLAsync:
         assert expected_coll_descriptor in lc_response
         assert expected_coll_descriptor_b in lc_response
         #
-        col2 = await async_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
+        col2 = async_database.get_collection(TEST_LOCAL_COLLECTION_NAME)
         assert col1 == col2
         await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)
         await async_database.drop_collection(TEST_LOCAL_COLLECTION_NAME)

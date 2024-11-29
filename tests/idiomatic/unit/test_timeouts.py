@@ -325,7 +325,7 @@ class TestTimeouts:
         client = DataAPIClient(environment="other")
         database = client.get_database(root_endpoint, keyspace="xkeyspace")
         # S_L = short timeout for request; long timeout for general-method
-        acollection_S_L = await database.to_async().get_collection(
+        acollection_S_L = database.to_async().get_collection(
             "xcollt",
             spawn_api_options=APIOptions(
                 timeout_options=TimeoutOptions(
@@ -334,7 +334,7 @@ class TestTimeouts:
                 ),
             ),
         )
-        acollection_L_S = await database.to_async().get_collection(
+        acollection_L_S = database.to_async().get_collection(
             "xcollt",
             spawn_api_options=APIOptions(
                 timeout_options=TimeoutOptions(
@@ -396,7 +396,7 @@ class TestTimeouts:
         client = DataAPIClient(environment="other")
         database = client.get_database(root_endpoint, keyspace="xkeyspace")
         # S_L = short timeout for request; long timeout for general-method
-        acollection_S_L = await database.to_async().get_collection(
+        acollection_S_L = database.to_async().get_collection(
             "xcoll",
             spawn_api_options=APIOptions(
                 timeout_options=TimeoutOptions(
@@ -405,7 +405,7 @@ class TestTimeouts:
                 ),
             ),
         )
-        acollection_L_S = await database.to_async().get_collection(
+        acollection_L_S = database.to_async().get_collection(
             "xcoll",
             spawn_api_options=APIOptions(
                 timeout_options=TimeoutOptions(

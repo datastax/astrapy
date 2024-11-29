@@ -2628,7 +2628,7 @@ class AsyncCollection(Generic[DOC]):
 
         >>> # Get a reference to an existing collection
         >>> # (no checks are performed on DB)
-        >>> my_collection_3a = await async_database.get_collection("my_events")
+        >>> my_collection_3a = async_database.get_collection("my_events")
         >>> my_collection_3b = async_database.my_events
         >>> my_collection_3c = async_database["my_events"]
 

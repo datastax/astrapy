@@ -272,7 +272,7 @@ class TestTableTyping:
         """Test of getting typed tables with generics (and not), async."""
 
         # Untyped baseline
-        ag_tb_untyped = await async_database.get_table(TYPING_TABLE_NAME)
+        ag_tb_untyped = async_database.get_table(TYPING_TABLE_NAME)
         await ag_tb_untyped.insert_one(ROW)
         gu_doc = await ag_tb_untyped.find_one(FIND_FILTER)
         assert gu_doc is not None
@@ -289,7 +289,7 @@ class TestTableTyping:
             gu_y = gu_doc["c"]  # noqa: F841
 
         # Typed
-        ag_tb_typed: AsyncTable[TestDoc] = await async_database.get_table(
+        ag_tb_typed: AsyncTable[TestDoc] = async_database.get_table(
             TYPING_TABLE_NAME, row_type=TestDoc
         )
         await ag_tb_typed.insert_one(TYPED_ROW)

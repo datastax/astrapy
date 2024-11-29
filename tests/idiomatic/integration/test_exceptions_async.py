@@ -251,7 +251,7 @@ class TestExceptionsAsync:
         self,
         async_database: AsyncDatabase,
     ) -> None:
-        awcol = await async_database.get_collection("nonexisting")
+        awcol = async_database.get_collection("nonexisting")
         cur1 = awcol.find({})
         cur2 = awcol.find({})
 

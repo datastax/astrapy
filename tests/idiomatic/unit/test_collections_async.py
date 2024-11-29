@@ -182,10 +182,10 @@ class TestCollectionsAsync:
         async_database: AsyncDatabase,
         data_api_credentials_info: DataAPICredentialsInfo,
     ) -> None:
-        col1 = await async_database.get_collection("id_test_collection")
+        col1 = async_database.get_collection("id_test_collection")
         assert col1.keyspace == async_database.keyspace
 
-        col2 = await async_database.get_collection(
+        col2 = async_database.get_collection(
             "id_test_collection",
             keyspace=data_api_credentials_info["secondary_keyspace"],
         )

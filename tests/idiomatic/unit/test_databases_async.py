@@ -159,14 +159,14 @@ class TestDatabasesAsync:
         async_database: AsyncDatabase,
         async_collection_instance: DefaultAsyncCollection,
     ) -> None:
-        collection = await async_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)
+        collection = async_database.get_collection(TEST_COLLECTION_INSTANCE_NAME)
         assert collection == async_collection_instance
 
         assert getattr(async_database, TEST_COLLECTION_INSTANCE_NAME) == collection
         assert async_database[TEST_COLLECTION_INSTANCE_NAME] == collection
 
         KEYSPACE_2 = "other_keyspace"
-        collection_ks2 = await async_database.get_collection(
+        collection_ks2 = async_database.get_collection(
             TEST_COLLECTION_INSTANCE_NAME, keyspace=KEYSPACE_2
         )
         assert collection_ks2 == AsyncCollection(

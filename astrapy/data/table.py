@@ -2752,7 +2752,7 @@ class AsyncTable(Generic[ROW]):
 
         >>> # Get a reference to an existing table
         >>> # (no checks are performed on DB)
-        >>> my_table_4 = await async_database.get_table("my_already_existing_table")
+        >>> my_table_4 = async_database.get_table("my_already_existing_table")
 
     Note:
         creating an instance of AsyncTable does not trigger, in itself, actual

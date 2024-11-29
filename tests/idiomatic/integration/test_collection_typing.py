@@ -333,7 +333,7 @@ class TestCollectionTyping:
         """Test of getting typed collections with generics (and not), async."""
 
         # Untyped baseline
-        ag_co_untyped = await async_database.get_collection(async_empty_collection.name)
+        ag_co_untyped = async_database.get_collection(async_empty_collection.name)
         await ag_co_untyped.insert_one(DOCUMENT)
         gu_doc = await ag_co_untyped.find_one(FIND_FILTER)
         assert gu_doc is not None
@@ -351,7 +351,7 @@ class TestCollectionTyping:
         await ag_co_untyped.delete_many({})
 
         # Typed
-        ag_co_typed: AsyncCollection[TestDoc] = await async_database.get_collection(
+        ag_co_typed: AsyncCollection[TestDoc] = async_database.get_collection(
             async_empty_collection.name,
             document_type=TestDoc,
         )
@@ -379,8 +379,8 @@ class TestCollectionTyping:
     ) -> None:
         """Test of getting typed collections with generics (and not), sync."""
 
-        ag_co_untyped = await async_database.get_collection(async_empty_collection.name)
-        ag_co_typed: AsyncCollection[TestDoc] = await async_database.get_collection(
+        ag_co_untyped = async_database.get_collection(async_empty_collection.name)
+        ag_co_typed: AsyncCollection[TestDoc] = async_database.get_collection(
             async_empty_collection.name,
             document_type=TestDoc,
         )
