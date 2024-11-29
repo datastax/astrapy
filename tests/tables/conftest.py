@@ -136,7 +136,7 @@ TEST_COMPOSITE_TABLE_DEFINITION = CreateTableDefinition(
         ),
         "p_int_regular": TableScalarColumnTypeDescriptor(
             column_type="int"
-        ),  # TODO: remove->p_int
+        ),  # TODO: remove->p_int after #1718
     },
     primary_key=TablePrimaryKeyDescriptor(
         partition_by=["p_text"],

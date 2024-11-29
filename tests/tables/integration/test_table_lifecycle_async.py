@@ -224,7 +224,6 @@ class TestTableLifecycle:
         self,
         async_database: AsyncDatabase,
     ) -> None:
-        # TODO add test of list indexes once endpoint available
         table = await async_database.create_table(
             "table_for_indexes",
             definition=CreateTableDefinition(

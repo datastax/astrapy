@@ -224,7 +224,6 @@ class TestTableLifecycle:
         self,
         sync_database: Database,
     ) -> None:
-        # TODO add test of list indexes once endpoint available
         table = sync_database.create_table(
             "table_for_indexes",
             definition=CreateTableDefinition(

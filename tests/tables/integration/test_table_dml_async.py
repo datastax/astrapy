@@ -37,6 +37,7 @@ from .table_row_assets import (
     COMPOSITE_VECTOR_ROWS,
     COMPOSITE_VECTOR_ROWS_N,
     DISTINCT_AR_ROWS,
+    INSMANY_AR_ROW_HALFN,
     INSMANY_AR_ROWS,
     INSMANY_AR_ROWS_PK_TUPLES,
     INSMANY_AR_ROWS_PKS,
@@ -54,7 +55,6 @@ class TestTableDMLAsync:
         async_empty_table_all_returns: DefaultAsyncTable,
         async_empty_table_composite: DefaultAsyncTable,
     ) -> None:
-        # TODO + the different custom/nonocustom types and serdes options interplay
         no_row_0a = await async_empty_table_all_returns.find_one(filter=AR_ROW_PK_0)
         assert no_row_0a is None
         ins1_res_0 = await async_empty_table_all_returns.insert_one(row=AR_ROW_0)
@@ -171,7 +171,7 @@ class TestTableDMLAsync:
         self,
         async_empty_table_simple: DefaultAsyncTable,
     ) -> None:
-        # TODO cross check with CQL direct (!), astra only
+        # TODO cross check with CQL direct (!)
         im_result = await async_empty_table_simple.insert_many(SIMPLE_FULL_ROWS)
         assert len(im_result.inserted_ids) == len(SIMPLE_FULL_ROWS)
         assert len(im_result.inserted_id_tuples) == len(SIMPLE_FULL_ROWS)
@@ -195,7 +195,7 @@ class TestTableDMLAsync:
         self,
         async_empty_table_simple: DefaultAsyncTable,
     ) -> None:
-        # TODO cross check with CQL direct (!), astra only
+        # TODO cross check with CQL direct (!)
         im_result = await async_empty_table_simple.insert_many(SIMPLE_FULL_ROWS)
         assert len(im_result.inserted_ids) == len(SIMPLE_FULL_ROWS)
         assert len(im_result.inserted_id_tuples) == len(SIMPLE_FULL_ROWS)
@@ -638,21 +638,18 @@ class TestTableDMLAsync:
         srows_in_part = await async_empty_table_all_returns.find(
             filter={"p_ascii": "A", "p_bigint": 100},
             sort={"p_int": SortMode.DESCENDING},
-            limit=20,  # TODO: reinstate next line once nextPageState stops coming back erroneously
-            # limit=INSMANY_AR_ROW_HALFN + 1,
+            limit=INSMANY_AR_ROW_HALFN + 1,
         ).to_list()
-        # sorted finds return at most one page and that's it:
-        assert len(srows_in_part) == 20
+        assert len(srows_in_part) == INSMANY_AR_ROW_HALFN
         srows_in_part_pints = [row["p_int"] for row in srows_in_part]
         assert sorted(srows_in_part_pints) == srows_in_part_pints[::-1]
         # sorting by any regular column
         srows_anycol = await async_empty_table_all_returns.find(
             filter={"p_ascii": "A", "p_bigint": 100},
             sort={"p_float": SortMode.DESCENDING},
-            limit=20,  # TODO: reinstate next line once nextPageState stops coming back erroneously
-            # limit=INSMANY_AR_ROW_HALFN + 1,
+            limit=INSMANY_AR_ROW_HALFN + 1,
         ).to_list()
-        # sorted finds return at most one page and that's it:
+        # sorted finds in this case return at most one page and that's it:
         assert len(srows_anycol) == 20
         srows_anycol_pints = [row["p_int"] for row in srows_anycol]
         assert sorted(srows_anycol_pints) == srows_anycol_pints[::-1]

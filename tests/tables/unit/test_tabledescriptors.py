@@ -224,7 +224,6 @@ class TestListTableDescriptors:
     def test_listtabledescriptor_hybrid_parsing(self) -> None:
         from_dict_def = ListTableDefinition.coerce(DICT_DEFINITION)
         from_hyb_def = ListTableDefinition.coerce(HYBRID_DEFINITION)
-        # TODO add unsupported and parse with ListX and CreateX, checking
         assert from_dict_def == from_hyb_def
 
     @pytest.mark.describe("test of parsing short forms for column types")
@@ -241,7 +240,6 @@ class TestListTableDescriptors:
 
     @pytest.mark.describe("test of fluent interface for table definition")
     def test_tabledefinition_fluent(self) -> None:
-        # TODO refine this test (assets, etc)
         def0 = (
             CreateTableDefinition.zero()
             .add_column("p_text", "text")
