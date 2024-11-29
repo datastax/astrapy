@@ -153,7 +153,6 @@ class TestAdminConversions:
         opts0 = defaultAPIOptions(environment="dev").with_override(
             APIOptions(
                 token="t1",
-                environment="dev",
                 callers=callers0,
                 dev_ops_api_url_options=DevOpsAPIURLOptions(
                     dev_ops_url="dou",
@@ -187,7 +186,6 @@ class TestAdminConversions:
         opts0 = defaultAPIOptions(environment="dev").with_override(
             APIOptions(
                 token="t1",
-                environment="dev",
                 callers=callers0,
                 dev_ops_api_url_options=DevOpsAPIURLOptions(
                     dev_ops_url="dou",
@@ -231,7 +229,6 @@ class TestAdminConversions:
         opts0 = defaultAPIOptions(environment="hcd").with_override(
             APIOptions(
                 token="t1",
-                environment="hcd",
                 callers=callers0,
                 data_api_url_options=DataAPIURLOptions(
                     api_path="appi",

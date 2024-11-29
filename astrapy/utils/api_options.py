@@ -344,7 +344,6 @@ class APIOptions:
     def __init__(
         self,
         *,
-        environment: str | UnsetType = _UNSET,
         callers: Sequence[CallerType] | UnsetType = _UNSET,
         database_additional_headers: dict[str, str | None] | UnsetType = _UNSET,
         admin_additional_headers: dict[str, str | None] | UnsetType = _UNSET,
@@ -357,7 +356,7 @@ class APIOptions:
         dev_ops_api_url_options: DevOpsAPIURLOptions | UnsetType = _UNSET,
     ) -> None:
         # Special conversions and type coercions occur here
-        self.environment = environment
+        self.environment = _UNSET
         self.callers = callers
         self.database_additional_headers = database_additional_headers
         self.admin_additional_headers = admin_additional_headers
@@ -403,9 +402,6 @@ class APIOptions:
         non_unset_pieces = [
             pc
             for pc in (
-                None
-                if isinstance(self.environment, UnsetType)
-                else f"environment={self.environment}",
                 None
                 if isinstance(self.callers, UnsetType)
                 else f"callers={self.callers}",
@@ -473,7 +469,6 @@ class FullAPIOptions(APIOptions):
     ) -> None:
         APIOptions.__init__(
             self,
-            environment=environment,
             callers=callers,
             database_additional_headers=database_additional_headers,
             admin_additional_headers=admin_additional_headers,
@@ -485,6 +480,7 @@ class FullAPIOptions(APIOptions):
             data_api_url_options=data_api_url_options,
             dev_ops_api_url_options=dev_ops_api_url_options,
         )
+        self.environment = environment
 
     def __repr__(self) -> str:
         # special items

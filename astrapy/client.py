@@ -117,7 +117,6 @@ class DataAPIClient:
                 f"Unsupported `environment` value: '{_environment}'."
             )
         arg_api_options = APIOptions(
-            environment=_environment,
             callers=callers,
             token=token,
         )
