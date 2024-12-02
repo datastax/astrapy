@@ -24,7 +24,7 @@ ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
 ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
 
 # Connect and create the Database object
-my_client = astrapy.DataAPIClient()
+my_client = DataAPIClient()
 my_database = my_client.get_database(
     ASTRA_DB_API_ENDPOINT,
     token=ASTRA_DB_APPLICATION_TOKEN,
@@ -219,13 +219,13 @@ as depicted by this diagram:
 Here's a small admin-oriented example:
 
 ```python
-import astrapy
+from astrapy import DataAPIClient
 
 
 # this must have "Database Administrator" permissions:
 ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
 
-my_client = astrapy.DataAPIClient(ASTRA_DB_APPLICATION_TOKEN)
+my_client = DataAPIClient(ASTRA_DB_APPLICATION_TOKEN)
 
 my_astra_admin = my_client.get_admin()
 
@@ -281,11 +281,38 @@ _written to DB is always a (numeric) **timestamp**: for naive quantities, this t
 _on the implied timezone used in the conversion, potentially leading to unexpected results_
 _e.g. if multiple applications are running with different locale settings._
 
-The following diagram summarized the behaviour of the write and read paths for datetime objects,
+The following diagram summarizes the behaviour of the write and read paths for datetime objects,
 depending on the `SerdesOptions` settings:
 
 ![AstraPy, abstractions chart](https://raw.githubusercontent.com/datastax/astrapy/main/pictures/astrapy_datetime_serdes_options.png)
 
+Here an example code snippet showing how to switch to having reads return regular `datetime` objects
+and have them set to one's desired timezone offset:
+
+```python
+from datetime import timezone,timedelta
+
+from astrapy import DataAPIClient
+from astrapy.api_options import APIOptions, SerdesOptions
+
+my_timezone = timezone(timedelta(hours=4, minutes=30))
+
+my_client = DataAPIClient()
+my_database = my_client.get_database(
+    ASTRA_DB_API_ENDPOINT,
+    token=ASTRA_DB_APPLICATION_TOKEN,
+    spawn_api_options=APIOptions(
+        serdes_options=SerdesOptions(
+            custom_datatypes_in_reading=False,
+            datetime_tzinfo=my_timezone,
+        ),
+    ),
+)
+
+my_collection = my_database.get_collection("my_collection")
+# This document will have datetimes set to the desired timezone
+document = my_collection.find_one({"code": 123})
+```
 
 ### Working with ObjectIds and UUIDs in Collections
 
@@ -296,13 +323,16 @@ Even when setting a default ID type for a collection, you still retain the freed
 to use any ID type for any document:
 
 ```python
-import astrapy
+from astrapy import DataAPIClient
+from astrapy.constants import DefaultIdType
+from astrapy.ids import ObjectId, uuid8, UUID
+
 import bson
 
 ASTRA_DB_APPLICATION_TOKEN = "AstraCS:..."
 ASTRA_DB_API_ENDPOINT = "https://01234567-....apps.astra.datastax.com"
 
-my_client = astrapy.DataAPIClient()
+my_client = DataAPIClient()
 my_database = my_client.get_database(
     ASTRA_DB_API_ENDPOINT,
     token=ASTRA_DB_APPLICATION_TOKEN,
@@ -311,13 +341,13 @@ my_database = my_client.get_database(
 my_collection = my_database.create_collection(
     "ecommerce",
     definition=CollectionDefinition.zero().set_default_id(
-        astrapy.constants.DefaultIdType.UUIDV6
+        DefaultIdType.UUIDV6
     ),
 )
 
-my_collection.insert_one({"_id": astrapy.ids.ObjectId("65fd9b52d7fabba03349d013")})
+my_collection.insert_one({"_id": ObjectId("65fd9b52d7fabba03349d013")})
 my_collection.find({
-    "_id": astrapy.ids.UUID("018e65c9-e33d-749b-9386-e848739582f0"),
+    "_id": UUID("018e65c9-e33d-749b-9386-e848739582f0"),
 })
 
 my_collection.update_one(
@@ -326,7 +356,7 @@ my_collection.update_one(
     upsert=True,
 )
 
-my_collection.insert_one({"_id": astrapy.ids.uuid8()})
+my_collection.insert_one({"_id": uuid8()})
 ```
 
 ## For contributors
