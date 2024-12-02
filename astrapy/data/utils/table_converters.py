@@ -310,8 +310,7 @@ def _column_filler_value(
                 f"Unrecognized table key-valued-column descriptor for reads: {col_def.as_dict()}"
             )
     elif isinstance(col_def, TableUnsupportedColumnTypeDescriptor):
-        # TODO: this might be an incomplete treatment of unsupported collection
-        # types, should they be returned from queries.
+        # TODO: revise what may happen should an unsupported column be returnable in the schema.
         return None
     else:
         raise ValueError(

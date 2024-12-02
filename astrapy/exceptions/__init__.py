@@ -345,7 +345,20 @@ def to_devopsapi_timeout_exception(
 @dataclass
 class _TimeoutContext:
     """
-    TODO
+    This class encodes standardized "enriched information" attached to a timeout
+    value to obey. This makes it possible, in case the timeout is raised, to present
+    the user with a better error message detailing the name of the setting responsible
+    for the timeout and the "nominal" value (which may not always coincide with the
+    actual elapsed number of milliseconds because of cumulative timeouts spanning
+    several HTTP requests).
+
+    Args:
+        nominal_ms: the original timeout in milliseconds that was ultimately set by
+            the user.
+        request_ms: the actual number of millisecond a given HTTP request was allowed
+            to last. This may be smaller than `nominal_ms` because of timeouts imposed
+            on a succession of requests.
+        label: a string, providing the name of the timeout setting as known by the user.
     """
 
     nominal_ms: int | None
@@ -381,7 +394,8 @@ class MultiCallTimeoutManager:
         overall_timeout_ms: an optional max duration to track (milliseconds)
         started_ms: timestamp of the instance construction (milliseconds)
         deadline_ms: optional deadline in milliseconds (computed by the class).
-        timeout_label: TODO
+        timeout_label: a string label identifying the `overall_timeout_ms` in a way
+            that is understood by the user who can set timeouts.
     """
 
     overall_timeout_ms: int | None
@@ -418,10 +432,14 @@ class MultiCallTimeoutManager:
             cap_time_ms: an additional timeout constraint to cap the result of
                 this method. If the remaining timeout from this manager exceeds
                 the provided cap, the cap is returned.
-            cap_timeout_label: TODO
+            cap_timeout_label: the label identifying the "cap timeout" if one is
+                set. This is for the purpose of tracing the "lineage" of timeout
+                settings in a way that is transparent to the user.
 
         Returns:
-            TODO
+            A _TimeoutContext appropriately detailing the residual time an overall
+            operation is allowed to last. Alternatively, the method may not return
+            and raise a DataAPITimeoutException directly.
         """
 
         # a zero 'cap' must be treated as None:
