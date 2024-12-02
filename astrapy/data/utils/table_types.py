@@ -33,10 +33,8 @@ class TableScalarColumnType(StrEnum):
     TEXT = "text"
     TIME = "time"
     TIMESTAMP = "timestamp"
-    # TIMEUUID = "timeuuid"  # TODO confirm gone?
     TINYINT = "tinyint"
     UUID = "uuid"
-    # VARCHAR = "varchar" TODO confirm gone?
     VARINT = "varint"
 
 

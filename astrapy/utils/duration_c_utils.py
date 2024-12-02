@@ -122,7 +122,6 @@ def _parse_c_duration_string(duration_string: str) -> tuple[int, int, int, int]:
                 f"duration: '{duration_string}'. {DURATION_C_FORMAT_DESC}"
             )
     else:
-        # TODO more verbose error (here and above)
         raise ValueError(
             "Invalid literal for a duration: "
             f"'{duration_string}'. {DURATION_C_FORMAT_DESC}"

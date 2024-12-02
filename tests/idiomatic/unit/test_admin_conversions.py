@@ -133,14 +133,14 @@ class TestAdminConversions:
         db2_param = client.get_database(endpoint, token="t1")
         db2_opt = client.get_database(
             endpoint,
-            api_options=APIOptions(
+            spawn_api_options=APIOptions(
                 token="t1",
             ),
         )
         db2_opt_override = client.get_database(
             endpoint,
             token="t1",
-            api_options=APIOptions(
+            spawn_api_options=APIOptions(
                 token="t_another",
             ),
         )
@@ -293,14 +293,14 @@ class TestAdminConversions:
     def test_client_get_admin_option_passing(self) -> None:
         client_0 = DataAPIClient()
         admin_opt = client_0.get_admin(
-            api_options=APIOptions(
+            spawn_api_options=APIOptions(
                 token="tx",
             ),
         )
         admin_param = client_0.get_admin(token="tx")
         admin_opt_param = client_0.get_admin(
             token="tx",
-            api_options=APIOptions(
+            spawn_api_options=APIOptions(
                 token="t_another",
             ),
         )
@@ -437,11 +437,11 @@ class TestAdminConversions:
 
         db_admin_param = database_0.get_database_admin(token="tx")
         db_admin_opt = database_0.get_database_admin(
-            admin_api_options=APIOptions(token="tx"),
+            spawn_api_options=APIOptions(token="tx"),
         )
         db_admin_opt_param = database_0.get_database_admin(
             token="tx",
-            admin_api_options=APIOptions(token="t_another"),
+            spawn_api_options=APIOptions(token="t_another"),
         )
         assert db_admin_param == db_admin_opt
         assert db_admin_param == db_admin_opt_param
@@ -450,11 +450,11 @@ class TestAdminConversions:
 
         adb_admin_param = adatabase_0.get_database_admin(token="tx")
         adb_admin_opt = adatabase_0.get_database_admin(
-            admin_api_options=APIOptions(token="tx"),
+            spawn_api_options=APIOptions(token="tx"),
         )
         adb_admin_opt_param = adatabase_0.get_database_admin(
             token="tx",
-            admin_api_options=APIOptions(token="t_another"),
+            spawn_api_options=APIOptions(token="t_another"),
         )
         assert adb_admin_param == adb_admin_opt
         assert adb_admin_param == adb_admin_opt_param

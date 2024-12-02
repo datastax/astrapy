@@ -1120,7 +1120,7 @@ class AstraDBAdmin:
                 region=region,
             ),
             astra_db_admin=self,
-            api_options=_final_api_options,
+            spawn_api_options=_final_api_options,
         )
 
     async def async_create_database(
@@ -1284,7 +1284,7 @@ class AstraDBAdmin:
                 region=region,
             ),
             astra_db_admin=self,
-            api_options=_final_api_options,
+            spawn_api_options=_final_api_options,
         )
 
     def drop_database(
@@ -1598,7 +1598,7 @@ class AstraDBAdmin:
             return AstraDBDatabaseAdmin.from_astra_db_admin(
                 api_endpoint=_api_endpoint_p,
                 astra_db_admin=self,
-                api_options=_final_api_options,
+                spawn_api_options=_final_api_options,
             )
         else:
             if _id_p is None:
@@ -1617,7 +1617,7 @@ class AstraDBAdmin:
                     region=_region,
                 ),
                 astra_db_admin=self,
-                api_options=_final_api_options,
+                spawn_api_options=_final_api_options,
             )
 
     def get_database(
@@ -2230,7 +2230,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
         api_endpoint: str,
         *,
         astra_db_admin: AstraDBAdmin,
-        api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBDatabaseAdmin:
         """
         Create an AstraDBDatabaseAdmin from an AstraDBAdmin and an API Endpoint.
@@ -2243,7 +2243,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
                 does not create the database, just the object instance.
             astra_db_admin: an AstraDBAdmin object that has visibility over
                 the target database.
-            database_api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults inherited from the AstraDBAdmin.
                 This allows for a deeper configuration of the database, e.g.
                 concerning timeouts.
@@ -2270,7 +2270,7 @@ class AstraDBDatabaseAdmin(DatabaseAdmin):
 
         return AstraDBDatabaseAdmin(
             api_endpoint=api_endpoint,
-            api_options=astra_db_admin.api_options.with_override(api_options),
+            api_options=astra_db_admin.api_options.with_override(spawn_api_options),
             spawner_astra_db_admin=astra_db_admin,
         )
 

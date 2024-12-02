@@ -108,9 +108,12 @@ class APICommander:
         self.headers = headers
         self.callers = callers
         self.redacted_header_names = set(redacted_header_names or [])
-        self.full_redacted_header_names = (
-            self.redacted_header_names | DEFAULT_REDACTED_HEADER_NAMES
-        )
+        self.upper_full_redacted_header_names = {
+            header_name.upper()
+            for header_name in (
+                self.redacted_header_names | DEFAULT_REDACTED_HEADER_NAMES
+            )
+        }
         self.dev_ops_api = dev_ops_api
         self.handle_decimals_writes = handle_decimals_writes
         self.handle_decimals_reads = handle_decimals_reads
@@ -153,7 +156,7 @@ class APICommander:
         }
         self._loggable_headers = {
             k: v
-            if k not in self.full_redacted_header_names
+            if k.upper() not in self.upper_full_redacted_header_names
             else FIXED_SECRET_PLACEHOLDER
             for k, v in self.full_headers.items()
         }

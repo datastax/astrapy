@@ -634,7 +634,7 @@ class Database:
                 See the examples below.
             keyspace: the keyspace where the collection is to be created.
                 If not specified, the general setting for this database is used.
-            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+            collection_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying API request. If not provided, the Collection defaults apply.
             embedding_api_key: optional API key(s) for interacting with the collection.
                 If an embedding service is configured, and this parameter is not None,
@@ -1688,7 +1688,7 @@ class Database:
         self,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        admin_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> DatabaseAdmin:
         """
         Return a DatabaseAdmin object corresponding to this database, for
@@ -1703,7 +1703,7 @@ class Database:
                 the token of this Database is used.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            admin_api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
                 This allows for a deeper configuration of the database admin, e.g.
                 concerning timeouts; if this is passed together with
@@ -1729,7 +1729,7 @@ class Database:
         arg_api_options = APIOptions(
             token=token,
         )
-        api_options = self.api_options.with_override(admin_api_options).with_override(
+        api_options = self.api_options.with_override(spawn_api_options).with_override(
             arg_api_options
         )
 
@@ -2334,7 +2334,7 @@ class AsyncDatabase:
                 See the examples below.
             keyspace: the keyspace where the collection is to be created.
                 If not specified, the general setting for this database is used.
-            table_admin_timeout_ms: a timeout, in milliseconds, to impose on the
+            collection_admin_timeout_ms: a timeout, in milliseconds, to impose on the
                 underlying API request.
                 If not provided, the AsyncCollection defaults apply.
             embedding_api_key: optional API key(s) for interacting with the collection.
@@ -3391,7 +3391,7 @@ class AsyncDatabase:
         self,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        admin_api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> DatabaseAdmin:
         """
         Return a DatabaseAdmin object corresponding to this database, for
@@ -3406,7 +3406,7 @@ class AsyncDatabase:
                 the token of this Database is used.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            admin_api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
                 This allows for a deeper configuration of the database admin, e.g.
                 concerning timeouts; if this is passed together with
@@ -3432,7 +3432,7 @@ class AsyncDatabase:
         arg_api_options = APIOptions(
             token=token,
         )
-        api_options = self.api_options.with_override(admin_api_options).with_override(
+        api_options = self.api_options.with_override(spawn_api_options).with_override(
             arg_api_options
         )
 

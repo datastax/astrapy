@@ -198,7 +198,7 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
         Get a Database object from this client, for doing data-related work.
@@ -215,7 +215,7 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
                 This allows for a deeper configuration of the database, e.g.
                 concerning timeouts; if this is passed together with
@@ -253,14 +253,14 @@ class DataAPIClient:
         from astrapy import Database
 
         arg_api_options = APIOptions(token=token)
-        api_options = self.api_options.with_override(api_options).with_override(
-            arg_api_options
-        )
+        resulting_api_options = self.api_options.with_override(
+            spawn_api_options
+        ).with_override(arg_api_options)
 
-        if api_options.environment in Environment.astra_db_values:
+        if resulting_api_options.environment in Environment.astra_db_values:
             parsed_api_endpoint = parse_api_endpoint(api_endpoint)
             if parsed_api_endpoint is not None:
-                if parsed_api_endpoint.environment != api_options.environment:
+                if parsed_api_endpoint.environment != resulting_api_options.environment:
                     raise InvalidEnvironmentException(
                         "Environment mismatch between client and provided "
                         "API endpoint. You can try adding "
@@ -270,7 +270,7 @@ class DataAPIClient:
                 return Database(
                     api_endpoint=api_endpoint,
                     keyspace=keyspace,
-                    api_options=api_options,
+                    api_options=resulting_api_options,
                 )
             else:
                 msg = api_endpoint_parsing_error_message(api_endpoint)
@@ -281,7 +281,7 @@ class DataAPIClient:
                 return Database(
                     api_endpoint=parsed_generic_api_endpoint,
                     keyspace=keyspace,
-                    api_options=api_options,
+                    api_options=resulting_api_options,
                 )
             else:
                 msg = generic_api_url_parsing_error_message(api_endpoint)
@@ -293,7 +293,7 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Get an AsyncDatabase object from this client, for doing data-related work.
@@ -310,7 +310,7 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
                 This allows for a deeper configuration of the database, e.g.
                 concerning timeouts; if this is passed together with
@@ -349,7 +349,7 @@ class DataAPIClient:
             api_endpoint=api_endpoint,
             token=token,
             keyspace=keyspace,
-            api_options=api_options,
+            spawn_api_options=spawn_api_options,
         ).to_async()
 
     def get_database_by_api_endpoint(
@@ -358,7 +358,7 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> Database:
         """
         Get a Database object from this client, for doing data-related work.
@@ -377,7 +377,7 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
                 This allows for a deeper configuration of the database, e.g.
                 concerning timeouts; if this is passed together with
@@ -392,7 +392,7 @@ class DataAPIClient:
             api_endpoint=api_endpoint,
             token=token,
             keyspace=keyspace,
-            api_options=api_options,
+            spawn_api_options=spawn_api_options,
         )
 
     def get_async_database_by_api_endpoint(
@@ -401,7 +401,7 @@ class DataAPIClient:
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
         keyspace: str | None = None,
-        api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AsyncDatabase:
         """
         Get an AsyncDatabase object from this client, for doing data-related work.
@@ -420,7 +420,7 @@ class DataAPIClient:
                 `astrapy.authentication.TokenProvider`.
             keyspace: if provided, it is passed to the Database; otherwise
                 the Database class will apply an environment-specific default.
-            api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
                 This allows for a deeper configuration of the database, e.g.
                 concerning timeouts; if this is passed together with
@@ -435,14 +435,14 @@ class DataAPIClient:
             api_endpoint=api_endpoint,
             token=token,
             keyspace=keyspace,
-            api_options=api_options,
+            spawn_api_options=spawn_api_options,
         )
 
     def get_admin(
         self,
         *,
         token: str | TokenProvider | UnsetType = _UNSET,
-        api_options: APIOptions | UnsetType = _UNSET,
+        spawn_api_options: APIOptions | UnsetType = _UNSET,
     ) -> AstraDBAdmin:
         """
         Get an AstraDBAdmin instance corresponding to this client, for
@@ -454,7 +454,7 @@ class DataAPIClient:
                 admin-capable permission set.
                 This can be either a literal token string or a subclass of
                 `astrapy.authentication.TokenProvider`.
-            api_options: a specification - complete or partial - of the
+            spawn_api_options: a specification - complete or partial - of the
                 API Options to override the defaults.
                 This allows for a deeper configuration of the admin, e.g.
                 concerning timeouts; if this is passed together with
@@ -482,13 +482,13 @@ class DataAPIClient:
         from astrapy.admin import AstraDBAdmin
 
         arg_api_options = APIOptions(token=token)
-        api_options = self.api_options.with_override(api_options).with_override(
-            arg_api_options
-        )
+        resulting_api_options = self.api_options.with_override(
+            spawn_api_options
+        ).with_override(arg_api_options)
 
-        if api_options.environment not in Environment.astra_db_values:
+        if resulting_api_options.environment not in Environment.astra_db_values:
             raise InvalidEnvironmentException(
                 "Method not supported outside of Astra DB."
             )
 
-        return AstraDBAdmin(api_options=api_options)
+        return AstraDBAdmin(api_options=resulting_api_options)
