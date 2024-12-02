@@ -249,6 +249,38 @@ The package comes with its own set of exceptions, arranged in this hierarchy:
 For more information, and code examples, check out the docstrings and consult
 the API reference linked above.
 
+### API Options
+
+You can configure many aspects of the interaction with the API by providing
+customized "API Options" objects when either spawning a client, copying objects,
+or spawning "children classes" (such as a Table from a Database).
+
+For the details, please check the docstring for `astrapy.api_options.APIOptions`
+and the other classes in that module. Here is a small example script to show a
+practical starting point:
+
+```python
+from astrapy import DataAPIClient
+from astrapy.api_options import (
+    APIOptions,
+    SerdesOptions,
+)
+
+# Disable custom datatypes in all reads:
+no_cdt_options = APIOptions(
+    serdes_options=SerdesOptions(
+        custom_datatypes_in_reading=False,
+    )
+)
+my_client = DataAPIClient(api_options=no_cdt_options)
+
+# These spawned objects inherit that setting:
+my_database = my_client.get_database(
+    "https://...",
+    token="my-token-1",
+)
+my_table = my_database.get_table("my_table")
+```
 
 ### Working with dates in Collections and Tables
 
