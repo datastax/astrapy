@@ -50,7 +50,35 @@ DATE_FORMAT_DESC = (
 @dataclass
 class DataAPIDate:
     """
-    TODO also for methods
+    A value expressing a date, composed of a year, a month and a day.
+
+    This class is designed to losslessly express the full date range the Data API
+    supports, overcoming the year range limitation of Python's standard-library
+    date (i.e. 1AD to 9999AD).
+
+    DataAPIDate objects are meant to easily work in the context of the Data API,
+    hence its conversion methods from/to a string assumed the particular format
+    employed by the API.
+
+    The class also offers conversion methods from/to the regular
+    Python `datetime.date`; however these may fail if the year falls outside
+    of the range supported by the latter.
+
+    Args:
+        year: the year for the date. Any integer is accepted.
+        month: an integer number in the 1-12 range.
+        day: an integer number in a range between 1 and the number of days
+            in the chosen month (whose value depends on the month and, in the case
+            of February, on whether the year is a leap year).
+
+    Example:
+        >>> from astrapy.data_types import DataAPIDate
+        >>> date1 = DataAPIDate(2024, 12, 31)
+        >>> date2 = DataAPIDate(-44, 3, 15)
+        >>> date2
+        DataAPIDate(-44, 3, 15)
+        >>> date1.year
+        2024
     """
 
     year: int
@@ -117,6 +145,24 @@ class DataAPIDate:
         return (self.year, self.month, self.day)
 
     def to_string(self) -> str:
+        """
+        Express the date as a string according to the Data API convention,
+        including the presence of a signe and the number of digits for the year.
+
+        Returns:
+            a string, such as "2024-12-31", formatted in a way suitable to be
+            in a Data API payload.
+
+        Example:
+            >>> from astrapy.data_types import DataAPIDate
+            >>> date1 = DataAPIDate(2024, 12, 31)
+            >>> date2 = DataAPIDate(-44, 3, 15)
+            >>> date1.to_string()
+            '2024-12-31'
+            >>> date2.to_string()
+            '-0044-03-15'
+        """
+
         # the year part requires care around the sign and number of digits
         y = self.year
         year_str: str
@@ -129,10 +175,49 @@ class DataAPIDate:
         return f"{year_str}-{self.month:02}-{self.day:02}"
 
     def to_date(self) -> datetime.date:
+        """
+        Attempt to convert the date into a Python standard-library `datetime.date`.
+        This operation may fail with a ValueError if the DataAPIDate's year falls
+        outside of the range supported by the standard library.
+
+        Returns:
+            a `datetime.date` object if the conversion is successful.
+
+        Example:
+            >>> from astrapy.data_types import DataAPIDate
+            >>> date1 = DataAPIDate(2024, 12, 31)
+            >>> date2 = DataAPIDate(-44, 3, 15)
+            >>> date1.to_date()
+            datetime.date(2024, 12, 31)
+            >>> date2.to_date()
+            Traceback (most recent call last):
+                [...]
+            ValueError: year -44 is out of range
+        """
+
         return datetime.date(*self._to_tuple())
 
     @staticmethod
     def from_date(dt: datetime.date) -> DataAPIDate:
+        """
+        Convert a Python standard-library date into a DataAPIDate.
+
+        Args:
+            dt: a `datetime.date` object.
+
+        Returns:
+            a DataAPIDate, corresponding to the provided input.
+
+        Example:
+            >>> from datetime import date
+            >>>
+            >>> from astrapy.data_types import DataAPIDate
+            >>>
+            >>> std_date = date(2024, 12, 31)
+            >>> DataAPIDate.from_date(std_date)
+            DataAPIDate(2024, 12, 31)
+        """
+
         return DataAPIDate(
             year=dt.year,
             month=dt.month,
@@ -141,6 +226,30 @@ class DataAPIDate:
 
     @staticmethod
     def from_string(date_string: str) -> DataAPIDate:
+        """
+        Convert a string into a DataAPIDate, provided the string represents one
+        according to the Data API format conventions. If the format is unrecognized,
+        a ValueError is raised.
+
+        Args:
+            date_string: a valid string expressing a date as per Data API conventions.
+
+        Returns:
+            a DataAPIDate corresponding to the provided input.
+
+        Example:
+            >>> from astrapy.data_types import DataAPIDate
+            >>>
+            >>> DataAPIDate.from_string("2024-12-31")
+            DataAPIDate(2024, 12, 31)
+            >>> DataAPIDate.from_string("-0044-03-15")
+            DataAPIDate(-44, 3, 15)
+            >>> DataAPIDate.from_string("1905-13-15")
+            Traceback (most recent call last):
+                [...]
+            ValueError: Cannot parse '1905-13-15' into a valid date: illegal month [...]
+        """
+
         match = DATE_PARSE_PATTERN.match(date_string)
         if match:
             # the year string has additional constraints besides the regexp:
