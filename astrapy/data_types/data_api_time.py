@@ -35,7 +35,37 @@ TIME_FORMAT_DESC = (
 @dataclass
 class DataAPITime:
     """
-    TODO also for methods
+    A value expressing a time, composed of hours, minutes, seconds and nanoseconds,
+    suitable for working with the "time" table column type.
+
+    This class is designed to losslessly express the time values the Data API
+    supports, overcoming the precision limitation of Python's standard-library
+    time (whose sub-second quantity only has microsecond precision).
+
+    DataAPITime objects are meant to easily work in the context of the Data API,
+    hence its conversion methods from/to a string assumed the particular format
+    employed by the API.
+
+    The class also offers conversion methods from/to the regular
+    Python `datetime.time`; however these can entail a lossy conversion because
+    of the missing support for nanoseconds by the latter.
+
+    Args:
+        hour: an integer in 0-23, the hour value of the time.
+        minute: an integer in 0-59, the minute value of the time.
+        second: an integer in 0-59, the second value of the time.
+        nanosecond: an integer in 0-999999999, the nanosecond value of the time.
+
+    Example:
+        >>> from astrapy.data_types import DataAPITime
+        >>>
+        >>> DataAPITime(12, 34, 56)
+        DataAPITime(12, 34, 56, 0)
+        >>> t1 = DataAPITime(21, 43, 56, 789012345)
+        >>> t1
+        DataAPITime(21, 43, 56, 789012345)
+        >>> t1.second
+        56
     """
 
     hour: int
@@ -110,6 +140,22 @@ class DataAPITime:
         return (self.hour, self.minute, self.second, self.nanosecond)
 
     def to_string(self) -> str:
+        """
+        Convert the DataAPITime to a string according to the Data API specification.
+
+        Returns:
+            a string expressing the time value in a way compatible with the Data API
+            conventions.
+
+        Example:
+            >>> from astrapy.data_types import DataAPITime
+            >>>
+            >>> DataAPITime(12, 34, 56).to_string()
+            '12:34:56'
+            >>> DataAPITime(21, 43, 56, 789012345).to_string()
+            '21:43:56.789012345'
+        """
+
         hm_part = f"{self.hour:02}:{self.minute:02}"
         s_part: str
         if self.nanosecond:
@@ -133,6 +179,24 @@ class DataAPITime:
         return f"{hm_part}:{s_part}"
 
     def to_time(self) -> datetime.time:
+        """
+        Convert the DataAPITime into a Python standard-library `datetime.time` object.
+        This may involve a loss of precision since the latter cannot express
+        nanoseconds, only microseconds.
+
+        Returns:
+            a `datetime.time` object, corresponding (possibly in a lossy way)
+            to the original DataAPITime.
+
+        Example:
+            >>> from astrapy.data_types import DataAPITime
+            >>>
+            >>> DataAPITime(12, 34, 56).to_time()
+            datetime.time(12, 34, 56)
+            >>> DataAPITime(21, 43, 56, 789012345).to_time()
+            datetime.time(21, 43, 56, 789012)
+        """
+
         return datetime.time(
             hour=self.hour,
             minute=self.minute,
@@ -142,6 +206,25 @@ class DataAPITime:
 
     @staticmethod
     def from_time(dt: datetime.time) -> DataAPITime:
+        """
+        Create a DataAPITime from a Python standard-library `datetime.time` object.
+
+        Args:
+            dt: a `datetime.time` value
+
+        Returns:
+            a DataAPITime object, corresponding exactly to the provided input.
+
+        Example:
+            >>> from datetime import time
+            >>>
+            >>> from astrapy.data_types import DataAPITime
+            >>>
+            >>> DataAPITime.from_time(time(12, 34, 56))
+            DataAPITime(12, 34, 56, 0)
+            >>> DataAPITime.from_time(time(12, 34, 56, 789012))
+            DataAPITime(12, 34, 56, 789012000)
+        """
         return DataAPITime(
             hour=dt.hour,
             minute=dt.minute,
@@ -151,6 +234,29 @@ class DataAPITime:
 
     @staticmethod
     def from_string(time_string: str) -> DataAPITime:
+        """
+        Parse a string, expressed according to the Data API format, into a DataAPITime.
+        If the format is not recognized, a ValueError is raised.
+
+        Args:
+            time_string: a string compliant to the Data API specification for times.
+
+        Returns:
+            a DataAPITime corresponding to the provided input.
+
+        Example:
+            >>> from astrapy.data_types import DataAPITime
+            >>>
+            >>> DataAPITime.from_string("12:34:56")
+            DataAPITime(12, 34, 56, 0)
+            >>> DataAPITime.from_string("21:43:56.789012345")
+            DataAPITime(21, 43, 56, 789012345)
+            >>> DataAPITime.from_string("34:11:22.123")
+            Traceback (most recent call last):
+              [...]
+            ValueError: Cannot parse '34:11:22.123' into a valid time: illegal hour. ...
+        """
+
         match = TIME_PARSE_PATTERN.match(time_string)
         if match:
             hour = int(match[1])

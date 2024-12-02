@@ -48,7 +48,47 @@ TIMESTAMP_FORMAT_DESC = (
 @dataclass
 class DataAPITimestamp:
     """
-    TODO also for methods
+    A value expressing a unambiguous timestamp, accurate to down millisecond precision,
+    suitable for working with the "timestamp" table column type.
+
+    A DataAPITimestamp can be thought of as an integer signed number of milliseconds
+    elapsed since (or before) the epoch (that is, 1970-01-01 00:00:00 GMT+0).
+    An alternative representation is that of a "date + time + offset", such as
+    the (year, month, day; hour, minute, second, millisecond; offset), where offset
+    is a quantity of type "hours:minutes" essentially canceling the timezone ambiguity
+    of the remaining terms. This latter representation thus is not a bijection to the
+    former, as different representation map to one and the same timestamp integer value.
+
+    The fact that DataAPITimestamp values are only identified by their timestamp value
+    is one of the key differences between this class and the Python standard-library
+    `datetime.datetime`; another important practical difference is the available year
+    range, which for the latter spans the 1AD-9999AD time period while for the
+    DataAPITimestamp is unlimited for most practical purposes. In particular,
+    this class is designed to losslessly express the full date range the Data API
+    supports.
+
+    DataAPITimestamp objects are meant to easily work in the context of the Data API,
+    hence its conversion methods from/to a string assumed the particular format
+    employed by the API.
+
+    The class also offers conversion methods from/to the regular
+    Python `datetime.datetime`; however these may fail if the year falls outside
+    of the range supported by the latter.
+
+    Args:
+        timestamp_ms: an integer number of milliseconds elapsed since the epoch.
+            Negative numbers signify timestamp occurring before the epoch.
+
+    Example:
+        >>> from astrapy.data_types import DataAPITimestamp
+        >>>
+        >>> ds1 = DataAPITimestamp(2000000000321)
+        >>> ds1
+        DataAPITimestamp(timestamp_ms=2000000000321 [2033-05-18T03:33:20.321Z])
+        >>> ds1.timestamp_ms
+        2000000000321
+        >>> DataAPITimestamp(-1000000000321)
+        DataAPITimestamp(timestamp_ms=-1000000000321 [1938-04-24T22:13:19.679Z])
     """
 
     timestamp_ms: int
@@ -99,24 +139,124 @@ class DataAPITimestamp:
             return NotImplemented
 
     def to_datetime(self, *, tz: datetime.timezone | None) -> datetime.datetime:
+        """
+        Convert the DataAPITimestamp into a standard-library `datetime.datetime` value.
+
+        The conversion may fail if the target year range is outside of the capabilities
+        of `datetime.datetime`, in which case a ValueError will be raised.
+
+        Args:
+            tz: a `datetime.timezone` setting for providing offset information to the
+                result, thus making it an "aware" datetime. If a "naive" datetime is
+                desired (which however may lead to inconsistent timestamp handling
+                throughout the application), it is possible to pass `tz=None`.
+
+        Returns:
+            A `datetime.datetime` value, set to the desired timezone - or naive, in case
+            a null timezone is explicitly provided.
+
+        Example:
+            >>> import datetime
+            >>>
+            >>> from astrapy.data_types import DataAPITimestamp
+            >>>
+            >>> ds1 = DataAPITimestamp(2000000000321)
+            >>> ds1.to_datetime(tz=datetime.timezone.utc)
+            datetime.datetime(2033, 5, 18, 3, 33, 20, 321000, tzinfo=datetime.timezone.utc)
+            >>> ds1.to_datetime(tz=None)
+            datetime.datetime(2033, 5, 18, 5, 33, 20, 321000)
+            >>>
+            >>> ds2 = DataAPITimestamp(300000000000000)
+            >>> ds2.to_datetime(tz=datetime.timezone.utc)
+            Traceback (most recent call last):
+              [...]
+            ValueError: year 11476 is out of range
+        """
+
         return datetime.datetime.fromtimestamp(self.timestamp_ms / 1000.0, tz=tz)
 
     def to_naive_datetime(self) -> datetime.datetime:
+        """
+        Convert the DataAPITimestamp into a standard-library  naive
+        `datetime.datetime` value, i.e. one without attached timezone/offset info.
+
+        The conversion may fail if the target year range is outside of the capabilities
+        of `datetime.datetime`, in which case a ValueError will be raised.
+
+        Returns:
+            A naive `datetime.datetime` value. The ambiguity stemming from the lack of
+            timezone information is handed off to the standard-library `.fromtimestamp`
+            method, which works in the timezone set by the system locale.
+
+        Example:
+            >>> import datetime
+            >>>
+            >>> from astrapy.data_types import DataAPITimestamp
+            >>>
+            >>> ds1 = DataAPITimestamp(300000000321)
+            >>> ds1
+            DataAPITimestamp(timestamp_ms=300000000321 [1979-07-05T05:20:00.321Z])
+            >>> # running in wintertime, in the Paris/Berlin timezone:
+            >>> ds1.to_naive_datetime()
+            datetime.datetime(1979, 7, 5, 7, 20, 0, 321000)
+        """
+
         return datetime.datetime.fromtimestamp(self.timestamp_ms / 1000.0, tz=None)
 
     @staticmethod
     def from_datetime(dt: datetime.datetime) -> DataAPITimestamp:
+        """
+        Convert a standard-library `datetime.datetime` into a DataAPITimestamp.
+
+        The conversion correctly takes timezone information into account, if provided.
+        If it is absent (naive datetime), the ambiguity is resolved by the stdlib
+        `.timestamp()` method, which assumes the timezone set by the system locale.
+
+        Args:
+            dt: the `datetime.datetime` to convert into a DataAPITimestamp.
+
+        Returns:
+            A DataAPITimestamp, corresponding to the provided datetime.
+
+        Example (running in the Paris/Berlin timezone):
+            >>> import datetime
+            >>>
+            >>> from astrapy.data_types import DataAPITimestamp
+            >>>
+            >>> ds1 = DataAPITimestamp(300000000321)
+            >>> ds1
+            DataAPITimestamp(timestamp_ms=300000000321 [1979-07-05T05:20:00.321Z])
+            >>> ds1.to_naive_datetime()
+            datetime.datetime(1979, 7, 5, 7, 20, 0, 321000)
+        """
+
         return DataAPITimestamp(timestamp_ms=int(dt.timestamp() * 1000.0))
 
     @staticmethod
     def from_string(datetime_string: str) -> DataAPITimestamp:
         """
-        parse a RFC3339 datetime string, in the particular formats
-        "yyyy-mm-ddThh:mm:ss[.nnnnnn](Z|+hh:mm)", i.e. for instance
-            "2024-12-30T12:34:56Z"
-            "2024-12-30T12:34:56+01:30"
-        into a DataAPITimestamp. The custom logic allows to cover a broader
-        range than the Python standard datetime library.
+        Convert a string into a DataAPITimestamp, provided the string represents one
+        according to the Data API RFC3339 format conventions. If the format is
+        unrecognized, a ValueError is raised.
+
+        Args:
+            date_string: a string expressing a timestamp as per Data API conventions.
+
+        Returns:
+            a DataAPITimestamp corresponding to the provided input.
+
+        Example:
+            >>> from astrapy.data_types import DataAPITimestamp
+            >>>
+            >>> DataAPITimestamp.from_string("2021-07-18T14:56:23.987Z")
+            DataAPITimestamp(timestamp_ms=1626620183987 [2021-07-18T14:56:23.987Z])
+            >>> DataAPITimestamp.from_string("-0044-03-15T11:22:33+01:00")
+            DataAPITimestamp(timestamp_ms=-63549322647000 [-0044-03-15T10:22:33.000Z])
+            >>> # missing trailing offset information:
+            >>> DataAPITimestamp.from_string("1991-11-22T01:23:45.678")
+            Traceback (most recent call last):
+              [...]
+            ValueError: Cannot parse '1991-11-22T01:23:45.678' into a valid timestamp...
         """
         _datetime_string = datetime_string.upper().replace("Z", "+00:00")
         match = TIMESTAMP_PARSE_PATTERN.match(_datetime_string)
@@ -218,18 +358,50 @@ class DataAPITimestamp:
 
     def timetuple(self) -> tuple[int, int, int, int, int, int, int]:
         """
-        Return (UTC, i.e. offset +00:00) a tuple
-            (year, month, day, hour, minute, second, millisecond)
-        Note the last entry is millisecond for internal consistency.
+        Convert the DataAPITimestamp into a 7-item tuple expressing
+        the corresponding datetime in UTC, i.e. with implied "+00:00" offset.
+
+        Returns:
+            a (year, month, day, hour, minute, second, millisecond) of integers.
+            Note the last entry is millisecond.
+
+        Example:
+            >>> from astrapy.data_types import DataAPITimestamp
+            >>>
+            >>> dt1 = DataAPITimestamp(300000000321)
+            >>> dt1
+            DataAPITimestamp(timestamp_ms=300000000321 [1979-07-05T05:20:00.321Z])
+            >>> dt1.timetuple()
+            (1979, 7, 5, 5, 20, 0, 321)
         """
         return _unix_timestamp_ms_to_timetuple(self.timestamp_ms)
 
     def to_string(self) -> str:
         """
-        The output format is fixed to:
-            "<y>-<mo>-<d>T<h>:<m>:<s>.<ms>Z"
-        Use `.timetuple()` for achieving custom string formatting.
+        Express the timestamp as a string according to the Data API RFC3339 syntax,
+        including the presence of a sign, and the number of digits, for the year.
+
+        The string returned from this method can be directly used in the appropriate
+        parts of a payload to the Data API.
+
+        Note that there is no parameter to control formatting (as there would be
+        for `datetime.strftime`). To customize the formatting, one should invoke
+        `DataAPITimestamp.timetuple` and use its output subsequently.
+
+        Returns:
+            a string, such as "2024-12-31T12:34:56.543Z", formatted in a way suitable
+            to be used in a Data API payload.
+
+        Example:
+            >>> from astrapy.data_types import DataAPITimestamp
+            >>>
+            >>> dt1 = DataAPITimestamp(300000000321)
+            >>> dt1
+            DataAPITimestamp(timestamp_ms=300000000321 [1979-07-05T05:20:00.321Z])
+            >>> dt1.to_string()
+            '1979-07-05T05:20:00.321Z'
         """
+
         y, mo, d, h, m, s, ms = self.timetuple()
         # the year part requires care around the sign and number of digits
         year_str: str

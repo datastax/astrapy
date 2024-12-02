@@ -26,7 +26,8 @@ BYTES_PER_FLOAT = 4
 
 def floats_to_bytes(float_list: list[float], n: int | None = None) -> bytes:
     """
-    Convert a list of floats into a binary blob according to the Data API's conventions.
+    Convert a list of floats into a binary blob according to the Data API's conventions,
+    suitable for working with the "vector" table column type.
 
     Args:
         float_list: a list of n float numbers to convert.

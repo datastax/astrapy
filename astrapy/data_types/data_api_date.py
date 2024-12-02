@@ -50,7 +50,8 @@ DATE_FORMAT_DESC = (
 @dataclass
 class DataAPIDate:
     """
-    A value expressing a date, composed of a year, a month and a day.
+    A value expressing a date, composed of a year, a month and a day, suitable
+    for working with the "date" table column type.
 
     This class is designed to losslessly express the full date range the Data API
     supports, overcoming the year range limitation of Python's standard-library
@@ -147,7 +148,7 @@ class DataAPIDate:
     def to_string(self) -> str:
         """
         Express the date as a string according to the Data API convention,
-        including the presence of a signe and the number of digits for the year.
+        including the presence of a sign, and the number of digits, for the year.
 
         Returns:
             a string, such as "2024-12-31", formatted in a way suitable to be
@@ -191,7 +192,7 @@ class DataAPIDate:
             datetime.date(2024, 12, 31)
             >>> date2.to_date()
             Traceback (most recent call last):
-                [...]
+              [...]
             ValueError: year -44 is out of range
         """
 
