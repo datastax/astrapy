@@ -284,6 +284,7 @@ class SerdesOptions:
         custom_datatypes_in_reading: Read-Path. This setting determines whether return
             values from read methods should use astrapy custom classes (default setting
             of True), or try to use only standard-library data types instead (False).
+            The astrapy classes are designed to losslessly express DB values.
             For Collections, this setting only affects timestamp and vector values,
             while when reading from a Table there are several other implications.
             Keep in mind that for some of the data types, choosing the stdlib fallback
@@ -295,7 +296,7 @@ class SerdesOptions:
             and lossy storage of sub-second part for ancient years.
             * DataAPIDate => datetime.date: same year range limitations.
             * DataAPITime => datetime.time: approximation (datetime.time
-            only has microseconds, so the nanosecond part, if present, is lost).
+            has microsecond precision, so the nanosecond part, if present, is lost).
             * DataAPIDuration => datetime.timedelta: durations are intrinsically a
             different thing (see `DataAPIDuration` class). If requested, a coercion
             into a timedelta is attempted, but (a) months are not expressable, (b)
@@ -390,6 +391,7 @@ class FullSerdesOptions(SerdesOptions):
         custom_datatypes_in_reading: Read-Path. This setting determines whether return
             values from read methods should use astrapy custom classes (default setting
             of True), or try to use only standard-library data types instead (False).
+            The astrapy classes are designed to losslessly express DB values.
             For Collections, this setting only affects timestamp and vector values,
             while when reading from a Table there are several other implications.
             Keep in mind that for some of the data types, choosing the stdlib fallback
@@ -401,7 +403,7 @@ class FullSerdesOptions(SerdesOptions):
             and lossy storage of sub-second part for ancient years.
             * DataAPIDate => datetime.date: same year range limitations.
             * DataAPITime => datetime.time: approximation (datetime.time
-            only has microseconds, so the nanosecond part, if present, is lost).
+            has microsecond precision, so the nanosecond part, if present, is lost).
             * DataAPIDuration => datetime.timedelta: durations are intrinsically a
             different thing (see `DataAPIDuration` class). If requested, a coercion
             into a timedelta is attempted, but (a) months are not expressable, (b)
@@ -721,7 +723,7 @@ class APIOptions:
     an object with some settings changed.
     (b) pass it as the `spawn_api_options` argument to "spawning methods", such as
     `get/create_collection`, `get/create_table`, `get/create_database` or
-    `get_database_admin`, to set these option overrides to the the returned object.
+    `get_database_admin`, to set these option overrides to the returned object.
     The APIOptions object passed as argument can define zero, some or all of its
     members, overriding the corresponding settings and keeping, for all unspecified
     settings, the values inherited from the object whose method is invoked (see some
